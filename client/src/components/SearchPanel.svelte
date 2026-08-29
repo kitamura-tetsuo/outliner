@@ -138,9 +138,11 @@ const logger = getLogger("SearchPanel");
                     visualOrder[item.id] = rank;
                     visualOrder[item.key] = rank++;
                 }
-                newMatches.push(
-                    ...gridSearchMatches(pageIdentity(p), searchQuery, options, searchScope === "selection"),
-                );
+                if (searchScope !== "project") {
+                    newMatches.push(
+                        ...gridSearchMatches(pageIdentity(p), searchQuery, options, searchScope === "selection"),
+                    );
+                }
                 newMatches.sort((a, b) => {
                     const aId = a.kind === "grid-cell" ? a.placementId : a.itemId;
                     const bId = b.kind === "grid-cell" ? b.placementId : b.itemId;
@@ -394,10 +396,13 @@ const logger = getLogger("SearchPanel");
                 </label>
                 <label for="search-scope">Scope:</label>
                 <select id="search-scope" bind:value={searchScope}>
-                    <option value="project">Project</option>
+                    <option value="project">Project text</option>
                     <option value="page">Page</option>
                     <option value="selection">Selection</option>
                 </select>
+                {#if searchScope === "project"}
+                    <span class="scope-hint">Grid cells are available in Page or Selection scope.</span>
+                {/if}
                 <label class="option-checkbox" for="include-page-titles-checkbox">
                     <input
                         id="include-page-titles-checkbox"
