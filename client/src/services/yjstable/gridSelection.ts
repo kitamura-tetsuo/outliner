@@ -112,6 +112,10 @@ export class GridSelection {
             if (this.contains(cell)) this.addCellExclusion(cell);
         } else if (this.removeCellExclusion(cell)) {
             // Removing a cell-sized exclusion exposes its underlying positive region.
+            if (!this.contains(cell)) {
+                this.regions.push({ kind: "cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
+                this.indexRegions();
+            }
         } else if (this.hasPositiveCell(cell)) {
             this.removePositiveCell(cell);
             this.regions.push({ kind: "include-cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });

@@ -163,4 +163,16 @@ describe("GridSelection", () => {
         selection.toggleCell(cell);
         expect(selection.contains(cell)).toBe(false);
     });
+
+    it("re-adds a cell after its exclusion outlives the positive row region", () => {
+        const selection = new GridSelection();
+        const cell = { rowId: "row-a", columnId: "name" };
+        selection.selectRow("row-a", rows);
+        selection.toggleCell(cell);
+        selection.selectRow("row-a", rows, { toggle: true });
+        expect(selection.contains(cell)).toBe(false);
+
+        selection.toggleCell(cell);
+        expect(selection.contains(cell)).toBe(true);
+    });
 });

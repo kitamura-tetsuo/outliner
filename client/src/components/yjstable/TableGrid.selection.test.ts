@@ -113,6 +113,12 @@ describe("TableGrid logical selection", () => {
         expect(view.container.querySelectorAll("th.row-header.header-selected")).toHaveLength(2);
         expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(6);
 
+        const alpha = view.container.querySelector<HTMLElement>('td[data-row-id="a"][data-col="name"]')!;
+        await fireEvent.click(alpha.querySelector("button")!, { ctrlKey: true });
+        expect(alpha.classList.contains("grid-selected")).toBe(false);
+        expect(alpha.querySelector("input")).toBeNull();
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(5);
+
         const idHeader = view.getByRole("columnheader", { name: "id" });
         const statusHeader = view.getByRole("columnheader", { name: "status" });
         await fireEvent.click(idHeader);

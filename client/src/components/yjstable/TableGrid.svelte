@@ -180,7 +180,13 @@ function reconcileSelection(rows: TableQueryResult["rows"], columns: string[]): 
 
 function selectCell(event: MouseEvent, cell: GridCellAddress): void {
     if (event.shiftKey) selection.extend(cell, rowIdsOf(result.rows), displayColumns);
-    else if (event.ctrlKey || event.metaKey) selection.toggleCell(cell);
+    else if (event.ctrlKey || event.metaKey) {
+        // Modifier-click belongs to selection, not the cell editor. Without
+        // stopping propagation, editable cells immediately replace the
+        // toggled multi-selection when their button enters edit mode.
+        event.stopPropagation();
+        selection.toggleCell(cell);
+    }
     else selection.select(cell);
     selectionRevision++;
     // A mouse click always picks its own target; never let a stale keyboard
@@ -769,7 +775,7 @@ th.header-selected {
     outline-offset: -2px;
 }
 
-tr:has(> .row-header.header-selected) > td,
+tr:has(> .row-header.header-selected) > td.grid-selected,
 table:has(.corner-header.header-selected) tbody td,
 table:has(th[role="columnheader"].header-selected) td.grid-selected {
     background-color: rgb(14 116 144 / 14%);
