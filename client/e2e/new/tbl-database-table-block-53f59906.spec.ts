@@ -158,7 +158,7 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         });
 
         // Dialog appears, cancel it
-        const dialog = page.getByRole("dialog"); // Changed from alertdialog since standard confirmation dialog uses "dialog"
+        const dialog = page.getByRole("dialog").filter({ hasText: "Delete row" });
         await expect(dialog).toBeVisible({ timeout: 10000 });
         await dialog.getByRole("button", { name: "Cancel" }).click();
 
