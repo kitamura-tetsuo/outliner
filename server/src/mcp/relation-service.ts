@@ -1201,6 +1201,65 @@ export class OutlinerRelationService {
         });
     }
 
+    /**
+     * Repair a Grid query only after the same executable validation exposed by
+     * validate_grid_query succeeds. The final write still goes through
+     * setViewQuery, which rechecks the revision immediately before its single
+     * Yjs transaction; validation can therefore never overwrite a concurrent
+     * collaborator's edit.
+     */
+    async updateGridQuery(
+        uid: string,
+        projectId: string,
+        gridId: string,
+        query: string,
+        precondition: MutationPrecondition & { expectedRevision: string; },
+    ) {
+        const cacheKey = this.idempotency.key(
+            "update_grid_query",
+            uid,
+            projectId,
+            gridId,
+            precondition.dryRun ? undefined : precondition.operationId,
+        );
+        const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
+            const validation = await this.validateGridQuery(uid, projectId, gridId, query);
+            if (!validation.accepted) {
+                throw new McpReadError("validation_failed", "Grid query validation failed", {
+                    validation,
+                });
+            }
+            if ((validation.warnings ?? []).length > 0) {
+                throw new McpReadError(
+                    "validation_failed",
+                    "Grid query dependencies could not be safely materialized",
+                    { validation },
+                );
+            }
+
+            const mutation = await this.setViewQuery(uid, projectId, "grid", gridId, query, {
+                expectedRevision: precondition.expectedRevision,
+                dryRun: precondition.dryRun,
+            });
+            return {
+                gridId,
+                applied: mutation.applied,
+                priorRevision: mutation.priorRevision,
+                revision: mutation.revision,
+                before: { revision: mutation.priorRevision },
+                after: { query, revision: mutation.applied ? mutation.revision : mutation.priorRevision },
+                validation,
+                ordering: {
+                    source: validation.inferredOrdering,
+                    columns: validation.resultColumns.map(column => column.name),
+                    sampleRows: validation.sampleRows,
+                    truncated: validation.truncated,
+                },
+            };
+        });
+        return { ...result, replayed };
+    }
+
     private async loadRecords(
         db: PGlite,
         relation: string,

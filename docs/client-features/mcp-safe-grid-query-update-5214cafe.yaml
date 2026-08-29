@@ -1,0 +1,11 @@
+id: FTR-5214cafe
+title: Safe MCP Grid query update
+title-ja: 安全なMCPグリッドクエリ更新
+status: implemented
+description: Authorized MCP clients can repair a Grid SELECT through a dedicated update_grid_query workflow that performs executable dependency validation, supports non-mutating dry runs, rejects stale revisions and unsafe materialization, applies one Yjs query transaction, audits every attempt, deduplicates operation retries, and returns validation and ordered sample metadata for immediate verification.
+tests:
+- server/tests/mcp-diagnostic-repair-flow.test.ts
+- server/tests/mcp-mutation-contract.test.ts
+- server/tests/mcp-relation-service.test.ts
+documentation:
+- docs/chatgpt-mcp-integration.md

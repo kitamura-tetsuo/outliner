@@ -131,6 +131,8 @@ export function createMcpRouter(
                     projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
                     entity: typeof typedArgs.relation === "string"
                         ? typedArgs.relation
+                        : typeof typedArgs.gridId === "string"
+                        ? `grid:${typedArgs.gridId}`
                         : typeof typedArgs.viewId === "string"
                         ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
                         : undefined,
@@ -315,6 +317,30 @@ export function createMcpRouter(
                 },
                 {
                     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+                    mutating: true,
+                },
+            );
+            tool(
+                "update_grid_query",
+                "Validate and safely update a Grid's saved read-only SELECT query.",
+                {
+                    projectId: z.string(),
+                    gridId: z.string(),
+                    query: z.string(),
+                    expectedRevision: z.string(),
+                    operationId: z.string().min(1).max(200).optional(),
+                    dryRun: z.boolean().optional(),
+                },
+                args => {
+                    requireWrite();
+                    return relationService.updateGridQuery(uid, args.projectId, args.gridId, args.query, {
+                        expectedRevision: args.expectedRevision,
+                        operationId: args.operationId,
+                        dryRun: args.dryRun,
+                    });
+                },
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
                     mutating: true,
                 },
             );

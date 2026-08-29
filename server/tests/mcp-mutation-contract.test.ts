@@ -114,11 +114,13 @@ describe("MCP mutation safety contract", () => {
             destructiveHint: true,
             idempotentHint: false,
         });
-        expect(tools.find(t => t.name === "set_view_query")?.annotations).to.include({
-            readOnlyHint: false,
-            destructiveHint: false,
-            idempotentHint: true,
-        });
+        for (const name of ["set_view_query", "update_grid_query"]) {
+            expect(tools.find(t => t.name === name)?.annotations).to.include({
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: true,
+            });
+        }
     });
 
     it("rejects a write tool call from a read-only-scoped token with a structured forbidden error", async () => {
