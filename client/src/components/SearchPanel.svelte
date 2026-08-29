@@ -395,9 +395,12 @@ const logger = getLogger("SearchPanel");
             </div>
 
             <div class="search-results" data-testid="search-results">
-                <p data-testid="search-results-hits" aria-live="polite">
-                    Hits: {matchCount}{activeMatchIndex >= 0 ? ` · ${activeMatchIndex + 1}/${matchCount}` : ""}
-                </p>
+                <p data-testid="search-results-hits" aria-live="polite">Hits: {matchCount}</p>
+                {#if activeMatchIndex >= 0}
+                    <p class="search-match-position" aria-live="polite">
+                        Match {activeMatchIndex + 1} of {matchCount}
+                    </p>
+                {/if}
                 <div class="search-navigation">
                     <button type="button" onclick={() => moveMatch(-1)} disabled={!matchCount}>Previous</button>
                     <button type="button" onclick={() => moveMatch(1)} disabled={!matchCount}>Next</button>
