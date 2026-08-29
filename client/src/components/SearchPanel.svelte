@@ -49,7 +49,7 @@ const logger = getLogger("SearchPanel");
     let isRegexMode = $state(false);
     let isCaseSensitive = $state(false);
     let isWholeWord = $state(false);
-    let searchScope: "page" | "selection" = $state("page");
+    let searchScope: "project" | "page" | "selection" = $state("project");
 
     $effect(() => {
         searchHighlightStore.searchQuery = searchQuery;
@@ -104,7 +104,7 @@ const logger = getLogger("SearchPanel");
             caseSensitive: isCaseSensitive,
             wholeWord: isWholeWord,
         };
-        const pages = pageItem ? [pageItem] : getPagesToSearch();
+        const pages = searchScope === "project" ? getPagesToSearch() : pageItem ? [pageItem] : [];
         try {
             logger.debug("SearchPanel.handleSearch invoked", {
                 query: searchQuery,
@@ -129,13 +129,16 @@ const logger = getLogger("SearchPanel");
                         });
                     }
                 }
-                newMatches.push(...gridSearchMatches(p.id, searchQuery, options, searchScope === "selection"));
                 const visualOrder: Record<string, number> = {};
                 let rank = 0;
                 for (const item of iterateItems([p])) {
                     visualOrder[item.id] = rank;
                     visualOrder[item.key] = rank++;
                 }
+                newMatches.push(
+                    ...gridSearchMatches(p.id, searchQuery, options, searchScope === "selection")
+                        .filter(match => visualOrder[match.placementId] !== undefined),
+                );
                 newMatches.sort((a, b) => {
                     const aId = a.kind === "grid-cell" ? a.placementId : a.itemId;
                     const bId = b.kind === "grid-cell" ? b.placementId : b.itemId;
@@ -376,6 +379,7 @@ const logger = getLogger("SearchPanel");
                 </label>
                 <label for="search-scope">Scope:</label>
                 <select id="search-scope" bind:value={searchScope}>
+                    <option value="project">Project</option>
                     <option value="page">Page</option>
                     <option value="selection">Selection</option>
                 </select>
