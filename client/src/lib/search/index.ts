@@ -44,10 +44,16 @@ export function findMatches(text: string, query: string, options: SearchOptions 
     while ((m = regex.exec(text)) !== null) {
         matches.push({ index: m.index, length: m[0].length });
         if (m[0].length === 0) {
-            regex.lastIndex++;
+            regex.lastIndex = nextCodePointIndex(text, regex.lastIndex);
         }
     }
     return matches;
+}
+
+/** Advance a UTF-16 index without stopping between an astral character's surrogates. */
+export function nextCodePointIndex(text: string, index: number): number {
+    if (index >= text.length) return index + 1;
+    return index + (text.codePointAt(index)! > 0xFFFF ? 2 : 1);
 }
 
 function toStringSafe(text: unknown): string {

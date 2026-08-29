@@ -118,11 +118,12 @@ const logger = getLogger("SearchPanel");
         const newMatches: UnifiedSearchMatch[] = [];
         if (pages.length) {
             for (const p of pages) {
+                const currentPageMatches: UnifiedSearchMatch[] = [];
                 const pageMatches = searchScope === "selection" ? [] : searchItems(p, searchQuery, options);
                 for (const m of pageMatches) {
                     const text = textOf(m.item);
                     for (const range of m.matches) {
-                        newMatches.push({
+                        currentPageMatches.push({
                             kind: "text-item",
                             pageId: pageIdentity(p),
                             pageTitle: textOf(p),
@@ -139,16 +140,17 @@ const logger = getLogger("SearchPanel");
                     visualOrder[item.key] = rank++;
                 }
                 if (searchScope !== "project") {
-                    newMatches.push(
+                    currentPageMatches.push(
                         ...gridSearchMatches(pageIdentity(p), searchQuery, options, searchScope === "selection"),
                     );
                 }
-                newMatches.sort((a, b) => {
+                currentPageMatches.sort((a, b) => {
                     const aId = a.kind === "grid-cell" ? a.placementId : a.itemId;
                     const bId = b.kind === "grid-cell" ? b.placementId : b.itemId;
                     return (visualOrder[aId] ?? Number.MAX_SAFE_INTEGER)
                         - (visualOrder[bId] ?? Number.MAX_SAFE_INTEGER);
                 });
+                newMatches.push(...currentPageMatches);
             }
         }
 

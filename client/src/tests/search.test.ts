@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findFirstReplaceTarget, replaceAll, replaceFirst, searchItems } from "../lib/search";
+import { findFirstReplaceTarget, findMatches, replaceAll, replaceFirst, searchItems } from "../lib/search";
 import { replaceAllInProject, replaceFirstInProject } from "../lib/search/projectSearch";
 import { Item, Items, Project } from "../schema/app-schema";
 
@@ -45,6 +45,13 @@ describe("search utilities", () => {
         expect(searchItems(page as Item, "猫", { wholeWord: true })[0]?.matches).toHaveLength(1);
         expect(searchItems(page as Item, "(cat)", { wholeWord: true })[0]?.matches).toHaveLength(1);
         expect(searchItems(page as Item, "cat", { wholeWord: true })[0]?.matches).toHaveLength(1);
+    });
+
+    it("advances zero-width regex matches over complete Unicode code points", () => {
+        expect(findMatches("😀x", "(?=.)", { regex: true })).toEqual([
+            { index: 0, length: 0 },
+            { index: 2, length: 0 },
+        ]);
     });
 
     it("replace functions modify text", () => {
