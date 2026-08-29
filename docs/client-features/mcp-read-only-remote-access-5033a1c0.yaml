@@ -2,7 +2,7 @@ id: FTR-5033a1c0
 title: Read-only remote MCP access
 title-ja: 読み取り専用リモートMCPアクセス
 status: implemented
-description: Authenticated AI clients can resolve Outliner URLs and incrementally read semantic outline structure through the on-premises server.
+description: Authenticated AI clients can resolve project and page URLs plus canonical `/:project/-/{tables,grids,calendars}/:id` entity URLs to authorized stable IDs, then incrementally read semantic outline structure through the on-premises server. The legacy resource-first `/tables/:project/:id`, `/grids/:project/:id`, and `/calendars/:project/:id` forms remain accepted for existing MCP clients, although the Outliner client generates only canonical project-first URLs.
 tests:
 - client/e2e/new/mcp-remote-authentication-5033a1c0.spec.ts
 - server/tests/mcp-http-e2e.test.ts
