@@ -33,12 +33,15 @@ test.describe("Grid cell keyboard focus preservation (#5181)", () => {
         await nameCell.locator("input").fill(currentVal + " Updated");
         await nameCell.locator("input").press("Enter");
 
-        // Input should disappear, button should re-appear and have focus
+        // Input should disappear. Enter commits and moves the active cell down
+        // (#5188, spreadsheet convention), so focus lands on the same column
+        // in the row below -- never lost to the document.
         await expect(nameCell.locator("input")).not.toBeVisible();
-        await expect(nameButton).toBeVisible({ timeout: 30000 }); // Wait for sync
-        await expect(nameButton).toBeFocused();
+        const belowNameButton = tbody.locator("tr").nth(1).locator("td[data-col='title']").locator("button");
+        await expect(belowNameButton).toBeVisible({ timeout: 30000 }); // Wait for sync
+        await expect(belowNameButton).toBeFocused();
 
-        // Re-open with click
+        // Re-open the original cell with click
         await nameButton.click();
         await expect(nameCell.locator("input")).toBeVisible();
         await expect(nameCell.locator("input")).toBeFocused();
