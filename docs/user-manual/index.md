@@ -26,7 +26,7 @@ An overview of the basic interface and navigation.
 
 ### Creating and Browsing Pages
 
-You can create and browse pages using the left sidebar or the top search bar.
+You can create and browse pages using the left sidebar or the Search button.
 
 To browse your pages, click the sidebar toggle button in the top-left corner (hamburger menu) and expand the **Pages** section. This section lists all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
@@ -54,7 +54,7 @@ Click the sidebar toggle button (hamburger menu) in the top-left corner to acces
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the **Add new page** button in the section header.
 - **Tables:** View and manage database tables.
-- **Object Manager:** Manage Grids, Tables, Schedules.
+
 - **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **Add new scheduled SQL** button in the section header.
 - **Settings:** Access project configurations.
 - **Docs:** Quick link to the documentation.
@@ -129,7 +129,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - You can also link to a page in another project with `[/project/page]` syntax.
 - **Link Previews:** Hovering over an internal link displays a preview of the page content.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the top right corner of the page to access it.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** link at the top of the page to access it.
 
 ### External Links
 
@@ -141,8 +141,8 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search:** Use the "Search pages" input field at the top of the screen to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Search and Replace:** Click the **Search** button in the top right corner of the page to open the Search and Replace panel. Replace only rewrites item text; page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
+- **Search:** Click the **Search** button in the document toolbar to quickly search across the whole project. Recent searches are remembered for quick access.
+- **Search and Replace:** The Search panel also includes Replace functionality. Replace only rewrites item text; page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -217,7 +217,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Schedules page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
-- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it via the **History / Diff** button in the document toolbar.
+- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it via the **History / Diff** link at the top of the page.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 - **Remote MCP Access:** Outliner's on-premises server exposes a read-only MCP endpoint for compatible AI clients. Paste a normal Outliner project or page URL into the client; `resolve_url` converts its human-readable titles to stable IDs. Text, Grid, Calendar, and Layout remain distinct semantic node kinds instead of being flattened into fake text. Every project read uses the signed-in user's existing project access, and large structural reads are bounded. The initial MCP tools never create, update, move, or delete Outliner data.
 
@@ -244,7 +244,7 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-Click the **Add Database** button on the left side of the top navigation bar.
+Click the **Add Database** button in the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
@@ -252,7 +252,7 @@ A new database block will be inserted at the bottom of the current page. Within 
 - **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
 - **Existing Grid:** embed a previously created grid by switching to this tab, selecting the grid, and clicking **Select**.
 
-Additionally, you can view and manage your existing databases by clicking the **Databases** button on the right side of the top navigation bar, which opens a right-side drawer. This sidebar lists all your TABLES (e.g., Sales, Tasks, Routine Templates, Routine Occurrences).
+Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens a right-side drawer. This sidebar lists all your TABLES (e.g., Sales, Tasks, Routine Templates, Routine Occurrences).
 
 ### Managing Data
 
