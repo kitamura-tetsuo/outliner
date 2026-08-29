@@ -124,5 +124,10 @@ describe("TableGrid logical selection", () => {
         expect(corner.getAttribute("aria-selected")).toBe("true");
         expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(9);
         expect(view.container.querySelectorAll("td.grid-active")).toHaveLength(0);
+
+        await fireEvent.click(view.getByRole("rowheader", { name: "Select row 2" }), { ctrlKey: true });
+        expect(corner.getAttribute("aria-selected")).toBe("false");
+        expect(view.container.querySelectorAll("th.row-header.header-selected")).toHaveLength(2);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(6);
     });
 });

@@ -25,7 +25,31 @@ export interface GridAllRegion {
     kind: "all";
 }
 
-export type GridSelectionRegion = GridCellRegion | GridRowRegion | GridColumnRegion | GridAllRegion;
+/** Sparse negative regions make modifier toggles scalable without expanding a larger positive region. */
+export interface GridCellExclusion {
+    kind: "exclude-cells";
+    rowIds: string[];
+    columnIds: string[];
+}
+
+export interface GridRowExclusion {
+    kind: "exclude-rows";
+    rowIds: string[];
+}
+
+export interface GridColumnExclusion {
+    kind: "exclude-columns";
+    columnIds: string[];
+}
+
+export type GridSelectionRegion =
+    | GridCellRegion
+    | GridRowRegion
+    | GridColumnRegion
+    | GridAllRegion
+    | GridCellExclusion
+    | GridRowExclusion
+    | GridColumnExclusion;
 
 export interface GridSelectionSnapshot {
     activeCell?: GridCellAddress;
@@ -54,6 +78,11 @@ export class GridSelection {
     rowAnchor: string | undefined;
     columnAnchor: string | undefined;
     regions: GridSelectionRegion[] = [];
+    private regionIndexes: Array<{
+        kind: GridSelectionRegion["kind"];
+        rows: Set<string>;
+        columns: Set<string>;
+    }> = [];
 
     select(cell: GridCellAddress): void {
         this.activeCell = cell;
@@ -61,6 +90,7 @@ export class GridSelection {
         this.rowAnchor = undefined;
         this.columnAnchor = undefined;
         this.regions = [{ kind: "cells", rowIds: [cell.rowId], columnIds: [cell.columnId] }];
+        this.indexRegions();
     }
 
     toggleCell(cell: GridCellAddress): void {
@@ -72,10 +102,16 @@ export class GridSelection {
             return !(region.kind === "cells" && region.rowIds.length === 1 && region.columnIds.length === 1
                 && region.rowIds[0] === cell.rowId && region.columnIds[0] === cell.columnId);
         });
-        if (regions.length === this.regions.length && !this.contains(cell)) {
+        if (regions.length !== this.regions.length) {
+            this.regions = regions;
+            this.indexRegions();
+        } else if (this.contains(cell)) {
+            this.addCellExclusion(cell);
+        } else if (!this.removeCellExclusion(cell)) {
             regions.push({ kind: "cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
+            this.regions = regions;
+            this.indexRegions();
         }
-        this.regions = regions;
         if (!this.contains(cell)) this.activeCell = undefined;
     }
 
@@ -91,6 +127,7 @@ export class GridSelection {
             rowIds: axisRange(rowOrder, anchor.rowId, cell.rowId),
             columnIds: axisRange(columnOrder, anchor.columnId, cell.columnId),
         }];
+        this.indexRegions();
     }
 
     selectRow(rowId: string, rowOrder: readonly string[], options: HeaderSelectionOptions = {}): void {
@@ -121,31 +158,42 @@ export class GridSelection {
         this.rowAnchor = undefined;
         this.columnAnchor = undefined;
         this.regions = [{ kind: "all" }];
+        this.indexRegions();
     }
 
     contains(cell: GridCellAddress): boolean {
-        return this.regions.some(region => {
-            if (region.kind === "all") return true;
-            if (region.kind === "rows") return region.rowIds.includes(cell.rowId);
-            if (region.kind === "columns") return region.columnIds.includes(cell.columnId);
-            return region.rowIds.includes(cell.rowId) && region.columnIds.includes(cell.columnId);
+        const selected = this.regionIndexes.some(index => {
+            if (index.kind === "all") return true;
+            if (index.kind === "rows") return index.rows.has(cell.rowId);
+            if (index.kind === "columns") return index.columns.has(cell.columnId);
+            return index.kind === "cells" && index.rows.has(cell.rowId) && index.columns.has(cell.columnId);
         });
+        if (!selected) return false;
+        return !this.regionIndexes.some(index =>
+            (index.kind === "exclude-rows" && index.rows.has(cell.rowId))
+            || (index.kind === "exclude-columns" && index.columns.has(cell.columnId))
+            || (index.kind === "exclude-cells" && index.rows.has(cell.rowId) && index.columns.has(cell.columnId))
+        );
     }
 
     containsRow(rowId: string): boolean {
-        return this.regions.some(region =>
-            region.kind === "all" || (region.kind === "rows" && region.rowIds.includes(rowId))
+        const selected = this.regionIndexes.some(index =>
+            index.kind === "all" || (index.kind === "rows" && index.rows.has(rowId))
         );
+        return selected && !this.regionIndexes.some(index => index.kind === "exclude-rows" && index.rows.has(rowId));
     }
 
     containsColumn(columnId: string): boolean {
-        return this.regions.some(region =>
-            region.kind === "all" || (region.kind === "columns" && region.columnIds.includes(columnId))
+        const selected = this.regionIndexes.some(index =>
+            index.kind === "all" || (index.kind === "columns" && index.columns.has(columnId))
         );
+        return selected
+            && !this.regionIndexes.some(index => index.kind === "exclude-columns" && index.columns.has(columnId));
     }
 
     isAllSelected(): boolean {
-        return this.regions.some(region => region.kind === "all");
+        return this.regions.some(region => region.kind === "all")
+            && !this.regions.some(region => region.kind.startsWith("exclude-"));
     }
 
     isActive(cell: GridCellAddress): boolean {
@@ -158,6 +206,19 @@ export class GridSelection {
         const columns = new Set(columnOrder);
         this.regions = this.regions.flatMap<GridSelectionRegion>(region => {
             if (region.kind === "all") return [region];
+            if (region.kind === "exclude-rows") {
+                const rowIds = region.rowIds.filter(id => rows.has(id));
+                return rowIds.length ? [{ ...region, rowIds }] : [];
+            }
+            if (region.kind === "exclude-columns") {
+                const columnIds = region.columnIds.filter(id => columns.has(id));
+                return columnIds.length ? [{ ...region, columnIds }] : [];
+            }
+            if (region.kind === "exclude-cells") {
+                const rowIds = region.rowIds.filter(id => rows.has(id));
+                const columnIds = region.columnIds.filter(id => columns.has(id));
+                return rowIds.length && columnIds.length ? [{ ...region, rowIds, columnIds }] : [];
+            }
             if (region.kind === "rows") {
                 const rowIds = region.rowIds.filter(id => rows.has(id));
                 return rowIds.length ? [{ ...region, rowIds }] : [];
@@ -170,6 +231,7 @@ export class GridSelection {
             const columnIds = region.columnIds.filter(id => columns.has(id));
             return rowIds.length && columnIds.length ? [{ ...region, rowIds, columnIds }] : [];
         });
+        this.indexRegions();
 
         const activeExists = this.activeCell && rows.has(this.activeCell.rowId)
             && columns.has(this.activeCell.columnId) && this.contains(this.activeCell);
@@ -194,6 +256,11 @@ export class GridSelection {
     private updateAxis(kind: "rows" | "columns", ids: string[], toggle: boolean): void {
         if (!toggle) {
             this.regions = [kind === "rows" ? { kind, rowIds: ids } : { kind, columnIds: ids }];
+            this.indexRegions();
+            return;
+        }
+        if (this.regions.some(region => region.kind === "all")) {
+            this.toggleAllAxis(kind, ids);
             return;
         }
         const selected = new Set<string>();
@@ -218,6 +285,57 @@ export class GridSelection {
             );
         }
         this.regions = other;
+        this.indexRegions();
+    }
+
+    private toggleAllAxis(kind: "rows" | "columns", ids: string[]): void {
+        const excluded = new Set<string>();
+        for (const region of this.regions) {
+            if (kind === "rows" && region.kind === "exclude-rows") {
+                for (const id of region.rowIds) excluded.add(id);
+            } else if (kind === "columns" && region.kind === "exclude-columns") {
+                for (const id of region.columnIds) excluded.add(id);
+            }
+        }
+        for (const id of ids) {
+            if (excluded.has(id)) excluded.delete(id);
+            else excluded.add(id);
+        }
+        this.regions = this.regions.filter(region =>
+            region.kind !== (kind === "rows" ? "exclude-rows" : "exclude-columns")
+        );
+        if (excluded.size > 0) {
+            this.regions.push(
+                kind === "rows"
+                    ? { kind: "exclude-rows", rowIds: [...excluded] }
+                    : { kind: "exclude-columns", columnIds: [...excluded] },
+            );
+        }
+        this.indexRegions();
+    }
+
+    private addCellExclusion(cell: GridCellAddress): void {
+        this.regions.push({ kind: "exclude-cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
+        this.indexRegions();
+    }
+
+    private removeCellExclusion(cell: GridCellAddress): boolean {
+        const previousLength = this.regions.length;
+        this.regions = this.regions.filter(region =>
+            !(region.kind === "exclude-cells" && region.rowIds?.[0] === cell.rowId
+                && region.columnIds?.[0] === cell.columnId)
+        );
+        if (this.regions.length === previousLength) return false;
+        this.indexRegions();
+        return true;
+    }
+
+    private indexRegions(): void {
+        this.regionIndexes = this.regions.map(region => ({
+            kind: region.kind,
+            rows: new Set("rowIds" in region ? region.rowIds ?? [] : []),
+            columns: new Set("columnIds" in region ? region.columnIds ?? [] : []),
+        }));
     }
 
     private firstVisibleSelectedCell(

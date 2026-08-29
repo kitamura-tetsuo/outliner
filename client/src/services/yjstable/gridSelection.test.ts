@@ -111,4 +111,34 @@ describe("GridSelection", () => {
         ]);
         expect(selection.contains({ rowId: "row-c", columnId: "owner" })).toBe(true);
     });
+
+    it("toggles rows and columns out of an all-result selection", () => {
+        const selection = new GridSelection();
+        selection.selectAll();
+        selection.selectRow("row-b", rows, { toggle: true });
+        expect(selection.containsRow("row-b")).toBe(false);
+        expect(selection.contains({ rowId: "row-b", columnId: "name" })).toBe(false);
+        expect(selection.containsRow("row-a")).toBe(true);
+        expect(selection.isAllSelected()).toBe(false);
+
+        selection.selectColumn("owner", columns, { toggle: true });
+        expect(selection.containsColumn("owner")).toBe(false);
+        expect(selection.contains({ rowId: "row-a", columnId: "owner" })).toBe(false);
+        selection.selectRow("row-b", rows, { toggle: true });
+        expect(selection.containsRow("row-b")).toBe(true);
+    });
+
+    it("toggles a cell covered by a range without expanding the range", () => {
+        const selection = new GridSelection();
+        selection.select({ rowId: "row-a", columnId: "name" });
+        selection.extend({ rowId: "row-c", columnId: "owner" }, rows, columns);
+        const middle = { rowId: "row-b", columnId: "status" };
+        selection.toggleCell(middle);
+        expect(selection.contains(middle)).toBe(false);
+        expect(selection.contains({ rowId: "row-b", columnId: "name" })).toBe(true);
+        expect(selection.regions).toHaveLength(2);
+        selection.toggleCell(middle);
+        expect(selection.contains(middle)).toBe(true);
+        expect(selection.regions).toHaveLength(1);
+    });
 });
