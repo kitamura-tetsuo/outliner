@@ -112,7 +112,7 @@ $effect(() => {
     <div
         class="alias-picker"
         onkeydown={handleKeydown}
-        tabindex="0"
+        tabindex="-1"
         role="dialog"
         aria-modal="true"
         aria-label="Select alias"
