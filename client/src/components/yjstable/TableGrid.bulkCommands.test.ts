@@ -165,16 +165,17 @@ describe("Grid row removal confirmation (FTR-5191, keyboard-triggered)", () => {
 describe("Grid bulk checkbox/select commits (FTR-5191)", () => {
     it("applies a checkbox commit to every selected writable cell", async () => {
         const { handles, view } = setup();
-        await fireEvent.click(cellTd(view.container, "a", "done"));
-        await fireEvent.click(cellTd(view.container, "b", "done"), { shiftKey: true });
+        const checkbox = (rowId: string) =>
+            cellTd(view.container, rowId, "done").querySelector<HTMLInputElement>("input[type=checkbox]")!;
 
-        // A real click on the checkbox would also reselect down to that one
-        // cell (the shared td capture-phase click handler), so this fires
-        // only the value-changed event, as a spacebar toggle on the already
-        // focused, still multi-selected checkbox would.
-        const checkbox = cellTd(view.container, "b", "done").querySelector<HTMLInputElement>("input[type=checkbox]")!;
-        checkbox.checked = true;
-        await fireEvent.change(checkbox);
+        // A plain click both selects the cell and toggles it (native checkbox
+        // activation, exercised through the real DOM event, not a bypass): it
+        // establishes the anchor. A Shift-click extends the selection to
+        // include the newly clicked cell *before* its own toggle commits (the
+        // td's capture-phase click handler runs first), so that commit
+        // applies to every writable cell the selection now covers.
+        await fireEvent.click(checkbox("a"));
+        await fireEvent.click(checkbox("b"), { shiftKey: true });
 
         expect(handles.data.get("a")?.get("done")).toBe(true);
         expect(handles.data.get("b")?.get("done")).toBe(true);

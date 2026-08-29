@@ -87,7 +87,7 @@ test.describe("Grid selection-aware Delete/Backspace clears cells (FTR-b589b9f9)
         await addRowWithTitle(page, grid, "Alpha");
         await addRowWithTitle(page, grid, "Beta");
 
-        const corner = grid.locator("th[role='columnheader']", { hasText: "Select current query result" });
+        const corner = grid.getByRole("columnheader", { name: "Select current query result" });
         await corner.click();
         await expect(corner).toHaveAttribute("aria-selected", "true");
 

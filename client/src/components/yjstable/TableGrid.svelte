@@ -150,6 +150,7 @@ const commandContext = $derived<GridCommandContext>({
     editableColumns: editability.editableColumns,
     valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
     checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
+    isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
 });
 
 const selectionSummary = $derived.by(() => {

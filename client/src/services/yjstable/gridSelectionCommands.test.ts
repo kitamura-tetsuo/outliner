@@ -13,6 +13,7 @@ import {
     collectSelectedRowTargets,
     type GridCommandContext,
     type GridCommandRowTarget,
+    isValueValidForCell,
     planGridDeleteCommand,
     removeRowTargets,
     summarizeSelection,
@@ -45,6 +46,7 @@ function setup(rows: Array<{ name: string; done: boolean; status: string; score:
             return "text";
         },
         checkOptionsOf: (columnId) => columnId === "status" ? ["Open", "Done"] : undefined,
+        isNullableOf: () => true,
     };
     return { handles, rowTargets: [...rowTargets.keys()], ctx };
 }
@@ -69,6 +71,30 @@ describe("classifySelectionKind", () => {
 
         selection.selectAll();
         expect(classifySelectionKind(selection.regions)).toBe("all");
+    });
+
+    it("treats a rows selection composed with an extra toggled cell as a cell selection", () => {
+        // GridSelection.toggleCell appends an `include-cells`/`cells` region
+        // rather than replacing the existing `rows` one (see gridSelection.ts),
+        // so a Ctrl-click on an unrelated cell after a row-header pick leaves
+        // both regions present. Delete must clear every selected cell rather
+        // than silently drop the extra one by picking "rows".
+        const selection = new GridSelection();
+        selection.selectRow("a", ["a", "b", "c"]);
+        selection.toggleCell({ rowId: "c", columnId: "name" });
+        expect(classifySelectionKind(selection.regions)).toBe("cells");
+    });
+});
+
+describe("isValueValidForCell", () => {
+    it("rejects NULL for a column whose schema does not allow it", () => {
+        const ctx = { valueKindOf: () => "text" as const, checkOptionsOf: () => undefined, isNullableOf: () => false };
+        expect(isValueValidForCell(ctx, "name", null)).toBe(false);
+    });
+
+    it("accepts NULL for a nullable column", () => {
+        const ctx = { valueKindOf: () => "text" as const, checkOptionsOf: () => undefined, isNullableOf: () => true };
+        expect(isValueValidForCell(ctx, "name", null)).toBe(true);
     });
 });
 
@@ -172,6 +198,37 @@ describe("clearSelectionToNull", () => {
         expect(valueOf(handles, rowTargets[0], "name")).toBe("A");
         expect(valueOf(handles, rowTargets[0], "done")).toBe(true);
     });
+
+    it('clears a NOT NULL text column to "" instead of NULL', () => {
+        const { handles, ctx, rowTargets } = setup([{ name: "A", done: false, status: "Open", score: 1 }]);
+        const notNullName: GridCommandContext = {
+            ...ctx,
+            isNullableOf: (columnId) => columnId !== "name",
+        };
+        const selection = new GridSelection();
+        selection.selectColumn("name", COLUMNS);
+
+        const outcome = clearSelectionToNull(selection, notNullName);
+        expect(outcome).toEqual({ applied: true, count: 1 });
+        expect(valueOf(handles, rowTargets[0], "name")).toBe("");
+    });
+
+    it("leaves a NOT NULL non-text column untouched, but still clears the rest of the selection", () => {
+        const { handles, ctx, rowTargets } = setup([{ name: "A", done: false, status: "Open", score: 1 }]);
+        const notNullScore: GridCommandContext = {
+            ...ctx,
+            isNullableOf: (columnId) => columnId !== "score",
+        };
+        const selection = new GridSelection();
+        selection.select({ rowId: rowTargets[0], columnId: "name" });
+        selection.extend({ rowId: rowTargets[0], columnId: "score" }, rowTargets, COLUMNS);
+
+        const outcome = clearSelectionToNull(selection, notNullScore);
+        expect(outcome.applied).toBe(true);
+        expect(valueOf(handles, rowTargets[0], "score")).toBe(1); // no schema-valid empty value for a NOT NULL number
+        expect(valueOf(handles, rowTargets[0], "name")).toBe(null);
+        expect(valueOf(handles, rowTargets[0], "done")).toBe(null); // cleared too (nullable), part of the same range
+    });
 });
 
 describe("planGridDeleteCommand", () => {
@@ -232,6 +289,28 @@ describe("planGridDeleteCommand", () => {
             expect(valueOf(handles, recordId, "name")).toBe(null);
         }
     });
+
+    it("excludes source-addressed rows from a rows-kind removal (no delete-disposition prompt here)", () => {
+        const { ctx, rowTargets } = setup([{ name: "A", done: false, status: "Open", score: 1 }]);
+        const mixedCtx: GridCommandContext = {
+            ...ctx,
+            rowTargets: new Map([
+                ...ctx.rowTargets,
+                ["widgets:row-1", {
+                    row: { source_kind: "widgets", source_id: "row-1" },
+                    source: { sourceKind: "widgets", sourceId: "row-1" },
+                }],
+            ]),
+        };
+        const selection = new GridSelection();
+        selection.selectRow(rowTargets[0], [rowTargets[0], "widgets:row-1"]);
+        selection.selectRow("widgets:row-1", [rowTargets[0], "widgets:row-1"], { toggle: true });
+
+        const plan = planGridDeleteCommand(selection, mixedCtx);
+        expect(plan.kind).toBe("remove-rows");
+        if (plan.kind !== "remove-rows") throw new Error("unreachable");
+        expect(plan.targets.map(t => t.recordId)).toEqual([rowTargets[0]]);
+    });
 });
 
 describe("collectSelectedRowTargets + removeRowTargets for unioned/source rows", () => {
@@ -264,6 +343,7 @@ describe("collectSelectedRowTargets + removeRowTargets for unioned/source rows",
             editableColumns: new Set(COLUMNS),
             valueKindOf: () => "text",
             checkOptionsOf: () => undefined,
+            isNullableOf: () => true,
         };
         const selection = new GridSelection();
         selection.selectRow("widgets:row-1", ["widgets:row-1"]);

@@ -33,6 +33,14 @@ export type GridSelectionKind = "none" | "rows" | "columns" | "cells" | "all";
 export function classifySelectionKind(regions: readonly GridSelectionRegion[]): GridSelectionKind {
     if (regions.length === 0) return "none";
     if (regions.some(region => region.kind === "all")) return "all";
+    // A `cells`/`include-cells` region composed alongside another axis (e.g. a
+    // Ctrl/Cmd-click cell toggle layered onto a row or column header
+    // selection -- `GridSelection.toggleCell` appends rather than replacing)
+    // means the selection is no longer a pure row or column pick. Treat it as
+    // a cell selection so Delete clears every selected cell instead of
+    // picking one axis and silently ignoring the other -- the safe reading,
+    // since clearing is never destructive the way removing rows is.
+    if (regions.some(region => region.kind === "cells" || region.kind === "include-cells")) return "cells";
     if (regions.some(region => region.kind === "rows" || region.kind === "exclude-rows")) return "rows";
     if (regions.some(region => region.kind === "columns" || region.kind === "exclude-columns")) return "columns";
     return "cells";
@@ -64,6 +72,8 @@ export interface GridCommandContext {
     editableColumns: ReadonlySet<string>;
     valueKindOf: (columnId: string) => GridCellValueKind;
     checkOptionsOf: (columnId: string) => readonly string[] | undefined;
+    /** Whether the column's schema allows `NULL`. A `NOT NULL` column can still be *cleared* (see `clearSelectionToNull`), just never to `NULL`. */
+    isNullableOf: (columnId: string) => boolean;
 }
 
 export interface GridWritableCellTarget {
@@ -99,16 +109,20 @@ export function summarizeSelection(selection: GridSelection, ctx: GridCommandCon
 
 /**
  * Whether `value` is a valid, non-coercing fit for a cell of `columnId`'s
- * type. `null` always clears any writable cell. Deliberately strict — a
- * bulk command must never silently coerce `"3"` into `3`, or a stray string
- * into a checkbox — see FTR-5191 "avoid surprising type coercion".
+ * type. `null` is valid only when the column's schema allows it -- writing
+ * `NULL` into a `NOT NULL` column fails at the sync-adapter/PGlite level
+ * without reverting the Yjs value, leaving the query result silently stale
+ * (see `clearSelectionToNull` for the schema-valid way to clear such a
+ * column). Otherwise deliberately strict — a bulk command must never
+ * silently coerce `"3"` into `3`, or a stray string into a checkbox — see
+ * FTR-5191 "avoid surprising type coercion".
  */
 export function isValueValidForCell(
-    ctx: Pick<GridCommandContext, "valueKindOf" | "checkOptionsOf">,
+    ctx: Pick<GridCommandContext, "valueKindOf" | "checkOptionsOf" | "isNullableOf">,
     columnId: string,
     value: TableRecordValue,
 ): boolean {
-    if (value === null) return true;
+    if (value === null) return ctx.isNullableOf(columnId);
     switch (ctx.valueKindOf(columnId)) {
         case "checkbox":
             return typeof value === "boolean";
@@ -179,9 +193,44 @@ export function applyValueToSelection(
     return { applied: true, count: writableTargets.length };
 }
 
-/** Clears every writable selected cell's content to `NULL` (the default Delete/Backspace behavior outside a `rows` selection). */
+/**
+ * The schema-valid "empty" value for a cleared cell: `NULL` when the column
+ * allows it, otherwise a type-appropriate empty value where one exists (only
+ * `text`, matching `TextCell`'s own clear-to-`""` commit). A `NOT NULL`
+ * column of any other kind has no such default and is left untouched.
+ */
+function clearedValueFor(
+    ctx: Pick<GridCommandContext, "valueKindOf" | "isNullableOf">,
+    columnId: string,
+): TableRecordValue | undefined {
+    if (ctx.isNullableOf(columnId)) return null;
+    return ctx.valueKindOf(columnId) === "text" ? "" : undefined;
+}
+
+/**
+ * Clears every writable selected cell's content (the default Delete/
+ * Backspace behavior outside a `rows` selection). Unlike `applyValueToSelection`,
+ * clearing is a per-cell best effort rather than one validated value applied
+ * everywhere: a `NOT NULL` cell with no schema-valid empty value is simply
+ * left alone (the same way a read-only cell is), instead of blocking every
+ * other selected cell from clearing too.
+ */
 export function clearSelectionToNull(selection: GridSelection, ctx: GridCommandContext): GridCommandOutcome {
-    return applyValueToSelection(selection, ctx, null);
+    const { writableTargets } = summarizeSelection(selection, ctx);
+    const clearable = writableTargets.flatMap(target => {
+        const value = clearedValueFor(ctx, target.columnId);
+        return value === undefined ? [] : [{ target, value }];
+    });
+    if (clearable.length === 0) return { applied: false, reason: "no-writable-cells" };
+    const idEntries = clearable.filter(entry => entry.target.rowTarget.recordId !== undefined);
+    const sourceEntries = clearable.filter(entry => entry.target.rowTarget.source !== undefined);
+    if (idEntries.length > 0) {
+        ctx.handles.doc.transact(() => {
+            for (const entry of idEntries) writeWritableCell(ctx, entry.target, entry.value);
+        });
+    }
+    for (const entry of sourceEntries) writeWritableCell(ctx, entry.target, entry.value);
+    return { applied: true, count: clearable.length };
 }
 
 /** Row targets for every row a `rows`-kind (or `all`-kind) selection covers. */
@@ -232,7 +281,14 @@ export type GridDeleteCommandPlan =
  */
 export function planGridDeleteCommand(selection: GridSelection, ctx: GridCommandContext): GridDeleteCommandPlan {
     if (classifySelectionKind(selection.regions) === "rows") {
-        return { kind: "remove-rows", targets: collectSelectedRowTargets(selection, ctx) };
+        // Row removal here only ever supports `id`-addressed Table records.
+        // A unioned/source row's relation may require a delete disposition
+        // (see `RelationDeleteCapability.requiresDisposition`) that this
+        // keyboard-driven command has no prompt for, so such a row is simply
+        // not a target -- mirroring the single-row delete button, which was
+        // never shown for source-addressed rows either.
+        const targets = collectSelectedRowTargets(selection, ctx).filter(target => target.recordId !== undefined);
+        return { kind: "remove-rows", targets };
     }
     return { kind: "clear-cells", outcome: clearSelectionToNull(selection, ctx) };
 }
