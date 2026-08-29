@@ -170,6 +170,7 @@ docs/.vitepress/dist/
 /COMMIT_EDITMSG
 /PARENT_ISSUE_COMPLETION.md
 /test.cjs
+/*.py
 /cleanup-coverage_*.js
 client/*_output.txt
 client/svelte-check.txt
