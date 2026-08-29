@@ -36,6 +36,7 @@ import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 import { isForeignInput } from "../../lib/KeyEventHandler";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { store } from "../../stores/store.svelte";
 
 interface ItemLike {
     ydoc: import("yjs").Doc;
@@ -204,7 +205,19 @@ function createFromPreset() {
 >
     {#if grid && handles}
         {#key `${grid.gridId}::${handles.doc.guid}`}
-            <YjsTableView {grid} {handles} projectDoc={item.ydoc} {projectId} {tableName} sqlName={tableSqlName} sourceProjectId={tableSourceProjectId} {sourceTableHref} />
+            <YjsTableView
+                {grid}
+                {handles}
+                projectDoc={item.ydoc}
+                placementId={item.key}
+                pageId={store.currentPage?.id ?? store.currentPage?.key ?? ""}
+                pageTitle={store.currentPage?.text?.toString?.() ?? ""}
+                {projectId}
+                {tableName}
+                sqlName={tableSqlName}
+                sourceProjectId={tableSourceProjectId}
+                {sourceTableHref}
+            />
         {/key}
     {:else if grid && !handles}
         <!-- Missing source Table: explicit error, not a silent empty grid. -->

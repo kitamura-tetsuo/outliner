@@ -16,16 +16,16 @@ const logger = getLogger("SearchPanel");
         searchItems,
         type SearchOptions,
     } from "../lib/search";
-    import { type PageItemMatch } from "../lib/search/projectSearch";
+    import {
+        gridSearchMatches,
+        navigateGridSearchMatch,
+        type UnifiedSearchMatch,
+    } from "../lib/search/unifiedSearch";
     import { iterateItems } from "../utils/itemTraversal";
     import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
     import type { Item, Project } from "../schema/app-schema";
     import ConfirmDialog from "./ConfirmDialog.svelte";
     import { projectPagePath } from "../lib/publicProject";
-
-    interface HasText {
-        text?: string | { toString(): string };
-    }
 
     interface Props {
         isVisible?: boolean;
@@ -41,12 +41,15 @@ const logger = getLogger("SearchPanel");
         onclose,
     }: Props = $props();
 
-    let matches: Array<PageItemMatch<Item>> = $state([]);
+    let matches: UnifiedSearchMatch[] = $state([]);
+    let activeMatchIndex = $state(-1);
 
     let searchQuery = $state("");
     let replaceText = $state("");
     let isRegexMode = $state(false);
     let isCaseSensitive = $state(false);
+    let isWholeWord = $state(false);
+    let searchScope: "page" | "selection" = $state("page");
 
     $effect(() => {
         searchHighlightStore.searchQuery = searchQuery;
@@ -99,8 +102,9 @@ const logger = getLogger("SearchPanel");
         const options: SearchOptions = {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
+            wholeWord: isWholeWord,
         };
-        const pages = getPagesToSearch();
+        const pages = pageItem ? [pageItem] : getPagesToSearch();
         try {
             logger.debug("SearchPanel.handleSearch invoked", {
                 query: searchQuery,
@@ -108,35 +112,49 @@ const logger = getLogger("SearchPanel");
             });
         } catch (_e) { /* ignore */ }
 
-        let newMatches: Array<PageItemMatch<Item>> = [];
+        const newMatches: UnifiedSearchMatch[] = [];
         if (pages.length) {
             for (const p of pages) {
                 const pageMatches = searchItems(p, searchQuery, options);
                 for (const m of pageMatches) {
-                    newMatches.push({ ...m, page: p });
+                    const text = textOf(m.item);
+                    for (const range of m.matches) {
+                        newMatches.push({
+                            kind: "text-item",
+                            pageId: p.id,
+                            pageTitle: textOf(p),
+                            itemId: m.item.id,
+                            text,
+                            range,
+                        });
+                    }
                 }
+                newMatches.push(...gridSearchMatches(p.id, searchQuery, options, searchScope === "selection"));
+                const visualOrder = new Map<string, number>();
+                let rank = 0;
+                for (const item of iterateItems([p])) {
+                    visualOrder.set(item.id, rank);
+                    visualOrder.set(item.key, rank++);
+                }
+                newMatches.sort((a, b) => {
+                    const aId = a.kind === "grid-cell" ? a.placementId : a.itemId;
+                    const bId = b.kind === "grid-cell" ? b.placementId : b.itemId;
+                    return (visualOrder.get(aId) ?? Number.MAX_SAFE_INTEGER)
+                        - (visualOrder.get(bId) ?? Number.MAX_SAFE_INTEGER);
+                });
             }
-        } else if (pageItem) {
-            newMatches = searchItems(pageItem, searchQuery, options).map((m) => ({
-                ...m,
-                page: pageItem!,
-            }));
         }
 
         matches = newMatches;
         matchCount = matches.length;
+        activeMatchIndex = matchCount ? 0 : -1;
         try {
             if (import.meta.env.MODE === "test" || window.__E2E__) {
                 window.__E2E_LAST_MATCH_COUNT__ = matchCount;
             }
             logger.debug("SearchPanel.handleSearch matches", {
                 matchCount,
-                items: matches.map((m) => ({
-                    page:
-                        m.page?.text?.toString?.() ?? String(m.page?.text ?? ""),
-                    item:
-                        m.item?.text?.toString?.() ?? String(m.item?.text ?? ""),
-                })),
+                items: matches.map((m) => ({ page: m.pageTitle, item: m.text })),
             });
         } catch (_e) { /* ignore */ }
 
@@ -247,12 +265,27 @@ const logger = getLogger("SearchPanel");
         }
     }
 
-    function jumpTo(match: PageItemMatch<Item>) {
+    function jumpTo(match: UnifiedSearchMatch) {
+        if (match.kind === "grid-cell") {
+            navigateGridSearchMatch(match);
+            return;
+        }
         if (!project) return;
-        const pageName = (match.page.text?.toString?.() ?? String(match.page.text ?? "")) as string;
+        const pageName = match.pageTitle;
         const currentPage = get(pageStore);
         const routedProject = currentPage.params?.demoProject ?? currentPage.params?.project ?? project.title;
-        goto(resolvePath(projectPagePath(routedProject, pageName)));
+        if (pageItem?.id === match.pageId) {
+            document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(match.itemId)}"]`)
+                ?.scrollIntoView({ block: "center" });
+        } else {
+            goto(resolvePath(projectPagePath(routedProject, pageName)));
+        }
+    }
+
+    function moveMatch(delta: number) {
+        if (!matches.length) return;
+        activeMatchIndex = (activeMatchIndex + delta + matches.length) % matches.length;
+        jumpTo(matches[activeMatchIndex]);
     }
 
     onDestroy(() => {
@@ -337,6 +370,15 @@ const logger = getLogger("SearchPanel");
                     <input id="case-sensitive-checkbox" type="checkbox" bind:checked={isCaseSensitive} />
                     Case Sensitive
                 </label>
+                <label class="option-checkbox" for="whole-word-checkbox">
+                    <input id="whole-word-checkbox" type="checkbox" bind:checked={isWholeWord} />
+                    Whole Word
+                </label>
+                <label for="search-scope">Scope:</label>
+                <select id="search-scope" bind:value={searchScope}>
+                    <option value="page">Page</option>
+                    <option value="selection">Selection</option>
+                </select>
                 <label class="option-checkbox" for="include-page-titles-checkbox">
                     <input
                         id="include-page-titles-checkbox"
@@ -349,9 +391,15 @@ const logger = getLogger("SearchPanel");
             </div>
 
             <div class="search-results" data-testid="search-results">
-                <p data-testid="search-results-hits" aria-live="polite">Hits: {matchCount}</p>
+                <p data-testid="search-results-hits" aria-live="polite">
+                    Hits: {matchCount}{activeMatchIndex >= 0 ? ` · ${activeMatchIndex + 1}/${matchCount}` : ""}
+                </p>
+                <div class="search-navigation">
+                    <button type="button" onclick={() => moveMatch(-1)} disabled={!matchCount}>Previous</button>
+                    <button type="button" onclick={() => moveMatch(1)} disabled={!matchCount}>Next</button>
+                </div>
                 <ul data-testid="search-results-list">
-                    {#each matches as m (`${m.page.id}-${m.item.id}`)}
+                    {#each matches as m, index (`${m.kind}-${m.pageId}-${m.kind === "grid-cell" ? `${m.placementId}-${m.rowId}-${m.columnId}` : m.itemId}-${m.range.index}`)}
                         <li
                             class="result-item"
                             data-testid="search-result-item"
@@ -359,24 +407,18 @@ const logger = getLogger("SearchPanel");
                             <button type="button"
                                 class="result-button"
                                 data-testid="search-result-button"
-                                onclick={() => jumpTo(m)}
+                                onclick={() => { activeMatchIndex = index; jumpTo(m); }}
                             >
                                 <span
                                     class="result-page"
                                     data-testid="search-result-page"
-                                    >{(m.page as unknown as HasText).text?.toString?.() ??
-                                        String(
-                                            (m.page as unknown as HasText).text ?? "",
-                                        )}</span
+                                    >{m.pageTitle}</span
                                 >
                                 -
                                 <span
                                     class="result-snippet"
                                     data-testid="search-result-snippet"
-                                    >{(m.item as unknown as HasText).text?.toString?.() ??
-                                        String(
-                                            (m.item as unknown as HasText).text ?? "",
-                                        )}</span
+                                    >{m.kind === "grid-cell" ? `${m.columnId}: ${m.text}` : m.text}</span
                                 >
                             </button>
                         </li>

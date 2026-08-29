@@ -4,6 +4,7 @@ const logger = getLogger("index");
 export interface SearchOptions {
     regex?: boolean;
     caseSensitive?: boolean;
+    wholeWord?: boolean;
 }
 
 /**
@@ -30,11 +31,8 @@ export interface ItemMatch<T> {
 
 export function buildRegExp(query: string, options: SearchOptions = {}): RegExp {
     const flags = options.caseSensitive ? "g" : "gi";
-    if (options.regex) {
-        return new RegExp(query, flags);
-    }
-    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(escaped, flags);
+    const source = options.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(options.wholeWord ? `\\b(?:${source})\\b` : source, flags);
 }
 
 export function findMatches(text: string, query: string, options: SearchOptions = {}): MatchPosition[] {
