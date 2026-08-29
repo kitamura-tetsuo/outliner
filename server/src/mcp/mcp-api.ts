@@ -1,17 +1,31 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import crypto from "crypto";
 import express from "express";
 import * as z from "zod/v4";
 import { getOAuthIssuer } from "../oauth/config.js";
 import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
-import { McpReadError, OutlinerReadService } from "./outliner-read-service.js";
+import { recordMcpAudit } from "./audit-log.js";
+import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 import { OutlinerRelationService } from "./relation-service.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
+
 const response = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
+/**
+ * The MCP SDK's own tool-dispatch error handling discards everything a
+ * thrown error carries except its message (see McpServer.createToolError),
+ * so the shared error contract's `code` — the field clients need to tell a
+ * stale_revision conflict from a forbidden-scope rejection — has to travel
+ * inside the returned tool result instead of being thrown. This builds
+ * that CallToolResult directly: isError: true with the structured contract
+ * as JSON text.
+ */
+const errorResponse = (message: string, code: McpErrorCode, debug?: Record<string, unknown>) => ({
+    content: [{ type: "text" as const, text: JSON.stringify({ error: message, code, ...debug }) }],
+    isError: true as const,
+});
 const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
     debug
         ? {
@@ -94,21 +108,51 @@ export function createMcpRouter(
         };
 
         const mcp = new McpServer({ name: "outliner", version: "1.0.0" });
+        const uidFingerprint = crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12);
         const tool = <T extends z.ZodRawShape>(
             name: string,
             description: string,
             shape: T,
             handler: (args: z.infer<z.ZodObject<T>>) => Promise<unknown> | unknown,
-            annotations = readOnly as { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; },
+            options: {
+                annotations?: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; };
+                /** Mutation tools get every attempt recorded to the audit log. */
+                mutating?: boolean;
+            } = {},
         ) => mcp.registerTool(
             name,
-            { description, inputSchema: shape, annotations },
+            { description, inputSchema: shape, annotations: options.annotations ?? readOnly },
             (async (args: unknown) => {
+                const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
+                const auditBase = {
+                    requestId,
+                    uidFingerprint,
+                    tool: name,
+                    projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
+                    entity: typeof typedArgs.relation === "string"
+                        ? typedArgs.relation
+                        : typeof typedArgs.viewId === "string"
+                        ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
+                        : undefined,
+                    operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
+                    dryRun: typedArgs.dryRun === true,
+                };
                 try {
-                    return response(await handler(args as z.infer<z.ZodObject<T>>));
+                    const result = await handler(args as z.infer<z.ZodObject<T>>);
+                    if (options.mutating) {
+                        const fields = result && typeof result === "object" ? result as Record<string, unknown> : {};
+                        recordMcpAudit({
+                            ...auditBase,
+                            outcome: "success",
+                            priorRevision: typeof fields.priorRevision === "string" ? fields.priorRevision : undefined,
+                            newRevision: typeof fields.revision === "string" ? fields.revision : undefined,
+                            applied: fields.applied !== false,
+                            replayed: fields.replayed === true,
+                        });
+                    }
+                    return response(result);
                 } catch (error) {
                     if (error instanceof McpReadError) {
-                        const uidFingerprint = crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12);
                         logger.info({
                             event: "mcp_resolution_failed",
                             requestId,
@@ -116,16 +160,24 @@ export function createMcpRouter(
                             code: error.code,
                             ...safeLogDiagnostics(error.debug),
                         }, error.message);
-                        const errorCode = error.code === "invalid_argument"
-                            ? ErrorCode.InvalidParams
-                            : ErrorCode.InternalError;
-                        throw new McpError(errorCode, error.message, {
-                            requestId,
-                            uidFingerprint,
-                            ...error.debug,
-                        });
+                        if (options.mutating) {
+                            recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
+                        }
+                        return errorResponse(error.message, error.code, { requestId, ...error.debug });
                     }
-                    throw error;
+                    logger.error({
+                        event: "mcp_internal_error",
+                        requestId,
+                        uidFingerprint,
+                        tool: name,
+                    }, error instanceof Error ? error.message : String(error));
+                    if (options.mutating) {
+                        recordMcpAudit({ ...auditBase, outcome: "internal_failure", applied: false, replayed: false });
+                    }
+                    // Never forward an unexpected internal exception's message to the
+                    // client: it may reveal implementation detail. It is fully logged
+                    // above (mcp_internal_error) for server-side diagnosis.
+                    return errorResponse("Internal error", "internal_failure", { requestId });
                 }
             }) as never,
         );
@@ -197,6 +249,16 @@ export function createMcpRouter(
                     disposition: z.enum(["delete-source", "clear-projected-field"]).optional(),
                 }),
             ]);
+            // Every mutation tool shares the same optimistic-concurrency
+            // precondition (issue #5208): expectedRevision rejects a write
+            // whose target changed since the caller last read it,
+            // operationId makes a retried call idempotent, and dryRun
+            // validates + checks the precondition without persisting.
+            const precondition = {
+                expectedRevision: z.string().optional(),
+                operationId: z.string().min(1).max(200).optional(),
+                dryRun: z.boolean().optional(),
+            };
             tool(
                 "write_relation",
                 "Apply a structured mutation through the relation's Yjs write path.",
@@ -204,15 +266,19 @@ export function createMcpRouter(
                     projectId: z.string(),
                     relation: z.string(),
                     write,
+                    ...precondition,
                 },
                 args => {
                     requireWrite();
-                    return relationService.writeRelation(uid, args.projectId, args.relation, args.write);
+                    return relationService.writeRelation(uid, args.projectId, args.relation, args.write, {
+                        expectedRevision: args.expectedRevision,
+                        operationId: args.operationId,
+                        dryRun: args.dryRun,
+                    });
                 },
                 {
-                    readOnlyHint: false,
-                    destructiveHint: true,
-                    idempotentHint: false,
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+                    mutating: true,
                 },
             );
             tool(
@@ -223,15 +289,19 @@ export function createMcpRouter(
                     kind: z.enum(["grid", "calendar"]),
                     viewId: z.string(),
                     query: z.string(),
+                    ...precondition,
                 },
                 args => {
                     requireWrite();
-                    return relationService.setViewQuery(uid, args.projectId, args.kind, args.viewId, args.query);
+                    return relationService.setViewQuery(uid, args.projectId, args.kind, args.viewId, args.query, {
+                        expectedRevision: args.expectedRevision,
+                        operationId: args.operationId,
+                        dryRun: args.dryRun,
+                    });
                 },
                 {
-                    readOnlyHint: false,
-                    destructiveHint: false,
-                    idempotentHint: true,
+                    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                    mutating: true,
                 },
             );
         }
