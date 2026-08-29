@@ -336,6 +336,20 @@ describe("LayoutBlock", () => {
         unmount();
     });
 
+    it("hides an empty non-visual child so it does not render as a placeholder cell (#5199)", () => {
+        const { layout } = buildLayout([{ type: "yjstable", span: 6 }]);
+        const emptyStray = layout.items.addNode("tester");
+        // No text set.
+        emptyStray.columnSpan = 6;
+
+        const { container, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+
+        // Only the yjstable child should be rendered; the empty one should be filtered out.
+        expect(spansOf(container)).toEqual(["6"]);
+        expect(queryByTestId("layout-cell-fallback")).toBeNull();
+        unmount();
+    });
+
     it("opens a context menu on right click and can add visual nodes", async () => {
         const { layout } = buildLayout([]);
         const { getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });

@@ -76,9 +76,16 @@ let draggingChildId = $state<string | undefined>(undefined);
 let dropTargetChildId = $state<string | undefined>(undefined);
 let dropTargetSide = $state<"before" | "after">("before");
 
+function isSyntheticPlaceholder(child: Item): boolean {
+    // A text node without text inside a Layout is not a valid user-created block.
+    // The Layout container strictly only accepts visual leaves (Grid, Calendar).
+    // Therefore, any empty text node here is a stray or a synthetic insertion slot.
+    return !isVisualChild(child) && childText(child).length === 0;
+}
+
 const children = $derived.by(() => {
     void treeVersion;
-    return layoutChildren(item);
+    return layoutChildren(item).filter(child => !isSyntheticPlaceholder(child));
 });
 
 const spans = $derived.by(() => {
