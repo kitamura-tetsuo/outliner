@@ -424,7 +424,7 @@ export function createMcpRouter(
                     });
                 },
                 {
-                    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
                     mutating: true,
                 },
             );

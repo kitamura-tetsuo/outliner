@@ -627,6 +627,27 @@ export class OutlinerRelationService {
                     }
                     const removedColumns = validation.migrationDiff.removedColumns;
                     const trimmedSql = schemaSql.trim();
+                    const newSqlName = validation.parsedSchema.status === "valid"
+                        ? validation.parsedSchema.tableName
+                        : priorSqlName;
+                    // validateTableSchema already checked name availability, but
+                    // against a separate, earlier connection: another Table could
+                    // have been concurrently renamed to the same SQL name since
+                    // then. Recheck against this call's own live `doc` immediately
+                    // before writing anything, so two concurrent renames can never
+                    // both succeed and leave two Tables sharing one SQL name.
+                    if (newSqlName !== priorSqlName) {
+                        const nameTaken = [...doc.getMap<Y.Map<unknown>>("yjsTables").entries()].some(
+                            ([otherId, otherEntry]) => otherId !== tableId && otherEntry.get("sqlName") === newSqlName,
+                        );
+                        if (nameTaken) {
+                            throw new McpReadError(
+                                "validation_failed",
+                                `Table name "${newSqlName}" is already used by another Table`,
+                                { tableId, sqlName: newSqlName },
+                            );
+                        }
+                    }
                     // One transaction on the Table's own subdoc replaces the
                     // schema text and strips any now-removed columns from
                     // every record together, so a half-migrated schema/data
@@ -649,9 +670,6 @@ export class OutlinerRelationService {
                             }
                         }
                     });
-                    const newSqlName = validation.parsedSchema.status === "valid"
-                        ? validation.parsedSchema.tableName
-                        : priorSqlName;
                     if (entry.get("sqlName") !== newSqlName) {
                         doc.transact(() => entry.set("sqlName", newSqlName));
                     }

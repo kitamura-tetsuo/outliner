@@ -526,6 +526,42 @@ describe("Outliner MCP relation service", function() {
         expect((table.getMap("data").get("r1") as Y.Map<unknown>).has("done")).to.equal(false);
     });
 
+    it("rechecks SQL-name availability against live state immediately before committing a schema migration", async () => {
+        const { service, project } = fixture();
+        const before = await service.getTable("uid", "project-1", "table-1");
+        const other = new Y.Map<unknown>();
+        other.set("name", "Other");
+        other.set("sqlName", "other_table");
+        project.ydoc.getMap("yjsTables").set("table-2", other);
+
+        // Simulates another Table being renamed to the same SQL name in the
+        // window between the initial validateTableSchema check (a separate
+        // connection, made before this call is reached) and the commit step:
+        // wrap validateTableSchema so the real check runs and passes first
+        // (the name is still free), then land the conflicting rename right
+        // after it returns, exactly where a concurrent request would.
+        const originalValidate = service.validateTableSchema.bind(service);
+        (service as unknown as { validateTableSchema: OutlinerRelationService["validateTableSchema"]; })
+            .validateTableSchema = (async (
+                ...args: Parameters<OutlinerRelationService["validateTableSchema"]>
+            ) => {
+                const result = await originalValidate(...args);
+                other.set("sqlName", "tasks_renamed");
+                return result;
+            }) as OutlinerRelationService["validateTableSchema"];
+
+        await expectFailure(
+            service.updateTableSchema(
+                "uid",
+                "project-1",
+                "table-1",
+                "CREATE TABLE tasks_renamed (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN)",
+                { expectedRevision: before.revision },
+            ),
+            "already used by another Table",
+        );
+    });
+
     it("integrates an applied schema migration with a live client's own Y.UndoManager", async () => {
         const { service, table } = fixture();
         const before = await service.getTable("uid", "project-1", "table-1");
