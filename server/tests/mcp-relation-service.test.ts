@@ -15,6 +15,7 @@ describe("Outliner MCP relation service", function() {
         project.ydoc.getMap("yjsTables").set(tableId, entry);
         const grid = new Y.Map<unknown>();
         grid.set("query", "SELECT * FROM tasks");
+        grid.set("sourceTableId", tableId);
         project.ydoc.getMap("yjsGrids").set("grid-1", grid);
         const calendar = new Y.Map<unknown>();
         calendar.set("query", "SELECT * FROM outline_items");
@@ -192,6 +193,65 @@ describe("Outliner MCP relation service", function() {
         expect(bounded).to.include({ rowCount: 2, truncated: true });
         await expectFailure(service.querySql("uid", "project-1", "DELETE FROM tasks"), "Only SELECT");
         await expectFailure(service.querySql("uid", "project-1", "SELECT 1; SELECT 2"), "exactly one");
+    });
+
+    it("traces bounded Grid results, identities, ordering, and presentation transforms", async () => {
+        const { service, project, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(0, 'CREATE TABLE tasks (id TEXT PRIMARY KEY, "order" INTEGER, title TEXT)');
+        const first = table.getMap<Y.Map<unknown>>("data").get("r1")!;
+        first.delete("done");
+        first.set("order", null);
+        for (const [id, order] of [["r2", 2], ["r3", 1]] as const) {
+            const row = new Y.Map<unknown>();
+            row.set("id", id);
+            row.set("order", order);
+            row.set("title", id);
+            table.getMap("data").set(id, row);
+        }
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        grid.set("query", 'SELECT id, "order", title, "order" * 2 AS computed FROM tasks ORDER BY "order" NULLS LAST');
+        grid.set("columnOrder", ["title", "order", "id", "computed"]);
+        const components = new Y.Map<Y.Map<unknown>>();
+        const hidden = new Y.Map<unknown>();
+        hidden.set("hidden", true);
+        components.set("id", hidden);
+        grid.set("components", components);
+
+        const trace = await service.traceGrid("uid", "project-1", "grid-1", 2);
+        const source = trace.stages.find(stage => stage.stage === "source")!;
+        const execution = trace.stages.find(stage => stage.stage === "query-execution")!;
+        const render = trace.stages.find(stage => stage.stage === "render")!;
+        expect(source).to.include({ status: "current", observed: true });
+        expect(source.schemaColumns).to.include("order");
+        expect(execution).to.include({ status: "completed", orderSource: "sql-order-by", truncated: true });
+        expect(execution.rows.map(row => row.identity.value)).to.deep.equal(["r3", "r2"]);
+        expect(execution.editability).to.deep.include({ editable: true, rowIdentity: "id" });
+        expect(execution.editability.editableColumns).not.to.include("computed");
+        expect(render).to.include({ observed: false, rowCount: 2, columnCount: 3 });
+        expect(render.columns).to.deep.equal(["title", "order", "computed"]);
+    });
+
+    it("distinguishes incidental ordering, read-only results, failures, stale sources, and authorization", async () => {
+        const { service, project } = fixture();
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        grid.set("query", "SELECT title || '!' AS computed FROM tasks");
+        const unordered = await service.traceGrid("uid", "project-1", "grid-1");
+        const execution = unordered.stages.find(stage => stage.stage === "query-execution")!;
+        expect(execution).to.include({ orderSource: "incidental-source-order", status: "completed" });
+        expect(execution.editability).to.deep.include({ editable: false });
+        expect(execution.rows[0].identity).to.deep.equal({ kind: "result-ordinal", value: 0, stable: false });
+
+        grid.set("query", "SELECT missing FROM tasks");
+        const failed = await service.traceGrid("uid", "project-1", "grid-1");
+        const errorStage = failed.stages.find(stage => stage.stage === "query-execution")!;
+        expect(errorStage).to.include({ status: "error", observed: true });
+        expect(errorStage.error).to.include({ phase: "execution" });
+
+        grid.set("sourceTableId", "deleted-table");
+        const stale = await service.traceGrid("uid", "project-1", "grid-1");
+        expect(stale.stages[1]).to.deep.include({ stage: "source", status: "stale" });
+        await expectFailure(fixture(false).service.traceGrid("uid", "project-1", "grid-1"), "inaccessible");
     });
 
     it("persists table writes in Yjs and therefore survives SQL rebuilding", async () => {

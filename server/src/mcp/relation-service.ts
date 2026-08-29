@@ -549,6 +549,219 @@ export class OutlinerRelationService {
         });
     }
 
+    /**
+     * Build a bounded, server-observed Grid trace.  The shape intentionally
+     * follows the config/query/client/render stages used by the browser's
+     * gridRenderTrace rather than introducing an MCP-only tracing model.
+     */
+    async traceGrid(uid: string, projectId: string, gridId: string, maxRows = 25) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(gridId)) throw new McpReadError("invalid_argument", "Invalid Grid ID");
+        if (!Number.isInteger(maxRows) || maxRows < 1 || maxRows > 100) {
+            throw new McpReadError("invalid_argument", "maxRows must be an integer from 1 to 100");
+        }
+        return this.withProject(uid, projectId, async doc => {
+            const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
+            if (!grid) throw new McpReadError("not_found", "Grid not found");
+            const sourceTableId = String(grid.get("sourceTableId") ?? "");
+            const sourceEntry = doc.getMap<Y.Map<unknown>>("yjsTables").get(sourceTableId);
+            const query = String(grid.get("query") ?? "");
+            const columnOrder = this.stringArray(grid.get("columnOrder"));
+            const components = grid.get("components");
+            const hiddenColumns = components instanceof Y.Map
+                ? [...components.entries()].filter(([, value]) =>
+                    value instanceof Y.Map && value.get("hidden") === true
+                )
+                    .map(([name]) => name)
+                : [];
+            const configRevision = revisionOf({
+                gridId,
+                sourceTableId,
+                query,
+                columnOrder,
+                hiddenColumns,
+                stateVector: Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
+            });
+            const trace: Record<string, unknown> = {
+                version: 1,
+                gridId,
+                sourceTableId,
+                revision: configRevision,
+                stages: [{
+                    stage: "config",
+                    observed: true,
+                    revision: configRevision,
+                    name: String(grid.get("name") ?? ""),
+                    sourceTableId,
+                    query,
+                    columnOrder,
+                    hiddenColumns,
+                }],
+            };
+            const stages = trace.stages as Record<string, unknown>[];
+            if (!sourceEntry) {
+                stages.push({
+                    stage: "source",
+                    observed: true,
+                    sourceTableId,
+                    status: "stale",
+                    error: { phase: "source", message: "Source Table is not registered" },
+                });
+                return trace;
+            }
+
+            const lease = await acquireDb();
+            const opened: TableDoc[] = [];
+            try {
+                await lease.db.exec(SYSTEM_SCHEMA);
+                await this.loadOutlineItems(lease.db, Project.fromDoc(doc));
+                let sourceRevision = "";
+                let sourceSchema = "";
+                for (const table of this.tables(doc)) {
+                    const source = await this.openTable(uid, projectId, table.tableId);
+                    opened.push(source);
+                    if (table.tableId === sourceTableId) {
+                        sourceSchema = source.schema;
+                        sourceRevision = revisionOf({
+                            schema: source.schema,
+                            stateVector: Buffer.from(Y.encodeStateVector(source.doc)).toString("base64url"),
+                        });
+                    }
+                    if (!source.schema.trim()) continue;
+                    await lease.db.exec(source.schema);
+                    await this.loadRecords(lease.db, table.relation, source.data);
+                }
+                const sourceSqlName = String(sourceEntry.get("sqlName") ?? "");
+                const schemaColumns = sourceSchema
+                    ? (await lease.db.query<{ column_name: string; }>(
+                        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' "
+                            + "AND table_name = $1 ORDER BY ordinal_position",
+                        [sourceSqlName],
+                    )).rows.map(column => column.column_name)
+                    : [];
+                stages.push({
+                    stage: "source",
+                    observed: true,
+                    sourceTableId,
+                    sqlName: sourceSqlName,
+                    schemaRevision: sourceRevision,
+                    schemaColumns,
+                    status: sourceRevision ? "current" : "unavailable",
+                });
+                let select: string;
+                try {
+                    select = validateReadOnlySelect(query);
+                } catch (error) {
+                    stages.push({
+                        stage: "query-execution",
+                        observed: true,
+                        status: "error",
+                        error: this.sqlDiagnostic(error, "validation"),
+                    });
+                    return trace;
+                }
+                try {
+                    const bounded = select.replace(/;\s*$/, "");
+                    const result = await lease.db.query<Record<string, unknown>>(
+                        `SELECT * FROM (${bounded}) AS mcp_grid_trace LIMIT ${maxRows + 1}`,
+                    );
+                    const columns = (result.fields ?? []).map(field => field.name);
+                    const rows = result.rows.slice(0, maxRows);
+                    const editability = this.gridEditability(select, schemaColumns, columns);
+                    const ordered = [
+                        ...columnOrder.filter(column => columns.includes(column)),
+                        ...columns.filter(column => !columnOrder.includes(column)),
+                    ];
+                    const renderedColumns = ordered.filter(column => !hiddenColumns.includes(column));
+                    const orderSource = /\border\s+by\b/i.test(select) ? "sql-order-by" : "incidental-source-order";
+                    stages.push({
+                        stage: "query-execution",
+                        observed: true,
+                        status: "completed",
+                        orderSource,
+                        columns,
+                        rows: rows.map((values, index) => ({ identity: this.rowIdentity(values, index), values })),
+                        rowCount: rows.length,
+                        totalCount: result.rows.length > maxRows ? undefined : rows.length,
+                        truncated: result.rows.length > maxRows,
+                        editability,
+                    });
+                    stages.push({
+                        stage: "render",
+                        observed: false,
+                        inferredFrom: "stored-grid-config-and-query-result",
+                        columns: renderedColumns,
+                        columnCount: renderedColumns.length,
+                        rowCount: rows.length,
+                        orderSource,
+                        transforms: {
+                            hiddenColumns,
+                            presentationColumnOrder: ordered,
+                            filtering: /\bwhere\b/i.test(select) ? "sql" : "none",
+                            sorting: orderSource,
+                        },
+                    });
+                } catch (error) {
+                    stages.push({
+                        stage: "query-execution",
+                        observed: true,
+                        status: "error",
+                        error: this.sqlDiagnostic(error, "execution"),
+                    });
+                }
+                return trace;
+            } finally {
+                for (const source of opened) await source.disconnect();
+                lease.release();
+            }
+        });
+    }
+
+    private stringArray(value: unknown): string[] {
+        const values = value instanceof Y.Array ? value.toArray() : Array.isArray(value) ? value : [];
+        return values.filter((entry): entry is string => typeof entry === "string").slice(0, 100);
+    }
+
+    private rowIdentity(row: Record<string, unknown>, ordinal: number) {
+        if (typeof row.id === "string") return { kind: "id", value: row.id };
+        if (typeof row.source_kind === "string" && typeof row.source_id === "string") {
+            return { kind: "source", relation: row.source_kind, value: row.source_id };
+        }
+        return { kind: "result-ordinal", value: ordinal, stable: false };
+    }
+
+    private gridEditability(query: string, schemaColumns: string[], resultColumns: string[]) {
+        const readOnly = (reason: string) => ({ editable: false, readOnlyReason: reason, editableColumns: [] });
+        if (/\b(join|group\s+by|distinct)\b/i.test(query) || /\b(count|sum|avg|min|max)\s*\(/i.test(query)) {
+            return readOnly("Rows are combined, aggregated, or distinct");
+        }
+        const identity = resultColumns.includes("id")
+            ? "id"
+            : resultColumns.includes("source_kind") && resultColumns.includes("source_id")
+            ? "source"
+            : undefined;
+        if (!identity) return readOnly("Query result has no stable row identity");
+        return {
+            editable: true,
+            rowIdentity: identity,
+            editableColumns: resultColumns.filter(column =>
+                schemaColumns.includes(column) && !["id", "source_kind", "source_id"].includes(column)
+            ),
+        };
+    }
+
+    private sqlDiagnostic(error: unknown, phase: "validation" | "execution") {
+        const value = error as { message?: unknown; code?: unknown; position?: unknown; hint?: unknown; };
+        return {
+            phase,
+            message: typeof value?.message === "string" ? value.message : String(error),
+            ...(typeof value?.position === "string" || typeof value?.position === "number"
+                ? { position: Number(value.position) }
+                : {}),
+            ...(typeof value?.code === "string" ? { code: value.code } : {}),
+            ...(typeof value?.hint === "string" ? { hint: value.hint } : {}),
+        };
+    }
+
     private assertWriteSize(write: RelationWrite): void {
         const bytes = Buffer.byteLength(JSON.stringify(write), "utf8");
         if (bytes > MAX_WRITE_PAYLOAD_BYTES) {
