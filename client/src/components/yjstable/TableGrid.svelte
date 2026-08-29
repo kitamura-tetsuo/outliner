@@ -25,7 +25,7 @@ import { GridSelection, type GridCellAddress } from "../../services/yjstable/gri
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import { cellComponentFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
-import { untrack } from "svelte";
+import { tick, untrack } from "svelte";
 
 interface Props {
     /**
@@ -239,16 +239,20 @@ function tryFocusLogicalCell(cell: GridCellAddress): boolean {
 
 /**
  * Focus the interactive control for a logical cell, addressed only by its
- * durable row/column identity (never a DOM row index). Plain keyboard
- * navigation moves within the already-rendered rowset, so this focuses
- * synchronously whenever possible -- deferring to `requestAnimationFrame`
- * would leave focus one frame behind a fast keystroke sequence, causing the
- * next keydown to still land on the old cell. A query refresh (Yjs write ->
- * PGlite -> debounced re-query) can replace the underlying `<tr>`/`<td>`
- * asynchronously though, so this retries across a few animation frames when
- * the cell isn't there yet, matching the #5181 focus-preservation contract.
+ * durable row/column identity (never a DOM row index). Awaits `tick()` first
+ * so a same-tick Svelte update (e.g. Escape swapping a cell's `<input>` back
+ * to its display `<button>`) has already patched the DOM before this reads
+ * it -- querying synchronously would still find the about-to-be-removed
+ * element. `tick()` settles on a microtask, well ahead of a real or
+ * automated next keystroke, so pure keyboard navigation (no re-render
+ * involved) still reads as effectively synchronous. A query refresh (Yjs
+ * write -> PGlite -> debounced re-query) can replace the underlying
+ * `<tr>`/`<td>` on a slower, real async timeline though, so this retries
+ * across a few animation frames when the cell still isn't there after
+ * `tick()`, matching the #5181 focus-preservation contract.
  */
-function focusLogicalCell(cell: GridCellAddress, attempts = 0) {
+async function focusLogicalCell(cell: GridCellAddress, attempts = 0) {
+    await tick();
     if (tryFocusLogicalCell(cell)) return;
     if (attempts > 10 || !gridContainer) return;
 
