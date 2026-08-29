@@ -234,6 +234,11 @@ export function createMcpRouter(
                     args.recordLimit,
                     args.cursor,
                 ));
+            tool("trace_grid", "Inspect a bounded Grid query and its structured render provenance.", {
+                projectId: z.string(),
+                gridId: z.string(),
+                maxRows: z.number().int().optional(),
+            }, args => relationService.traceGrid(uid, args.projectId, args.gridId, args.maxRows));
             tool("list_relations", "List SQL-visible relations in an authorized project.", {
                 projectId: z.string(),
             }, args => relationService.listRelations(uid, args.projectId));

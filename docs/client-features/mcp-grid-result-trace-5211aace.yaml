@@ -1,0 +1,12 @@
+id: FTR-5211aace
+title: MCP Grid result and render tracing
+title-ja: MCPグリッド結果とレンダリング追跡
+status: implemented
+description: >-
+  Authorized MCP clients can inspect a bounded Grid query result together with
+  structured configuration, source-schema, execution, editability, ordering,
+  and inferred rendering provenance. Rows preserve stored identities and SQL
+  failures are returned as structured diagnostic stages.
+tests:
+  - server/tests/mcp-relation-service.test.ts
+  - server/tests/mcp-mutation-contract.test.ts

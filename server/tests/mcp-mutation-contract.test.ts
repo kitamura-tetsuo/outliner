@@ -97,6 +97,11 @@ describe("MCP mutation safety contract", () => {
             destructiveHint: false,
             idempotentHint: true,
         });
+        expect(tools.find(t => t.name === "trace_grid")?.annotations).to.include({
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+        });
         expect(tools.find(t => t.name === "write_relation")?.annotations).to.include({
             readOnlyHint: false,
             destructiveHint: true,
