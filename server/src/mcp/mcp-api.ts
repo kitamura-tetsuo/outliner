@@ -135,6 +135,8 @@ export function createMcpRouter(
                         ? `grid:${typedArgs.gridId}`
                         : typeof typedArgs.viewId === "string"
                         ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
+                        : typeof typedArgs.tableId === "string"
+                        ? `table:${typedArgs.tableId}`
                         : undefined,
                     operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
                     dryRun: typedArgs.dryRun === true,
@@ -357,6 +359,65 @@ export function createMcpRouter(
                 args => {
                     requireWrite();
                     return relationService.setViewQuery(uid, args.projectId, args.kind, args.viewId, args.query, {
+                        expectedRevision: args.expectedRevision,
+                        operationId: args.operationId,
+                        dryRun: args.dryRun,
+                    });
+                },
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                    mutating: true,
+                },
+            );
+            tool(
+                "update_table_schema",
+                "Migrate a Table's schema through the same dry-run validator as validate_table_schema. "
+                    + "A migration that removes or retypes a column is destructive and is rejected with "
+                    + "destructive_confirmation_required unless the call also sets acknowledgeDestructive: true; "
+                    + "a dryRun call always reports the diff without needing it.",
+                {
+                    projectId: z.string(),
+                    tableId: z.string(),
+                    schemaSql: z.string(),
+                    expectedRevision: z.string(),
+                    acknowledgeDestructive: z.boolean().optional(),
+                    operationId: z.string().min(1).max(200).optional(),
+                    dryRun: z.boolean().optional(),
+                },
+                args => {
+                    requireWrite();
+                    return relationService.updateTableSchema(uid, args.projectId, args.tableId, args.schemaSql, {
+                        expectedRevision: args.expectedRevision,
+                        acknowledgeDestructive: args.acknowledgeDestructive,
+                        operationId: args.operationId,
+                        dryRun: args.dryRun,
+                    });
+                },
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                },
+            );
+            tool(
+                "update_table_records",
+                "Update Table records by stable record ID in one atomic, all-or-nothing batch — never by "
+                    + "displayed row index, and never creating a new record. Useful for populating a new ordering "
+                    + "column across a bounded set of records, but rewriting values here does not change Grid "
+                    + "display order; update the Grid's saved query (set_view_query/update_grid_query) for that.",
+                {
+                    projectId: z.string(),
+                    tableId: z.string(),
+                    expectedRevision: z.string(),
+                    changes: z.array(z.object({
+                        recordId: z.string(),
+                        values: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
+                    })).min(1).max(100),
+                    operationId: z.string().min(1).max(200).optional(),
+                    dryRun: z.boolean().optional(),
+                },
+                args => {
+                    requireWrite();
+                    return relationService.updateTableRecords(uid, args.projectId, args.tableId, args.changes, {
                         expectedRevision: args.expectedRevision,
                         operationId: args.operationId,
                         dryRun: args.dryRun,

@@ -16,6 +16,9 @@
  *  - stale_revision: an expectedRevision precondition did not match.
  *  - validation_failed: input was well-formed but violates a business rule
  *    (e.g. a non-writable column, a SQL constraint).
+ *  - destructive_confirmation_required: a well-formed, otherwise-valid Table
+ *    schema migration would remove or retype a column; retry the same call
+ *    with acknowledgeDestructive: true to apply it.
  *  - size_limit: a request or payload exceeded a server-imposed bound.
  *  - internal_failure: an unexpected error; the message is safe to show.
  */
@@ -26,6 +29,7 @@ export type McpErrorCode =
     | "kind_mismatch"
     | "stale_revision"
     | "validation_failed"
+    | "destructive_confirmation_required"
     | "size_limit"
     | "internal_failure";
 

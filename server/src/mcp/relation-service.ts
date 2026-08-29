@@ -17,6 +17,8 @@ const MAX_WRITE_PAYLOAD_BYTES = 32 * 1024;
 const MAX_QUERY_BYTES = 16 * 1024;
 const MAX_TRACE_COLUMNS = 100;
 const MAX_TRACE_VALUE_LENGTH = 200;
+const MAX_RECORD_BATCH_SIZE = 100;
+const MAX_RECORD_BATCH_BYTES = 64 * 1024;
 
 export type RelationValue = string | number | boolean | null;
 export type RelationWrite =
@@ -172,13 +174,6 @@ export class OutlinerRelationService {
                     ? await this.inspectRecordErrors(lease.db, schema.tableName, schema.columns, source.data, pageIds)
                     : [];
                 const truncated = includeRecords && pageStart + pageIds.length < recordIds.length;
-                const revisionValue = {
-                    tableId,
-                    displayName: table.displayName,
-                    sqlName: table.relation,
-                    rawSchemaSql: source.schema,
-                    tableStateVector: Buffer.from(Y.encodeStateVector(source.doc)).toString("base64url"),
-                };
                 return {
                     tableId,
                     displayName: table.displayName,
@@ -197,7 +192,7 @@ export class OutlinerRelationService {
                             },
                         }
                         : {}),
-                    revision: revisionOf(revisionValue),
+                    revision: this.tableRevision(tableId, table.displayName, table.relation, source),
                     provenance: {
                         sourceProjectId: table.sourceProjectId,
                         sourceTableId: table.sourceTableId,
@@ -566,6 +561,108 @@ export class OutlinerRelationService {
                 await source.disconnect();
             }
         });
+    }
+
+    /**
+     * Migrate a Table's schema through the exact same dry-run validator
+     * exposed by validate_table_schema, then apply it behind the shared
+     * write-scope contract: an expectedRevision precondition covering the
+     * whole Table (schema + every record, see tableRevision), an
+     * operationId for safe retries, and a dryRun mode that reports the
+     * migration without applying it.
+     *
+     * A migration that would remove or retype a column is destructive and
+     * is rejected with destructive_confirmation_required unless the caller
+     * passes acknowledgeDestructive: true — the MCP tool contract has no
+     * interactive confirmation step, so the explicit flag is the
+     * confirmation. A dry run always reports the diff without needing it,
+     * since nothing is persisted.
+     */
+    async updateTableSchema(
+        uid: string,
+        projectId: string,
+        tableId: string,
+        schemaSql: string,
+        precondition: MutationPrecondition & { expectedRevision: string; acknowledgeDestructive?: boolean; },
+    ) {
+        const cacheKey = this.idempotency.key(
+            "update_table_schema",
+            uid,
+            projectId,
+            tableId,
+            precondition.dryRun ? undefined : precondition.operationId,
+        );
+        const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
+            const validation = await this.validateTableSchema(uid, projectId, tableId, schemaSql);
+            if (!validation.accepted) {
+                throw new McpReadError("validation_failed", "Table schema validation failed", { validation });
+            }
+            const destructive = validation.migrationDiff.removedColumns.length > 0
+                || validation.migrationDiff.changedColumns.length > 0;
+            if (destructive && !precondition.dryRun && !precondition.acknowledgeDestructive) {
+                throw new McpReadError(
+                    "destructive_confirmation_required",
+                    "This migration removes or retypes column(s); retry with acknowledgeDestructive: true to apply it",
+                    { validation, migrationDiff: validation.migrationDiff },
+                );
+            }
+            return this.withProject(uid, projectId, async doc => {
+                const entry = doc.getMap<Y.Map<unknown>>("yjsTables").get(tableId);
+                if (!entry) throw new McpReadError("not_found", "Table not found");
+                const displayName = String(entry.get("name") ?? "");
+                const priorSqlName = String(entry.get("sqlName") ?? "");
+                const source = await this.openTable(uid, projectId, tableId);
+                try {
+                    const priorRevision = this.tableRevision(tableId, displayName, priorSqlName, source);
+                    assertRevision(precondition.expectedRevision, priorRevision, { tableId });
+                    if (precondition.dryRun) {
+                        return {
+                            tableId,
+                            applied: false,
+                            destructive,
+                            priorRevision,
+                            revision: priorRevision,
+                            validation,
+                        };
+                    }
+                    const removedColumns = validation.migrationDiff.removedColumns;
+                    const trimmedSql = schemaSql.trim();
+                    // One transaction on the Table's own subdoc replaces the
+                    // schema text and strips any now-removed columns from
+                    // every record together, so a half-migrated schema/data
+                    // pair is never observable. Unlike write_relation and
+                    // set_view_query, this deliberately transacts with the
+                    // default (untracked) origin rather than a labeled one:
+                    // a live client's own Y.UndoManager for this Table
+                    // tracks exactly that origin (see tableDocs.ts), so an
+                    // MCP-applied migration can be undone like any other
+                    // local edit.
+                    source.doc.transact(() => {
+                        const schemaText = source.doc.getText("schema");
+                        schemaText.delete(0, schemaText.length);
+                        schemaText.insert(0, trimmedSql);
+                        if (removedColumns.length > 0) {
+                            for (const record of source.data.values()) {
+                                for (const column of removedColumns) {
+                                    if (record.has(column)) record.delete(column);
+                                }
+                            }
+                        }
+                    });
+                    const newSqlName = validation.parsedSchema.status === "valid"
+                        ? validation.parsedSchema.tableName
+                        : priorSqlName;
+                    if (entry.get("sqlName") !== newSqlName) {
+                        doc.transact(() => entry.set("sqlName", newSqlName));
+                    }
+                    const revision = this.tableRevision(tableId, displayName, newSqlName, source);
+                    return { tableId, applied: true, destructive, priorRevision, revision, validation };
+                } finally {
+                    await source.disconnect();
+                }
+            });
+        });
+        return { ...result, replayed };
     }
 
     /** Execute a proposed Grid query through the production validator and materializer without saving it. */
@@ -1069,6 +1166,28 @@ export class OutlinerRelationService {
         return revisionOf(record ? Object.fromEntries(record.entries()) : null);
     }
 
+    /**
+     * Content-hash revision for a whole Table (registry metadata, schema
+     * text, and every record), shared by get_table and both Table mutation
+     * tools so a client can read it from one and pass it back as the
+     * other's expectedRevision. It changes on ANY schema or record change,
+     * which is intentionally coarse: update_table_schema and
+     * update_table_records both need to guard against a concurrent edit to
+     * either half of the same Table, not just the field they happen to be
+     * writing. Reads the schema text and state vector live off `source.doc`
+     * rather than the TableDoc snapshot fields, so it reflects a mutation
+     * already applied earlier in the same call.
+     */
+    private tableRevision(tableId: string, displayName: string, sqlName: string, source: TableDoc): string {
+        return revisionOf({
+            tableId,
+            displayName,
+            sqlName,
+            rawSchemaSql: source.doc.getText("schema").toString(),
+            tableStateVector: Buffer.from(Y.encodeStateVector(source.doc)).toString("base64url"),
+        });
+    }
+
     writeRelation(
         uid: string,
         projectId: string,
@@ -1154,6 +1273,236 @@ export class OutlinerRelationService {
         } finally {
             await source.disconnect();
         }
+    }
+
+    /**
+     * Cast and insert a plain-value snapshot of every given record into a
+     * freshly created scratch relation, reporting one message per record
+     * that fails to cast or violates a real constraint (NOT NULL, CHECK,
+     * UNIQUE, ...). Used by update_table_records to compare "before" and
+     * "after" batches of a proposed change against the exact same engine
+     * validate_table_schema and get_table already use, without touching
+     * the live Yjs data.
+     */
+    private async materializeRecordErrors(
+        db: PGlite,
+        tableName: string,
+        columns: { name: string; dataType: string; kind: string; }[],
+        records: Map<string, Record<string, unknown>>,
+    ): Promise<Map<string, string>> {
+        const errors = new Map<string, string>();
+        for (const [recordId, values] of records) {
+            const row: unknown[] = [];
+            let castFailed = false;
+            for (const column of columns) {
+                const raw = column.name === "id" ? recordId : values[column.name];
+                try {
+                    row.push(this.castRecordValue(raw, column));
+                } catch (error) {
+                    castFailed = true;
+                    errors.set(recordId, error instanceof Error ? error.message : "Record value could not be cast");
+                    break;
+                }
+            }
+            if (castFailed) continue;
+            try {
+                await db.query(
+                    `INSERT INTO "${tableName.replace(/"/g, '""')}" (${
+                        columns.map(column => `"${column.name.replace(/"/g, '""')}"`).join(",")
+                    }) VALUES (${columns.map((_, index) => `$${index + 1}`).join(",")})`,
+                    row,
+                );
+            } catch (error) {
+                errors.set(recordId, error instanceof Error ? error.message : "Record could not be validated");
+            }
+        }
+        return errors;
+    }
+
+    /**
+     * Update Table records by stable record ID in one atomic, all-or-nothing
+     * batch — never by displayed row index, and never creating a record
+     * that does not already exist. The batch is validated as a whole
+     * against the Table's real schema constraints (NOT NULL, CHECK,
+     * UNIQUE) before anything is written: a change is rejected if it would
+     * make the changed record itself invalid, or if it would newly break a
+     * constraint that the untouched rest of the Table currently satisfies
+     * (for example a UNIQUE column colliding with a value this batch
+     * writes). A single expectedRevision precondition covers the whole
+     * Table, matching tableRevision/get_table, so a batch can never
+     * silently land over a concurrent collaborator's edit to the schema or
+     * to a record outside the batch.
+     */
+    async updateTableRecords(
+        uid: string,
+        projectId: string,
+        tableId: string,
+        changes: { recordId: string; values: Record<string, RelationValue>; }[],
+        precondition: MutationPrecondition & { expectedRevision: string; },
+    ) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(tableId)) throw new McpReadError("invalid_argument", "Invalid table ID");
+        if (changes.length === 0) {
+            throw new McpReadError("invalid_argument", "changes must contain at least one record");
+        }
+        if (changes.length > MAX_RECORD_BATCH_SIZE) {
+            throw new McpReadError(
+                "size_limit",
+                `changes contains ${changes.length} records, exceeding the ${MAX_RECORD_BATCH_SIZE}-record batch limit`,
+                { actualCount: changes.length, limitCount: MAX_RECORD_BATCH_SIZE },
+            );
+        }
+        const seenIds = new Set<string>();
+        for (const change of changes) {
+            if (seenIds.has(change.recordId)) {
+                throw new McpReadError("invalid_argument", `Duplicate recordId "${change.recordId}" in changes`);
+            }
+            seenIds.add(change.recordId);
+        }
+        const payloadBytes = Buffer.byteLength(JSON.stringify(changes), "utf8");
+        if (payloadBytes > MAX_RECORD_BATCH_BYTES) {
+            throw new McpReadError(
+                "size_limit",
+                `changes payload of ${payloadBytes} bytes exceeds the ${MAX_RECORD_BATCH_BYTES}-byte limit`,
+                { actualBytes: payloadBytes, limitBytes: MAX_RECORD_BATCH_BYTES },
+            );
+        }
+        return this.withProject(uid, projectId, async doc => {
+            const cacheKey = this.idempotency.key(
+                "update_table_records",
+                uid,
+                projectId,
+                tableId,
+                precondition.dryRun ? undefined : precondition.operationId,
+            );
+            const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
+                const entry = doc.getMap<Y.Map<unknown>>("yjsTables").get(tableId);
+                if (!entry) throw new McpReadError("not_found", "Table not found");
+                const displayName = String(entry.get("name") ?? "");
+                const sqlName = String(entry.get("sqlName") ?? "");
+                const source = await this.openTable(uid, projectId, tableId);
+                const lease = await acquireDb();
+                try {
+                    const schema = await this.inspectTableSchema(lease.db, source.schema);
+                    if (schema.status !== "valid") {
+                        throw new McpReadError("validation_failed", "Table has no valid applied schema", { tableId });
+                    }
+                    const columnsByName = new Map(schema.columns.map(column => [column.name, column]));
+                    for (const change of changes) {
+                        if (!source.data.has(change.recordId)) {
+                            throw new McpReadError("not_found", `Record "${change.recordId}" does not exist`, {
+                                recordId: change.recordId,
+                            });
+                        }
+                        if (Object.keys(change.values).length === 0) {
+                            throw new McpReadError(
+                                "invalid_argument",
+                                `Record "${change.recordId}" has no values to change`,
+                            );
+                        }
+                        for (const [column, value] of Object.entries(change.values)) {
+                            if (column === "id") {
+                                if (value !== change.recordId) {
+                                    throw new McpReadError(
+                                        "validation_failed",
+                                        `Record "${change.recordId}" cannot change its own id`,
+                                        { recordId: change.recordId },
+                                    );
+                                }
+                                continue;
+                            }
+                            const columnSchema = columnsByName.get(column);
+                            if (!columnSchema) {
+                                throw new McpReadError(
+                                    "validation_failed",
+                                    `Column "${column}" does not exist on this Table`,
+                                    { recordId: change.recordId, column },
+                                );
+                            }
+                            try {
+                                this.castRecordValue(value, columnSchema);
+                            } catch (error) {
+                                throw new McpReadError(
+                                    "validation_failed",
+                                    error instanceof Error ? error.message : "Invalid value",
+                                    { recordId: change.recordId, column },
+                                );
+                            }
+                        }
+                    }
+                    const originalValues = new Map(
+                        [...source.data.entries()].map(([id, record]) => [id, Object.fromEntries(record.entries())]),
+                    );
+                    const before = await this.materializeRecordErrors(
+                        lease.db,
+                        schema.tableName,
+                        schema.columns,
+                        originalValues,
+                    );
+                    const merged = new Map(originalValues);
+                    for (const change of changes) {
+                        merged.set(change.recordId, { ...merged.get(change.recordId), ...change.values });
+                    }
+                    await this.clearScratchDatabase(lease.db);
+                    await lease.db.exec(source.schema);
+                    const after = await this.materializeRecordErrors(
+                        lease.db,
+                        schema.tableName,
+                        schema.columns,
+                        merged,
+                    );
+                    // A record newly failing that passed before is blocking
+                    // regardless of which id Postgres happens to blame (a
+                    // UNIQUE collision is reported against whichever row is
+                    // inserted second); a record this batch directly
+                    // touches is always blocking, even if it was already
+                    // broken, since the caller asked this exact record to
+                    // become valid.
+                    const blocking = [...after].filter(([id]) => seenIds.has(id) || !before.has(id));
+                    if (blocking.length > 0) {
+                        throw new McpReadError("validation_failed", "One or more record changes violate the schema", {
+                            recordErrors: blocking.map(([recordId, message]) => ({ recordId, message })),
+                        });
+                    }
+                    const priorRevision = this.tableRevision(tableId, displayName, sqlName, source);
+                    assertRevision(precondition.expectedRevision, priorRevision, { tableId });
+                    if (precondition.dryRun) {
+                        return {
+                            tableId,
+                            applied: false,
+                            priorRevision,
+                            revision: priorRevision,
+                            records: changes.map(change => ({
+                                recordId: change.recordId,
+                                priorRevision: this.rowRevision(source.data.get(change.recordId)),
+                            })),
+                        };
+                    }
+                    source.doc.transact(() => {
+                        for (const change of changes) {
+                            const record = source.data.get(change.recordId)!;
+                            for (const [column, value] of Object.entries(change.values)) {
+                                if (column === "id") continue;
+                                record.set(column, value);
+                            }
+                        }
+                    }, "mcp-table-records-write");
+                    return {
+                        tableId,
+                        applied: true,
+                        priorRevision,
+                        revision: this.tableRevision(tableId, displayName, sqlName, source),
+                        records: changes.map(change => ({
+                            recordId: change.recordId,
+                            revision: this.rowRevision(source.data.get(change.recordId)),
+                        })),
+                    };
+                } finally {
+                    lease.release();
+                    await source.disconnect();
+                }
+            });
+            return { ...result, replayed };
+        });
     }
 
     setViewQuery(
