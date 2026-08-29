@@ -90,9 +90,9 @@ scope_guard() {
 debris_paths() {
     grep -E \
         -e '^(fix|observe|debug|check|print|sed|revert|patch)[_-][^/]*$' \
-        -e '^(get|test|update)[_-][^/]*\.(cjs|mjs|js|py|txt)$' \
-        -e '^test\.(cjs|mjs|js|py)$' \
-        -e '^[^/]*\.(patch|diff|png|jpg|jpeg)$' \
+        -e '^(get|test|update)[_-][^/]*\.(cjs|mjs|js|txt)$' \
+        -e '^test\.(cjs|mjs|js)$' \
+        -e '^[^/]*\.(patch|diff|png|jpg|jpeg|py)$' \
         -e '^(COMMIT_EDITMSG|PARENT_ISSUE_COMPLETION\.md|BacklinkPanel_fixed\.svelte|my_changes\.diff|error\.png)$' \
         -e '^The commit message' \
         -e '^(eslint|server_eslint)_[^/]*\.json$' \
