@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
-import { validateReadOnlySelect } from "../../../shared/src/services/readOnlySql.js";
+import { stripSqlNoise, validateReadOnlySelect } from "../../../shared/src/services/readOnlySql.js";
 import { type Item, Project } from "../schema/app-schema.js";
 import {
     assertRevision,
@@ -15,6 +15,8 @@ import { McpReadError } from "./outliner-read-service.js";
 
 const MAX_WRITE_PAYLOAD_BYTES = 32 * 1024;
 const MAX_QUERY_BYTES = 16 * 1024;
+const MAX_TRACE_COLUMNS = 100;
+const MAX_TRACE_VALUE_LENGTH = 200;
 
 export type RelationValue = string | number | boolean | null;
 export type RelationWrite =
@@ -662,9 +664,9 @@ export class OutlinerRelationService {
                 try {
                     const bounded = select.replace(/;\s*$/, "");
                     const result = await lease.db.query<Record<string, unknown>>(
-                        `SELECT * FROM (${bounded}) AS mcp_grid_trace LIMIT ${maxRows + 1}`,
+                        `SELECT * FROM (${bounded}\n) AS mcp_grid_trace LIMIT ${maxRows + 1}`,
                     );
-                    const columns = (result.fields ?? []).map(field => field.name);
+                    const columns = (result.fields ?? []).map(field => field.name).slice(0, MAX_TRACE_COLUMNS);
                     const rows = result.rows.slice(0, maxRows);
                     const editability = this.gridEditability(select, schemaColumns, columns);
                     const ordered = [
@@ -672,14 +674,20 @@ export class OutlinerRelationService {
                         ...columns.filter(column => !columnOrder.includes(column)),
                     ];
                     const renderedColumns = ordered.filter(column => !hiddenColumns.includes(column));
-                    const orderSource = /\border\s+by\b/i.test(select) ? "sql-order-by" : "incidental-source-order";
+                    const analyzedSql = stripSqlNoise(select);
+                    const orderSource = /\border\s+by\b/i.test(analyzedSql)
+                        ? "sql-order-by"
+                        : "incidental-source-order";
                     stages.push({
                         stage: "query-execution",
                         observed: true,
                         status: "completed",
                         orderSource,
                         columns,
-                        rows: rows.map((values, index) => ({ identity: this.rowIdentity(values, index), values })),
+                        rows: rows.map((values, index) => ({
+                            identity: this.rowIdentity(values, index),
+                            values: this.boundedTraceRow(values, columns),
+                        })),
                         rowCount: rows.length,
                         totalCount: result.rows.length > maxRows ? undefined : rows.length,
                         truncated: result.rows.length > maxRows,
@@ -696,7 +704,7 @@ export class OutlinerRelationService {
                         transforms: {
                             hiddenColumns,
                             presentationColumnOrder: ordered,
-                            filtering: /\bwhere\b/i.test(select) ? "sql" : "none",
+                            filtering: /\bwhere\b/i.test(analyzedSql) ? "sql" : "none",
                             sorting: orderSource,
                         },
                     });
@@ -722,22 +730,26 @@ export class OutlinerRelationService {
     }
 
     private rowIdentity(row: Record<string, unknown>, ordinal: number) {
-        if (typeof row.id === "string") return { kind: "id", value: row.id };
         if (typeof row.source_kind === "string" && typeof row.source_id === "string") {
             return { kind: "source", relation: row.source_kind, value: row.source_id };
         }
+        if (typeof row.id === "string") return { kind: "id", value: row.id };
         return { kind: "result-ordinal", value: ordinal, stable: false };
     }
 
     private gridEditability(query: string, schemaColumns: string[], resultColumns: string[]) {
         const readOnly = (reason: string) => ({ editable: false, readOnlyReason: reason, editableColumns: [] });
-        if (/\b(join|group\s+by|distinct)\b/i.test(query) || /\b(count|sum|avg|min|max)\s*\(/i.test(query)) {
+        const analyzedSql = stripSqlNoise(query);
+        if (
+            /\b(join|group\s+by|distinct)\b/i.test(analyzedSql)
+            || /\b(count|sum|avg|min|max)\s*\(/i.test(analyzedSql)
+        ) {
             return readOnly("Rows are combined, aggregated, or distinct");
         }
-        const identity = resultColumns.includes("id")
-            ? "id"
-            : resultColumns.includes("source_kind") && resultColumns.includes("source_id")
+        const identity = resultColumns.includes("source_kind") && resultColumns.includes("source_id")
             ? "source"
+            : resultColumns.includes("id")
+            ? "id"
             : undefined;
         if (!identity) return readOnly("Query result has no stable row identity");
         return {
@@ -747,6 +759,32 @@ export class OutlinerRelationService {
                 schemaColumns.includes(column) && !["id", "source_kind", "source_id"].includes(column)
             ),
         };
+    }
+
+    private boundedTraceRow(row: Record<string, unknown>, columns: string[]): Record<string, unknown> {
+        return Object.fromEntries(columns.map(column => [column, this.boundedTraceValue(row[column])]));
+    }
+
+    private boundedTraceValue(value: unknown): unknown {
+        if (typeof value === "string") {
+            return value.length > MAX_TRACE_VALUE_LENGTH
+                ? `${value.slice(0, MAX_TRACE_VALUE_LENGTH)}…`
+                : value;
+        }
+        if (typeof value === "bigint") return value.toString();
+        if (value === undefined || value === null || ["number", "boolean"].includes(typeof value)) return value;
+        try {
+            const serialized = JSON.stringify(
+                value,
+                (_key, nested: unknown) => typeof nested === "bigint" ? nested.toString() : nested,
+            );
+            if (serialized === undefined) return String(value).slice(0, MAX_TRACE_VALUE_LENGTH);
+            return serialized.length > MAX_TRACE_VALUE_LENGTH
+                ? `${serialized.slice(0, MAX_TRACE_VALUE_LENGTH)}…`
+                : JSON.parse(serialized);
+        } catch {
+            return String(value).slice(0, MAX_TRACE_VALUE_LENGTH);
+        }
     }
 
     private sqlDiagnostic(error: unknown, phase: "validation" | "execution") {

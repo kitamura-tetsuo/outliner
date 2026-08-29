@@ -254,6 +254,27 @@ describe("Outliner MCP relation service", function() {
         await expectFailure(fixture(false).service.traceGrid("uid", "project-1", "grid-1"), "inaccessible");
     });
 
+    it("normalizes values and matches canonical source identity and SQL-noise analysis", async () => {
+        const { service, project } = fixture();
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        grid.set(
+            "query",
+            "SELECT id, 'tasks' AS source_kind, id AS source_id, "
+                + "9007199254740993::bigint AS huge, repeat('x', 300) AS note, 'join order by where' AS label "
+                + "FROM tasks -- join order by where",
+        );
+        const trace = await service.traceGrid("uid", "project-1", "grid-1");
+        const execution = trace.stages.find(stage => stage.stage === "query-execution")!;
+        const render = trace.stages.find(stage => stage.stage === "render")!;
+        expect(execution).to.include({ status: "completed", orderSource: "incidental-source-order" });
+        expect(execution.editability).to.deep.include({ editable: true, rowIdentity: "source" });
+        expect(execution.rows[0].identity).to.deep.equal({ kind: "source", relation: "tasks", value: "r1" });
+        expect(execution.rows[0].values.huge).to.equal("9007199254740993");
+        expect(execution.rows[0].values.note).to.have.length(201);
+        expect(render.transforms).to.include({ filtering: "none", sorting: "incidental-source-order" });
+        expect(() => JSON.stringify(trace)).not.to.throw();
+    });
+
     it("persists table writes in Yjs and therefore survives SQL rebuilding", async () => {
         const { service, table } = fixture();
         await service.writeRelation("uid", "project-1", "tasks", {
