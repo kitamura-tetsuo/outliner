@@ -288,6 +288,11 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "On touch, tap a cell to activate it, double-tap to edit, or long-press for range mode. Drag the blue handles "
+                            + "to resize the range; the floating toolbar provides additive selection without modifier keys. Ordinary swipes still scroll.",
+                    },
+                    {
+                        text:
                             "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
                             + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
                             + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "
