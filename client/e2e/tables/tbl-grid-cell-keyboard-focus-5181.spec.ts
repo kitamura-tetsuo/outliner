@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Grid cell keyboard focus preservation (#5181)", () => {
     test("Enter commit and Escape cancel leave focus on the edited cell", async ({ page }) => {

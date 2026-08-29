@@ -1,17 +1,41 @@
 <script lang="ts">
+import type { GridNavDirection } from "../../../services/yjstable/gridKeyboardNav";
+
 interface Props {
     value: unknown;
     editable: boolean;
     ariaLabel?: string;
+    /**
+     * Initial input text for an edit started by typing a printable character
+     * in Grid navigation mode. Stable for the lifetime of one edit session
+     * (the parent only clears it once `onEditingChange(false)` fires), so it
+     * seeds the freshly-mounted input without fighting the user's typing on
+     * later re-renders.
+     */
+    editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
-    onRequestFocus?: () => void;
+    /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
+    onRequestFocus?: (direction?: GridNavDirection) => void;
+    /** Reports edit-mode transitions so Grid can track which cell owns the one active editor. */
+    onEditingChange?: (editing: boolean) => void;
 }
 
-let { value, editable, ariaLabel, onCommit, onRequestFocus }: Props = $props();
+let { value, editable, ariaLabel, editSeed, onCommit, onRequestFocus, onEditingChange }: Props = $props();
 let editing = $state(false);
 
+function setEditing(next: boolean) {
+    editing = next;
+    onEditingChange?.(next);
+}
+
+// Enter edit mode when Grid seeds this cell with typed text (F2/Enter use
+// click()-equivalent activation instead, so they never set editSeed).
+$effect(() => {
+    if (editSeed !== undefined && editable && !editing) setEditing(true);
+});
+
 function commit(e: Event) {
-    editing = false;
+    setEditing(false);
     onCommit((e.target as HTMLInputElement).value);
 }
 </script>
@@ -22,15 +46,20 @@ function commit(e: Event) {
         class="cell-input"
         aria-label={ariaLabel || "Edit cell value"}
         type="text"
-        value={value === null || value === undefined ? "" : String(value)}
+        value={editSeed ?? (value === null || value === undefined ? "" : String(value))}
         autofocus
         onblur={commit}
         onkeydown={(e) => {
+            if (e.isComposing) return;
             if (e.key === "Enter") {
                 commit(e);
-                onRequestFocus?.();
+                onRequestFocus?.(e.shiftKey ? "up" : "down");
+            } else if (e.key === "Tab") {
+                e.preventDefault();
+                commit(e);
+                onRequestFocus?.(e.shiftKey ? "left" : "right");
             } else if (e.key === "Escape") {
-                editing = false;
+                setEditing(false);
                 onRequestFocus?.();
             }
         }}
@@ -41,9 +70,9 @@ function commit(e: Event) {
         class="cell-value"
         aria-label={value === null || value === undefined || String(value) === "" ? `Empty cell, ${ariaLabel || "cell"}` : `${String(value)}, ${ariaLabel || "cell"}`}
         class:readonly={!editable}
-        disabled={!editable}
+        aria-disabled={!editable}
         onclick={() => {
-            if (editable) editing = true;
+            if (editable) setEditing(true);
         }}
     >{value === null || value === undefined ? "" : String(value)}</button>
 {/if}

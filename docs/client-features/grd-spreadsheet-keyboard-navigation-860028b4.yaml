@@ -1,0 +1,20 @@
+id: GRD-860028b4
+title: Grid spreadsheet-style keyboard navigation and cell edit mode
+title-ja: Grid のスプレッドシート風キーボード操作とセル編集モード
+description: Navigate and edit Grid cells from the keyboard, following spreadsheet conventions on top of the logical Grid selection foundation.
+category: tables
+status: implemented
+acceptance:
+- A focused native select/date/checkbox control keeps its own arrow-key behavior instead of Grid intercepting it
+- Arrow keys move the active cell; Shift+Arrow extends the selection from the anchor
+- Enter/F2 start editing the active editable cell; typing a printable character replaces its content and starts editing
+- Escape leaves edit mode without committing; Enter/Tab commit and move (down/right), Shift+Enter/Shift+Tab move up/left
+- IME composition keystrokes are never mistaken for Grid navigation shortcuts
+- Keyboard-driven focus survives an asynchronous query refresh by logical cell identity, never a stale DOM row index
+- Tab/Shift+Tab wrap to the next/previous row at the row edge; plain arrow keys clamp instead
+- The newly active cell is scrolled into view
+tests:
+- client/e2e/tables/tbl-grid-keyboard-edit-mode-5188.spec.ts
+- client/e2e/tables/tbl-grid-keyboard-navigation-5188.spec.ts
+- client/src/components/yjstable/TableGrid.keyboardNav.test.ts
+- client/src/services/yjstable/gridKeyboardNav.test.ts

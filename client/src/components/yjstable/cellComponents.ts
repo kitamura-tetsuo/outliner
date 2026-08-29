@@ -2,6 +2,7 @@
 // the Svelte cell components rendered inside the dynamic grid.
 
 import type { Component } from "svelte";
+import type { GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import type { TableColumnSchema } from "../../services/yjstable/schemaIntrospection";
 import CheckboxCell from "./cells/CheckboxCell.svelte";
 import DateCell from "./cells/DateCell.svelte";
@@ -14,8 +15,13 @@ export interface CellProps {
     editable: boolean;
     options?: string[];
     ariaLabel?: string;
+    /** Initial text for an edit started by typing a printable character in Grid navigation mode. */
+    editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
-    onRequestFocus?: () => void;
+    /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
+    onRequestFocus?: (direction?: GridNavDirection) => void;
+    /** Reports edit-mode transitions so Grid can track which cell owns the one active editor. */
+    onEditingChange?: (editing: boolean) => void;
 }
 
 export type CellComponentType = "text" | "number" | "checkbox" | "select" | "date";

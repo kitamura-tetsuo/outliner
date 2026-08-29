@@ -1,17 +1,33 @@
 <script lang="ts">
+import type { GridNavDirection } from "../../../services/yjstable/gridKeyboardNav";
+
 interface Props {
     value: unknown;
     editable: boolean;
     ariaLabel?: string;
+    /** See TextCell: seeds a freshly-opened editor when typing starts the edit. */
+    editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
-    onRequestFocus?: () => void;
+    /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
+    onRequestFocus?: (direction?: GridNavDirection) => void;
+    /** Reports edit-mode transitions so Grid can track which cell owns the one active editor. */
+    onEditingChange?: (editing: boolean) => void;
 }
 
-let { value, editable, ariaLabel, onCommit, onRequestFocus }: Props = $props();
+let { value, editable, ariaLabel, editSeed, onCommit, onRequestFocus, onEditingChange }: Props = $props();
 let editing = $state(false);
 
+function setEditing(next: boolean) {
+    editing = next;
+    onEditingChange?.(next);
+}
+
+$effect(() => {
+    if (editSeed !== undefined && editable && !editing) setEditing(true);
+});
+
 function commit(e: Event) {
-    editing = false;
+    setEditing(false);
     const raw = (e.target as HTMLInputElement).value.trim();
     if (raw === "") {
         onCommit(null);
@@ -31,15 +47,20 @@ function commit(e: Event) {
         aria-label={ariaLabel || "Edit cell value"}
         type="number"
         step="any"
-        value={value === null || value === undefined ? "" : String(value)}
+        value={editSeed ?? (value === null || value === undefined ? "" : String(value))}
         autofocus
         onblur={commit}
         onkeydown={(e) => {
+            if (e.isComposing) return;
             if (e.key === "Enter") {
                 commit(e);
-                onRequestFocus?.();
+                onRequestFocus?.(e.shiftKey ? "up" : "down");
+            } else if (e.key === "Tab") {
+                e.preventDefault();
+                commit(e);
+                onRequestFocus?.(e.shiftKey ? "left" : "right");
             } else if (e.key === "Escape") {
-                editing = false;
+                setEditing(false);
                 onRequestFocus?.();
             }
         }}
@@ -50,9 +71,9 @@ function commit(e: Event) {
         class="cell-value"
         aria-label={value === null || value === undefined || String(value) === "" ? `Empty cell, ${ariaLabel || "cell"}` : `${String(value)}, ${ariaLabel || "cell"}`}
         class:readonly={!editable}
-        disabled={!editable}
+        aria-disabled={!editable}
         onclick={() => {
-            if (editable) editing = true;
+            if (editable) setEditing(true);
         }}
     >{value === null || value === undefined ? "" : String(value)}</button>
 {/if}
