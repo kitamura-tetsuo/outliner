@@ -14,6 +14,9 @@ async function createBlankTableGrid(page: Page): Promise<Locator> {
     const createPanel = page.getByTestId("yjs-table-create-panel").first();
     await expect(createPanel).toBeVisible({ timeout: 10000 });
     await createPanel.getByTestId("yjs-table-name-input").fill("BulkTest");
+    // The create panel defaults to the "Tasks" preset (no boolean column);
+    // this file needs the "Table" (blank) preset's `title`/`done` columns.
+    await createPanel.getByTestId("yjs-table-preset-select").selectOption("blank");
     await createPanel.getByTestId("yjs-table-create").click();
     const grid = page.getByTestId("yjs-table-grid").first();
     await expect(grid.locator("th", { hasText: "title" })).toBeVisible({ timeout: 15000 });
