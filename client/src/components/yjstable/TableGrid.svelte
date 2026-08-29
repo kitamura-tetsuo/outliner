@@ -102,6 +102,18 @@ let editingCell: GridCellAddress | undefined = $state();
  */
 let pendingEditSeed: string | undefined = $state();
 
+const LONG_PRESS_MS = 500;
+const DOUBLE_TAP_MS = 350;
+const TOUCH_SLOP_PX = 10;
+let touchSelectionMode = $state(false);
+let additiveTouchSelection = $state(false);
+let handleDrag = $state<"anchor" | "focus" | undefined>();
+let handleOppositeCell: GridCellAddress | undefined;
+let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
+let longPressTimer: ReturnType<typeof setTimeout> | undefined;
+let lastTap: { at: number; cell: GridCellAddress; } | undefined;
+let suppressClickUntil = 0;
+
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
@@ -195,8 +207,147 @@ function selectCell(event: MouseEvent, cell: GridCellAddress): void {
     pendingEditSeed = undefined;
 }
 
+function sameCell(left: GridCellAddress | undefined, right: GridCellAddress): boolean {
+    return left?.rowId === right.rowId && left.columnId === right.columnId;
+}
+
+function finishSelectionChange(): void {
+    selectionRevision++;
+    editingCell = undefined;
+    pendingEditSeed = undefined;
+}
+
+function selectTouchCell(cell: GridCellAddress): void {
+    if (additiveTouchSelection) selection.toggleCell(cell);
+    else selection.select(cell);
+    finishSelectionChange();
+}
+
+function cancelLongPress(): void {
+    if (longPressTimer !== undefined) clearTimeout(longPressTimer);
+    longPressTimer = undefined;
+}
+
+/**
+ * Touch starts as an undecided gesture. It does not capture the pointer or
+ * preventDefault, so a move beyond the slop remains native table scrolling.
+ */
+function touchCellPointerDown(event: PointerEvent, cell: GridCellAddress): void {
+    if (event.pointerType !== "touch") return;
+    cancelLongPress();
+    touchStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, cell };
+    longPressTimer = setTimeout(() => {
+        if (!touchStart || touchStart.pointerId !== event.pointerId) return;
+        touchSelectionMode = true;
+        selection.extend(cell, rowIdsOf(result.rows), displayColumns);
+        finishSelectionChange();
+        navigator.vibrate?.(10);
+        longPressTimer = undefined;
+    }, LONG_PRESS_MS);
+}
+
+function touchCellPointerMove(event: PointerEvent): void {
+    if (!touchStart || event.pointerId !== touchStart.pointerId) return;
+    if (Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) > TOUCH_SLOP_PX) {
+        cancelLongPress();
+        touchStart = undefined;
+    }
+}
+
+function touchCellPointerUp(event: PointerEvent): void {
+    if (event.pointerType !== "touch" || !touchStart || event.pointerId !== touchStart.pointerId) return;
+    const cell = touchStart.cell;
+    const longPressed = longPressTimer === undefined;
+    cancelLongPress();
+    touchStart = undefined;
+    suppressClickUntil = Date.now() + 500;
+    if (longPressed) return;
+
+    const isDoubleTap = lastTap !== undefined && sameCell(lastTap.cell, cell)
+        && Date.now() - lastTap.at <= DOUBLE_TAP_MS;
+    if (isDoubleTap) {
+        selection.select(cell);
+        selectionRevision++;
+        // Let this tap's native click reach the cell control. Text/number
+        // buttons enter edit mode, while checkbox/select/date keep their own
+        // platform-native activation and virtual-keyboard behavior.
+        suppressClickUntil = 0;
+        lastTap = undefined;
+        return;
+    }
+    selectTouchCell(cell);
+    lastTap = { at: Date.now(), cell };
+}
+
+function suppressSyntheticTouchClick(event: MouseEvent): void {
+    if (Date.now() >= suppressClickUntil) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function cellAtPoint(x: number, y: number): GridCellAddress | undefined {
+    const td = document.elementFromPoint(x, y)?.closest<HTMLElement>("td[data-row-id][data-col]");
+    const rowId = td?.dataset.rowId;
+    const columnId = td?.dataset.col;
+    return rowId && columnId ? { rowId, columnId } : undefined;
+}
+
+function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    handleDrag = end;
+    const snapshot = selection.snapshot();
+    handleOppositeCell = end === "anchor" ? snapshot.activeCell : snapshot.anchorCell;
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+}
+
+function moveHandle(event: PointerEvent): void {
+    if (!handleDrag) return;
+    event.preventDefault();
+    const cell = cellAtPoint(event.clientX, event.clientY);
+    if (!cell) return;
+    selection.select(handleOppositeCell ?? cell);
+    selection.extend(cell, rowIdsOf(result.rows), displayColumns);
+    selectionRevision++;
+}
+
+function stopHandleDrag(): void {
+    handleDrag = undefined;
+    handleOppositeCell = undefined;
+}
+
+function isSelectionEnd(cell: GridCellAddress, end: "anchor" | "focus"): boolean {
+    void selectionRevision;
+    const snapshot = selection.snapshot();
+    return sameCell(end === "anchor" ? snapshot.anchorCell : snapshot.activeCell, cell);
+}
+
+function leaveTouchSelectionMode(): void {
+    touchSelectionMode = false;
+    additiveTouchSelection = false;
+    handleDrag = undefined;
+}
+
+function activeSelectionCell(): GridCellAddress | undefined {
+    void selectionRevision;
+    return selection.snapshot().activeCell;
+}
+
+function editActiveTouchCell(): void {
+    const cell = activeSelectionCell();
+    if (!cell || !gridContainer) return;
+    leaveTouchSelectionMode();
+    const td = gridContainer.querySelector<HTMLElement>(
+        `td[data-row-id="${CSS.escape(cell.rowId)}"][data-col="${CSS.escape(cell.columnId)}"]`,
+    );
+    const control = td?.querySelector<HTMLElement>("button, input, select");
+    if (control instanceof HTMLButtonElement) control.click();
+    else control?.focus();
+}
+
 function headerOptions(event: MouseEvent | KeyboardEvent) {
-    return { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey };
+    return { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey || additiveTouchSelection };
 }
 
 function selectRowHeader(event: MouseEvent | KeyboardEvent, rowId: string): void {
@@ -468,6 +619,16 @@ function handleCancelDelete() {
 }
 </script>
 
+<svelte:window
+    onpointermove={moveHandle}
+    onpointerup={stopHandleDrag}
+    onpointercancel={() => {
+        stopHandleDrag();
+        cancelLongPress();
+        touchStart = undefined;
+    }}
+/>
+
 <!--
     `data-block-dnd-owner` marks this subtree as owning its own drag & drop.
     OutlinerItem registers capture-phase `drop`/`dragover` listeners on the item
@@ -637,7 +798,16 @@ function handleCancelDelete() {
                                 class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
                                 aria-selected={logicalCell !== undefined ? cellSelected(logicalCell) : undefined}
                                 onclickcapture={(event) => {
+                                    suppressSyntheticTouchClick(event);
+                                    if (event.defaultPrevented) return;
                                     if (logicalCell) selectCell(event, logicalCell);
+                                }}
+                                onpointerdown={(event) => logicalCell && touchCellPointerDown(event, logicalCell)}
+                                onpointermove={touchCellPointerMove}
+                                onpointerup={touchCellPointerUp}
+                                onpointercancel={() => {
+                                    cancelLongPress();
+                                    touchStart = undefined;
                                 }}
                             >
                                 <CellComponent
@@ -669,6 +839,22 @@ function handleCancelDelete() {
                                         if (logicalCell) exitCellEdit(logicalCell, direction);
                                     }}
                                 />
+                                {#if touchSelectionMode && logicalCell && isSelectionEnd(logicalCell, "anchor")}
+                                    <button
+                                        type="button"
+                                        class="touch-selection-handle touch-selection-handle-start"
+                                        aria-label="Resize selection from start"
+                                        onpointerdown={(event) => startHandleDrag(event, "anchor")}
+                                    ></button>
+                                {/if}
+                                {#if touchSelectionMode && logicalCell && isSelectionEnd(logicalCell, "focus")}
+                                    <button
+                                        type="button"
+                                        class="touch-selection-handle touch-selection-handle-end"
+                                        aria-label="Resize selection from end"
+                                        onpointerdown={(event) => startHandleDrag(event, "focus")}
+                                    ></button>
+                                {/if}
                             </td>
                         {/each}
                         {#if editability.editable && editability.rowIdentity === "id"}
@@ -688,6 +874,22 @@ function handleCancelDelete() {
                 {/each}
             </tbody>
         </table>
+        {#if touchSelectionMode}
+            <div class="touch-selection-toolbar" role="toolbar" aria-label="Grid selection actions">
+                <button
+                    type="button"
+                    aria-pressed={additiveTouchSelection}
+                    onclick={() => additiveTouchSelection = !additiveTouchSelection}
+                >{additiveTouchSelection ? "Add selection: on" : "Add selection"}</button>
+                {#if activeSelectionCell()}
+                    <button
+                        type="button"
+                        onclick={editActiveTouchCell}
+                    >Edit cell</button>
+                {/if}
+                <button type="button" onclick={leaveTouchSelectionMode}>Done</button>
+            </div>
+        {/if}
     {:else if !schema}
         <p class="empty-state">
             {#if rowCreationMode === "table"}
@@ -752,6 +954,7 @@ td {
 }
 
 td.grid-selected {
+    position: relative;
     background-color: rgb(37 99 235 / 12%);
 }
 
@@ -787,6 +990,60 @@ td.grid-active {
     outline: 2px solid #2563eb;
     outline-offset: -2px;
     z-index: 1;
+}
+
+.touch-selection-handle {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #2563eb;
+    box-shadow: 0 0 0 3px white, 0 1px 4px rgb(0 0 0 / 35%);
+    z-index: 4;
+    touch-action: none;
+}
+
+.touch-selection-handle-start {
+    top: -14px;
+    left: -14px;
+}
+
+.touch-selection-handle-end {
+    right: -14px;
+    bottom: -14px;
+}
+
+.touch-selection-toolbar {
+    position: sticky;
+    left: 0;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 5;
+    display: flex;
+    width: max-content;
+    gap: 6px;
+    margin: 8px auto;
+    padding: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: white;
+    box-shadow: 0 4px 16px rgb(15 23 42 / 20%);
+}
+
+.touch-selection-toolbar button {
+    min-height: 44px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0 14px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font: inherit;
+}
+
+.touch-selection-toolbar button[aria-pressed="true"] {
+    background: #2563eb;
+    color: white;
 }
 
 th {
