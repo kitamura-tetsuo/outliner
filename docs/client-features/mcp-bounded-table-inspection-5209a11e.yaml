@@ -1,0 +1,13 @@
+id: FTR-5209a11e
+title: Bounded MCP Table inspection
+title-ja: 境界付きMCPテーブル検査
+status: implemented
+description: >-
+  Authenticated MCP clients can inspect a Table by stable ID, including its
+  display and SQL names, raw and parsed schema, provenance, deterministic
+  revision, and record count. Record values are opt-in and returned in a
+  stable-ID page with a default limit, a hard 100-record maximum, and an
+  opaque continuation cursor.
+tests:
+  - server/tests/mcp-relation-service.test.ts
+  - server/tests/mcp-mutation-contract.test.ts

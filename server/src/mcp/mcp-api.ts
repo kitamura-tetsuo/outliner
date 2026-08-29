@@ -219,6 +219,21 @@ export function createMcpRouter(
             calendarId: z.string(),
         }, args => service.getCalendar(uid, args.projectId, args.calendarId));
         if (relationService) {
+            tool("get_table", "Inspect bounded Table metadata, schema, and stable-id records.", {
+                projectId: z.string(),
+                tableId: z.string(),
+                includeRecords: z.boolean().optional(),
+                recordLimit: z.number().int().optional(),
+                cursor: z.string().optional(),
+            }, args =>
+                relationService.getTable(
+                    uid,
+                    args.projectId,
+                    args.tableId,
+                    args.includeRecords,
+                    args.recordLimit,
+                    args.cursor,
+                ));
             tool("list_relations", "List SQL-visible relations in an authorized project.", {
                 projectId: z.string(),
             }, args => relationService.listRelations(uid, args.projectId));
