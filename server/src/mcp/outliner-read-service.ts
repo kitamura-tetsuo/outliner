@@ -42,10 +42,8 @@ function parseResolvablePath(pathname: string): {
     entityId?: string;
 } {
     const encodedParts = pathname.split("/");
-    if (
-        encodedParts[0] !== "" || encodedParts[encodedParts.length - 1] === ""
-        || encodedParts.slice(1).some(part => part === "")
-    ) {
+    if (encodedParts[encodedParts.length - 1] === "") encodedParts.pop();
+    if (encodedParts[0] !== "" || encodedParts.slice(1).some(part => part === "")) {
         throw new McpReadError("invalid_argument", "Unsupported Outliner URL path", {
             stage: "path_validation",
             partsLength: encodedParts.length - 1,

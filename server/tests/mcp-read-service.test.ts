@@ -96,6 +96,10 @@ describe("Outliner MCP read service", () => {
             projectId: "project-1",
             kind: "project",
         });
+        expect(await service.resolveUrl("uid", `${origin}/MCP%20test/`)).to.deep.equal({
+            projectId: "project-1",
+            kind: "project",
+        });
         expect(await service.resolveUrl("uid", `${origin}/MCP%20test/${encodeURIComponent(encodedPage.text)}`))
             .to.deep.equal({ projectId: "project-1", pageId: encodedPage.id, kind: "page" });
         for (const [kind, id] of [["tables", "table-1"], ["grids", "grid-1"], ["calendars", "calendar-1"]]) {
