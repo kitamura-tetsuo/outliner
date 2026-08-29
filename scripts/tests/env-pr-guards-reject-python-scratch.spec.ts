@@ -54,12 +54,15 @@ describe("PR guards reject Python root scratch files", () => {
         expect(result.output).toContain(relative);
     });
 
-    test.each(["scripts/verify.py", "server/src/test.py"])("%s is kept: only root-level python files are debris", relative => {
-        track(relative);
+    test.each(["scripts/verify.py", "server/src/test.py"])(
+        "%s is kept: only root-level python files are debris",
+        relative => {
+            track(relative);
 
-        const result = runGuards(workspace);
+            const result = runGuards(workspace);
 
-        expect(result.status, result.output).toBe(0);
-        expect(result.output).toContain("no tracked debris files");
-    });
+            expect(result.status, result.output).toBe(0);
+            expect(result.output).toContain("no tracked debris files");
+        },
+    );
 });
