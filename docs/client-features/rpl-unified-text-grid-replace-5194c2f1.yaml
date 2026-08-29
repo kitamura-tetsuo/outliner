@@ -1,0 +1,9 @@
+id: FTR-5194c2f1
+title: Unified Replace for text items and writable Grid cells
+title-ja: テキスト項目と書き込み可能なグリッドセルの統合置換
+status: implemented
+description: Replace and Replace All work across outline text and writable Grid query-result cells through one Find/Replace UI and session. Computed/read-only Grid cells stay searchable but are never a mutation target; Replace All deduplicates a Grid placed more than once on a page, and a substitution with no deterministic typed value for a non-text column is left unmutated with feedback surfaced in the panel.
+tests:
+- client/e2e/new/rpl-unified-text-grid-replace-5194c2f1.spec.ts
+- client/src/lib/search/unifiedSearch.test.ts
+- client/src/services/yjstable/gridSelectionCommands.test.ts

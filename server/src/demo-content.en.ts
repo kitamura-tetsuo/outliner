@@ -287,6 +287,8 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text:
                             "Unified Find: open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. "
+                            + "Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own "
+                            + "write path, while a computed or read-only cell stays searchable but is never overwritten. "
                             + "Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous "
                             + "range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query "
                             + "result, including rows outside the viewport. Sorting keeps selected records attached to their ids.",

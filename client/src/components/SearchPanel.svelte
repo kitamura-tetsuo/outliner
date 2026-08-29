@@ -17,9 +17,13 @@ const logger = getLogger("SearchPanel");
         type SearchOptions,
     } from "../lib/search";
     import {
+        applyGridReplaceToMatches,
         gridSearchMatches,
         clearGridSearchHighlights,
         navigateGridSearchMatch,
+        replaceGridMatch,
+        replaceGridMatches,
+        type GridCellSearchMatch,
         type UnifiedSearchMatch,
     } from "../lib/search/unifiedSearch";
     import { iterateItems, iterateItemsDeep } from "../utils/itemTraversal";
@@ -44,6 +48,18 @@ const logger = getLogger("SearchPanel");
 
     let matches: UnifiedSearchMatch[] = $state([]);
     let activeMatchIndex = $state(-1);
+    /**
+     * A Grid hit is replaceable per `m.replaceable` (writable vs computed/
+     * read-only). A text hit is replaceable unless it is the protected page
+     * title (`skipRoot`, i.e. `itemId === pageId`) and `includePageTitles`
+     * is off -- the same guard `replaceOptions()`/`replacementRoots()` apply
+     * to an actual Replace, so the count must not overstate what a click on
+     * Replace/Replace All can actually change.
+     */
+    let replaceableCount = $derived(matches.filter((m) => {
+        if (m.kind === "grid-cell") return m.replaceable;
+        return includePageTitles || m.itemId !== m.pageId;
+    }).length);
 
     let searchQuery = $state("");
     let replaceText = $state("");
@@ -62,6 +78,10 @@ const logger = getLogger("SearchPanel");
     let matchCount = $state(0);
     let inputEl: HTMLInputElement | undefined = $state();
     let showReplaceAllConfirm = $state(false);
+    // Feedback for a Replace/Replace All that skipped a Grid hit: a
+    // read-only/computed cell, or a substitution with no deterministic typed
+    // value for that column (FTR-5194). Cleared on the next search/replace.
+    let replaceStatus: string | undefined = $state();
     // Page titles are the depth-0 item of a page tree. Rewriting one renames the
     // page, changing its URL and dangling every incoming [Page Title] link, so it
     // is opt-in and always confirmed.
@@ -102,6 +122,7 @@ const logger = getLogger("SearchPanel");
     }
 
     function handleSearch() {
+        replaceStatus = undefined;
         const options: SearchOptions = {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
@@ -230,11 +251,63 @@ const logger = getLogger("SearchPanel");
         if (routedProject) goto(resolvePath(projectPagePath(routedProject, newTitle)), options);
     }
 
+    /** The single page a Grid replace runs against; Grid participates in Page and Selection scope only, matching Find (FTR-5193). */
+    function gridPageScope(): string | undefined {
+        if (searchScope === "project" || !pageItem) return undefined;
+        return pageIdentity(pageItem);
+    }
+
+    function summarizeGridReplaceStatus(
+        outcome: { appliedCells: number; skippedReadOnly: number; skippedInvalid: number },
+    ): string | undefined {
+        const skipped = outcome.skippedReadOnly + outcome.skippedInvalid;
+        if (skipped === 0) return undefined;
+        const parts: string[] = [];
+        if (outcome.skippedReadOnly) parts.push(`${outcome.skippedReadOnly} read-only`);
+        if (outcome.skippedInvalid) parts.push(`${outcome.skippedInvalid} not convertible for their column`);
+        return `${outcome.appliedCells} Grid cell${outcome.appliedCells === 1 ? "" : "s"} replaced; `
+            + `${skipped} left unchanged (${parts.join(", ")}).`;
+    }
+
+    /**
+     * Replaces one located Grid hit, then lands on whatever now occupies its
+     * slot in the refreshed unified session -- the next valid match, since
+     * the replaced hit is gone (FTR-5194).
+     *
+     * The Grid's own query result refreshes from a debounced PGlite
+     * re-query, so a `handleSearch()` called synchronously right after this
+     * write would still re-read the pre-replace value and see the same hit.
+     * `applyGridReplaceToMatches` patches the held `matches` list directly
+     * from the write's own outcome instead of re-deriving it from that
+     * not-yet-refreshed query result.
+     */
+    function replaceCurrentGridMatch(match: GridCellSearchMatch, index: number) {
+        const outcome = replaceGridMatch(match, searchQuery, replaceText, replaceOptions());
+        if (!outcome) return;
+        if (!outcome.applied) {
+            replaceStatus = outcome.reason === "invalid-value"
+                ? "That result isn't a valid value for this column, so the cell was left unchanged."
+                : "That cell is read-only and can't be replaced.";
+            return;
+        }
+        replaceStatus = undefined;
+        matches = applyGridReplaceToMatches(matches, [outcome], match.pageId, match.pageTitle, searchQuery, replaceOptions());
+        matchCount = matches.length;
+        activeMatchIndex = matches.length ? Math.min(index, matches.length - 1) : -1;
+        if (activeMatchIndex >= 0) jumpTo(matches[activeMatchIndex]);
+    }
+
     function handleReplace() {
+        if (!searchQuery) return;
+
+        const current = activeMatchIndex >= 0 ? matches[activeMatchIndex] : undefined;
+        if (current?.kind === "grid-cell") {
+            replaceCurrentGridMatch(current, activeMatchIndex);
+            return;
+        }
+
         const options = replaceOptions();
-        const pages = replacementRoots();
-        const roots = pages;
-        if (!roots.length || !searchQuery) return;
+        const roots = replacementRoots();
 
         // Find the item the replacement would hit first, so a page rename can be
         // confirmed before anything is modified.
@@ -254,26 +327,52 @@ const logger = getLogger("SearchPanel");
             }
             return;
         }
+
+        // No text target (or Selection scope, which has none): fall back to the
+        // earliest replaceable Grid hit in the unified session.
+        const gridMatch = matches.find((m): m is GridCellSearchMatch => m.kind === "grid-cell" && m.replaceable);
+        if (gridMatch) replaceCurrentGridMatch(gridMatch, matches.indexOf(gridMatch));
     }
 
     function handleReplaceAll() {
+        if (!searchQuery) return;
         showReplaceAllConfirm = true;
     }
 
     function confirmReplaceAll() {
         showReplaceAllConfirm = false;
         const options = replaceOptions();
-        const pages = replacementRoots();
-        const roots = pages;
-        if (!roots.length) return;
+        const roots = replacementRoots();
+        const gridPageId = gridPageScope();
 
         const run = () => {
             const previousTitle = textOf(pageItem);
             for (const p of roots) {
                 replaceAll(p, searchQuery, replaceText, options);
             }
+            const gridOutcome = gridPageId
+                ? replaceGridMatches(gridPageId, searchQuery, replaceText, options, searchScope === "selection")
+                : undefined;
+            // handleSearch() re-derives text hits correctly (Yjs item text is
+            // synchronous) but, like replaceCurrentGridMatch, would still see
+            // pre-replace Grid values from that Grid's own debounced query
+            // refresh -- patch the just-rewritten cells in afterwards instead
+            // of trusting handleSearch()'s Grid portion.
             handleSearch();
+            if (gridOutcome?.applied.length) {
+                matches = applyGridReplaceToMatches(
+                    matches,
+                    gridOutcome.applied,
+                    gridPageId!,
+                    textOf(pageItem),
+                    searchQuery,
+                    options,
+                );
+                matchCount = matches.length;
+                activeMatchIndex = matchCount ? Math.min(activeMatchIndex, matchCount - 1) : -1;
+            }
             followRenameIfNeeded(previousTitle);
+            if (gridOutcome) replaceStatus = summarizeGridReplaceStatus(gridOutcome);
         };
 
         const renamed = pagesRenamedByReplaceAll(roots, options);
@@ -371,17 +470,18 @@ const logger = getLogger("SearchPanel");
                 />
                 <button type="button"
                     onclick={handleReplace}
-                    disabled={searchScope === "selection"}
                     class="replace-btn"
                     data-testid="replace-button">Replace</button
                 >
                 <button type="button"
                     onclick={handleReplaceAll}
-                    disabled={searchScope === "selection"}
                     class="replace-all-btn"
                     data-testid="replace-all-button">Replace All</button
                 >
             </div>
+            {#if replaceStatus}
+                <p class="replace-status" data-testid="replace-status" role="status">{replaceStatus}</p>
+            {/if}
 
             <div class="search-options">
                 <label class="option-checkbox" for="regex-checkbox">
@@ -418,6 +518,11 @@ const logger = getLogger("SearchPanel");
 
             <div class="search-results" data-testid="search-results">
                 <p data-testid="search-results-hits" aria-live="polite">Hits: {matchCount}</p>
+                {#if replaceableCount < matchCount}
+                    <p class="search-replaceable-hint" data-testid="search-replaceable-hint" aria-live="polite">
+                        {replaceableCount} replaceable
+                    </p>
+                {/if}
                 {#if activeMatchIndex >= 0}
                     <p class="search-match-position" aria-live="polite">
                         Match {activeMatchIndex + 1} of {matchCount}
@@ -449,6 +554,9 @@ const logger = getLogger("SearchPanel");
                                     data-testid="search-result-snippet"
                                     >{m.kind === "grid-cell" ? `${m.columnId}: ${m.text}` : m.text}</span
                                 >
+                                {#if m.kind === "grid-cell" && !m.replaceable}
+                                    <span class="result-readonly" data-testid="search-result-readonly">read-only</span>
+                                {/if}
                             </button>
                         </li>
                     {/each}
@@ -599,6 +707,27 @@ const logger = getLogger("SearchPanel");
         display: flex;
         gap: 16px;
         margin-top: 12px;
+    }
+
+    .replace-status {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .search-replaceable-hint {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .result-readonly {
+        margin-left: 6px;
+        font-size: 11px;
+        color: #92400e;
+        background: #fef3c7;
+        border-radius: 3px;
+        padding: 0 4px;
     }
 
     .option-checkbox {
