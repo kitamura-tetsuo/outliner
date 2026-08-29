@@ -143,7 +143,7 @@ function onKeydown(e: KeyboardEvent) {
 >
     <div
         class="dialog"
-        role="dialog"
+        role="dialog" tabindex="-1"
         aria-modal="true"
         aria-label="New calendar entry"
         data-testid="calendar-create-dialog"
