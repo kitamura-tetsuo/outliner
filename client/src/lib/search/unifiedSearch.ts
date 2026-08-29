@@ -100,7 +100,6 @@ export function gridValueText(value: unknown): string {
 
 function selectionContains(selection: GridSelectionSnapshot | undefined, rowId: string, columnId: string): boolean {
     if (!selection) return false;
-    const cell = { rowId, columnId };
     const included = selection.regions.some(region => {
         if (region.kind === "all") return true;
         if (region.kind === "rows") return region.rowIds.includes(rowId);

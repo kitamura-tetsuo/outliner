@@ -130,17 +130,17 @@ const logger = getLogger("SearchPanel");
                     }
                 }
                 newMatches.push(...gridSearchMatches(p.id, searchQuery, options, searchScope === "selection"));
-                const visualOrder = new Map<string, number>();
+                const visualOrder: Record<string, number> = {};
                 let rank = 0;
                 for (const item of iterateItems([p])) {
-                    visualOrder.set(item.id, rank);
-                    visualOrder.set(item.key, rank++);
+                    visualOrder[item.id] = rank;
+                    visualOrder[item.key] = rank++;
                 }
                 newMatches.sort((a, b) => {
                     const aId = a.kind === "grid-cell" ? a.placementId : a.itemId;
                     const bId = b.kind === "grid-cell" ? b.placementId : b.itemId;
-                    return (visualOrder.get(aId) ?? Number.MAX_SAFE_INTEGER)
-                        - (visualOrder.get(bId) ?? Number.MAX_SAFE_INTEGER);
+                    return (visualOrder[aId] ?? Number.MAX_SAFE_INTEGER)
+                        - (visualOrder[bId] ?? Number.MAX_SAFE_INTEGER);
                 });
             }
         }
