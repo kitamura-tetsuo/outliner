@@ -132,7 +132,6 @@ docs/.vitepress/dist/
 /demo_*.png
 /error.png
 /observe_*.mjs
-/fix_*.py
 /fix_*.cjs
 /fix_*.js
 /get-*.cjs
@@ -150,7 +149,6 @@ docs/.vitepress/dist/
 /sed_*.cjs
 /sed_*.js
 /update*.js
-/update*.py
 /update*.cjs
 /revert_*.js
 /revert_*.cjs
@@ -171,8 +169,7 @@ docs/.vitepress/dist/
 /COMMIT_EDITMSG
 /PARENT_ISSUE_COMPLETION.md
 /test.cjs
-/verify_*.py
-/add_coverage_*.py
+/*.py
 /cleanup-coverage_*.js
 client/*_output.txt
 client/svelte-check.txt

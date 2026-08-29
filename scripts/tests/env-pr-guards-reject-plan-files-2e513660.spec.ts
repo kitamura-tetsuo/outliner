@@ -28,6 +28,14 @@ const planFiles = [
     "plans_extra.md",
 ];
 
+/** Root-level python files the debris guard rejects. */
+const pythonFiles = [
+    "verify.py",
+    "verify2.py",
+    "some_other_scratch.py",
+    "test.py",
+];
+
 /** Runs the guard script against `cwd`. Without `base`, only the debris guard runs. */
 const runGuards = (cwd: string, base = "") => {
     try {
@@ -63,7 +71,7 @@ describe("PR guards reject agent plan files", () => {
         fs.rmSync(workspace, { recursive: true, force: true });
     });
 
-    test.each(planFiles)("%s is rejected as debris", relative => {
+    test.each([...planFiles, ...pythonFiles])("%s is rejected as debris", relative => {
         track(relative);
 
         const result = runGuards(workspace);
@@ -77,7 +85,8 @@ describe("PR guards reject agent plan files", () => {
         "docs/plan.md",
         "client/src/lib/planner.md",
         "explanation.md",
-    ])("%s is kept: only root-level plan files are debris", relative => {
+        "scripts/legitimate.py",
+    ])("%s is kept: only root-level files are debris", relative => {
         track(relative);
 
         const result = runGuards(workspace);
@@ -131,7 +140,7 @@ describe("PR guards reject agent plan files", () => {
         expect(result.output).toContain("[revert] PR head has UNDONE base commit");
     });
 
-    test.each(planFiles)(".gitignore keeps %s out of the working tree", relative => {
+    test.each([...planFiles, ...pythonFiles])(".gitignore keeps %s out of the working tree", relative => {
         // check-ignore answers for paths that do not exist, so nothing is written here.
         const ignored = execFileSync("git", ["check-ignore", "--no-index", relative], {
             cwd: repoRoot,
@@ -141,7 +150,7 @@ describe("PR guards reject agent plan files", () => {
         expect(ignored).toBe(relative);
     });
 
-    test.each(["docs/plan.md", "README.md", "explanation.md"])(
+    test.each(["docs/plan.md", "README.md", "explanation.md", "scripts/legitimate.py"])(
         ".gitignore leaves %s tracked",
         relative => {
             expect(() => execFileSync("git", ["check-ignore", "--no-index", "-q", relative], { cwd: repoRoot }))
