@@ -58,6 +58,8 @@ interface Props {
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
     session: RelationResolver;
+    /** Whether deleting a row requires confirmation (default false). */
+    confirmRowDelete?: boolean;
 }
 
 let {
@@ -75,6 +77,7 @@ let {
     rowCreationMode = "query",
     loading = false,
     session,
+    confirmRowDelete = false,
 }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
@@ -163,8 +166,12 @@ function addRow() {
 }
 
 function deleteRow(recordId: string) {
-    rowToDelete = recordId;
-    isConfirmDialogOpen = true;
+    if (confirmRowDelete) {
+        rowToDelete = recordId;
+        isConfirmDialogOpen = true;
+    } else {
+        deleteRecord(handles, recordId);
+    }
 }
 
 function handleConfirmDelete() {

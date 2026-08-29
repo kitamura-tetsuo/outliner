@@ -34,6 +34,8 @@ export interface GridRegistryEntry {
     sourceTableId: string;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
+    /** Whether deleting a row requires confirmation (default false). */
+    confirmRowDelete?: boolean;
 }
 
 /** Structural handles for one Grid definition. */
@@ -74,6 +76,7 @@ export function listGrids(projectDoc: Y.Doc): GridRegistryEntry[] {
             name: String(entry.get("name") ?? ""),
             sourceTableId: String(entry.get("sourceTableId") ?? ""),
             showAddRowButton: entry.get("showAddRowButton") !== false,
+            confirmRowDelete: entry.get("confirmRowDelete") === true,
         });
     });
     return entries;
@@ -98,6 +101,8 @@ export interface CreateGridOptions {
     gridId?: string;
     /** Defaults to true. Setting to false explicitly disables the Add row button. */
     showAddRowButton?: boolean;
+    /** Defaults to false. Setting to true requires confirmation to delete a row. */
+    confirmRowDelete?: boolean;
 }
 
 /**
@@ -121,6 +126,9 @@ export function createGrid(
         }
         if (options.showAddRowButton === false) {
             entry.set("showAddRowButton", false);
+        }
+        if (options.confirmRowDelete === true) {
+            entry.set("confirmRowDelete", true);
         }
         const components = new Y.Map<Y.Map<unknown>>();
         for (const [column, cfg] of Object.entries(options.components ?? {})) {
@@ -245,6 +253,19 @@ export function setGridShowAddRowButton(handles: GridHandles, show: boolean): vo
     });
 }
 
+export function getGridConfirmRowDelete(handles: GridHandles): boolean {
+    return handles.entry.get("confirmRowDelete") === true;
+}
+
+export function setGridConfirmRowDelete(handles: GridHandles, confirm: boolean): void {
+    const current = getGridConfirmRowDelete(handles);
+    if (confirm === current) return;
+    handles.projectDoc.transact(() => {
+        if (confirm) handles.entry.set("confirmRowDelete", true);
+        else handles.entry.delete("confirmRowDelete");
+    });
+}
+
 /** Snapshot the per-column UI settings into a plain record for the UI mirror. */
 export function readGridComponents(handles: GridHandles): {
     types: Record<string, string | undefined>;
@@ -294,6 +315,7 @@ interface GridEntrySnapshot {
     columnOrder: string[];
     components: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
     showAddRowButton?: boolean;
+    confirmRowDelete?: boolean;
 }
 
 /** Read a Grid registry entry into a plain snapshot — shared by `duplicateGrid` and delete/undo. */
@@ -327,6 +349,7 @@ function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
         columnOrder,
         components,
         showAddRowButton: entry.get("showAddRowButton") !== false,
+        confirmRowDelete: entry.get("confirmRowDelete") === true,
     };
 }
 
@@ -351,6 +374,7 @@ export function duplicateGrid(
         columnOrder: snapshot.columnOrder,
         components: snapshot.components,
         showAddRowButton: snapshot.showAddRowButton,
+        confirmRowDelete: snapshot.confirmRowDelete,
     });
 }
 
