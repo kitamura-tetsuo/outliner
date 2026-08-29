@@ -22,6 +22,7 @@ import {
 import type { GridHandles } from "../../services/yjstable/gridDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
+import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import { cellComponentFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { untrack } from "svelte";
@@ -85,6 +86,21 @@ let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
 const selection = new GridSelection();
 let selectionRevision = $state(0);
+
+/**
+ * There is one active cell editor at a time (never multiple synthesized
+ * carets). `undefined` means Grid is in navigation mode: arrow keys move the
+ * active cell instead of a foreign editor's cursor/selection.
+ */
+let editingCell: GridCellAddress | undefined = $state();
+/**
+ * Initial text for the cell named by `editingCell`, set once when a
+ * printable keystroke opens the editor. Stays referentially stable for the
+ * lifetime of that edit session (cleared only when the session ends), so
+ * TextCell/NumberCell's `value={editSeed ?? ...}` never re-evaluates to a
+ * different value mid-edit and clobbers what the user has typed since.
+ */
+let pendingEditSeed: string | undefined = $state();
 
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
@@ -166,6 +182,10 @@ function selectCell(event: MouseEvent, cell: GridCellAddress): void {
     if (event.shiftKey) selection.extend(cell, rowIdsOf(result.rows), displayColumns);
     else selection.select(cell);
     selectionRevision++;
+    // A mouse click always picks its own target; never let a stale keyboard
+    // edit session steal focus back onto a different cell afterwards.
+    editingCell = undefined;
+    pendingEditSeed = undefined;
 }
 
 function cellSelected(cell: GridCellAddress): boolean {
@@ -176,6 +196,10 @@ function cellSelected(cell: GridCellAddress): boolean {
 function cellActive(cell: GridCellAddress): boolean {
     void selectionRevision;
     return selection.isActive(cell);
+}
+
+function cellEditing(cell: GridCellAddress): boolean {
+    return editingCell !== undefined && editingCell.rowId === cell.rowId && editingCell.columnId === cell.columnId;
 }
 
 $effect.pre(() => {
@@ -192,31 +216,167 @@ function commitCell(row: Record<string, unknown>, column: string, value: TableRe
     if (source) void applyUnionedRowEdit(session, source.sourceKind, source.sourceId, column, value);
 }
 
-function restoreCellFocus(rowIdent: string, column: string, attempts = 0) {
+/** Focuses `cell`'s control right now if its DOM already exists. Returns whether it did. */
+function tryFocusLogicalCell(cell: GridCellAddress): boolean {
+    if (!gridContainer) return false;
+    const td = gridContainer.querySelector<HTMLElement>(
+        `td[data-row-id="${CSS.escape(cell.rowId)}"][data-col="${CSS.escape(cell.columnId)}"]`,
+    );
+    if (!td) return false;
+
+    // Scrolling is the cosmetic half; focus is the point. Guarded so an
+    // environment without `scrollIntoView` (jsdom) loses the scroll rather
+    // than the whole navigation.
+    td.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const focusable = td.querySelector<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>(
+        "button, input, select",
+    );
+    // A disabled control (read-only select/date/checkbox) cannot take focus;
+    // the logical active cell is still updated, DOM focus just stays put.
+    if (focusable && !focusable.disabled) focusable.focus();
+    return true;
+}
+
+/**
+ * Focus the interactive control for a logical cell, addressed only by its
+ * durable row/column identity (never a DOM row index). Plain keyboard
+ * navigation focuses synchronously -- the target cell's DOM is untouched, so
+ * any deferral would risk losing to the next keystroke in a fast sequence.
+ *
+ * `deferred` opts a caller into waiting a frame first, for the cases that
+ * need it: exiting edit mode, whether back onto the very cell that was just
+ * edited (Escape, or Enter/Tab clamped at the grid edge -- its `<input>` is
+ * mid-swap back to its `<button>` this same tick) or onto a different cell
+ * (Enter/Tab committing and moving). Both need this, for different reasons:
+ * a same-tick query would still find the outgoing `<input>`, and -- subtler
+ * -- focusing a *different* button synchronously mid-keydown leaves it
+ * focused when the same Enter/Space keystroke's `keyup` reaches the browser,
+ * whose default action synthesizes a `click` on whatever button has focus,
+ * silently reopening that cell for editing. `requestAnimationFrame` outlives
+ * both hazards, matching the original #5181 fix. A query refresh (Yjs write
+ * -> PGlite -> debounced re-query) can replace the underlying `<tr>`/`<td>`
+ * on a slower, real async timeline regardless, so this also retries across a
+ * few animation frames when the cell still isn't there.
+ */
+function focusLogicalCell(cell: GridCellAddress, attempts = 0, deferred = false) {
+    if (deferred) {
+        requestAnimationFrame(() => focusLogicalCell(cell, attempts));
+        return;
+    }
+    if (tryFocusLogicalCell(cell)) return;
     if (attempts > 10 || !gridContainer) return;
 
-    requestAnimationFrame(() => {
-        if (!gridContainer) return;
+    requestAnimationFrame(() => focusLogicalCell(cell, attempts + 1));
+}
 
-        const tr = gridContainer.querySelector(`tr[data-record-id="${CSS.escape(rowIdent)}"]`);
-        if (!tr) {
-            restoreCellFocus(rowIdent, column, attempts + 1);
+/** Move the logical active cell and focus it; `extend` grows the selection from the anchor instead of replacing it. */
+function moveActive(
+    origin: GridCellAddress,
+    direction: GridNavDirection,
+    extend: boolean,
+    wrap: boolean,
+    deferred = false,
+) {
+    const rows = rowIdsOf(result.rows);
+    const target = moveActiveCell(origin, direction, rows, displayColumns, { wrap }) ?? origin;
+    if (extend) selection.extend(target, rows, displayColumns);
+    else selection.select(target);
+    selectionRevision++;
+    editingCell = undefined;
+    pendingEditSeed = undefined;
+    focusLogicalCell(target, 0, deferred);
+}
+
+/** Called by a cell editor's keyboard commit (Enter/Tab) or cancel (Escape). */
+function exitCellEdit(cell: GridCellAddress, direction?: GridNavDirection) {
+    editingCell = undefined;
+    pendingEditSeed = undefined;
+    if (!direction) {
+        selection.select(cell);
+        selectionRevision++;
+        focusLogicalCell(cell, 0, true);
+        return;
+    }
+    // Tab/Shift+Tab wrap to the adjacent row at the edge; Enter/Shift+Enter clamp.
+    const wrap = direction === "left" || direction === "right";
+    moveActive(cell, direction, false, wrap, true);
+}
+
+/**
+ * Grid-level keyboard navigation, delegated on the container so it applies
+ * uniformly to every cell without per-component wiring. Stands down whenever
+ * focus is inside a text/number cell's own input (that component owns
+ * Enter/Tab/Escape itself) or an IME composition is in progress, and never
+ * intercepts arrow keys while a native select/date/checkbox control has
+ * focus -- Outliner's documented exception keeping those keys native.
+ */
+function handleGridKeyDown(event: KeyboardEvent) {
+    if (event.isComposing) return;
+    const target = event.target as HTMLElement;
+    if (target instanceof HTMLInputElement && target.classList.contains("cell-input")) return;
+
+    const td = target.closest<HTMLElement>("td[data-row-id]");
+    if (!td) return;
+    const rowId = td.dataset.rowId;
+    const columnId = td.dataset.col;
+    if (!rowId || !columnId) return;
+    const cell: GridCellAddress = { rowId, columnId };
+
+    const isForeignEditor = target instanceof HTMLInputElement || target instanceof HTMLSelectElement;
+
+    const arrowDirection: Partial<Record<string, GridNavDirection>> = {
+        ArrowUp: "up",
+        ArrowDown: "down",
+        ArrowLeft: "left",
+        ArrowRight: "right",
+    };
+    const direction = arrowDirection[event.key];
+    if (direction) {
+        // Native select/date/checkbox controls own arrow keys while focused
+        // (e.g. cycling a select's options); Grid does not intercept them.
+        if (isForeignEditor) return;
+        event.preventDefault();
+        moveActive(cell, direction, event.shiftKey, false);
+        return;
+    }
+
+    if (event.key === "Enter") {
+        event.preventDefault();
+        if (event.shiftKey) {
+            moveActive(cell, "up", false, false);
             return;
         }
-
-        const td = tr.querySelector(`td[data-col="${CSS.escape(column)}"]`);
-        if (!td) {
-            restoreCellFocus(rowIdent, column, attempts + 1);
+        if (target.tagName === "BUTTON") {
+            // Reuses the button's own editable-gated click-to-edit handler.
+            target.click();
             return;
         }
+        // select/date/checkbox commit on `change` already; Enter just moves down.
+        moveActive(cell, "down", false, false);
+        return;
+    }
 
-        const focusable = td.querySelector('button, input, select') as HTMLElement;
-        if (focusable) {
-            focusable.focus();
-        } else {
-            restoreCellFocus(rowIdent, column, attempts + 1);
+    if (event.key === "Tab") {
+        event.preventDefault();
+        moveActive(cell, event.shiftKey ? "left" : "right", false, true);
+        return;
+    }
+
+    if (event.key === "F2") {
+        if (target.tagName === "BUTTON") {
+            event.preventDefault();
+            target.click();
         }
-    });
+        return;
+    }
+
+    if (target.tagName === "BUTTON" && isPrintableKey(event)) {
+        event.preventDefault();
+        selection.select(cell);
+        selectionRevision++;
+        editingCell = cell;
+        pendingEditSeed = event.key;
+    }
 }
 
 function newRecordDefaults(): Record<string, TableRecordValue> {
@@ -275,12 +435,13 @@ function handleCancelDelete() {
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
     {:else if result.columns.length > 0}
-        <table>
+        <table role="grid" onkeydown={handleGridKeyDown}>
             <thead>
                 <tr>
                     {#each displayColumns as column, index (column)}
                         <th
                             scope="col"
+                            role="columnheader"
                             tabindex="0"
                             data-col={column}
                             title={columnLabels[column] ? column : undefined}
@@ -381,6 +542,7 @@ function handleCancelDelete() {
                             {@const schemaColumn = columnByName.get(column)}
                             {@const CellComponent = cellComponentFor(componentTypes[column], schemaColumn)}
                             <td
+                                role="gridcell"
                                 data-record-id={recordId}
                                 data-row-id={logicalRowId}
                                 data-col={column}
@@ -398,12 +560,26 @@ function handleCancelDelete() {
                                     && editability.editableColumns.has(column)}
                                     options={schemaColumn?.checkOptions}
                                     ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
+                                    editSeed={logicalCell !== undefined && cellEditing(logicalCell) ? pendingEditSeed : undefined}
+                                    bind:editing={
+                                        () => logicalCell !== undefined && cellEditing(logicalCell),
+                                        (editing) => {
+                                            if (!logicalCell) return;
+                                            if (editing) {
+                                                selection.select(logicalCell);
+                                                selectionRevision++;
+                                                editingCell = logicalCell;
+                                            } else if (cellEditing(logicalCell)) {
+                                                editingCell = undefined;
+                                                pendingEditSeed = undefined;
+                                            }
+                                        }
+                                    }
                                     onCommit={(value) => {
                                         if (recordId !== undefined || source !== undefined) commitCell(row, column, value);
                                     }}
-                                    onRequestFocus={() => {
-                                        const rowIdent = recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined);
-                                        if (rowIdent) restoreCellFocus(rowIdent, column);
+                                    onRequestFocus={(direction) => {
+                                        if (logicalCell) exitCellEdit(logicalCell, direction);
                                     }}
                                 />
                             </td>
