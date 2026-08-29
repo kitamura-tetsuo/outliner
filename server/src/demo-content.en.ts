@@ -68,6 +68,8 @@ export function demoContentEn(): DemoLocaleContent {
                     "Every project read uses the signed-in user's existing project access, and large structural reads are bounded.",
                     "MCP can discover SQL relations, inspect schemas, and run bounded read-only SELECT queries.",
                     "The read-only trace_grid diagnostic reports bounded Grid rows, stable row identities, source schema revisions, SQL ordering, and inferred presentation transforms.",
+                    "Before changing data, MCP clients can dry-run a proposed Table schema or Grid SELECT with validate_table_schema and validate_grid_query; the isolated validation reports migration warnings, dependencies, bounded samples, and structured errors without changing this project.",
+                    "With approved write access, update_grid_query validates the exact SELECT again, checks the Grid revision, supports a non-mutating dry run and idempotent retries, then returns ordered sample rows so the repair can be verified immediately.",
                     "Structured relation writes mutate Yjs—not disposable PGlite—and Grid or Calendar SELECT state can be updated safely. In a Grid, click a cell or Shift-click another cell to highlight a logical range that follows its records when results reorder.",
                     "A Grid is also fully keyboard-operable: Arrow keys move the active cell (Shift+Arrow extends the range), Enter/F2 or typing a character starts editing, and Enter/Tab commit and move on to the next cell.",
                 ],

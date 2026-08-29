@@ -1,0 +1,15 @@
+id: FTR-5213cafe
+title: MCP diagnostic-to-repair coverage and operator documentation
+title-ja: MCP診断から修復までのテストと運用ドキュメント
+status: implemented
+description: The complete remote MCP diagnostic-to-repair workflow is protected at the HTTP protocol boundary and documented for operators and users, including authorization scopes, bounded reads, validation, dry-run, optimistic concurrency, idempotent retries, audit privacy, structured errors, and a reproducible production connector smoke test.
+tests:
+- server/tests/mcp-diagnostic-repair-flow.test.ts
+- server/tests/mcp-http-e2e.test.ts
+- server/tests/mcp-mutation-contract.test.ts
+- server/tests/mcp-relation-service.test.ts
+- server/tests/oauth/oauth-flow.test.ts
+documentation:
+- docs/chatgpt-mcp-integration.md
+- docs/user-manual/index.md
+- docs/ja/user-manual/index.md
