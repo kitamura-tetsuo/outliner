@@ -121,6 +121,13 @@ describe("MCP mutation safety contract", () => {
                 idempotentHint: true,
             });
         }
+        for (const name of ["update_table_schema", "update_table_records"]) {
+            expect(tools.find(t => t.name === name)?.annotations).to.include({
+                readOnlyHint: false,
+                destructiveHint: true,
+                idempotentHint: true,
+            });
+        }
     });
 
     it("rejects a write tool call from a read-only-scoped token with a structured forbidden error", async () => {
@@ -358,5 +365,84 @@ describe("MCP mutation safety contract", () => {
         });
         expect(bodyOf(res).result.isError).to.equal(true);
         expect(payloadOf(res).code).to.equal("validation_failed");
+    });
+
+    it("rejects update_table_schema and update_table_records from a read-only-scoped token", async () => {
+        const { readService, relationService } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read");
+        for (
+            const call_ of [
+                () =>
+                    call(app, "update_table_schema", {
+                        projectId: "project-1",
+                        tableId: "table-1",
+                        schemaSql: "CREATE TABLE tasks (id TEXT PRIMARY KEY)",
+                        expectedRevision: "any",
+                    }),
+                () =>
+                    call(app, "update_table_records", {
+                        projectId: "project-1",
+                        tableId: "table-1",
+                        expectedRevision: "any",
+                        changes: [{ recordId: "r1", values: { title: "x" } }],
+                    }),
+            ]
+        ) {
+            const res = await call_();
+            expect(bodyOf(res).result.isError).to.equal(true);
+            expect(payloadOf(res).code).to.equal("forbidden");
+        }
+    });
+
+    it("audits update_table_schema and update_table_records under a table:<id> entity", async () => {
+        if (fs.existsSync(mcpLogPath)) fs.truncateSync(mcpLogPath, 0);
+        const { readService, relationService, table } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read outliner.write");
+
+        const before = payloadOf(await call(app, "get_table", { projectId: "project-1", tableId: "table-1" }));
+        const schemaRes = await call(app, "update_table_schema", {
+            projectId: "project-1",
+            tableId: "table-1",
+            schemaSql: 'CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN, "order" INTEGER)',
+            expectedRevision: before.revision,
+            operationId: "table-schema-op-1",
+        });
+        const schemaPayload = payloadOf(schemaRes);
+        expect(schemaPayload.applied).to.equal(true);
+        expect(table.getText("schema").toString()).to.include('"order" INTEGER');
+
+        const recordsRes = await call(app, "update_table_records", {
+            projectId: "project-1",
+            tableId: "table-1",
+            expectedRevision: schemaPayload.revision,
+            changes: [{ recordId: "r1", values: { title: "Updated" } }],
+            operationId: "table-records-op-1",
+        });
+        const recordsPayload = payloadOf(recordsRes);
+        expect(recordsPayload.applied).to.equal(true);
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("title")).to.equal("Updated");
+
+        mcpLogger.flush?.();
+        let audits: Record<string, unknown>[] = [];
+        for (let i = 0; i < 50 && audits.length < 2; i++) {
+            if (fs.existsSync(mcpLogPath)) {
+                const lines = fs.readFileSync(mcpLogPath, "utf-8").split("\n").filter(Boolean);
+                audits = lines.map(line => JSON.parse(line)).filter(entry => entry.event === "mcp_audit");
+            }
+            if (audits.length < 2) await new Promise(r => setTimeout(r, 100));
+        }
+        expect(audits).to.have.lengthOf(2);
+        expect(audits[0]).to.include({
+            tool: "update_table_schema",
+            entity: "table:table-1",
+            operationId: "table-schema-op-1",
+            applied: true,
+        });
+        expect(audits[1]).to.include({
+            tool: "update_table_records",
+            entity: "table:table-1",
+            operationId: "table-records-op-1",
+            applied: true,
+        });
     });
 });

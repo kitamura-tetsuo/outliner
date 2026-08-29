@@ -459,6 +459,305 @@ describe("Outliner MCP relation service", function() {
         const denied = fixture(false).service.listRelations("uid", "project-1");
         await expectFailure(denied, "inaccessible");
     });
+
+    it("migrates a Table schema additively via update_table_schema with dry-run, retries, and revision checks", async () => {
+        const { service, table } = fixture();
+        const before = await service.getTable("uid", "project-1", "table-1");
+        const schemaSql = 'CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN, "order" INTEGER)';
+
+        const dryRun = await service.updateTableSchema("uid", "project-1", "table-1", schemaSql, {
+            expectedRevision: before.revision,
+            dryRun: true,
+        });
+        expect(dryRun).to.include({ applied: false, destructive: false });
+        expect(dryRun.revision).to.equal(before.revision);
+        expect(table.getText("schema").toString()).to.not.include("order");
+
+        await expectFailureCode(
+            service.updateTableSchema("uid", "project-1", "table-1", schemaSql, {
+                expectedRevision: "stale-revision-token",
+            }),
+            "stale_revision",
+        );
+
+        const applied = await service.updateTableSchema("uid", "project-1", "table-1", schemaSql, {
+            expectedRevision: before.revision,
+            operationId: "schema-op-1",
+        });
+        expect(applied.applied).to.equal(true);
+        expect(applied.destructive).to.equal(false);
+        expect(applied.revision).to.not.equal(before.revision);
+        expect(table.getText("schema").toString()).to.include('"order" INTEGER');
+
+        const replayed = await service.updateTableSchema("uid", "project-1", "table-1", schemaSql, {
+            expectedRevision: before.revision,
+            operationId: "schema-op-1",
+        });
+        expect(replayed.replayed).to.equal(true);
+        expect(replayed.revision).to.equal(applied.revision);
+    });
+
+    it("requires acknowledgeDestructive to apply a destructive schema migration; dry-run never needs it", async () => {
+        const { service, table } = fixture();
+        const before = await service.getTable("uid", "project-1", "table-1");
+        const destructiveSql = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT)";
+
+        const dryRun = await service.updateTableSchema("uid", "project-1", "table-1", destructiveSql, {
+            expectedRevision: before.revision,
+            dryRun: true,
+        });
+        expect(dryRun).to.include({ applied: false, destructive: true });
+        expect(dryRun.validation.migrationDiff.removedColumns).to.deep.equal(["done"]);
+
+        await expectFailureCode(
+            service.updateTableSchema("uid", "project-1", "table-1", destructiveSql, {
+                expectedRevision: before.revision,
+            }),
+            "destructive_confirmation_required",
+        );
+        expect(table.getText("schema").toString()).to.include("done BOOLEAN");
+
+        const applied = await service.updateTableSchema("uid", "project-1", "table-1", destructiveSql, {
+            expectedRevision: before.revision,
+            acknowledgeDestructive: true,
+        });
+        expect(applied).to.include({ applied: true, destructive: true });
+        expect(table.getText("schema").toString()).to.equal(destructiveSql);
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).has("done")).to.equal(false);
+    });
+
+    it("rechecks SQL-name availability against live state immediately before committing a schema migration", async () => {
+        const { service, project } = fixture();
+        const before = await service.getTable("uid", "project-1", "table-1");
+        const other = new Y.Map<unknown>();
+        other.set("name", "Other");
+        other.set("sqlName", "other_table");
+        project.ydoc.getMap("yjsTables").set("table-2", other);
+
+        // Simulates another Table being renamed to the same SQL name in the
+        // window between the initial validateTableSchema check (a separate
+        // connection, made before this call is reached) and the commit step:
+        // wrap validateTableSchema so the real check runs and passes first
+        // (the name is still free), then land the conflicting rename right
+        // after it returns, exactly where a concurrent request would.
+        const originalValidate = service.validateTableSchema.bind(service);
+        (service as unknown as { validateTableSchema: OutlinerRelationService["validateTableSchema"]; })
+            .validateTableSchema = (async (
+                ...args: Parameters<OutlinerRelationService["validateTableSchema"]>
+            ) => {
+                const result = await originalValidate(...args);
+                other.set("sqlName", "tasks_renamed");
+                return result;
+            }) as OutlinerRelationService["validateTableSchema"];
+
+        await expectFailure(
+            service.updateTableSchema(
+                "uid",
+                "project-1",
+                "table-1",
+                "CREATE TABLE tasks_renamed (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN)",
+                { expectedRevision: before.revision },
+            ),
+            "already used by another Table",
+        );
+    });
+
+    it("integrates an applied schema migration with a live client's own Y.UndoManager", async () => {
+        const { service, table } = fixture();
+        const before = await service.getTable("uid", "project-1", "table-1");
+        const undoManager = new Y.UndoManager([table.getText("schema"), table.getMap("data")], {
+            trackedOrigins: new Set([null]),
+        });
+        const destructiveSql = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT)";
+
+        await service.updateTableSchema("uid", "project-1", "table-1", destructiveSql, {
+            expectedRevision: before.revision,
+            acknowledgeDestructive: true,
+        });
+        expect(table.getText("schema").toString()).to.equal(destructiveSql);
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).has("done")).to.equal(false);
+        expect(undoManager.undoStack).to.have.length(1);
+
+        undoManager.undo();
+        expect(table.getText("schema").toString()).to.include("done BOOLEAN");
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+    });
+
+    it("updates Table records by stable ID atomically with quoted reserved columns and casting", async () => {
+        const { service, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(
+            0,
+            'CREATE TABLE tasks (id TEXT PRIMARY KEY, "order" INTEGER NOT NULL, '
+                + "state TEXT CHECK (state IN ('open', 'done')))",
+        );
+        table.getMap("data").clear();
+        for (const [id, order] of [["r1", 1], ["r2", 2]] as const) {
+            const row = new Y.Map<string | number | null>();
+            row.set("id", id);
+            row.set("order", order);
+            row.set("state", "open");
+            table.getMap("data").set(id, row);
+        }
+        const before = await service.getTable("uid", "project-1", "table-1");
+
+        // Order of the batch and of the underlying Y.Map never matters: each
+        // change is addressed by its own recordId, never by row position.
+        const result = await service.updateTableRecords("uid", "project-1", "table-1", [
+            { recordId: "r2", values: { order: 20 } },
+            { recordId: "r1", values: { order: 10, state: "done" } },
+        ], { expectedRevision: before.revision });
+        expect(result.applied).to.equal(true);
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("order")).to.equal(10);
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("state")).to.equal("done");
+        expect((table.getMap("data").get("r2") as Y.Map<unknown>).get("order")).to.equal(20);
+        expect(result.records.map((record: { recordId: string; }) => record.recordId).sort()).to.deep.equal([
+            "r1",
+            "r2",
+        ]);
+
+        await expectFailureCode(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { order: 30 } },
+            ], { expectedRevision: before.revision }),
+            "stale_revision",
+        );
+
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { bogus: 1 } },
+            ], { expectedRevision: result.revision }),
+            'Column "bogus"',
+        );
+
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { order: "not-a-number" } },
+            ], { expectedRevision: result.revision }),
+            "not a valid integer",
+        );
+
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { state: "archived" } },
+            ], { expectedRevision: result.revision }),
+            "violate",
+        );
+
+        // None of the rejected attempts left a partial write behind.
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("order")).to.equal(10);
+    });
+
+    it("rejects a batch that would introduce a new UNIQUE violation, without any partial write", async () => {
+        const { service, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, code TEXT UNIQUE)");
+        table.getMap("data").clear();
+        for (const [id, code] of [["r1", "a"], ["r2", "b"]] as const) {
+            const row = new Y.Map<string | null>();
+            row.set("id", id);
+            row.set("code", code);
+            table.getMap("data").set(id, row);
+        }
+        const before = await service.getTable("uid", "project-1", "table-1");
+
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { code: "b" } },
+            ], { expectedRevision: before.revision }),
+            "violate",
+        );
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("code")).to.equal("a");
+        expect((table.getMap("data").get("r2") as Y.Map<unknown>).get("code")).to.equal("b");
+    });
+
+    it("enforces batch size, payload, and record-identity limits for update_table_records", async () => {
+        const { service } = fixture();
+        const before = await service.getTable("uid", "project-1", "table-1");
+
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [], { expectedRevision: before.revision }),
+            "at least one",
+        );
+        const tooMany = Array.from({ length: 101 }, (_, index) => ({
+            recordId: `r${index}`,
+            values: { title: "x" },
+        }));
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", tooMany, { expectedRevision: before.revision }),
+            "batch limit",
+        );
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { title: "x".repeat(70 * 1024) } },
+            ], { expectedRevision: before.revision }),
+            "byte limit",
+        );
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { title: "a" } },
+                { recordId: "r1", values: { title: "b" } },
+            ], { expectedRevision: before.revision }),
+            "Duplicate recordId",
+        );
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "missing-record", values: { title: "x" } },
+            ], { expectedRevision: before.revision }),
+            "does not exist",
+        );
+        await expectFailure(
+            service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { id: "different-id" } },
+            ], { expectedRevision: before.revision }),
+            "cannot change its own id",
+        );
+    });
+
+    it("dry-runs and idempotently retries update_table_records", async () => {
+        const { service, table } = fixture();
+        const before = await service.getTable("uid", "project-1", "table-1");
+
+        const dryRun = await service.updateTableRecords("uid", "project-1", "table-1", [
+            { recordId: "r1", values: { title: "Should not persist" } },
+        ], { expectedRevision: before.revision, dryRun: true });
+        expect(dryRun.applied).to.equal(false);
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("title")).to.equal("First");
+
+        const args = [{ recordId: "r1", values: { title: "Persisted" } }];
+        const first = await service.updateTableRecords("uid", "project-1", "table-1", args, {
+            expectedRevision: before.revision,
+            operationId: "records-op-1",
+        });
+        const second = await service.updateTableRecords("uid", "project-1", "table-1", args, {
+            expectedRevision: before.revision,
+            operationId: "records-op-1",
+        });
+        expect(first.replayed).to.equal(false);
+        expect(second.replayed).to.equal(true);
+        expect({ ...second, replayed: undefined }).to.deep.equal({ ...first, replayed: undefined });
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("title")).to.equal("Persisted");
+    });
+
+    it("fails closed for update_table_schema and update_table_records on an inaccessible project", async () => {
+        const denied = fixture(false);
+        await expectFailure(
+            denied.service.updateTableSchema(
+                "uid",
+                "project-1",
+                "table-1",
+                "CREATE TABLE tasks (id TEXT PRIMARY KEY)",
+                { expectedRevision: "any" },
+            ),
+            "inaccessible",
+        );
+        await expectFailure(
+            denied.service.updateTableRecords("uid", "project-1", "table-1", [
+                { recordId: "r1", values: { title: "x" } },
+            ], { expectedRevision: "any" }),
+            "inaccessible",
+        );
+    });
 });
 
 async function expectFailure(promise: Promise<unknown>, message: string) {
@@ -468,5 +767,14 @@ async function expectFailure(promise: Promise<unknown>, message: string) {
     } catch (error) {
         expect(error).to.be.instanceOf(Error);
         expect((error as Error).message).to.include(message);
+    }
+}
+
+async function expectFailureCode(promise: Promise<unknown>, code: string) {
+    try {
+        await promise;
+        expect.fail("Expected operation to fail");
+    } catch (error) {
+        expect((error as { code?: string; }).code).to.equal(code);
     }
 }
