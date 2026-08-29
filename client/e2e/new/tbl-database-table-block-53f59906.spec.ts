@@ -1,20 +1,60 @@
 import "../utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
-/** @feature FTR-53f59906
- *  Title   : Yjs + PGlite database tables
- *  Source  : docs/client-features/tbl-yjs-pglite-database-tables-53f59906.yaml
- */
 import { expect, test } from "../fixtures/grid-render-trace";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 
+registerCoverageHooks();
+
 test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        test.setTimeout(120000);
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Database table demo item"]);
+    test.beforeEach(async ({ page }) => {
+        await TestHelpers.seedProjectAndNavigate(page);
+
+        const rootItem = page.getByTestId("item-container").first();
+        const rootTextArea = rootItem.locator("textarea.editor").first();
+
+        // Create initial text node to drop onto later if needed, mostly just setting focus
+        await rootTextArea.click();
+        await page.waitForTimeout(300);
     });
 
-    test("create a Tasks preset table and edit it through the grid", async ({ page }) => {
+    test("inserts a new database block and creates a table from preset", async ({ page }) => {
+        const rootItem = page.getByTestId("item-container").first();
+        const rootTextArea = rootItem.locator("textarea.editor").first();
+
+        await rootTextArea.click();
+        await rootTextArea.press("/");
+        await page.getByRole("menuitem", { name: "Table / Grid" }).click();
+
+        // The create panel appears
+        const createPanel = page.getByTestId("yjs-table-create-panel").first();
+        await expect(createPanel).toBeVisible({ timeout: 10000 });
+
+        // Select the "Tasks" preset
+        const presetSelect = page.getByTestId("yjs-table-preset-select").first();
+        await presetSelect.selectOption("tasks");
+
+        // The table name input should automatically populate with "Tasks"
+        const nameInput = page.getByTestId("yjs-table-name-input").first();
+        await expect(nameInput).toHaveValue("Tasks");
+
+        // Click create
+        await page.getByTestId("yjs-table-create").first().click();
+
+        // The block should now render the grid view
+        const view = page.getByTestId("yjs-table-view").first();
+        await expect(view).toBeVisible({ timeout: 10000 });
+
+        const grid = view.getByTestId("yjs-table-grid");
+
+        // Wait for PGlite to init and the table to sync
+        await expect(grid.locator("th", { hasText: "title" })).toBeVisible({ timeout: 30000 });
+        await expect(grid.locator("th", { hasText: "status" })).toBeVisible();
+
+        // The Tasks preset seeds 3 rows
+        await expect.poll(async () => grid.locator("tbody tr").count(), { timeout: 15000 }).toBe(3);
+    });
+
+    test("cell editing updates PGlite database and re-renders", async ({ page }) => {
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
         await page.locator(".outliner-item").first().click();
         await page.waitForTimeout(300);
@@ -30,40 +70,35 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
         await page.getByTestId("yjs-table-create").first().click();
 
-        // The view mounts and the grid renders the preset columns (PGlite
-        // loads lazily, so allow generous time for the first query).
+        // Wait for the block to render the grid
         const view = page.getByTestId("yjs-table-view").first();
         await expect(view).toBeVisible({ timeout: 15000 });
-        const grid = page.getByTestId("yjs-table-grid").first();
+        const grid = view.getByTestId("yjs-table-grid");
         await expect(grid.locator("th", { hasText: "title" })).toBeVisible({ timeout: 30000 });
-        await expect(grid.locator("th", { hasText: "status" })).toBeVisible();
 
-        // Add a row; select cells default to the first CHECK option ("open")
-        await page.getByTestId("yjs-table-add-row").first().click();
-        const row = grid.locator("tbody tr").first();
-        await expect(row).toBeVisible({ timeout: 10000 });
+        // Wait for rows to load (should be 3 from Tasks preset)
+        await expect.poll(async () => grid.locator("tbody tr").count(), { timeout: 15000 }).toBe(3);
 
-        // Let the add-row round trip (Yjs -> PGlite -> debounced re-query)
-        // settle before editing so the cell is not re-rendered mid-edit.
-        await page.waitForTimeout(3000);
-
-        // Edit the title cell (text cell: click to edit, Enter to commit)
-        const titleCell = row.locator('td[data-col="title"] .cell-value');
-        await expect(titleCell).toBeVisible({ timeout: 15000 });
+        // Edit the first row's title
+        const firstRow = grid.locator("tbody tr").first();
+        const titleCell = firstRow.locator("td").filter({ hasText: "Write unit tests" });
         await titleCell.click();
-        const titleInput = row.locator('td[data-col="title"] input.cell-input');
-        await expect(titleInput).toBeVisible({ timeout: 15000 });
-        await titleInput.fill("Write the report", { force: true });
-        await page.keyboard.press("Enter");
+        await titleCell.locator("input").fill("Write E2E tests");
+        await titleCell.locator("input").press("Enter");
 
-        // The edit goes Yjs -> PGlite -> debounced re-query -> grid
-        await expect(
-            grid.locator('td[data-col="title"] .cell-value', { hasText: "Write the report" }),
-        ).toBeVisible({ timeout: 15000 });
+        // Verify the value updated in the UI
+        await expect(firstRow.locator("td").filter({ hasText: "Write E2E tests" })).toBeVisible();
 
-        // The status select carries the CHECK constraint options
-        const statusSelect = row.locator('td[data-col="status"] select');
-        await expect(statusSelect).toBeVisible();
+        // Edit the status column (which is a select in the preset)
+        const statusCell = firstRow.locator("td[data-col='status']");
+        await statusCell.click();
+        const statusSelect = statusCell.locator("select");
+        await statusSelect.selectOption("done");
+
+        // Verify the status changed
+        await expect(statusSelect).toHaveValue("done");
+
+        // Ensure options list contains valid enum values
         const options = await statusSelect.locator("option").allTextContents();
         expect(options).toContain("open");
         expect(options).toContain("done");
@@ -99,13 +134,28 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         // Get initial row count
         const initialRowCount = await grid.locator("tbody tr").count();
 
+        // IMPORTANT: since default behavior now is NO confirmation, we must manually turn it on in the UI def panel to test it here
+        const uiToggleButton = view.getByTestId("yjs-table-toggle-ui");
+        await uiToggleButton.click({ force: true });
+
+        const uiEditor = view.getByTestId("yjs-table-ui-editor");
+        await expect(uiEditor).toBeVisible({ timeout: 10000 });
+
+        const toggleCheckbox = uiEditor.locator("label:has-text('Confirm before deleting rows') input");
+        await toggleCheckbox.waitFor({ state: "attached" });
+        await toggleCheckbox.check({ force: true });
+
+        // Wait for it to sync
+        await page.waitForTimeout(500);
+        await uiToggleButton.click({ force: true });
+
         // Click delete button
         const deleteButton = row.locator(".delete-row");
         await expect(deleteButton).toBeVisible();
-        await deleteButton.click();
+        await deleteButton.click({ force: true });
 
         // Dialog appears, cancel it
-        const dialog = page.getByRole("alertdialog", { name: "Delete row" });
+        const dialog = page.getByRole("dialog").filter({ hasText: "Delete row" });
         await expect(dialog).toBeVisible();
         await dialog.getByRole("button", { name: "Cancel" }).click();
 
@@ -114,7 +164,7 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         expect(await grid.locator("tbody tr").count()).toBe(initialRowCount);
 
         // Click delete again
-        await deleteButton.click();
+        await deleteButton.click({ force: true });
 
         // Dialog appears, confirm it
         await expect(dialog).toBeVisible();
