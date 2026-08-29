@@ -253,6 +253,9 @@ onMount(() => {
                 cell?.querySelector<HTMLElement>("button, input, select")?.focus();
             });
         },
+        clearHighlight: () => {
+            findMatch = undefined;
+        },
     });
 });
 

@@ -39,6 +39,7 @@ export interface GridSearchSnapshot {
 export interface GridSearchProvider {
     snapshot(): GridSearchSnapshot;
     navigate(match: GridCellSearchMatch): void;
+    clearHighlight(): void;
 }
 
 const providers = new Map<string, GridSearchProvider>();
@@ -88,6 +89,10 @@ export function gridSearchMatches(
 
 export function navigateGridSearchMatch(match: GridCellSearchMatch): void {
     providers.get(match.placementId)?.navigate(match);
+}
+
+export function clearGridSearchHighlights(): void {
+    for (const provider of providers.values()) provider.clearHighlight();
 }
 
 /** One deterministic representation shared by logical Grid Find and future Replace. */

@@ -24,6 +24,7 @@ describe("unified Grid search", () => {
             navigate: match => {
                 navigated = `${match.rowId}:${match.columnId}`;
             },
+            clearHighlight: () => {},
         }));
         return () => navigated;
     }

@@ -18,6 +18,7 @@ const logger = getLogger("SearchPanel");
     } from "../lib/search";
     import {
         gridSearchMatches,
+        clearGridSearchHighlights,
         navigateGridSearchMatch,
         type UnifiedSearchMatch,
     } from "../lib/search/unifiedSearch";
@@ -52,6 +53,7 @@ const logger = getLogger("SearchPanel");
     let searchScope: "project" | "page" | "selection" = $state("project");
 
     $effect(() => {
+        clearGridSearchHighlights();
         searchHighlightStore.searchQuery = searchQuery;
         searchHighlightStore.isRegexMode = isRegexMode;
         searchHighlightStore.isCaseSensitive = isCaseSensitive;
@@ -116,7 +118,7 @@ const logger = getLogger("SearchPanel");
         const newMatches: UnifiedSearchMatch[] = [];
         if (pages.length) {
             for (const p of pages) {
-                const pageMatches = searchItems(p, searchQuery, options);
+                const pageMatches = searchScope === "selection" ? [] : searchItems(p, searchQuery, options);
                 for (const m of pageMatches) {
                     const text = textOf(m.item);
                     for (const range of m.matches) {
@@ -137,8 +139,7 @@ const logger = getLogger("SearchPanel");
                     visualOrder[item.key] = rank++;
                 }
                 newMatches.push(
-                    ...gridSearchMatches(pageIdentity(p), searchQuery, options, searchScope === "selection")
-                        .filter(match => visualOrder[match.placementId] !== undefined),
+                    ...gridSearchMatches(pageIdentity(p), searchQuery, options, searchScope === "selection"),
                 );
                 newMatches.sort((a, b) => {
                     const aId = a.kind === "grid-cell" ? a.placementId : a.itemId;
@@ -183,6 +184,7 @@ const logger = getLogger("SearchPanel");
     }
 
     function replacementRoots(): Item[] {
+        if (searchScope === "selection") return [];
         return searchScope === "project" ? getPagesToSearch() : pageItem ? [pageItem] : [];
     }
 
@@ -302,6 +304,7 @@ const logger = getLogger("SearchPanel");
     }
 
     onDestroy(() => {
+        clearGridSearchHighlights();
         searchHighlightStore.searchQuery = "";
     });
 
@@ -364,11 +367,13 @@ const logger = getLogger("SearchPanel");
                 />
                 <button type="button"
                     onclick={handleReplace}
+                    disabled={searchScope === "selection"}
                     class="replace-btn"
                     data-testid="replace-button">Replace</button
                 >
                 <button type="button"
                     onclick={handleReplaceAll}
+                    disabled={searchScope === "selection"}
                     class="replace-all-btn"
                     data-testid="replace-all-button">Replace All</button
                 >

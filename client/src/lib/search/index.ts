@@ -30,9 +30,10 @@ export interface ItemMatch<T> {
 }
 
 export function buildRegExp(query: string, options: SearchOptions = {}): RegExp {
-    const flags = options.caseSensitive ? "g" : "gi";
+    const flags = options.caseSensitive ? "gu" : "giu";
     const source = options.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(options.wholeWord ? `\\b(?:${source})\\b` : source, flags);
+    const word = "[\\p{L}\\p{N}_]";
+    return new RegExp(options.wholeWord ? `(?<!${word})(?:${source})(?!${word})` : source, flags);
 }
 
 export function findMatches(text: string, query: string, options: SearchOptions = {}): MatchPosition[] {

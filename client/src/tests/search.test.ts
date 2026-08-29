@@ -37,6 +37,16 @@ describe("search utilities", () => {
         expect(total).toBe(1);
     });
 
+    it("matches whole words with Unicode-aware boundaries", () => {
+        const project = Project.createInstance("Unicode");
+        const page = project.addPage("root", "user");
+        const child = (page.items as Items).addNode("user");
+        child.updateText("猫と犬 猫 (cat) catalog");
+        expect(searchItems(page as Item, "猫", { wholeWord: true })[0]?.matches).toHaveLength(1);
+        expect(searchItems(page as Item, "(cat)", { wholeWord: true })[0]?.matches).toHaveLength(1);
+        expect(searchItems(page as Item, "cat", { wholeWord: true })[0]?.matches).toHaveLength(1);
+    });
+
     it("replace functions modify text", () => {
         const { page, child1 } = setupTree();
         const replaced = replaceFirst(page as Item, "hello", "hi");
