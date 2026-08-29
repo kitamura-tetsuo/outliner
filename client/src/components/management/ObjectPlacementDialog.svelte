@@ -37,7 +37,7 @@ function place() {
 </script>
 
 <div class="backdrop" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) onclose(); }}>
-    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="placement-title">
+    <div class="dialog" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="placement-title">
         <h2 id="placement-title">Place “{objectName}” on a Page</h2>
         <label>Page
             <select bind:value={pageId} data-testid="object-placement-page-picker">

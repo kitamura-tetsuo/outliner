@@ -349,7 +349,7 @@
 </main>
 
 {#if showDeleteDialog && dependencies}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="delete-dialog-title">
         <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 id="delete-dialog-title" class="text-lg font-bold text-gray-900">Delete table "{tableName}"</h2>
