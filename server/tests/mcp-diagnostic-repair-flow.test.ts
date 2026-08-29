@@ -102,10 +102,9 @@ describe("MCP diagnostic-to-repair flow", () => {
         const currentGrid = payload(await call("get_grid", { projectId: "project-1", gridId: "grid-1" }));
         const revision = currentGrid.revision;
         const dryRun = payload(
-            await call("set_view_query", {
+            await call("update_grid_query", {
                 projectId: "project-1",
-                kind: "grid",
-                viewId: "grid-1",
+                gridId: "grid-1",
                 query: correctedQuery,
                 expectedRevision: revision,
                 operationId: "repair-grid-order-1",
@@ -116,16 +115,17 @@ describe("MCP diagnostic-to-repair flow", () => {
         expect(grid.get("query")).to.equal("SELECT id, order FROM tasks ORDER BY order");
 
         const applied = payload(
-            await call("set_view_query", {
+            await call("update_grid_query", {
                 projectId: "project-1",
-                kind: "grid",
-                viewId: "grid-1",
+                gridId: "grid-1",
                 query: correctedQuery,
                 expectedRevision: revision,
                 operationId: "repair-grid-order-1",
             }),
         );
         expect(applied).to.include({ applied: true, replayed: false });
+        expect(applied.validation).to.include({ accepted: true, inferredOrdering: "sql-order-by" });
+        expect(applied.ordering.sampleRows.map((row: { id: string; }) => row.id)).to.deep.equal(["first", "later"]);
         const repaired = payload(await call("trace_grid", { projectId: "project-1", gridId: "grid-1" }));
         const execution = repaired.stages.find((stage: { stage: string; }) => stage.stage === "query-execution");
         expect(execution).to.include({ status: "completed", orderSource: "sql-order-by" });
@@ -140,7 +140,7 @@ describe("MCP diagnostic-to-repair flow", () => {
             .map(line => JSON.parse(line)).filter(line => line.event === "mcp_audit");
         expect(audits.map(line => line.applied)).to.deep.equal([false, true]);
         expect(audits[1]).to.include({
-            tool: "set_view_query",
+            tool: "update_grid_query",
             entity: "grid:grid-1",
             operationId: "repair-grid-order-1",
         });
