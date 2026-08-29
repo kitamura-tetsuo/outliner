@@ -135,20 +135,17 @@ const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
 
 /** One row target per query result row, for the selection command layer (`gridSelectionCommands.ts`). */
-function buildRowTargets(): Map<string, GridCommandRowTarget> {
-    const map = new Map<string, GridCommandRowTarget>();
-    for (const row of result.rows) {
+const rowTargetEntries = $derived(
+    result.rows.flatMap((row): Array<[string, GridCommandRowTarget]> => {
         const rowId = selectableRowId(row);
-        if (rowId === undefined) continue;
-        map.set(rowId, { row, recordId: recordIdOf(row), source: sourceOf(row) });
-    }
-    return map;
-}
+        return rowId === undefined ? [] : [[rowId, { row, recordId: recordIdOf(row), source: sourceOf(row) }]];
+    }),
+);
 
 const commandContext = $derived<GridCommandContext>({
     handles,
     session,
-    rowTargets: buildRowTargets(),
+    rowTargets: new Map(rowTargetEntries),
     columnOrder: displayColumns,
     editableColumns: editability.editableColumns,
     valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
