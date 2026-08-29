@@ -491,6 +491,28 @@ export class OutlinerRelationService {
                         errors: [this.schemaDiagnostic(parsedSchema.error)],
                     };
                 }
+                const nameError = parsedSchema.tableName === "outline_items"
+                    ? `Table name "${parsedSchema.tableName}" is reserved`
+                    : [...doc.getMap<Y.Map<unknown>>("yjsTables").entries()].some(([id, entry]) =>
+                            id !== tableId && entry.get("sqlName") === parsedSchema.tableName
+                        )
+                    ? `Table name "${parsedSchema.tableName}" is already used by another Table`
+                    : undefined;
+                if (nameError) {
+                    return {
+                        accepted: false,
+                        parsedSchema,
+                        migrationDiff: { addedColumns: [], removedColumns: [], changedColumns: [] },
+                        affectedRecords: { total: source.data.size, incompatible: 0 },
+                        warnings: [],
+                        errors: [{
+                            phase: "schema-validation",
+                            message: nameError,
+                            code: "relation_name_unavailable",
+                            hint: "Choose a unique, non-system table name",
+                        }],
+                    };
+                }
                 const oldColumns = new Map(current.columns.map(column => [column.name, column]));
                 const newColumns = new Map(parsedSchema.columns.map(column => [column.name, column]));
                 const addedColumns = parsedSchema.columns.filter(column => !oldColumns.has(column.name)).map(c =>
@@ -575,12 +597,15 @@ export class OutlinerRelationService {
                 await lease.db.exec(SYSTEM_SCHEMA);
                 await this.loadOutlineItems(lease.db, Project.fromDoc(doc));
                 const schemaColumns = new Map<string, string[]>();
+                const materializationWarnings: { relation: string; recordId: string; message: string; }[] = [];
                 for (const table of this.tables(doc)) {
                     const source = await this.openTable(uid, projectId, table.tableId);
                     opened.push(source);
                     if (!source.schema.trim()) continue;
                     await lease.db.exec(source.schema);
-                    await this.loadRecords(lease.db, table.relation, source.data);
+                    materializationWarnings.push(
+                        ...await this.loadRecordsTolerantly(lease.db, table.relation, source.data),
+                    );
                     const schema = await lease.db.query<{ column_name: string; }>(
                         "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position",
                         [table.relation],
@@ -595,10 +620,11 @@ export class OutlinerRelationService {
                     name: field.name,
                     type: String(field.dataTypeID),
                 }));
-                const dependencies = this.queryDependencies(normalizedQuery, [
-                    "outline_items",
-                    ...schemaColumns.keys(),
-                ]);
+                const dependencies = await this.queryPlanDependencies(
+                    lease.db,
+                    bounded,
+                    ["outline_items", ...schemaColumns.keys()],
+                );
                 const sourceColumns = dependencies.length === 1 ? schemaColumns.get(dependencies[0]) ?? [] : [];
                 const columnNames = resultColumns.map(column => column.name);
                 const analyzed = stripSqlNoise(normalizedQuery);
@@ -609,8 +635,15 @@ export class OutlinerRelationService {
                     resultColumns,
                     sampleRows: result.rows.slice(0, resultLimit).map(row => this.boundedTraceRow(row, columnNames)),
                     truncated: result.rows.length > resultLimit,
-                    editability: this.gridEditability(normalizedQuery, sourceColumns, columnNames),
+                    editability: dependencies.length === 1
+                        ? this.gridEditability(normalizedQuery, sourceColumns, columnNames)
+                        : {
+                            editable: false,
+                            readOnlyReason: "Query does not resolve to exactly one source relation",
+                            editableColumns: [],
+                        },
                     inferredOrdering: /\border\s+by\b/i.test(analyzed) ? "sql-order-by" : "incidental-source-order",
+                    warnings: materializationWarnings,
                     errors: [],
                 };
             } catch (error) {
@@ -630,17 +663,42 @@ export class OutlinerRelationService {
         });
     }
 
-    private queryDependencies(query: string, relations: string[]): string[] {
-        // Remove comments and string literals, but deliberately preserve quoted
-        // identifiers: `tasks` and `"tasks"` must identify the same dependency.
-        const noiseFree = query
-            .replace(/--[^\n]*/g, " ")
-            .replace(/\/\*[\s\S]*?\*\//g, " ")
-            .replace(/'(?:[^']|'')*'/g, "''");
-        return relations.filter(relation =>
-            new RegExp(`\\b(?:from|join)\\s+"?${relation.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"?\\b`, "i")
-                .test(noiseFree)
-        );
+    private async queryPlanDependencies(db: PGlite, query: string, relations: string[]): Promise<string[]> {
+        // PostgreSQL's plan resolves quoting, CTE shadowing, joins, and nested
+        // queries for us, so dependency reporting follows execution rather
+        // than attempting to reinterpret SQL with a regular expression.
+        const explained = await db.query<Record<string, unknown>>(`EXPLAIN (FORMAT JSON) ${query}`);
+        const found = new Set<string>();
+        const allowed = new Set(relations);
+        const visit = (value: unknown): void => {
+            if (Array.isArray(value)) {
+                value.forEach(visit);
+            } else if (value && typeof value === "object") {
+                for (const [key, nested] of Object.entries(value)) {
+                    if (key === "Relation Name" && typeof nested === "string" && allowed.has(nested)) found.add(nested);
+                    visit(nested);
+                }
+            }
+        };
+        visit(explained.rows);
+        return relations.filter(relation => found.has(relation));
+    }
+
+    /** Match the browser adapter: one malformed record must not hide valid rows from a Grid. */
+    private async loadRecordsTolerantly(db: PGlite, relation: string, data: Y.Map<Y.Map<RelationValue>>) {
+        const warnings: { relation: string; recordId: string; message: string; }[] = [];
+        for (const [recordId, record] of data) {
+            try {
+                await this.loadRecords(db, relation, [[recordId, record]]);
+            } catch (error) {
+                warnings.push({
+                    relation,
+                    recordId,
+                    message: error instanceof Error ? error.message : "Record could not be materialized",
+                });
+            }
+        }
+        return warnings;
     }
 
     private schemaDiagnostic(error: { code: string; message: string; }) {
@@ -1143,7 +1201,11 @@ export class OutlinerRelationService {
         });
     }
 
-    private async loadRecords(db: PGlite, relation: string, data: Y.Map<Y.Map<RelationValue>>) {
+    private async loadRecords(
+        db: PGlite,
+        relation: string,
+        data: Iterable<[string, Y.Map<RelationValue>]>,
+    ) {
         for (const [id, record] of data) {
             const values: Record<string, unknown> = { ...Object.fromEntries(record.entries()), id };
             const keys = Object.keys(values).filter(key => IDENT.test(key));

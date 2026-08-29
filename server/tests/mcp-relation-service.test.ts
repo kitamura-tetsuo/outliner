@@ -228,6 +228,23 @@ describe("Outliner MCP relation service", function() {
         expect(Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64")).to.equal(projectBefore);
         expect(Buffer.from(Y.encodeStateAsUpdate(table)).toString("base64")).to.equal(tableBefore);
         expect(table.getText("schema").toString()).to.include("done BOOLEAN");
+        const duplicate = new Y.Map<unknown>();
+        duplicate.set("sqlName", "duplicate_name");
+        project.ydoc.getMap("yjsTables").set("table-2", duplicate);
+        for (const unavailable of ["outline_items", "duplicate_name"]) {
+            const result = await service.validateTableSchema(
+                "uid",
+                "project-1",
+                "table-1",
+                `CREATE TABLE ${unavailable} (id TEXT PRIMARY KEY)`,
+            );
+            expect(result.accepted).to.equal(false);
+            expect(result.errors[0]).to.deep.include({
+                phase: "schema-validation",
+                code: "relation_name_unavailable",
+            });
+        }
+        project.ydoc.getMap("yjsTables").delete("table-2");
     });
 
     it("validates Grid SELECTs, preserves quoted identifiers, and never saves the proposal", async () => {
@@ -257,6 +274,31 @@ describe("Outliner MCP relation service", function() {
         expect(quoted.resultColumns.map(column => column.name)).to.deep.equal(["id", "order"]);
         expect(quoted.sampleRows).to.deep.equal([{ id: "r1", order: 2 }]);
         expect(quoted.editability).to.deep.include({ editable: true, rowIdentity: "id" });
+
+        const malformed = new Y.Map<unknown>();
+        malformed.set("id", "r2");
+        malformed.set("order", "not-an-integer");
+        malformed.set("title", "Skipped");
+        table.getMap("data").set("r2", malformed);
+        const tolerant = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            'SELECT id FROM tasks ORDER BY "order"',
+        );
+        expect(tolerant.accepted).to.equal(true);
+        expect(tolerant.sampleRows).to.deep.equal([{ id: "r1" }]);
+        expect(tolerant.warnings).to.have.length(1);
+        table.getMap("data").delete("r2");
+
+        const shadowed = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            "WITH tasks AS (SELECT 'synthetic'::text AS id) SELECT id FROM tasks",
+        );
+        expect(shadowed.dependencies).to.deep.equal([]);
+        expect(shadowed.editability).to.deep.include({ editable: false });
 
         const reserved = await service.validateGridQuery(
             "uid",
