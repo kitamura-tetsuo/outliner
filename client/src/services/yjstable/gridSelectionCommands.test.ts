@@ -11,6 +11,7 @@ import {
     classifySelectionKind,
     clearSelectionToNull,
     collectSelectedRowTargets,
+    convertReplacementText,
     type GridCommandContext,
     type GridCommandRowTarget,
     isValueValidForCell,
@@ -95,6 +96,64 @@ describe("isValueValidForCell", () => {
     it("accepts NULL for a nullable column", () => {
         const ctx = { valueKindOf: () => "text" as const, checkOptionsOf: () => undefined, isNullableOf: () => true };
         expect(isValueValidForCell(ctx, "name", null)).toBe(true);
+    });
+});
+
+describe("convertReplacementText", () => {
+    it("passes text through verbatim, empty string included", () => {
+        const ctx = { valueKindOf: () => "text" as const, checkOptionsOf: () => undefined, isNullableOf: () => false };
+        expect(convertReplacementText(ctx, "name", "hello")).toBe("hello");
+        expect(convertReplacementText(ctx, "name", "")).toBe("");
+    });
+
+    it("parses a number deterministically and rejects non-numeric text", () => {
+        const ctx = { valueKindOf: () => "number" as const, checkOptionsOf: () => undefined, isNullableOf: () => true };
+        expect(convertReplacementText(ctx, "score", "42")).toBe(42);
+        expect(convertReplacementText(ctx, "score", "4.5")).toBe(4.5);
+        expect(convertReplacementText(ctx, "score", "not a number")).toBeUndefined();
+    });
+
+    it('parses "true"/"false" for a checkbox and rejects anything else', () => {
+        const ctx = {
+            valueKindOf: () => "checkbox" as const,
+            checkOptionsOf: () => undefined,
+            isNullableOf: () => true,
+        };
+        expect(convertReplacementText(ctx, "done", "true")).toBe(true);
+        expect(convertReplacementText(ctx, "done", "false")).toBe(false);
+        expect(convertReplacementText(ctx, "done", "yes")).toBeUndefined();
+    });
+
+    it("only accepts select values already in the column's own options", () => {
+        const ctx = {
+            valueKindOf: () => "select" as const,
+            checkOptionsOf: () => ["Open", "Done"],
+            isNullableOf: () => true,
+        };
+        expect(convertReplacementText(ctx, "status", "Done")).toBe("Done");
+        expect(convertReplacementText(ctx, "status", "Archived")).toBeUndefined();
+    });
+
+    it("only accepts a real calendar date for a date column", () => {
+        const ctx = { valueKindOf: () => "date" as const, checkOptionsOf: () => undefined, isNullableOf: () => true };
+        expect(convertReplacementText(ctx, "due", "2025-01-02")).toBe("2025-01-02");
+        expect(convertReplacementText(ctx, "due", "2025-13-40")).toBeUndefined();
+        expect(convertReplacementText(ctx, "due", "not a date")).toBeUndefined();
+    });
+
+    it("maps an emptied non-text result to NULL when nullable, and rejects it otherwise", () => {
+        const nullable = {
+            valueKindOf: () => "number" as const,
+            checkOptionsOf: () => undefined,
+            isNullableOf: () => true,
+        };
+        expect(convertReplacementText(nullable, "score", "")).toBeNull();
+        const notNullable = {
+            valueKindOf: () => "number" as const,
+            checkOptionsOf: () => undefined,
+            isNullableOf: () => false,
+        };
+        expect(convertReplacementText(notNullable, "score", "")).toBeUndefined();
     });
 });
 

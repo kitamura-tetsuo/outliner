@@ -24,17 +24,22 @@ import { GridSelection, type GridCellAddress } from "../../services/yjstable/gri
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import {
     applyValueToSelection,
+    convertReplacementText,
     type GridCommandContext,
     type GridCommandRowTarget,
+    isWritableRow,
     planGridDeleteCommand,
     removeRowTargets,
     summarizeSelection,
+    writeWritableCell,
 } from "../../services/yjstable/gridSelectionCommands";
 import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { onDestroy, onMount, untrack } from "svelte";
 import {
+    type GridCellReplaceOutcome,
+    type GridCellReplacement,
     type GridCellSearchMatch,
     registerGridSearchProvider,
 } from "../../lib/search/unifiedSearch";
@@ -266,6 +271,40 @@ onMount(() => {
         },
         clearHighlight: () => {
             findMatch = undefined;
+        },
+        isCellReplaceable: (rowId, columnId) => {
+            const rowTarget = commandContext.rowTargets.get(rowId);
+            return rowTarget !== undefined && isWritableRow(rowTarget) && commandContext.editableColumns.has(columnId);
+        },
+        replaceCells: (entries: readonly GridCellReplacement[]): GridCellReplaceOutcome[] => {
+            const outcomes: GridCellReplaceOutcome[] = [];
+            const idWrites: Array<{ rowTarget: GridCommandRowTarget; columnId: string; value: TableRecordValue; }> = [];
+            const sourceWrites: typeof idWrites = [];
+            for (const entry of entries) {
+                const rowTarget = commandContext.rowTargets.get(entry.rowId);
+                if (!rowTarget || !isWritableRow(rowTarget) || !commandContext.editableColumns.has(entry.columnId)) {
+                    outcomes.push({ ...entry, applied: false, reason: "read-only" });
+                    continue;
+                }
+                const value = convertReplacementText(commandContext, entry.columnId, entry.newText);
+                if (value === undefined) {
+                    outcomes.push({ ...entry, applied: false, reason: "invalid-value" });
+                    continue;
+                }
+                (rowTarget.recordId !== undefined ? idWrites : sourceWrites).push({ rowTarget, columnId: entry.columnId, value });
+                outcomes.push({ ...entry, applied: true });
+            }
+            if (idWrites.length > 0) {
+                handles.doc.transact(() => {
+                    for (const write of idWrites) {
+                        writeWritableCell(commandContext, { rowTarget: write.rowTarget, columnId: write.columnId }, write.value);
+                    }
+                });
+            }
+            for (const write of sourceWrites) {
+                writeWritableCell(commandContext, { rowTarget: write.rowTarget, columnId: write.columnId }, write.value);
+            }
+            return outcomes;
         },
     });
 });

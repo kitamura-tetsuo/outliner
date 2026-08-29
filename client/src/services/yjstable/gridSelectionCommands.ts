@@ -55,7 +55,7 @@ export interface GridCommandRowTarget {
 }
 
 /** Whether a row target has anywhere to write at all. Rows without either are display-only (e.g. an unsaved placeholder). */
-function isWritableRow(target: GridCommandRowTarget): boolean {
+export function isWritableRow(target: GridCommandRowTarget): boolean {
     return target.recordId !== undefined || target.source !== undefined;
 }
 
@@ -153,6 +153,48 @@ export interface GridCommandOutcome {
     reason?: "no-writable-cells" | "invalid-value";
     /** Cells actually written, when `applied` is true. */
     count?: number;
+}
+
+/**
+ * Deterministically converts a Replace result's plain display text back into
+ * a column's typed value, or returns `undefined` when no such conversion
+ * exists. Shared by unified Replace (FTR-5194) so a Grid cell is never
+ * surprise-coerced: an empty result maps to the column's schema-valid empty
+ * value (`NULL` when nullable, `""` for `text`) the same way `clearedValueFor`
+ * treats a cleared cell; anything else must parse exactly as that column's
+ * type, then still pass `isValueValidForCell` (select options, real calendar
+ * dates, ...). A hit that fails this is left unmutated by the caller.
+ */
+export function convertReplacementText(
+    ctx: Pick<GridCommandContext, "valueKindOf" | "checkOptionsOf" | "isNullableOf">,
+    columnId: string,
+    text: string,
+): TableRecordValue | undefined {
+    const kind = ctx.valueKindOf(columnId);
+    if (text === "" && kind !== "text") {
+        return ctx.isNullableOf(columnId) ? null : undefined;
+    }
+    let value: TableRecordValue;
+    switch (kind) {
+        case "text":
+            value = text;
+            break;
+        case "number": {
+            const parsed = Number(text);
+            if (text.trim() === "" || !Number.isFinite(parsed)) return undefined;
+            value = parsed;
+            break;
+        }
+        case "checkbox":
+            if (text !== "true" && text !== "false") return undefined;
+            value = text === "true";
+            break;
+        case "select":
+        case "date":
+            value = text;
+            break;
+    }
+    return isValueValidForCell(ctx, columnId, value) ? value : undefined;
 }
 
 /** Writes one resolved target cell through its row's addressing (`recordId` or `source`). Shared with `gridClipboard.ts`'s paste commit, which validates a whole target rectangle up front the same way a bulk command validates a whole selection. */
