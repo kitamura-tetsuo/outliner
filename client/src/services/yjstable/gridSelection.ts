@@ -206,7 +206,10 @@ export class GridSelection {
             }
             return false;
         });
-        for (const id of ids) selected.has(id) ? selected.delete(id) : selected.add(id);
+        for (const id of ids) {
+            if (selected.has(id)) selected.delete(id);
+            else selected.add(id);
+        }
         if (selected.size > 0) {
             other.push(
                 kind === "rows"
