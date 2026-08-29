@@ -257,6 +257,7 @@ onDestroy(() => {
                 }}
                 loading={schema === undefined && !isInitialSyncDone}
                 {session}
+                confirmRowDelete={true}
             />
         {:else}
             <p class="loading">Loading table...</p>

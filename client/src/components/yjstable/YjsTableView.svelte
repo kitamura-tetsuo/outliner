@@ -25,6 +25,7 @@ import {
     destroyGridUndoManager,
     getGridQuery,
     getGridShowAddRowButton,
+    getGridConfirmRowDelete,
     type GridHandles,
     readGridComponents,
     retainGridUndoManager,
@@ -87,6 +88,7 @@ let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
 let hiddenColumns = $state<Record<string, boolean>>({});
 let showAddRowButton = $state(true);
+let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
@@ -119,6 +121,7 @@ function refreshGridMirror() {
     columnLabels = settings.labels;
     hiddenColumns = settings.hidden;
     showAddRowButton = getGridShowAddRowButton(grid);
+    confirmRowDelete = getGridConfirmRowDelete(grid);
 }
 
 const gridMirrorObserver = () => refreshGridMirror();
@@ -341,6 +344,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                 resultColumns={result.columns}
                 {columnOrder}
                 {showAddRowButton}
+                {confirmRowDelete}
             />
         </section>
     {/if}
@@ -377,6 +381,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {columnLabels}
                     {hiddenColumns}
                     {showAddRowButton}
+                    {confirmRowDelete}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

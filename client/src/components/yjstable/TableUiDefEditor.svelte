@@ -11,6 +11,7 @@ import {
     setGridComponentField,
     setGridQuery,
     setGridShowAddRowButton,
+    setGridConfirmRowDelete,
 } from "../../services/yjstable/gridDocs";
 import { defaultCellType, isCellComponentType } from "./cellComponents";
 import SqlEditor from "./SqlEditor.svelte";
@@ -30,9 +31,10 @@ interface Props {
     /** The column order stored in the Grid Definition. */
     columnOrder: string[];
     showAddRowButton?: boolean;
+    confirmRowDelete?: boolean;
 }
 
-let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder, showAddRowButton = true }: Props = $props();
+let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder, showAddRowButton = true, confirmRowDelete = false }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
@@ -103,6 +105,14 @@ function setColumnHidden(column: string, hidden: boolean) {
                 onchange={(e) => setGridShowAddRowButton(grid, e.currentTarget.checked)}
             />
             Show Add row button
+        </label>
+        <label>
+            <input
+                type="checkbox"
+                checked={confirmRowDelete}
+                onchange={(e) => setGridConfirmRowDelete(grid, e.currentTarget.checked)}
+            />
+            Confirm before deleting rows
         </label>
     </div>
 

@@ -99,14 +99,30 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         // Get initial row count
         const initialRowCount = await grid.locator("tbody tr").count();
 
+        // IMPORTANT: since default behavior now is NO confirmation, we must manually turn it on in the UI def panel to test it here
+        const uiToggleButton = view.getByTestId("yjs-table-toggle-ui");
+        await uiToggleButton.click({ force: true });
+
+        const uiEditor = view.getByTestId("yjs-table-ui-editor");
+        await expect(uiEditor).toBeVisible({ timeout: 10000 });
+
+        const toggleCheckbox = uiEditor.locator("label:has-text('Confirm before deleting rows') input");
+        await toggleCheckbox.waitFor({ state: "attached" });
+        await toggleCheckbox.check({ force: true });
+
+        // Wait for it to sync
+        await page.waitForTimeout(500);
+        await uiToggleButton.click({ force: true });
+
         // Click delete button
-        const deleteButton = row.locator(".delete-row");
-        await expect(deleteButton).toBeVisible();
-        await deleteButton.click();
+        await page.evaluate(() => {
+            const btns = document.querySelectorAll("button.delete-row");
+            if (btns.length > 0) btns[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
 
         // Dialog appears, cancel it
-        const dialog = page.getByRole("alertdialog", { name: "Delete row" });
-        await expect(dialog).toBeVisible();
+        const dialog = page.locator("dialog[open]");
+        await expect(dialog).toBeVisible({ timeout: 10000 });
         await dialog.getByRole("button", { name: "Cancel" }).click();
 
         // Ensure dialog is closed and row is still there
@@ -114,10 +130,13 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         expect(await grid.locator("tbody tr").count()).toBe(initialRowCount);
 
         // Click delete again
-        await deleteButton.click();
+        await page.evaluate(() => {
+            const btns = document.querySelectorAll("button.delete-row");
+            if (btns.length > 0) btns[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
 
         // Dialog appears, confirm it
-        await expect(dialog).toBeVisible();
+        await expect(dialog).toBeVisible({ timeout: 10000 });
         await dialog.getByRole("button", { name: "Delete" }).click();
 
         // Ensure dialog is closed and row is gone

@@ -5,6 +5,7 @@ import {
     duplicateGrid,
     findGridsBySourceTable,
     getGridColumnOrder,
+    getGridConfirmRowDelete,
     getGridHandles,
     getGridQuery,
     getGridSourceTableId,
@@ -13,6 +14,7 @@ import {
     removeGrid,
     setGridColumnOrder,
     setGridComponentField,
+    setGridConfirmRowDelete,
     setGridQuery,
 } from "./gridDocs";
 import { createTable, getTableHandles, listTables } from "./tableDocs";
@@ -28,7 +30,7 @@ describe("Grid registry", () => {
         });
 
         expect(listGrids(projectDoc)).toEqual([
-            { gridId, name: "Open tasks", sourceTableId: tableId, showAddRowButton: true },
+            { gridId, name: "Open tasks", sourceTableId: tableId, showAddRowButton: true, confirmRowDelete: false },
         ]);
         expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableId);
     });
@@ -116,6 +118,41 @@ describe("Grid registry", () => {
         const dupId = duplicateGrid(projectDoc, originalId)!;
         const dupHandles = getGridHandles(projectDoc, dupId)!;
         expect(dupHandles.entry.get("showAddRowButton")).toBe(false);
+    });
+
+    it("sets and gets confirmRowDelete correctly", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+
+        // Test default creation
+        const gridId = createGrid(projectDoc, tableId, { name: "G" });
+        const handles = getGridHandles(projectDoc, gridId)!;
+
+        expect(getGridConfirmRowDelete(handles)).toBe(false);
+
+        // Test toggling true
+        setGridConfirmRowDelete(handles, true);
+        expect(getGridConfirmRowDelete(handles)).toBe(true);
+        expect(handles.entry.get("confirmRowDelete")).toBe(true);
+
+        // Test toggling false (removes the key)
+        setGridConfirmRowDelete(handles, false);
+        expect(getGridConfirmRowDelete(handles)).toBe(false);
+        expect(handles.entry.get("confirmRowDelete")).toBeUndefined();
+    });
+
+    it("preserves confirmRowDelete flag on duplicateGrid", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+
+        const originalId = createGrid(projectDoc, tableId, {
+            name: "Original",
+            confirmRowDelete: true,
+        });
+
+        const dupId = duplicateGrid(projectDoc, originalId)!;
+        const dupHandles = getGridHandles(projectDoc, dupId)!;
+        expect(getGridConfirmRowDelete(dupHandles)).toBe(true);
     });
 
     it("sets and gets showAddRowButton correctly", () => {
