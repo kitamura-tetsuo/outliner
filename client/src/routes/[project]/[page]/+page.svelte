@@ -360,7 +360,8 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         if (!cp || !pageName || __loadingInProgress) return;
         if (routedPageKey === undefined || cp.key !== routedPageKey) return;
 
-        const title = titleOf(cp);
+        let title = titleOf(cp);
+        if (!title) title = "Untitled";
         if (!title || title === routedPageTitle) return;
 
         const previousTitle = routedPageTitle;

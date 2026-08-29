@@ -167,7 +167,8 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         }
 
         const textStr = typeof cp.text.toString === "function" ? cp.text.toString() : String(cp.text);
-        const trimmedTitle = textStr.trim();
+        let trimmedTitle = textStr.trim();
+        if (trimmedTitle === "") trimmedTitle = "Untitled";
         const previous = observedTitle;
         observedTitle = { key: cp.key ?? cp.id, title: trimmedTitle };
 
