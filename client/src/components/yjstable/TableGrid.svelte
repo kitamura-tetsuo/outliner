@@ -621,7 +621,10 @@ async function pasteClipboardIntoSelection(): Promise<void> {
     } catch {
         return;
     }
-    if (!text) return;
+    // An empty clipboard is a legitimate one-blank-cell source (a copied
+    // empty/NULL cell) that should still be able to clear the target --
+    // `parseClipboardRectangle`/`planGridPaste` already treat "" that way,
+    // so this must not bail out early just because the string is falsy.
     const plan = planGridPaste(selection, commandContext, rowIdsOf(result.rows), text);
     if (plan.kind === "apply") {
         commitGridPaste(commandContext, plan.writes);

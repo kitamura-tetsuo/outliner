@@ -117,6 +117,22 @@ describe("Grid clipboard copy/paste (FTR-5192)", () => {
         expect(handles.data.get("b")?.get("name")).toBe("Zed");
     });
 
+    it("Ctrl+V with an empty clipboard clears the target cell instead of doing nothing", async () => {
+        // A copied empty/NULL cell is a legitimate one-blank-cell source, not
+        // "nothing to paste" -- it must still be able to clear the target.
+        const readText = vi.fn().mockResolvedValue("");
+        mockClipboard({ readText });
+        const { handles, view } = setup();
+
+        await fireEvent.click(cellTd(view.container, "a", "name"));
+        await fireEvent.keyDown(cellTd(view.container, "a", "name").querySelector("button")!, {
+            key: "v",
+            ctrlKey: true,
+        });
+
+        await waitFor(() => expect(handles.data.get("a")?.get("name")).toBe(null));
+    });
+
     it("rejects a shape-mismatched paste, mutating nothing and surfacing status text", async () => {
         // Three rows of tab-separated cells cannot tile into a 2-cell column range.
         const readText = vi.fn().mockResolvedValue("X\nY\nZ");

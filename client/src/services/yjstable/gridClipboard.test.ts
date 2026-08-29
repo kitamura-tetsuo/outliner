@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { GRID_EXPORT_ROW_LIMIT } from "../clipboard/gridClipboardExport";
 import { buildGridCopyPayload, commitGridPaste, parseClipboardRectangle, planGridPaste } from "./gridClipboard";
 import { GridSelection } from "./gridSelection";
 import type { GridCommandContext, GridCommandRowTarget } from "./gridSelectionCommands";
@@ -144,6 +145,23 @@ describe("buildGridCopyPayload", () => {
         const payload = buildGridCopyPayload(selection, ctx, rowIds);
         expect(payload?.text).toBe("Alpha\tfalse\tOpen\t1\nBeta\ttrue\tDone\t2");
     });
+
+    it("caps a select-all copy at the shared row limit rather than serializing the whole result", () => {
+        const rows = Array.from(
+            { length: GRID_EXPORT_ROW_LIMIT + 1 },
+            (_, index) => ({ name: `Row ${index}`, done: false, status: "Open", score: index }),
+        );
+        const { ctx, rowIds } = setup(rows);
+        const selection = new GridSelection();
+        selection.selectAll();
+        const payload = buildGridCopyPayload(selection, ctx, rowIds);
+        expect(payload?.rows).toBe(GRID_EXPORT_ROW_LIMIT);
+        const lines = payload!.text.split("\n");
+        expect(lines).toHaveLength(GRID_EXPORT_ROW_LIMIT + 1);
+        expect(lines[lines.length - 1]).toBe(
+            `--- Copy limit reached: first ${GRID_EXPORT_ROW_LIMIT} of ${rows.length} rows ---`,
+        );
+    });
 });
 
 describe("planGridPaste", () => {
@@ -254,6 +272,79 @@ describe("planGridPaste", () => {
         const selection = new GridSelection();
         selection.select({ rowId: rowIds[0], columnId: "status" });
         expect(planGridPaste(selection, ctx, rowIds, "Archived").kind).toBe("invalid-value");
+    });
+
+    it("restricts a sparse (Ctrl-click) selection's paste to the cells actually selected, not their bounding box", () => {
+        const { ctx, rowIds } = setup([
+            { name: "Alpha", done: false, status: "Open", score: 1 },
+            { name: "Beta", done: true, status: "Done", score: 2 },
+            { name: "Gamma", done: false, status: "Open", score: 3 },
+        ]);
+        const selection = new GridSelection();
+        // Two disjoint cells at opposite corners of a 2x2 bounding box (row
+        // 0/name, row 2/status) -- row 0/status and row 2/name were never
+        // selected and must not be written.
+        selection.toggleCell({ rowId: rowIds[0], columnId: "name" });
+        selection.toggleCell({ rowId: rowIds[2], columnId: "status" });
+
+        // "Open" is valid for both target columns: free-form text for "name",
+        // and one of "status"'s check options.
+        const plan = planGridPaste(selection, ctx, rowIds, "Open");
+        expect(plan.kind).toBe("apply");
+        if (plan.kind !== "apply") return;
+        expect(plan.writes).toHaveLength(2);
+        const targets = plan.writes.map(w => `${w.target.rowTarget.recordId}:${w.target.columnId}`);
+        expect(targets).toContain(`${rowIds[0]}:name`);
+        expect(targets).toContain(`${rowIds[2]}:status`);
+        expect(targets).not.toContain(`${rowIds[0]}:status`);
+        expect(targets).not.toContain(`${rowIds[2]}:name`);
+    });
+});
+
+describe("planGridPaste date validation", () => {
+    function setupDateColumn(dueValue = "2026-01-01") {
+        const doc = new Y.Doc();
+        const tableId = createTable(doc, "events", "events");
+        const handles = getTableHandles(doc, tableId)!;
+        const recordId = addRecord(handles, { due: dueValue });
+        const rowTargets = new Map<string, GridCommandRowTarget>([
+            [recordId, { row: { id: recordId, due: dueValue }, recordId }],
+        ]);
+        const ctx: GridCommandContext = {
+            handles,
+            session: { resolveRelation: async () => undefined },
+            rowTargets,
+            columnOrder: ["due"],
+            editableColumns: new Set(["due"]),
+            valueKindOf: () => "date",
+            checkOptionsOf: () => undefined,
+            isNullableOf: () => true,
+        };
+        return { handles, recordId, ctx };
+    }
+
+    it("rejects a calendar-invalid date string (e.g. Feb 30) rather than persisting it", () => {
+        const { recordId, ctx } = setupDateColumn();
+        const selection = new GridSelection();
+        selection.select({ rowId: recordId, columnId: "due" });
+        const plan = planGridPaste(selection, ctx, [recordId], "2026-02-30");
+        expect(plan).toMatchObject({ kind: "invalid-value", columnId: "due" });
+    });
+
+    it("rejects a non-date string pasted into a date column", () => {
+        const { recordId, ctx } = setupDateColumn();
+        const selection = new GridSelection();
+        selection.select({ rowId: recordId, columnId: "due" });
+        const plan = planGridPaste(selection, ctx, [recordId], "not-a-date");
+        expect(plan).toMatchObject({ kind: "invalid-value", columnId: "due" });
+    });
+
+    it("accepts a real calendar date string", () => {
+        const { recordId, ctx } = setupDateColumn();
+        const selection = new GridSelection();
+        selection.select({ rowId: recordId, columnId: "due" });
+        const plan = planGridPaste(selection, ctx, [recordId], "2026-03-15");
+        expect(plan.kind).toBe("apply");
     });
 });
 

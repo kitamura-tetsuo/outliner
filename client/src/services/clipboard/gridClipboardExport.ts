@@ -18,8 +18,8 @@ export interface GridExportConfig {
     rowLimit?: number;
 }
 
-/** Truncation is never silent: the notice travels with the trimmed result. */
-function truncationNotice(kept: number, total: number): string {
+/** Truncation is never silent: the notice travels with the trimmed result. Shared with `gridClipboard.ts`'s selection-rectangle copy. */
+export function truncationNotice(kept: number, total: number): string {
     return `--- Copy limit reached: first ${kept} of ${total} rows ---`;
 }
 

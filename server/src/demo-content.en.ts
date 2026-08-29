@@ -293,6 +293,16 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "Cell clipboard: select a cell or range and press Ctrl/Cmd+C to copy it as tab/newline text (rows), "
+                            + "no header row; row and column selections copy every cell they cover. Ctrl/Cmd+V pastes: a single "
+                            + "copied cell repeats across a larger selection, a rectangle pasted at one active cell fills the "
+                            + "corresponding cells starting there, and a smaller rectangle that evenly tiles a larger selection "
+                            + "repeats to fill it — any other size mismatch is rejected rather than silently truncated. Only "
+                            + "writable cells are touched, and an incompatible value cancels the whole paste as one Undo step. "
+                            + "On touch, the selection toolbar's Copy and Paste buttons do the same thing.",
+                    },
+                    {
+                        text:
                             "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
                             + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
                             + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "

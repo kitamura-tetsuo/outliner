@@ -16,7 +16,13 @@
 // `writeWritableCell`/single-transaction pattern the bulk commands use, so a
 // paste collapses to one Undo step.
 
-import { formatHtmlCell, formatTsvCell } from "../clipboard/gridClipboardExport";
+import {
+    escapeHtml,
+    formatHtmlCell,
+    formatTsvCell,
+    GRID_EXPORT_ROW_LIMIT,
+    truncationNotice,
+} from "../clipboard/gridClipboardExport";
 import type { GridSelection } from "./gridSelection";
 import {
     classifySelectionKind,
@@ -91,20 +97,30 @@ export function buildGridCopyPayload(
     }
     if (rowIds.length === 0 || columnIds.length === 0) return undefined;
 
-    const grid = rowIds.map(rowId => {
+    // A row/column/select-all copy can cover the whole query result;
+    // matching `gridClipboardExport`'s own cap keeps a huge result from
+    // building multiple full-size representations plus clipboard Blobs.
+    const truncated = rowIds.length > GRID_EXPORT_ROW_LIMIT;
+    const keptRowIds = truncated ? rowIds.slice(0, GRID_EXPORT_ROW_LIMIT) : rowIds;
+
+    const grid = keptRowIds.map(rowId => {
         const row = ctx.rowTargets.get(rowId)?.row ?? {};
         return columnIds.map(columnId =>
             kind !== "cells" || selection.contains({ rowId, columnId }) ? row[columnId] : ""
         );
     });
 
-    const text = grid.map(cells => cells.map(formatTsvCell).join("\t")).join("\n");
+    const textLines = grid.map(cells => cells.map(formatTsvCell).join("\t"));
+    if (truncated) textLines.push(truncationNotice(keptRowIds.length, rowIds.length));
+    const text = textLines.join("\n");
+
     const htmlRows = grid.map(cells =>
         `    <tr>\n${cells.map(cell => `      <td>${formatHtmlCell(cell)}</td>`).join("\n")}\n    </tr>`
     );
-    const html = `<table>\n  <tbody>\n${htmlRows.join("\n")}\n  </tbody>\n</table>`;
+    let html = `<table>\n  <tbody>\n${htmlRows.join("\n")}\n  </tbody>\n</table>`;
+    if (truncated) html += `\n<p><i>${escapeHtml(truncationNotice(keptRowIds.length, rowIds.length))}</i></p>`;
 
-    return { text, html, rows: rowIds.length, columns: columnIds.length };
+    return { text, html, rows: keptRowIds.length, columns: columnIds.length };
 }
 
 /**
@@ -261,6 +277,14 @@ export function planGridPaste(
 
     let targetRowIds: string[];
     let targetColumnIds: string[];
+    // Only the multi-cell (existing selection) branch needs a per-cell
+    // containment check: its target rectangle is the selection's bounding
+    // box, which for a sparse selection (e.g. Ctrl-click toggled cells at
+    // row 1/col A and row 3/col C) also spans cells never actually selected
+    // (row 3/col A, row 1/col C here). The single-cell branch intentionally
+    // computes a *new* rectangle beyond the one originally selected cell and
+    // must not be filtered this way.
+    let requireSelected: boolean;
     if (selectedRowIds.length === 1 && selectedColumnIds.length === 1) {
         const anchor = selection.activeCell ?? { rowId: selectedRowIds[0], columnId: selectedColumnIds[0] };
         const rowStart = rowOrder.indexOf(anchor.rowId);
@@ -268,6 +292,7 @@ export function planGridPaste(
         if (rowStart < 0 || colStart < 0) return { kind: "no-target" };
         targetRowIds = rowOrder.slice(rowStart, rowStart + sourceRows);
         targetColumnIds = ctx.columnOrder.slice(colStart, colStart + sourceColumns);
+        requireSelected = false;
         if (targetRowIds.length !== sourceRows || targetColumnIds.length !== sourceColumns) {
             return {
                 kind: "shape-mismatch",
@@ -280,6 +305,7 @@ export function planGridPaste(
     } else {
         targetRowIds = selectedRowIds;
         targetColumnIds = selectedColumnIds;
+        requireSelected = true;
         const tiles = targetRowIds.length % sourceRows === 0 && targetColumnIds.length % sourceColumns === 0;
         if (!tiles) {
             return {
@@ -299,6 +325,7 @@ export function planGridPaste(
         const rowWritable = rowTarget && (rowTarget.recordId !== undefined || rowTarget.source !== undefined);
         for (let j = 0; j < targetColumnIds.length; j++) {
             const columnId = targetColumnIds[j];
+            if (requireSelected && !selection.contains({ rowId, columnId })) continue;
             if (!rowWritable || !ctx.editableColumns.has(columnId)) continue;
             const raw = source[i % sourceRows]?.[j % sourceColumns] ?? "";
             const value = parseCellValue(ctx, columnId, raw);
