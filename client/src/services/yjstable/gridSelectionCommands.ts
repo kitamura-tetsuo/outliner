@@ -19,6 +19,7 @@
 import type { GridSelection, GridSelectionRegion } from "./gridSelection";
 import { applyUnionedRowDelete, applyUnionedRowEdit, type RelationResolver } from "./relationRowWrite";
 import { deleteRecord, setRecordValue, type TableHandles, type TableRecordValue } from "./tableDocs";
+import { isValidDateString } from "./valueCasting";
 
 /** The four selection shapes a Grid selection's regions can describe. */
 export type GridSelectionKind = "none" | "rows" | "columns" | "cells" | "all";
@@ -134,6 +135,13 @@ export function isValueValidForCell(
             return !options || options.length === 0 || options.includes(value);
         }
         case "date":
+            // A date cell's own component only ever commits a real
+            // `YYYY-MM-DD` value (native `<input type="date">`), but a bulk
+            // command or a paste can carry any string -- validate it the same
+            // way `castValueForColumn`'s `"date"` case does, so an invalid
+            // date is rejected here instead of persisting a record PGlite
+            // will refuse to sync.
+            return typeof value === "string" && isValidDateString(value);
         case "text":
             return typeof value === "string";
     }
@@ -147,7 +155,8 @@ export interface GridCommandOutcome {
     count?: number;
 }
 
-function writeWritableCell(
+/** Writes one resolved target cell through its row's addressing (`recordId` or `source`). Shared with `gridClipboard.ts`'s paste commit, which validates a whole target rectangle up front the same way a bulk command validates a whole selection. */
+export function writeWritableCell(
     ctx: Pick<GridCommandContext, "handles" | "session">,
     target: GridWritableCellTarget,
     value: TableRecordValue,

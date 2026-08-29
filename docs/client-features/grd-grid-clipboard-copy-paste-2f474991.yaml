@@ -1,0 +1,30 @@
+id: GRD-2f474991
+title: Spreadsheet-style Grid clipboard and rectangular paste
+title-ja: Grid のスプレッドシート風クリップボードと矩形貼り付け
+description: Copy serializes the logical Grid selection as tab/newline rectangular text (and an HTML table), independent of mounted DOM cells; paste maps a tab/newline rectangle onto the active cell or range following spreadsheet fill conventions, through the shared selection command layer.
+category: tables
+status: implemented
+acceptance:
+- A cell value containing a tab, newline, or quote is RFC-4180-quoted so it round-trips through paste
+- A cell/range copies as rows separated by newlines and columns separated by tabs, with no header row
+- A paste that writes id-addressed cells shares one Yjs transaction, collapsing to one Undo step
+- A pasted date value must be a real calendar date; an invalid date string (e.g. Feb 30, or non-date text) is rejected the same way a bulk edit's date value is
+- A pasted value is validated against its column's type before anything is written; an incompatible value anywhere in the target rectangle aborts the whole paste
+- A rectangular source pasted at one active cell fills the corresponding rectangle starting there
+- A row, column, or select-all copy caps its serialized rows at the same shared limit as the whole-result export, to avoid stalling on a huge result
+- A single copied cell pasted onto a multi-cell selection repeats that value across the whole selection
+- A smaller source that evenly tiles a larger selected range repeats to fill it, matching spreadsheet convention
+- A sparse (Ctrl-click) selection's paste writes only the cells actually selected, not the Cartesian product of its bounding box
+- An ambiguous shape mismatch (neither an exact fit nor an even tiling) is rejected outright rather than silently truncated
+- An empty clipboard is a valid one-blank-cell source and can clear a target cell, the same as an explicit blank paste
+- Ctrl/Cmd+C and Ctrl/Cmd+V trigger Grid copy/paste from the keyboard, standing down while an individual cell's own text editor owns the keystroke
+- Only writable target cells (a writable row and an editable column) are mutation candidates; computed/read-only/non-writable cells are silently excluded, never written
+- Row and column selections copy the selected visible Grid result cells in their logical order
+- The Grid's own clipboard ownership boundary (`data-foreign-editor`) keeps the outliner's document-level item clipboard from double-handling a Grid copy/paste
+- The touch selection toolbar exposes Copy and Paste, calling the exact same functions as the keyboard shortcuts
+tests:
+- client/e2e/tables/grd-grid-clipboard-copy-2f474991.spec.ts
+- client/e2e/tables/grd-grid-clipboard-mobile-2f474991.spec.ts
+- client/e2e/tables/grd-grid-clipboard-paste-2f474991.spec.ts
+- client/src/components/yjstable/TableGrid.clipboard.test.ts
+- client/src/services/yjstable/gridClipboard.test.ts

@@ -169,9 +169,20 @@ describe("Demo seed content", () => {
         expect(table!.text).to.equal("");
     });
 
-    it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(69);
+    it("seeds the spreadsheet-style Grid cell clipboard guidance (#5192)", () => {
+        expect(DEMO_TEMPLATE_VERSION).to.equal(70);
 
+        const advanced = findChildByText(project.items, "Advanced Features");
+        expect(advanced).to.not.equal(undefined);
+
+        const cellClipboard = childTexts(advanced!.items).find(text => text.startsWith("Cell clipboard:"));
+        expect(cellClipboard, "cell clipboard guidance exists").to.not.equal(undefined);
+        expect(cellClipboard).to.contain("Ctrl/Cmd+C");
+        expect(cellClipboard).to.contain("Ctrl/Cmd+V");
+        expect(cellClipboard).to.contain("selection toolbar's Copy and Paste buttons");
+    });
+
+    it("seeds the current Grid clipboard guidance", () => {
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
 

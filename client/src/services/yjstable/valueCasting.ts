@@ -31,6 +31,17 @@ function isRealCalendarDate(datePart: string): boolean {
 }
 
 /**
+ * Whether `value` is a real `YYYY-MM-DD` calendar date -- the same check
+ * `castValueForColumn`'s `"date"` case applies before a value ever reaches
+ * PGlite. Callers that validate a date value *before* writing it to Yjs (a
+ * bulk edit, a paste) should use this so an invalid string is rejected up
+ * front instead of persisting a record PGlite will refuse to sync.
+ */
+export function isValidDateString(value: string): boolean {
+    return DATE_RE.test(value) && isRealCalendarDate(value);
+}
+
+/**
  * Cast a raw record value to a parameter value for the given column.
  * Returns null for null/undefined/empty-string (letting PGlite enforce NOT
  * NULL constraints) and throws a TableSqlError with kind "cast" when the

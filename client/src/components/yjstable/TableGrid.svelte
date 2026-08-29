@@ -30,6 +30,7 @@ import {
     removeRowTargets,
     summarizeSelection,
 } from "../../services/yjstable/gridSelectionCommands";
+import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { untrack } from "svelte";
@@ -98,6 +99,8 @@ let bulkRowsToDelete: GridCommandRowTarget[] | undefined = $state(undefined);
 let isConfirmDialogOpen: boolean = $state(false);
 const selection = new GridSelection();
 let selectionRevision = $state(0);
+/** Feedback for a paste this Grid rejected (shape mismatch, incompatible value, ...); see `pasteClipboardIntoSelection`. */
+let pasteStatus: string | undefined = $state();
 
 /**
  * There is one active cell editor at a time (never multiple synthesized
@@ -241,6 +244,7 @@ function selectCell(event: MouseEvent, cell: GridCellAddress): void {
     // edit session steal focus back onto a different cell afterwards.
     editingCell = undefined;
     pendingEditSeed = undefined;
+    pasteStatus = undefined;
 }
 
 function sameCell(left: GridCellAddress | undefined, right: GridCellAddress): boolean {
@@ -251,6 +255,7 @@ function finishSelectionChange(): void {
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
+    pasteStatus = undefined;
 }
 
 function selectTouchCell(cell: GridCellAddress): void {
@@ -391,6 +396,7 @@ function selectRowHeader(event: MouseEvent | KeyboardEvent, rowId: string): void
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
+    pasteStatus = undefined;
 }
 
 function selectColumnHeader(event: MouseEvent | KeyboardEvent, columnId: string): void {
@@ -398,6 +404,7 @@ function selectColumnHeader(event: MouseEvent | KeyboardEvent, columnId: string)
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
+    pasteStatus = undefined;
 }
 
 function selectAllResult(): void {
@@ -405,6 +412,7 @@ function selectAllResult(): void {
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
+    pasteStatus = undefined;
 }
 
 function rowSelected(rowId: string): boolean {
@@ -536,6 +544,7 @@ function moveActive(
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
+    pasteStatus = undefined;
     focusLogicalCell(target, 0, deferred);
 }
 
@@ -555,6 +564,77 @@ function exitCellEdit(cell: GridCellAddress, direction?: GridNavDirection) {
 }
 
 /**
+ * Writes the current selection to the system clipboard as tab/newline
+ * rectangular text plus an HTML `<table>` flavor (FTR-5192). Shared verbatim
+ * by the Ctrl/Cmd+C shortcut and the touch selection toolbar's Copy button --
+ * neither owns any clipboard logic of its own.
+ */
+async function copySelectionToClipboard(): Promise<void> {
+    const payload = buildGridCopyPayload(selection, commandContext, rowIdsOf(result.rows));
+    if (!payload || typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+        if (navigator.clipboard.write && typeof ClipboardItem !== "undefined") {
+            const item = new ClipboardItem({
+                "text/plain": new Blob([payload.text], { type: "text/plain" }),
+                "text/html": new Blob([payload.html], { type: "text/html" }),
+            });
+            await navigator.clipboard.write([item]);
+            return;
+        }
+        await navigator.clipboard.writeText?.(payload.text);
+    } catch {
+        // Clipboard permission denied or unavailable -- Grid copy has no DOM
+        // selection to fall back to letting the browser handle natively.
+    }
+}
+
+function pasteStatusMessage(plan: GridPastePlan): string | undefined {
+    switch (plan.kind) {
+        case "empty-source":
+            return undefined;
+        case "no-target":
+            return "Select a cell or range to paste into.";
+        case "shape-mismatch":
+            return `Can't paste ${plan.sourceRows}×${plan.sourceColumns} copied cells into a `
+                + `${plan.targetRows}×${plan.targetColumns} selection.`;
+        case "invalid-value":
+            return `Paste cancelled: column "${plan.columnId}" can't accept that value.`;
+        case "no-writable-cells":
+            return "Nothing in the selection is editable.";
+        case "apply":
+            return undefined;
+    }
+}
+
+/**
+ * Reads the system clipboard and applies it to the current selection as one
+ * rectangular paste (FTR-5192). Shared verbatim by the Ctrl/Cmd+V shortcut
+ * and the touch selection toolbar's Paste button. A rejection (no target,
+ * shape mismatch, an incompatible value, or nothing writable) mutates
+ * nothing and is surfaced as transient status text instead.
+ */
+async function pasteClipboardIntoSelection(): Promise<void> {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.readText) return;
+    let text: string;
+    try {
+        text = await navigator.clipboard.readText();
+    } catch {
+        return;
+    }
+    // An empty clipboard is a legitimate one-blank-cell source (a copied
+    // empty/NULL cell) that should still be able to clear the target --
+    // `parseClipboardRectangle`/`planGridPaste` already treat "" that way,
+    // so this must not bail out early just because the string is falsy.
+    const plan = planGridPaste(selection, commandContext, rowIdsOf(result.rows), text);
+    if (plan.kind === "apply") {
+        commitGridPaste(commandContext, plan.writes);
+        pasteStatus = undefined;
+        return;
+    }
+    pasteStatus = pasteStatusMessage(plan);
+}
+
+/**
  * Grid-level keyboard navigation, delegated on the container so it applies
  * uniformly to every cell without per-component wiring. Stands down whenever
  * focus is inside a text/number cell's own input (that component owns
@@ -566,6 +646,20 @@ function handleGridKeyDown(event: KeyboardEvent) {
     if (event.isComposing) return;
     const target = event.target as HTMLElement;
     if (target instanceof HTMLInputElement && target.classList.contains("cell-input")) return;
+
+    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+        const key = event.key.toLowerCase();
+        if (key === "c") {
+            event.preventDefault();
+            void copySelectionToClipboard();
+            return;
+        }
+        if (key === "v") {
+            event.preventDefault();
+            void pasteClipboardIntoSelection();
+            return;
+        }
+    }
 
     if (event.key === "Delete" || event.key === "Backspace") {
         // Not gated on a `td[data-row-id]` target: a `rows`-kind selection's
@@ -726,12 +820,20 @@ function handleCancelDelete() {
     `data-block-dnd-type` narrows that to the grid's own column drags, which carry
     COLUMN_DRAG_TYPE. Files, outliner items and text dropped on a body cell are
     not the grid's business and keep reaching the host item's handlers.
+
+    `data-foreign-editor` claims Grid's own keyboard/clipboard events as an
+    ownership boundary (see lib/foreignEditor.ts): the outliner's document-level
+    copy/paste handlers back off for every element in this subtree, including
+    row/column header `th`s that carry no other "foreign input" marker of their
+    own, so Grid's own Ctrl/Cmd+C/V handling (FTR-5192) is never raced or
+    double-handled by the item-level clipboard.
 -->
 <div
     class="yjs-table-grid"
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
+    data-foreign-editor="grid"
     bind:this={gridContainer}
 >
     {#if loading}
@@ -741,6 +843,9 @@ function handleCancelDelete() {
             <p class="grid-selection-status" data-testid="grid-selection-status">
                 {selectionSummary.totalCells} cells selected · {selectionSummary.writableTargets.length} editable
             </p>
+        {/if}
+        {#if pasteStatus}
+            <p class="grid-paste-status" data-testid="grid-paste-status" role="status">{pasteStatus}</p>
         {/if}
         <table role="grid" onkeydown={handleGridKeyDown}>
             <thead>
@@ -979,6 +1084,12 @@ function handleCancelDelete() {
                         type="button"
                         onclick={editActiveTouchCell}
                     >Edit cell</button>
+                {/if}
+                {#if selectionSummary.kind !== "none"}
+                    <button type="button" onclick={() => copySelectionToClipboard()}>Copy</button>
+                {/if}
+                {#if selectionSummary.kind === "cells"}
+                    <button type="button" onclick={() => pasteClipboardIntoSelection()}>Paste</button>
                 {/if}
                 <button type="button" onclick={leaveTouchSelectionMode}>Done</button>
             </div>
@@ -1226,7 +1337,8 @@ th.drop-target-right {
 .empty-state,
 .readonly-reason,
 .loading-state,
-.grid-selection-status {
+.grid-selection-status,
+.grid-paste-status {
     color: #6b7280;
     font-size: 0.875rem;
     margin: 6px 0;
