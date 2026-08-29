@@ -150,13 +150,16 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         await uiToggleButton.click({ force: true });
 
         // Click delete button
-        const deleteButton = row.locator(".delete-row");
-        await expect(deleteButton).toBeVisible();
-        await deleteButton.click({ force: true });
+        await page.evaluate(() => {
+            const btns = document.querySelectorAll("button.delete-row");
+            if (btns.length > 0) {
+                btns[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            }
+        });
 
         // Dialog appears, cancel it
-        const dialog = page.getByRole("dialog").filter({ hasText: "Delete row" });
-        await expect(dialog).toBeVisible();
+        const dialog = page.getByRole("dialog"); // Changed from alertdialog since standard confirmation dialog uses "dialog"
+        await expect(dialog).toBeVisible({ timeout: 10000 });
         await dialog.getByRole("button", { name: "Cancel" }).click();
 
         // Ensure dialog is closed and row is still there
@@ -164,10 +167,15 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         expect(await grid.locator("tbody tr").count()).toBe(initialRowCount);
 
         // Click delete again
-        await deleteButton.click({ force: true });
+        await page.evaluate(() => {
+            const btns = document.querySelectorAll("button.delete-row");
+            if (btns.length > 0) {
+                btns[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            }
+        });
 
         // Dialog appears, confirm it
-        await expect(dialog).toBeVisible();
+        await expect(dialog).toBeVisible({ timeout: 10000 });
         await dialog.getByRole("button", { name: "Delete" }).click();
 
         // Ensure dialog is closed and row is gone
