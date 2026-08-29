@@ -54,6 +54,7 @@ interface TableEntry {
     sourceTableId?: string;
 }
 interface TableDoc {
+    doc: Y.Doc;
     schema: string;
     data: Y.Map<Y.Map<RelationValue>>;
     disconnect(): Promise<void> | void;
@@ -101,6 +102,7 @@ export class OutlinerRelationService {
         );
         const doc = connection.document as unknown as Y.Doc;
         return {
+            doc,
             schema: doc.getText("schema").toString(),
             data: doc.getMap("data"),
             disconnect: connection.disconnect,
@@ -156,7 +158,7 @@ export class OutlinerRelationService {
                 const schema = await this.inspectTableSchema(lease.db, source.schema);
                 const recordIds = [...source.data.keys()].sort((a, b) => a.localeCompare(b));
                 const after = cursor === undefined ? undefined : this.decodeTableCursor(cursor);
-                const start = after === undefined ? 0 : recordIds.findIndex(id => id > after);
+                const start = after === undefined ? 0 : recordIds.findIndex(id => id.localeCompare(after) > 0);
                 const pageStart = start < 0 ? recordIds.length : start;
                 const pageIds = includeRecords ? recordIds.slice(pageStart, pageStart + recordLimit) : [];
                 const records = pageIds.map(recordId => ({
@@ -165,7 +167,7 @@ export class OutlinerRelationService {
                     revision: this.rowRevision(source.data.get(recordId)),
                 }));
                 const recordErrors = includeRecords && schema.status === "valid"
-                    ? await this.inspectRecordErrors(lease.db, schema.tableName, source.data, pageIds)
+                    ? await this.inspectRecordErrors(lease.db, schema.tableName, schema.columns, source.data, pageIds)
                     : [];
                 const truncated = includeRecords && pageStart + pageIds.length < recordIds.length;
                 const revisionValue = {
@@ -173,12 +175,7 @@ export class OutlinerRelationService {
                     displayName: table.displayName,
                     sqlName: table.relation,
                     rawSchemaSql: source.schema,
-                    records: recordIds.map(id => [
-                        id,
-                        Object.fromEntries(
-                            [...(source.data.get(id)?.entries() ?? [])].sort(([a], [b]) => a.localeCompare(b)),
-                        ),
-                    ]),
+                    tableStateVector: Buffer.from(Y.encodeStateVector(source.doc)).toString("base64url"),
                 };
                 return {
                     tableId,
@@ -258,31 +255,111 @@ export class OutlinerRelationService {
     private async inspectRecordErrors(
         db: PGlite,
         relation: string,
+        columns: { name: string; dataType: string; kind: string; }[],
         data: Y.Map<Y.Map<RelationValue>>,
-        recordIds: string[],
-    ): Promise<{ recordId: string; message: string; }[]> {
-        const errors: { recordId: string; message: string; }[] = [];
-        for (const recordId of recordIds) {
-            const values: Record<string, RelationValue> = {
-                ...Object.fromEntries(data.get(recordId)?.entries() ?? []),
-                id: recordId,
-            };
-            const keys = Object.keys(values).filter(key => IDENT.test(key));
+        pageIds: string[],
+    ): Promise<{ recordId: string; column?: string; message: string; }[]> {
+        const errors: { recordId: string; column?: string; message: string; }[] = [];
+        const page = new Set(pageIds);
+        // The client adapter materializes every record into one relation. Do
+        // the same here so UNIQUE/FK constraints spanning pages are diagnosed
+        // correctly, while returning only errors for the requested page.
+        for (const [recordId, record] of data) {
+            const values: unknown[] = [];
+            let castFailed = false;
+            for (const column of columns) {
+                const raw = column.name === "id" ? recordId : record.get(column.name);
+                try {
+                    values.push(this.castRecordValue(raw, column));
+                } catch (error) {
+                    castFailed = true;
+                    if (page.has(recordId)) {
+                        errors.push({
+                            recordId,
+                            column: column.name,
+                            message: error instanceof Error ? error.message : "Record value could not be cast",
+                        });
+                    }
+                    break;
+                }
+            }
+            if (castFailed) continue;
             try {
                 await db.query(
                     `INSERT INTO "${relation.replace(/"/g, '""')}" (${
-                        keys.map(key => `"${key.replace(/"/g, '""')}"`).join(",")
-                    }) VALUES (${keys.map((_, index) => `$${index + 1}`).join(",")})`,
-                    keys.map(key => values[key]),
+                        columns.map(column => `"${column.name.replace(/"/g, '""')}"`).join(",")
+                    }) VALUES (${columns.map((_, index) => `$${index + 1}`).join(",")})`,
+                    values,
                 );
             } catch (error) {
-                errors.push({
-                    recordId,
-                    message: error instanceof Error ? error.message : "Record could not be synchronized",
-                });
+                if (page.has(recordId)) {
+                    errors.push({
+                        recordId,
+                        message: error instanceof Error ? error.message : "Record could not be synchronized",
+                    });
+                }
             }
         }
         return errors;
+    }
+
+    private castRecordValue(value: unknown, column: { name: string; dataType: string; kind: string; }): unknown {
+        if (value === null || value === undefined) return null;
+        if (typeof value === "string" && value === "" && column.kind !== "text") return null;
+        const invalid = (expected: string) => {
+            throw new Error(
+                `Value ${
+                    JSON.stringify(value)
+                } is not a valid ${expected} for column "${column.name}" (${column.dataType})`,
+            );
+        };
+        if (column.kind === "text") {
+            if (["string", "number", "boolean"].includes(typeof value)) return String(value);
+            return invalid("text");
+        }
+        if (column.kind === "integer") {
+            if (typeof value === "number" && Number.isInteger(value)) return value;
+            if (typeof value === "string" && /^[+-]?\d+$/.test(value.trim())) return Number.parseInt(value.trim(), 10);
+            return invalid("integer");
+        }
+        if (column.kind === "number") {
+            if (typeof value === "number" && Number.isFinite(value)) return value;
+            if (typeof value === "string" && value.trim() && Number.isFinite(Number(value.trim()))) {
+                return Number(value.trim());
+            }
+            return invalid("number");
+        }
+        if (column.kind === "boolean") {
+            if (typeof value === "boolean") return value;
+            if (value === "true") return true;
+            if (value === "false") return false;
+            return invalid("boolean");
+        }
+        if (column.kind === "date") {
+            if (typeof value === "string" && this.isCalendarDate(value)) return value;
+            return invalid("date (YYYY-MM-DD)");
+        }
+        if (column.kind === "timestamp") {
+            if (typeof value === "string" && this.isTimestamp(value)) return value;
+            return invalid("timestamp (YYYY-MM-DDTHH:MM[:SS])");
+        }
+        if (typeof value === "string") return value;
+        return invalid(column.dataType);
+    }
+
+    private isCalendarDate(value: string): boolean {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const [year, month, day] = value.split("-").map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+    }
+
+    private isTimestamp(value: string): boolean {
+        const match = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?Z?$/.exec(value);
+        return Boolean(
+            match && this.isCalendarDate(match[1]) && Number(match[2]) <= 23 && Number(match[3]) <= 59
+                && Number(match[4] ?? 0) < 60,
+        );
     }
 
     private async inspectTableSchema(db: PGlite, rawSql: string) {
@@ -312,6 +389,7 @@ export class OutlinerRelationService {
                     + "WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position",
                 [tableName],
             );
+            if (columns.rows.length === 0) throw new Error("Table must define at least one column");
             const primaryKeys = await db.query<{ column_name: string; }>(
                 "SELECT kcu.column_name FROM information_schema.table_constraints tc "
                     + "JOIN information_schema.key_column_usage kcu ON kcu.constraint_name = tc.constraint_name "

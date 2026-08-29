@@ -68,8 +68,8 @@ describe("Outliner MCP relation service", function() {
         );
         const first = table.getMap<Y.Map<string | number | boolean | null>>("data").get("r1")!;
         first.set("order", 2);
-        first.set("due", "2026-08-29T12:00:00Z");
-        first.set("at", "2026-08-29T12:34:56+02:00");
+        first.set("due", "2026-08-29");
+        first.set("at", "2026-08-29T10:34:56Z");
         first.set("state", "open");
         for (const id of ["r3", "r2"]) {
             const row = new Y.Map<string | number | boolean | null>();
@@ -103,11 +103,35 @@ describe("Outliner MCP relation service", function() {
             order: 2,
         });
         expect(page1.page).to.include({ limit: 2, truncated: true });
-        expect(page1.recordErrors).to.have.length(1);
-        expect(page1.recordErrors?.[0]).to.include({ recordId: "r1" });
+        expect(page1.recordErrors).to.deep.equal([]);
         const page2 = await service.getTable("uid", "project-1", "table-1", true, 2, page1.page.nextCursor);
         expect(page2.records.map(record => record.recordId)).to.deep.equal(["r3"]);
         expect(page2.page).to.deep.equal({ limit: 2, truncated: false, nextCursor: undefined });
+    });
+
+    it("uses consistent mixed-case cursor ordering and validates constraints across pages", async () => {
+        const { service, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, code TEXT UNIQUE)");
+        table.getMap("data").clear();
+        for (const id of ["a", "B", "C"]) {
+            const row = new Y.Map<string>();
+            row.set("id", id);
+            row.set("code", id === "a" ? "duplicate" : id === "B" ? "duplicate" : "unique");
+            table.getMap("data").set(id, row);
+        }
+        const expected = ["a", "B", "C"].sort((a, b) => a.localeCompare(b));
+        const seen: string[] = [];
+        let cursor: string | undefined;
+        for (let index = 0; index < expected.length; index++) {
+            const result = await service.getTable("uid", "project-1", "table-1", true, 1, cursor);
+            seen.push(result.records[0].recordId);
+            if (result.records[0].recordId === "B") {
+                expect(result.recordErrors).to.have.length(1);
+            }
+            cursor = result.page.nextCursor;
+        }
+        expect(seen).to.deep.equal(expected);
     });
 
     it("fails closed for Table inspection and reports malformed or unapplied schema safely", async () => {
@@ -132,6 +156,11 @@ describe("Outliner MCP relation service", function() {
         expect(result.schema.status).to.equal("invalid");
         expect(result.schema.error).to.deep.include({ code: "invalid_schema" });
         expect(result.recordCount).to.equal(1);
+
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(0, "CREATE TABLE tasks ()");
+        const noColumns = await service.getTable("uid", "project-1", "table-1");
+        expect(noColumns.schema.status).to.equal("invalid");
 
         table.getMap("data").clear();
         table.getText("schema").delete(0, table.getText("schema").length);
