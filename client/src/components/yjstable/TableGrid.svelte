@@ -108,6 +108,7 @@ const TOUCH_SLOP_PX = 10;
 let touchSelectionMode = $state(false);
 let additiveTouchSelection = $state(false);
 let handleDrag = $state<"anchor" | "focus" | undefined>();
+let handleOppositeCell: GridCellAddress | undefined;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -267,8 +268,10 @@ function touchCellPointerUp(event: PointerEvent): void {
     if (isDoubleTap) {
         selection.select(cell);
         selectionRevision++;
-        editingCell = cell;
-        pendingEditSeed = undefined;
+        // Let this tap's native click reach the cell control. Text/number
+        // buttons enter edit mode, while checkbox/select/date keep their own
+        // platform-native activation and virtual-keyboard behavior.
+        suppressClickUntil = 0;
         lastTap = undefined;
         return;
     }
@@ -294,6 +297,8 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     event.preventDefault();
     event.stopPropagation();
     handleDrag = end;
+    const snapshot = selection.snapshot();
+    handleOppositeCell = end === "anchor" ? snapshot.activeCell : snapshot.anchorCell;
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 }
 
@@ -302,18 +307,14 @@ function moveHandle(event: PointerEvent): void {
     event.preventDefault();
     const cell = cellAtPoint(event.clientX, event.clientY);
     if (!cell) return;
-    const snapshot = selection.snapshot();
-    if (handleDrag === "anchor") {
-        selection.select(snapshot.activeCell ?? cell);
-        selection.extend(cell, rowIdsOf(result.rows), displayColumns);
-    } else {
-        selection.extend(cell, rowIdsOf(result.rows), displayColumns);
-    }
+    selection.select(handleOppositeCell ?? cell);
+    selection.extend(cell, rowIdsOf(result.rows), displayColumns);
     selectionRevision++;
 }
 
 function stopHandleDrag(): void {
     handleDrag = undefined;
+    handleOppositeCell = undefined;
 }
 
 function isSelectionEnd(cell: GridCellAddress, end: "anchor" | "focus"): boolean {
@@ -326,6 +327,23 @@ function leaveTouchSelectionMode(): void {
     touchSelectionMode = false;
     additiveTouchSelection = false;
     handleDrag = undefined;
+}
+
+function activeSelectionCell(): GridCellAddress | undefined {
+    void selectionRevision;
+    return selection.snapshot().activeCell;
+}
+
+function editActiveTouchCell(): void {
+    const cell = activeSelectionCell();
+    if (!cell || !gridContainer) return;
+    leaveTouchSelectionMode();
+    const td = gridContainer.querySelector<HTMLElement>(
+        `td[data-row-id="${CSS.escape(cell.rowId)}"][data-col="${CSS.escape(cell.columnId)}"]`,
+    );
+    const control = td?.querySelector<HTMLElement>("button, input, select");
+    if (control instanceof HTMLButtonElement) control.click();
+    else control?.focus();
 }
 
 function headerOptions(event: MouseEvent | KeyboardEvent) {
@@ -863,13 +881,10 @@ function handleCancelDelete() {
                     aria-pressed={additiveTouchSelection}
                     onclick={() => additiveTouchSelection = !additiveTouchSelection}
                 >{additiveTouchSelection ? "Add selection: on" : "Add selection"}</button>
-                {#if selection.snapshot().activeCell}
+                {#if activeSelectionCell()}
                     <button
                         type="button"
-                        onclick={() => {
-                            editingCell = selection.snapshot().activeCell;
-                            leaveTouchSelectionMode();
-                        }}
+                        onclick={editActiveTouchCell}
                     >Edit cell</button>
                 {/if}
                 <button type="button" onclick={leaveTouchSelectionMode}>Done</button>
