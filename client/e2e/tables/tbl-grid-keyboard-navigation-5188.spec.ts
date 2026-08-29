@@ -31,15 +31,19 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await selectAndFocus(titleCell);
         await expect(titleCell).toHaveClass(/grid-active/);
 
-        await page.keyboard.press("ArrowRight");
-        await expect(firstRow.locator("td[data-col='cadence']")).toHaveClass(/grid-active/);
+        // Stay within the two adjacent text columns (template_id, title):
+        // once a select/date/checkbox cell is focused it owns arrow keys
+        // natively (see the dedicated exception test below), so a plain
+        // arrow-key sequence must not cross into one.
+        await page.keyboard.press("ArrowLeft");
+        await expect(firstRow.locator("td[data-col='template_id']")).toHaveClass(/grid-active/);
         await expect(titleCell).not.toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowDown");
         const secondRow = grid.locator("tbody tr").nth(1);
-        await expect(secondRow.locator("td[data-col='cadence']")).toHaveClass(/grid-active/);
+        await expect(secondRow.locator("td[data-col='template_id']")).toHaveClass(/grid-active/);
 
-        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.press("ArrowRight");
         await expect(secondRow.locator("td[data-col='title']")).toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowUp");
