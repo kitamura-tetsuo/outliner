@@ -1,0 +1,20 @@
+id: GRD-b589b9f9
+title: Selection-aware bulk Grid editing commands
+title-ja: 選択範囲に基づく Grid 一括編集コマンド
+description: A shared command layer applies edits to the logical Grid selection so keyboard, mouse, touch and clipboard commands mutate cells and rows consistently and safely.
+category: tables
+status: implemented
+acceptance:
+- A bulk command validates every target's value against its column type first and writes nothing at all if any one target is incompatible
+- A select-all (whole-result) selection never implicitly becomes a destructive whole-result record removal
+- Committing a checkbox or select value while several writable cells are selected applies that value to every one of them as one action
+- Delete/Backspace clears every writable selected cell's content to NULL for a cell/range, column, or select-all selection
+- Delete/Backspace removes the selected records instead when the selection kind is rows, honoring the per-Grid "Confirm before deleting rows" option from keyboard-triggered actions too
+- Read-only/computed cells and rows without a durable write identity are never mutation targets, even while selected
+- The Grid can report a mixed selection's writable/total cell counts (e.g. "12 cells selected · 9 editable")
+- id-addressed bulk writes and row removals share a single Yjs transaction, collapsing to one Undo step
+tests:
+- client/e2e/tables/grd-grid-bulk-clear-commands-b589b9f9.spec.ts
+- client/e2e/tables/grd-grid-bulk-row-select-commands-b589b9f9.spec.ts
+- client/src/components/yjstable/TableGrid.bulkCommands.test.ts
+- client/src/services/yjstable/gridSelectionCommands.test.ts

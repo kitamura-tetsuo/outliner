@@ -5,11 +5,11 @@ description: Use spreadsheet-style Grid cell, range, row, and column selection o
 category: tables
 status: implemented
 acceptance:
-- A tap activates a cell, a double tap enters its native editor, and a long press enters range-selection mode
-- Moving beyond touch slop leaves gesture ownership with native horizontal or vertical scrolling
-- Large touch handles resize the same logical range used by mouse and keyboard selection
-- Row and column headers remain directly tappable and additive mode provides understandable multi-selection without modifier keys
 - A floating, keyboard-accessible toolbar exposes additive selection, editing, and an extensible home for shared selection commands
+- A tap activates a cell, a double tap enters its native editor, and a long press enters range-selection mode
+- Large touch handles resize the same logical range used by mouse and keyboard selection
+- Moving beyond touch slop leaves gesture ownership with native horizontal or vertical scrolling
 - Opening a native cell editor preserves the logical active cell while the virtual keyboard changes the visual viewport
+- Row and column headers remain directly tappable and additive mode provides understandable multi-selection without modifier keys
 tests:
 - client/src/components/yjstable/TableGrid.touch.test.ts
