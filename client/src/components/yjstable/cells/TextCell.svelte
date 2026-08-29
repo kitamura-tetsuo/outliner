@@ -6,36 +6,29 @@ interface Props {
     editable: boolean;
     ariaLabel?: string;
     /**
+     * Whether this cell is the one active editor. Bindable: Grid flips it to
+     * true to start editing from the keyboard (F2/Enter/typing a character)
+     * without a click, and reads it back when this cell's own click/blur/
+     * Enter/Escape handling ends the session, so it always knows which cell
+     * (if any) currently owns the editor.
+     */
+    editing?: boolean;
+    /**
      * Initial input text for an edit started by typing a printable character
-     * in Grid navigation mode. Stable for the lifetime of one edit session
-     * (the parent only clears it once `onEditingChange(false)` fires), so it
-     * seeds the freshly-mounted input without fighting the user's typing on
-     * later re-renders.
+     * in Grid navigation mode. Stable for the lifetime of one edit session,
+     * so it seeds the freshly-mounted input without fighting the user's
+     * typing on a later unrelated re-render.
      */
     editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
     /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
     onRequestFocus?: (direction?: GridNavDirection) => void;
-    /** Reports edit-mode transitions so Grid can track which cell owns the one active editor. */
-    onEditingChange?: (editing: boolean) => void;
 }
 
-let { value, editable, ariaLabel, editSeed, onCommit, onRequestFocus, onEditingChange }: Props = $props();
-let editing = $state(false);
-
-function setEditing(next: boolean) {
-    editing = next;
-    onEditingChange?.(next);
-}
-
-// Enter edit mode when Grid seeds this cell with typed text (F2/Enter use
-// click()-equivalent activation instead, so they never set editSeed).
-$effect(() => {
-    if (editSeed !== undefined && editable && !editing) setEditing(true);
-});
+let { value, editable, ariaLabel, editing = $bindable(false), editSeed, onCommit, onRequestFocus }: Props = $props();
 
 function commit(e: Event) {
-    setEditing(false);
+    editing = false;
     onCommit((e.target as HTMLInputElement).value);
 }
 </script>
@@ -59,7 +52,7 @@ function commit(e: Event) {
                 commit(e);
                 onRequestFocus?.(e.shiftKey ? "left" : "right");
             } else if (e.key === "Escape") {
-                setEditing(false);
+                editing = false;
                 onRequestFocus?.();
             }
         }}
@@ -72,7 +65,7 @@ function commit(e: Event) {
         class:readonly={!editable}
         aria-disabled={!editable}
         onclick={() => {
-            if (editable) setEditing(true);
+            if (editable) editing = true;
         }}
     >{value === null || value === undefined ? "" : String(value)}</button>
 {/if}

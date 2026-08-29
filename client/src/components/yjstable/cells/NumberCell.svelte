@@ -5,29 +5,19 @@ interface Props {
     value: unknown;
     editable: boolean;
     ariaLabel?: string;
+    /** See TextCell: bindable so Grid can start/end editing this cell directly. */
+    editing?: boolean;
     /** See TextCell: seeds a freshly-opened editor when typing starts the edit. */
     editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
     /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
     onRequestFocus?: (direction?: GridNavDirection) => void;
-    /** Reports edit-mode transitions so Grid can track which cell owns the one active editor. */
-    onEditingChange?: (editing: boolean) => void;
 }
 
-let { value, editable, ariaLabel, editSeed, onCommit, onRequestFocus, onEditingChange }: Props = $props();
-let editing = $state(false);
-
-function setEditing(next: boolean) {
-    editing = next;
-    onEditingChange?.(next);
-}
-
-$effect(() => {
-    if (editSeed !== undefined && editable && !editing) setEditing(true);
-});
+let { value, editable, ariaLabel, editing = $bindable(false), editSeed, onCommit, onRequestFocus }: Props = $props();
 
 function commit(e: Event) {
-    setEditing(false);
+    editing = false;
     const raw = (e.target as HTMLInputElement).value.trim();
     if (raw === "") {
         onCommit(null);
@@ -60,7 +50,7 @@ function commit(e: Event) {
                 commit(e);
                 onRequestFocus?.(e.shiftKey ? "left" : "right");
             } else if (e.key === "Escape") {
-                setEditing(false);
+                editing = false;
                 onRequestFocus?.();
             }
         }}
@@ -73,7 +63,7 @@ function commit(e: Event) {
         class:readonly={!editable}
         aria-disabled={!editable}
         onclick={() => {
-            if (editable) setEditing(true);
+            if (editable) editing = true;
         }}
     >{value === null || value === undefined ? "" : String(value)}</button>
 {/if}

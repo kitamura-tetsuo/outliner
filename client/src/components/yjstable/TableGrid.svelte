@@ -239,20 +239,28 @@ function tryFocusLogicalCell(cell: GridCellAddress): boolean {
 
 /**
  * Focus the interactive control for a logical cell, addressed only by its
- * durable row/column identity (never a DOM row index). Awaits `tick()` first
- * so a same-tick Svelte update (e.g. Escape swapping a cell's `<input>` back
- * to its display `<button>`) has already patched the DOM before this reads
- * it -- querying synchronously would still find the about-to-be-removed
- * element. `tick()` settles on a microtask, well ahead of a real or
- * automated next keystroke, so pure keyboard navigation (no re-render
- * involved) still reads as effectively synchronous. A query refresh (Yjs
- * write -> PGlite -> debounced re-query) can replace the underlying
- * `<tr>`/`<td>` on a slower, real async timeline though, so this retries
- * across a few animation frames when the cell still isn't there after
- * `tick()`, matching the #5181 focus-preservation contract.
+ * durable row/column identity (never a DOM row index). Plain keyboard
+ * navigation focuses synchronously -- the target cell's DOM is untouched, so
+ * waiting even a microtask would risk losing to the next keystroke in a fast
+ * sequence. `awaitTick` opts a caller into waiting one Svelte tick first, for
+ * the one case that needs it: exiting edit mode back onto the very cell that
+ * was just edited, whose `<input>` is mid-swap back to its `<button>` this
+ * same tick. A query refresh (Yjs write -> PGlite -> debounced re-query) can
+ * replace the underlying `<tr>`/`<td>` on a slower, real async timeline
+ * regardless, so this also retries across a few animation frames when the
+ * cell still isn't there, matching the #5181 focus-preservation contract.
  */
-async function focusLogicalCell(cell: GridCellAddress, attempts = 0) {
-    await tick();
+function focusLogicalCell(cell: GridCellAddress, attempts = 0, awaitTick = false) {
+    if (awaitTick) {
+        // The target cell is the one an edit session was just exited on (Escape,
+        // or Enter/Tab clamped back onto it at the grid edge): its own DOM is
+        // mid-swap from <input> back to <button> this very tick, so querying
+        // before that Svelte patch lands would still find the outgoing input.
+        // Pure navigation never hits this -- the target cell's DOM is untouched
+        // -- so it skips the wait and stays synchronous against fast keystrokes.
+        void tick().then(() => focusLogicalCell(cell, attempts));
+        return;
+    }
     if (tryFocusLogicalCell(cell)) return;
     if (attempts > 10 || !gridContainer) return;
 
@@ -260,7 +268,13 @@ async function focusLogicalCell(cell: GridCellAddress, attempts = 0) {
 }
 
 /** Move the logical active cell and focus it; `extend` grows the selection from the anchor instead of replacing it. */
-function moveActive(origin: GridCellAddress, direction: GridNavDirection, extend: boolean, wrap: boolean) {
+function moveActive(
+    origin: GridCellAddress,
+    direction: GridNavDirection,
+    extend: boolean,
+    wrap: boolean,
+    awaitTick = false,
+) {
     const rows = rowIdsOf(result.rows);
     const target = moveActiveCell(origin, direction, rows, displayColumns, { wrap }) ?? origin;
     if (extend) selection.extend(target, rows, displayColumns);
@@ -268,7 +282,7 @@ function moveActive(origin: GridCellAddress, direction: GridNavDirection, extend
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
-    focusLogicalCell(target);
+    focusLogicalCell(target, 0, awaitTick);
 }
 
 /** Called by a cell editor's keyboard commit (Enter/Tab) or cancel (Escape). */
@@ -278,12 +292,12 @@ function exitCellEdit(cell: GridCellAddress, direction?: GridNavDirection) {
     if (!direction) {
         selection.select(cell);
         selectionRevision++;
-        focusLogicalCell(cell);
+        focusLogicalCell(cell, 0, true);
         return;
     }
     // Tab/Shift+Tab wrap to the adjacent row at the edge; Enter/Shift+Enter clamp.
     const wrap = direction === "left" || direction === "right";
-    moveActive(cell, direction, false, wrap);
+    moveActive(cell, direction, false, wrap, true);
 }
 
 /**
@@ -545,22 +559,25 @@ function handleCancelDelete() {
                                     options={schemaColumn?.checkOptions}
                                     ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
                                     editSeed={logicalCell !== undefined && cellEditing(logicalCell) ? pendingEditSeed : undefined}
+                                    bind:editing={
+                                        () => logicalCell !== undefined && cellEditing(logicalCell),
+                                        (editing) => {
+                                            if (!logicalCell) return;
+                                            if (editing) {
+                                                selection.select(logicalCell);
+                                                selectionRevision++;
+                                                editingCell = logicalCell;
+                                            } else if (cellEditing(logicalCell)) {
+                                                editingCell = undefined;
+                                                pendingEditSeed = undefined;
+                                            }
+                                        }
+                                    }
                                     onCommit={(value) => {
                                         if (recordId !== undefined || source !== undefined) commitCell(row, column, value);
                                     }}
                                     onRequestFocus={(direction) => {
                                         if (logicalCell) exitCellEdit(logicalCell, direction);
-                                    }}
-                                    onEditingChange={(editing) => {
-                                        if (!logicalCell) return;
-                                        if (editing) {
-                                            selection.select(logicalCell);
-                                            selectionRevision++;
-                                            editingCell = logicalCell;
-                                        } else if (cellEditing(logicalCell)) {
-                                            editingCell = undefined;
-                                            pendingEditSeed = undefined;
-                                        }
                                     }}
                                 />
                             </td>

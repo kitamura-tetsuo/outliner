@@ -15,13 +15,19 @@ export interface CellProps {
     editable: boolean;
     options?: string[];
     ariaLabel?: string;
+    /**
+     * Whether this cell is the one active editor. Bindable on text/number
+     * cells (the only ones with a separate navigation-mode "view" state):
+     * Grid flips it to start editing from the keyboard, and reads it back
+     * when the cell's own click/blur/Enter/Escape handling ends the session.
+     * Unused by select/date/checkbox, which have no such toggle.
+     */
+    editing?: boolean;
     /** Initial text for an edit started by typing a printable character in Grid navigation mode. */
     editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
     /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
     onRequestFocus?: (direction?: GridNavDirection) => void;
-    /** Reports edit-mode transitions so Grid can track which cell owns the one active editor. */
-    onEditingChange?: (editing: boolean) => void;
 }
 
 export type CellComponentType = "text" | "number" | "checkbox" | "select" | "date";
