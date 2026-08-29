@@ -4,6 +4,7 @@ const logger = getLogger("index");
 export interface SearchOptions {
     regex?: boolean;
     caseSensitive?: boolean;
+    wholeWord?: boolean;
 }
 
 /**
@@ -29,12 +30,10 @@ export interface ItemMatch<T> {
 }
 
 export function buildRegExp(query: string, options: SearchOptions = {}): RegExp {
-    const flags = options.caseSensitive ? "g" : "gi";
-    if (options.regex) {
-        return new RegExp(query, flags);
-    }
-    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(escaped, flags);
+    const flags = options.caseSensitive ? "gu" : "giu";
+    const source = options.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const word = "[\\p{L}\\p{N}_]";
+    return new RegExp(options.wholeWord ? `(?<!${word})(?:${source})(?!${word})` : source, flags);
 }
 
 export function findMatches(text: string, query: string, options: SearchOptions = {}): MatchPosition[] {
@@ -45,10 +44,16 @@ export function findMatches(text: string, query: string, options: SearchOptions 
     while ((m = regex.exec(text)) !== null) {
         matches.push({ index: m.index, length: m[0].length });
         if (m[0].length === 0) {
-            regex.lastIndex++;
+            regex.lastIndex = nextCodePointIndex(text, regex.lastIndex);
         }
     }
     return matches;
+}
+
+/** Advance a UTF-16 index without stopping between an astral character's surrogates. */
+export function nextCodePointIndex(text: string, index: number): number {
+    if (index >= text.length) return index + 1;
+    return index + (text.codePointAt(index)! > 0xFFFF ? 2 : 1);
 }
 
 function toStringSafe(text: unknown): string {

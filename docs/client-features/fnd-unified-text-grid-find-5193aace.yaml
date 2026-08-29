@@ -1,0 +1,8 @@
+id: FTR-5193aace
+title: Unified Find for text items and Grid cells
+title-ja: テキスト項目とグリッドセルの統合検索
+status: implemented
+description: The page Find session traverses outline text and logical Grid query results together, including read-only values and selection-scoped cells.
+tests:
+- client/e2e/new/fnd-unified-text-grid-find-5193aace.spec.ts
+- client/src/lib/search/unifiedSearch.test.ts

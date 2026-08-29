@@ -285,7 +285,8 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous "
+                            "Unified Find: open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. "
+                            + "Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous "
                             + "range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query "
                             + "result, including rows outside the viewport. Sorting keeps selected records attached to their ids.",
                     },

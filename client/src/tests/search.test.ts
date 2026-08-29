@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findFirstReplaceTarget, replaceAll, replaceFirst, searchItems } from "../lib/search";
+import { findFirstReplaceTarget, findMatches, replaceAll, replaceFirst, searchItems } from "../lib/search";
 import { replaceAllInProject, replaceFirstInProject } from "../lib/search/projectSearch";
 import { Item, Items, Project } from "../schema/app-schema";
 
@@ -35,6 +35,23 @@ describe("search utilities", () => {
         const results = searchItems(page as Item, "hello", { caseSensitive: true });
         const total = results.reduce((c, r) => c + r.matches.length, 0);
         expect(total).toBe(1);
+    });
+
+    it("matches whole words with Unicode-aware boundaries", () => {
+        const project = Project.createInstance("Unicode");
+        const page = project.addPage("root", "user");
+        const child = (page.items as Items).addNode("user");
+        child.updateText("猫と犬 猫 (cat) catalog");
+        expect(searchItems(page as Item, "猫", { wholeWord: true })[0]?.matches).toHaveLength(1);
+        expect(searchItems(page as Item, "(cat)", { wholeWord: true })[0]?.matches).toHaveLength(1);
+        expect(searchItems(page as Item, "cat", { wholeWord: true })[0]?.matches).toHaveLength(1);
+    });
+
+    it("advances zero-width regex matches over complete Unicode code points", () => {
+        expect(findMatches("😀x", "(?=.)", { regex: true })).toEqual([
+            { index: 0, length: 0 },
+            { index: 2, length: 0 },
+        ]);
     });
 
     it("replace functions modify text", () => {

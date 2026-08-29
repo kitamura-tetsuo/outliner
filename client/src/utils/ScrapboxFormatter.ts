@@ -1,4 +1,4 @@
-import { buildRegExp, type SearchOptions } from "../lib/search";
+import { buildRegExp, nextCodePointIndex, type SearchOptions } from "../lib/search";
 import { store } from "../stores/store.svelte";
 import { iterateItems } from "./itemTraversal";
 /**
@@ -83,7 +83,7 @@ export class ScrapboxFormatter {
                 res += ScrapboxFormatter.escapeHtml(textBefore);
                 res += `<span class="search-highlight">${ScrapboxFormatter.escapeHtml(textMatch[0])}</span>`;
                 textLastIndex = regex.lastIndex;
-                if (textMatch[0].length === 0) regex.lastIndex++;
+                if (textMatch[0].length === 0) regex.lastIndex = nextCodePointIndex(unescaped, regex.lastIndex);
             }
             res += ScrapboxFormatter.escapeHtml(unescaped.substring(textLastIndex));
             return res;

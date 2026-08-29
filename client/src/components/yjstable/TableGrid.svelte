@@ -33,7 +33,11 @@ import {
 import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
-import { untrack } from "svelte";
+import { onDestroy, onMount, untrack } from "svelte";
+import {
+    type GridCellSearchMatch,
+    registerGridSearchProvider,
+} from "../../lib/search/unifiedSearch";
 
 interface Props {
     /**
@@ -43,6 +47,9 @@ interface Props {
      * about the presentation is persisted (issue #5012).
      */
     grid?: GridHandles;
+    placementId?: string;
+    pageId?: string;
+    pageTitle?: string;
     /** Receives a reorder when there is no Grid to persist it into. */
     onColumnOrderChange?: (order: string[]) => void;
     /** Source Table handles: writes for editable cells go here. */
@@ -77,6 +84,9 @@ let gridContainer: HTMLElement | undefined = $state();
 
 let {
     grid,
+    placementId,
+    pageId,
+    pageTitle,
     onColumnOrderChange,
     handles,
     schema,
@@ -101,6 +111,8 @@ const selection = new GridSelection();
 let selectionRevision = $state(0);
 /** Feedback for a paste this Grid rejected (shape mismatch, incompatible value, ...); see `pasteClipboardIntoSelection`. */
 let pasteStatus: string | undefined = $state();
+let findMatch: GridCellSearchMatch | undefined = $state();
+let unregisterSearch: (() => void) | undefined;
 
 /**
  * There is one active cell editor at a time (never multiple synthesized
@@ -206,6 +218,15 @@ function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     return `row-${rowIndex}`;
 }
 
+/** Search/navigation identity for read-only projections that have no writable record identity. */
+function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
+    const durableId = selectableRowId(row);
+    if (durableId !== undefined) return durableId;
+    const value = JSON.stringify(row);
+    const duplicateIndex = result.rows.slice(0, rowIndex).filter(candidate => JSON.stringify(candidate) === value).length;
+    return `result:${value}:${duplicateIndex}`;
+}
+
 /** Rows without a durable query identity are intentionally not selectable. */
 function selectableRowId(row: Record<string, unknown>): string | undefined {
     // Query editability is a write concern. Read-only DISTINCT/aggregate
@@ -216,6 +237,40 @@ function selectableRowId(row: Record<string, unknown>): string | undefined {
     }
     return typeof row.id === "string" ? row.id : undefined;
 }
+
+onMount(() => {
+    if (!grid || !placementId || !pageId) return;
+    unregisterSearch = registerGridSearchProvider({
+        snapshot: () => ({
+            pageId,
+            pageTitle: pageTitle ?? "",
+            placementId,
+            gridId: grid.gridId,
+            columns: displayColumns,
+            rows: result.rows,
+            selection: selection.snapshot(),
+            rowId: searchRowId,
+        }),
+        navigate: (match) => {
+            findMatch = match;
+            // Find navigation must not collapse the logical range that constrains
+            // Selection scope. It only moves the active/focused cell.
+            selection.activate({ rowId: match.rowId, columnId: match.columnId });
+            selectionRevision++;
+            requestAnimationFrame(() => {
+                const cell = Array.from(gridContainer?.querySelectorAll<HTMLElement>("td[data-row-id][data-col]") ?? [])
+                    .find(element => element.dataset.rowId === match.rowId && element.dataset.col === match.columnId);
+                cell?.scrollIntoView({ block: "nearest", inline: "nearest" });
+                cell?.querySelector<HTMLElement>("button, input, select")?.focus();
+            });
+        },
+        clearHighlight: () => {
+            findMatch = undefined;
+        },
+    });
+});
+
+onDestroy(() => unregisterSearch?.());
 
 function rowIdsOf(rows: TableQueryResult["rows"]): string[] {
     return rows.flatMap(row => {
@@ -970,6 +1025,7 @@ function handleCancelDelete() {
                     {@const recordId = recordIdOf(row)}
                     {@const source = sourceOf(row)}
                     {@const logicalRowId = selectableRowId(row)}
+                    {@const navigationRowId = searchRowId(row, rowIndex)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         <th
                             class="selection-header row-header"
@@ -990,10 +1046,12 @@ function handleCancelDelete() {
                             <td
                                 role="gridcell"
                                 data-record-id={recordId}
-                                data-row-id={logicalRowId}
+                                data-row-id={navigationRowId}
                                 data-col={column}
                                 class:grid-selected={logicalCell !== undefined && cellSelected(logicalCell)}
                                 class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
+                                class:grid-find-match={findMatch?.rowId === navigationRowId
+                                    && findMatch?.columnId === column}
                                 aria-selected={logicalCell !== undefined ? cellSelected(logicalCell) : undefined}
                                 onclickcapture={(event) => {
                                     suppressSyntheticTouchClick(event);
@@ -1141,6 +1199,11 @@ function handleCancelDelete() {
 </div>
 
 <style>
+    td.grid-find-match {
+        outline: 3px solid #f59e0b;
+        outline-offset: -3px;
+        background: #fef3c7;
+    }
 .yjs-table-grid {
     width: 100%;
     overflow-x: auto;

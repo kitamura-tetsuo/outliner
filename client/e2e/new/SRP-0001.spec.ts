@@ -130,6 +130,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // Wait for appearance in DOM (existence)
         await page.waitForFunction(() => !!document.querySelector('[data-testid="search-panel"]'), { timeout: 7000 });
+        await page.locator("#search-scope").selectOption("project");
 
         // Verify visibility (computed style and bbox)
         const visibleCheck = await page.evaluate(() => {

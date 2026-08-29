@@ -56,6 +56,9 @@ const logger = getLogger("YjsTableView");
 interface Props {
     /** The Grid this view renders (query + column UI settings). */
     grid: GridHandles;
+    placementId?: string;
+    pageId?: string;
+    pageTitle?: string;
     /** Handles for the Grid's source Table (schema + data). */
     handles: TableHandles;
     /** Project doc holding both registries. */
@@ -74,7 +77,7 @@ interface Props {
     sourceTableHref?: string;
 }
 
-let { grid, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref }: Props = $props();
+let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref }: Props = $props();
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
@@ -372,6 +375,9 @@ function stateVectorRevision(doc: Y.Doc): string {
             {#if adapterReady}
                 <TableGrid
                     {grid}
+                    {placementId}
+                    {pageId}
+                    {pageTitle}
                     {handles}
                     {schema}
                     query={gridQuery}
