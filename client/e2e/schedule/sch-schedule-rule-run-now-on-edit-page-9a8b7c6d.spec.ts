@@ -54,6 +54,11 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await expect(buttons.nth(0)).toHaveAttribute("data-testid", "run-now-schedule");
         await expect(buttons.nth(1)).toHaveAttribute("data-testid", "delete-schedule");
 
+        // Set dtstart far into the future so the backend scheduler doesn't run it and cause flaky errors
+        const dtstartInput = page.locator("#dtstart-input");
+        await expect(dtstartInput).toBeVisible();
+        await dtstartInput.fill("2030-01-01T00:00");
+
         // Fill SQL
         const sqlEditor = SqlEditorHelper.byTestId(page, "schedule-sql-editor");
         await sqlEditor.fillAndCommit(
