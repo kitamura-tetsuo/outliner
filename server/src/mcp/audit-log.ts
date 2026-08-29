@@ -24,6 +24,13 @@ export interface McpAuditEntry {
     newRevision?: string;
     /** Whether the mutation was actually persisted (false for dry runs). */
     applied: boolean;
+    /**
+     * True when this attempt was an operationId replay: the mutation
+     * itself ran on an earlier request, and this one only observed the
+     * cached result. Without this flag N retries of the same operationId
+     * would misleadingly read as N independent applied mutations.
+     */
+    replayed: boolean;
 }
 
 /**
@@ -44,6 +51,7 @@ export function recordMcpAudit(entry: McpAuditEntry): void {
         priorRevision,
         newRevision,
         applied,
+        replayed,
     } = entry;
     logger.info({
         event: "mcp_audit",
@@ -58,6 +66,7 @@ export function recordMcpAudit(entry: McpAuditEntry): void {
         priorRevision,
         newRevision,
         applied,
+        replayed,
         timestamp: new Date().toISOString(),
     }, "mcp_audit");
 }

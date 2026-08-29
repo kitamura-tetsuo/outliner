@@ -147,6 +147,7 @@ export function createMcpRouter(
                             priorRevision: typeof fields.priorRevision === "string" ? fields.priorRevision : undefined,
                             newRevision: typeof fields.revision === "string" ? fields.revision : undefined,
                             applied: fields.applied !== false,
+                            replayed: fields.replayed === true,
                         });
                     }
                     return response(result);
@@ -160,7 +161,7 @@ export function createMcpRouter(
                             ...safeLogDiagnostics(error.debug),
                         }, error.message);
                         if (options.mutating) {
-                            recordMcpAudit({ ...auditBase, outcome: error.code, applied: false });
+                            recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
                         }
                         return errorResponse(error.message, error.code, { requestId, ...error.debug });
                     }
@@ -171,7 +172,7 @@ export function createMcpRouter(
                         tool: name,
                     }, error instanceof Error ? error.message : String(error));
                     if (options.mutating) {
-                        recordMcpAudit({ ...auditBase, outcome: "internal_failure", applied: false });
+                        recordMcpAudit({ ...auditBase, outcome: "internal_failure", applied: false, replayed: false });
                     }
                     // Never forward an unexpected internal exception's message to the
                     // client: it may reveal implementation detail. It is fully logged

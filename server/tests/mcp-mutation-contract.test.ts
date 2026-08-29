@@ -33,6 +33,15 @@ function fixture() {
     first.set("done", false);
     table.getMap("data").set("r1", first);
 
+    const page = project.addPage("Roadmap", "test");
+    const textItem = page.items.addNode("test");
+    textItem.text = "Ship it";
+
+    const gridMap = new Y.Map<unknown>();
+    gridMap.set("name", "Roadmap grid");
+    gridMap.set("query", "SELECT * FROM tasks");
+    project.ydoc.getMap("yjsGrids").set("grid-1", gridMap);
+
     const rooms = new Map<string, Y.Doc>([
         ["projects/project-1", project.ydoc],
         ["projects/project-1/tables/table-1", table],
@@ -44,7 +53,7 @@ function fixture() {
     const accessibleProjects = async () => [{ projectId: "project-1", title: "Mutations" }];
     const readService = new OutlinerReadService(hocuspocus, canAccess, accessibleProjects);
     const relationService = new OutlinerRelationService(hocuspocus, canAccess);
-    return { readService, relationService, table };
+    return { readService, relationService, table, textItem };
 }
 
 function buildApp(readService: OutlinerReadService, relationService: OutlinerRelationService, scope: string) {
@@ -169,9 +178,32 @@ describe("MCP mutation safety contract", () => {
         };
         const first = await call(app, "write_relation", args);
         const second = await call(app, "write_relation", args);
-        expect(payloadOf(second)).to.deep.equal(payloadOf(first));
+        const firstPayload = payloadOf(first);
+        const secondPayload = payloadOf(second);
+        expect(firstPayload.replayed).to.equal(false);
+        expect(secondPayload.replayed).to.equal(true);
+        expect({ ...secondPayload, replayed: undefined }).to.deep.equal({ ...firstPayload, replayed: undefined });
         expect(table.getMap("data").has("r9")).to.equal(true);
-        expect(payloadOf(second).applied).to.equal(true);
+        expect(secondPayload.applied).to.equal(true);
+    });
+
+    it("does not duplicate a mutation when two concurrent calls share an operationId", async () => {
+        const { readService, relationService, table } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read outliner.write");
+        const args = {
+            projectId: "project-1",
+            relation: "tasks",
+            write: { op: "INSERT", values: { id: "r10", title: "Concurrent", done: false } },
+            operationId: "concurrent-1",
+        };
+        const [first, second] = await Promise.all([
+            call(app, "write_relation", args),
+            call(app, "write_relation", args),
+        ]);
+        const payloads = [payloadOf(first), payloadOf(second)];
+        expect(payloads.filter(p => p.replayed === true)).to.have.lengthOf(1);
+        expect(payloads.filter(p => p.replayed === false)).to.have.lengthOf(1);
+        expect(table.getMap("data").has("r10")).to.equal(true);
     });
 
     it("rejects an oversized write payload with a structured size_limit error", async () => {
@@ -221,5 +253,91 @@ describe("MCP mutation safety contract", () => {
         const serialized = JSON.stringify(auditLine);
         expect(serialized).to.not.include("uid-1");
         expect(serialized).to.not.include("audited-secret-value");
+    });
+
+    it("marks an operationId replay as replayed:true in the audit log, distinct from the original apply", async () => {
+        if (fs.existsSync(mcpLogPath)) fs.truncateSync(mcpLogPath, 0);
+        const { readService, relationService } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read outliner.write");
+        const args = {
+            projectId: "project-1",
+            relation: "tasks",
+            write: { op: "UPDATE", rowId: "r1", column: "title", value: "Replayed" },
+            operationId: "audit-replay-1",
+        };
+        await call(app, "write_relation", args);
+        await call(app, "write_relation", args);
+
+        if (mcpLogger && typeof mcpLogger.flush === "function") mcpLogger.flush();
+        let auditLines: Record<string, unknown>[] = [];
+        for (let i = 0; i < 50 && auditLines.length < 2; i++) {
+            if (fs.existsSync(mcpLogPath)) {
+                const lines = fs.readFileSync(mcpLogPath, "utf-8").split("\n").filter(Boolean);
+                auditLines = lines.map(line => JSON.parse(line)).filter(entry => entry.event === "mcp_audit");
+            }
+            if (auditLines.length < 2) await new Promise(r => setTimeout(r, 100));
+        }
+
+        expect(auditLines).to.have.lengthOf(2);
+        expect(auditLines[0]!.replayed).to.equal(false);
+        expect(auditLines[1]!.replayed).to.equal(true);
+    });
+
+    it("closes the read-modify-write loop for outline_items: get_item's revision works as write_relation's expectedRevision", async () => {
+        const { readService, relationService, textItem } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read outliner.write");
+
+        const read = await call(app, "get_item", { projectId: "project-1", itemId: textItem.id });
+        const readPayload = payloadOf(read);
+        expect(readPayload.revision).to.be.a("string");
+
+        const matching = await call(app, "write_relation", {
+            projectId: "project-1",
+            relation: "outline_items",
+            write: { op: "UPDATE", rowId: textItem.key, column: "text", value: "Ship it now" },
+            expectedRevision: readPayload.revision,
+        });
+        expect(payloadOf(matching).applied).to.equal(true);
+
+        const stale = await call(app, "write_relation", {
+            projectId: "project-1",
+            relation: "outline_items",
+            write: { op: "UPDATE", rowId: textItem.key, column: "text", value: "Ship it again" },
+            expectedRevision: readPayload.revision,
+        });
+        expect(bodyOf(stale).result.isError).to.equal(true);
+        expect(payloadOf(stale).code).to.equal("stale_revision");
+    });
+
+    it("closes the read-modify-write loop for a Grid view: get_grid's revision works as set_view_query's expectedRevision", async () => {
+        const { readService, relationService } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read outliner.write");
+
+        const read = await call(app, "get_grid", { projectId: "project-1", gridId: "grid-1" });
+        const readPayload = payloadOf(read);
+        expect(readPayload.revision).to.be.a("string");
+
+        const matching = await call(app, "set_view_query", {
+            projectId: "project-1",
+            kind: "grid",
+            viewId: "grid-1",
+            query: "SELECT id FROM tasks",
+            expectedRevision: readPayload.revision,
+        });
+        expect(payloadOf(matching).applied).to.equal(true);
+    });
+
+    it("validates a dry-run outline_items UPDATE against writable columns before reporting success", async () => {
+        const { readService, relationService, textItem } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read outliner.write");
+
+        const res = await call(app, "write_relation", {
+            projectId: "project-1",
+            relation: "outline_items",
+            write: { op: "UPDATE", rowId: textItem.key, column: "bogus", value: "x" },
+            dryRun: true,
+        });
+        expect(bodyOf(res).result.isError).to.equal(true);
+        expect(payloadOf(res).code).to.equal("validation_failed");
     });
 });

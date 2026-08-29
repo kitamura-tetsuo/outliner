@@ -3,42 +3,11 @@ import * as Y from "yjs";
 import { nodeKindOf, type OutlineNodeKind } from "../../../shared/src/services/outlineNodeKind.js";
 import { type ProjectDescriptor, ProjectDirectoryError } from "../project-directory.js";
 import { type Item, type Items, Project } from "../schema/app-schema.js";
+import { type McpErrorCode, McpReadError } from "./mcp-error.js";
+import { outlineItemRevision, revisionOf } from "./mutation-contract.js";
 
-/**
- * The shared MCP error contract (issue FTR mutation-safety-contract /
- * GitHub #5208): every read and write tool throws exactly one of these
- * codes so mcp-api.ts can map them to a consistent structured MCP error
- * response instead of leaking ad-hoc messages per tool.
- *
- *  - invalid_argument: malformed/out-of-range input the caller supplied.
- *  - not_found: the target entity does not exist.
- *  - forbidden: missing OAuth scope or an inaccessible project.
- *  - kind_mismatch: the target exists but is the wrong outline node kind.
- *  - stale_revision: an expectedRevision precondition did not match.
- *  - validation_failed: input was well-formed but violates a business rule
- *    (e.g. a non-writable column, a SQL constraint).
- *  - size_limit: a request or payload exceeded a server-imposed bound.
- *  - internal_failure: an unexpected error; the message is safe to show.
- */
-export type McpErrorCode =
-    | "invalid_argument"
-    | "not_found"
-    | "forbidden"
-    | "kind_mismatch"
-    | "stale_revision"
-    | "validation_failed"
-    | "size_limit"
-    | "internal_failure";
-
-export class McpReadError extends Error {
-    constructor(
-        public readonly code: McpErrorCode,
-        message: string,
-        public readonly debug?: Record<string, unknown>,
-    ) {
-        super(message);
-    }
-}
+export type { McpErrorCode };
+export { McpReadError };
 
 export interface OutlineNodeRead {
     id: string;
@@ -49,6 +18,14 @@ export interface OutlineNodeRead {
     gridId?: string;
     calendarId?: string;
     children?: OutlineNodeRead[];
+    /**
+     * Content-hash revision of this node's own outline_items fields (text,
+     * done, tags, due/start/rrule, ...), computed with the exact same
+     * formula writeRelation's outline_items precondition check uses. A
+     * client can pass this straight back as write_relation's
+     * expectedRevision to guard a read-modify-write cycle.
+     */
+    revision: string;
 }
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
@@ -79,7 +56,13 @@ function parentId(item: Item): string | undefined {
 
 export function serializeItem(item: Item): OutlineNodeRead {
     const kind = nodeKindOf(item);
-    const value: OutlineNodeRead = { id: item.id, kind, parentId: parentId(item), childCount: item.items.length };
+    const value: OutlineNodeRead = {
+        id: item.id,
+        kind,
+        parentId: parentId(item),
+        childCount: item.items.length,
+        revision: outlineItemRevision(item),
+    };
     if (kind === "text") value.text = item.text;
     if (kind === "grid") value.gridId = item.yjsGridId;
     if (kind === "calendar") value.calendarId = item.calendarId;
@@ -312,13 +295,18 @@ export class OutlinerReadService {
         return this.withProject(uid, projectId, project => {
             const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
             if (!grid) throw new McpReadError("not_found", "Grid not found");
+            const query = String(grid.get("query") ?? "");
             return {
                 id: gridId,
                 name: String(grid.get("name") ?? ""),
                 sourceTableId: grid.get("sourceTableId"),
-                query: String(grid.get("query") ?? ""),
+                query,
                 columnOrder: yValueToPlain(grid.get("columnOrder")) ?? [],
                 components: yValueToPlain(grid.get("components")) ?? {},
+                // Matches OutlinerRelationService.setViewQuery's own
+                // revisionOf(query) formula exactly, so this can be passed
+                // straight back as set_view_query's expectedRevision.
+                revision: revisionOf(query),
             };
         });
     }
@@ -329,14 +317,19 @@ export class OutlinerReadService {
             const calendar = project.calendars.get(calendarId);
             if (!calendar) throw new McpReadError("not_found", "Calendar not found");
             const settings = yValueToPlain(calendar) as Record<string, unknown>;
+            const query = String(settings.query ?? "");
             return {
                 id: calendarId,
                 ...settings,
                 name: String(settings.name ?? ""),
-                query: String(settings.query ?? ""),
+                query,
                 viewType: String(settings.viewType ?? "week"),
                 groupAxes: settings.groupAxes ?? [],
                 laneOrder: settings.laneOrder ?? [],
+                // Matches OutlinerRelationService.setViewQuery's own
+                // revisionOf(query) formula exactly, so this can be passed
+                // straight back as set_view_query's expectedRevision.
+                revision: revisionOf(query),
             };
         });
     }

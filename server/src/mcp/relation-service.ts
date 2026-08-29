@@ -4,7 +4,13 @@ import crypto from "crypto";
 import * as Y from "yjs";
 import { validateReadOnlySelect } from "../../../shared/src/services/readOnlySql.js";
 import { type Item, Project } from "../schema/app-schema.js";
-import { assertRevision, IdempotencyCache, type MutationPrecondition, revisionOf } from "./mutation-contract.js";
+import {
+    assertRevision,
+    IdempotencyCache,
+    type MutationPrecondition,
+    outlineItemRevision,
+    revisionOf,
+} from "./mutation-contract.js";
 import { McpReadError } from "./outliner-read-service.js";
 
 const MAX_WRITE_PAYLOAD_BYTES = 32 * 1024;
@@ -222,12 +228,13 @@ export class OutlinerRelationService {
                 relation,
                 precondition.dryRun ? undefined : precondition.operationId,
             );
-            return this.idempotency.run(cacheKey, async () => {
+            const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
                 const table = this.tables(doc).find(value => value.relation === relation);
                 if (!table && relation !== "outline_items") throw new McpReadError("not_found", "Relation not found");
                 if (!table) return this.writeOutline(Project.fromDoc(doc), write, precondition);
                 return this.writeTableRelation(uid, projectId, table, write, precondition);
             });
+            return { ...result, replayed };
         });
     }
 
@@ -333,7 +340,7 @@ export class OutlinerRelationService {
                 }
                 doc.transact(() => view.set("query", query), "mcp-view-query");
                 return { kind, viewId, query, applied: true, priorRevision, revision: revisionOf(query) };
-            });
+            }).then(({ result, replayed }) => ({ ...result, replayed }));
         });
     }
 
@@ -431,22 +438,6 @@ export class OutlinerRelationService {
         }
     }
 
-    private itemRevision(item: Item): string {
-        const value = item.yMap;
-        return revisionOf({
-            text: item.text,
-            done: value.get("done"),
-            tags: item.tags,
-            due: value.get("due"),
-            start: value.get("start"),
-            allDay: value.get("allDay"),
-            duration: value.get("duration"),
-            rrule: value.get("rrule"),
-            recurrenceDtstart: value.get("recurrenceDtstart"),
-            recurrenceTimezone: value.get("recurrenceTimezone"),
-        });
-    }
-
     private writeOutline(project: Project, write: RelationWrite, precondition: MutationPrecondition) {
         this.assertWriteSize(write);
         if (write.op === "INSERT" && !write.destination) {
@@ -476,16 +467,20 @@ export class OutlinerRelationService {
                 op: write.op,
                 rowId: created.key,
                 applied: true,
-                revision: this.itemRevision(created),
+                revision: outlineItemRevision(created),
             };
         }
         const item = items.find(candidate => candidate.key === write.rowId);
         if (!item) throw new McpReadError("not_found", `Item "${write.rowId}" does not exist`);
         const rowId = item.key;
-        const priorRevision = this.itemRevision(item);
+        const priorRevision = outlineItemRevision(item);
         if (precondition.expectedRevision !== undefined) {
             assertRevision(precondition.expectedRevision, priorRevision, { relation: "outline_items", rowId });
         }
+        // Validate an UPDATE's column before the dryRun early-return below,
+        // so a dry run reports the same validation_failed a real apply
+        // would (rather than a false "this would succeed").
+        if (write.op === "UPDATE") this.assertItemColumns({ [write.column]: write.value });
         if (precondition.dryRun) {
             return {
                 relation: "outline_items",
@@ -497,7 +492,6 @@ export class OutlinerRelationService {
             };
         }
         if (write.op === "UPDATE") {
-            this.assertItemColumns({ [write.column]: write.value });
             this.setItemValues(item, { [write.column]: write.value });
             return {
                 relation: "outline_items",
@@ -505,7 +499,7 @@ export class OutlinerRelationService {
                 rowId,
                 applied: true,
                 priorRevision,
-                revision: this.itemRevision(item),
+                revision: outlineItemRevision(item),
             };
         }
         if (write.disposition === "delete-source") {
@@ -528,7 +522,7 @@ export class OutlinerRelationService {
             rowId,
             applied: true,
             priorRevision,
-            revision: this.itemRevision(item),
+            revision: outlineItemRevision(item),
         };
     }
 

@@ -97,22 +97,30 @@ describe("Outliner MCP read service", () => {
 
     it("returns complete lightweight Grid and Calendar configuration", async () => {
         const { service } = fixture();
-        expect(await service.getGrid("uid", "project-1", "grid-1")).to.deep.equal({
+        const grid = await service.getGrid("uid", "project-1", "grid-1");
+        expect(grid).to.include({
             id: "grid-1",
             name: "Roadmap grid",
             sourceTableId: "table-1",
             query: "SELECT * FROM roadmap",
-            columnOrder: [],
-            components: {},
         });
-        expect(await service.getCalendar("uid", "project-1", "calendar-1")).to.deep.equal({
+        expect(grid.columnOrder).to.deep.equal([]);
+        expect(grid.components).to.deep.equal({});
+        // The revision is the same content-hash formula setViewQuery/get_grid
+        // share, so it must be reusable as write_relation's/set_view_query's
+        // expectedRevision precondition for this grid's saved query.
+        expect(grid.revision).to.be.a("string").with.lengthOf(16);
+
+        const calendar = await service.getCalendar("uid", "project-1", "calendar-1");
+        expect(calendar).to.include({
             id: "calendar-1",
             name: "Roadmap calendar",
             query: "SELECT * FROM outline_items",
             viewType: "week",
-            groupAxes: ["owner"],
-            laneOrder: [],
         });
+        expect(calendar.groupAxes).to.deep.equal(["owner"]);
+        expect(calendar.laneOrder).to.deep.equal([]);
+        expect(calendar.revision).to.be.a("string").with.lengthOf(16);
     });
 
     it("fails closed before opening a document when project access is denied", async () => {
