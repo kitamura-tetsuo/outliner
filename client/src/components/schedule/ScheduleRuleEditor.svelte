@@ -128,6 +128,7 @@ let derivedRruleStr = $derived.by(() => {
 });
 
 let sqlError = $state<string | undefined>(undefined);
+let isSaved = $state(false);
 
 function validateSql(sqlToTest: string) {
     if (!sqlToTest.trim()) {
@@ -163,6 +164,10 @@ function handleSave() {
         timezone,
         enabled,
     });
+    isSaved = true;
+    setTimeout(() => {
+        isSaved = false;
+    }, 2000);
 }
 </script>
 
@@ -288,6 +293,12 @@ function handleSave() {
 
     <div class="flex justify-end space-x-2">
         <button class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50" onclick={onCancel}>Cancel</button>
-        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick={handleSave}>Save</button>
+        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 min-w-[5rem]" onclick={handleSave}>
+            {#if isSaved}
+                Saved
+            {:else}
+                Save
+            {/if}
+        </button>
     </div>
 </div>

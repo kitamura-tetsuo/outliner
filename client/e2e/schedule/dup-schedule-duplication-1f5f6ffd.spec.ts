@@ -39,11 +39,6 @@ test.describe("Schedule duplication", () => {
 
         await page.locator("#name-input").fill("Daily import");
         await page.locator("button:has-text('Save')").click();
-        await expect(page).not.toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
-
-        // Re-open the rule from the schedules list.
-        await page.goto(`/${projectSegment}/-/schedules`);
-        await page.locator("button:has-text('Edit')").first().click();
         await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
 
         // Duplicate opens Object Manager with the Schedule preselected (#5153 §10).

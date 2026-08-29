@@ -63,20 +63,13 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         const saveBtn = page.locator("button:has-text('Save')");
         await saveBtn.click();
 
-        // Wait for navigation back to project
-        await expect(page).not.toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
+        // Assert we stay on the page after saving
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/);
 
-        // Re-open sidebar and click the rule
-        if (await showBtn.isVisible().catch(() => false)) {
-            await showBtn.click();
-        }
-        await expect(sidebar).toBeVisible({ timeout: 10000 });
-        const ruleLink = sidebar.locator("#sidebar-schedules-list li a.schedule-link").first();
-        await expect(ruleLink).toBeVisible({ timeout: 10000 });
-        await ruleLink.click();
+        // Verify "Saved" visual indication
+        await expect(page.locator("button:has-text('Saved')")).toBeVisible({ timeout: 5000 });
+        await expect(page.locator("button:has-text('Save')").first()).toBeVisible({ timeout: 5000 });
 
-        // Wait for navigation to the edit page
-        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         await expect(runNowBtn).toBeVisible({ timeout: 15000 });
 
         // Mock the run-now endpoint to prevent flakey db execution from holding up UI tests, just like the core sch-schedule-rule-run-now-3a4b5c6d.spec.ts does. We assert the reachable states.
@@ -142,16 +135,9 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         const saveBtn = page.locator("button:has-text('Save')");
         await saveBtn.click();
 
-        // Re-open sidebar and click the rule
-        if (await showBtn.isVisible().catch(() => false)) {
-            await showBtn.click();
-        }
-        const ruleLink = sidebar.locator("#sidebar-schedules-list li a.schedule-link").first();
-        await expect(ruleLink).toBeVisible({ timeout: 15000 });
-        await ruleLink.click();
+        // Assert we stay on the page after saving
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/);
 
-        // Wait for navigation to the edit page
-        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         const runNowBtn = page.locator("[data-testid='run-now-schedule']");
         await expect(runNowBtn).toBeVisible({ timeout: 15000 });
 
