@@ -218,6 +218,15 @@ function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     return `row-${rowIndex}`;
 }
 
+/** Search/navigation identity for read-only projections that have no writable record identity. */
+function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
+    const durableId = selectableRowId(row);
+    if (durableId !== undefined) return durableId;
+    const value = JSON.stringify(row);
+    const duplicateIndex = result.rows.slice(0, rowIndex).filter(candidate => JSON.stringify(candidate) === value).length;
+    return `result:${value}:${duplicateIndex}`;
+}
+
 /** Rows without a durable query identity are intentionally not selectable. */
 function selectableRowId(row: Record<string, unknown>): string | undefined {
     // Query editability is a write concern. Read-only DISTINCT/aggregate
@@ -240,11 +249,13 @@ onMount(() => {
             columns: displayColumns,
             rows: result.rows,
             selection: selection.snapshot(),
-            rowId: selectableRowId,
+            rowId: searchRowId,
         }),
         navigate: (match) => {
             findMatch = match;
-            selection.select({ rowId: match.rowId, columnId: match.columnId });
+            // Find navigation must not collapse the logical range that constrains
+            // Selection scope. It only moves the active/focused cell.
+            selection.activate({ rowId: match.rowId, columnId: match.columnId });
             selectionRevision++;
             requestAnimationFrame(() => {
                 const cell = Array.from(gridContainer?.querySelectorAll<HTMLElement>("td[data-row-id][data-col]") ?? [])
@@ -1014,6 +1025,7 @@ function handleCancelDelete() {
                     {@const recordId = recordIdOf(row)}
                     {@const source = sourceOf(row)}
                     {@const logicalRowId = selectableRowId(row)}
+                    {@const navigationRowId = searchRowId(row, rowIndex)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         <th
                             class="selection-header row-header"
@@ -1034,13 +1046,12 @@ function handleCancelDelete() {
                             <td
                                 role="gridcell"
                                 data-record-id={recordId}
-                                data-row-id={logicalRowId}
+                                data-row-id={navigationRowId}
                                 data-col={column}
                                 class:grid-selected={logicalCell !== undefined && cellSelected(logicalCell)}
                                 class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
-                                class:grid-find-match={logicalCell !== undefined
-                                    && findMatch?.rowId === logicalCell.rowId
-                                    && findMatch?.columnId === logicalCell.columnId}
+                                class:grid-find-match={findMatch?.rowId === navigationRowId
+                                    && findMatch?.columnId === column}
                                 aria-selected={logicalCell !== undefined ? cellSelected(logicalCell) : undefined}
                                 onclickcapture={(event) => {
                                     suppressSyntheticTouchClick(event);

@@ -33,7 +33,7 @@ export interface GridSearchSnapshot {
     columns: readonly string[];
     rows: readonly Record<string, unknown>[];
     selection?: GridSelectionSnapshot;
-    rowId(row: Record<string, unknown>): string | undefined;
+    rowId(row: Record<string, unknown>, rowIndex: number): string | undefined;
 }
 
 export interface GridSearchProvider {
@@ -62,8 +62,8 @@ export function gridSearchMatches(
     for (const provider of providers.values()) {
         const view = provider.snapshot();
         if (view.pageId !== pageId) continue;
-        for (const row of view.rows) {
-            const rowId = view.rowId(row);
+        for (const [rowIndex, row] of view.rows.entries()) {
+            const rowId = view.rowId(row, rowIndex);
             if (!rowId) continue;
             for (const columnId of view.columns) {
                 if (selectionOnly && !selectionContains(view.selection, rowId, columnId)) continue;

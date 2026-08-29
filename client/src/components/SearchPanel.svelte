@@ -22,7 +22,7 @@ const logger = getLogger("SearchPanel");
         navigateGridSearchMatch,
         type UnifiedSearchMatch,
     } from "../lib/search/unifiedSearch";
-    import { iterateItems } from "../utils/itemTraversal";
+    import { iterateItems, iterateItemsDeep } from "../utils/itemTraversal";
     import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
     import type { Item, Project } from "../schema/app-schema";
     import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -54,7 +54,7 @@ const logger = getLogger("SearchPanel");
 
     $effect(() => {
         clearGridSearchHighlights();
-        searchHighlightStore.searchQuery = searchQuery;
+        searchHighlightStore.searchQuery = isVisible ? searchQuery : "";
         searchHighlightStore.isRegexMode = isRegexMode;
         searchHighlightStore.isCaseSensitive = isCaseSensitive;
         searchHighlightStore.isWholeWord = isWholeWord;
@@ -134,7 +134,7 @@ const logger = getLogger("SearchPanel");
                 }
                 const visualOrder: Record<string, number> = {};
                 let rank = 0;
-                for (const item of iterateItems([p])) {
+                for (const item of iterateItemsDeep([p])) {
                     visualOrder[item.id] = rank;
                     visualOrder[item.key] = rank++;
                 }
@@ -231,7 +231,7 @@ const logger = getLogger("SearchPanel");
     function handleReplace() {
         const options = replaceOptions();
         const pages = replacementRoots();
-        const roots = pages.length ? pages : pageItem ? [pageItem] : [];
+        const roots = pages;
         if (!roots.length || !searchQuery) return;
 
         // Find the item the replacement would hit first, so a page rename can be
@@ -262,7 +262,7 @@ const logger = getLogger("SearchPanel");
         showReplaceAllConfirm = false;
         const options = replaceOptions();
         const pages = replacementRoots();
-        const roots = pages.length ? pages : pageItem ? [pageItem] : [];
+        const roots = pages;
         if (!roots.length) return;
 
         const run = () => {

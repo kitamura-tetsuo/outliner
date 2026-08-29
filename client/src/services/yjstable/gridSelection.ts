@@ -101,6 +101,11 @@ export class GridSelection {
         this.indexRegions();
     }
 
+    /** Move keyboard focus without changing the logical selection used by scoped operations. */
+    activate(cell: GridCellAddress): void {
+        this.activeCell = cell;
+    }
+
     toggleCell(cell: GridCellAddress): void {
         this.activeCell = cell;
         this.anchorCell = cell;
