@@ -210,7 +210,7 @@ function createFromPreset() {
                 {handles}
                 projectDoc={item.ydoc}
                 placementId={item.key}
-                pageId={store.currentPage?.id ?? store.currentPage?.key ?? ""}
+                pageId={store.currentPage?.id || store.currentPage?.key || ""}
                 pageTitle={store.currentPage?.text?.toString?.() ?? ""}
                 {projectId}
                 {tableName}

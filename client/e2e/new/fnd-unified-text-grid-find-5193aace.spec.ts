@@ -1,6 +1,8 @@
 /** @feature FTR-5193aace */
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test("one Find session navigates from outline text to a logical Grid cell", async ({ page }, testInfo) => {
     await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Find needle in outline", "Grid host"]);
