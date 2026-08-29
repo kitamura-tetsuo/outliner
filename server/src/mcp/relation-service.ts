@@ -1229,11 +1229,15 @@ export class OutlinerRelationService {
                     validation,
                 });
             }
-            if ((validation.warnings ?? []).length > 0) {
+            const dependencies = new Set<string>(validation.dependencies);
+            const dependencyWarnings = (validation.warnings ?? []).filter(warning =>
+                dependencies.has(warning.relation)
+            );
+            if (dependencyWarnings.length > 0) {
                 throw new McpReadError(
                     "validation_failed",
                     "Grid query dependencies could not be safely materialized",
-                    { validation },
+                    { validation: { ...validation, warnings: dependencyWarnings } },
                 );
             }
 
