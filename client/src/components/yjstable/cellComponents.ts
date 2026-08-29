@@ -15,6 +15,7 @@ export interface CellProps {
     options?: string[];
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    onRequestFocus?: () => void;
 }
 
 export type CellComponentType = "text" | "number" | "checkbox" | "select" | "date";

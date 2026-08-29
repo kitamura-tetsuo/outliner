@@ -4,9 +4,10 @@ interface Props {
     editable: boolean;
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    onRequestFocus?: () => void;
 }
 
-let { value, editable, ariaLabel, onCommit }: Props = $props();
+let { value, editable, ariaLabel, onCommit, onRequestFocus: _ }: Props = $props();
 </script>
 
 <input
