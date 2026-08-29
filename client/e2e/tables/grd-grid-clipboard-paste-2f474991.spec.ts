@@ -80,6 +80,7 @@ test.describe("Grid cell-range clipboard paste (FTR-2f474991)", () => {
 
         await firstTitle.locator("button").click();
         await page.keyboard.press("Escape");
+        await expect(firstTitle.locator("button")).toBeFocused({ timeout: 5000 });
 
         await setClipboardText(page, "X\ttrue\nY\tfalse");
         await page.keyboard.press("Control+v");

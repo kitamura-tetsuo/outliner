@@ -47,6 +47,11 @@ test.describe("Grid cell-range clipboard copy (FTR-2f474991)", () => {
 
         await cell.locator("button").click();
         await page.keyboard.press("Escape"); // leave edit mode, keep the cell active/focused
+        // Escape's refocus onto the cell's button is deferred a frame (see
+        // `focusLogicalCell`'s `deferred` path); without waiting for it,
+        // Ctrl+C can land while focus is mid-transition and never reach the
+        // grid's keydown handler.
+        await expect(cell.locator("button")).toBeFocused({ timeout: 5000 });
         await page.keyboard.press("Control+c");
 
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 10000 })
