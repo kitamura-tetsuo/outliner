@@ -41,18 +41,15 @@ test(
         // shows up in the cell without any dialog (writable text, no rename risk).
         await expect(row).toContainText("found in Grid", { timeout: 30000 });
 
-        // The Grid's query result refreshes from a debounced PGlite re-query,
-        // independent of the cell's own immediate Yjs-mirrored value; re-run
-        // Search explicitly instead of trusting Replace's own re-search to
-        // land inside that debounce window.
-        await page.waitForTimeout(1000);
-        await page.getByTestId("search-button").click();
-        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 1", { timeout: 15000 });
+        // The Grid's own query result only refreshes from a debounced PGlite
+        // re-query, but the session must not show a hit it just replaced --
+        // the count has to drop from the write's own outcome synchronously,
+        // not once that debounce catches up.
+        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 1");
 
         // Only the outline text item is left; replace it through the very same
         // button, unifying both kinds under one command.
         await page.getByTestId("replace-button").click();
-        await page.waitForTimeout(500);
         await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 0");
         await expect(
             page.locator(".outliner-item .item-text").filter({ hasText: "Find found in outline" }).first(),

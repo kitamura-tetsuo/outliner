@@ -127,6 +127,27 @@ export function clearGridSearchHighlights(): void {
 }
 
 /**
+ * `String.prototype.replace`'s string form interprets `$&`, `$1`, ... as
+ * substitution patterns; the outline's own `replaceFirst`/`replaceAll`
+ * (`lib/search/index.ts`) deliberately route the replacement through a
+ * callback so it lands literally. Grid replacement must use the same policy
+ * so one unified Replace All does not expand `$`-tokens only on the Grid
+ * side of a mixed text+Grid page (FTR-5194).
+ */
+function replaceLiteral(text: string, regex: RegExp, replacement: string): string {
+    return text.replace(regex, () => replacement);
+}
+
+/** One already-mutated Grid cell, carrying enough identity to patch a held match list without waiting on that Grid's own (debounced) query refresh. */
+export interface GridCellReplaceDetail {
+    placementId: string;
+    gridId: string;
+    rowId: string;
+    columnId: string;
+    newText: string;
+}
+
+/**
  * Replaces one already-located Grid match's cell (the "Replace current"
  * command). Re-reads the cell's live value from the provider instead of
  * trusting `match.text`, since it may be stale by the time the user acts on
@@ -138,15 +159,15 @@ export function replaceGridMatch(
     query: string,
     replacement: string,
     options: SearchOptions,
-): GridCellReplaceOutcome | undefined {
+): (GridCellReplaceOutcome & GridCellReplaceDetail) | undefined {
     const provider = providers.get(match.placementId);
     if (!provider) return undefined;
     const view = provider.snapshot();
     const row = view.rows.find((candidate, index) => view.rowId(candidate, index) === match.rowId);
     const currentText = row ? gridValueText(row[match.columnId]) : match.text;
-    const newText = currentText.replace(buildRegExp(query, options), replacement);
+    const newText = replaceLiteral(currentText, buildRegExp(query, options), replacement);
     const [outcome] = provider.replaceCells([{ rowId: match.rowId, columnId: match.columnId, newText }]);
-    return outcome;
+    return outcome && { ...outcome, placementId: match.placementId, gridId: match.gridId };
 }
 
 export interface GridReplaceAllOutcome {
@@ -156,6 +177,8 @@ export interface GridReplaceAllOutcome {
     skippedReadOnly: number;
     /** Hits whose substituted text has no deterministic, schema-valid typed value for that column. */
     skippedInvalid: number;
+    /** Every cell actually rewritten, for patching a held match list synchronously (see `applyGridReplaceToMatches`). */
+    applied: GridCellReplaceDetail[];
 }
 
 /**
@@ -174,11 +197,14 @@ export function replaceGridMatches(
     options: SearchOptions,
     selectionOnly = false,
 ): GridReplaceAllOutcome {
-    const outcome: GridReplaceAllOutcome = { appliedCells: 0, skippedReadOnly: 0, skippedInvalid: 0 };
+    const outcome: GridReplaceAllOutcome = { appliedCells: 0, skippedReadOnly: 0, skippedInvalid: 0, applied: [] };
     if (!query) return outcome;
     const regex = buildRegExp(query, options);
     const seenCells = new Set<string>();
-    const byProvider = new Map<GridSearchProvider, GridCellReplacement[]>();
+    const byProvider = new Map<
+        GridSearchProvider,
+        { placementId: string; gridId: string; entries: GridCellReplacement[]; }
+    >();
     for (const provider of providers.values()) {
         const view = provider.snapshot();
         if (view.pageId !== pageId) continue;
@@ -192,20 +218,105 @@ export function replaceGridMatches(
                 const text = gridValueText(row[columnId]);
                 if (findMatches(text, query, options).length === 0) continue;
                 seenCells.add(dedupeKey);
-                const entries = byProvider.get(provider) ?? [];
-                entries.push({ rowId, columnId, newText: text.replace(regex, replacement) });
-                byProvider.set(provider, entries);
+                const providerEntry = byProvider.get(provider)
+                    ?? { placementId: view.placementId, gridId: view.gridId, entries: [] };
+                providerEntry.entries.push({ rowId, columnId, newText: replaceLiteral(text, regex, replacement) });
+                byProvider.set(provider, providerEntry);
             }
         }
     }
-    for (const [provider, entries] of byProvider) {
+    for (const [provider, { placementId, gridId, entries }] of byProvider) {
         for (const result of provider.replaceCells(entries)) {
-            if (result.applied) outcome.appliedCells++;
-            else if (result.reason === "invalid-value") outcome.skippedInvalid++;
+            if (result.applied) {
+                outcome.appliedCells++;
+                outcome.applied.push({
+                    placementId,
+                    gridId,
+                    rowId: result.rowId,
+                    columnId: result.columnId,
+                    newText: result.newText,
+                });
+            } else if (result.reason === "invalid-value") outcome.skippedInvalid++;
             else outcome.skippedReadOnly++;
         }
     }
     return outcome;
+}
+
+/**
+ * Patches a held unified match list in place for cells already rewritten by
+ * `replaceGridMatch`/`replaceGridMatches`, instead of re-deriving them from
+ * the Grid's query result -- which refreshes from a debounced PGlite
+ * re-query and would otherwise still show the pre-replace value immediately
+ * after the write (AGENTS.md section 11: prefer a synchronous update over a
+ * timer or re-poll). Every old entry for a rewritten cell is removed and replaced
+ * with however many matches its new text actually has (zero if the
+ * replacement cleared the query, more than one if the query still recurs).
+ */
+export function applyGridReplaceToMatches(
+    matches: readonly UnifiedSearchMatch[],
+    replaced: readonly GridCellReplaceDetail[],
+    pageId: string,
+    pageTitle: string,
+    query: string,
+    options: SearchOptions,
+): UnifiedSearchMatch[] {
+    if (replaced.length === 0) return [...matches];
+    const cellKey = (placementId: string, rowId: string, columnId: string) => `${placementId}:${rowId}:${columnId}`;
+    const byCell = new Map(replaced.map(cell => [cellKey(cell.placementId, cell.rowId, cell.columnId), cell]));
+    const patched = new Set<string>();
+    const result: UnifiedSearchMatch[] = [];
+    for (const m of matches) {
+        if (m.kind !== "grid-cell") {
+            result.push(m);
+            continue;
+        }
+        const key = cellKey(m.placementId, m.rowId, m.columnId);
+        const cell = byCell.get(key);
+        if (!cell) {
+            result.push(m);
+            continue;
+        }
+        if (patched.has(key)) continue; // Already re-expanded this cell once; drop the rest of its stale entries.
+        patched.add(key);
+        for (const range of findMatches(cell.newText, query, options)) {
+            result.push({
+                kind: "grid-cell",
+                pageId,
+                pageTitle,
+                placementId: cell.placementId,
+                gridId: cell.gridId,
+                rowId: cell.rowId,
+                columnId: cell.columnId,
+                text: cell.newText,
+                range,
+                replaceable: m.replaceable,
+            });
+        }
+    }
+    // A cell rewritten via Replace All may not have had a stale entry in
+    // `matches` at all yet (Replace All can run without a prior Search), so
+    // append any it didn't already patch.
+    for (const cell of replaced) {
+        const key = cellKey(cell.placementId, cell.rowId, cell.columnId);
+        if (patched.has(key)) continue;
+        patched.add(key);
+        for (const range of findMatches(cell.newText, query, options)) {
+            result.push({
+                kind: "grid-cell",
+                pageId,
+                pageTitle,
+                placementId: cell.placementId,
+                gridId: cell.gridId,
+                rowId: cell.rowId,
+                columnId: cell.columnId,
+                text: cell.newText,
+                range,
+                replaceable: true,
+            });
+        }
+    }
+    return result;
 }
 
 /** One deterministic representation shared by logical Grid Find and Replace. */

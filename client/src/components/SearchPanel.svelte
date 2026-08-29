@@ -17,6 +17,7 @@ const logger = getLogger("SearchPanel");
         type SearchOptions,
     } from "../lib/search";
     import {
+        applyGridReplaceToMatches,
         gridSearchMatches,
         clearGridSearchHighlights,
         navigateGridSearchMatch,
@@ -47,8 +48,18 @@ const logger = getLogger("SearchPanel");
 
     let matches: UnifiedSearchMatch[] = $state([]);
     let activeMatchIndex = $state(-1);
-    /** Text hits are always replaceable (modulo skipRoot); only Grid hits can be searchable-but-read-only. */
-    let replaceableCount = $derived(matches.filter((m) => m.kind !== "grid-cell" || m.replaceable).length);
+    /**
+     * A Grid hit is replaceable per `m.replaceable` (writable vs computed/
+     * read-only). A text hit is replaceable unless it is the protected page
+     * title (`skipRoot`, i.e. `itemId === pageId`) and `includePageTitles`
+     * is off -- the same guard `replaceOptions()`/`replacementRoots()` apply
+     * to an actual Replace, so the count must not overstate what a click on
+     * Replace/Replace All can actually change.
+     */
+    let replaceableCount = $derived(matches.filter((m) => {
+        if (m.kind === "grid-cell") return m.replaceable;
+        return includePageTitles || m.itemId !== m.pageId;
+    }).length);
 
     let searchQuery = $state("");
     let replaceText = $state("");
@@ -258,7 +269,18 @@ const logger = getLogger("SearchPanel");
             + `${skipped} left unchanged (${parts.join(", ")}).`;
     }
 
-    /** Replaces one located Grid hit, then lands on whatever now occupies its slot in the refreshed unified session -- the next valid match, since the replaced hit is gone (FTR-5194). */
+    /**
+     * Replaces one located Grid hit, then lands on whatever now occupies its
+     * slot in the refreshed unified session -- the next valid match, since
+     * the replaced hit is gone (FTR-5194).
+     *
+     * The Grid's own query result refreshes from a debounced PGlite
+     * re-query, so a `handleSearch()` called synchronously right after this
+     * write would still re-read the pre-replace value and see the same hit.
+     * `applyGridReplaceToMatches` patches the held `matches` list directly
+     * from the write's own outcome instead of re-deriving it from that
+     * not-yet-refreshed query result.
+     */
     function replaceCurrentGridMatch(match: GridCellSearchMatch, index: number) {
         const outcome = replaceGridMatch(match, searchQuery, replaceText, replaceOptions());
         if (!outcome) return;
@@ -268,7 +290,9 @@ const logger = getLogger("SearchPanel");
                 : "That cell is read-only and can't be replaced.";
             return;
         }
-        handleSearch();
+        replaceStatus = undefined;
+        matches = applyGridReplaceToMatches(matches, [outcome], match.pageId, match.pageTitle, searchQuery, replaceOptions());
+        matchCount = matches.length;
         activeMatchIndex = matches.length ? Math.min(index, matches.length - 1) : -1;
         if (activeMatchIndex >= 0) jumpTo(matches[activeMatchIndex]);
     }
@@ -329,7 +353,24 @@ const logger = getLogger("SearchPanel");
             const gridOutcome = gridPageId
                 ? replaceGridMatches(gridPageId, searchQuery, replaceText, options, searchScope === "selection")
                 : undefined;
+            // handleSearch() re-derives text hits correctly (Yjs item text is
+            // synchronous) but, like replaceCurrentGridMatch, would still see
+            // pre-replace Grid values from that Grid's own debounced query
+            // refresh -- patch the just-rewritten cells in afterwards instead
+            // of trusting handleSearch()'s Grid portion.
             handleSearch();
+            if (gridOutcome?.applied.length) {
+                matches = applyGridReplaceToMatches(
+                    matches,
+                    gridOutcome.applied,
+                    gridPageId!,
+                    textOf(pageItem),
+                    searchQuery,
+                    options,
+                );
+                matchCount = matches.length;
+                activeMatchIndex = matchCount ? Math.min(activeMatchIndex, matchCount - 1) : -1;
+            }
             followRenameIfNeeded(previousTitle);
             if (gridOutcome) replaceStatus = summarizeGridReplaceStatus(gridOutcome);
         };

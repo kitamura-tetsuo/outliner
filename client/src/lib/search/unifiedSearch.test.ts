@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { GridCellReplacement, GridCellReplaceOutcome } from "./unifiedSearch";
 import {
+    applyGridReplaceToMatches,
     gridSearchMatches,
     gridValueText,
     navigateGridSearchMatch,
@@ -174,7 +175,18 @@ describe("unified Grid replace", () => {
         expect(gridSearchMatches("page-1", "duplicate", {})).toHaveLength(2);
 
         const outcome = replaceGridMatches("page-1", "duplicate", "single", {});
-        expect(outcome).toEqual({ appliedCells: 1, skippedReadOnly: 0, skippedInvalid: 0 });
+        expect(outcome.appliedCells).toBe(1);
+        expect(outcome.skippedReadOnly).toBe(0);
+        expect(outcome.skippedInvalid).toBe(0);
+        expect(outcome.applied).toEqual([
+            {
+                placementId: "placement-a",
+                gridId: "grid-shared",
+                rowId: "row-1",
+                columnId: "name",
+                newText: "single target",
+            },
+        ]);
         expect(rows[0].name).toBe("single target");
     });
 
@@ -187,8 +199,44 @@ describe("unified Grid replace", () => {
             regions: [{ kind: "cells", rowIds: ["row-1"], columnIds: ["name", "computed"] }],
         });
         const outcome = replaceGridMatches("page-1", "match", "found", {}, true);
-        expect(outcome).toEqual({ appliedCells: 1, skippedReadOnly: 1, skippedInvalid: 0 });
+        expect(outcome.appliedCells).toBe(1);
+        expect(outcome.skippedReadOnly).toBe(1);
+        expect(outcome.skippedInvalid).toBe(0);
         expect(rows[0].name).toBe("found here");
         expect(rows[0].computed).toBe("match too");
+    });
+
+    it("never expands $&/$1-style patterns in the replacement text (matches outline Replace semantics)", () => {
+        const rows = [{ id: "row-1", name: "hello world", computed: 1 }];
+        register("grid-1", "placement-1", rows);
+        replaceGridMatches("page-1", "world", "[$&]", {});
+        expect(rows[0].name).toBe("hello [$&]");
+    });
+
+    it("applyGridReplaceToMatches patches a held match list from the write outcome, not the (possibly stale) query result", () => {
+        const rows = [{ id: "row-1", name: "hello world", computed: 1 }];
+        register("grid-1", "placement-1", rows);
+        const stale = gridSearchMatches("page-1", "world", {});
+        expect(stale).toHaveLength(1);
+
+        // The cell is already mutated in the fake store, but `stale` was
+        // captured before that -- exactly the debounced-query situation
+        // `applyGridReplaceToMatches` exists for.
+        rows[0].name = "hello there";
+        const patched = applyGridReplaceToMatches(
+            stale,
+            [{
+                placementId: "placement-1",
+                gridId: "grid-1",
+                rowId: "row-1",
+                columnId: "name",
+                newText: "hello there",
+            }],
+            "page-1",
+            "Page",
+            "world",
+            {},
+        );
+        expect(patched).toEqual([]);
     });
 });
