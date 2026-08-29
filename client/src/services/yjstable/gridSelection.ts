@@ -32,6 +32,13 @@ export interface GridCellExclusion {
     columnIds: string[];
 }
 
+/** A specific cell re-added after a broader row/column exclusion. */
+export interface GridCellOverride {
+    kind: "include-cells";
+    rowIds: string[];
+    columnIds: string[];
+}
+
 export interface GridRowExclusion {
     kind: "exclude-rows";
     rowIds: string[];
@@ -47,6 +54,7 @@ export type GridSelectionRegion =
     | GridRowRegion
     | GridColumnRegion
     | GridAllRegion
+    | GridCellOverride
     | GridCellExclusion
     | GridRowExclusion
     | GridColumnExclusion;
@@ -98,19 +106,29 @@ export class GridSelection {
         this.anchorCell = cell;
         this.rowAnchor = undefined;
         this.columnAnchor = undefined;
-        const regions = this.regions.filter(region => {
-            return !(region.kind === "cells" && region.rowIds.length === 1 && region.columnIds.length === 1
-                && region.rowIds[0] === cell.rowId && region.columnIds[0] === cell.columnId);
-        });
-        if (regions.length !== this.regions.length) {
-            this.regions = regions;
+        const wasSelected = this.contains(cell);
+        if (wasSelected) {
+            this.removePositiveCell(cell);
+            if (this.contains(cell)) this.addCellExclusion(cell);
+        } else if (this.removeCellExclusion(cell)) {
+            // Removing a cell-sized exclusion exposes its underlying positive region.
+            if (!this.contains(cell)) {
+                this.regions.push({ kind: "cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
+                this.indexRegions();
+            }
+        } else if (this.hasPositiveCell(cell)) {
+            this.removePositiveCell(cell);
+            this.regions.push({ kind: "include-cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
             this.indexRegions();
-        } else if (this.contains(cell)) {
+        } else if (this.isCoveredByPositiveRegion(cell)) {
+            this.regions.push({ kind: "include-cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
+            this.indexRegions();
+        } else {
+            this.regions.push({ kind: "cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
+            this.indexRegions();
+        }
+        if (wasSelected && this.contains(cell)) {
             this.addCellExclusion(cell);
-        } else if (!this.removeCellExclusion(cell)) {
-            regions.push({ kind: "cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
-            this.regions = regions;
-            this.indexRegions();
         }
         if (!this.contains(cell)) this.activeCell = undefined;
     }
@@ -162,6 +180,11 @@ export class GridSelection {
     }
 
     contains(cell: GridCellAddress): boolean {
+        if (
+            this.regionIndexes.some(index =>
+                index.kind === "include-cells" && index.rows.has(cell.rowId) && index.columns.has(cell.columnId)
+            )
+        ) return true;
         const selected = this.regionIndexes.some(index => {
             if (index.kind === "all") return true;
             if (index.kind === "rows") return index.rows.has(cell.rowId);
@@ -214,7 +237,7 @@ export class GridSelection {
                 const columnIds = region.columnIds.filter(id => columns.has(id));
                 return columnIds.length ? [{ ...region, columnIds }] : [];
             }
-            if (region.kind === "exclude-cells") {
+            if (region.kind === "exclude-cells" || region.kind === "include-cells") {
                 const rowIds = region.rowIds.filter(id => rows.has(id));
                 const columnIds = region.columnIds.filter(id => columns.has(id));
                 return rowIds.length && columnIds.length ? [{ ...region, rowIds, columnIds }] : [];
@@ -317,6 +340,32 @@ export class GridSelection {
     private addCellExclusion(cell: GridCellAddress): void {
         this.regions.push({ kind: "exclude-cells", rowIds: [cell.rowId], columnIds: [cell.columnId] });
         this.indexRegions();
+    }
+
+    private hasPositiveCell(cell: GridCellAddress): boolean {
+        return this.regions.some(region =>
+            (region.kind === "cells" || region.kind === "include-cells")
+            && region.rowIds.length === 1 && region.columnIds.length === 1
+            && region.rowIds[0] === cell.rowId && region.columnIds[0] === cell.columnId
+        );
+    }
+
+    private removePositiveCell(cell: GridCellAddress): void {
+        this.regions = this.regions.filter(region =>
+            !((region.kind === "cells" || region.kind === "include-cells")
+                && region.rowIds.length === 1 && region.columnIds.length === 1
+                && region.rowIds[0] === cell.rowId && region.columnIds[0] === cell.columnId)
+        );
+        this.indexRegions();
+    }
+
+    private isCoveredByPositiveRegion(cell: GridCellAddress): boolean {
+        return this.regionIndexes.some(index =>
+            index.kind === "all"
+            || (index.kind === "rows" && index.rows.has(cell.rowId))
+            || (index.kind === "columns" && index.columns.has(cell.columnId))
+            || (index.kind === "cells" && index.rows.has(cell.rowId) && index.columns.has(cell.columnId))
+        );
     }
 
     private removeCellExclusion(cell: GridCellAddress): boolean {

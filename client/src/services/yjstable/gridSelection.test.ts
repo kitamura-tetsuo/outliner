@@ -141,4 +141,38 @@ describe("GridSelection", () => {
         expect(selection.contains(middle)).toBe(true);
         expect(selection.regions).toHaveLength(1);
     });
+
+    it("toggles off a singleton that is also covered by a row region", () => {
+        const selection = new GridSelection();
+        const cell = { rowId: "row-a", columnId: "name" };
+        selection.select(cell);
+        selection.selectRow("row-a", rows, { toggle: true });
+        selection.toggleCell(cell);
+        expect(selection.contains(cell)).toBe(false);
+        expect(selection.contains({ rowId: "row-a", columnId: "owner" })).toBe(true);
+    });
+
+    it("re-adds a cell inside a row excluded from all-result selection", () => {
+        const selection = new GridSelection();
+        const cell = { rowId: "row-b", columnId: "name" };
+        selection.selectAll();
+        selection.selectRow("row-b", rows, { toggle: true });
+        selection.toggleCell(cell);
+        expect(selection.contains(cell)).toBe(true);
+        expect(selection.contains({ rowId: "row-b", columnId: "owner" })).toBe(false);
+        selection.toggleCell(cell);
+        expect(selection.contains(cell)).toBe(false);
+    });
+
+    it("re-adds a cell after its exclusion outlives the positive row region", () => {
+        const selection = new GridSelection();
+        const cell = { rowId: "row-a", columnId: "name" };
+        selection.selectRow("row-a", rows);
+        selection.toggleCell(cell);
+        selection.selectRow("row-a", rows, { toggle: true });
+        expect(selection.contains(cell)).toBe(false);
+
+        selection.toggleCell(cell);
+        expect(selection.contains(cell)).toBe(true);
+    });
 });
