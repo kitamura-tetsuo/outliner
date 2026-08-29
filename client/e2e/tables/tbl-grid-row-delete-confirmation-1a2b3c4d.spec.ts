@@ -62,7 +62,7 @@ test.describe("Grid row deletion confirmation", () => {
         });
 
         // Dialog should appear
-        const deleteConfirmDialog = page.getByRole("dialog");
+        const deleteConfirmDialog = page.locator("dialog"); // Use explicit locator instead of getByRole to avoid flakiness with alertdialog vs dialog roles
         await expect(deleteConfirmDialog).toBeVisible({ timeout: 10000 });
 
         // Cancelling the dialog leaves the row unchanged
@@ -120,7 +120,7 @@ test.describe("Grid row deletion confirmation", () => {
         });
 
         // Wait for dialog not to be visible
-        await expect(page.getByRole("dialog")).not.toBeVisible();
+        await expect(deleteConfirmDialog).not.toBeVisible();
 
         // Let it sync completely, then it decreases by 1
         await expect(async () => {
