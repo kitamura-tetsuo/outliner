@@ -1,0 +1,15 @@
+id: GRD-8d41c7ae
+title: Logical Grid cell-range selection
+title-ja: Grid の論理セル範囲選択
+description: Select Grid cells and rectangular ranges by stable row and column identity independently from browser focus.
+category: tables
+status: implemented
+acceptance:
+- Click a cell to make it the active logical cell
+- Shift-click another cell to select the rectangle from the anchor
+- Preserve selected record identities across sorting and query refreshes
+- Remove identities hidden by filtering and resolve a removed active cell deterministically
+- Keep selection local and represent ranges without enumerating every cell
+tests:
+- client/src/services/yjstable/gridSelection.test.ts
+- client/src/components/yjstable/TableGrid.selection.test.ts

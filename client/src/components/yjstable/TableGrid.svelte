@@ -21,8 +21,10 @@ import {
 } from "../../services/yjstable/tableDocs";
 import type { GridHandles } from "../../services/yjstable/gridDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
 import { cellComponentFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
+import { untrack } from "svelte";
 
 interface Props {
     /**
@@ -79,6 +81,8 @@ let {
 
 let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
+const selection = new GridSelection();
+let selectionRevision = $state(0);
 
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
@@ -132,6 +136,49 @@ function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     if (source) return `${source.sourceKind}:${source.sourceId}`;
     return `row-${rowIndex}`;
 }
+
+/** Rows without a durable query identity are intentionally not selectable. */
+function selectableRowId(row: Record<string, unknown>): string | undefined {
+    // Query editability is a write concern. Read-only DISTINCT/aggregate
+    // results may still expose durable identity columns suitable for local
+    // selection, so do not gate identity on editability.rowIdentity.
+    if (typeof row.source_kind === "string" && typeof row.source_id === "string") {
+        return `${row.source_kind}:${row.source_id}`;
+    }
+    return typeof row.id === "string" ? row.id : undefined;
+}
+
+function rowIdsOf(rows: TableQueryResult["rows"]): string[] {
+    return rows.flatMap(row => {
+        const id = selectableRowId(row);
+        return id === undefined ? [] : [id];
+    });
+}
+
+function reconcileSelection(rows: TableQueryResult["rows"], columns: string[]): void {
+    selection.reconcile(rowIdsOf(rows), columns);
+    selectionRevision = untrack(() => selectionRevision) + 1;
+}
+
+function selectCell(event: MouseEvent, cell: GridCellAddress): void {
+    if (event.shiftKey) selection.extend(cell, rowIdsOf(result.rows), displayColumns);
+    else selection.select(cell);
+    selectionRevision++;
+}
+
+function cellSelected(cell: GridCellAddress): boolean {
+    void selectionRevision;
+    return selection.contains(cell);
+}
+
+function cellActive(cell: GridCellAddress): boolean {
+    void selectionRevision;
+    return selection.isActive(cell);
+}
+
+$effect.pre(() => {
+    reconcileSelection(result.rows, displayColumns);
+});
 
 function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
     const recordId = recordIdOf(row);
@@ -297,11 +344,23 @@ function handleCancelDelete() {
                 {#each result.rows as row, rowIndex (rowKey(row, rowIndex))}
                     {@const recordId = recordIdOf(row)}
                     {@const source = sourceOf(row)}
+                    {@const logicalRowId = selectableRowId(row)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         {#each displayColumns as column (column)}
+                            {@const logicalCell = logicalRowId ? { rowId: logicalRowId, columnId: column } : undefined}
                             {@const schemaColumn = columnByName.get(column)}
                             {@const CellComponent = cellComponentFor(componentTypes[column], schemaColumn)}
-                            <td data-record-id={recordId} data-col={column}>
+                            <td
+                                data-record-id={recordId}
+                                data-row-id={logicalRowId}
+                                data-col={column}
+                                class:grid-selected={logicalCell !== undefined && cellSelected(logicalCell)}
+                                class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
+                                aria-selected={logicalCell !== undefined ? cellSelected(logicalCell) : undefined}
+                                onclickcapture={(event) => {
+                                    if (logicalCell) selectCell(event, logicalCell);
+                                }}
+                            >
                                 <CellComponent
                                     value={row[column]}
                                     editable={editability.editable
@@ -393,6 +452,18 @@ td {
     padding: 2px 4px;
     text-align: left;
     font-size: 0.875rem;
+}
+
+td.grid-selected {
+    background-color: rgb(37 99 235 / 12%);
+}
+
+td.grid-active {
+    position: relative;
+    background-color: rgb(37 99 235 / 18%);
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
+    z-index: 1;
 }
 
 th {
