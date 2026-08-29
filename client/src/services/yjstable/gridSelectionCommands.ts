@@ -147,7 +147,8 @@ export interface GridCommandOutcome {
     count?: number;
 }
 
-function writeWritableCell(
+/** Writes one resolved target cell through its row's addressing (`recordId` or `source`). Shared with `gridClipboard.ts`'s paste commit, which validates a whole target rectangle up front the same way a bulk command validates a whole selection. */
+export function writeWritableCell(
     ctx: Pick<GridCommandContext, "handles" | "session">,
     target: GridWritableCellTarget,
     value: TableRecordValue,

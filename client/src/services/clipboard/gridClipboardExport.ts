@@ -28,9 +28,10 @@ const RFC_4180_NEEDS_QUOTING = /[\t\r\n"]/;
 /**
  * SQL NULL and the empty string are different values a TSV cannot tell apart;
  * both become an empty cell. §7.1 accepts the ambiguity — this is a one-way
- * export and nothing later has to invert it.
+ * export and nothing later has to invert it. Shared with `gridClipboard.ts`'s
+ * selection-rectangle copy so both flavors of Grid TSV export quote alike.
  */
-function formatTsvCell(value: unknown): string {
+export function formatTsvCell(value: unknown): string {
     if (value === null || value === undefined) return "";
     const str = String(value);
     if (RFC_4180_NEEDS_QUOTING.test(str)) return `"${str.replaceAll('"', '""')}"`;
@@ -43,7 +44,7 @@ export function escapeHtml(value: string): string {
 }
 
 /** Cell boundaries are elements here, so only markup characters need escaping. */
-function formatHtmlCell(value: unknown): string {
+export function formatHtmlCell(value: unknown): string {
     if (value === null || value === undefined) return "";
     return escapeHtml(String(value)).replaceAll("\n", "<br>");
 }
