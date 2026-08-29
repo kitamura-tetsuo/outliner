@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the spreadsheet-style Grid cell clipboard guidance (#5192)", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(70);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(71);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -180,6 +180,17 @@ describe("Demo seed content", () => {
         expect(cellClipboard).to.contain("Ctrl/Cmd+C");
         expect(cellClipboard).to.contain("Ctrl/Cmd+V");
         expect(cellClipboard).to.contain("selection toolbar's Copy and Paste buttons");
+    });
+
+    it("seeds the MCP dry-run validation guidance (#5212)", () => {
+        const mcp = findChildByText(project.items, "Remote MCP Access");
+        expect(mcp).to.not.equal(undefined);
+
+        const guidance = childTexts(mcp!.items).find(text => text.startsWith("Before changing data, MCP clients"));
+        expect(guidance, "MCP validation guidance exists").to.not.equal(undefined);
+        expect(guidance).to.contain("validate_table_schema");
+        expect(guidance).to.contain("validate_grid_query");
+        expect(guidance).to.contain("without changing this project");
     });
 
     it("seeds the current Grid clipboard guidance", () => {

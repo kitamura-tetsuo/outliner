@@ -102,6 +102,13 @@ describe("MCP mutation safety contract", () => {
             destructiveHint: false,
             idempotentHint: true,
         });
+        for (const name of ["validate_table_schema", "validate_grid_query"]) {
+            expect(tools.find(t => t.name === name)?.annotations).to.include({
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+            });
+        }
         expect(tools.find(t => t.name === "write_relation")?.annotations).to.include({
             readOnlyHint: false,
             destructiveHint: true,
