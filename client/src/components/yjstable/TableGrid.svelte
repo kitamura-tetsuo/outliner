@@ -25,7 +25,7 @@ import { GridSelection, type GridCellAddress } from "../../services/yjstable/gri
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import { cellComponentFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
-import { tick, untrack } from "svelte";
+import { untrack } from "svelte";
 
 interface Props {
     /**
@@ -241,24 +241,26 @@ function tryFocusLogicalCell(cell: GridCellAddress): boolean {
  * Focus the interactive control for a logical cell, addressed only by its
  * durable row/column identity (never a DOM row index). Plain keyboard
  * navigation focuses synchronously -- the target cell's DOM is untouched, so
- * waiting even a microtask would risk losing to the next keystroke in a fast
- * sequence. `awaitTick` opts a caller into waiting one Svelte tick first, for
- * the one case that needs it: exiting edit mode back onto the very cell that
- * was just edited, whose `<input>` is mid-swap back to its `<button>` this
- * same tick. A query refresh (Yjs write -> PGlite -> debounced re-query) can
- * replace the underlying `<tr>`/`<td>` on a slower, real async timeline
- * regardless, so this also retries across a few animation frames when the
- * cell still isn't there, matching the #5181 focus-preservation contract.
+ * any deferral would risk losing to the next keystroke in a fast sequence.
+ *
+ * `deferred` opts a caller into waiting a frame first, for the cases that
+ * need it: exiting edit mode, whether back onto the very cell that was just
+ * edited (Escape, or Enter/Tab clamped at the grid edge -- its `<input>` is
+ * mid-swap back to its `<button>` this same tick) or onto a different cell
+ * (Enter/Tab committing and moving). Both need this, for different reasons:
+ * a same-tick query would still find the outgoing `<input>`, and -- subtler
+ * -- focusing a *different* button synchronously mid-keydown leaves it
+ * focused when the same Enter/Space keystroke's `keyup` reaches the browser,
+ * whose default action synthesizes a `click` on whatever button has focus,
+ * silently reopening that cell for editing. `requestAnimationFrame` outlives
+ * both hazards, matching the original #5181 fix. A query refresh (Yjs write
+ * -> PGlite -> debounced re-query) can replace the underlying `<tr>`/`<td>`
+ * on a slower, real async timeline regardless, so this also retries across a
+ * few animation frames when the cell still isn't there.
  */
-function focusLogicalCell(cell: GridCellAddress, attempts = 0, awaitTick = false) {
-    if (awaitTick) {
-        // The target cell is the one an edit session was just exited on (Escape,
-        // or Enter/Tab clamped back onto it at the grid edge): its own DOM is
-        // mid-swap from <input> back to <button> this very tick, so querying
-        // before that Svelte patch lands would still find the outgoing input.
-        // Pure navigation never hits this -- the target cell's DOM is untouched
-        // -- so it skips the wait and stays synchronous against fast keystrokes.
-        void tick().then(() => focusLogicalCell(cell, attempts));
+function focusLogicalCell(cell: GridCellAddress, attempts = 0, deferred = false) {
+    if (deferred) {
+        requestAnimationFrame(() => focusLogicalCell(cell, attempts));
         return;
     }
     if (tryFocusLogicalCell(cell)) return;
@@ -273,7 +275,7 @@ function moveActive(
     direction: GridNavDirection,
     extend: boolean,
     wrap: boolean,
-    awaitTick = false,
+    deferred = false,
 ) {
     const rows = rowIdsOf(result.rows);
     const target = moveActiveCell(origin, direction, rows, displayColumns, { wrap }) ?? origin;
@@ -282,7 +284,7 @@ function moveActive(
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
-    focusLogicalCell(target, 0, awaitTick);
+    focusLogicalCell(target, 0, deferred);
 }
 
 /** Called by a cell editor's keyboard commit (Enter/Tab) or cancel (Escape). */
