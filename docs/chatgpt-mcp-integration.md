@@ -63,7 +63,7 @@ A concurrent update returns `stale_revision` and the current revision. Do not bl
 
 ## Structured errors
 
-Tool-level failures set `isError:true`; parse the JSON text rather than matching prose. It contains `code`, a safe `error`, and `requestId`, with bounded diagnostic fields where useful.
+Tool-level failures that reach Outliner's handler set `isError:true`; parse their JSON text rather than matching prose. It contains `code`, a safe `error`, and `requestId`, with bounded diagnostic fields where useful. The MCP SDK may reject an input that does not match the advertised JSON schema before the handler runs; that protocol-level response is plain `Input validation error` text rather than Outliner's structured JSON contract. Treat it as `invalid_argument`, correct the call from `tools/list`'s current input schema, and do not retry it unchanged.
 
 | Code                                              | Operator action                                                                                                                                |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -77,7 +77,7 @@ Tool-level failures set `isError:true`; parse the JSON text rather than matching
 
 ## Audit and privacy
 
-Every `write_relation` and `set_view_query` attempt, including dry runs, failures, and replays, writes an `mcp_audit` JSONL record. It contains the request ID, a one-way uid fingerprint, tool, project/entity identifiers, operation ID, dry-run/applied/replayed state, outcome, and prior/new revisions. It deliberately excludes bearer/refresh tokens, raw uid, authorization headers, query text, row values, and full payloads. Restrict and rotate the log like other security audit data. Use request IDs for correlation and never paste tokens into issue reports.
+Every `write_relation` and `set_view_query` attempt that passes the MCP SDK's input-schema check—including dry runs, handler validation failures, scope failures, and replays—writes an `mcp_audit` JSONL record. Schema-invalid calls are rejected by the SDK before Outliner's audit wrapper is entered and therefore have no mutation audit record; retain transport/security logs if protocol-level rejection accounting is required. Audit entries contain the request ID, a one-way uid fingerprint, tool, project/entity identifiers, operation ID, dry-run/applied/replayed state, outcome, and prior/new revisions. They deliberately exclude bearer/refresh tokens, raw uid, authorization headers, query text, row values, and full payloads. Restrict and rotate the log like other security audit data. Use request IDs for correlation and never paste tokens into issue reports.
 
 ## Production connector smoke test
 

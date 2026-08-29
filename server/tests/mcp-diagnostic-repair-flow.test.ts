@@ -35,6 +35,7 @@ describe("MCP diagnostic-to-repair flow", () => {
         const grid = new Y.Map<unknown>();
         grid.set("name", "Task order");
         grid.set("query", "SELECT id, order FROM tasks ORDER BY order");
+        grid.set("sourceTableId", "table-1");
         project.ydoc.getMap("yjsGrids").set("grid-1", grid);
 
         const table = new Y.Doc();
@@ -98,7 +99,8 @@ describe("MCP diagnostic-to-repair flow", () => {
         );
         expect(validation).to.include({ accepted: true, inferredOrdering: "sql-order-by" });
 
-        const revision = broken.revision;
+        const currentGrid = payload(await call("get_grid", { projectId: "project-1", gridId: "grid-1" }));
+        const revision = currentGrid.revision;
         const dryRun = payload(
             await call("set_view_query", {
                 projectId: "project-1",
