@@ -14,7 +14,6 @@ import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospect
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
     addRecord,
-    deleteRecord,
     setRecordValue,
     type TableHandles,
     type TableRecordValue,
@@ -23,7 +22,15 @@ import type { GridHandles } from "../../services/yjstable/gridDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
-import { cellComponentFor } from "./cellComponents";
+import {
+    applyValueToSelection,
+    type GridCommandContext,
+    type GridCommandRowTarget,
+    planGridDeleteCommand,
+    removeRowTargets,
+    summarizeSelection,
+} from "../../services/yjstable/gridSelectionCommands";
+import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { untrack } from "svelte";
 
@@ -86,6 +93,8 @@ let {
 }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
+/** Pending selection-aware row removal (FTR-5191), awaiting the same confirmation as a single row delete. */
+let bulkRowsToDelete: GridCommandRowTarget[] | undefined = $state(undefined);
 let isConfirmDialogOpen: boolean = $state(false);
 const selection = new GridSelection();
 let selectionRevision = $state(0);
@@ -124,6 +133,32 @@ const editability = $derived(analyzeQueryEditability(query, schema, result.colum
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
 const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
+
+/** One row target per query result row, for the selection command layer (`gridSelectionCommands.ts`). */
+function buildRowTargets(): Map<string, GridCommandRowTarget> {
+    const map = new Map<string, GridCommandRowTarget>();
+    for (const row of result.rows) {
+        const rowId = selectableRowId(row);
+        if (rowId === undefined) continue;
+        map.set(rowId, { row, recordId: recordIdOf(row), source: sourceOf(row) });
+    }
+    return map;
+}
+
+const commandContext = $derived<GridCommandContext>({
+    handles,
+    session,
+    rowTargets: buildRowTargets(),
+    columnOrder: displayColumns,
+    editableColumns: editability.editableColumns,
+    valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
+    checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
+});
+
+const selectionSummary = $derived.by(() => {
+    void selectionRevision;
+    return summarizeSelection(selection, commandContext);
+});
 
 /** Persist a visible-column reorder without dropping or moving hidden slots. */
 function writeVisibleColumnOrder(visibleOrder: string[]) {
@@ -413,7 +448,19 @@ $effect.pre(() => {
     reconcileSelection(result.rows, displayColumns);
 });
 
+/** Bulk-safe value kinds: committing one of these while several writable cells are selected applies the value to all of them (FTR-5191). */
+const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
+
 function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
+    const rowId = selectableRowId(row);
+    const cell: GridCellAddress | undefined = rowId !== undefined ? { rowId, columnId: column } : undefined;
+    if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
+        const summary = summarizeSelection(selection, commandContext);
+        if (summary.writableTargets.length > 1) {
+            applyValueToSelection(selection, commandContext, value);
+            return;
+        }
+    }
     const recordId = recordIdOf(row);
     if (recordId !== undefined) {
         setRecordValue(handles, recordId, column, value);
@@ -522,6 +569,15 @@ function handleGridKeyDown(event: KeyboardEvent) {
     const target = event.target as HTMLElement;
     if (target instanceof HTMLInputElement && target.classList.contains("cell-input")) return;
 
+    if (event.key === "Delete" || event.key === "Backspace") {
+        // Not gated on a `td[data-row-id]` target: a `rows`-kind selection's
+        // DOM focus sits on the row header `<th>` it was picked from, not a
+        // cell, and this command must still fire from there.
+        event.preventDefault();
+        runDeleteCommand();
+        return;
+    }
+
     const td = target.closest<HTMLElement>("td[data-row-id]");
     if (!td) return;
     const rowId = td.dataset.rowId;
@@ -610,19 +666,46 @@ function deleteRow(recordId: string) {
         rowToDelete = recordId;
         isConfirmDialogOpen = true;
     } else {
-        deleteRecord(handles, recordId);
+        removeRowTargets(commandContext, [{ row: {}, recordId }]);
     }
 }
 
+/**
+ * The selection-aware Delete/Backspace command (FTR-5191). A `rows`-kind
+ * selection removes the selected records -- honoring the same per-Grid
+ * "confirm before deleting rows" option as the row action button, including
+ * when triggered from the keyboard. Any other selection kind (a cell/range,
+ * a column, or the whole result via select-all) clears writable cell
+ * contents instead: it must never fall back to a destructive whole-result
+ * row removal.
+ */
+function runDeleteCommand(): void {
+    const plan = planGridDeleteCommand(selection, commandContext);
+    if (plan.kind === "clear-cells") return;
+    if (plan.targets.length === 0) return;
+    if (confirmRowDelete) {
+        bulkRowsToDelete = plan.targets;
+        isConfirmDialogOpen = true;
+        return;
+    }
+    removeRowTargets(commandContext, plan.targets);
+}
+
 function handleConfirmDelete() {
+    if (bulkRowsToDelete) {
+        removeRowTargets(commandContext, bulkRowsToDelete);
+        bulkRowsToDelete = undefined;
+        return;
+    }
     if (rowToDelete) {
-        deleteRecord(handles, rowToDelete);
+        removeRowTargets(commandContext, [{ row: {}, recordId: rowToDelete }]);
         rowToDelete = null;
     }
 }
 
 function handleCancelDelete() {
     rowToDelete = null;
+    bulkRowsToDelete = undefined;
 }
 </script>
 
@@ -656,6 +739,11 @@ function handleCancelDelete() {
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
     {:else if result.columns.length > 0}
+        {#if selectionSummary.kind === "cells" && selectionSummary.totalCells > 1}
+            <p class="grid-selection-status" data-testid="grid-selection-status">
+                {selectionSummary.totalCells} cells selected · {selectionSummary.writableTargets.length} editable
+            </p>
+        {/if}
         <table role="grid" onkeydown={handleGridKeyDown}>
             <thead>
                 <tr>
@@ -930,7 +1018,11 @@ function handleCancelDelete() {
     <ConfirmDialog
         bind:isOpen={isConfirmDialogOpen}
         title="Delete row"
-        message={rowToDelete ? `Are you sure you want to delete row ${rowToDelete}?` : "Are you sure you want to delete this row?"}
+        message={bulkRowsToDelete
+            ? `Are you sure you want to delete ${bulkRowsToDelete.length} selected row${bulkRowsToDelete.length === 1 ? "" : "s"}?`
+            : rowToDelete
+            ? `Are you sure you want to delete row ${rowToDelete}?`
+            : "Are you sure you want to delete this row?"}
         confirmText="Delete"
         cancelText="Cancel"
         isDestructive={true}
@@ -1135,7 +1227,8 @@ th.drop-target-right {
 
 .empty-state,
 .readonly-reason,
-.loading-state {
+.loading-state,
+.grid-selection-status {
     color: #6b7280;
     font-size: 0.875rem;
     margin: 6px 0;

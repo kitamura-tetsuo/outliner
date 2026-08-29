@@ -62,6 +62,21 @@ export function defaultCellType(column: TableColumnSchema | undefined): CellComp
 }
 
 /**
+ * Resolve the cell component *type* for a result column: an explicit UI
+ * Definition setting wins, otherwise the schema column decides. Shared by
+ * `cellComponentFor` (rendering) and the selection command layer
+ * (`gridSelectionCommands.ts`), which validates a bulk value against this
+ * same type without needing to import a Svelte component.
+ */
+export function cellComponentTypeFor(
+    configuredType: string | undefined,
+    column: TableColumnSchema | undefined,
+): CellComponentType {
+    if (isCellComponentType(configuredType)) return configuredType;
+    return defaultCellType(column);
+}
+
+/**
  * Resolve the cell component for a result column: an explicit UI Definition
  * setting wins, otherwise the schema column decides.
  */
@@ -69,6 +84,5 @@ export function cellComponentFor(
     configuredType: string | undefined,
     column: TableColumnSchema | undefined,
 ): Component<CellProps> {
-    if (isCellComponentType(configuredType)) return CELL_COMPONENTS[configuredType];
-    return CELL_COMPONENTS[defaultCellType(column)];
+    return CELL_COMPONENTS[cellComponentTypeFor(configuredType, column)];
 }
