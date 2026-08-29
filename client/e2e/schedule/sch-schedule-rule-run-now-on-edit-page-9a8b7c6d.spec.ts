@@ -3,6 +3,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import { expect, test } from "@playwright/test";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Schedule Rule Run Now on Edit Page", () => {
@@ -54,9 +55,11 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await expect(buttons.nth(1)).toHaveAttribute("data-testid", "delete-schedule");
 
         // Fill SQL
-        const sqlInput = page.locator("textarea").first();
-        await expect(sqlInput).toBeVisible();
-        await sqlInput.fill("INSERT INTO {{table}} (title, id) VALUES ('run-now test', gen_random_uuid());");
+        const sqlEditor = SqlEditorHelper.byTestId(page, "schedule-sql-editor");
+        await sqlEditor.fillAndCommit(
+            page,
+            "INSERT INTO {{table}} (title, id) VALUES ('run-now test', gen_random_uuid());",
+        );
         await page.waitForTimeout(500);
 
         // Save
@@ -126,9 +129,8 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
 
         // Fill SQL with INVALID syntax
-        const sqlInput = page.locator("textarea").first();
-        await expect(sqlInput).toBeVisible();
-        await sqlInput.fill("INVALID SQL SYNTAX");
+        const sqlEditor = SqlEditorHelper.byTestId(page, "schedule-sql-editor");
+        await sqlEditor.fillAndCommit(page, "INVALID SQL SYNTAX");
         await page.waitForTimeout(500);
 
         // Save
