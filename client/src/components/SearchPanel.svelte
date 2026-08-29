@@ -50,7 +50,7 @@ const logger = getLogger("SearchPanel");
     let isRegexMode = $state(false);
     let isCaseSensitive = $state(false);
     let isWholeWord = $state(false);
-    let searchScope: "project" | "page" | "selection" = $state("project");
+    let searchScope: "project" | "page" | "selection" = $state("page");
 
     $effect(() => {
         clearGridSearchHighlights();
