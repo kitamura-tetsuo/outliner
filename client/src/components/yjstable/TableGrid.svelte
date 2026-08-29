@@ -62,6 +62,8 @@ interface Props {
     session: RelationResolver;
 }
 
+let gridContainer: HTMLElement | undefined = $state();
+
 let {
     grid,
     onColumnOrderChange,
@@ -190,6 +192,33 @@ function commitCell(row: Record<string, unknown>, column: string, value: TableRe
     if (source) void applyUnionedRowEdit(session, source.sourceKind, source.sourceId, column, value);
 }
 
+function restoreCellFocus(rowIdent: string, column: string, attempts = 0) {
+    if (attempts > 10 || !gridContainer) return;
+
+    requestAnimationFrame(() => {
+        if (!gridContainer) return;
+
+        const tr = gridContainer.querySelector(`tr[data-record-id="${CSS.escape(rowIdent)}"]`);
+        if (!tr) {
+            restoreCellFocus(rowIdent, column, attempts + 1);
+            return;
+        }
+
+        const td = tr.querySelector(`td[data-col="${CSS.escape(column)}"]`);
+        if (!td) {
+            restoreCellFocus(rowIdent, column, attempts + 1);
+            return;
+        }
+
+        const focusable = td.querySelector('button, input, select') as HTMLElement;
+        if (focusable) {
+            focusable.focus();
+        } else {
+            restoreCellFocus(rowIdent, column, attempts + 1);
+        }
+    });
+}
+
 function newRecordDefaults(): Record<string, TableRecordValue> {
     const defaults: Record<string, TableRecordValue> = {};
     for (const column of schema?.columns ?? []) {
@@ -241,6 +270,7 @@ function handleCancelDelete() {
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
+    bind:this={gridContainer}
 >
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
@@ -370,6 +400,10 @@ function handleCancelDelete() {
                                     ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
                                     onCommit={(value) => {
                                         if (recordId !== undefined || source !== undefined) commitCell(row, column, value);
+                                    }}
+                                    onRequestFocus={() => {
+                                        const rowIdent = recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined);
+                                        if (rowIdent) restoreCellFocus(rowIdent, column);
                                     }}
                                 />
                             </td>

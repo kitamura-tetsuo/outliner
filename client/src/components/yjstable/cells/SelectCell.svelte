@@ -6,9 +6,10 @@ interface Props {
     options?: string[];
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    onRequestFocus?: () => void;
 }
 
-let { value, editable, options = [], ariaLabel, onCommit }: Props = $props();
+let { value, editable, options = [], ariaLabel, onCommit, onRequestFocus: _ }: Props = $props();
 
 const current = $derived(value === null || value === undefined ? "" : String(value));
 </script>

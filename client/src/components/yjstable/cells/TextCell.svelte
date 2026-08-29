@@ -4,9 +4,10 @@ interface Props {
     editable: boolean;
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    onRequestFocus?: () => void;
 }
 
-let { value, editable, ariaLabel, onCommit }: Props = $props();
+let { value, editable, ariaLabel, onCommit, onRequestFocus }: Props = $props();
 let editing = $state(false);
 
 function commit(e: Event) {
@@ -25,8 +26,13 @@ function commit(e: Event) {
         autofocus
         onblur={commit}
         onkeydown={(e) => {
-            if (e.key === "Enter") commit(e);
-            if (e.key === "Escape") editing = false;
+            if (e.key === "Enter") {
+                commit(e);
+                onRequestFocus?.();
+            } else if (e.key === "Escape") {
+                editing = false;
+                onRequestFocus?.();
+            }
         }}
     />
 {:else}
