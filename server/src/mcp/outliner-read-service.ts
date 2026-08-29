@@ -29,8 +29,64 @@ export interface OutlineNodeRead {
 }
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
+type ResolvableEntityKind = "grids" | "calendars" | "tables";
+
 function assertId(value: string, label: string): void {
     if (!ID.test(value)) throw new McpReadError("invalid_argument", `Invalid ${label}`);
+}
+
+function parseResolvablePath(pathname: string): {
+    projectTitle: string;
+    pageTitle?: string;
+    entityKind?: ResolvableEntityKind;
+    entityId?: string;
+} {
+    const encodedParts = pathname.split("/");
+    if (encodedParts[encodedParts.length - 1] === "") encodedParts.pop();
+    if (encodedParts[0] !== "" || encodedParts.slice(1).some(part => part === "")) {
+        throw new McpReadError("invalid_argument", "Unsupported Outliner URL path", {
+            stage: "path_validation",
+            partsLength: encodedParts.length - 1,
+        });
+    }
+
+    let parts: string[];
+    try {
+        parts = encodedParts.slice(1).map(decodeURIComponent);
+    } catch {
+        throw new McpReadError("invalid_argument", "Malformed Outliner URL encoding", {
+            stage: "url_decoding",
+            pathnameLength: pathname.length,
+        });
+    }
+
+    if (parts.length === 1) return { projectTitle: parts[0]! };
+    if (parts.length === 2 && parts[1] !== "-") return { projectTitle: parts[0]!, pageTitle: parts[1]! };
+
+    // Keep accepting the pre-#5012 resource-first form for existing MCP
+    // clients. The client itself only generates the canonical project-first
+    // form below.
+    if (parts.length === 3 && ["grids", "calendars", "tables"].includes(parts[0]!)) {
+        return {
+            entityKind: parts[0] as ResolvableEntityKind,
+            projectTitle: parts[1]!,
+            entityId: parts[2]!,
+        };
+    }
+
+    if (parts.length === 4 && parts[1] === "-" && ["grids", "calendars", "tables"].includes(parts[2]!)) {
+        return {
+            projectTitle: parts[0]!,
+            entityKind: parts[2] as ResolvableEntityKind,
+            entityId: parts[3]!,
+        };
+    }
+
+    throw new McpReadError("invalid_argument", "Unsupported Outliner URL path", {
+        stage: "path_validation",
+        partsLength: parts.length,
+        hasEntityKind: parts.includes("-"),
+    });
 }
 
 function allItems(items: Items): Item[] {
@@ -121,26 +177,8 @@ export class OutlinerReadService {
                 hostname: url.hostname,
             });
         }
-        let parts: string[];
-        try {
-            parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-        } catch {
-            throw new McpReadError("invalid_argument", "Malformed Outliner URL encoding", {
-                stage: "url_decoding",
-                pathnameLength: url.pathname.length,
-            });
-        }
-        const entityKind = ["grids", "calendars", "tables"].includes(parts[0] ?? "")
-            ? parts.shift() as "grids" | "calendars" | "tables"
-            : undefined;
-        if (parts.length < 1 || parts.length > 2 || (entityKind && parts.length !== 2)) {
-            throw new McpReadError("invalid_argument", "Unsupported Outliner URL path", {
-                stage: "path_validation",
-                partsLength: parts.length,
-                hasEntityKind: !!entityKind,
-            });
-        }
-        const projectTitle = parts[0]!;
+        const { projectTitle, pageTitle, entityKind, entityId } = parseResolvablePath(url.pathname);
+        if (entityId !== undefined) assertId(entityId, "entity ID");
         const resolutionDebug = {
             inputUrl: `${url.origin}${url.pathname}`,
             pathname: url.pathname,
@@ -175,13 +213,11 @@ export class OutlinerReadService {
             foundProjectWithoutEntity = true;
             const resolved = await this.withProject(uid, projectId, project => {
                 if (entityKind) {
-                    const entityId = parts[1]!;
-                    assertId(entityId, "entity ID");
                     const exists = entityKind === "grids"
-                        ? project.ydoc.getMap("yjsGrids").has(entityId)
+                        ? project.ydoc.getMap("yjsGrids").has(entityId!)
                         : entityKind === "calendars"
-                        ? project.calendars.has(entityId)
-                        : project.ydoc.getMap("yjsTables").has(entityId);
+                        ? project.calendars.has(entityId!)
+                        : project.ydoc.getMap("yjsTables").has(entityId!);
                     if (!exists) {
                         throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`, {
                             ...resolutionDebug,
@@ -193,14 +229,14 @@ export class OutlinerReadService {
                     }
                     return { projectId, entityId, kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" };
                 }
-                if (!parts[1]) return { projectId, kind: "project" as const };
-                const page = Array.from(project.items).find(item => item.text === parts[1]);
+                if (!pageTitle) return { projectId, kind: "project" as const };
+                const page = Array.from(project.items).find(item => item.text === pageTitle);
                 if (!page) {
                     throw new McpReadError("not_found", "Page not found", {
                         ...resolutionDebug,
                         stage: "page_lookup",
                         requestedProjectTitle: projectTitle,
-                        requestedPageTitle: parts[1],
+                        requestedPageTitle: pageTitle,
                     });
                 }
                 return { projectId, pageId: page.id, kind: "page" as const };
@@ -216,7 +252,7 @@ export class OutlinerReadService {
                 ? "authorization_recheck"
                 : "project_title_matching",
             requestedProjectTitle: projectTitle,
-            requestedPageTitle: parts[1],
+            requestedPageTitle: pageTitle,
             accessibleProjectCount: candidates.length,
             authorizedCandidateCount,
             foundProjectWithoutEntity,
