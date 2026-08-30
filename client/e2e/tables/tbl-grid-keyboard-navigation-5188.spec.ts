@@ -63,6 +63,21 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await expect(grid.locator("td.grid-selected")).toHaveCount(4);
     });
 
+    test("Escape reduces an extended range to its active cell", async ({ page }) => {
+        const grid = page.getByTestId("yjs-table-grid");
+        const firstRow = grid.locator("tbody tr").first();
+        await selectAndFocus(firstRow.locator("td[data-col='title']"));
+
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.up("Shift");
+        await page.keyboard.press("Escape");
+
+        await expect(grid.locator("td.grid-selected")).toHaveCount(1);
+        await expect(grid.locator("tbody tr").nth(1).locator("td[data-col='cadence']")).toHaveClass(/grid-active/);
+    });
+
     test("Tab moves right and wraps to the next row at the edge", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
         const firstRow = grid.locator("tbody tr").first();

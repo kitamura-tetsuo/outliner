@@ -764,6 +764,13 @@ function handleGridKeyDown(event: KeyboardEvent) {
         return;
     }
 
+    if (event.key === "Escape") {
+        event.preventDefault();
+        selection.cancelOrReduce();
+        selectionRevision++;
+        return;
+    }
+
     const td = target.closest<HTMLElement>("td[data-row-id]");
     if (!td) return;
     const rowId = td.dataset.rowId;
