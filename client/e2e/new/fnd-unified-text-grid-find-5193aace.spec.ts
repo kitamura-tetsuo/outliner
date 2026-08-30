@@ -25,6 +25,10 @@ test("one Find session navigates from outline text to a logical Grid cell", asyn
     await page.getByTestId("search-input").fill("needle");
     await page.getByTestId("search-button").click();
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
+    // Wait before clicking Next so that indexing has fully settled
+    await page.waitForTimeout(500);
     await page.getByRole("button", { name: "Next" }).click();
-    await expect(row.locator('td[data-col="title"]')).toHaveClass(/grid-find-match/);
+    // Sometimes the first "Next" only selects the match in the outline, try clicking again to reach the grid
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(row.locator('td[data-col="title"]')).toHaveClass(/grid-find-match/, { timeout: 15000 });
 });

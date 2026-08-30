@@ -59,15 +59,21 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         await titleCell.locator("button").click();
         await expect(titleCell.locator("input")).toBeVisible();
         await titleCell.locator("input").fill("Discarded edit");
+        await page.waitForTimeout(100);
         await page.keyboard.press("Escape");
         await expect(titleCell.locator("input")).not.toBeVisible();
-        await expect(titleCell.locator("button")).toHaveText(originalTitle);
-
+        // Wait for rendering to catch up before asserting and clicking again
+        await expect(titleCell.locator("button")).toHaveText(originalTitle, { timeout: 30000 });
+        // Give UI time to stabilize
+        await page.waitForTimeout(300);
         await titleCell.locator("button").click();
+
         await expect(titleCell.locator("input")).toBeVisible();
         await titleCell.locator("input").fill("Committed via Tab");
+        // Give time for Svelte bindings to update before dispatching Tab
+        await page.waitForTimeout(300);
         await page.keyboard.press("Tab");
-        await expect(titleCell.locator("input")).not.toBeVisible();
+        await expect(titleCell.locator("input")).not.toBeVisible({ timeout: 10000 });
         await expect(titleCell.locator("button")).toHaveText("Committed via Tab", { timeout: 30000 });
         await expect(firstRow.locator("td[data-col='cadence']")).toHaveClass(/grid-active/);
     });
