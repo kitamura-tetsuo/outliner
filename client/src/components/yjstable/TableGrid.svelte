@@ -769,7 +769,18 @@ function handleGridKeyDown(event: KeyboardEvent) {
         // Native controls own Escape as well as their arrow keys. In
         // particular, selects and date inputs use it to dismiss an open
         // picker and do not necessarily select their containing Grid cell.
-        if (isForeignEditor) return;
+        // The exception is a reducible range whose logical active cell is
+        // this control: keyboard range navigation can legitimately land on
+        // a select/date cell, and Escape must still collapse that range.
+        if (isForeignEditor) {
+            const td = target.closest<HTMLElement>("td[data-row-id]");
+            const active = selection.activeCell;
+            const isActiveControl = td?.dataset.rowId === active?.rowId && td?.dataset.col === active?.columnId;
+            const isReducibleRange = selection.regions.length > 1 || selection.regions.some(region =>
+                region.kind === "cells" && (region.rowIds.length > 1 || region.columnIds.length > 1)
+            );
+            if (!isActiveControl || !isReducibleRange) return;
+        }
         event.preventDefault();
         selection.cancelOrReduce();
         selectionRevision++;
