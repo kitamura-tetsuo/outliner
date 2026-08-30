@@ -54,7 +54,7 @@ function handleCancel(_e?: Event) {
     bind:this={dialogElement}
     oncancel={handleCancel}
     class="backdrop:bg-black backdrop:bg-opacity-50 p-0 rounded-lg shadow-xl border border-gray-200"
-    role="alertdialog"
+    role="alertdialog" tabindex="-1"
     aria-modal="true"
     aria-labelledby={`confirm-dialog-title-${dialogId}`}
     aria-describedby={`confirm-dialog-message-${dialogId}`}
