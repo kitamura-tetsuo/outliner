@@ -150,6 +150,49 @@ export function computeNextRunAt(
     }
 }
 
+/**
+ * Return bounded occurrences strictly after an instant in one recurrence
+ * traversal. This uses the same floating-local-time and DST-gap rules as the
+ * scheduler cursor calculation, without an arbitrary historical scan cap.
+ */
+export function computeOccurrencesAfter(
+    rruleStr: string,
+    dtstartStr: string,
+    timezoneStr: string,
+    afterEpochMs: number,
+    limit: number,
+): string[] {
+    const dtstart = DateTime.fromISO(dtstartStr, { zone: timezoneStr });
+    if (!dtstart.isValid || dtstartStr !== dtstart.toFormat("yyyy-MM-dd'T'HH:mm:ss")) return [];
+    const rule = rrulestr(rruleStr, {
+        dtstart: new Date(Date.UTC(
+            dtstart.year,
+            dtstart.month - 1,
+            dtstart.day,
+            dtstart.hour,
+            dtstart.minute,
+            dtstart.second,
+        )),
+    }) as RRule;
+    const occurrences: string[] = [];
+    rule.all(date => {
+        const local = DateTime.fromObject({
+            year: date.getUTCFullYear(),
+            month: date.getUTCMonth() + 1,
+            day: date.getUTCDate(),
+            hour: date.getUTCHours(),
+            minute: date.getUTCMinutes(),
+            second: date.getUTCSeconds(),
+        }, { zone: timezoneStr });
+        const expected = DateTime.fromJSDate(date, { zone: "utc" }).toFormat("yyyy-MM-dd'T'HH:mm:ss");
+        if (!local.isValid || local.toFormat("yyyy-MM-dd'T'HH:mm:ss") !== expected) return true;
+        const iso = local.toUTC().toISO()!;
+        if (Date.parse(iso) > afterEpochMs) occurrences.push(iso);
+        return occurrences.length < limit;
+    });
+    return occurrences;
+}
+
 export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db: BetterSqlite3.Database) {
     ensureScheduleIndex(db);
 

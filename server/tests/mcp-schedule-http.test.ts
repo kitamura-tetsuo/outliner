@@ -8,6 +8,7 @@ import { createMcpRouter } from "../src/mcp/mcp-api.js";
 import { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
 import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import { OutlinerScheduleService } from "../src/mcp/schedule-service.js";
+import { JobExecutor } from "../src/scheduler/executor.js";
 import { Project } from "../src/schema/app-schema.js";
 import { mcpLogger, mcpLogPath } from "../src/utils/log-manager.js";
 
@@ -40,24 +41,38 @@ describe("Schedule MCP HTTP contract", () => {
         table.set("name", "Tasks");
         table.set("sqlName", "tasks");
         project.ydoc.getMap("yjsTables").set("table-1", table);
+        const auditTable = new Y.Map<unknown>();
+        auditTable.set("name", "Audit");
+        auditTable.set("sqlName", "audit");
+        project.ydoc.getMap("yjsTables").set("audit-table", auditTable);
         const rule = new Y.Map<unknown>();
         for (
             const [key, value] of Object.entries({
                 name: "Daily",
                 targetTableId: "table-1",
-                sql: "INSERT INTO tasks (id) VALUES ('daily') RETURNING *",
+                sql: "INSERT INTO tasks (id, order) VALUES ('daily', 1) RETURNING *",
                 rrule: "FREQ=DAILY",
                 dtstart: "2099-01-01T09:00:00",
                 timezone: "UTC",
                 enabled: true,
                 catchUp: false,
+                lastRunStatus: "error",
+                lastRunError: 'syntax error near reserved identifier "order"',
             })
         ) rule.set(key, value);
         project.schedules.set("rule-1", rule as never);
         const tableConnection = await hocuspocus.openDirectConnection("projects/project-1/tables/table-1", {
             context: { uid: "user" },
         });
-        tableConnection.document.getText("schema").insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY)");
+        const schemaSql = 'CREATE TABLE tasks (id TEXT PRIMARY KEY, "order" INTEGER NOT NULL CHECK ("order" > 0))';
+        tableConnection.document.getText("schema").insert(0, schemaSql);
+        const auditConnection = await hocuspocus.openDirectConnection("projects/project-1/tables/audit-table", {
+            context: { uid: "user" },
+        });
+        auditConnection.document.getText("schema").insert(
+            0,
+            "CREATE TABLE audit (id TEXT PRIMARY KEY, title TEXT NOT NULL, score INTEGER CHECK (score > 0))",
+        );
         const canAccess = async (uid: string, projectId: string) => uid === "user" && projectId === "project-1";
         const read = new OutlinerReadService(
             hocuspocus,
@@ -93,6 +108,10 @@ describe("Schedule MCP HTTP contract", () => {
             payload(await call(toolCall("resolve_url", { url: "https://example.test/Canonical/-/schedules" }))).value,
         ).to.deep.equal({ projectId: "project-1", kind: "schedule-list" });
         expect(
+            payload(await call(toolCall("resolve_url", { url: "https://example.test/Canonical/-/tables/table-1" })))
+                .value,
+        ).to.include({ projectId: "project-1", entityId: "table-1", kind: "table" });
+        expect(
             payload(await call(toolCall("resolve_url", { url: "https://example.test/Canonical/-/schedules/rule-1" })))
                 .value,
         ).to.include({ entityId: "rule-1", kind: "schedule" });
@@ -110,7 +129,11 @@ describe("Schedule MCP HTTP contract", () => {
         expect(listed.schedules[0]).to.include({ ruleId: "rule-1" });
         const readRule =
             payload(await call(toolCall("get_schedule", { projectId: "project-1", ruleId: "rule-1" }))).value;
-        const candidate = { ...readRule.stored, sql: "INSERT INTO tasks (id) VALUES ('fixed') RETURNING *" };
+        expect(readRule.stored).to.include({ lastRunStatus: "error" });
+        const candidate = {
+            ...readRule.stored,
+            sql: "INSERT INTO tasks (id, \"order\") VALUES ('fixed', 1) RETURNING *",
+        };
         const preview = payload(
             await call(
                 toolCall("validate_schedule_rule", {
@@ -123,6 +146,20 @@ describe("Schedule MCP HTTP contract", () => {
             ),
         ).value;
         expect(preview).to.include({ accepted: true, persisted: false });
+        expect(preview.candidateRows[0]).to.include({ id: "fixed", order: 1 });
+        const wrongDestination = payload(
+            await call(toolCall("validate_schedule_rule", {
+                projectId: "project-1",
+                candidate: {
+                    ...candidate,
+                    targetTableId: "audit-table",
+                    sql: "INSERT INTO tasks (id, \"order\") VALUES ('wrong', 1) RETURNING *",
+                },
+                occurrence: "2099-01-01T09:00:00Z",
+            })),
+        ).value;
+        expect(wrongDestination).to.include({ accepted: false });
+        expect(wrongDestination.errors[0]).to.include({ code: "wrong_target_relation" });
         expect(tableConnection.document.getMap("data").size).to.equal(0);
         const denied = payload(
             await call(
@@ -186,6 +223,35 @@ describe("Schedule MCP HTTP contract", () => {
         ).value;
         expect(stale.code).to.equal("stale_revision");
         expect(tableConnection.document.getMap("data").size).to.equal(0);
+        const reread = payload(
+            await call(toolCall("get_schedule", { projectId: "project-1", ruleId: "rule-1" })),
+        ).value;
+        expect(reread.stored.sql).to.equal(candidate.sql);
+        const executor = new JobExecutor();
+        executor.startWorker();
+        const generated = await executor.executeJob({
+            ruleId: "rule-1",
+            schemaSql,
+            ruleSql: candidate.sql,
+            records: [],
+            timezone: "UTC",
+            occurrenceUtcIso: "2099-01-01T09:00:00Z",
+        });
+        await executor.stopWorker();
+        expect(generated.success, generated.error).to.equal(true);
+        const generatedRow = generated.rows![0] as Record<string, string | number>;
+        const storedRow = new Y.Map<string | number>();
+        Object.entries(generatedRow).forEach(([key, value]) => storedRow.set(key, value));
+        tableConnection.document.getMap("data").set(String(generatedRow.id), storedRow);
+        const laterTable = payload(
+            await call(toolCall("get_table", {
+                projectId: "project-1",
+                tableId: "table-1",
+                includeRecords: true,
+            })),
+        ).value;
+        expect(laterTable.records[0].values).to.include({ id: "fixed", order: 1 });
+        await auditConnection.disconnect();
         await tableConnection.disconnect();
         await projectConnection.disconnect();
     });

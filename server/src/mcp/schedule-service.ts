@@ -8,7 +8,7 @@ import {
     validateScheduleRuleSql,
     validateScheduleRuleTimezone,
 } from "../../../shared/src/services/scheduleRuleValidation.js";
-import { computeNextRunAt } from "../scheduler/schedule-indexer.js";
+import { computeNextRunAt, computeOccurrencesAfter } from "../scheduler/schedule-indexer.js";
 import { McpReadError } from "./mcp-error.js";
 import { assertRevision, IdempotencyCache, revisionOf } from "./mutation-contract.js";
 
@@ -197,10 +197,17 @@ export class OutlinerScheduleService {
             if (!rule) throw new McpReadError("not_found", "Schedule not found");
             const stored = this.snapshot(ruleId, rule);
             const validation = this.fieldValidation(stored as unknown as ScheduleCandidate);
+            const targetExists = doc.getMap("yjsTables").has(String(stored.targetTableId ?? ""));
+            if (!targetExists) {
+                validation.targetTable = {
+                    valid: false,
+                    error: { code: "missing_target", message: "Target Table not found" },
+                };
+            }
             const refs = this.references(doc, stored as unknown as ScheduleCandidate);
             const candidate = stored as unknown as ScheduleCandidate;
             const occurrences = this.occurrences(candidate, 5);
-            const authoritativeTargetRevision = this.previewer && candidate.targetTableId
+            const authoritativeTargetRevision = this.previewer && candidate.targetTableId && targetExists
                 ? await this.previewer.getTableRevision(uid, projectId, candidate.targetTableId)
                 : undefined;
             const referencedTables = refs.map(ref =>
@@ -227,7 +234,7 @@ export class OutlinerScheduleService {
         });
     }
 
-    private fieldValidation(candidate: ScheduleCandidate) {
+    private fieldValidation(candidate: ScheduleCandidate): Record<string, { valid: boolean; error?: unknown; }> {
         return {
             sql: validateScheduleRuleSql(candidate.sql),
             rrule: validateScheduleRuleRRule(candidate.rrule),
@@ -238,19 +245,16 @@ export class OutlinerScheduleService {
 
     private occurrences(candidate: ScheduleCandidate, limit: number): string[] {
         if (candidate.enabled === false || candidate.completedAt) return [];
-        const result: string[] = [];
         const lowerBound = candidate.catchUp === false
             ? Date.now()
             : candidate.lastRunAt
             ? Date.parse(candidate.lastRunAt)
             : Number.NEGATIVE_INFINITY;
-        for (let cursor = 0; cursor < 10_000 && result.length < limit; cursor++) {
-            const next = computeNextRunAt(candidate.rrule, candidate.dtstart, candidate.timezone, cursor);
-            if (!next.next_run_at) break;
-            const iso = DateTime.fromISO(next.next_run_at).toUTC().toISO()!;
-            if (Date.parse(iso) > lowerBound) result.push(iso);
+        try {
+            return computeOccurrencesAfter(candidate.rrule, candidate.dtstart, candidate.timezone, lowerBound, limit);
+        } catch {
+            return [];
         }
-        return result;
     }
 
     async validate(

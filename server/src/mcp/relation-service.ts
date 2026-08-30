@@ -163,6 +163,22 @@ export class OutlinerRelationService {
                     errors: [{ code: "missing_target", message: "Target Table not found" }],
                 };
             }
+            const targetRelation = String(target.get("sqlName") ?? "");
+            const insertTarget = /^\s*insert\s+into\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_]*))/i.exec(
+                candidate.sql,
+            );
+            const destination = insertTarget?.[1]?.replace(/""/g, '"') ?? insertTarget?.[2]?.toLowerCase();
+            if (!destination || destination !== targetRelation && destination !== targetRelation.toLowerCase()) {
+                return {
+                    accepted: false,
+                    candidateRows: [],
+                    errors: [{
+                        phase: "target-schema",
+                        code: "wrong_target_relation",
+                        message: "Schedule SQL must insert into the declared target Table",
+                    }],
+                };
+            }
             const lease = await acquireDb();
             const opened: TableDoc[] = [];
             let targetSource: TableDoc | undefined;
@@ -185,7 +201,7 @@ export class OutlinerRelationService {
                 const columns = (result.fields ?? []).map(field => field.name);
                 const targetColumns = await lease.db.query<{ column_name: string; }>(
                     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",
-                    [String(target.get("sqlName") ?? "")],
+                    [targetRelation],
                 );
                 const allowed = new Set(targetColumns.rows.map(row => row.column_name));
                 const unknown = columns.find(column => !allowed.has(column));

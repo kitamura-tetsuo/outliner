@@ -12,7 +12,10 @@ describe("MCP Schedule diagnostics", () => {
         const table = new Y.Map<unknown>();
         table.set("name", "Tasks");
         table.set("sqlName", "tasks");
-        project.getMap("yjsTables").set("table-1", table);
+        const restoredTable = new Y.Map<unknown>();
+        restoredTable.set("name", "Tasks");
+        restoredTable.set("sqlName", "tasks");
+        project.getMap("yjsTables").set("table-1", restoredTable);
         const auditTable = new Y.Map<unknown>();
         auditTable.set("name", "Audit");
         auditTable.set("sqlName", "audit");
@@ -147,6 +150,40 @@ describe("MCP Schedule diagnostics", () => {
             code: "unknown_target_column",
             column: "bogus",
         });
+        auditConnection.document.getText("schema").delete(0, auditConnection.document.getText("schema").length);
+        auditConnection.document.getText("schema").insert(
+            0,
+            "CREATE TABLE audit (id TEXT PRIMARY KEY, title TEXT NOT NULL, score INTEGER CHECK (score > 0))",
+        );
+        const wrongDestination = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                targetTableId: "audit-table",
+                sql: "INSERT INTO tasks (id) VALUES ('wrong-table') RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(wrongDestination).to.include({ accepted: false });
+        expect(wrongDestination.errors[0]).to.include({ code: "wrong_target_relation" });
+        for (
+            const sql of [
+                "INSERT INTO audit (id) VALUES ('missing-title') RETURNING *",
+                "INSERT INTO audit (id, title, score) VALUES ('bad-score', 'Bad', -1) RETURNING *",
+            ]
+        ) {
+            const constraintFailure = await service.validate(
+                "user",
+                "project-1",
+                { ...(read.stored as never), targetTableId: "audit-table", sql },
+                "rule-1",
+                "2026-08-30T09:00:00Z",
+            );
+            expect(constraintFailure).to.include({ accepted: false });
+            expect(constraintFailure.errors[0]).to.include({ phase: "execution" });
+        }
         const timezoneSensitive = await service.validate(
             "user",
             "project-1",
@@ -163,13 +200,30 @@ describe("MCP Schedule diagnostics", () => {
         tableDocument.getText("schema").insert(tableDocument.getText("schema").length, " ");
         const afterSchemaEdit = await service.validate("user", "project-1", read.stored as never, "rule-1");
         expect(afterSchemaEdit.revisions.targetTable).not.to.equal(firstTargetRevision);
+        rule.set("enabled", true);
+        rule.set("catchUp", false);
+        rule.set("rrule", "FREQ=HOURLY");
+        rule.set("dtstart", "2024-01-01T00:00:00");
+        const longRunning = await service.getSchedule("user", "project-1", "rule-1");
+        expect(longRunning.derived.nextOccurrences).to.have.length(5);
+        expect(longRunning.derived.nextOccurrences.every(instant => Date.parse(instant) > Date.now())).to.equal(true);
+        rule.set("enabled", false);
+        rule.set("rrule", "FREQ=DAILY;COUNT=2");
+        rule.set("dtstart", "2026-08-30T09:00:00");
+        project.getMap("yjsTables").delete("table-1");
+        const missingTarget = await service.getSchedule("user", "project-1", "rule-1");
+        expect(missingTarget.stored).to.include({ sql: rule.get("sql"), lastRunStatus: "error" });
+        expect(missingTarget.derived.validation.targetTable).to.deep.include({ valid: false });
+        expect(missingTarget.derived.validation.targetTable.error).to.include({ code: "missing_target" });
+        project.getMap("yjsTables").set("table-1", table);
         expect(rule.get("enabled")).to.equal(false);
+        const currentBeforeUpdate = await service.getSchedule("user", "project-1", "rule-1");
         const updated = await service.update(
             "user",
             "project-1",
             "rule-1",
             { sql: "INSERT INTO tasks (id) VALUES ('fixed') RETURNING *" },
-            read.revision,
+            currentBeforeUpdate.revision,
         );
         expect(updated).to.include({ applied: true });
         expect(rule.get("enabled")).to.equal(false);
@@ -192,6 +246,5 @@ describe("MCP Schedule diagnostics", () => {
         await hocuspocus.unloadDocument(tableDocument);
         await hocuspocus.unloadDocument(project);
         hocuspocus.documents.clear();
-        await relations.destroy();
     });
 });
