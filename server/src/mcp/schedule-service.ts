@@ -1,7 +1,7 @@
 import type { Hocuspocus } from "@hocuspocus/server";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
-import { stripSqlNoise } from "../../../shared/src/services/readOnlySql.js";
+import { parseSqlIdentifiers, stripSqlNoise } from "../../../shared/src/services/readOnlySql.js";
 import {
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
@@ -119,7 +119,7 @@ export class OutlinerScheduleService {
             output.set(`${kind}:${tableId}`, value);
         };
         add(candidate.targetTableId, "write-target");
-        const identifiers = this.sqlIdentifiers(candidate.sql);
+        const identifiers = parseSqlIdentifiers(candidate.sql);
         tables.forEach((table, tableId) => {
             if (tableId === candidate.targetTableId) return;
             const name = String(table.get("sqlName") ?? "");
@@ -128,15 +128,6 @@ export class OutlinerScheduleService {
             }
         });
         return [...output.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.tableId.localeCompare(b.tableId));
-    }
-
-    private sqlIdentifiers(sql: string): Set<string> {
-        const identifiers = new Set<string>();
-        const regex = /"([^"]+)"|\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
-        let match: RegExpExecArray | null;
-        const stripped = stripSqlNoise(sql);
-        while ((match = regex.exec(stripped))) identifiers.add(match[1] ?? match[2]!.toLowerCase());
-        return identifiers;
     }
 
     async listSchedules(
@@ -297,15 +288,24 @@ export class OutlinerScheduleService {
             computeNextRunAt(candidate.rrule, candidate.dtstart, candidate.timezone, 0).next_run_at;
         const chosenOccurrence = occurrence
             ?? (defaultOccurrence ? DateTime.fromISO(defaultOccurrence).toUTC().toISO()! : undefined);
+        const occurrenceError = occurrence !== undefined && !this.validOccurrence(occurrence)
+            ? {
+                field: "occurrence",
+                code: "invalid_occurrence",
+                message: "occurrence must be an ISO 8601 instant with Z or an offset",
+            }
+            : undefined;
         const fieldsAccepted = Object.values(fields).every(value => value.valid);
-        const preview = fieldsAccepted && !missingTarget && chosenOccurrence && this.previewer
+        const preview = fieldsAccepted && !missingTarget && !occurrenceError && chosenOccurrence && this.previewer
             ? await this.previewer.previewScheduleRule(uid, projectId, candidate, chosenOccurrence, resultLimit)
             : { accepted: fieldsAccepted && !missingTarget, candidateRows: [], errors: [] };
         return {
-            accepted: fieldsAccepted && !missingTarget && preview.accepted,
+            accepted: fieldsAccepted && !missingTarget && !occurrenceError && preview.accepted,
             fieldValidation: fields,
             errors: missingTarget
                 ? [{ field: "targetTableId", code: "missing_target", message: "Target Table not found" }]
+                : occurrenceError
+                ? [occurrenceError]
                 : preview.errors,
             references,
             occurrence: chosenOccurrence,
@@ -327,25 +327,57 @@ export class OutlinerScheduleService {
         };
     }
 
+    private validOccurrence(value: string): boolean {
+        return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+            && DateTime.fromISO(value, { setZone: true }).isValid;
+    }
+
     private deterministicIdEvidence(sql: string): { idempotent: boolean; evidence: string; } {
         const clean = stripSqlNoise(sql);
         const insert = /\binsert\s+into\s+(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/i.exec(clean);
         if (!insert) return { idempotent: false, evidence: "INSERT omits an explicit id value" };
         const columns = insert[1].split(",").map(value => value.trim().replace(/^"|"$/g, "").toLowerCase());
         if (!columns.includes("id")) return { idempotent: false, evidence: "INSERT omits an explicit id value" };
-        if (/current_setting\s*\(\s*'job\.occurrence'/i.test(sql)) {
-            return { idempotent: true, evidence: "The id is derived from the explicit occurrence instant" };
-        }
-        if (/\b(gen_random_uuid|uuid_generate|random|nextval|now|clock_timestamp)\s*\(/i.test(sql)) {
-            return { idempotent: false, evidence: "The id expression uses a nondeterministic function" };
-        }
-        const values = /\bvalues\s*\(([^()]*)\)/i.exec(clean)?.[1]?.split(",").map(value => value.trim()) ?? [];
+        const valuesStart = /\bvalues\s*\(/i.exec(sql);
+        const values = valuesStart
+            ? this.parenthesizedValues(sql, valuesStart.index + valuesStart[0].length - 1)
+            : [];
         const expression = values[columns.indexOf("id")];
         if (!expression) return { idempotent: false, evidence: "Could not prove a deterministic explicit id value" };
+        if (/\b(gen_random_uuid|uuid_generate|random|nextval|now|clock_timestamp)\s*\(/i.test(expression)) {
+            return { idempotent: false, evidence: "The id expression uses a nondeterministic function" };
+        }
+        if (/current_setting\s*\(\s*'job\.occurrence'/i.test(expression)) {
+            return { idempotent: true, evidence: "The id is derived from the explicit occurrence instant" };
+        }
         if (/^'(?:[^']|'')*'$/.test(expression) || /^[-+]?\d+(?:\.\d+)?$/.test(expression)) {
             return { idempotent: true, evidence: "The id is a fixed literal" };
         }
         return { idempotent: false, evidence: "Could not prove that retries produce the same id" };
+    }
+
+    private parenthesizedValues(sql: string, opening: number): string[] {
+        const values: string[] = [];
+        let start = opening + 1;
+        let depth = 1;
+        let quoted = false;
+        for (let index = opening + 1; index < sql.length; index++) {
+            const character = sql[index]!;
+            if (character === "'" && sql[index + 1] === "'") {
+                index++;
+                continue;
+            }
+            if (character === "'") quoted = !quoted;
+            if (quoted) continue;
+            if (character === "(") depth++;
+            if (character === ")") depth--;
+            if ((character === "," && depth === 1) || depth === 0) {
+                values.push(sql.slice(start, index).trim());
+                start = index + 1;
+            }
+            if (depth === 0) break;
+        }
+        return values;
     }
 
     async update(
@@ -401,6 +433,6 @@ export class OutlinerScheduleService {
                     };
                 }),
         );
-        return { ...result, replayed };
+        return { ...result, applied: replayed ? false : result.applied, replayed };
     }
 }

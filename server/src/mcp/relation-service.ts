@@ -2,7 +2,11 @@ import { PGlite } from "@electric-sql/pglite";
 import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
-import { stripSqlNoise, validateReadOnlySelect } from "../../../shared/src/services/readOnlySql.js";
+import {
+    parseSqlIdentifiers,
+    stripSqlNoise,
+    validateReadOnlySelect,
+} from "../../../shared/src/services/readOnlySql.js";
 import { type Item, Project } from "../schema/app-schema.js";
 import {
     assertRevision,
@@ -146,7 +150,7 @@ export class OutlinerRelationService {
     previewScheduleRule(
         uid: string,
         projectId: string,
-        candidate: { targetTableId: string; sql: string; },
+        candidate: { targetTableId: string; sql: string; timezone: string; },
         occurrence: string,
         resultLimit: number,
     ) {
@@ -171,9 +175,32 @@ export class OutlinerRelationService {
                     await lease.db.exec(source.schema);
                     await this.loadRecordsTolerantly(lease.db, table.relation, source.data);
                 }
-                await lease.db.query("SELECT set_config('job.occurrence', $1, true)", [occurrence]);
+                // Each PGlite query is its own transaction, so session scope is
+                // required for these settings to reach the following INSERT.
+                // The scratch database is exclusively leased and reset before
+                // every preview, preventing values from crossing requests.
+                await lease.db.query("SELECT set_config('TimeZone', $1, false)", [candidate.timezone]);
+                await lease.db.query("SELECT set_config('job.occurrence', $1, false)", [occurrence]);
                 const result = await lease.db.query<Record<string, unknown>>(candidate.sql);
                 const columns = (result.fields ?? []).map(field => field.name);
+                const targetColumns = await lease.db.query<{ column_name: string; }>(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",
+                    [String(target.get("sqlName") ?? "")],
+                );
+                const allowed = new Set(targetColumns.rows.map(row => row.column_name));
+                const unknown = columns.find(column => !allowed.has(column));
+                if (unknown) {
+                    return {
+                        accepted: false,
+                        candidateRows: [],
+                        errors: [{
+                            phase: "target-schema",
+                            code: "unknown_target_column",
+                            column: unknown,
+                            message: `Returned column ${unknown} does not exist in the target Table`,
+                        }],
+                    };
+                }
                 return {
                     accepted: true,
                     candidateRows: result.rows.slice(0, resultLimit).map(row => this.boundedTraceRow(row, columns)),
@@ -276,16 +303,11 @@ export class OutlinerRelationService {
                         .flatMap(([ruleId, rule]) => {
                             const kinds: ("write-target" | "sql-reference")[] = [];
                             if (rule.get("targetTableId") === tableId) kinds.push("write-target");
-                            const sql = String(rule.get("sql") ?? "");
+                            const identifiers = parseSqlIdentifiers(String(rule.get("sql") ?? ""));
                             if (
                                 rule.get("targetTableId") !== tableId
                                 && table.relation
-                                && new RegExp(
-                                    `(?:^|[^A-Za-z0-9_])${
-                                        table.relation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-                                    }(?:$|[^A-Za-z0-9_])`,
-                                    "i",
-                                ).test(sql)
+                                && (identifiers.has(table.relation) || identifiers.has(table.relation.toLowerCase()))
                             ) kinds.push("sql-reference");
                             return kinds.length
                                 ? [{ ruleId, name: rule.get("name"), referenceKinds: kinds }]

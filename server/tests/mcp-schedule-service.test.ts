@@ -21,7 +21,14 @@ describe("MCP Schedule diagnostics", () => {
             context: { uid: "user" },
         });
         const tableDocument = tableConnection.document;
-        tableDocument.getText("schema").insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY)");
+        tableDocument.getText("schema").insert(
+            0,
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, occurrence_time TIMESTAMPTZ, occurrence_date DATE)",
+        );
+        const auditConnection = await hocuspocus.openDirectConnection("projects/project-1/tables/audit-table", {
+            context: { uid: "user" },
+        });
+        auditConnection.document.getText("schema").insert(0, "CREATE TABLE audit (id TEXT PRIMARY KEY)");
         const rule = new Y.Map<unknown>();
         rule.set("name", "Daily tasks");
         rule.set("targetTableId", "table-1");
@@ -51,6 +58,8 @@ describe("MCP Schedule diagnostics", () => {
         rule.set("sql", "INSERT INTO tasks (id) VALUES ('audit') RETURNING * -- audit");
         const literalAndComment = await service.listSchedules("user", "project-1", "audit-table", "sql-reference");
         expect(literalAndComment.schedules).to.deep.equal([]);
+        const inspectedAudit = await relations.getTable("user", "project-1", "audit-table");
+        expect(inspectedAudit.scheduleReferences).to.deep.equal([]);
         rule.set("sql", "INSERT INTO tasks (id) SELECT id FROM audit RETURNING *");
         const realReference = await service.listSchedules("user", "project-1", "audit-table", "sql-reference");
         expect(realReference.schedules[0]?.referenceKinds).to.deep.equal(["sql-reference"]);
@@ -60,7 +69,7 @@ describe("MCP Schedule diagnostics", () => {
         expect(read.derived.nextOccurrences).to.deep.equal([]);
         const preview = await service.validate("user", "project-1", read.stored as never, "rule-1");
         expect(preview).to.include({ accepted: true, persisted: false });
-        expect(preview.candidateRows).to.deep.equal([{ id: "daily" }]);
+        expect(preview.candidateRows[0]).to.include({ id: "daily" });
         expect(preview.deterministicIds).to.include({ idempotent: true });
         expect(tableConnection.document.getMap("data").size).to.equal(0);
         const rejected = await service.validate("user", "project-1", {
@@ -97,6 +106,59 @@ describe("MCP Schedule diagnostics", () => {
             "2026-08-30T09:00:00Z",
         );
         expect(occurrenceId.deterministicIds.idempotent).to.equal(true);
+        const randomIdWithOccurrenceColumn = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (id, occurrence_time) VALUES (random()::text, current_setting('job.occurrence')::timestamptz) RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(randomIdWithOccurrenceColumn.deterministicIds.idempotent).to.equal(false);
+        for (const occurrence of ["not-an-instant", "2026-08-30T09:00:00"]) {
+            const invalidOccurrence = await service.validate(
+                "user",
+                "project-1",
+                read.stored as never,
+                "rule-1",
+                occurrence,
+            );
+            expect(invalidOccurrence).to.include({ accepted: false });
+            expect(invalidOccurrence.errors[0]).to.include({
+                field: "occurrence",
+                code: "invalid_occurrence",
+            });
+        }
+        const unknownReturnedColumn = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (id) VALUES ('extra') RETURNING *, 7 AS bogus",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(unknownReturnedColumn).to.include({ accepted: false });
+        expect(unknownReturnedColumn.candidateRows).to.deep.equal([]);
+        expect(unknownReturnedColumn.errors[0]).to.include({
+            code: "unknown_target_column",
+            column: "bogus",
+        });
+        const timezoneSensitive = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                timezone: "America/Los_Angeles",
+                sql: "INSERT INTO tasks (id, occurrence_date) VALUES ('zoned', current_setting('job.occurrence')::timestamptz::date) RETURNING *",
+            },
+            "rule-1",
+            "2026-01-01T02:00:00Z",
+        );
+        expect(timezoneSensitive.candidateRows[0]).to.include({ occurrence_date: "2025-12-31T00:00:00.000Z" });
         const firstTargetRevision = preview.revisions.targetTable;
         tableDocument.getText("schema").insert(tableDocument.getText("schema").length, " ");
         const afterSchemaEdit = await service.validate("user", "project-1", read.stored as never, "rule-1");
@@ -123,6 +185,7 @@ describe("MCP Schedule diagnostics", () => {
         rule.set("dtstart", "2026-03-08T02:30:00");
         rule.set("timezone", "America/New_York");
         expect((await service.getSchedule("user", "project-1", "rule-1")).derived.nextOccurrences).to.deep.equal([]);
+        await auditConnection.disconnect();
         await tableConnection.disconnect();
         await connection.disconnect();
         hocuspocus.closeConnections();

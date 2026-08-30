@@ -1,6 +1,7 @@
 import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
 import express from "express";
+import fs from "fs";
 import request from "supertest";
 import * as Y from "yjs";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
@@ -8,6 +9,7 @@ import { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
 import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import { OutlinerScheduleService } from "../src/mcp/schedule-service.js";
 import { Project } from "../src/schema/app-schema.js";
+import { mcpLogger, mcpLogPath } from "../src/utils/log-manager.js";
 
 const rpc = (method: string, params?: Record<string, unknown>) => ({
     jsonrpc: "2.0",
@@ -28,6 +30,7 @@ const payload = (response: request.Response) => {
 describe("Schedule MCP HTTP contract", () => {
     it("resolves, discovers, previews, scopes, and revision-guards Schedule tools", async function() {
         this.timeout(30_000);
+        if (fs.existsSync(mcpLogPath)) fs.truncateSync(mcpLogPath, 0);
         const hocuspocus = new Hocuspocus({ quiet: true });
         const projectConnection = await hocuspocus.openDirectConnection("projects/project-1", {
             context: { uid: "user" },
@@ -156,7 +159,21 @@ describe("Schedule MCP HTTP contract", () => {
                 }),
             ),
         ).value;
-        expect(replay).to.include({ replayed: true });
+        expect(replay).to.include({ applied: false, replayed: true });
+        mcpLogger.flush?.();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const audits = fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean)
+            .map(line => JSON.parse(line)).filter(line =>
+                line.event === "mcp_audit" && line.tool === "update_schedule_rule" && line.outcome === "success"
+            );
+        expect(audits.map(line => ({ applied: line.applied, replayed: line.replayed }))).to.deep.equal([
+            { applied: true, replayed: false },
+            { applied: false, replayed: true },
+        ]);
+        const serializedAudits = JSON.stringify(audits);
+        expect(serializedAudits).not.to.include(candidate.sql);
+        expect(serializedAudits).not.to.include("Bearer token");
+        expect(serializedAudits).not.to.include('"uid":"user"');
         const stale = payload(
             await call(
                 toolCall("update_schedule_rule", {
