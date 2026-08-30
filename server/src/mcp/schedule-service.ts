@@ -100,6 +100,7 @@ export class OutlinerScheduleService {
         };
         add(candidate.targetTableId, "write-target");
         tables.forEach((table, tableId) => {
+            if (tableId === candidate.targetTableId) return;
             const name = String(table.get("sqlName") ?? "");
             if (
                 name
@@ -232,35 +233,47 @@ export class OutlinerScheduleService {
         if (resultLimit < 1 || resultLimit > 100 || !Number.isInteger(resultLimit)) {
             throw new McpReadError("invalid_argument", "resultLimit must be 1..100");
         }
-        return this.withProject(uid, projectId, doc => {
-            const fields = this.fieldValidation(candidate);
-            const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
-            const references = this.references(doc, candidate);
-            const missingTarget = !target;
-            const chosenOccurrence = occurrence ?? this.occurrences(candidate, 1)[0];
-            return {
-                accepted: Object.values(fields).every(value => value.valid) && !missingTarget,
-                fieldValidation: fields,
-                errors: missingTarget
-                    ? [{ field: "targetTableId", code: "missing_target", message: "Target Table not found" }]
-                    : [],
-                references,
-                occurrence: chosenOccurrence,
-                candidateRows: [],
-                resultLimit,
-                deterministicIds: {
-                    idempotent: /\bid\b/i.test(candidate.sql),
-                    evidence: "SQL declares an id expression",
-                },
-                revisions: {
-                    schedule: ruleId && doc.getMap<Y.Map<Stored>>("schedules").get(ruleId)
-                        ? this.revision(ruleId, doc.getMap<Y.Map<Stored>>("schedules").get(ruleId)!)
-                        : undefined,
-                    targetTable: target ? revisionOf(Object.fromEntries(target.entries())) : undefined,
-                },
-                persisted: false,
-            };
-        });
+        return this.withProject(
+            uid,
+            projectId,
+            doc => this.validateSnapshot(doc, candidate, ruleId, occurrence, resultLimit),
+        );
+    }
+
+    private validateSnapshot(
+        doc: Y.Doc,
+        candidate: ScheduleCandidate,
+        ruleId?: string,
+        occurrence?: string,
+        resultLimit = 25,
+    ) {
+        const fields = this.fieldValidation(candidate);
+        const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
+        const references = this.references(doc, candidate);
+        const missingTarget = !target;
+        const chosenOccurrence = occurrence ?? this.occurrences(candidate, 1)[0];
+        return {
+            accepted: Object.values(fields).every(value => value.valid) && !missingTarget,
+            fieldValidation: fields,
+            errors: missingTarget
+                ? [{ field: "targetTableId", code: "missing_target", message: "Target Table not found" }]
+                : [],
+            references,
+            occurrence: chosenOccurrence,
+            candidateRows: [],
+            resultLimit,
+            deterministicIds: {
+                idempotent: /\bid\b/i.test(candidate.sql),
+                evidence: "SQL declares an id expression",
+            },
+            revisions: {
+                schedule: ruleId && doc.getMap<Y.Map<Stored>>("schedules").get(ruleId)
+                    ? this.revision(ruleId, doc.getMap<Y.Map<Stored>>("schedules").get(ruleId)!)
+                    : undefined,
+                targetTable: target ? revisionOf(Object.fromEntries(target.entries())) : undefined,
+            },
+            persisted: false,
+        };
     }
 
     async update(
@@ -292,11 +305,14 @@ export class OutlinerScheduleService {
                     const priorRevision = this.revision(ruleId, rule);
                     assertRevision(expectedRevision, priorRevision, { ruleId });
                     const candidate = { ...before, ...changes } as unknown as ScheduleCandidate;
-                    const validation = await this.validate(uid, projectId, candidate, ruleId);
+                    const validation = this.validateSnapshot(doc, candidate, ruleId);
                     if (!validation.accepted) {
                         throw new McpReadError("validation_failed", "Schedule validation failed", { validation });
                     }
                     if (!dryRun) {
+                        // Recheck immediately before the transaction. Yjs observers can
+                        // synchronously change the rule while validation is computed.
+                        assertRevision(expectedRevision, this.revision(ruleId, rule), { ruleId });
                         doc.transact(() =>
                             Object.entries(changes).forEach(([field, value]) => rule.set(field, value as Stored))
                         );

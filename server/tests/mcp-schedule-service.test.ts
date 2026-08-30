@@ -1,10 +1,13 @@
+import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
 import * as Y from "yjs";
 import { OutlinerScheduleService } from "../src/mcp/schedule-service.js";
 
 describe("MCP Schedule diagnostics", () => {
     it("discovers, reads, previews, and updates a rule without preview mutation", async () => {
-        const project = new Y.Doc();
+        const hocuspocus = new Hocuspocus({ name: "mcp-schedule-test" });
+        const connection = await hocuspocus.openDirectConnection("projects/project-1", { context: { uid: "user" } });
+        const project = connection.document;
         const table = new Y.Map<unknown>();
         table.set("name", "Tasks");
         table.set("sqlName", "tasks");
@@ -20,12 +23,19 @@ describe("MCP Schedule diagnostics", () => {
         rule.set("catchUp", true);
         rule.set("lastRunStatus", "error");
         project.getMap("schedules").set("rule-1", rule);
-        const service = new OutlinerScheduleService({
-            openDirectConnection: async () => ({ document: project, disconnect: async () => {} }),
-        } as never, async () => true);
+        const accessibleUsers = new Set(["user"]);
+        const service = new OutlinerScheduleService(hocuspocus, async uid => accessibleUsers.has(uid));
 
         const listed = await service.listSchedules("user", "project-1", "table-1");
         expect(listed.schedules[0]).to.include({ ruleId: "rule-1", enabled: false });
+        expect(listed.schedules[0].referenceKinds).to.deep.equal(["write-target"]);
+        const readOnlyReferences = await service.listSchedules(
+            "user",
+            "project-1",
+            "table-1",
+            "sql-reference",
+        );
+        expect(readOnlyReferences.schedules).to.deep.equal([]);
         const read = await service.getSchedule("user", "project-1", "rule-1");
         expect(read.stored).to.include({ sql: rule.get("sql"), lastRunStatus: "error" });
         expect(read.derived.nextOccurrences).to.have.length(2);
@@ -41,5 +51,6 @@ describe("MCP Schedule diagnostics", () => {
         );
         expect(updated).to.include({ applied: true });
         expect(rule.get("enabled")).to.equal(false);
+        await connection.disconnect();
     });
 });

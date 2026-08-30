@@ -200,7 +200,8 @@ export class OutlinerRelationService {
                             if (rule.get("targetTableId") === tableId) kinds.push("write-target");
                             const sql = String(rule.get("sql") ?? "");
                             if (
-                                table.relation
+                                rule.get("targetTableId") !== tableId
+                                && table.relation
                                 && new RegExp(
                                     `(?:^|[^A-Za-z0-9_])${
                                         table.relation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
