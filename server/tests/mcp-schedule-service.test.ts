@@ -6,7 +6,7 @@ import { OutlinerScheduleService } from "../src/mcp/schedule-service.js";
 
 describe("MCP Schedule diagnostics", () => {
     it("discovers, reads, previews, and updates a rule without preview mutation", async () => {
-        const hocuspocus = new Hocuspocus({ name: "mcp-schedule-test" });
+        const hocuspocus = new Hocuspocus({ name: "mcp-schedule-test", quiet: true });
         const connection = await hocuspocus.openDirectConnection("projects/project-1", { context: { uid: "user" } });
         const project = connection.document;
         const table = new Y.Map<unknown>();
@@ -72,6 +72,7 @@ describe("MCP Schedule diagnostics", () => {
         hocuspocus.closeConnections();
         await hocuspocus.unloadDocument(tableDocument);
         await hocuspocus.unloadDocument(project);
-        await hocuspocus.hooks("onDestroy", { instance: hocuspocus });
+        hocuspocus.documents.clear();
+        await relations.destroy();
     });
 });

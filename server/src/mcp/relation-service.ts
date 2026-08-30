@@ -72,6 +72,11 @@ export class OutlinerRelationService {
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
     ) {}
 
+    /** Release the shared scratch database when the owning server shuts down. */
+    async destroy(): Promise<void> {
+        await mcpDb.close();
+    }
+
     private async withProject<T>(uid: string, projectId: string, fn: (doc: Y.Doc) => Promise<T> | T): Promise<T> {
         if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) throw new McpReadError("invalid_argument", "Invalid project ID");
         if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
