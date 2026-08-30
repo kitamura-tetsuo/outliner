@@ -4,7 +4,8 @@ import * as Y from "yjs";
 import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import { OutlinerScheduleService } from "../src/mcp/schedule-service.js";
 
-describe("MCP Schedule diagnostics", () => {
+describe("MCP Schedule diagnostics", function() {
+    this.timeout(60_000);
     it("discovers, reads, previews, and updates a rule without preview mutation", async () => {
         const hocuspocus = new Hocuspocus({ name: "mcp-schedule-test", quiet: true });
         const connection = await hocuspocus.openDirectConnection("projects/project-1", { context: { uid: "user" } });
@@ -196,6 +197,26 @@ describe("MCP Schedule diagnostics", () => {
             "2026-01-01T02:00:00Z",
         );
         expect(timezoneSensitive.candidateRows[0]).to.include({ occurrence_date: "2025-12-31T00:00:00.000Z" });
+        const malformed = new Y.Map<string | number>();
+        malformed.set("title", "Existing");
+        malformed.set("score", "not-an-integer");
+        auditConnection.document.getMap("data").set("malformed", malformed);
+        const materializationCandidate = {
+            ...(read.stored as never),
+            targetTableId: "audit-table",
+            sql: "INSERT INTO audit (id, title, score) VALUES ('new', 'New', 1) RETURNING *",
+        };
+        const materializationPreview = await service.validate(
+            "user",
+            "project-1",
+            materializationCandidate,
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(materializationPreview).to.include({ accepted: false });
+        expect(materializationPreview.candidateRows).to.deep.equal([]);
+        expect(materializationPreview.errors[0]).to.include({ phase: "materialization" });
+        auditConnection.document.getMap("data").delete("malformed");
         const firstTargetRevision = preview.revisions.targetTable;
         tableDocument.getText("schema").insert(tableDocument.getText("schema").length, " ");
         const afterSchemaEdit = await service.validate("user", "project-1", read.stored as never, "rule-1");

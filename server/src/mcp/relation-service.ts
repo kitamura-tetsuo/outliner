@@ -189,7 +189,18 @@ export class OutlinerRelationService {
                     if (table.tableId === candidate.targetTableId) targetSource = source;
                     if (!source.schema.trim()) continue;
                     await lease.db.exec(source.schema);
-                    await this.loadRecordsTolerantly(lease.db, table.relation, source.data);
+                    try {
+                        // Schedule production materializes the complete record
+                        // set before running a rule. Preview must fail on the
+                        // same malformed record rather than silently omitting it.
+                        await this.loadRecords(lease.db, table.relation, source.data);
+                    } catch (error) {
+                        return {
+                            accepted: false,
+                            candidateRows: [],
+                            errors: [this.sqlDiagnostic(error, "materialization")],
+                        };
+                    }
                 }
                 // Each PGlite query is its own transaction, so session scope is
                 // required for these settings to reach the following INSERT.
@@ -1292,7 +1303,7 @@ export class OutlinerRelationService {
         }
     }
 
-    private sqlDiagnostic(error: unknown, phase: "validation" | "execution") {
+    private sqlDiagnostic(error: unknown, phase: "validation" | "materialization" | "execution") {
         const value = error as { message?: unknown; code?: unknown; position?: unknown; hint?: unknown; };
         return {
             phase,

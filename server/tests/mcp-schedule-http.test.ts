@@ -160,6 +160,29 @@ describe("Schedule MCP HTTP contract", () => {
         ).value;
         expect(wrongDestination).to.include({ accepted: false });
         expect(wrongDestination.errors[0]).to.include({ code: "wrong_target_relation" });
+        const malformedRecord = new Y.Map<string | number>();
+        malformedRecord.set("title", "Existing");
+        malformedRecord.set("score", "not-an-integer");
+        auditConnection.document.getMap("data").set("malformed", malformedRecord);
+        const materializationSql = "INSERT INTO audit (id, title, score) VALUES ('new', 'New', 1) RETURNING *";
+        const materializationPreview = payload(
+            await call(toolCall("validate_schedule_rule", {
+                projectId: "project-1",
+                candidate: { ...candidate, targetTableId: "audit-table", sql: materializationSql },
+                occurrence: "2099-01-01T09:00:00Z",
+            })),
+        ).value;
+        expect(materializationPreview).to.include({ accepted: false });
+        expect(materializationPreview.candidateRows).to.deep.equal([]);
+        expect(materializationPreview.errors[0]).to.include({ phase: "materialization" });
+        auditConnection.document.getMap("data").delete("malformed");
+        const oversizedCandidateResponse = await call(toolCall("validate_schedule_rule", {
+            projectId: "project-1",
+            candidate: { ...candidate, sql: "x".repeat(20 * 1024) },
+            occurrence: "2099-01-01T09:00:00Z",
+        }));
+        expect(payload(oversizedCandidateResponse).value).to.include({ code: "size_limit" });
+        expect(Buffer.byteLength(oversizedCandidateResponse.text, "utf8")).to.be.lessThan(4096);
         expect(tableConnection.document.getMap("data").size).to.equal(0);
         const denied = payload(
             await call(
@@ -229,6 +252,15 @@ describe("Schedule MCP HTTP contract", () => {
         expect(reread.stored.sql).to.equal(candidate.sql);
         const executor = new JobExecutor();
         executor.startWorker();
+        const productionMaterialization = await executor.executeJob({
+            ruleId: "materialization-parity",
+            schemaSql: "CREATE TABLE audit (id TEXT PRIMARY KEY, title TEXT NOT NULL, score INTEGER CHECK (score > 0))",
+            ruleSql: materializationSql,
+            records: [{ id: "malformed", title: "Existing", score: "not-an-integer" }],
+            timezone: "UTC",
+            occurrenceUtcIso: "2099-01-01T09:00:00Z",
+        });
+        expect(productionMaterialization.success).to.equal(false);
         const generated = await executor.executeJob({
             ruleId: "rule-1",
             schemaSql,
@@ -251,6 +283,17 @@ describe("Schedule MCP HTTP contract", () => {
             })),
         ).value;
         expect(laterTable.records[0].values).to.include({ id: "fixed", order: 1 });
+        rule.set("lastRunError", "diagnostic".repeat(1024));
+        for (
+            const tool of [
+                toolCall("get_schedule", { projectId: "project-1", ruleId: "rule-1" }),
+                toolCall("list_schedules", { projectId: "project-1" }),
+            ]
+        ) {
+            const oversizedStoredResponse = await call(tool);
+            expect(payload(oversizedStoredResponse).value).to.include({ code: "size_limit" });
+            expect(Buffer.byteLength(oversizedStoredResponse.text, "utf8")).to.be.lessThan(4096);
+        }
         await auditConnection.disconnect();
         await tableConnection.disconnect();
         await projectConnection.disconnect();

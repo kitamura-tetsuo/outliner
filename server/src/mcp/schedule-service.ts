@@ -60,6 +60,9 @@ const FIELDS = [
     "skippedOccurrences",
 ] as const;
 const EDITABLE = new Set(["name", "targetTableId", "sql", "rrule", "dtstart", "timezone", "enabled", "catchUp"]);
+const MAX_SCHEDULE_SQL_BYTES = 16 * 1024;
+const MAX_SCHEDULE_TEXT_BYTES = 8 * 1024;
+const MAX_SCHEDULE_ENTITY_BYTES = 32 * 1024;
 
 export class OutlinerScheduleService {
     private readonly idempotency = new IdempotencyCache();
@@ -92,6 +95,33 @@ export class OutlinerScheduleService {
 
     private revision(ruleId: string, rule: Y.Map<Stored>): string {
         return revisionOf(this.snapshot(ruleId, rule));
+    }
+
+    private assertBoundedSchedule(value: Record<string, unknown>, label: string): void {
+        const sqlBytes = Buffer.byteLength(String(value.sql ?? ""), "utf8");
+        if (sqlBytes > MAX_SCHEDULE_SQL_BYTES) {
+            throw new McpReadError("size_limit", `${label} SQL exceeds the 16 KiB limit`, {
+                actualBytes: sqlBytes,
+                limitBytes: MAX_SCHEDULE_SQL_BYTES,
+            });
+        }
+        for (const field of ["name", "lastRunError", "validationError"] as const) {
+            const bytes = Buffer.byteLength(String(value[field] ?? ""), "utf8");
+            if (bytes > MAX_SCHEDULE_TEXT_BYTES) {
+                throw new McpReadError("size_limit", `${label} ${field} exceeds the 8 KiB limit`, {
+                    field,
+                    actualBytes: bytes,
+                    limitBytes: MAX_SCHEDULE_TEXT_BYTES,
+                });
+            }
+        }
+        const totalBytes = Buffer.byteLength(JSON.stringify(value), "utf8");
+        if (totalBytes > MAX_SCHEDULE_ENTITY_BYTES) {
+            throw new McpReadError("size_limit", `${label} exceeds the 32 KiB limit`, {
+                actualBytes: totalBytes,
+                limitBytes: MAX_SCHEDULE_ENTITY_BYTES,
+            });
+        }
     }
 
     private references(doc: Y.Doc, candidate: ScheduleCandidate): Array<{
@@ -161,6 +191,7 @@ export class OutlinerScheduleService {
                 .flatMap(([ruleId, rule]) => {
                     if (ruleId.localeCompare(after) <= 0) return [];
                     const stored = this.snapshot(ruleId, rule);
+                    this.assertBoundedSchedule(stored, "Stored Schedule");
                     const refs = this.references(doc, stored as unknown as ScheduleCandidate);
                     const kinds = refs.filter(ref => ref.tableId === tableId).map(ref => ref.kind);
                     if (tableId && (referenceKind === "any" ? kinds.length === 0 : !kinds.includes(referenceKind))) {
@@ -196,6 +227,7 @@ export class OutlinerScheduleService {
             const rule = doc.getMap<Y.Map<Stored>>("schedules").get(ruleId);
             if (!rule) throw new McpReadError("not_found", "Schedule not found");
             const stored = this.snapshot(ruleId, rule);
+            this.assertBoundedSchedule(stored, "Stored Schedule");
             const validation = this.fieldValidation(stored as unknown as ScheduleCandidate);
             const targetExists = doc.getMap("yjsTables").has(String(stored.targetTableId ?? ""));
             if (!targetExists) {
@@ -284,6 +316,7 @@ export class OutlinerScheduleService {
         occurrence?: string,
         resultLimit = 25,
     ) {
+        this.assertBoundedSchedule(candidate as unknown as Record<string, unknown>, "Schedule candidate");
         const fields = this.fieldValidation(candidate);
         const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
         const references = this.references(doc, candidate);
