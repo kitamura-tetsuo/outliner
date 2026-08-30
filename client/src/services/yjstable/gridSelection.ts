@@ -184,6 +184,25 @@ export class GridSelection {
         this.indexRegions();
     }
 
+    /**
+     * Apply spreadsheet Escape semantics without consulting DOM focus.
+     * A cell range/discontiguous cell selection collapses to its logical
+     * active cell; header/all-result selections, which deliberately have no
+     * active cell, are cancelled completely.
+     */
+    cancelOrReduce(): void {
+        if (this.activeCell) {
+            this.select(this.activeCell);
+            return;
+        }
+        this.activeCell = undefined;
+        this.anchorCell = undefined;
+        this.rowAnchor = undefined;
+        this.columnAnchor = undefined;
+        this.regions = [];
+        this.indexRegions();
+    }
+
     contains(cell: GridCellAddress): boolean {
         if (
             this.regionIndexes.some(index =>

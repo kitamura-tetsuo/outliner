@@ -33,7 +33,7 @@ const schema: ParsedTableSchema = {
 };
 const session: RelationResolver = { resolveRelation: vi.fn() };
 
-function setup() {
+function setup(componentTypes: Record<string, string | undefined> = { status: "select" }) {
     const doc = new Y.Doc();
     const tableId = createTable(doc, "tasks", "tasks");
     const handles = getTableHandles(doc, tableId)!;
@@ -53,7 +53,7 @@ function setup() {
         schema,
         query: "SELECT id, name, score, status FROM tasks",
         result,
-        componentTypes: { status: "select" },
+        componentTypes,
         columnLabels: {},
         hiddenColumns: { id: true },
         columnOrder: ["name", "score", "status"],
@@ -117,6 +117,18 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         await fireEvent.keyDown(cellButton(view.container, "b", "name"), { key: "ArrowRight", shiftKey: true });
 
         expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(4);
+        expect(isActive(view.container, "b", "score")).toBe(true);
+    });
+
+    it("Escape reduces an extended range to the active cell", async () => {
+        const { view } = setup();
+        await selectCell(view.container, "a", "name");
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowDown", shiftKey: true });
+        await fireEvent.keyDown(cellButton(view.container, "b", "name"), { key: "ArrowRight", shiftKey: true });
+
+        await fireEvent.keyDown(cellButton(view.container, "b", "score"), { key: "Escape" });
+
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(1);
         expect(isActive(view.container, "b", "score")).toBe(true);
     });
 
@@ -237,6 +249,56 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         // Grid must not move the active cell while a native select owns arrow keys.
         expect(isActive(view.container, "a", "status")).toBe(false);
         expect(document.activeElement).toBe(select);
+    });
+
+    it("leaves Escape native in select controls without reducing a stale Grid range", async () => {
+        const { view } = setup();
+        await selectCell(view.container, "a", "name");
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowDown", shiftKey: true });
+        await fireEvent.keyDown(cellButton(view.container, "b", "name"), { key: "ArrowRight", shiftKey: true });
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(4);
+
+        const select = cellTd(view.container, "a", "status").querySelector<HTMLSelectElement>("select")!;
+        select.focus();
+        const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+        await fireEvent(select, escape);
+
+        expect(escape.defaultPrevented).toBe(false);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(4);
+        expect(document.activeElement).toBe(select);
+    });
+
+    it("leaves Escape native in date controls without reducing a stale Grid range", async () => {
+        const { view } = setup({ status: "date" });
+        await selectCell(view.container, "a", "name");
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowDown", shiftKey: true });
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(2);
+
+        const date = cellTd(view.container, "a", "status").querySelector<HTMLInputElement>('input[type="date"]')!;
+        date.focus();
+        const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+        await fireEvent(date, escape);
+
+        expect(escape.defaultPrevented).toBe(false);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(2);
+        expect(document.activeElement).toBe(date);
+    });
+
+    it("reduces a keyboard range whose active cell is a native select", async () => {
+        const { view } = setup();
+        await selectCell(view.container, "a", "score");
+        await fireEvent.keyDown(cellButton(view.container, "a", "score"), { key: "ArrowDown", shiftKey: true });
+        await fireEvent.keyDown(cellButton(view.container, "b", "score"), { key: "ArrowRight", shiftKey: true });
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(4);
+
+        const select = cellTd(view.container, "b", "status").querySelector<HTMLSelectElement>("select")!;
+        expect(document.activeElement).toBe(select);
+        const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+        await fireEvent(select, escape);
+
+        expect(escape.defaultPrevented).toBe(true);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(1);
+        expect(isActive(view.container, "b", "status")).toBe(true);
     });
 
     it("survives keyed row re-render by restoring DOM focus to the same logical cell", async () => {

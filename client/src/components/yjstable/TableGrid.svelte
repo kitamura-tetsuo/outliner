@@ -740,6 +740,7 @@ function handleGridKeyDown(event: KeyboardEvent) {
     if (event.isComposing) return;
     const target = event.target as HTMLElement;
     if (target instanceof HTMLInputElement && target.classList.contains("cell-input")) return;
+    const isForeignEditor = target instanceof HTMLInputElement || target instanceof HTMLSelectElement;
 
     if ((event.ctrlKey || event.metaKey) && !event.altKey) {
         const key = event.key.toLowerCase();
@@ -764,14 +765,34 @@ function handleGridKeyDown(event: KeyboardEvent) {
         return;
     }
 
+    if (event.key === "Escape") {
+        // Native controls own Escape as well as their arrow keys. In
+        // particular, selects and date inputs use it to dismiss an open
+        // picker and do not necessarily select their containing Grid cell.
+        // The exception is a reducible range whose logical active cell is
+        // this control: keyboard range navigation can legitimately land on
+        // a select/date cell, and Escape must still collapse that range.
+        if (isForeignEditor) {
+            const td = target.closest<HTMLElement>("td[data-row-id]");
+            const active = selection.activeCell;
+            const isActiveControl = td?.dataset.rowId === active?.rowId && td?.dataset.col === active?.columnId;
+            const isReducibleRange = selection.regions.length > 1 || selection.regions.some(region =>
+                region.kind === "cells" && (region.rowIds.length > 1 || region.columnIds.length > 1)
+            );
+            if (!isActiveControl || !isReducibleRange) return;
+        }
+        event.preventDefault();
+        selection.cancelOrReduce();
+        selectionRevision++;
+        return;
+    }
+
     const td = target.closest<HTMLElement>("td[data-row-id]");
     if (!td) return;
     const rowId = td.dataset.rowId;
     const columnId = td.dataset.col;
     if (!rowId || !columnId) return;
     const cell: GridCellAddress = { rowId, columnId };
-
-    const isForeignEditor = target instanceof HTMLInputElement || target instanceof HTMLSelectElement;
 
     const arrowDirection: Partial<Record<string, GridNavDirection>> = {
         ArrowUp: "up",
