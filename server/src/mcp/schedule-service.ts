@@ -1,6 +1,7 @@
 import type { Hocuspocus } from "@hocuspocus/server";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
+import { stripSqlNoise } from "../../../shared/src/services/readOnlySql.js";
 import {
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
@@ -21,6 +22,8 @@ export interface ScheduleCandidate {
     timezone: string;
     enabled?: boolean;
     catchUp?: boolean;
+    completedAt?: string;
+    lastRunAt?: string;
 }
 interface SchedulePreviewer {
     previewScheduleRule(
@@ -34,7 +37,9 @@ interface SchedulePreviewer {
         candidateRows: unknown[];
         truncated?: boolean;
         errors: unknown[];
+        targetRevision?: string;
     }>;
+    getTableRevision(uid: string, projectId: string, tableId: string): Promise<string>;
 }
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
@@ -114,20 +119,24 @@ export class OutlinerScheduleService {
             output.set(`${kind}:${tableId}`, value);
         };
         add(candidate.targetTableId, "write-target");
+        const identifiers = this.sqlIdentifiers(candidate.sql);
         tables.forEach((table, tableId) => {
             if (tableId === candidate.targetTableId) return;
             const name = String(table.get("sqlName") ?? "");
-            if (
-                name
-                && new RegExp(
-                    `(?:^|[^A-Za-z0-9_])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[^A-Za-z0-9_])`,
-                    "i",
-                ).test(candidate.sql)
-            ) {
+            if (name && (identifiers.has(name) || identifiers.has(name.toLowerCase()))) {
                 add(tableId, "sql-reference");
             }
         });
         return [...output.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.tableId.localeCompare(b.tableId));
+    }
+
+    private sqlIdentifiers(sql: string): Set<string> {
+        const identifiers = new Set<string>();
+        const regex = /"([^"]+)"|\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+        let match: RegExpExecArray | null;
+        const stripped = stripSqlNoise(sql);
+        while ((match = regex.exec(stripped))) identifiers.add(match[1] ?? match[2]!.toLowerCase());
+        return identifiers;
     }
 
     async listSchedules(
@@ -142,7 +151,7 @@ export class OutlinerScheduleService {
             throw new McpReadError("invalid_argument", "limit must be 1..100");
         }
         if (tableId !== undefined && !ID.test(tableId)) throw new McpReadError("invalid_argument", "Invalid table ID");
-        return this.withProject(uid, projectId, doc => {
+        return this.withProject(uid, projectId, async doc => {
             if (tableId && !doc.getMap("yjsTables").has(tableId)) {
                 throw new McpReadError("not_found", "Table not found");
             }
@@ -192,18 +201,27 @@ export class OutlinerScheduleService {
 
     async getSchedule(uid: string, projectId: string, ruleId: string) {
         if (!ID.test(ruleId)) throw new McpReadError("invalid_argument", "Invalid rule ID");
-        return this.withProject(uid, projectId, doc => {
+        return this.withProject(uid, projectId, async doc => {
             const rule = doc.getMap<Y.Map<Stored>>("schedules").get(ruleId);
             if (!rule) throw new McpReadError("not_found", "Schedule not found");
             const stored = this.snapshot(ruleId, rule);
             const validation = this.fieldValidation(stored as unknown as ScheduleCandidate);
             const refs = this.references(doc, stored as unknown as ScheduleCandidate);
-            const occurrences = this.occurrences(stored as unknown as ScheduleCandidate, 5);
+            const candidate = stored as unknown as ScheduleCandidate;
+            const occurrences = this.occurrences(candidate, 5);
+            const authoritativeTargetRevision = this.previewer && candidate.targetTableId
+                ? await this.previewer.getTableRevision(uid, projectId, candidate.targetTableId)
+                : undefined;
+            const referencedTables = refs.map(ref =>
+                ref.kind === "write-target" && authoritativeTargetRevision
+                    ? { ...ref, revision: authoritativeTargetRevision }
+                    : ref
+            );
             return {
                 ruleId,
                 revision: this.revision(ruleId, rule),
                 stored,
-                derived: { validation, referencedTables: refs, nextOccurrences: occurrences },
+                derived: { validation, referencedTables, nextOccurrences: occurrences },
                 "execution-status": Object.fromEntries(
                     [
                         "lastRunAt",
@@ -228,11 +246,18 @@ export class OutlinerScheduleService {
     }
 
     private occurrences(candidate: ScheduleCandidate, limit: number): string[] {
+        if (candidate.enabled === false || candidate.completedAt) return [];
         const result: string[] = [];
-        for (let cursor = 0; cursor < limit; cursor++) {
+        const lowerBound = candidate.catchUp === false
+            ? Date.now()
+            : candidate.lastRunAt
+            ? Date.parse(candidate.lastRunAt)
+            : Number.NEGATIVE_INFINITY;
+        for (let cursor = 0; cursor < 10_000 && result.length < limit; cursor++) {
             const next = computeNextRunAt(candidate.rrule, candidate.dtstart, candidate.timezone, cursor);
             if (!next.next_run_at) break;
-            result.push(DateTime.fromISO(next.next_run_at).toUTC().toISO()!);
+            const iso = DateTime.fromISO(next.next_run_at).toUTC().toISO()!;
+            if (Date.parse(iso) > lowerBound) result.push(iso);
         }
         return result;
     }
@@ -268,7 +293,10 @@ export class OutlinerScheduleService {
         const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
         const references = this.references(doc, candidate);
         const missingTarget = !target;
-        const chosenOccurrence = occurrence ?? this.occurrences(candidate, 1)[0];
+        const defaultOccurrence =
+            computeNextRunAt(candidate.rrule, candidate.dtstart, candidate.timezone, 0).next_run_at;
+        const chosenOccurrence = occurrence
+            ?? (defaultOccurrence ? DateTime.fromISO(defaultOccurrence).toUTC().toISO()! : undefined);
         const fieldsAccepted = Object.values(fields).every(value => value.valid);
         const preview = fieldsAccepted && !missingTarget && chosenOccurrence && this.previewer
             ? await this.previewer.previewScheduleRule(uid, projectId, candidate, chosenOccurrence, resultLimit)
@@ -284,18 +312,40 @@ export class OutlinerScheduleService {
             candidateRows: preview.candidateRows,
             truncated: preview.truncated,
             resultLimit,
-            deterministicIds: {
-                idempotent: /\bid\b/i.test(candidate.sql),
-                evidence: "SQL declares an id expression",
-            },
+            deterministicIds: this.deterministicIdEvidence(candidate.sql),
             revisions: {
                 schedule: ruleId && doc.getMap<Y.Map<Stored>>("schedules").get(ruleId)
                     ? this.revision(ruleId, doc.getMap<Y.Map<Stored>>("schedules").get(ruleId)!)
                     : undefined,
-                targetTable: target ? revisionOf(Object.fromEntries(target.entries())) : undefined,
+                targetTable: preview.targetRevision ?? (target && this.previewer
+                    ? await this.previewer.getTableRevision(uid, projectId, candidate.targetTableId)
+                    : target
+                    ? revisionOf(Object.fromEntries(target.entries()))
+                    : undefined),
             },
             persisted: false,
         };
+    }
+
+    private deterministicIdEvidence(sql: string): { idempotent: boolean; evidence: string; } {
+        const clean = stripSqlNoise(sql);
+        const insert = /\binsert\s+into\s+(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/i.exec(clean);
+        if (!insert) return { idempotent: false, evidence: "INSERT omits an explicit id value" };
+        const columns = insert[1].split(",").map(value => value.trim().replace(/^"|"$/g, "").toLowerCase());
+        if (!columns.includes("id")) return { idempotent: false, evidence: "INSERT omits an explicit id value" };
+        if (/current_setting\s*\(\s*'job\.occurrence'/i.test(sql)) {
+            return { idempotent: true, evidence: "The id is derived from the explicit occurrence instant" };
+        }
+        if (/\b(gen_random_uuid|uuid_generate|random|nextval|now|clock_timestamp)\s*\(/i.test(sql)) {
+            return { idempotent: false, evidence: "The id expression uses a nondeterministic function" };
+        }
+        const values = /\bvalues\s*\(([^()]*)\)/i.exec(clean)?.[1]?.split(",").map(value => value.trim()) ?? [];
+        const expression = values[columns.indexOf("id")];
+        if (!expression) return { idempotent: false, evidence: "Could not prove a deterministic explicit id value" };
+        if (/^'(?:[^']|'')*'$/.test(expression) || /^[-+]?\d+(?:\.\d+)?$/.test(expression)) {
+            return { idempotent: true, evidence: "The id is a fixed literal" };
+        }
+        return { idempotent: false, evidence: "Could not prove that retries produce the same id" };
     }
 
     async update(

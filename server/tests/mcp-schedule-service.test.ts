@@ -13,6 +13,10 @@ describe("MCP Schedule diagnostics", () => {
         table.set("name", "Tasks");
         table.set("sqlName", "tasks");
         project.getMap("yjsTables").set("table-1", table);
+        const auditTable = new Y.Map<unknown>();
+        auditTable.set("name", "Audit");
+        auditTable.set("sqlName", "audit");
+        project.getMap("yjsTables").set("audit-table", auditTable);
         const tableConnection = await hocuspocus.openDirectConnection("projects/project-1/tables/table-1", {
             context: { uid: "user" },
         });
@@ -44,12 +48,20 @@ describe("MCP Schedule diagnostics", () => {
             "sql-reference",
         );
         expect(readOnlyReferences.schedules).to.deep.equal([]);
+        rule.set("sql", "INSERT INTO tasks (id) VALUES ('audit') RETURNING * -- audit");
+        const literalAndComment = await service.listSchedules("user", "project-1", "audit-table", "sql-reference");
+        expect(literalAndComment.schedules).to.deep.equal([]);
+        rule.set("sql", "INSERT INTO tasks (id) SELECT id FROM audit RETURNING *");
+        const realReference = await service.listSchedules("user", "project-1", "audit-table", "sql-reference");
+        expect(realReference.schedules[0]?.referenceKinds).to.deep.equal(["sql-reference"]);
+        rule.set("sql", "INSERT INTO tasks (id) VALUES ('daily') RETURNING *");
         const read = await service.getSchedule("user", "project-1", "rule-1");
         expect(read.stored).to.include({ sql: rule.get("sql"), lastRunStatus: "error" });
-        expect(read.derived.nextOccurrences).to.have.length(2);
+        expect(read.derived.nextOccurrences).to.deep.equal([]);
         const preview = await service.validate("user", "project-1", read.stored as never, "rule-1");
         expect(preview).to.include({ accepted: true, persisted: false });
         expect(preview.candidateRows).to.deep.equal([{ id: "daily" }]);
+        expect(preview.deterministicIds).to.include({ idempotent: true });
         expect(tableConnection.document.getMap("data").size).to.equal(0);
         const rejected = await service.validate("user", "project-1", {
             ...(read.stored as never),
@@ -57,6 +69,38 @@ describe("MCP Schedule diagnostics", () => {
         }, "rule-1");
         expect(rejected.accepted).to.equal(false);
         expect(rejected.candidateRows).to.deep.equal([]);
+        const randomId = await service.validate("user", "project-1", {
+            ...(read.stored as never),
+            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid()) RETURNING *",
+        }, "rule-1");
+        expect(randomId.deterministicIds).to.include({ idempotent: false });
+        for (
+            const sql of [
+                "INSERT INTO tasks (id) VALUES (nextval('task_ids')) RETURNING *",
+                "INSERT INTO tasks DEFAULT VALUES RETURNING *",
+            ]
+        ) {
+            const nondeterministic = await service.validate("user", "project-1", {
+                ...(read.stored as never),
+                sql,
+            }, "rule-1");
+            expect(nondeterministic.deterministicIds.idempotent).to.equal(false);
+        }
+        const occurrenceId = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence')) RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(occurrenceId.deterministicIds.idempotent).to.equal(true);
+        const firstTargetRevision = preview.revisions.targetTable;
+        tableDocument.getText("schema").insert(tableDocument.getText("schema").length, " ");
+        const afterSchemaEdit = await service.validate("user", "project-1", read.stored as never, "rule-1");
+        expect(afterSchemaEdit.revisions.targetTable).not.to.equal(firstTargetRevision);
         expect(rule.get("enabled")).to.equal(false);
         const updated = await service.update(
             "user",
@@ -67,6 +111,18 @@ describe("MCP Schedule diagnostics", () => {
         );
         expect(updated).to.include({ applied: true });
         expect(rule.get("enabled")).to.equal(false);
+        rule.set("enabled", true);
+        rule.set("completedAt", "2026-08-30T10:00:00Z");
+        expect((await service.getSchedule("user", "project-1", "rule-1")).derived.nextOccurrences).to.deep.equal([]);
+        rule.delete("completedAt");
+        rule.set("catchUp", false);
+        rule.set("dtstart", "2099-01-01T09:00:00");
+        rule.set("rrule", "FREQ=DAILY;COUNT=2");
+        expect((await service.getSchedule("user", "project-1", "rule-1")).derived.nextOccurrences).to.have.length(2);
+        rule.set("catchUp", true);
+        rule.set("dtstart", "2026-03-08T02:30:00");
+        rule.set("timezone", "America/New_York");
+        expect((await service.getSchedule("user", "project-1", "rule-1")).derived.nextOccurrences).to.deep.equal([]);
         await tableConnection.disconnect();
         await connection.disconnect();
         hocuspocus.closeConnections();

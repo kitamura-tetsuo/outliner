@@ -77,6 +77,24 @@ export class OutlinerRelationService {
         await mcpDb.close();
     }
 
+    getTableRevision(uid: string, projectId: string, tableId: string): Promise<string> {
+        return this.withProject(uid, projectId, async doc => {
+            const entry = doc.getMap<Y.Map<unknown>>("yjsTables").get(tableId);
+            if (!entry) throw new McpReadError("not_found", "Table not found");
+            const source = await this.openTable(uid, projectId, tableId);
+            try {
+                return this.tableRevision(
+                    tableId,
+                    String(entry.get("name") ?? ""),
+                    String(entry.get("sqlName") ?? ""),
+                    source,
+                );
+            } finally {
+                await source.disconnect();
+            }
+        });
+    }
+
     private async withProject<T>(uid: string, projectId: string, fn: (doc: Y.Doc) => Promise<T> | T): Promise<T> {
         if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) throw new McpReadError("invalid_argument", "Invalid project ID");
         if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
@@ -143,10 +161,12 @@ export class OutlinerRelationService {
             }
             const lease = await acquireDb();
             const opened: TableDoc[] = [];
+            let targetSource: TableDoc | undefined;
             try {
                 for (const table of this.tables(doc)) {
                     const source = await this.openTable(uid, projectId, table.tableId);
                     opened.push(source);
+                    if (table.tableId === candidate.targetTableId) targetSource = source;
                     if (!source.schema.trim()) continue;
                     await lease.db.exec(source.schema);
                     await this.loadRecordsTolerantly(lease.db, table.relation, source.data);
@@ -159,6 +179,14 @@ export class OutlinerRelationService {
                     candidateRows: result.rows.slice(0, resultLimit).map(row => this.boundedTraceRow(row, columns)),
                     truncated: result.rows.length > resultLimit,
                     errors: [],
+                    targetRevision: targetSource
+                        ? this.tableRevision(
+                            candidate.targetTableId,
+                            String(target.get("name") ?? ""),
+                            String(target.get("sqlName") ?? ""),
+                            targetSource,
+                        )
+                        : undefined,
                 };
             } catch (error) {
                 return { accepted: false, candidateRows: [], errors: [this.sqlDiagnostic(error, "execution")] };

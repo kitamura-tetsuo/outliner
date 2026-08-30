@@ -87,7 +87,7 @@ Tool-level failures that reach Outliner's handler set `isError:true`; parse thei
 
 ## Audit and privacy
 
-Every `write_relation`, `set_view_query`, `update_grid_query`, `update_table_schema`, and `update_table_records` attempt that passes the MCP SDK's input-schema check—including dry runs, handler validation failures, scope failures, and replays—writes an `mcp_audit` JSONL record. Table tool entries carry `entity: "table:<tableId>"`. Schema-invalid calls are rejected by the SDK before Outliner's audit wrapper is entered and therefore have no mutation audit record; retain transport/security logs if protocol-level rejection accounting is required. Audit entries contain the request ID, a one-way uid fingerprint, tool, project/entity identifiers, operation ID, dry-run/applied/replayed state, outcome, and prior/new revisions. They deliberately exclude bearer/refresh tokens, raw uid, authorization headers, query text, row values, and full payloads. Restrict and rotate the log like other security audit data. Use request IDs for correlation and never paste tokens into issue reports.
+Every `update_schedule_rule`, `write_relation`, `set_view_query`, `update_grid_query`, `update_table_schema`, and `update_table_records` attempt that passes the MCP SDK's input-schema check—including dry runs, handler validation failures, scope failures, and replays—writes an `mcp_audit` JSONL record. Table tool entries carry `entity: "table:<tableId>"`. Schema-invalid calls are rejected by the SDK before Outliner's audit wrapper is entered and therefore have no mutation audit record; retain transport/security logs if protocol-level rejection accounting is required. Audit entries contain the request ID, a one-way uid fingerprint, tool, project/entity identifiers, operation ID, dry-run/applied/replayed state, outcome, and prior/new revisions. They deliberately exclude bearer/refresh tokens, raw uid, authorization headers, query text, row values, and full payloads. Restrict and rotate the log like other security audit data. Use request IDs for correlation and never paste tokens into issue reports.
 
 ## Production connector smoke test
 
@@ -102,3 +102,19 @@ Prepare authorized project A and inaccessible project B. In A, create a Table wi
 7. Exercise an invalid structured write and an oversized write; verify validation failure/no partial mutation. Review audit and error logs for identity/revision metadata and absence of tokens, query text, and sensitive row payloads.
 
 The live ChatGPT/Codex connector run is a release smoke test; deterministic service, HTTP MCP, OAuth, integration, and production-protocol tests remain the regression suite.
+
+## Schedule diagnostics and repair
+
+Schedule list URLs use `/{project}/-/schedules`; detail URLs use `/{project}/-/schedules/{ruleId}`. `list_schedules` pages at most 100 stable-ID rules and can filter a Table reference as `write-target`, `sql-reference`, or `any`. A Table is only referenced by a Schedule—it does not own the project-level rule. `get_table.scheduleReferences` is bounded to 25 entries; continue with `list_schedules` for the authoritative paged set.
+
+`get_schedule.stored` is the exact persisted definition: SQL, RRULE, local-wall-clock DTSTART, IANA timezone, enabled/catch-up flags, and fields written by the scheduler. `derived` contains validator output, dependency evidence, authoritative Table revisions, and at most five computed instants. A disabled or completed rule has no next instants. For active rules, catch-up permits occurrences after the persisted last run, while non-catch-up output starts after the current instant. `execution-status` repeats only fields actually persisted; an absent field is never invented.
+
+`validate_schedule_rule` runs field validators, loads real dependency schemas and records into isolated scratch SQL state, sets the explicit `job.occurrence`, executes the candidate, applies target constraints, and returns at most 100 candidate rows. Scratch execution never writes Yjs, records, revisions, scheduler indexes, last-run fields, undo history, or audit history. Deterministic-ID evidence is conservative: fixed IDs and IDs derived from `job.occurrence` are retry-safe; random UUIDs, sequences, omitted IDs, and unproved expressions are not. `update_schedule_rule` requires `outliner.write` and `expectedRevision`, uses that same preview path, applies only named fields atomically, and never enables or runs a rule unless explicitly requested. `operationId` makes an applied retry replay-safe. Running now remains the separate Schedule API and is never implied by an MCP update.
+
+### Table → Schedule → recurring row example
+
+1. Resolve `/{project}/-/tables/{tableId}`, call `get_table`, then page `list_schedules` with that Table and `write-target`.
+2. Read the rule. Compare exact stored SQL and `lastRunError` with the target schema. For a numeric column named `order`, unquoted `order` is SQL syntax rather than the column; use `"order"`.
+3. Preview the corrected candidate with an explicit occurrence and a small `resultLimit`. Confirm candidate rows and deterministic IDs, then reread the Table and Schedule to prove their records, revisions, enabled state, and last-run state did not change.
+4. After explicit write approval, call `update_schedule_rule` with only `sql`, the preview's Schedule revision, and an operation ID. Reread and verify the new revision. No task exists until the scheduler fires or a separately authorized run-now request executes.
+5. Audit records contain fingerprints, IDs, outcomes, and revisions but redact SQL, row values, credentials, and raw user identity. A stale revision must be reread and revalidated rather than overwritten.

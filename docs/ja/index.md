@@ -142,3 +142,11 @@ URLをそのまま貼り付けると、自動的に外部リンクとして認�
 | 行を右に移動       | `Ctrl + Right`           | `Cmd + Right`               |
 | ブロックを上に移動 | `Alt + Up`               | `Option + Up`               |
 | ブロックを下に移動 | `Alt + Down`             | `Option + Down`             |
+
+## MCP クライアントで定期 Schedule を診断する
+
+認可された MCP クライアントは Schedule 一覧 `/{project}/-/schedules` と詳細 `/{project}/-/schedules/{ruleId}` を解決できます。Table URL から、件数制限された参照または `list_schedules` を使い、書き込み先または SQL 参照元のルールを探せます。Schedule は Table の子ではなくプロジェクト単位のオブジェクトです。
+
+応答は、保存済みの定義・実行状態と、計算された検証・依存関係・次回時刻を分離します。DTSTART は IANA タイムゾーンのローカル時刻で、DST、完了・有効状態、catch-up、RRULE 境界が次回時刻に反映されます。プレビューは実 Table のスキーマとレコードを隔離環境で実行し、ライブデータを変更せず件数制限された候補行を返します。更新には書き込み権限と一致する revision が必要で、更新だけでは実行されません。run-now は別操作です。
+
+数値列 `order` の定期タスク障害では、Table を解決し、書き込み先 Schedule の正確な SQL と最終エラーを確認し、`"order"` を使う修正版をプレビューします。候補行と revision・有効状態・最終実行状態が不変であることを確認後、operation ID と revision を指定して SQL だけを更新します。行が作成されるのは後の scheduler 実行または別途承認した run-now の後だけです。監査ログは SQL、値、トークン、資格情報を記録しません。

@@ -28,6 +28,9 @@ describe("Outliner MCP read service", () => {
         calendarMap.set("query", "SELECT * FROM outline_items");
         calendarMap.set("groupAxes", ["owner"]);
         project.calendars.set("calendar-1", calendarMap as never);
+        const scheduleMap = new (project.schedules.constructor as new() => MapLike)();
+        scheduleMap.set("targetTableId", "table-1");
+        project.schedules.set("rule-1", scheduleMap as never);
         let disconnects = 0;
         const service = new OutlinerReadService(
             {
@@ -100,6 +103,19 @@ describe("Outliner MCP read service", () => {
             projectId: "project-1",
             kind: "project",
         });
+        expect(await service.resolveUrl("uid", `${origin}/MCP%20test/-/schedules`)).to.deep.equal({
+            projectId: "project-1",
+            kind: "schedule-list",
+        });
+        expect(await service.resolveUrl("uid", `${origin}/MCP%20test/-/schedules/rule-1`)).to.deep.equal({
+            projectId: "project-1",
+            entityId: "rule-1",
+            kind: "schedule",
+        });
+        await expectRejected(
+            service.resolveUrl("uid", `${origin}/MCP%20test/-/schedules/rule-1/extra`),
+            "Unsupported",
+        );
         expect(await service.resolveUrl("uid", `${origin}/MCP%20test/${encodeURIComponent(encodedPage.text)}`))
             .to.deep.equal({ projectId: "project-1", pageId: encodedPage.id, kind: "page" });
         for (const [kind, id] of [["tables", "table-1"], ["grids", "grid-1"], ["calendars", "calendar-1"]]) {

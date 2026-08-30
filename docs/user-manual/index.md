@@ -316,3 +316,11 @@ You can also access a complete list of shortcuts by expanding the **Keyboard & a
 | Move item up            | `Alt + ↑`                        | `Option + ↑`                   |
 | Move item down          | `Alt + ↓`                        | `Option + ↓`                   |
 | Open context menu       | `Shift + F10` or `Menu`          | `Shift + F10` or `Menu`        |
+
+## Diagnosing recurring Schedules with an MCP client
+
+An authorized MCP client recognizes the Schedule list `/{project}/-/schedules` and detail `/{project}/-/schedules/{ruleId}` URLs. Starting from a Table URL, use bounded Schedule references or `list_schedules` to find rules that write the Table or read it in SQL. Schedule rules remain project objects, not children of Tables.
+
+The Schedule read response separates **stored** definition and scheduler status from **derived** validation, dependencies, and occurrence instants. DTSTART is a local wall-clock value interpreted in the named IANA timezone; DST gaps, completion, enabled state, catch-up, and RRULE limits affect derived instants. Preview executes against isolated copies of the real Table schemas and records and returns bounded rows without changing live data. Apply a correction only with write access and the matching revision. Updating never runs the Schedule; run-now is separate.
+
+For a recurring-task Table with a numeric `order` column, resolve the Table, discover its write-target Schedule, inspect exact SQL and the last error, and preview SQL using `"order"`. Verify preview rows and unchanged revisions, then update only SQL with the returned revision and operation ID. Reread the rule; a row appears only after a later scheduler or separately approved run-now execution. Audit logs redact SQL, values, tokens, and credentials.

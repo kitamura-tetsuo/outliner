@@ -133,6 +133,8 @@ export function createMcpRouter(
                     projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
                     entity: typeof typedArgs.relation === "string"
                         ? typedArgs.relation
+                        : typeof typedArgs.ruleId === "string"
+                        ? `schedule:${typedArgs.ruleId}`
                         : typeof typedArgs.gridId === "string"
                         ? `grid:${typedArgs.gridId}`
                         : typeof typedArgs.viewId === "string"

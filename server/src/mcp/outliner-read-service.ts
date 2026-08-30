@@ -40,6 +40,7 @@ function parseResolvablePath(pathname: string): {
     pageTitle?: string;
     entityKind?: ResolvableEntityKind;
     entityId?: string;
+    entityListKind?: "schedules";
 } {
     const encodedParts = pathname.split("/");
     if (encodedParts[encodedParts.length - 1] === "") encodedParts.pop();
@@ -62,6 +63,9 @@ function parseResolvablePath(pathname: string): {
 
     if (parts.length === 1) return { projectTitle: parts[0]! };
     if (parts.length === 2 && parts[1] !== "-") return { projectTitle: parts[0]!, pageTitle: parts[1]! };
+    if (parts.length === 3 && parts[1] === "-" && parts[2] === "schedules") {
+        return { projectTitle: parts[0]!, entityListKind: "schedules" };
+    }
 
     // Keep accepting the pre-#5012 resource-first form for existing MCP
     // clients. The client itself only generates the canonical project-first
@@ -158,7 +162,7 @@ export class OutlinerReadService {
             projectId: string;
             pageId?: string;
             entityId?: string;
-            kind: "project" | "page" | "grid" | "calendar" | "table" | "schedule";
+            kind: "project" | "page" | "grid" | "calendar" | "table" | "schedule" | "schedule-list";
         }
     > {
         let url: URL;
@@ -180,7 +184,7 @@ export class OutlinerReadService {
                 hostname: url.hostname,
             });
         }
-        const { projectTitle, pageTitle, entityKind, entityId } = parseResolvablePath(url.pathname);
+        const { projectTitle, pageTitle, entityKind, entityId, entityListKind } = parseResolvablePath(url.pathname);
         if (entityId !== undefined) assertId(entityId, "entity ID");
         const resolutionDebug = {
             inputUrl: `${url.origin}${url.pathname}`,
@@ -215,6 +219,7 @@ export class OutlinerReadService {
             if (candidate.title !== projectTitle) continue;
             foundProjectWithoutEntity = true;
             const resolved = await this.withProject(uid, projectId, project => {
+                if (entityListKind === "schedules") return { projectId, kind: "schedule-list" as const };
                 if (entityKind) {
                     const exists = entityKind === "grids"
                         ? project.ydoc.getMap("yjsGrids").has(entityId!)
