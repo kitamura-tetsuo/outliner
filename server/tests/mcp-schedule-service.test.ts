@@ -72,5 +72,6 @@ describe("MCP Schedule diagnostics", () => {
         hocuspocus.closeConnections();
         await hocuspocus.unloadDocument(tableDocument);
         await hocuspocus.unloadDocument(project);
+        await hocuspocus.hooks("onDestroy", { instance: hocuspocus });
     });
 });
