@@ -193,6 +193,25 @@ export class OutlinerRelationService {
                         }
                         : {}),
                     revision: this.tableRevision(tableId, table.displayName, table.relation, source),
+                    scheduleReferences: [...doc.getMap<Y.Map<unknown>>("schedules").entries()]
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .flatMap(([ruleId, rule]) => {
+                            const kinds: ("write-target" | "sql-reference")[] = [];
+                            if (rule.get("targetTableId") === tableId) kinds.push("write-target");
+                            const sql = String(rule.get("sql") ?? "");
+                            if (
+                                table.relation
+                                && new RegExp(
+                                    `(?:^|[^A-Za-z0-9_])${
+                                        table.relation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+                                    }(?:$|[^A-Za-z0-9_])`,
+                                    "i",
+                                ).test(sql)
+                            ) kinds.push("sql-reference");
+                            return kinds.length
+                                ? [{ ruleId, name: rule.get("name"), referenceKinds: kinds }]
+                                : [];
+                        }).slice(0, 25),
                     provenance: {
                         sourceProjectId: table.sourceProjectId,
                         sourceTableId: table.sourceTableId,

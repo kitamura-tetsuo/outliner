@@ -1,4 +1,6 @@
-import { RRule } from "rrule";
+import rruleImport from "rrule";
+
+const { RRule } = rruleImport;
 
 /**
  * Validates the SQL part of a schedule rule.

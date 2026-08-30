@@ -19,6 +19,7 @@ import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
 import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
 import { OutlinerRelationService } from "./mcp/relation-service.js";
+import { OutlinerScheduleService } from "./mcp/schedule-service.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { getOAuthFirebaseWebConfig } from "./oauth/authorize-page.js";
 import { createOAuthRouter } from "./oauth/oauth-api.js";
@@ -458,6 +459,7 @@ export async function startServer(
         undefined,
         undefined,
         new OutlinerRelationService(hocuspocus, checkContainerAccess),
+        new OutlinerScheduleService(hocuspocus, checkContainerAccess),
     ));
 
     // Log rotation endpoint

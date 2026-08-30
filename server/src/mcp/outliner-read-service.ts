@@ -29,7 +29,7 @@ export interface OutlineNodeRead {
 }
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
-type ResolvableEntityKind = "grids" | "calendars" | "tables";
+type ResolvableEntityKind = "grids" | "calendars" | "tables" | "schedules";
 
 function assertId(value: string, label: string): void {
     if (!ID.test(value)) throw new McpReadError("invalid_argument", `Invalid ${label}`);
@@ -66,7 +66,7 @@ function parseResolvablePath(pathname: string): {
     // Keep accepting the pre-#5012 resource-first form for existing MCP
     // clients. The client itself only generates the canonical project-first
     // form below.
-    if (parts.length === 3 && ["grids", "calendars", "tables"].includes(parts[0]!)) {
+    if (parts.length === 3 && ["grids", "calendars", "tables", "schedules"].includes(parts[0]!)) {
         return {
             entityKind: parts[0] as ResolvableEntityKind,
             projectTitle: parts[1]!,
@@ -74,7 +74,10 @@ function parseResolvablePath(pathname: string): {
         };
     }
 
-    if (parts.length === 4 && parts[1] === "-" && ["grids", "calendars", "tables"].includes(parts[2]!)) {
+    if (
+        parts.length === 4 && parts[1] === "-"
+        && ["grids", "calendars", "tables", "schedules"].includes(parts[2]!)
+    ) {
         return {
             projectTitle: parts[0]!,
             entityKind: parts[2] as ResolvableEntityKind,
@@ -155,7 +158,7 @@ export class OutlinerReadService {
             projectId: string;
             pageId?: string;
             entityId?: string;
-            kind: "project" | "page" | "grid" | "calendar" | "table";
+            kind: "project" | "page" | "grid" | "calendar" | "table" | "schedule";
         }
     > {
         let url: URL;
@@ -217,7 +220,9 @@ export class OutlinerReadService {
                         ? project.ydoc.getMap("yjsGrids").has(entityId!)
                         : entityKind === "calendars"
                         ? project.calendars.has(entityId!)
-                        : project.ydoc.getMap("yjsTables").has(entityId!);
+                        : entityKind === "tables"
+                        ? project.ydoc.getMap("yjsTables").has(entityId!)
+                        : project.schedules.has(entityId!);
                     if (!exists) {
                         throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`, {
                             ...resolutionDebug,
@@ -227,7 +232,11 @@ export class OutlinerReadService {
                             entityId,
                         });
                     }
-                    return { projectId, entityId, kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" };
+                    return {
+                        projectId,
+                        entityId,
+                        kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" | "schedule",
+                    };
                 }
                 if (!pageTitle) return { projectId, kind: "project" as const };
                 const page = Array.from(project.items).find(item => item.text === pageTitle);

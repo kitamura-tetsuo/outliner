@@ -1,0 +1,9 @@
+id: MCP-5244cafe
+title: Schedule diagnostics and safe recurring-task repair over MCP
+title-ja: MCPによるスケジュール診断と安全な定期タスク修復
+description: >-
+  Authorized MCP clients can resolve Schedule URLs, discover Schedule rules from a project or referenced Table,
+  inspect stored execution status separately from derived validation and occurrences, preview a candidate without
+  mutation, and atomically update an explicitly selected definition with write scope and a matching revision.
+tests:
+  - server/tests/mcp-schedule-service.test.ts
