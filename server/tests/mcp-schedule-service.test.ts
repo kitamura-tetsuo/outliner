@@ -16,7 +16,8 @@ describe("MCP Schedule diagnostics", () => {
         const tableConnection = await hocuspocus.openDirectConnection("projects/project-1/tables/table-1", {
             context: { uid: "user" },
         });
-        tableConnection.document.getText("schema").insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY)");
+        const tableDocument = tableConnection.document;
+        tableDocument.getText("schema").insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY)");
         const rule = new Y.Map<unknown>();
         rule.set("name", "Daily tasks");
         rule.set("targetTableId", "table-1");
@@ -68,5 +69,8 @@ describe("MCP Schedule diagnostics", () => {
         expect(rule.get("enabled")).to.equal(false);
         await tableConnection.disconnect();
         await connection.disconnect();
+        hocuspocus.closeConnections();
+        await hocuspocus.unloadDocument(tableDocument);
+        await hocuspocus.unloadDocument(project);
     });
 });
