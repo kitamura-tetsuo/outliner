@@ -22,6 +22,20 @@ export interface ScheduleCandidate {
     enabled?: boolean;
     catchUp?: boolean;
 }
+interface SchedulePreviewer {
+    previewScheduleRule(
+        uid: string,
+        projectId: string,
+        candidate: ScheduleCandidate,
+        occurrence: string,
+        limit: number,
+    ): Promise<{
+        accepted: boolean;
+        candidateRows: unknown[];
+        truncated?: boolean;
+        errors: unknown[];
+    }>;
+}
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
 const FIELDS = [
@@ -47,6 +61,7 @@ export class OutlinerScheduleService {
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
+        private readonly previewer?: SchedulePreviewer,
     ) {}
 
     private async withProject<T>(uid: string, projectId: string, fn: (doc: Y.Doc) => T | Promise<T>): Promise<T> {
@@ -236,11 +251,13 @@ export class OutlinerScheduleService {
         return this.withProject(
             uid,
             projectId,
-            doc => this.validateSnapshot(doc, candidate, ruleId, occurrence, resultLimit),
+            doc => this.validateSnapshot(uid, projectId, doc, candidate, ruleId, occurrence, resultLimit),
         );
     }
 
-    private validateSnapshot(
+    private async validateSnapshot(
+        uid: string,
+        projectId: string,
         doc: Y.Doc,
         candidate: ScheduleCandidate,
         ruleId?: string,
@@ -252,15 +269,20 @@ export class OutlinerScheduleService {
         const references = this.references(doc, candidate);
         const missingTarget = !target;
         const chosenOccurrence = occurrence ?? this.occurrences(candidate, 1)[0];
+        const fieldsAccepted = Object.values(fields).every(value => value.valid);
+        const preview = fieldsAccepted && !missingTarget && chosenOccurrence && this.previewer
+            ? await this.previewer.previewScheduleRule(uid, projectId, candidate, chosenOccurrence, resultLimit)
+            : { accepted: fieldsAccepted && !missingTarget, candidateRows: [], errors: [] };
         return {
-            accepted: Object.values(fields).every(value => value.valid) && !missingTarget,
+            accepted: fieldsAccepted && !missingTarget && preview.accepted,
             fieldValidation: fields,
             errors: missingTarget
                 ? [{ field: "targetTableId", code: "missing_target", message: "Target Table not found" }]
-                : [],
+                : preview.errors,
             references,
             occurrence: chosenOccurrence,
-            candidateRows: [],
+            candidateRows: preview.candidateRows,
+            truncated: preview.truncated,
             resultLimit,
             deterministicIds: {
                 idempotent: /\bid\b/i.test(candidate.sql),
@@ -305,7 +327,7 @@ export class OutlinerScheduleService {
                     const priorRevision = this.revision(ruleId, rule);
                     assertRevision(expectedRevision, priorRevision, { ruleId });
                     const candidate = { ...before, ...changes } as unknown as ScheduleCandidate;
-                    const validation = this.validateSnapshot(doc, candidate, ruleId);
+                    const validation = await this.validateSnapshot(uid, projectId, doc, candidate, ruleId);
                     if (!validation.accepted) {
                         throw new McpReadError("validation_failed", "Schedule validation failed", { validation });
                     }

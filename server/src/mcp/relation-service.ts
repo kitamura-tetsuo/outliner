@@ -119,6 +119,51 @@ export class OutlinerRelationService {
         }));
     }
 
+    /** Execute Schedule INSERT SQL in the same isolated PGlite materialization used by MCP SQL diagnostics. */
+    previewScheduleRule(
+        uid: string,
+        projectId: string,
+        candidate: { targetTableId: string; sql: string; },
+        occurrence: string,
+        resultLimit: number,
+    ) {
+        return this.withProject(uid, projectId, async doc => {
+            const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
+            if (!target) {
+                return {
+                    accepted: false,
+                    candidateRows: [],
+                    errors: [{ code: "missing_target", message: "Target Table not found" }],
+                };
+            }
+            const lease = await acquireDb();
+            const opened: TableDoc[] = [];
+            try {
+                for (const table of this.tables(doc)) {
+                    const source = await this.openTable(uid, projectId, table.tableId);
+                    opened.push(source);
+                    if (!source.schema.trim()) continue;
+                    await lease.db.exec(source.schema);
+                    await this.loadRecordsTolerantly(lease.db, table.relation, source.data);
+                }
+                await lease.db.query("SELECT set_config('job.occurrence', $1, true)", [occurrence]);
+                const result = await lease.db.query<Record<string, unknown>>(candidate.sql);
+                const columns = (result.fields ?? []).map(field => field.name);
+                return {
+                    accepted: true,
+                    candidateRows: result.rows.slice(0, resultLimit).map(row => this.boundedTraceRow(row, columns)),
+                    truncated: result.rows.length > resultLimit,
+                    errors: [],
+                };
+            } catch (error) {
+                return { accepted: false, candidateRows: [], errors: [this.sqlDiagnostic(error, "execution")] };
+            } finally {
+                lease.release();
+                await Promise.all(opened.map(table => table.disconnect()));
+            }
+        });
+    }
+
     /**
      * Inspect one Table by its stable registry id. Record ids are sorted before
      * paging so Y.Map insertion order can never become an accidental row API.

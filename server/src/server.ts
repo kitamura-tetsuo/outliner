@@ -440,6 +440,7 @@ export async function startServer(
     // Standards-compatible, stateless Streamable HTTP MCP endpoint. Every
     // project operation reuses the established projectUsers ACL and direct
     // Hocuspocus document lifecycle.
+    const mcpRelations = new OutlinerRelationService(hocuspocus, checkContainerAccess);
     app.use(createMcpRouter(
         new OutlinerReadService(
             hocuspocus,
@@ -458,8 +459,8 @@ export async function startServer(
         ),
         undefined,
         undefined,
-        new OutlinerRelationService(hocuspocus, checkContainerAccess),
-        new OutlinerScheduleService(hocuspocus, checkContainerAccess),
+        mcpRelations,
+        new OutlinerScheduleService(hocuspocus, checkContainerAccess, mcpRelations),
     ));
 
     // Log rotation endpoint
