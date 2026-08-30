@@ -99,7 +99,7 @@ function cancelPending() {
     {/if}
 
     {#if pendingChange}
-        <div class="warning-dialog" role="alertdialog" data-testid="yjs-table-schema-warning">
+        <div class="warning-dialog" role="alertdialog" tabindex="-1" data-testid="yjs-table-schema-warning">
             <p class="warning-title">This schema change affects existing data:</p>
             <ul>
                 {#if pendingChange.diff.removedColumns.length > 0}

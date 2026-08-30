@@ -54,7 +54,7 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <div class="dialog-backdrop" role="presentation" onkeydown={onKeydown}>
-    <div class="dialog" role="alertdialog" aria-modal="true" aria-label="Delete calendar entry" data-testid="calendar-delete-dialog">
+    <div class="dialog" role="alertdialog" tabindex="-1" aria-modal="true" aria-label="Delete calendar entry" data-testid="calendar-delete-dialog">
         <h3>Delete "{entry.title || "this entry"}"?</h3>
 
         {#if isOccurrence}
