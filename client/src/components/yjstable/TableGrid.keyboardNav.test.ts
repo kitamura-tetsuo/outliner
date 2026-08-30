@@ -251,6 +251,23 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         expect(document.activeElement).toBe(select);
     });
 
+    it("leaves Escape native in select controls without reducing a stale Grid range", async () => {
+        const { view } = setup();
+        await selectCell(view.container, "a", "name");
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowDown", shiftKey: true });
+        await fireEvent.keyDown(cellButton(view.container, "b", "name"), { key: "ArrowRight", shiftKey: true });
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(4);
+
+        const select = cellTd(view.container, "a", "status").querySelector<HTMLSelectElement>("select")!;
+        select.focus();
+        const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+        await fireEvent(select, escape);
+
+        expect(escape.defaultPrevented).toBe(false);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(4);
+        expect(document.activeElement).toBe(select);
+    });
+
     it("survives keyed row re-render by restoring DOM focus to the same logical cell", async () => {
         const { view } = setup();
         await selectCell(view.container, "b", "name");
