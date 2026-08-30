@@ -50,10 +50,13 @@ test.describe("Grid selection-aware Delete/Backspace clears cells (FTR-b589b9f9)
 
         await firstRow.locator("td[data-col='title']").locator("button").click();
         await page.keyboard.press("Escape");
+        await expect(firstRow.locator("td[data-col='title']")).toHaveClass(/grid-active/);
+
         await page.keyboard.down("Shift");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.up("Shift");
-        await expect(grid.locator("td.grid-selected")).toHaveCount(2);
+        // Ensure Playwright waits until the selection renders before pressing Delete
+        await expect(grid.locator("td.grid-selected")).toHaveCount(2, { timeout: 10000 });
 
         await page.keyboard.press("Delete");
 
