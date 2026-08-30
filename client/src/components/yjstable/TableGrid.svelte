@@ -1288,9 +1288,9 @@ th.header-selected {
     outline-offset: -2px;
 }
 
-tr:has(> .row-header.header-selected) > td.grid-selected,
-table:has(.corner-header.header-selected) tbody td,
-table:has(th[role="columnheader"].header-selected) td.grid-selected {
+:global(tr:has(> .row-header.header-selected)) > td.grid-selected,
+:global(table:has(.corner-header.header-selected)) tbody td,
+:global(table:has(th[role="columnheader"].header-selected)) td.grid-selected {
     background-color: rgb(14 116 144 / 14%);
 }
 
