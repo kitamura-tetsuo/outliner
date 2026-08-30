@@ -120,6 +120,18 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         expect(isActive(view.container, "b", "score")).toBe(true);
     });
 
+    it("Escape reduces an extended range to the active cell", async () => {
+        const { view } = setup();
+        await selectCell(view.container, "a", "name");
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowDown", shiftKey: true });
+        await fireEvent.keyDown(cellButton(view.container, "b", "name"), { key: "ArrowRight", shiftKey: true });
+
+        await fireEvent.keyDown(cellButton(view.container, "b", "score"), { key: "Escape" });
+
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(1);
+        expect(isActive(view.container, "b", "score")).toBe(true);
+    });
+
     it("Shift+Enter moves the active cell up", async () => {
         const { view } = setup();
         await selectCell(view.container, "b", "name");

@@ -175,4 +175,30 @@ describe("GridSelection", () => {
         selection.toggleCell(cell);
         expect(selection.contains(cell)).toBe(true);
     });
+
+    it("reduces a cell range to its active cell on Escape", () => {
+        const selection = new GridSelection();
+        selection.select({ rowId: "row-a", columnId: "name" });
+        selection.extend({ rowId: "row-b", columnId: "owner" }, rows, columns);
+
+        selection.cancelOrReduce();
+
+        expect(selection.snapshot()).toEqual({
+            activeCell: { rowId: "row-b", columnId: "owner" },
+            anchorCell: { rowId: "row-b", columnId: "owner" },
+            rowAnchor: undefined,
+            columnAnchor: undefined,
+            regions: [{ kind: "cells", rowIds: ["row-b"], columnIds: ["owner"] }],
+        });
+    });
+
+    it("cancels a header or all-result selection that has no active cell", () => {
+        const selection = new GridSelection();
+        selection.selectAll();
+
+        selection.cancelOrReduce();
+
+        expect(selection.snapshot().regions).toEqual([]);
+        expect(selection.activeCell).toBeUndefined();
+    });
 });
