@@ -28,17 +28,20 @@ function commit(e: Event) {
     // cast error for this record instead of silently dropping it.
     onCommit(Number.isFinite(parsed) ? parsed : raw);
 }
+
+function focusNode(node: HTMLElement) {
+    node.focus();
+}
 </script>
 
 {#if editing && editable}
-    <!-- svelte-ignore a11y_autofocus -->
     <input
+        use:focusNode
         class="cell-input"
         aria-label={ariaLabel || "Edit cell value"}
         type="number"
         step="any"
         value={editSeed ?? (value === null || value === undefined ? "" : String(value))}
-        autofocus
         onblur={commit}
         onkeydown={(e) => {
             if (e.isComposing) return;
