@@ -32,7 +32,7 @@ runs:
     # install_os_utilities below falls back to downloading a JDK tarball from
     # adoptium on every shard, which is slow and network-dependent.
     - name: Use JDK 21
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: '21'
@@ -51,7 +51,7 @@ runs:
     # the "v1" suffix whenever the pinned version below changes.
     - name: Cache global npm tools
       id: cache-global-tools
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.npm-global
         key: e2e-global-tools-${{ runner.os }}-v1-firebase-tools${{ inputs.cache-key-suffix }}
@@ -63,7 +63,7 @@ runs:
 
     - name: Cache npm dependency trees
       id: cache-node-modules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           node_modules
@@ -104,7 +104,7 @@ runs:
 
     - name: Cache Playwright browser
       id: cache-playwright
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cache/ms-playwright
         key: e2e-playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}${{ inputs.cache-key-suffix }}
