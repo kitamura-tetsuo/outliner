@@ -35,20 +35,22 @@ const errorResponse = (
 });
 /**
  * Every MCP tool declares the OAuth scope(s) it requires under
- * `_meta["mcp/securitySchemes"]` (issue #5257): a read-only tool advertises
- * `outliner.read`, a mutation tool advertises `outliner.read` *and*
- * `outliner.write`. This travels straight through McpServer's `tools/list`
- * response, giving an MCP/ChatGPT client a declarative signal for which
- * tools need the broader write grant, instead of only discovering it after
- * a call is rejected.
+ * `_meta.securitySchemes` (issue #5257), mirroring the shape proposed for a
+ * top-level Tool `securitySchemes` field (MCP SEP-1488: an array of scheme
+ * objects, `{ type: "oauth2", scopes: [...] }`) — the installed
+ * `@modelcontextprotocol/sdk` (1.30.0) has no first-party `securitySchemes`
+ * support yet, so `_meta` is the only extensibility point that survives
+ * `tools/list` serialization, but ChatGPT/MCP Apps SDK clients are documented
+ * to also recognize this exact `_meta.securitySchemes` array as a legacy
+ * mirror. A read-only tool advertises `outliner.read`; a mutation tool
+ * advertises `outliner.read` *and* `outliner.write`, giving a client a
+ * declarative signal for which tools need the broader write grant instead of
+ * only discovering it after a call is rejected.
  */
 const securitySchemesMeta = (requiresWrite: boolean) => ({
-    "mcp/securitySchemes": {
-        outlinerOAuth: {
-            type: "oauth2",
-            scopes: requiresWrite ? ["outliner.read", "outliner.write"] : ["outliner.read"],
-        },
-    },
+    securitySchemes: [
+        { type: "oauth2", scopes: requiresWrite ? ["outliner.read", "outliner.write"] : ["outliner.read"] },
+    ],
 });
 const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
     debug

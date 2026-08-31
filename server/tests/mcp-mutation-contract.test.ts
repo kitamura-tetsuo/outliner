@@ -96,8 +96,8 @@ describe("MCP mutation safety contract", () => {
             annotations: Record<string, boolean>;
             _meta?: Record<string, unknown>;
         }[];
-        const readOnlyScheme = { outlinerOAuth: { type: "oauth2", scopes: ["outliner.read"] } };
-        const readWriteScheme = { outlinerOAuth: { type: "oauth2", scopes: ["outliner.read", "outliner.write"] } };
+        const readOnlyScheme = [{ type: "oauth2", scopes: ["outliner.read"] }];
+        const readWriteScheme = [{ type: "oauth2", scopes: ["outliner.read", "outliner.write"] }];
         expect(tools.find(t => t.name === "get_table")?.annotations).to.include({
             readOnlyHint: true,
             destructiveHint: false,
@@ -150,7 +150,7 @@ describe("MCP mutation safety contract", () => {
                 "query_sql",
             ]
         ) {
-            expect(tools.find(t => t.name === name)?._meta?.["mcp/securitySchemes"]).to.deep.equal(readOnlyScheme);
+            expect(tools.find(t => t.name === name)?._meta?.securitySchemes).to.deep.equal(readOnlyScheme);
         }
         for (
             const name of [
@@ -161,7 +161,7 @@ describe("MCP mutation safety contract", () => {
                 "update_table_records",
             ]
         ) {
-            expect(tools.find(t => t.name === name)?._meta?.["mcp/securitySchemes"]).to.deep.equal(readWriteScheme);
+            expect(tools.find(t => t.name === name)?._meta?.securitySchemes).to.deep.equal(readWriteScheme);
         }
     });
 

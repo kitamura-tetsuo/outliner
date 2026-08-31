@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the spreadsheet-style Grid cell clipboard guidance (#5192)", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(74);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(75);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -191,6 +191,18 @@ describe("Demo seed content", () => {
         expect(guidance).to.contain("validate_table_schema");
         expect(guidance).to.contain("validate_grid_query");
         expect(guidance).to.contain("without changing this project");
+    });
+
+    it("seeds the MCP mutation OAuth scope / step-up authorization guidance (#5257)", () => {
+        const mcp = findChildByText(project.items, "Remote MCP Access");
+        expect(mcp).to.not.equal(undefined);
+
+        const guidance = childTexts(mcp!.items).find(text => text.startsWith("Every tool declares the OAuth scope"));
+        expect(guidance, "MCP scope/step-up guidance exists").to.not.equal(undefined);
+        expect(guidance).to.contain("outliner.read");
+        expect(guidance).to.contain("outliner.write");
+        expect(guidance).to.contain("insufficient_scope");
+        expect(guidance).to.contain("step-up authorization");
     });
 
     it("seeds the current Grid clipboard guidance", () => {
