@@ -23,9 +23,32 @@ const response = (value: unknown) => ({ content: [{ type: "text" as const, text:
  * that CallToolResult directly: isError: true with the structured contract
  * as JSON text.
  */
-const errorResponse = (message: string, code: McpErrorCode, debug?: Record<string, unknown>) => ({
+const errorResponse = (
+    message: string,
+    code: McpErrorCode,
+    debug?: Record<string, unknown>,
+    meta?: Record<string, unknown>,
+) => ({
     content: [{ type: "text" as const, text: JSON.stringify({ error: message, code, ...debug }) }],
     isError: true as const,
+    ...(meta ? { _meta: meta } : {}),
+});
+/**
+ * Every MCP tool declares the OAuth scope(s) it requires under
+ * `_meta["mcp/securitySchemes"]` (issue #5257): a read-only tool advertises
+ * `outliner.read`, a mutation tool advertises `outliner.read` *and*
+ * `outliner.write`. This travels straight through McpServer's `tools/list`
+ * response, giving an MCP/ChatGPT client a declarative signal for which
+ * tools need the broader write grant, instead of only discovering it after
+ * a call is rejected.
+ */
+const securitySchemesMeta = (requiresWrite: boolean) => ({
+    "mcp/securitySchemes": {
+        outlinerOAuth: {
+            type: "oauth2",
+            scopes: requiresWrite ? ["outliner.read", "outliner.write"] : ["outliner.read"],
+        },
+    },
 });
 const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
     debug
@@ -105,7 +128,12 @@ export function createMcpRouter(
         const grantedScopes = verifyToken(req.headers.authorization!.slice("Bearer ".length)).scope.split(/\s+/);
         const requireWrite = () => {
             if (!grantedScopes.includes("outliner.write")) {
-                throw new McpReadError("forbidden", "The outliner.write scope is required");
+                throw new McpReadError(
+                    "forbidden",
+                    "The outliner.write scope is required",
+                    undefined,
+                    "outliner.write",
+                );
             }
         };
 
@@ -123,7 +151,12 @@ export function createMcpRouter(
             } = {},
         ) => mcp.registerTool(
             name,
-            { description, inputSchema: shape, annotations: options.annotations ?? readOnly },
+            {
+                description,
+                inputSchema: shape,
+                annotations: options.annotations ?? readOnly,
+                _meta: securitySchemesMeta(!!options.mutating),
+            },
             (async (args: unknown) => {
                 const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
                 const auditBase = {
@@ -166,12 +199,25 @@ export function createMcpRouter(
                             requestId,
                             uidFingerprint,
                             code: error.code,
+                            requiredScope: error.requiredScope,
                             ...safeLogDiagnostics(error.debug),
                         }, error.message);
                         if (options.mutating) {
                             recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
                         }
-                        return errorResponse(error.message, error.code, { requestId, ...error.debug });
+                        // A rejection tied to a missing OAuth scope also carries a
+                        // standards-shaped insufficient_scope challenge in `_meta`
+                        // (issue #5257), so an MCP/ChatGPT client can trigger
+                        // step-up reauthorization instead of only seeing a
+                        // structured `forbidden` error body.
+                        const meta = error.requiredScope
+                            ? {
+                                "mcp/www_authenticate": `Bearer error="insufficient_scope", `
+                                    + `error_description="${error.message}", scope="${error.requiredScope}", `
+                                    + `resource_metadata="${resourceMetadata()}"`,
+                            }
+                            : undefined;
+                        return errorResponse(error.message, error.code, { requestId, ...error.debug }, meta);
                     }
                     logger.error({
                         event: "mcp_internal_error",

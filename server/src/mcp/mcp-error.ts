@@ -38,6 +38,15 @@ export class McpReadError extends Error {
         public readonly code: McpErrorCode,
         message: string,
         public readonly debug?: Record<string, unknown>,
+        /**
+         * Set only when this rejection stems from a missing OAuth scope
+         * (issue #5257). mcp-api.ts uses this to attach a standards-shaped
+         * `_meta["mcp/www_authenticate"]` insufficient_scope challenge to the
+         * tool result, so an MCP/ChatGPT client has a reliable trigger for
+         * step-up reauthorization instead of only a structured `forbidden`
+         * error body.
+         */
+        public readonly requiredScope?: string,
     ) {
         super(message);
     }

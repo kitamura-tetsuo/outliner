@@ -1,0 +1,20 @@
+id: MCP-5257a1e5
+title: MCP mutation OAuth scope declaration and ChatGPT step-up authorization
+title-ja: MCP変更操作のOAuthスコープ宣言とChatGPTステップアップ認可
+status: implemented
+description: 'Every MCP tool declares the OAuth scope(s) it requires under `_meta["mcp/securitySchemes"]` in its `tools/list` entry: a read-only tool (get_item, get_table, query_sql, etc.) advertises `outliner.read`, and every mutation tool (write_relation, update_grid_query, set_view_query, update_table_schema, update_table_records, update_schedule_rule, update_table_schedule_sql) advertises both `outliner.read` and `outliner.write`. When a caller authenticated with only `outliner.read` invokes a mutation tool, the call is rejected before any state changes -- the same structured `forbidden` error as before -- but the tool result also carries a standards-shaped OAuth challenge in `_meta["mcp/www_authenticate"]` (`Bearer error="insufficient_scope", scope="outliner.write", resource_metadata="..."`), giving an MCP/ChatGPT client a reliable, protocol-level trigger to start step-up authorization for the missing write scope instead of only seeing an opaque failure. Completing a fresh authorization that explicitly requests `outliner.read outliner.write` issues a token whose mutation tools then succeed. This never weakens the existing rule that a refresh token can only ever re-mint the scope it was originally issued with: refreshing a read-only grant (even smuggling a wider `scope` into the request body) still yields a read-only access token, so recovering write access always requires the fresh authorization step, never just a token refresh.'
+components:
+- server/src/mcp/mcp-api.ts
+- server/src/mcp/mcp-error.ts
+tests:
+- server/tests/mcp-http-e2e.test.ts
+- server/tests/mcp-mutation-contract.test.ts
+- server/tests/oauth/oauth-flow.test.ts
+- server/tests/oauth/oauth-mcp-step-up.test.ts
+acceptance:
+- A fresh authorization explicitly granting outliner.read outliner.write issues an access token whose mutation tools succeed against an authorized project
+- Calling a mutation tool with only outliner.read is rejected without mutating any state, and the tool result's _meta["mcp/www_authenticate"] carries an insufficient_scope Bearer challenge naming the outliner.write scope
+- Read-only tools continue to work under an outliner.read-only token exactly as before
+- Refreshing a read-only refresh token never upgrades it to outliner.write, even when the refresh request body asks for a wider scope, so mutation stays rejected until a fresh authorization is completed
+- Refreshing a read/write refresh token retains outliner.write, so an otherwise-valid mutation stays permitted after rotation
+- tools/list advertises outliner.read for every read-only tool and outliner.read plus outliner.write for every mutation tool, under _meta["mcp/securitySchemes"]

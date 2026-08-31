@@ -91,7 +91,13 @@ describe("MCP mutation safety contract", () => {
             .set("Authorization", "Bearer token")
             .set("Accept", "application/json, text/event-stream")
             .send(rpc("tools/list"));
-        const tools = bodyOf(listed).result.tools as { name: string; annotations: Record<string, boolean>; }[];
+        const tools = bodyOf(listed).result.tools as {
+            name: string;
+            annotations: Record<string, boolean>;
+            _meta?: Record<string, unknown>;
+        }[];
+        const readOnlyScheme = { outlinerOAuth: { type: "oauth2", scopes: ["outliner.read"] } };
+        const readWriteScheme = { outlinerOAuth: { type: "oauth2", scopes: ["outliner.read", "outliner.write"] } };
         expect(tools.find(t => t.name === "get_table")?.annotations).to.include({
             readOnlyHint: true,
             destructiveHint: false,
@@ -128,22 +134,68 @@ describe("MCP mutation safety contract", () => {
                 idempotentHint: true,
             });
         }
+
+        // Issue #5257: every read-only tool declares an `outliner.read`
+        // OAuth security requirement, and every mutation tool declares both
+        // `outliner.read` and `outliner.write`, so an MCP/ChatGPT client can
+        // discover the write grant it needs before ever calling the tool.
+        for (
+            const name of [
+                "get_table",
+                "trace_grid",
+                "validate_table_schema",
+                "validate_grid_query",
+                "list_relations",
+                "get_relation_schema",
+                "query_sql",
+            ]
+        ) {
+            expect(tools.find(t => t.name === name)?._meta?.["mcp/securitySchemes"]).to.deep.equal(readOnlyScheme);
+        }
+        for (
+            const name of [
+                "write_relation",
+                "update_grid_query",
+                "set_view_query",
+                "update_table_schema",
+                "update_table_records",
+            ]
+        ) {
+            expect(tools.find(t => t.name === name)?._meta?.["mcp/securitySchemes"]).to.deep.equal(readWriteScheme);
+        }
     });
 
-    it("rejects a write tool call from a read-only-scoped token with a structured forbidden error", async () => {
-        const { readService, relationService } = fixture();
-        const app = buildApp(readService, relationService, "outliner.read");
-        const res = await call(app, "write_relation", {
-            projectId: "project-1",
-            relation: "tasks",
-            write: { op: "UPDATE", rowId: "r1", column: "done", value: true },
-        });
-        expect(res.status).to.equal(200);
-        expect(bodyOf(res).result.isError).to.equal(true);
-        const payload = payloadOf(res);
-        expect(payload.code).to.equal("forbidden");
-        expect(payload.error).to.match(/outliner\.write scope/);
-    });
+    it(
+        "rejects a write tool call from a read-only-scoped token with a structured forbidden error "
+            + "and an OAuth insufficient_scope challenge",
+        async () => {
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await call(app, "write_relation", {
+                projectId: "project-1",
+                relation: "tasks",
+                write: { op: "UPDATE", rowId: "r1", column: "done", value: true },
+            });
+            expect(res.status).to.equal(200);
+            expect(bodyOf(res).result.isError).to.equal(true);
+            const payload = payloadOf(res);
+            expect(payload.code).to.equal("forbidden");
+            expect(payload.error).to.match(/outliner\.write scope/);
+
+            // AC-002: the rejection also carries a standards-shaped
+            // insufficient_scope challenge in `_meta`, and the underlying data
+            // is left untouched.
+            const challenge = bodyOf(res).result._meta?.["mcp/www_authenticate"] as string;
+            expect(challenge).to.be.a("string");
+            expect(challenge).to.match(/^Bearer /);
+            expect(challenge).to.include('error="insufficient_scope"');
+            expect(challenge).to.include('scope="outliner.write"');
+            expect(challenge).to.include(
+                'resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource/mcp"',
+            );
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
 
     it("returns a revision on write and rejects a stale expectedRevision with a structured conflict", async () => {
         const { readService, relationService } = fixture();
