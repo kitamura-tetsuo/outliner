@@ -123,6 +123,9 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         ]);
         for (const tool of tools) {
             expect(tool.annotations).to.include({ readOnlyHint: true, destructiveHint: false, idempotentHint: true });
+            expect(tool._meta?.securitySchemes).to.deep.equal([
+                { type: "oauth2", scopes: ["outliner.read"] },
+            ]);
         }
     });
 

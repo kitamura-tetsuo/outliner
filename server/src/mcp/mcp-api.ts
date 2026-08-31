@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import crypto from "crypto";
 import express from "express";
 import * as z from "zod/v4";
@@ -23,9 +24,34 @@ const response = (value: unknown) => ({ content: [{ type: "text" as const, text:
  * that CallToolResult directly: isError: true with the structured contract
  * as JSON text.
  */
-const errorResponse = (message: string, code: McpErrorCode, debug?: Record<string, unknown>) => ({
+const errorResponse = (
+    message: string,
+    code: McpErrorCode,
+    debug?: Record<string, unknown>,
+    meta?: Record<string, unknown>,
+) => ({
     content: [{ type: "text" as const, text: JSON.stringify({ error: message, code, ...debug }) }],
     isError: true as const,
+    ...(meta ? { _meta: meta } : {}),
+});
+/**
+ * Every MCP tool declares the OAuth scope(s) it requires under
+ * `_meta.securitySchemes` (issue #5257), mirroring the shape proposed for a
+ * top-level Tool `securitySchemes` field (MCP SEP-1488: an array of scheme
+ * objects, `{ type: "oauth2", scopes: [...] }`) — the installed
+ * `@modelcontextprotocol/sdk` (1.30.0) has no first-party `securitySchemes`
+ * support yet, so `_meta` is the only extensibility point that survives
+ * `tools/list` serialization, but ChatGPT/MCP Apps SDK clients are documented
+ * to also recognize this exact `_meta.securitySchemes` array as a legacy
+ * mirror. A read-only tool advertises `outliner.read`; a mutation tool
+ * advertises `outliner.read` *and* `outliner.write`, giving a client a
+ * declarative signal for which tools need the broader write grant instead of
+ * only discovering it after a call is rejected.
+ */
+const securitySchemesMeta = (requiresWrite: boolean) => ({
+    securitySchemes: [
+        { type: "oauth2", scopes: requiresWrite ? ["outliner.read", "outliner.write"] : ["outliner.read"] },
+    ],
 });
 const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
     debug
@@ -61,6 +87,17 @@ export function createMcpRouter(
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
     const resourceMetadata = () => `${issuer()}/.well-known/oauth-protected-resource/mcp`;
     const challenge = () => `Bearer resource_metadata="${resourceMetadata()}"`;
+    /**
+     * A rejection tied to a missing OAuth scope carries a standards-shaped
+     * insufficient_scope challenge in `_meta["mcp/www_authenticate"]` (issue
+     * #5257), so an MCP/ChatGPT client can trigger step-up reauthorization
+     * instead of only seeing a structured `forbidden` error body.
+     */
+    const insufficientScopeMeta = (message: string, scope: string) => ({
+        "mcp/www_authenticate": `Bearer error="insufficient_scope", `
+            + `error_description="${message}", scope="${scope}", `
+            + `resource_metadata="${resourceMetadata()}"`,
+    });
 
     router.get(["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"], (_req, res) => {
         res.json({
@@ -105,12 +142,56 @@ export function createMcpRouter(
         const grantedScopes = verifyToken(req.headers.authorization!.slice("Bearer ".length)).scope.split(/\s+/);
         const requireWrite = () => {
             if (!grantedScopes.includes("outliner.write")) {
-                throw new McpReadError("forbidden", "The outliner.write scope is required");
+                throw new McpReadError(
+                    "forbidden",
+                    "The outliner.write scope is required",
+                    undefined,
+                    "outliner.write",
+                );
             }
         };
 
         const mcp = new McpServer({ name: "outliner", version: "1.0.0" });
         const uidFingerprint = crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12);
+        /**
+         * Every tool registered below, keyed by name, filled in as each
+         * `tool(...)` call runs. Backs a `CallToolRequestSchema` handler
+         * installed further down that replaces the MCP SDK's own dispatch
+         * (`mcp.server.setRequestHandler(...)`, an intentionally public
+         * extension point -- see `McpServer.server`'s doc comment) so the
+         * write-scope check runs *before* any per-tool argument validation,
+         * for every individual `tools/call` message the transport hands us
+         * -- including each element of a JSON-RPC batch, which the SDK
+         * unbatches and dispatches through this same per-message path.
+         * Peeking at the raw HTTP request body instead (an earlier version
+         * of this check) cannot see past that unbatching, so a batched
+         * mutation call could slip past a body-level guard entirely (issue
+         * #5257, REQ-002/REQ-008).
+         */
+        const toolRegistry = new Map<string, {
+            requiresWrite: boolean;
+            shape: z.ZodRawShape;
+            callback: (args: unknown) => Promise<unknown>;
+        }>();
+        const buildAuditBase = (name: string, typedArgs: Record<string, unknown>) => ({
+            requestId,
+            uidFingerprint,
+            tool: name,
+            projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
+            entity: typeof typedArgs.relation === "string"
+                ? typedArgs.relation
+                : typeof typedArgs.ruleId === "string"
+                ? `schedule:${typedArgs.ruleId}`
+                : typeof typedArgs.gridId === "string"
+                ? `grid:${typedArgs.gridId}`
+                : typeof typedArgs.viewId === "string"
+                ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
+                : typeof typedArgs.tableId === "string"
+                ? `table:${typedArgs.tableId}`
+                : undefined,
+            operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
+            dryRun: typedArgs.dryRun === true,
+        });
         const tool = <T extends z.ZodRawShape>(
             name: string,
             description: string,
@@ -121,38 +202,22 @@ export function createMcpRouter(
                 /** Mutation tools get every attempt recorded to the audit log. */
                 mutating?: boolean;
             } = {},
-        ) => mcp.registerTool(
-            name,
-            { description, inputSchema: shape, annotations: options.annotations ?? readOnly },
-            (async (args: unknown) => {
+        ) => {
+            const callback = (async (args: unknown) => {
                 const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
-                const auditBase = {
-                    requestId,
-                    uidFingerprint,
-                    tool: name,
-                    projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
-                    entity: typeof typedArgs.relation === "string"
-                        ? typedArgs.relation
-                        : typeof typedArgs.ruleId === "string"
-                        ? `schedule:${typedArgs.ruleId}`
-                        : typeof typedArgs.gridId === "string"
-                        ? `grid:${typedArgs.gridId}`
-                        : typeof typedArgs.viewId === "string"
-                        ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
-                        : typeof typedArgs.tableId === "string"
-                        ? `table:${typedArgs.tableId}`
-                        : undefined,
-                    operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
-                    dryRun: typedArgs.dryRun === true,
-                };
+                const auditBase = buildAuditBase(name, typedArgs);
                 try {
                     const result = await handler(args as z.infer<z.ZodObject<T>>);
                     if (options.mutating) {
-                        const fields = result && typeof result === "object" ? result as Record<string, unknown> : {};
+                        const fields = result && typeof result === "object"
+                            ? result as Record<string, unknown>
+                            : {};
                         recordMcpAudit({
                             ...auditBase,
                             outcome: "success",
-                            priorRevision: typeof fields.priorRevision === "string" ? fields.priorRevision : undefined,
+                            priorRevision: typeof fields.priorRevision === "string"
+                                ? fields.priorRevision
+                                : undefined,
                             newRevision: typeof fields.revision === "string" ? fields.revision : undefined,
                             applied: fields.applied !== false,
                             replayed: fields.replayed === true,
@@ -166,12 +231,16 @@ export function createMcpRouter(
                             requestId,
                             uidFingerprint,
                             code: error.code,
+                            requiredScope: error.requiredScope,
                             ...safeLogDiagnostics(error.debug),
                         }, error.message);
                         if (options.mutating) {
                             recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
                         }
-                        return errorResponse(error.message, error.code, { requestId, ...error.debug });
+                        const meta = error.requiredScope
+                            ? insufficientScopeMeta(error.message, error.requiredScope)
+                            : undefined;
+                        return errorResponse(error.message, error.code, { requestId, ...error.debug }, meta);
                     }
                     logger.error({
                         event: "mcp_internal_error",
@@ -180,15 +249,31 @@ export function createMcpRouter(
                         tool: name,
                     }, error instanceof Error ? error.message : String(error));
                     if (options.mutating) {
-                        recordMcpAudit({ ...auditBase, outcome: "internal_failure", applied: false, replayed: false });
+                        recordMcpAudit({
+                            ...auditBase,
+                            outcome: "internal_failure",
+                            applied: false,
+                            replayed: false,
+                        });
                     }
                     // Never forward an unexpected internal exception's message to the
                     // client: it may reveal implementation detail. It is fully logged
                     // above (mcp_internal_error) for server-side diagnosis.
                     return errorResponse("Internal error", "internal_failure", { requestId });
                 }
-            }) as never,
-        );
+            }) as (args: unknown) => Promise<unknown>;
+            toolRegistry.set(name, { requiresWrite: !!options.mutating, shape, callback });
+            return mcp.registerTool(
+                name,
+                {
+                    description,
+                    inputSchema: shape,
+                    annotations: options.annotations ?? readOnly,
+                    _meta: securitySchemesMeta(!!options.mutating),
+                },
+                callback as never,
+            );
+        };
         tool(
             "resolve_url",
             "Resolve a supported Outliner URL into stable IDs.",
@@ -555,6 +640,69 @@ export function createMcpRouter(
                 },
             );
         }
+
+        // Replace the MCP SDK's own `tools/call` dispatch (installed by
+        // `mcp.registerTool()` via `McpServer.setToolRequestHandlers()`)
+        // with our own: `mcp.server` is a documented public extension point
+        // ("useful for advanced operations"), and `setRequestHandler`
+        // explicitly supports replacing a handler already set for a method.
+        // The SDK's default dispatch runs zod argument validation before
+        // ever calling a tool's own handler -- where `requireWrite()`
+        // normally lives -- so a schema-invalid mutation call from a
+        // read-only-scoped caller would otherwise get a generic
+        // input-validation error with no insufficient_scope challenge at
+        // all (issue #5257, REQ-002). Checking the scope here instead, ahead
+        // of argument-shape validation, guarantees the challenge regardless
+        // of whether `arguments` happens to be well-formed. This handler is
+        // invoked once per individual JSON-RPC request message, including
+        // each element of a batch the transport unbatches beforehand, so a
+        // batched mutation call gets exactly the same guard as a singleton
+        // one, and every other message in the same batch is unaffected
+        // (REQ-008).
+        mcp.server.setRequestHandler(
+            CallToolRequestSchema,
+            (async (request: { params: { name: string; arguments?: unknown; }; }) => {
+                const { name, arguments: args } = request.params;
+                const entry = toolRegistry.get(name);
+                if (!entry) {
+                    return { content: [{ type: "text" as const, text: `Tool ${name} not found` }], isError: true };
+                }
+                const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
+                if (entry.requiresWrite && !grantedScopes.includes("outliner.write")) {
+                    const message = "The outliner.write scope is required";
+                    recordMcpAudit({
+                        ...buildAuditBase(name, typedArgs),
+                        outcome: "forbidden",
+                        applied: false,
+                        replayed: false,
+                    });
+                    logger.info({
+                        event: "mcp_resolution_failed",
+                        requestId,
+                        uidFingerprint,
+                        code: "forbidden",
+                        requiredScope: "outliner.write",
+                    }, message);
+                    return errorResponse(
+                        message,
+                        "forbidden",
+                        { requestId },
+                        insufficientScopeMeta(message, "outliner.write"),
+                    );
+                }
+                const parsed = z.object(entry.shape).safeParse(typedArgs);
+                if (!parsed.success) {
+                    return {
+                        content: [{
+                            type: "text" as const,
+                            text: `Invalid arguments for tool ${name}: ${parsed.error.message}`,
+                        }],
+                        isError: true,
+                    };
+                }
+                return entry.callback(parsed.data);
+            }) as never,
+        );
 
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         try {

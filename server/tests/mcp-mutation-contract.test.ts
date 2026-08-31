@@ -82,6 +82,21 @@ const call = (app: express.Express, name: string, args: Record<string, unknown>)
         .set("Accept", "application/json, text/event-stream")
         .send(rpc("tools/call", { name, arguments: args }));
 const payloadOf = (response: request.Response) => JSON.parse(bodyOf(response).result.content[0].text);
+// A JSON-RPC batch response streams one `data: {...}` line per request in
+// the batch (rather than a single JSON array body), so a batch call needs
+// its own parser that returns every message keyed by id.
+const resultsOf = (response: request.Response) => {
+    const results = new Map<
+        number,
+        { isError?: boolean; _meta?: Record<string, string>; content: { text: string; }[]; }
+    >();
+    for (const line of response.text.split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const parsed = JSON.parse(line.slice(6));
+        results.set(parsed.id, parsed.result);
+    }
+    return results;
+};
 
 describe("MCP mutation safety contract", () => {
     it("advertises accurate per-tool annotations for the write tools", async () => {
@@ -91,7 +106,13 @@ describe("MCP mutation safety contract", () => {
             .set("Authorization", "Bearer token")
             .set("Accept", "application/json, text/event-stream")
             .send(rpc("tools/list"));
-        const tools = bodyOf(listed).result.tools as { name: string; annotations: Record<string, boolean>; }[];
+        const tools = bodyOf(listed).result.tools as {
+            name: string;
+            annotations: Record<string, boolean>;
+            _meta?: Record<string, unknown>;
+        }[];
+        const readOnlyScheme = [{ type: "oauth2", scopes: ["outliner.read"] }];
+        const readWriteScheme = [{ type: "oauth2", scopes: ["outliner.read", "outliner.write"] }];
         expect(tools.find(t => t.name === "get_table")?.annotations).to.include({
             readOnlyHint: true,
             destructiveHint: false,
@@ -128,22 +149,168 @@ describe("MCP mutation safety contract", () => {
                 idempotentHint: true,
             });
         }
+
+        // Issue #5257: every read-only tool declares an `outliner.read`
+        // OAuth security requirement, and every mutation tool declares both
+        // `outliner.read` and `outliner.write`, so an MCP/ChatGPT client can
+        // discover the write grant it needs before ever calling the tool.
+        for (
+            const name of [
+                "get_table",
+                "trace_grid",
+                "validate_table_schema",
+                "validate_grid_query",
+                "list_relations",
+                "get_relation_schema",
+                "query_sql",
+            ]
+        ) {
+            expect(tools.find(t => t.name === name)?._meta?.securitySchemes).to.deep.equal(readOnlyScheme);
+        }
+        for (
+            const name of [
+                "write_relation",
+                "update_grid_query",
+                "set_view_query",
+                "update_table_schema",
+                "update_table_records",
+            ]
+        ) {
+            expect(tools.find(t => t.name === name)?._meta?.securitySchemes).to.deep.equal(readWriteScheme);
+        }
     });
 
-    it("rejects a write tool call from a read-only-scoped token with a structured forbidden error", async () => {
-        const { readService, relationService } = fixture();
-        const app = buildApp(readService, relationService, "outliner.read");
-        const res = await call(app, "write_relation", {
-            projectId: "project-1",
-            relation: "tasks",
-            write: { op: "UPDATE", rowId: "r1", column: "done", value: true },
-        });
-        expect(res.status).to.equal(200);
-        expect(bodyOf(res).result.isError).to.equal(true);
-        const payload = payloadOf(res);
-        expect(payload.code).to.equal("forbidden");
-        expect(payload.error).to.match(/outliner\.write scope/);
-    });
+    it(
+        "rejects a write tool call from a read-only-scoped token with a structured forbidden error "
+            + "and an OAuth insufficient_scope challenge",
+        async () => {
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await call(app, "write_relation", {
+                projectId: "project-1",
+                relation: "tasks",
+                write: { op: "UPDATE", rowId: "r1", column: "done", value: true },
+            });
+            expect(res.status).to.equal(200);
+            expect(bodyOf(res).result.isError).to.equal(true);
+            const payload = payloadOf(res);
+            expect(payload.code).to.equal("forbidden");
+            expect(payload.error).to.match(/outliner\.write scope/);
+
+            // AC-002: the rejection also carries a standards-shaped
+            // insufficient_scope challenge in `_meta`, and the underlying data
+            // is left untouched.
+            const challenge = bodyOf(res).result._meta?.["mcp/www_authenticate"] as string;
+            expect(challenge).to.be.a("string");
+            expect(challenge).to.match(/^Bearer /);
+            expect(challenge).to.include('error="insufficient_scope"');
+            expect(challenge).to.include('scope="outliner.write"');
+            expect(challenge).to.include(
+                'resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource/mcp"',
+            );
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
+
+    it(
+        "still returns the insufficient_scope challenge when a read-only-scoped mutation call has "
+            + "schema-invalid arguments (REQ-002)",
+        async () => {
+            // The MCP SDK validates `arguments` against the tool's input
+            // schema before ever invoking this tool's handler (where
+            // requireWrite() normally lives). A read-only caller must still
+            // get the OAuth challenge -- not just a generic input-validation
+            // error -- even when it omits required fields, so the scope
+            // check has to happen ahead of argument-shape validation.
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await call(app, "write_relation", {
+                projectId: "project-1",
+                relation: "tasks",
+                // `write` is required by the schema but omitted here.
+            });
+            expect(res.status).to.equal(200);
+            expect(bodyOf(res).result.isError).to.equal(true);
+            const payload = payloadOf(res);
+            expect(payload.code).to.equal("forbidden");
+
+            const challenge = bodyOf(res).result._meta?.["mcp/www_authenticate"] as string;
+            expect(challenge).to.be.a("string");
+            expect(challenge).to.include('error="insufficient_scope"');
+            expect(challenge).to.include('scope="outliner.write"');
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
+
+    it(
+        "still returns the insufficient_scope challenge for a batched, schema-invalid mutation call "
+            + "(REQ-002)",
+        async () => {
+            // The installed MCP SDK's Streamable HTTP transport accepts a
+            // JSON-RPC batch (a top-level array of requests), unbatching it
+            // into individual messages dispatched through the same per-tool
+            // handler used for a singleton request, so the same
+            // requireWrite()-bypass risk applies per batch element and
+            // needs the same guard.
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await request(app).post("/mcp")
+                .set("Authorization", "Bearer token")
+                .set("Accept", "application/json, text/event-stream")
+                .send([
+                    rpc("tools/call", {
+                        name: "write_relation",
+                        // `write` is required by the schema but omitted here.
+                        arguments: { projectId: "project-1", relation: "tasks" },
+                    }, 1),
+                ]);
+            expect(res.status).to.equal(200);
+            const result = resultsOf(res).get(1)!;
+            expect(result.isError).to.equal(true);
+            const challenge = result._meta?.["mcp/www_authenticate"];
+            expect(challenge).to.be.a("string");
+            expect(challenge).to.include('error="insufficient_scope"');
+            expect(challenge).to.include('scope="outliner.write"');
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
+
+    it(
+        "only rejects the mutation entry of a mixed batch, leaving a read-only call in the same "
+            + "batch unaffected (REQ-002, REQ-008)",
+        async () => {
+            // A read-only-scoped caller batching a valid read alongside a
+            // mutation attempt must still get the read result -- rejecting
+            // the whole batch would itself be a REQ-008 regression.
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await request(app).post("/mcp")
+                .set("Authorization", "Bearer token")
+                .set("Accept", "application/json, text/event-stream")
+                .send([
+                    rpc(
+                        "tools/call",
+                        { name: "get_table", arguments: { projectId: "project-1", tableId: "table-1" } },
+                        1,
+                    ),
+                    rpc("tools/call", {
+                        name: "write_relation",
+                        arguments: { projectId: "project-1", relation: "tasks" },
+                    }, 2),
+                ]);
+            expect(res.status).to.equal(200);
+            const results = resultsOf(res);
+
+            const readResult = results.get(1)!;
+            expect(readResult.isError).to.not.equal(true);
+            expect(JSON.parse(readResult.content[0].text).tableId).to.equal("table-1");
+
+            const writeResult = results.get(2)!;
+            expect(writeResult.isError).to.equal(true);
+            expect(writeResult._meta?.["mcp/www_authenticate"]).to.include('scope="outliner.write"');
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
 
     it("returns a revision on write and rejects a stale expectedRevision with a structured conflict", async () => {
         const { readService, relationService } = fixture();
