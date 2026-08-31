@@ -31,16 +31,19 @@ function commit(e: Event) {
     editing = false;
     onCommit((e.target as HTMLInputElement).value);
 }
+
+function focusNode(node: HTMLElement) {
+    node.focus();
+}
 </script>
 
 {#if editing && editable}
-    <!-- svelte-ignore a11y_autofocus -->
     <input
+        use:focusNode
         class="cell-input"
         aria-label={ariaLabel || "Edit cell value"}
         type="text"
         value={editSeed ?? (value === null || value === undefined ? "" : String(value))}
-        autofocus
         onblur={commit}
         onkeydown={(e) => {
             if (e.isComposing) return;
