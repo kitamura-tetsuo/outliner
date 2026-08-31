@@ -8,7 +8,7 @@
     import { getLogger } from "../../lib/logger";
 
     const logger = getLogger("DemoListPage");
-    import { store } from "../../stores/store.svelte";
+    import { store, isProvisionalProject } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
         import Breadcrumb from "../../components/Breadcrumb.svelte";
     import ConfirmDialog from "../../components/ConfirmDialog.svelte";
@@ -170,7 +170,7 @@
         {/if}
     </div>
 
-    {#if isLoading || (yjsStore.notYetSynced && !yjsStore.syncError)}
+    {#if isLoading || ((!store.project?.ydoc || isProvisionalProject(store.project) || yjsStore.notYetSynced) && !yjsStore.syncError)}
         <div class="py-8"><Loader message="Loading Demo..." /></div>
     {:else if error || yjsStore.syncError}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
@@ -194,7 +194,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isLoading && !error && !yjsStore.syncError && !yjsStore.notYetSynced && store.project && pages}
+    {:else if !isLoading && !error && !yjsStore.syncError && (store.project?.ydoc && !isProvisionalProject(store.project) && !yjsStore.notYetSynced) && pages}
         <div class="mt-6" data-testid="demo-page-list">
             <!-- Keyed on the Y.Doc so a reset that replaces the document during
                  validation remounts the list against the new document. -->

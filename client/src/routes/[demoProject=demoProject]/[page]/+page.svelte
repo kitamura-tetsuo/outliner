@@ -14,7 +14,7 @@ import { goto } from "$app/navigation";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByKey, isPageNamed, findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
-    import { store } from "../../../stores/store.svelte";
+    import { store, isProvisionalProject } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
 
     const logger = getLogger("DemoPageView");
@@ -291,7 +291,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 </div>
             </div>
         </div>
-    {:else if (isLoading || (yjsStore.notYetSynced && !yjsStore.syncError && !store.currentPage)) && !error && !pageNotFound}
+    {:else if (isLoading || ((!store.project?.ydoc || isProvisionalProject(store.project) || yjsStore.notYetSynced) && !yjsStore.syncError && !store.currentPage)) && !error && !pageNotFound}
         <div class="py-8"><Loader message="Loading Demo..." /></div>
     {:else if error || yjsStore.syncError}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
