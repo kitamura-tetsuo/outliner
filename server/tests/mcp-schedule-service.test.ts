@@ -99,6 +99,59 @@ describe("MCP Schedule diagnostics", function() {
             code: "invalid_row_id",
             rowIndex: 0,
         });
+        auditConnection.document.getText("schema").delete(0, auditConnection.document.getText("schema").length);
+        auditConnection.document.getText("schema").insert(
+            0,
+            "CREATE TABLE audit (id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'todo')",
+        );
+        const omittedDefaultRecord = new Y.Map<unknown>();
+        auditConnection.document.getMap("data").set("existing", omittedDefaultRecord);
+        const omittedDefault = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (id) SELECT id FROM audit RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(omittedDefault).to.include({ accepted: false });
+        expect(omittedDefault.candidateRows).to.deep.equal([]);
+        expect(omittedDefault.errors[0]).to.include({ phase: "materialization" });
+        auditConnection.document.getMap("data").delete("existing");
+        auditConnection.document.getText("schema").delete(0, auditConnection.document.getText("schema").length);
+        auditConnection.document.getText("schema").insert(0, "CREATE TABLE audit (id TEXT PRIMARY KEY, value TEXT)");
+        const dependencyCandidate = {
+            ...(read.stored as never),
+            sql: "INSERT INTO tasks (id) SELECT id FROM audit RETURNING *",
+        };
+        const dependencyBefore = await service.validate(
+            "user",
+            "project-1",
+            dependencyCandidate,
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        const dependencyRecord = new Y.Map<unknown>();
+        dependencyRecord.set("value", "changed");
+        auditConnection.document.getMap("data").set("template-1", dependencyRecord);
+        const dependencyAfter = await service.validate(
+            "user",
+            "project-1",
+            dependencyCandidate,
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(dependencyAfter.revisions.schedule).to.equal(dependencyBefore.revisions.schedule);
+        expect(dependencyAfter.revisions.targetTable).to.equal(dependencyBefore.revisions.targetTable);
+        expect(dependencyAfter.revisions.dependencies["audit-table"]).not.to.equal(
+            dependencyBefore.revisions.dependencies["audit-table"],
+        );
+        expect(dependencyAfter.candidateRows[0]).to.include({ id: "template-1" });
+        auditConnection.document.getMap("data").delete("template-1");
+        auditConnection.document.getText("schema").delete(0, auditConnection.document.getText("schema").length);
+        auditConnection.document.getText("schema").insert(0, "CREATE TABLE audit (id TEXT PRIMARY KEY)");
         const rejected = await service.validate("user", "project-1", {
             ...(read.stored as never),
             sql: "INSERT INTO missing_table (id) VALUES ('bad') RETURNING *",

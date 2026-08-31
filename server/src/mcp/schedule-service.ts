@@ -38,6 +38,7 @@ interface SchedulePreviewer {
         truncated?: boolean;
         errors: unknown[];
         targetRevision?: string;
+        tableRevisions?: Record<string, string>;
     }>;
     getTableRevision(uid: string, projectId: string, tableId: string): Promise<string>;
 }
@@ -376,6 +377,12 @@ export class OutlinerScheduleService {
                     : target
                     ? revisionOf(Object.fromEntries(target.entries()))
                     : undefined),
+                dependencies: Object.fromEntries(
+                    references.filter(reference => reference.kind === "sql-reference").map(reference => [
+                        reference.tableId,
+                        preview.tableRevisions?.[reference.tableId] ?? reference.revision,
+                    ]),
+                ),
             },
             persisted: false,
         };

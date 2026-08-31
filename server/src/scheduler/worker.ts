@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { parentPort } from "node:worker_threads";
 import { logger } from "../logger.js";
+import { materializeScheduleRecords } from "./table-materialization.js";
 import { JobData } from "./worker-types.js";
 
 /**
@@ -140,29 +141,7 @@ async function executeJob(data: JobData) {
             const tableRecords = table.records;
             if (!tableRecords || tableRecords.length === 0) continue;
 
-            const colsRes = await db.query<{ column_name: string; }>(
-                `
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE table_schema = $1 AND table_name = $2
-            `,
-                [pgSchema, tableName],
-            );
-            const cols = colsRes.rows.map(r => r.column_name);
-
-            let query = `INSERT INTO "${tableName}" (${cols.map(c => `"${c.replace(/"/g, '""')}"`).join(",")}) VALUES `;
-            const flatValues: unknown[] = [];
-            const values = tableRecords.map((record: Record<string, unknown>, rIdx: number) => {
-                const rowPlaceholders = cols.map((c, cIdx) => {
-                    const val = record[c] !== undefined ? record[c] : null;
-                    flatValues.push(val);
-                    return "$" + (rIdx * cols.length + cIdx + 1);
-                });
-                return `(${rowPlaceholders.join(",")})`;
-            });
-
-            query += values.join(",") + ";";
-            await db.query(query, flatValues);
+            await materializeScheduleRecords(db, pgSchema, tableName, tableRecords);
         }
 
         if (timezone) {

@@ -1,7 +1,10 @@
 import { Hocuspocus } from "@hocuspocus/server";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { expect } from "chai";
 import express from "express";
 import fs from "fs";
+import http from "http";
 import request from "supertest";
 import * as Y from "yjs";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
@@ -261,6 +264,15 @@ describe("Schedule MCP HTTP contract", () => {
             occurrenceUtcIso: "2099-01-01T09:00:00Z",
         });
         expect(productionMaterialization.success).to.equal(false);
+        const productionOmittedDefault = await executor.executeJob({
+            ruleId: "default-materialization-parity",
+            schemaSql: "CREATE TABLE defaults_table (id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'todo')",
+            ruleSql: "INSERT INTO defaults_table (id, status) VALUES ('new', 'todo') RETURNING *",
+            records: [{ id: "existing" }],
+            timezone: "UTC",
+            occurrenceUtcIso: "2099-01-01T09:00:00Z",
+        });
+        expect(productionOmittedDefault.success).to.equal(false);
         const generated = await executor.executeJob({
             ruleId: "rule-1",
             schemaSql,
@@ -269,7 +281,6 @@ describe("Schedule MCP HTTP contract", () => {
             timezone: "UTC",
             occurrenceUtcIso: "2099-01-01T09:00:00Z",
         });
-        await executor.stopWorker();
         expect(generated.success, generated.error).to.equal(true);
         const generatedRow = generated.rows![0] as Record<string, string | number>;
         const storedRow = new Y.Map<string | number>();
@@ -283,6 +294,98 @@ describe("Schedule MCP HTTP contract", () => {
             })),
         ).value;
         expect(laterTable.records[0].values).to.include({ id: "fixed", order: 1 });
+
+        // Exercise the published Streamable HTTP protocol through the actual
+        // MCP SDK connector rather than supertest's in-process request helper.
+        tableConnection.document.getMap("data").clear();
+        rule.set("sql", "INSERT INTO tasks (id, order) VALUES ('broken', 1) RETURNING *");
+        rule.set("lastRunStatus", "error");
+        rule.set("lastRunError", 'syntax error near reserved identifier "order"');
+        const server = http.createServer(app);
+        await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+        const address = server.address();
+        if (!address || typeof address === "string") throw new Error("Connector test server did not bind");
+        const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`), {
+            requestInit: { headers: { Authorization: "Bearer token" } },
+        });
+        const connector = new Client({ name: "schedule-repair-test", version: "1.0.0" });
+        const connectorCall = async (name: string, args: Record<string, unknown>) => {
+            const result = await connector.callTool({ name, arguments: args });
+            return JSON.parse((result.content as Array<{ text: string; }>)[0]!.text);
+        };
+        try {
+            await connector.connect(transport);
+            expect(
+                await connectorCall("resolve_url", {
+                    url: "https://example.test/Canonical/-/tables/table-1",
+                }),
+            ).to.include({ kind: "table", entityId: "table-1" });
+            expect(
+                (await connectorCall("list_schedules", {
+                    projectId: "project-1",
+                    tableId: "table-1",
+                })).schedules[0],
+            ).to.include({ ruleId: "rule-1" });
+            const connectorRead = await connectorCall("get_schedule", {
+                projectId: "project-1",
+                ruleId: "rule-1",
+            });
+            expect(connectorRead.stored).to.include({ lastRunStatus: "error" });
+            expect(
+                (await connectorCall("get_table", {
+                    projectId: "project-1",
+                    tableId: "table-1",
+                    includeRecords: true,
+                })).records,
+            ).to.deep.equal([]);
+            const repairedSql = "INSERT INTO tasks (id, \"order\") VALUES ('connector-fixed', 1) RETURNING *";
+            const connectorPreview = await connectorCall("validate_schedule_rule", {
+                projectId: "project-1",
+                ruleId: "rule-1",
+                candidate: { ...connectorRead.stored, sql: repairedSql },
+                occurrence: "2099-01-01T09:00:00Z",
+            });
+            expect(connectorPreview).to.include({ accepted: true, persisted: false });
+            expect(tableConnection.document.getMap("data").size).to.equal(0);
+            const connectorUpdate = await connectorCall("update_schedule_rule", {
+                projectId: "project-1",
+                ruleId: "rule-1",
+                changes: { sql: repairedSql },
+                expectedRevision: connectorRead.revision,
+                operationId: "connector-repair-1",
+            });
+            expect(connectorUpdate).to.include({ applied: true, replayed: false });
+            expect(
+                (await connectorCall("get_schedule", {
+                    projectId: "project-1",
+                    ruleId: "rule-1",
+                })).stored.sql,
+            ).to.equal(repairedSql);
+            const connectorGenerated = await executor.executeJob({
+                ruleId: "connector-rule-1",
+                schemaSql,
+                ruleSql: repairedSql,
+                records: [],
+                timezone: "UTC",
+                occurrenceUtcIso: "2099-01-01T09:00:00Z",
+            });
+            expect(connectorGenerated.success, connectorGenerated.error).to.equal(true);
+            const connectorRow = connectorGenerated.rows![0] as Record<string, string | number>;
+            const connectorStoredRow = new Y.Map<string | number>();
+            Object.entries(connectorRow).forEach(([key, value]) => connectorStoredRow.set(key, value));
+            tableConnection.document.getMap("data").set(String(connectorRow.id), connectorStoredRow);
+            expect(
+                (await connectorCall("get_table", {
+                    projectId: "project-1",
+                    tableId: "table-1",
+                    includeRecords: true,
+                })).records[0].values,
+            ).to.include({ id: "connector-fixed", order: 1 });
+        } finally {
+            await connector.close();
+            await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+            await executor.stopWorker();
+        }
         rule.set("lastRunError", "diagnostic".repeat(1024));
         for (
             const tool of [

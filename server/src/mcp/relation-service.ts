@@ -8,6 +8,7 @@ import {
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
 import { validateScheduleRowIdentities } from "../scheduler/row-validation.js";
+import { materializeScheduleRecords } from "../scheduler/table-materialization.js";
 import { type Item, Project } from "../schema/app-schema.js";
 import {
     assertRevision,
@@ -182,6 +183,7 @@ export class OutlinerRelationService {
             }
             const lease = await acquireDb();
             const opened: TableDoc[] = [];
+            const tableRevisions: Record<string, string> = {};
             let targetSource: TableDoc | undefined;
             try {
                 const identifiers = parseSqlIdentifiers(candidate.sql);
@@ -198,13 +200,23 @@ export class OutlinerRelationService {
                     const source = await this.openTable(uid, projectId, table.tableId);
                     opened.push(source);
                     if (table.tableId === candidate.targetTableId) targetSource = source;
+                    tableRevisions[table.tableId] = this.tableRevision(
+                        table.tableId,
+                        table.displayName,
+                        table.relation,
+                        source,
+                    );
                     if (!source.schema.trim()) continue;
                     await lease.db.exec(source.schema);
                     try {
                         // Schedule production materializes the complete record
                         // set before running a rule. Preview must fail on the
                         // same malformed record rather than silently omitting it.
-                        await this.loadRecords(lease.db, table.relation, source.data);
+                        const records = [...source.data.entries()].map(([id, record]) => ({
+                            ...Object.fromEntries(record.entries()),
+                            id,
+                        }));
+                        await materializeScheduleRecords(lease.db, "public", table.relation, records);
                     } catch (error) {
                         return {
                             accepted: false,
@@ -260,6 +272,7 @@ export class OutlinerRelationService {
                             targetSource,
                         )
                         : undefined,
+                    tableRevisions,
                 };
             } catch (error) {
                 return { accepted: false, candidateRows: [], errors: [this.sqlDiagnostic(error, "execution")] };
