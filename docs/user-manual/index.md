@@ -145,7 +145,7 @@ Paste any URL to automatically create an external link.
 Easily find content and execute actions within Outliner.
 
 - **Search:** Click the **Search** button in the document toolbar to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Search and Replace:** The Search panel also includes Replace functionality. Replace only rewrites item text; page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
+- **Unified Find:** open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -268,6 +268,10 @@ Once the table is created, you will see a grid view where you can add, edit, or 
   - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
 - The table toolbar also provides **Undo** and **Redo** buttons for convenience; these seamlessly integrate with the project's single global history.
 - The table name in the toolbar links to the source table's own page.
+
+### Grid selection
+
+Click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
 
 ### Tables, Grids and Schedules are separate
 
