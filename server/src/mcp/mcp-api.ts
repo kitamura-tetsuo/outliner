@@ -1,6 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { toNodeHandler } from "@modelcontextprotocol/node";
+import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import crypto from "crypto";
 import express from "express";
 import * as z from "zod/v4";
@@ -11,10 +10,14 @@ import { recordMcpAudit } from "./audit-log.js";
 import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 import { OutlinerRelationService } from "./relation-service.js";
 import { OutlinerScheduleService } from "./schedule-service.js";
+import { type OutlinerToolName, toolOutputSchemas } from "./tool-output-schemas.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 
-const response = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
+const response = (value: z.infer<typeof z.json>) => ({
+    content: [{ type: "text" as const, text: JSON.stringify(value) }],
+    structuredContent: value,
+});
 /**
  * The MCP SDK's own tool-dispatch error handling discards everything a
  * thrown error carries except its message (see McpServer.createToolError),
@@ -171,6 +174,7 @@ export function createMcpRouter(
         const toolRegistry = new Map<string, {
             requiresWrite: boolean;
             shape: z.ZodRawShape;
+            outputSchema: z.ZodType;
             callback: (args: unknown) => Promise<unknown>;
         }>();
         const buildAuditBase = (name: string, typedArgs: Record<string, unknown>) => ({
@@ -192,8 +196,8 @@ export function createMcpRouter(
             operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
             dryRun: typedArgs.dryRun === true,
         });
-        const tool = <T extends z.ZodRawShape>(
-            name: string,
+        const tool = <Name extends OutlinerToolName, T extends z.ZodRawShape>(
+            name: Name,
             description: string,
             shape: T,
             handler: (args: z.infer<z.ZodObject<T>>) => Promise<unknown> | unknown,
@@ -208,6 +212,7 @@ export function createMcpRouter(
                 const auditBase = buildAuditBase(name, typedArgs);
                 try {
                     const result = await handler(args as z.infer<z.ZodObject<T>>);
+                    const validated = toolOutputSchemas[name].parse(result) as z.infer<typeof z.json>;
                     if (options.mutating) {
                         const fields = result && typeof result === "object"
                             ? result as Record<string, unknown>
@@ -223,7 +228,7 @@ export function createMcpRouter(
                             replayed: fields.replayed === true,
                         });
                     }
-                    return response(result);
+                    return response(validated);
                 } catch (error) {
                     if (error instanceof McpReadError) {
                         logger.info({
@@ -262,12 +267,14 @@ export function createMcpRouter(
                     return errorResponse("Internal error", "internal_failure", { requestId });
                 }
             }) as (args: unknown) => Promise<unknown>;
-            toolRegistry.set(name, { requiresWrite: !!options.mutating, shape, callback });
+            const outputSchema = toolOutputSchemas[name];
+            toolRegistry.set(name, { requiresWrite: !!options.mutating, shape, outputSchema, callback });
             return mcp.registerTool(
                 name,
                 {
                     description,
-                    inputSchema: shape,
+                    inputSchema: z.object(shape),
+                    outputSchema,
                     annotations: options.annotations ?? readOnly,
                     _meta: securitySchemesMeta(!!options.mutating),
                 },
@@ -660,7 +667,7 @@ export function createMcpRouter(
         // one, and every other message in the same batch is unaffected
         // (REQ-008).
         mcp.server.setRequestHandler(
-            CallToolRequestSchema,
+            "tools/call",
             (async (request: { params: { name: string; arguments?: unknown; }; }) => {
                 const { name, arguments: args } = request.params;
                 const entry = toolRegistry.get(name);
@@ -704,10 +711,9 @@ export function createMcpRouter(
             }) as never,
         );
 
-        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         try {
-            await mcp.connect(transport);
-            await transport.handleRequest(req, res, req.body);
+            const handler = createMcpHandler(() => mcp);
+            await toNodeHandler(handler)(req, res, req.body);
         } catch (error) {
             if (!res.headersSent) {
                 const safe = error instanceof McpReadError ? error.message : "MCP request failed";
@@ -716,7 +722,6 @@ export function createMcpRouter(
                 });
             }
         } finally {
-            await transport.close();
             await mcp.close();
         }
     });

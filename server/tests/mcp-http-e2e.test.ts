@@ -13,9 +13,12 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         }),
         getItem: (uid: string, projectId: string, itemId: string) => {
             Object.assign(calls, { uid, projectId, itemId });
-            return { id: itemId, kind: "text", text: "MCP item", childCount: 0 };
+            return { id: itemId, kind: "text", text: "MCP item", childCount: 0, revision: "revision-1" };
         },
-        getSubtree: () => ({ root: { id: "root", kind: "text", text: "Root", childCount: 0 }, truncated: false }),
+        getSubtree: () => ({
+            root: { id: "root", kind: "text", text: "Root", childCount: 0, revision: "revision-1" },
+            truncated: false,
+        }),
         getAncestors: () => [],
         searchItems: () => [],
         getGrid: () => ({}),
@@ -32,12 +35,22 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         jsonrpc: "2.0",
         id,
         method,
-        ...(params ? { params } : {}),
+        params: {
+            ...(params ?? {}),
+            _meta: {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+            },
+        },
     });
-    const authenticatedPost = () =>
-        request(app).post("/mcp")
+    const authenticatedPost = (method: string, name?: string) => {
+        const pending = request(app).post("/mcp")
             .set("Authorization", "Bearer valid-access-token")
+            .set("MCP-Protocol-Version", "2026-07-28")
+            .set("MCP-Method", method)
             .set("Accept", "application/json, text/event-stream");
+        return name ? pending.set("MCP-Name", name) : pending;
+    };
     const bodyOf = (response: request.Response) => {
         if (response.body?.jsonrpc) return response.body;
         const data = response.text.split("\n").find(line => line.startsWith("data: "));
@@ -107,7 +120,7 @@ describe("remote MCP Streamable HTTP endpoint", () => {
     });
 
     it("advertises only the seven read-only tools", async () => {
-        const listed = await authenticatedPost().send(
+        const listed = await authenticatedPost("tools/list").send(
             rpc("tools/list"),
         );
         expect(listed.status).to.equal(200);
@@ -126,25 +139,53 @@ describe("remote MCP Streamable HTTP endpoint", () => {
             expect(tool._meta?.securitySchemes).to.deep.equal([
                 { type: "oauth2", scopes: ["outliner.read"] },
             ]);
+            expect(tool.outputSchema, `${tool.name} output schema`).to.be.an("object").that.is.not.empty;
         }
+        expect(tools.find((tool: { name: string; }) => tool.name === "get_ancestors").outputSchema.type).to.equal(
+            "array",
+        );
     });
 
     it("derives the Firebase uid and returns a standards-shaped tool result", async () => {
-        const result = await authenticatedPost().send(
+        const result = await authenticatedPost("tools/call", "get_item").send(
             rpc("tools/call", { name: "get_item", arguments: { projectId: "project-1", itemId: "item-1" } }),
         );
         expect(result.status).to.equal(200);
         expect(calls).to.deep.equal({ uid: "firebase-user-1", projectId: "project-1", itemId: "item-1" });
-        expect(JSON.parse(bodyOf(result).result.content[0].text)).to.deep.equal({
+        const expected = {
             id: "item-1",
             kind: "text",
             text: "MCP item",
             childCount: 0,
-        });
+            revision: "revision-1",
+        };
+        expect(JSON.parse(bodyOf(result).result.content[0].text)).to.deep.equal(expected);
+        expect(bodyOf(result).result.structuredContent).to.deep.equal(expected);
+    });
+
+    it("preserves array-root structured output", async () => {
+        const result = bodyOf(
+            await authenticatedPost("tools/call", "get_ancestors").send(
+                rpc("tools/call", { name: "get_ancestors", arguments: { projectId: "project-1", itemId: "item-1" } }),
+            ),
+        ).result;
+        expect(result.structuredContent).to.deep.equal([]);
+        expect(JSON.parse(result.content[0].text)).to.deep.equal(result.structuredContent);
+    });
+
+    it("fails closed when a handler violates its advertised output contract", async () => {
+        const result = bodyOf(
+            await authenticatedPost("tools/call", "get_grid").send(
+                rpc("tools/call", { name: "get_grid", arguments: { projectId: "project-1", gridId: "bad-grid" } }),
+            ),
+        ).result;
+        expect(result.isError).to.equal(true);
+        expect(JSON.parse(result.content[0].text)).to.include({ error: "Internal error", code: "internal_failure" });
+        expect(result).not.to.have.property("structuredContent");
     });
 
     it("does not expose mutation tools or mutation-shaped HTTP methods", async () => {
-        const called = await authenticatedPost().send(
+        const called = await authenticatedPost("tools/call", "update_item").send(
             rpc("tools/call", { name: "update_item", arguments: { projectId: "project-1", itemId: "item-1" } }),
         );
         expect(called.status).to.equal(200);
