@@ -8,6 +8,8 @@ body:
       value: |
         Thank you for reporting a bug! Please fill out this form as completely as possible to help us resolve the issue quickly.
 
+        The **Requirements** section below is the authoritative, normative, merge-blocking contract for this issue. Background context, examples, implementation suggestions, headings, and test descriptions help explain or verify the contract, but they are not additional requirements unless they are explicitly represented in **Requirements**.
+
   - type: textarea
     id: description
     attributes:
@@ -45,6 +47,53 @@ body:
       description: What actually happened instead.
     validations:
       required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: The authoritative normative contract for this issue. Make this section sufficient for an implementation agent to understand the required behavior without inferring requirements from surrounding prose.
+      placeholder: |
+        Use stable local IDs (REQ-001, REQ-002, etc.) and state externally observable behavior precisely. Include relevant state transitions, persistence behavior, side effects, invariants, authorization or synchronization constraints, important edge cases, and negative requirements.
+
+        REQ-001: ...
+        REQ-002: ...
+
+        Requirements from a parent issue are not inherited implicitly. Copy each applicable requirement here and, if useful, record its source, for example: Origin: #1234/REQ-007.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-scenarios
+    attributes:
+      label: Acceptance Scenarios
+      description: Concrete scenarios that verify the Requirements contract; scenarios do not create new merge-blocking requirements.
+      placeholder: |
+        Prefer stable IDs (AC-001, AC-002, etc.), list the REQ-* IDs covered, and use Given/When/Then form. Include negative scenarios that reject plausible false-success implementations where applicable.
+
+        AC-001 — ...
+        Covers: REQ-001
+        Given ...
+        When ...
+        Then ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: Explicitly exclude behavior when scope expansion is a realistic risk. Write "None" if no specific exclusions are needed.
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation-notes
+    attributes:
+      label: Implementation Notes
+      description: Optional implementation ideas, architectural suggestions, or constraints. Keep these suggestions separate from the normative behavioral contract in Requirements.
+    validations:
+      required: false
 
   - type: textarea
     id: logs

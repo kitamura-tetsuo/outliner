@@ -1,0 +1,6 @@
+id: ENV-5250c0de
+title: Issue Forms expose specification contracts
+title-ja: Issue Form で仕様契約を明示する
+description: Bug and feature Issue Forms separate authoritative requirements, acceptance scenarios, non-goals, and implementation notes while retaining their issue-specific context fields.
+tests:
+- scripts/tests/env-issue-forms-specification-contract-5250c0de.spec.ts
