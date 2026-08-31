@@ -197,6 +197,36 @@ describe("MCP mutation safety contract", () => {
         },
     );
 
+    it(
+        "still returns the insufficient_scope challenge when a read-only-scoped mutation call has "
+            + "schema-invalid arguments (REQ-002)",
+        async () => {
+            // The MCP SDK validates `arguments` against the tool's input
+            // schema before ever invoking this tool's handler (where
+            // requireWrite() normally lives). A read-only caller must still
+            // get the OAuth challenge -- not just a generic input-validation
+            // error -- even when it omits required fields, so the scope
+            // check has to happen ahead of argument-shape validation.
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await call(app, "write_relation", {
+                projectId: "project-1",
+                relation: "tasks",
+                // `write` is required by the schema but omitted here.
+            });
+            expect(res.status).to.equal(200);
+            expect(bodyOf(res).result.isError).to.equal(true);
+            const payload = payloadOf(res);
+            expect(payload.code).to.equal("forbidden");
+
+            const challenge = bodyOf(res).result._meta?.["mcp/www_authenticate"] as string;
+            expect(challenge).to.be.a("string");
+            expect(challenge).to.include('error="insufficient_scope"');
+            expect(challenge).to.include('scope="outliner.write"');
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
+
     it("returns a revision on write and rejects a stale expectedRevision with a structured conflict", async () => {
         const { readService, relationService } = fixture();
         const app = buildApp(readService, relationService, "outliner.read outliner.write");
