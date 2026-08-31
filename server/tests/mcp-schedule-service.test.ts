@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as Y from "yjs";
 import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import { OutlinerScheduleService } from "../src/mcp/schedule-service.js";
+import { JobExecutor } from "../src/scheduler/executor.js";
 
 describe("MCP Schedule diagnostics", function() {
     this.timeout(60_000);
@@ -82,6 +83,32 @@ describe("MCP Schedule diagnostics", function() {
         expect(preview.candidateRows[0]).to.include({ id: "daily" });
         expect(preview.deterministicIds).to.include({ idempotent: true });
         expect(tableConnection.document.getMap("data").size).to.equal(0);
+        const cteSql =
+            "WITH source AS (SELECT 'cte-task'::text AS id) INSERT INTO tasks (id) SELECT id FROM source RETURNING *";
+        const ctePreview = await service.validate(
+            "user",
+            "project-1",
+            { ...(read.stored as never), sql: cteSql },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(ctePreview).to.include({ accepted: true, persisted: false });
+        expect(ctePreview.candidateRows[0]).to.include({ id: "cte-task" });
+        expect(tableConnection.document.getMap("data").size).to.equal(0);
+        expect(rule.get("sql")).to.equal(read.stored.sql);
+        const cteExecutor = new JobExecutor();
+        cteExecutor.startWorker();
+        const cteProduction = await cteExecutor.executeJob({
+            ruleId: "cte-parity",
+            schemaSql: tableDocument.getText("schema").toString(),
+            ruleSql: cteSql,
+            records: [],
+            timezone: "UTC",
+            occurrenceUtcIso: "2026-08-30T09:00:00Z",
+        });
+        await cteExecutor.stopWorker();
+        expect(cteProduction.success, cteProduction.error).to.equal(true);
+        expect(cteProduction.rows![0]).to.include({ id: "cte-task" });
         const emptyIdentity = await service.validate(
             "user",
             "project-1",

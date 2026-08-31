@@ -4,6 +4,7 @@ import crypto from "crypto";
 import * as Y from "yjs";
 import {
     parseSqlIdentifiers,
+    parseTopLevelInsertTarget,
     stripSqlNoise,
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
@@ -166,10 +167,7 @@ export class OutlinerRelationService {
                 };
             }
             const targetRelation = String(target.get("sqlName") ?? "");
-            const insertTarget = /^\s*insert\s+into\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_]*))/i.exec(
-                candidate.sql,
-            );
-            const destination = insertTarget?.[1]?.replace(/""/g, '"') ?? insertTarget?.[2]?.toLowerCase();
+            const destination = parseTopLevelInsertTarget(candidate.sql);
             if (!destination || destination !== targetRelation && destination !== targetRelation.toLowerCase()) {
                 return {
                     accepted: false,
