@@ -82,6 +82,21 @@ const call = (app: express.Express, name: string, args: Record<string, unknown>)
         .set("Accept", "application/json, text/event-stream")
         .send(rpc("tools/call", { name, arguments: args }));
 const payloadOf = (response: request.Response) => JSON.parse(bodyOf(response).result.content[0].text);
+// A JSON-RPC batch response streams one `data: {...}` line per request in
+// the batch (rather than a single JSON array body), so a batch call needs
+// its own parser that returns every message keyed by id.
+const resultsOf = (response: request.Response) => {
+    const results = new Map<
+        number,
+        { isError?: boolean; _meta?: Record<string, string>; content: { text: string; }[]; }
+    >();
+    for (const line of response.text.split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const parsed = JSON.parse(line.slice(6));
+        results.set(parsed.id, parsed.result);
+    }
+    return results;
+};
 
 describe("MCP mutation safety contract", () => {
     it("advertises accurate per-tool annotations for the write tools", async () => {
@@ -232,10 +247,11 @@ describe("MCP mutation safety contract", () => {
             + "(REQ-002)",
         async () => {
             // The installed MCP SDK's Streamable HTTP transport accepts a
-            // JSON-RPC batch (a top-level array of requests) and validates
-            // each element's arguments independently before dispatch, so
-            // the same requireWrite()-bypass risk applies per batch element
-            // and needs the same pre-dispatch guard.
+            // JSON-RPC batch (a top-level array of requests), unbatching it
+            // into individual messages dispatched through the same per-tool
+            // handler used for a singleton request, so the same
+            // requireWrite()-bypass risk applies per batch element and
+            // needs the same guard.
             const { readService, relationService, table } = fixture();
             const app = buildApp(readService, relationService, "outliner.read");
             const res = await request(app).post("/mcp")
@@ -246,16 +262,52 @@ describe("MCP mutation safety contract", () => {
                         name: "write_relation",
                         // `write` is required by the schema but omitted here.
                         arguments: { projectId: "project-1", relation: "tasks" },
-                    }),
+                    }, 1),
                 ]);
             expect(res.status).to.equal(200);
-            expect(Array.isArray(res.body)).to.equal(true);
-            const [entry] = res.body as { result: { isError: boolean; _meta?: Record<string, string>; }; }[];
-            expect(entry.result.isError).to.equal(true);
-            const challenge = entry.result._meta?.["mcp/www_authenticate"];
+            const result = resultsOf(res).get(1)!;
+            expect(result.isError).to.equal(true);
+            const challenge = result._meta?.["mcp/www_authenticate"];
             expect(challenge).to.be.a("string");
             expect(challenge).to.include('error="insufficient_scope"');
             expect(challenge).to.include('scope="outliner.write"');
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
+
+    it(
+        "only rejects the mutation entry of a mixed batch, leaving a read-only call in the same "
+            + "batch unaffected (REQ-002, REQ-008)",
+        async () => {
+            // A read-only-scoped caller batching a valid read alongside a
+            // mutation attempt must still get the read result -- rejecting
+            // the whole batch would itself be a REQ-008 regression.
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await request(app).post("/mcp")
+                .set("Authorization", "Bearer token")
+                .set("Accept", "application/json, text/event-stream")
+                .send([
+                    rpc(
+                        "tools/call",
+                        { name: "get_table", arguments: { projectId: "project-1", tableId: "table-1" } },
+                        1,
+                    ),
+                    rpc("tools/call", {
+                        name: "write_relation",
+                        arguments: { projectId: "project-1", relation: "tasks" },
+                    }, 2),
+                ]);
+            expect(res.status).to.equal(200);
+            const results = resultsOf(res);
+
+            const readResult = results.get(1)!;
+            expect(readResult.isError).to.not.equal(true);
+            expect(JSON.parse(readResult.content[0].text).tableId).to.equal("table-1");
+
+            const writeResult = results.get(2)!;
+            expect(writeResult.isError).to.equal(true);
+            expect(writeResult._meta?.["mcp/www_authenticate"]).to.include('scope="outliner.write"');
             expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
         },
     );

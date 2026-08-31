@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import crypto from "crypto";
 import express from "express";
 import * as z from "zod/v4";
@@ -153,19 +154,25 @@ export function createMcpRouter(
         const mcp = new McpServer({ name: "outliner", version: "1.0.0" });
         const uidFingerprint = crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12);
         /**
-         * Names of every tool registered with `mutating: true` below, filled
-         * in as each `tool(...)` call runs. Used to reject a `tools/call` for
-         * a mutation tool before the MCP SDK's own zod argument validation
-         * runs (see the pre-dispatch check right before `transport
-         * .handleRequest` further down): the SDK validates `arguments`
-         * against the tool's input schema first and only calls this
-         * `tool()` wrapper's handler — where `requireWrite()` normally lives
-         * — once that validation passes, so a schema-invalid call from a
-         * read-only-scoped caller would otherwise get a generic
-         * input-validation error with no insufficient_scope challenge at
-         * all (issue #5257, REQ-002).
+         * Every tool registered below, keyed by name, filled in as each
+         * `tool(...)` call runs. Backs a `CallToolRequestSchema` handler
+         * installed further down that replaces the MCP SDK's own dispatch
+         * (`mcp.server.setRequestHandler(...)`, an intentionally public
+         * extension point -- see `McpServer.server`'s doc comment) so the
+         * write-scope check runs *before* any per-tool argument validation,
+         * for every individual `tools/call` message the transport hands us
+         * -- including each element of a JSON-RPC batch, which the SDK
+         * unbatches and dispatches through this same per-message path.
+         * Peeking at the raw HTTP request body instead (an earlier version
+         * of this check) cannot see past that unbatching, so a batched
+         * mutation call could slip past a body-level guard entirely (issue
+         * #5257, REQ-002/REQ-008).
          */
-        const mutatingToolNames = new Set<string>();
+        const toolRegistry = new Map<string, {
+            requiresWrite: boolean;
+            shape: z.ZodRawShape;
+            callback: (args: unknown) => Promise<unknown>;
+        }>();
         const buildAuditBase = (name: string, typedArgs: Record<string, unknown>) => ({
             requestId,
             uidFingerprint,
@@ -196,7 +203,66 @@ export function createMcpRouter(
                 mutating?: boolean;
             } = {},
         ) => {
-            if (options.mutating) mutatingToolNames.add(name);
+            const callback = (async (args: unknown) => {
+                const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
+                const auditBase = buildAuditBase(name, typedArgs);
+                try {
+                    const result = await handler(args as z.infer<z.ZodObject<T>>);
+                    if (options.mutating) {
+                        const fields = result && typeof result === "object"
+                            ? result as Record<string, unknown>
+                            : {};
+                        recordMcpAudit({
+                            ...auditBase,
+                            outcome: "success",
+                            priorRevision: typeof fields.priorRevision === "string"
+                                ? fields.priorRevision
+                                : undefined,
+                            newRevision: typeof fields.revision === "string" ? fields.revision : undefined,
+                            applied: fields.applied !== false,
+                            replayed: fields.replayed === true,
+                        });
+                    }
+                    return response(result);
+                } catch (error) {
+                    if (error instanceof McpReadError) {
+                        logger.info({
+                            event: "mcp_resolution_failed",
+                            requestId,
+                            uidFingerprint,
+                            code: error.code,
+                            requiredScope: error.requiredScope,
+                            ...safeLogDiagnostics(error.debug),
+                        }, error.message);
+                        if (options.mutating) {
+                            recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
+                        }
+                        const meta = error.requiredScope
+                            ? insufficientScopeMeta(error.message, error.requiredScope)
+                            : undefined;
+                        return errorResponse(error.message, error.code, { requestId, ...error.debug }, meta);
+                    }
+                    logger.error({
+                        event: "mcp_internal_error",
+                        requestId,
+                        uidFingerprint,
+                        tool: name,
+                    }, error instanceof Error ? error.message : String(error));
+                    if (options.mutating) {
+                        recordMcpAudit({
+                            ...auditBase,
+                            outcome: "internal_failure",
+                            applied: false,
+                            replayed: false,
+                        });
+                    }
+                    // Never forward an unexpected internal exception's message to the
+                    // client: it may reveal implementation detail. It is fully logged
+                    // above (mcp_internal_error) for server-side diagnosis.
+                    return errorResponse("Internal error", "internal_failure", { requestId });
+                }
+            }) as (args: unknown) => Promise<unknown>;
+            toolRegistry.set(name, { requiresWrite: !!options.mutating, shape, callback });
             return mcp.registerTool(
                 name,
                 {
@@ -205,65 +271,7 @@ export function createMcpRouter(
                     annotations: options.annotations ?? readOnly,
                     _meta: securitySchemesMeta(!!options.mutating),
                 },
-                (async (args: unknown) => {
-                    const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
-                    const auditBase = buildAuditBase(name, typedArgs);
-                    try {
-                        const result = await handler(args as z.infer<z.ZodObject<T>>);
-                        if (options.mutating) {
-                            const fields = result && typeof result === "object"
-                                ? result as Record<string, unknown>
-                                : {};
-                            recordMcpAudit({
-                                ...auditBase,
-                                outcome: "success",
-                                priorRevision: typeof fields.priorRevision === "string"
-                                    ? fields.priorRevision
-                                    : undefined,
-                                newRevision: typeof fields.revision === "string" ? fields.revision : undefined,
-                                applied: fields.applied !== false,
-                                replayed: fields.replayed === true,
-                            });
-                        }
-                        return response(result);
-                    } catch (error) {
-                        if (error instanceof McpReadError) {
-                            logger.info({
-                                event: "mcp_resolution_failed",
-                                requestId,
-                                uidFingerprint,
-                                code: error.code,
-                                requiredScope: error.requiredScope,
-                                ...safeLogDiagnostics(error.debug),
-                            }, error.message);
-                            if (options.mutating) {
-                                recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
-                            }
-                            const meta = error.requiredScope
-                                ? insufficientScopeMeta(error.message, error.requiredScope)
-                                : undefined;
-                            return errorResponse(error.message, error.code, { requestId, ...error.debug }, meta);
-                        }
-                        logger.error({
-                            event: "mcp_internal_error",
-                            requestId,
-                            uidFingerprint,
-                            tool: name,
-                        }, error instanceof Error ? error.message : String(error));
-                        if (options.mutating) {
-                            recordMcpAudit({
-                                ...auditBase,
-                                outcome: "internal_failure",
-                                applied: false,
-                                replayed: false,
-                            });
-                        }
-                        // Never forward an unexpected internal exception's message to the
-                        // client: it may reveal implementation detail. It is fully logged
-                        // above (mcp_internal_error) for server-side diagnosis.
-                        return errorResponse("Internal error", "internal_failure", { requestId });
-                    }
-                }) as never,
+                callback as never,
             );
         };
         tool(
@@ -633,68 +641,68 @@ export function createMcpRouter(
             );
         }
 
-        // Reject a `tools/call` naming a mutation tool before the MCP SDK's
-        // own zod argument validation runs: `validateToolInput` (in the
-        // installed SDK's `setToolRequestHandlers`) rejects schema-invalid
-        // `arguments` with a generic input-validation error *before* ever
-        // invoking this file's `tool()` wrapper -- where `requireWrite()`
+        // Replace the MCP SDK's own `tools/call` dispatch (installed by
+        // `mcp.registerTool()` via `McpServer.setToolRequestHandlers()`)
+        // with our own: `mcp.server` is a documented public extension point
+        // ("useful for advanced operations"), and `setRequestHandler`
+        // explicitly supports replacing a handler already set for a method.
+        // The SDK's default dispatch runs zod argument validation before
+        // ever calling a tool's own handler -- where `requireWrite()`
         // normally lives -- so a schema-invalid mutation call from a
-        // read-only-scoped caller would otherwise slip past the scope check
-        // entirely (issue #5257, REQ-002). Checking the scope here, ahead of
-        // argument shape, guarantees the insufficient_scope challenge is
-        // present regardless of whether `arguments` happens to be valid.
-        // The installed SDK's Streamable HTTP transport also accepts a
-        // JSON-RPC batch (a top-level array of requests), dispatching each
-        // element through the same per-tool validation independently, so a
-        // batched mutation call needs the same guard: reject the whole
-        // batch, rather than trying to splice a partial response into one
-        // the SDK would otherwise produce for the rest of the batch.
-        type RpcMessage = {
-            jsonrpc?: string;
-            id?: unknown;
-            method?: string;
-            params?: { name?: string; arguments?: unknown; };
-        };
-        const rawBody = req.body as unknown;
-        const rpcMessages: RpcMessage[] = Array.isArray(rawBody)
-            ? rawBody.filter((m): m is RpcMessage => !!m && typeof m === "object")
-            : rawBody && typeof rawBody === "object"
-            ? [rawBody as RpcMessage]
-            : [];
-        const violatingCalls = rpcMessages.filter((msg): msg is RpcMessage & { params: { name: string; }; } =>
-            msg.method === "tools/call"
-            && typeof msg.params?.name === "string"
-            && mutatingToolNames.has(msg.params.name)
+        // read-only-scoped caller would otherwise get a generic
+        // input-validation error with no insufficient_scope challenge at
+        // all (issue #5257, REQ-002). Checking the scope here instead, ahead
+        // of argument-shape validation, guarantees the challenge regardless
+        // of whether `arguments` happens to be well-formed. This handler is
+        // invoked once per individual JSON-RPC request message, including
+        // each element of a batch the transport unbatches beforehand, so a
+        // batched mutation call gets exactly the same guard as a singleton
+        // one, and every other message in the same batch is unaffected
+        // (REQ-008).
+        mcp.server.setRequestHandler(
+            CallToolRequestSchema,
+            (async (request: { params: { name: string; arguments?: unknown; }; }) => {
+                const { name, arguments: args } = request.params;
+                const entry = toolRegistry.get(name);
+                if (!entry) {
+                    return { content: [{ type: "text" as const, text: `Tool ${name} not found` }], isError: true };
+                }
+                const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
+                if (entry.requiresWrite && !grantedScopes.includes("outliner.write")) {
+                    const message = "The outliner.write scope is required";
+                    recordMcpAudit({
+                        ...buildAuditBase(name, typedArgs),
+                        outcome: "forbidden",
+                        applied: false,
+                        replayed: false,
+                    });
+                    logger.info({
+                        event: "mcp_resolution_failed",
+                        requestId,
+                        uidFingerprint,
+                        code: "forbidden",
+                        requiredScope: "outliner.write",
+                    }, message);
+                    return errorResponse(
+                        message,
+                        "forbidden",
+                        { requestId },
+                        insufficientScopeMeta(message, "outliner.write"),
+                    );
+                }
+                const parsed = z.object(entry.shape).safeParse(typedArgs);
+                if (!parsed.success) {
+                    return {
+                        content: [{
+                            type: "text" as const,
+                            text: `Invalid arguments for tool ${name}: ${parsed.error.message}`,
+                        }],
+                        isError: true,
+                    };
+                }
+                return entry.callback(parsed.data);
+            }) as never,
         );
-        if (violatingCalls.length > 0 && !grantedScopes.includes("outliner.write")) {
-            const message = "The outliner.write scope is required";
-            const meta = insufficientScopeMeta(message, "outliner.write");
-            for (const call of violatingCalls) {
-                const typedArgs = (
-                    call.params.arguments && typeof call.params.arguments === "object" ? call.params.arguments : {}
-                ) as Record<string, unknown>;
-                recordMcpAudit({
-                    ...buildAuditBase(call.params.name, typedArgs),
-                    outcome: "forbidden",
-                    applied: false,
-                    replayed: false,
-                });
-            }
-            logger.info({
-                event: "mcp_resolution_failed",
-                requestId,
-                uidFingerprint,
-                code: "forbidden",
-                requiredScope: "outliner.write",
-            }, message);
-            const responses = rpcMessages.map(msg => ({
-                jsonrpc: "2.0",
-                id: msg.id ?? null,
-                result: errorResponse(message, "forbidden", { requestId }, meta),
-            }));
-            res.status(200).json(Array.isArray(rawBody) ? responses : responses[0]);
-            return;
-        }
 
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         try {
