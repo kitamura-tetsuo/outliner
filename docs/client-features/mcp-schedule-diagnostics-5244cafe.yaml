@@ -6,4 +6,5 @@ description: Authorized MCP clients can resolve Schedule URLs, discover Schedule
 tests:
 - server/tests/mcp-read-service.test.ts
 - server/tests/mcp-schedule-http.test.ts
+- server/tests/mcp-schedule-production-table-shape.test.ts
 - server/tests/mcp-schedule-service.test.ts
