@@ -41,6 +41,15 @@ interface SchedulePreviewer {
     }>;
     getTableRevision(uid: string, projectId: string, tableId: string): Promise<string>;
 }
+interface ScheduleCursorReader {
+    getScheduleCursor(
+        projectId: string,
+        ruleId: string,
+    ):
+        | { nextRunAt: string; occurrenceSeq: number; }
+        | undefined
+        | Promise<{ nextRunAt: string; occurrenceSeq: number; } | undefined>;
+}
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
 const FIELDS = [
@@ -70,6 +79,7 @@ export class OutlinerScheduleService {
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
         private readonly previewer?: SchedulePreviewer,
+        private readonly cursorReader?: ScheduleCursorReader,
     ) {}
 
     private async withProject<T>(uid: string, projectId: string, fn: (doc: Y.Doc) => T | Promise<T>): Promise<T> {
@@ -238,7 +248,8 @@ export class OutlinerScheduleService {
             }
             const refs = this.references(doc, stored as unknown as ScheduleCandidate);
             const candidate = stored as unknown as ScheduleCandidate;
-            const occurrences = this.occurrences(candidate, 5);
+            const cursor = await this.cursorReader?.getScheduleCursor(projectId, ruleId);
+            const occurrences = this.occurrences(candidate, 5, cursor?.nextRunAt);
             const authoritativeTargetRevision = this.previewer && candidate.targetTableId && targetExists
                 ? await this.previewer.getTableRevision(uid, projectId, candidate.targetTableId)
                 : undefined;
@@ -275,9 +286,15 @@ export class OutlinerScheduleService {
         };
     }
 
-    private occurrences(candidate: ScheduleCandidate, limit: number): string[] {
+    private occurrences(candidate: ScheduleCandidate, limit: number, indexedNextRunAt?: string): string[] {
         if (candidate.enabled === false || candidate.completedAt) return [];
-        const lowerBound = candidate.catchUp === false
+        // The persisted execution timestamp is wall-clock completion time, not
+        // the recurrence cursor. A slow job may finish after the next scheduled
+        // instant. When the scheduler index is available, start at its exact
+        // cursor so diagnostics include the same overdue occurrence.
+        const lowerBound = indexedNextRunAt
+            ? Date.parse(indexedNextRunAt) - 1
+            : candidate.catchUp === false
             ? Date.now()
             : candidate.lastRunAt
             ? Date.parse(candidate.lastRunAt)

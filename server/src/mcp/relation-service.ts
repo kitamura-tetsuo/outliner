@@ -183,7 +183,17 @@ export class OutlinerRelationService {
             const opened: TableDoc[] = [];
             let targetSource: TableDoc | undefined;
             try {
-                for (const table of this.tables(doc)) {
+                const identifiers = parseSqlIdentifiers(candidate.sql);
+                const requiredTables = this.tables(doc).filter(table =>
+                    table.tableId === candidate.targetTableId
+                    || identifiers.has(table.relation)
+                    || identifiers.has(table.relation.toLowerCase())
+                );
+                // Match Scheduler.loadReferencedTables: production only
+                // materializes the write target and relations named by SQL.
+                // An invalid record in an unrelated project Table must not
+                // make an otherwise runnable Schedule preview fail.
+                for (const table of requiredTables) {
                     const source = await this.openTable(uid, projectId, table.tableId);
                     opened.push(source);
                     if (table.tableId === candidate.targetTableId) targetSource = source;

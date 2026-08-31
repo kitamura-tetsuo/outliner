@@ -460,7 +460,27 @@ export async function startServer(
         undefined,
         undefined,
         mcpRelations,
-        new OutlinerScheduleService(hocuspocus, checkContainerAccess, mcpRelations),
+        new OutlinerScheduleService(hocuspocus, checkContainerAccess, mcpRelations, {
+            getScheduleCursor(projectId, ruleId) {
+                if (!persistence?.db) return undefined;
+                try {
+                    const row = persistence.db.prepare(`
+                        SELECT next_run_at, occurrence_seq FROM schedule_index
+                        WHERE room = ? AND rule_id = ? AND next_run_at IS NOT NULL
+                    `).get(`projects/${projectId}`, ruleId) as
+                        | { next_run_at: string; occurrence_seq: number; }
+                        | undefined;
+                    return row
+                        ? { nextRunAt: row.next_run_at, occurrenceSeq: row.occurrence_seq }
+                        : undefined;
+                } catch {
+                    // Persistence opens asynchronously and the index may not
+                    // exist during early MCP reads. Stored Schedule state is
+                    // still a safe fallback until indexing completes.
+                    return undefined;
+                }
+            },
+        }),
     ));
 
     // Log rotation endpoint

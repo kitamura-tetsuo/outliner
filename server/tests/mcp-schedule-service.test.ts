@@ -47,7 +47,13 @@ describe("MCP Schedule diagnostics", function() {
         const accessibleUsers = new Set(["user"]);
         const canAccess = async (uid: string) => accessibleUsers.has(uid);
         const relations = new OutlinerRelationService(hocuspocus, canAccess);
-        const service = new OutlinerScheduleService(hocuspocus, canAccess, relations);
+        let indexedNextRunAt: string | undefined;
+        const service = new OutlinerScheduleService(hocuspocus, canAccess, relations, {
+            getScheduleCursor: () =>
+                indexedNextRunAt
+                    ? { nextRunAt: indexedNextRunAt, occurrenceSeq: 0 }
+                    : undefined,
+        });
 
         const listed = await service.listSchedules("user", "project-1", "table-1");
         expect(listed.schedules[0]).to.include({ ruleId: "rule-1", enabled: false });
@@ -185,6 +191,35 @@ describe("MCP Schedule diagnostics", function() {
             expect(constraintFailure).to.include({ accepted: false });
             expect(constraintFailure.errors[0]).to.include({ phase: "execution" });
         }
+        const malformedAuditRecord = new Y.Map<unknown>();
+        malformedAuditRecord.set("id", "broken-audit");
+        malformedAuditRecord.set("title", "Broken");
+        malformedAuditRecord.set("score", "not-an-integer");
+        auditConnection.document.getMap("data").set("broken-audit", malformedAuditRecord);
+        const ignoresUnreferencedMalformedTable = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (id) VALUES ('unrelated-audit') RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(ignoresUnreferencedMalformedTable).to.include({ accepted: true });
+        expect(ignoresUnreferencedMalformedTable.candidateRows[0]).to.include({ id: "unrelated-audit" });
+        const rejectsReferencedMalformedTable = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (id) SELECT id FROM audit RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(rejectsReferencedMalformedTable).to.include({ accepted: false });
+        expect(rejectsReferencedMalformedTable.candidateRows).to.deep.equal([]);
         const timezoneSensitive = await service.validate(
             "user",
             "project-1",
@@ -228,6 +263,14 @@ describe("MCP Schedule diagnostics", function() {
         const longRunning = await service.getSchedule("user", "project-1", "rule-1");
         expect(longRunning.derived.nextOccurrences).to.have.length(5);
         expect(longRunning.derived.nextOccurrences.every(instant => Date.parse(instant) > Date.now())).to.equal(true);
+        rule.set("catchUp", true);
+        rule.set("dtstart", "2099-01-01T09:00:00");
+        rule.set("lastRunAt", "2099-01-01T10:05:00Z");
+        indexedNextRunAt = "2099-01-01T10:00:00Z";
+        const indexedOccurrences = await service.getSchedule("user", "project-1", "rule-1");
+        expect(indexedOccurrences.derived.nextOccurrences[0]).to.equal("2099-01-01T10:00:00.000Z");
+        indexedNextRunAt = undefined;
+        rule.delete("lastRunAt");
         rule.set("enabled", false);
         rule.set("rrule", "FREQ=DAILY;COUNT=2");
         rule.set("dtstart", "2026-08-30T09:00:00");
