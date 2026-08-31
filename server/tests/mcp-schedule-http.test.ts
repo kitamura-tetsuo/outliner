@@ -40,13 +40,21 @@ describe("Schedule MCP HTTP contract", () => {
             context: { uid: "user" },
         });
         const project = Project.fromDoc(projectConnection.document);
+        // Registry entries carry a live `doc: Y.Doc` subdocument reference in
+        // production (see createTable in
+        // client/src/services/yjstable/tableDocs.ts); reproducing that shape
+        // here is part of the regression coverage for issue #5258, where
+        // hashing this whole entry crashed get_schedule with a stack
+        // overflow.
         const table = new Y.Map<unknown>();
         table.set("name", "Tasks");
         table.set("sqlName", "tasks");
+        table.set("doc", new Y.Doc());
         project.ydoc.getMap("yjsTables").set("table-1", table);
         const auditTable = new Y.Map<unknown>();
         auditTable.set("name", "Audit");
         auditTable.set("sqlName", "audit");
+        auditTable.set("doc", new Y.Doc());
         project.ydoc.getMap("yjsTables").set("audit-table", auditTable);
         const rule = new Y.Map<unknown>();
         for (

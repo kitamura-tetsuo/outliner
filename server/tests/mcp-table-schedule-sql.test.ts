@@ -35,13 +35,21 @@ describe("MCP Table scheduled SQL (issue #5253)", () => {
 
     function buildApp() {
         const project = Project.createInstance("Canonical");
+        // Registry entries carry a live `doc: Y.Doc` subdocument reference in
+        // production (see createTable in
+        // client/src/services/yjstable/tableDocs.ts); reproducing that shape
+        // here is part of the regression coverage for issue #5258, where
+        // hashing this whole entry crashed get_schedule with a stack
+        // overflow.
         const tableDescriptor = new Y.Map<unknown>();
         tableDescriptor.set("name", "Tasks");
         tableDescriptor.set("sqlName", "tasks");
+        tableDescriptor.set("doc", new Y.Doc());
         project.ydoc.getMap("yjsTables").set("table-1", tableDescriptor);
         const unscheduledDescriptor = new Y.Map<unknown>();
         unscheduledDescriptor.set("name", "Other");
         unscheduledDescriptor.set("sqlName", "other");
+        unscheduledDescriptor.set("doc", new Y.Doc());
         project.ydoc.getMap("yjsTables").set("table-2", unscheduledDescriptor);
 
         const rule = new Y.Map<unknown>();

@@ -152,6 +152,30 @@ export class OutlinerScheduleService {
         }
     }
 
+    /**
+     * Plain-data snapshot of a Table registry entry (issue #5258). A
+     * production entry also carries a live `doc: Y.Doc` subdocument
+     * reference (see tableDocs.ts's createTable); hashing `table.entries()`
+     * wholesale fed that runtime object into revisionOf's generic
+     * canonicalizer and could throw deep inside it instead of returning a
+     * usable registry-metadata revision. This is intentionally a
+     * registry-only hash — it does not reflect the Table's schema or record
+     * contents, which the caller must get from the authoritative
+     * OutlinerRelationService.getTableRevision() when that matters (see
+     * getSchedule's authoritativeTargetRevision override).
+     */
+    private tableRegistryDescriptor(tableId: string, table: Y.Map<unknown>): Record<string, unknown> {
+        const sourceProjectId = table.get("sourceProjectId");
+        const sourceTableId = table.get("sourceTableId");
+        return {
+            tableId,
+            name: String(table.get("name") ?? ""),
+            sqlName: String(table.get("sqlName") ?? ""),
+            ...(typeof sourceProjectId === "string" ? { sourceProjectId } : {}),
+            ...(typeof sourceTableId === "string" ? { sourceTableId } : {}),
+        };
+    }
+
     private references(doc: Y.Doc, candidate: ScheduleCandidate): Array<{
         tableId: string;
         displayName: string;
@@ -172,7 +196,7 @@ export class OutlinerScheduleService {
                 displayName: String(table.get("name") ?? ""),
                 sqlName: String(table.get("sqlName") ?? ""),
                 kind,
-                revision: revisionOf(Object.fromEntries(table.entries())),
+                revision: revisionOf(this.tableRegistryDescriptor(tableId, table)),
             };
             output.set(`${kind}:${tableId}`, value);
         };
@@ -406,7 +430,7 @@ export class OutlinerScheduleService {
                 targetTable: preview.targetRevision ?? (target && this.previewer
                     ? await this.previewer.getTableRevision(uid, projectId, candidate.targetTableId)
                     : target
-                    ? revisionOf(Object.fromEntries(target.entries()))
+                    ? revisionOf(this.tableRegistryDescriptor(candidate.targetTableId, target))
                     : undefined),
                 dependencies: Object.fromEntries(
                     references.filter(reference => reference.kind === "sql-reference").map(reference => [

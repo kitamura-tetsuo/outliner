@@ -11,16 +11,24 @@ describe("MCP Schedule diagnostics", function() {
         const hocuspocus = new Hocuspocus({ name: "mcp-schedule-test", quiet: true });
         const connection = await hocuspocus.openDirectConnection("projects/project-1", { context: { uid: "user" } });
         const project = connection.document;
+        // Registry entries carry a live `doc: Y.Doc` subdocument reference in
+        // production (see createTable in
+        // client/src/services/yjstable/tableDocs.ts); reproducing that shape
+        // here is the regression test for issue #5258, where hashing this
+        // whole entry crashed get_schedule with a stack overflow.
         const table = new Y.Map<unknown>();
         table.set("name", "Tasks");
         table.set("sqlName", "tasks");
+        table.set("doc", new Y.Doc());
         const restoredTable = new Y.Map<unknown>();
         restoredTable.set("name", "Tasks");
         restoredTable.set("sqlName", "tasks");
+        restoredTable.set("doc", new Y.Doc());
         project.getMap("yjsTables").set("table-1", restoredTable);
         const auditTable = new Y.Map<unknown>();
         auditTable.set("name", "Audit");
         auditTable.set("sqlName", "audit");
+        auditTable.set("doc", new Y.Doc());
         project.getMap("yjsTables").set("audit-table", auditTable);
         const tableConnection = await hocuspocus.openDirectConnection("projects/project-1/tables/table-1", {
             context: { uid: "user" },

@@ -28,6 +28,20 @@ export interface MutationResult {
 function canonicalize(value: unknown): unknown {
     if (Array.isArray(value)) return value.map(canonicalize);
     if (value && typeof value === "object") {
+        // Only plain object literals are supported. A class instance (Y.Doc,
+        // Y.Map, Y.Text, a Map/Set, a live connection, a cache, ...) can hold
+        // circular references or internal state that was never meant to be
+        // part of a revision token; recursing into it can throw deep inside
+        // canonicalize (issue #5258) instead of at the call site that made
+        // the mistake. Callers must pass an explicitly enumerated plain-data
+        // descriptor instead.
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) {
+            throw new TypeError(
+                `revisionOf cannot hash a ${value.constructor?.name ?? "non-plain"} object; `
+                    + "pass an explicit plain-data descriptor instead",
+            );
+        }
         return Object.fromEntries(
             Object.entries(value as Record<string, unknown>)
                 .sort(([a], [b]) => a.localeCompare(b))
