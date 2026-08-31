@@ -279,12 +279,26 @@ export class OutlinerScheduleService {
     }
 
     private fieldValidation(candidate: ScheduleCandidate): Record<string, { valid: boolean; error?: unknown; }> {
-        return {
+        const validation = {
             sql: validateScheduleRuleSql(candidate.sql),
             rrule: validateScheduleRuleRRule(candidate.rrule),
             dtstart: validateScheduleRuleDtstart(candidate.dtstart),
             timezone: validateScheduleRuleTimezone(candidate.timezone),
         };
+        // Field syntax alone cannot establish that a local DTSTART exists in
+        // its IANA timezone (for example, during a spring-forward gap). Use
+        // the scheduler's own conversion so MCP preview/update acceptance has
+        // exactly the same timing semantics as production indexing.
+        if (validation.rrule.valid && validation.dtstart.valid && validation.timezone.valid) {
+            const schedulerTiming = computeNextRunAt(candidate.rrule, candidate.dtstart, candidate.timezone, 0);
+            if (schedulerTiming.state === "invalid") {
+                validation.dtstart = {
+                    valid: false,
+                    error: schedulerTiming.error ?? "Invalid DTSTART for timezone",
+                };
+            }
+        }
+        return validation;
     }
 
     private occurrences(candidate: ScheduleCandidate, limit: number, indexedNextRunAt?: string): string[] {

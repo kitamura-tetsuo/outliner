@@ -405,6 +405,44 @@ describe("MCP Schedule diagnostics", function() {
         rule.set("dtstart", "2026-03-08T02:30:00");
         rule.set("timezone", "America/New_York");
         expect((await service.getSchedule("user", "project-1", "rule-1")).derived.nextOccurrences).to.deep.equal([]);
+        const gapCandidate = read.stored as never as Record<string, unknown>;
+        const nonexistentLocalTime = {
+            ...gapCandidate,
+            dtstart: "2026-03-08T02:30:00",
+            timezone: "America/New_York",
+        } as never;
+        for (const occurrence of [undefined, "2026-03-08T07:30:00Z"]) {
+            const gapValidation = await service.validate(
+                "user",
+                "project-1",
+                nonexistentLocalTime,
+                "rule-1",
+                occurrence,
+            );
+            expect(gapValidation.accepted).to.equal(false);
+            expect(gapValidation.fieldValidation.dtstart).to.deep.equal({
+                valid: false,
+                error: "Invalid dtstart (nonexistent time in timezone)",
+            });
+            expect(gapValidation.candidateRows).to.deep.equal([]);
+        }
+        const beforeRejectedUpdate = await service.getSchedule("user", "project-1", "rule-1");
+        let rejectedUpdate: unknown;
+        try {
+            await service.update(
+                "user",
+                "project-1",
+                "rule-1",
+                { dtstart: "2026-03-08T02:30:00", timezone: "America/New_York" },
+                beforeRejectedUpdate.revision,
+            );
+        } catch (error) {
+            rejectedUpdate = error;
+        }
+        expect(rejectedUpdate).to.have.property("code", "validation_failed");
+        const afterRejectedUpdate = await service.getSchedule("user", "project-1", "rule-1");
+        expect(afterRejectedUpdate.revision).to.equal(beforeRejectedUpdate.revision);
+        expect(afterRejectedUpdate.stored).to.deep.equal(beforeRejectedUpdate.stored);
         await auditConnection.disconnect();
         await tableConnection.disconnect();
         await connection.disconnect();
