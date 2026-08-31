@@ -7,6 +7,7 @@ import {
     stripSqlNoise,
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
+import { validateScheduleRowIdentities } from "../scheduler/row-validation.js";
 import { type Item, Project } from "../schema/app-schema.js";
 import {
     assertRevision,
@@ -236,6 +237,14 @@ export class OutlinerRelationService {
                             column: unknown,
                             message: `Returned column ${unknown} does not exist in the target Table`,
                         }],
+                    };
+                }
+                const identityError = validateScheduleRowIdentities(result.rows);
+                if (identityError) {
+                    return {
+                        accepted: false,
+                        candidateRows: [],
+                        errors: [{ phase: "target-write", ...identityError }],
                     };
                 }
                 return {

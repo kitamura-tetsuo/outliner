@@ -82,6 +82,23 @@ describe("MCP Schedule diagnostics", function() {
         expect(preview.candidateRows[0]).to.include({ id: "daily" });
         expect(preview.deterministicIds).to.include({ idempotent: true });
         expect(tableConnection.document.getMap("data").size).to.equal(0);
+        const emptyIdentity = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (id) VALUES ('') RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(emptyIdentity).to.include({ accepted: false });
+        expect(emptyIdentity.candidateRows).to.deep.equal([]);
+        expect(emptyIdentity.errors[0]).to.include({
+            phase: "target-write",
+            code: "invalid_row_id",
+            rowIndex: 0,
+        });
         const rejected = await service.validate("user", "project-1", {
             ...(read.stored as never),
             sql: "INSERT INTO missing_table (id) VALUES ('bad') RETURNING *",
