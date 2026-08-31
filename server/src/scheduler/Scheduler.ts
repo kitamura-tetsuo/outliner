@@ -3,6 +3,7 @@ import { Hocuspocus } from "@hocuspocus/server";
 import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
+import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
 import { computeNextRunAt, ensureScheduleIndex, ScheduleIndexRow } from "./schedule-indexer.js";
@@ -434,11 +435,12 @@ export class JobScheduler {
         try {
             const registry = projectConn.document?.getMap("yjsTables");
             if (!registry) return [];
+            const identifiers = parseSqlIdentifiers(ruleSql);
             for (const [tableId, entry] of registry.entries()) {
                 if (tableId === rule.target_table_id) continue;
                 const sqlName = entry instanceof Y.Map ? String(entry.get("sqlName") ?? "") : "";
                 if (!sqlName || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(sqlName)) continue;
-                if (new RegExp(`\\b${sqlName}\\b`, "i").test(ruleSql)) referenced.push({ tableId });
+                if (identifiers.has(sqlName) || identifiers.has(sqlName.toLowerCase())) referenced.push({ tableId });
             }
         } finally {
             projectConn.disconnect();

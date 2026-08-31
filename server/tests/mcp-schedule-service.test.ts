@@ -268,7 +268,11 @@ describe("MCP Schedule diagnostics", function() {
         rule.set("lastRunAt", "2099-01-01T10:05:00Z");
         indexedNextRunAt = "2099-01-01T10:00:00Z";
         const indexedOccurrences = await service.getSchedule("user", "project-1", "rule-1");
-        expect(indexedOccurrences.derived.nextOccurrences[0]).to.equal("2099-01-01T10:00:00.000Z");
+        expect(indexedOccurrences.derived.nextOccurrences.slice(0, 3)).to.deep.equal([
+            "2099-01-01T10:00:00.000Z",
+            "2099-01-01T11:00:00.000Z",
+            "2099-01-01T12:00:00.000Z",
+        ]);
         indexedNextRunAt = undefined;
         rule.delete("lastRunAt");
         rule.set("enabled", false);
