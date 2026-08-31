@@ -29,7 +29,7 @@ export interface OutlineNodeRead {
 }
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
-type ResolvableEntityKind = "grids" | "calendars" | "tables";
+type ResolvableEntityKind = "grids" | "calendars" | "tables" | "schedules";
 
 function assertId(value: string, label: string): void {
     if (!ID.test(value)) throw new McpReadError("invalid_argument", `Invalid ${label}`);
@@ -40,6 +40,7 @@ function parseResolvablePath(pathname: string): {
     pageTitle?: string;
     entityKind?: ResolvableEntityKind;
     entityId?: string;
+    entityListKind?: "schedules";
 } {
     const encodedParts = pathname.split("/");
     if (encodedParts[encodedParts.length - 1] === "") encodedParts.pop();
@@ -62,11 +63,14 @@ function parseResolvablePath(pathname: string): {
 
     if (parts.length === 1) return { projectTitle: parts[0]! };
     if (parts.length === 2 && parts[1] !== "-") return { projectTitle: parts[0]!, pageTitle: parts[1]! };
+    if (parts.length === 3 && parts[1] === "-" && parts[2] === "schedules") {
+        return { projectTitle: parts[0]!, entityListKind: "schedules" };
+    }
 
     // Keep accepting the pre-#5012 resource-first form for existing MCP
     // clients. The client itself only generates the canonical project-first
     // form below.
-    if (parts.length === 3 && ["grids", "calendars", "tables"].includes(parts[0]!)) {
+    if (parts.length === 3 && ["grids", "calendars", "tables", "schedules"].includes(parts[0]!)) {
         return {
             entityKind: parts[0] as ResolvableEntityKind,
             projectTitle: parts[1]!,
@@ -74,7 +78,10 @@ function parseResolvablePath(pathname: string): {
         };
     }
 
-    if (parts.length === 4 && parts[1] === "-" && ["grids", "calendars", "tables"].includes(parts[2]!)) {
+    if (
+        parts.length === 4 && parts[1] === "-"
+        && ["grids", "calendars", "tables", "schedules"].includes(parts[2]!)
+    ) {
         return {
             projectTitle: parts[0]!,
             entityKind: parts[2] as ResolvableEntityKind,
@@ -155,7 +162,7 @@ export class OutlinerReadService {
             projectId: string;
             pageId?: string;
             entityId?: string;
-            kind: "project" | "page" | "grid" | "calendar" | "table";
+            kind: "project" | "page" | "grid" | "calendar" | "table" | "schedule" | "schedule-list";
         }
     > {
         let url: URL;
@@ -177,7 +184,7 @@ export class OutlinerReadService {
                 hostname: url.hostname,
             });
         }
-        const { projectTitle, pageTitle, entityKind, entityId } = parseResolvablePath(url.pathname);
+        const { projectTitle, pageTitle, entityKind, entityId, entityListKind } = parseResolvablePath(url.pathname);
         if (entityId !== undefined) assertId(entityId, "entity ID");
         const resolutionDebug = {
             inputUrl: `${url.origin}${url.pathname}`,
@@ -212,12 +219,15 @@ export class OutlinerReadService {
             if (candidate.title !== projectTitle) continue;
             foundProjectWithoutEntity = true;
             const resolved = await this.withProject(uid, projectId, project => {
+                if (entityListKind === "schedules") return { projectId, kind: "schedule-list" as const };
                 if (entityKind) {
                     const exists = entityKind === "grids"
                         ? project.ydoc.getMap("yjsGrids").has(entityId!)
                         : entityKind === "calendars"
                         ? project.calendars.has(entityId!)
-                        : project.ydoc.getMap("yjsTables").has(entityId!);
+                        : entityKind === "tables"
+                        ? project.ydoc.getMap("yjsTables").has(entityId!)
+                        : project.schedules.has(entityId!);
                     if (!exists) {
                         throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`, {
                             ...resolutionDebug,
@@ -227,7 +237,11 @@ export class OutlinerReadService {
                             entityId,
                         });
                     }
-                    return { projectId, entityId, kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" };
+                    return {
+                        projectId,
+                        entityId,
+                        kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" | "schedule",
+                    };
                 }
                 if (!pageTitle) return { projectId, kind: "project" as const };
                 const page = Array.from(project.items).find(item => item.text === pageTitle);

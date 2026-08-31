@@ -9,6 +9,7 @@ import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
 import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 import { OutlinerRelationService } from "./relation-service.js";
+import { OutlinerScheduleService } from "./schedule-service.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 
@@ -54,6 +55,7 @@ export function createMcpRouter(
     verifyToken: (token: string) => { uid: string; scope: string; } = verifyAccessToken,
     configuredIssuer?: string,
     relationService?: OutlinerRelationService,
+    scheduleService?: OutlinerScheduleService,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -131,6 +133,8 @@ export function createMcpRouter(
                     projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
                     entity: typeof typedArgs.relation === "string"
                         ? typedArgs.relation
+                        : typeof typedArgs.ruleId === "string"
+                        ? `schedule:${typedArgs.ruleId}`
                         : typeof typedArgs.gridId === "string"
                         ? `grid:${typedArgs.gridId}`
                         : typeof typedArgs.viewId === "string"
@@ -222,6 +226,100 @@ export function createMcpRouter(
             projectId: z.string(),
             calendarId: z.string(),
         }, args => service.getCalendar(uid, args.projectId, args.calendarId));
+        if (scheduleService) {
+            tool(
+                "list_schedules",
+                "List bounded project Schedule rules, optionally filtered by a referenced Table.",
+                {
+                    projectId: z.string(),
+                    tableId: z.string().optional(),
+                    referenceKind: z.enum(["write-target", "sql-reference", "any"]).optional(),
+                    limit: z.number().int().optional(),
+                    cursor: z.string().optional(),
+                },
+                args =>
+                    scheduleService.listSchedules(
+                        uid,
+                        args.projectId,
+                        args.tableId,
+                        args.referenceKind,
+                        args.limit,
+                        args.cursor,
+                    ),
+            );
+            tool(
+                "get_schedule",
+                "Read one Schedule definition, validation, dependencies, occurrences, and execution status.",
+                {
+                    projectId: z.string(),
+                    ruleId: z.string(),
+                },
+                args => scheduleService.getSchedule(uid, args.projectId, args.ruleId),
+            );
+            const scheduleCandidate = z.object({
+                targetTableId: z.string(),
+                sql: z.string(),
+                rrule: z.string(),
+                dtstart: z.string(),
+                timezone: z.string(),
+                enabled: z.boolean().optional(),
+                catchUp: z.boolean().optional(),
+            });
+            tool(
+                "validate_schedule_rule",
+                "Preview Schedule validation without modifying live state.",
+                {
+                    projectId: z.string(),
+                    ruleId: z.string().optional(),
+                    candidate: scheduleCandidate,
+                    occurrence: z.string().optional(),
+                    resultLimit: z.number().int().optional(),
+                },
+                args =>
+                    scheduleService.validate(
+                        uid,
+                        args.projectId,
+                        args.candidate,
+                        args.ruleId,
+                        args.occurrence,
+                        args.resultLimit,
+                    ),
+            );
+            tool(
+                "update_schedule_rule",
+                "Atomically update an explicitly selected Schedule definition after validation.",
+                {
+                    projectId: z.string(),
+                    ruleId: z.string(),
+                    changes: z.object({
+                        name: z.string().optional(),
+                        targetTableId: z.string().optional(),
+                        sql: z.string().optional(),
+                        rrule: z.string().optional(),
+                        dtstart: z.string().optional(),
+                        timezone: z.string().optional(),
+                        enabled: z.boolean().optional(),
+                        catchUp: z.boolean().optional(),
+                    }),
+                    expectedRevision: z.string(),
+                    dryRun: z.boolean().optional(),
+                    operationId: z.string().min(1).max(200).optional(),
+                },
+                args => {
+                    requireWrite();
+                    return scheduleService.update(
+                        uid,
+                        args.projectId,
+                        args.ruleId,
+                        args.changes,
+                        args.expectedRevision,
+                        args.dryRun,
+                        args.operationId,
+                    );
+                },
+                { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, mutating: true },
+            );
+        }
         if (relationService) {
             tool("get_table", "Inspect bounded Table metadata, schema, and stable-id records.", {
                 projectId: z.string(),

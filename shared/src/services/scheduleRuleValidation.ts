@@ -1,4 +1,9 @@
-import { RRule } from "rrule";
+import * as rruleImport from "rrule";
+
+// rrule publishes ESM named exports to the client bundler and a CommonJS
+// default namespace to the server test loader. Resolve both package shapes.
+const RRule = rruleImport.RRule
+    ?? (rruleImport as unknown as { default?: { RRule?: typeof rruleImport.RRule; }; }).default?.RRule;
 
 /**
  * Validates the SQL part of a schedule rule.

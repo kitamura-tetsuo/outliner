@@ -16,7 +16,7 @@
 // routes to the provider named by `source_kind`, addressing the row by
 // `source_id` — see `relationRowWrite.ts`.
 
-import { stripSqlNoise, validateReadOnlySelect } from "$shared/services/readOnlySql";
+import { parseSqlIdentifiers, stripSqlNoise, validateReadOnlySelect } from "$shared/services/readOnlySql";
 import { TableSqlError } from "./pgliteService";
 import type { ParsedTableSchema } from "./schemaIntrospection";
 export { stripSqlNoise } from "$shared/services/readOnlySql";
@@ -129,17 +129,5 @@ export function analyzeQueryEditability(
  * exact-case for quoted identifiers), ignoring comments and string literals.
  */
 export function parseIdentifiers(sql: string): Set<string> {
-    const stripped = stripSqlNoise(sql);
-    const identifiers = new Set<string>();
-    // Match quoted identifiers `"my_table"` or unquoted identifiers `my_table`
-    const regex = /"([^"]+)"|\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
-    let match;
-    while ((match = regex.exec(stripped)) !== null) {
-        if (match[1]) {
-            identifiers.add(match[1]);
-        } else if (match[2]) {
-            identifiers.add(match[2].toLowerCase());
-        }
-    }
-    return identifiers;
+    return parseSqlIdentifiers(sql);
 }

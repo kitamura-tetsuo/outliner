@@ -2,7 +2,14 @@ import { PGlite } from "@electric-sql/pglite";
 import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
-import { stripSqlNoise, validateReadOnlySelect } from "../../../shared/src/services/readOnlySql.js";
+import {
+    parseSqlIdentifiers,
+    parseTopLevelInsertTarget,
+    stripSqlNoise,
+    validateReadOnlySelect,
+} from "../../../shared/src/services/readOnlySql.js";
+import { validateScheduleRowIdentities } from "../scheduler/row-validation.js";
+import { materializeScheduleRecords } from "../scheduler/table-materialization.js";
 import { type Item, Project } from "../schema/app-schema.js";
 import {
     assertRevision,
@@ -72,6 +79,29 @@ export class OutlinerRelationService {
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
     ) {}
 
+    /** Release the shared scratch database when the owning server shuts down. */
+    async destroy(): Promise<void> {
+        await mcpDb.close();
+    }
+
+    getTableRevision(uid: string, projectId: string, tableId: string): Promise<string> {
+        return this.withProject(uid, projectId, async doc => {
+            const entry = doc.getMap<Y.Map<unknown>>("yjsTables").get(tableId);
+            if (!entry) throw new McpReadError("not_found", "Table not found");
+            const source = await this.openTable(uid, projectId, tableId);
+            try {
+                return this.tableRevision(
+                    tableId,
+                    String(entry.get("name") ?? ""),
+                    String(entry.get("sqlName") ?? ""),
+                    source,
+                );
+            } finally {
+                await source.disconnect();
+            }
+        });
+    }
+
     private async withProject<T>(uid: string, projectId: string, fn: (doc: Y.Doc) => Promise<T> | T): Promise<T> {
         if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) throw new McpReadError("invalid_argument", "Invalid project ID");
         if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
@@ -117,6 +147,146 @@ export class OutlinerRelationService {
         return this.withProject(uid, projectId, doc => ({
             relations: [...this.tables(doc), { relation: "outline_items", kind: "system" as const }],
         }));
+    }
+
+    /** Execute Schedule INSERT SQL in the same isolated PGlite materialization used by MCP SQL diagnostics. */
+    previewScheduleRule(
+        uid: string,
+        projectId: string,
+        candidate: { targetTableId: string; sql: string; timezone: string; },
+        occurrence: string,
+        resultLimit: number,
+    ) {
+        return this.withProject(uid, projectId, async doc => {
+            const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
+            if (!target) {
+                return {
+                    accepted: false,
+                    candidateRows: [],
+                    errors: [{ code: "missing_target", message: "Target Table not found" }],
+                };
+            }
+            const targetRelation = String(target.get("sqlName") ?? "");
+            const destination = parseTopLevelInsertTarget(candidate.sql);
+            if (!destination || destination !== targetRelation && destination !== targetRelation.toLowerCase()) {
+                return {
+                    accepted: false,
+                    candidateRows: [],
+                    errors: [{
+                        phase: "target-schema",
+                        code: "wrong_target_relation",
+                        message: "Schedule SQL must insert into the declared target Table",
+                    }],
+                };
+            }
+            const lease = await acquireDb();
+            const opened: TableDoc[] = [];
+            const tableRevisions: Record<string, string> = {};
+            let targetSource: TableDoc | undefined;
+            try {
+                const identifiers = parseSqlIdentifiers(candidate.sql);
+                const requiredTables = this.tables(doc).filter(table =>
+                    table.tableId === candidate.targetTableId
+                    || identifiers.has(table.relation)
+                    || identifiers.has(table.relation.toLowerCase())
+                );
+                // Match Scheduler.loadReferencedTables: production only
+                // materializes the write target and relations named by SQL.
+                // An invalid record in an unrelated project Table must not
+                // make an otherwise runnable Schedule preview fail.
+                for (const table of requiredTables) {
+                    const source = await this.openTable(uid, projectId, table.tableId);
+                    opened.push(source);
+                    if (table.tableId === candidate.targetTableId) targetSource = source;
+                    tableRevisions[table.tableId] = this.tableRevision(
+                        table.tableId,
+                        table.displayName,
+                        table.relation,
+                        source,
+                    );
+                    if (!source.schema.trim()) continue;
+                    await lease.db.exec(source.schema);
+                    try {
+                        // Schedule production materializes the complete record
+                        // set before running a rule. Preview must fail on the
+                        // same malformed record rather than silently omitting it.
+                        const records = [...source.data.entries()].map(([id, record]) => ({
+                            ...Object.fromEntries(record.entries()),
+                            id,
+                        }));
+                        await materializeScheduleRecords(lease.db, "public", table.relation, records);
+                    } catch (error) {
+                        return {
+                            accepted: false,
+                            candidateRows: [],
+                            errors: [this.sqlDiagnostic(error, "materialization")],
+                            tableRevisions,
+                        };
+                    }
+                }
+                // Each PGlite query is its own transaction, so session scope is
+                // required for these settings to reach the following INSERT.
+                // The scratch database is exclusively leased and reset before
+                // every preview, preventing values from crossing requests.
+                await lease.db.query("SELECT set_config('TimeZone', $1, false)", [candidate.timezone]);
+                await lease.db.query("SELECT set_config('job.occurrence', $1, false)", [occurrence]);
+                const result = await lease.db.query<Record<string, unknown>>(candidate.sql);
+                const columns = (result.fields ?? []).map(field => field.name);
+                const targetColumns = await lease.db.query<{ column_name: string; }>(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",
+                    [targetRelation],
+                );
+                const allowed = new Set(targetColumns.rows.map(row => row.column_name));
+                const unknown = columns.find(column => !allowed.has(column));
+                if (unknown) {
+                    return {
+                        accepted: false,
+                        candidateRows: [],
+                        errors: [{
+                            phase: "target-schema",
+                            code: "unknown_target_column",
+                            column: unknown,
+                            message: `Returned column ${unknown} does not exist in the target Table`,
+                        }],
+                        tableRevisions,
+                    };
+                }
+                const identityError = validateScheduleRowIdentities(result.rows);
+                if (identityError) {
+                    return {
+                        accepted: false,
+                        candidateRows: [],
+                        errors: [{ phase: "target-write", ...identityError }],
+                        tableRevisions,
+                    };
+                }
+                return {
+                    accepted: true,
+                    candidateRows: result.rows.slice(0, resultLimit).map(row => this.boundedTraceRow(row, columns)),
+                    truncated: result.rows.length > resultLimit,
+                    errors: [],
+                    targetRevision: targetSource
+                        ? this.tableRevision(
+                            candidate.targetTableId,
+                            String(target.get("name") ?? ""),
+                            String(target.get("sqlName") ?? ""),
+                            targetSource,
+                        )
+                        : undefined,
+                    tableRevisions,
+                };
+            } catch (error) {
+                return {
+                    accepted: false,
+                    candidateRows: [],
+                    errors: [this.sqlDiagnostic(error, "execution")],
+                    tableRevisions,
+                };
+            } finally {
+                lease.release();
+                await Promise.all(opened.map(table => table.disconnect()));
+            }
+        });
     }
 
     /**
@@ -193,6 +363,21 @@ export class OutlinerRelationService {
                         }
                         : {}),
                     revision: this.tableRevision(tableId, table.displayName, table.relation, source),
+                    scheduleReferences: [...doc.getMap<Y.Map<unknown>>("schedules").entries()]
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .flatMap(([ruleId, rule]) => {
+                            const kinds: ("write-target" | "sql-reference")[] = [];
+                            if (rule.get("targetTableId") === tableId) kinds.push("write-target");
+                            const identifiers = parseSqlIdentifiers(String(rule.get("sql") ?? ""));
+                            if (
+                                rule.get("targetTableId") !== tableId
+                                && table.relation
+                                && (identifiers.has(table.relation) || identifiers.has(table.relation.toLowerCase()))
+                            ) kinds.push("sql-reference");
+                            return kinds.length
+                                ? [{ ruleId, name: rule.get("name"), referenceKinds: kinds }]
+                                : [];
+                        }).slice(0, 25),
                     provenance: {
                         sourceProjectId: table.sourceProjectId,
                         sourceTableId: table.sourceTableId,
@@ -1156,7 +1341,7 @@ export class OutlinerRelationService {
         }
     }
 
-    private sqlDiagnostic(error: unknown, phase: "validation" | "execution") {
+    private sqlDiagnostic(error: unknown, phase: "validation" | "materialization" | "execution") {
         const value = error as { message?: unknown; code?: unknown; position?: unknown; hint?: unknown; };
         return {
             phase,

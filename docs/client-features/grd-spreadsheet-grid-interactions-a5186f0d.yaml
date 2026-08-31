@@ -5,23 +5,23 @@ description: Operate Grid query results with a logical, identity-based selection
 category: tables
 status: implemented
 acceptance:
-- Cell, range, row, column, and all-result selections use stable row and column identities rather than DOM focus or mounted cell enumeration
-- Query refresh removes filtered identities while sorting preserves selected rows, and computed or read-only cells remain selectable and searchable
-- Mouse, keyboard, and touch interactions feed the same selection model, including spreadsheet navigation, edit mode, additive selection, and range extension
-- Clear, row deletion, bulk edit, and rectangular paste use shared commands that validate writable targets before mutation; ID-addressed Yjs writes are grouped into one undoable action, while relation-backed writes keep their existing per-source undo behavior
 - All-result Delete clears writable cells but never implicitly deletes every result row, while row deletion honors the Grid confirmation setting
+- Cell, range, row, column, and all-result selections use stable row and column identities rather than DOM focus or mounted cell enumeration
+- Clear, row deletion, bulk edit, and rectangular paste use shared commands that validate writable targets before mutation; ID-addressed Yjs writes are grouped into one undoable action, while relation-backed writes keep their existing per-source undo behavior
+- Mouse, keyboard, and touch interactions feed the same selection model, including spreadsheet navigation, edit mode, additive selection, and range extension
 - Page Find traverses visible Grid cells in outline and row-major order alongside text items, with Page and Grid-selection scopes in one UI
+- Query refresh removes filtered identities while sorting preserves selected rows, and computed or read-only cells remain selectable and searchable
 - Replace changes only writable source cells, reports invalid or read-only targets, and deduplicates underlying cells when the same Grid has multiple placements
 tests:
-- client/src/services/yjstable/gridSelection.test.ts
-- client/src/services/yjstable/gridKeyboardNav.test.ts
-- client/src/services/yjstable/gridSelectionCommands.test.ts
-- client/src/services/yjstable/gridClipboard.test.ts
-- client/src/lib/search/unifiedSearch.test.ts
-- client/src/components/yjstable/TableGrid.selection.test.ts
-- client/src/components/yjstable/TableGrid.keyboardNav.test.ts
-- client/src/components/yjstable/TableGrid.touch.test.ts
-- client/src/components/yjstable/TableGrid.bulkCommands.test.ts
-- client/src/components/yjstable/TableGrid.clipboard.test.ts
 - client/e2e/new/fnd-unified-text-grid-find-5193aace.spec.ts
 - client/e2e/new/rpl-unified-text-grid-replace-5194c2f1.spec.ts
+- client/src/components/yjstable/TableGrid.bulkCommands.test.ts
+- client/src/components/yjstable/TableGrid.clipboard.test.ts
+- client/src/components/yjstable/TableGrid.keyboardNav.test.ts
+- client/src/components/yjstable/TableGrid.selection.test.ts
+- client/src/components/yjstable/TableGrid.touch.test.ts
+- client/src/lib/search/unifiedSearch.test.ts
+- client/src/services/yjstable/gridClipboard.test.ts
+- client/src/services/yjstable/gridKeyboardNav.test.ts
+- client/src/services/yjstable/gridSelection.test.ts
+- client/src/services/yjstable/gridSelectionCommands.test.ts

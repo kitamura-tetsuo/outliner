@@ -3,8 +3,10 @@ import { Hocuspocus } from "@hocuspocus/server";
 import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
+import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
+import { validateScheduleRowIdentities } from "./row-validation.js";
 import { computeNextRunAt, ensureScheduleIndex, ScheduleIndexRow } from "./schedule-indexer.js";
 
 // Upper bound on how many past occurrences a single tick walks through, so a
@@ -434,11 +436,12 @@ export class JobScheduler {
         try {
             const registry = projectConn.document?.getMap("yjsTables");
             if (!registry) return [];
+            const identifiers = parseSqlIdentifiers(ruleSql);
             for (const [tableId, entry] of registry.entries()) {
                 if (tableId === rule.target_table_id) continue;
                 const sqlName = entry instanceof Y.Map ? String(entry.get("sqlName") ?? "") : "";
                 if (!sqlName || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(sqlName)) continue;
-                if (new RegExp(`\\b${sqlName}\\b`, "i").test(ruleSql)) referenced.push({ tableId });
+                if (identifiers.has(sqlName) || identifiers.has(sqlName.toLowerCase())) referenced.push({ tableId });
             }
         } finally {
             projectConn.disconnect();
@@ -493,7 +496,13 @@ export class JobScheduler {
                 occurrenceUtcIso: occurrenceIso,
             };
 
-            const result = await this.executor.executeJob(jobData);
+            const executed = await this.executor.executeJob(jobData);
+            const identityError = executed.success && executed.rows
+                ? validateScheduleRowIdentities(executed.rows)
+                : undefined;
+            const result = identityError
+                ? { success: false, error: identityError.message, rows: [] }
+                : executed;
 
             if (!result.success) {
                 logger.warn(
@@ -507,8 +516,9 @@ export class JobScheduler {
 
                 doc.transact(() => {
                     for (const row of result.rows!) {
-                        const id = row.id;
-                        if (!id) continue;
+                        // Identity validation above guarantees every successful
+                        // row can be represented by the Yjs record map.
+                        const id = row.id!;
 
                         let validRow = { ...row };
                         for (const col of schemaDef.columns) {
