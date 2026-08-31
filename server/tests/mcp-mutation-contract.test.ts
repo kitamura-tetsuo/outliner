@@ -227,6 +227,39 @@ describe("MCP mutation safety contract", () => {
         },
     );
 
+    it(
+        "still returns the insufficient_scope challenge for a batched, schema-invalid mutation call "
+            + "(REQ-002)",
+        async () => {
+            // The installed MCP SDK's Streamable HTTP transport accepts a
+            // JSON-RPC batch (a top-level array of requests) and validates
+            // each element's arguments independently before dispatch, so
+            // the same requireWrite()-bypass risk applies per batch element
+            // and needs the same pre-dispatch guard.
+            const { readService, relationService, table } = fixture();
+            const app = buildApp(readService, relationService, "outliner.read");
+            const res = await request(app).post("/mcp")
+                .set("Authorization", "Bearer token")
+                .set("Accept", "application/json, text/event-stream")
+                .send([
+                    rpc("tools/call", {
+                        name: "write_relation",
+                        // `write` is required by the schema but omitted here.
+                        arguments: { projectId: "project-1", relation: "tasks" },
+                    }),
+                ]);
+            expect(res.status).to.equal(200);
+            expect(Array.isArray(res.body)).to.equal(true);
+            const [entry] = res.body as { result: { isError: boolean; _meta?: Record<string, string>; }; }[];
+            expect(entry.result.isError).to.equal(true);
+            const challenge = entry.result._meta?.["mcp/www_authenticate"];
+            expect(challenge).to.be.a("string");
+            expect(challenge).to.include('error="insufficient_scope"');
+            expect(challenge).to.include('scope="outliner.write"');
+            expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("done")).to.equal(false);
+        },
+    );
+
     it("returns a revision on write and rejects a stale expectedRevision with a structured conflict", async () => {
         const { readService, relationService } = fixture();
         const app = buildApp(readService, relationService, "outliner.read outliner.write");

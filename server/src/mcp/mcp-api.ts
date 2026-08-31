@@ -643,28 +643,43 @@ export function createMcpRouter(
         // entirely (issue #5257, REQ-002). Checking the scope here, ahead of
         // argument shape, guarantees the insufficient_scope challenge is
         // present regardless of whether `arguments` happens to be valid.
-        const rpcBody = req.body as
-            | { jsonrpc?: string; id?: unknown; method?: string; params?: { name?: string; arguments?: unknown; }; }
-            | undefined;
-        if (
-            rpcBody && typeof rpcBody === "object" && !Array.isArray(rpcBody)
-            && rpcBody.method === "tools/call"
-            && typeof rpcBody.params?.name === "string"
-            && mutatingToolNames.has(rpcBody.params.name)
-            && !grantedScopes.includes("outliner.write")
-        ) {
+        // The installed SDK's Streamable HTTP transport also accepts a
+        // JSON-RPC batch (a top-level array of requests), dispatching each
+        // element through the same per-tool validation independently, so a
+        // batched mutation call needs the same guard: reject the whole
+        // batch, rather than trying to splice a partial response into one
+        // the SDK would otherwise produce for the rest of the batch.
+        type RpcMessage = {
+            jsonrpc?: string;
+            id?: unknown;
+            method?: string;
+            params?: { name?: string; arguments?: unknown; };
+        };
+        const rawBody = req.body as unknown;
+        const rpcMessages: RpcMessage[] = Array.isArray(rawBody)
+            ? rawBody.filter((m): m is RpcMessage => !!m && typeof m === "object")
+            : rawBody && typeof rawBody === "object"
+            ? [rawBody as RpcMessage]
+            : [];
+        const violatingCalls = rpcMessages.filter((msg): msg is RpcMessage & { params: { name: string; }; } =>
+            msg.method === "tools/call"
+            && typeof msg.params?.name === "string"
+            && mutatingToolNames.has(msg.params.name)
+        );
+        if (violatingCalls.length > 0 && !grantedScopes.includes("outliner.write")) {
             const message = "The outliner.write scope is required";
-            const typedArgs = (
-                rpcBody.params.arguments && typeof rpcBody.params.arguments === "object"
-                    ? rpcBody.params.arguments
-                    : {}
-            ) as Record<string, unknown>;
-            recordMcpAudit({
-                ...buildAuditBase(rpcBody.params.name, typedArgs),
-                outcome: "forbidden",
-                applied: false,
-                replayed: false,
-            });
+            const meta = insufficientScopeMeta(message, "outliner.write");
+            for (const call of violatingCalls) {
+                const typedArgs = (
+                    call.params.arguments && typeof call.params.arguments === "object" ? call.params.arguments : {}
+                ) as Record<string, unknown>;
+                recordMcpAudit({
+                    ...buildAuditBase(call.params.name, typedArgs),
+                    outcome: "forbidden",
+                    applied: false,
+                    replayed: false,
+                });
+            }
             logger.info({
                 event: "mcp_resolution_failed",
                 requestId,
@@ -672,16 +687,12 @@ export function createMcpRouter(
                 code: "forbidden",
                 requiredScope: "outliner.write",
             }, message);
-            res.status(200).json({
+            const responses = rpcMessages.map(msg => ({
                 jsonrpc: "2.0",
-                id: rpcBody.id ?? null,
-                result: errorResponse(
-                    message,
-                    "forbidden",
-                    { requestId },
-                    insufficientScopeMeta(message, "outliner.write"),
-                ),
-            });
+                id: msg.id ?? null,
+                result: errorResponse(message, "forbidden", { requestId }, meta),
+            }));
+            res.status(200).json(Array.isArray(rawBody) ? responses : responses[0]);
             return;
         }
 
