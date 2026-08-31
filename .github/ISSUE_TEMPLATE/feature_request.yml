@@ -1,42 +1,139 @@
-name: ✨ Feature Request
-description: Suggest an idea or new feature for this project
+name: ✨ Feature / Refactoring Specification
+description: Define a feature or refactoring as an implementation contract and test oracle
 title: "[FEAT]: "
-labels: ["enhancement"]
+labels:
+  - enhancement
+
 body:
   - type: markdown
     attributes:
       value: |
-        Got an idea to make this project better? We'd love to hear it!
+        Define the requested change as an independent implementation contract.
 
-  - type: textarea
-    id: problem
-    attributes:
-      label: Is your feature request related to a problem? Please describe.
-      description: A clear and concise description of what the problem is.
-      placeholder: I'm always frustrated when [...]
-    validations:
-      required: true
+        The **Requirements** section is the only source of merge-blocking requirements.
+        Context, examples, acceptance scenarios, parent issues, and implementation notes
+        must not introduce additional requirements.
 
-  - type: textarea
-    id: solution
+  - type: input
+    id: parent_issue
     attributes:
-      label: Proposed Solution
-      description: A clear description of what you want to happen or what solution you envision.
-    validations:
-      required: true
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternative Solutions Considered
-      description: Describe any alternative solutions or features you've considered.
-    validations:
-      required: false
+      label: Parent Issue
+      description: |
+        Optional. A parent issue provides context only. Its requirements are not
+        inherited automatically. Copy every applicable requirement into the
+        Requirements section and record its origin.
+      placeholder: "#1234"
 
   - type: textarea
     id: context
     attributes:
-      label: Additional Context
-      description: Add any other context, screenshots, or mockups about the feature request here.
+      label: Context
+      description: |
+        Describe the current behavior, problem, motivation, and relevant background.
+        This section is informative, not normative.
+      placeholder: |
+        Current behavior:
+
+        Problem or limitation:
+
+        Relevant background:
     validations:
-      required: false
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: |
+        This is the authoritative normative contract.
+
+        List every merge-blocking behavior using stable REQ-NNN identifiers.
+        Requirements should describe externally observable behavior, state transitions,
+        persistence, side effects, invariants, authorization, synchronization, or other
+        correctness conditions.
+
+        Do not put a requirement only in Context, Acceptance Scenarios, Non-goals,
+        Implementation Notes, examples, or a parent issue.
+      placeholder: |
+        - REQ-001: The system must ...
+        - REQ-002: When ..., the system must ...
+        - REQ-003: The implementation must not ...
+
+        For an inherited requirement:
+        - REQ-004: Preview must not modify live state. Origin: #1234/REQ-007
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_scenarios
+    attributes:
+      label: Acceptance Scenarios
+      description: |
+        Define concrete scenarios that verify the Requirements.
+
+        Reference the REQ IDs covered by each scenario. Acceptance scenarios verify
+        requirements; they do not create additional requirements.
+      placeholder: |
+        ### AC-001
+        Covers: REQ-001, REQ-002
+
+        Given ...
+        when ...
+        then ...
+        and ...
+
+        ### AC-002
+        Covers: REQ-003
+
+        Given ...
+        when ...
+        then the implementation must not ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: |
+        List behavior explicitly outside the scope when scope expansion is a realistic
+        risk. Non-goals are scope boundaries, not additional requirements.
+      placeholder: |
+        - This issue does not change ...
+        - This issue does not require ...
+
+  - type: textarea
+    id: implementation_notes
+    attributes:
+      label: Implementation Notes
+      description: |
+        Optional, non-normative implementation guidance.
+
+        Do not place required behavior only in this section. Move anything that must
+        block merge into the Requirements section.
+      placeholder: |
+        Relevant files or modules:
+
+        Existing services or abstractions that may be reused:
+
+        Possible implementation considerations:
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and Additional Context
+      description: |
+        Optional alternatives, rejected approaches, screenshots, diagrams, links, or
+        other context. This section is informative, not normative.
+      placeholder: |
+        Alternatives considered:
+
+        Additional context:
+
+  - type: checkboxes
+    id: contract_confirmation
+    attributes:
+      label: Contract Confirmation
+      options:
+        - label: Every merge-blocking requirement is explicitly listed in the Requirements section.
+          required: true
