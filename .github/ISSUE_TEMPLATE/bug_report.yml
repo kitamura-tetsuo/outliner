@@ -1,66 +1,174 @@
-name: 🐛 Bug Report
-description: Create a report to help us reproduce and fix the bug
+name: 🐛 Bug Specification
+description: Report a bug as an implementation contract and regression test oracle
 title: "[BUG]: "
-labels: ["bug"]
+labels:
+  - bug
+
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for reporting a bug! Please fill out this form as completely as possible to help us resolve the issue quickly.
+        Describe the defect and define the required correction as an independent
+        implementation contract.
+
+        The **Requirements** section is the only source of merge-blocking requirements.
+        Reproduction steps, examples, acceptance scenarios, parent issues, and
+        implementation notes must not introduce additional requirements.
+
+  - type: input
+    id: parent_issue
+    attributes:
+      label: Parent Issue
+      description: |
+        Optional. A parent issue provides context only. Its requirements are not
+        inherited automatically. Copy every applicable requirement into the
+        Requirements section and record its origin.
+      placeholder: "#1234"
 
   - type: textarea
-    id: description
+    id: context
     attributes:
-      label: Bug Description
-      description: A clear and concise description of what the bug is.
-      placeholder: Describe the issue in detail...
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to Reproduce
-      description: Steps to reproduce the behavior.
+      label: Context
+      description: |
+        Describe the current behavior, why it is incorrect, its impact, and relevant
+        background. This section is informative, not normative.
       placeholder: |
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See error
+        Current behavior:
+
+        Actual result:
+
+        User or data impact:
+
+        Relevant background:
     validations:
       required: true
 
   - type: textarea
-    id: expected
+    id: reproduction
     attributes:
-      label: Expected Behavior
-      description: A clear description of what you expected to happen.
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual Behavior
-      description: What actually happened instead.
-    validations:
-      required: true
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: Screenshots / Logs
-      description: Add screenshots, console logs, or stack traces if available.
-      render: shell
-
-  - type: textarea
-    id: environment
-    attributes:
-      label: Environment Info
-      description: OS, browser version, Node version, environment variables, etc.
+      label: Reproduction
+      description: |
+        Provide the smallest known state and action sequence that reproduces the defect.
+        Put required corrected behavior in Requirements rather than only here.
       placeholder: |
-        - OS: [e.g. macOS Monterey, Windows 11, Ubuntu 22.04]
-        - Browser / Node version: [e.g. Chrome 120, Node v20.10.0]
-        - App Version: [e.g. v1.2.3]
+        Preconditions:
+        - ...
+
+        Steps:
+        1. ...
+        2. ...
+        3. ...
+
+        Observed result:
+        - ...
     validations:
-      required: false
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: |
+        This is the authoritative normative contract.
+
+        List every merge-blocking behavior using stable REQ-NNN identifiers.
+        Include the corrected behavior, invariants that must remain unchanged, and
+        relevant negative requirements.
+
+        Do not put a requirement only in Context, Reproduction, Acceptance Scenarios,
+        Non-goals, Implementation Notes, examples, or a parent issue.
+      placeholder: |
+        - REQ-001: Given ..., when ..., the system must ...
+        - REQ-002: The correction must preserve ...
+        - REQ-003: The implementation must not merely ...
+        - REQ-004: After reload or synchronization, ...
+
+        For an inherited requirement:
+        - REQ-005: Preview must not modify live state. Origin: #1234/REQ-007
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_scenarios
+    attributes:
+      label: Acceptance Scenarios
+      description: |
+        Define concrete regression scenarios that verify the Requirements.
+
+        Reference the REQ IDs covered by each scenario. Acceptance scenarios verify
+        requirements; they do not create additional requirements.
+      placeholder: |
+        ### AC-001 — Regression
+        Covers: REQ-001, REQ-002
+
+        Given ...
+        when ...
+        then ...
+        and ...
+
+        ### AC-002 — False-success rejection
+        Covers: REQ-003
+
+        Given ...
+        when ...
+        then the implementation must not be considered correct if ...
+
+        ### AC-003 — Persistence or synchronization
+        Covers: REQ-004
+
+        Given ...
+        when the document is reloaded or synchronized,
+        then ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: |
+        List behavior explicitly outside the scope when scope expansion is a realistic
+        risk. Non-goals are scope boundaries, not additional requirements.
+      placeholder: |
+        - This issue does not change ...
+        - General refactoring of ... is outside scope.
+
+  - type: textarea
+    id: implementation_notes
+    attributes:
+      label: Implementation Notes
+      description: |
+        Optional, non-normative implementation guidance.
+
+        Do not place required behavior only in this section. Move anything that must
+        block merge into the Requirements section.
+      placeholder: |
+        Suspected source:
+
+        Relevant files or modules:
+
+        Possible implementation considerations:
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and Environment
+      description: |
+        Add screenshots, logs, stack traces, affected URLs, environment information,
+        or other supporting evidence. This section is informative, not normative.
+      placeholder: |
+        Screenshots or logs:
+
+        Affected URL or document:
+
+        Browser / OS / runtime:
+
+        Additional observations:
+
+  - type: checkboxes
+    id: contract_confirmation
+    attributes:
+      label: Contract Confirmation
+      options:
+        - label: Every merge-blocking requirement is explicitly listed in the Requirements section.
+          required: true
