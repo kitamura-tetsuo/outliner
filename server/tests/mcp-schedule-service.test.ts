@@ -119,6 +119,7 @@ describe("MCP Schedule diagnostics", function() {
         expect(omittedDefault).to.include({ accepted: false });
         expect(omittedDefault.candidateRows).to.deep.equal([]);
         expect(omittedDefault.errors[0]).to.include({ phase: "materialization" });
+        expect(omittedDefault.revisions.dependencies["audit-table"]).to.be.a("string");
         auditConnection.document.getMap("data").delete("existing");
         auditConnection.document.getText("schema").delete(0, auditConnection.document.getText("schema").length);
         auditConnection.document.getText("schema").insert(0, "CREATE TABLE audit (id TEXT PRIMARY KEY, value TEXT)");

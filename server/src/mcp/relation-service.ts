@@ -222,6 +222,7 @@ export class OutlinerRelationService {
                             accepted: false,
                             candidateRows: [],
                             errors: [this.sqlDiagnostic(error, "materialization")],
+                            tableRevisions,
                         };
                     }
                 }
@@ -249,6 +250,7 @@ export class OutlinerRelationService {
                             column: unknown,
                             message: `Returned column ${unknown} does not exist in the target Table`,
                         }],
+                        tableRevisions,
                     };
                 }
                 const identityError = validateScheduleRowIdentities(result.rows);
@@ -257,6 +259,7 @@ export class OutlinerRelationService {
                         accepted: false,
                         candidateRows: [],
                         errors: [{ phase: "target-write", ...identityError }],
+                        tableRevisions,
                     };
                 }
                 return {
@@ -275,7 +278,12 @@ export class OutlinerRelationService {
                     tableRevisions,
                 };
             } catch (error) {
-                return { accepted: false, candidateRows: [], errors: [this.sqlDiagnostic(error, "execution")] };
+                return {
+                    accepted: false,
+                    candidateRows: [],
+                    errors: [this.sqlDiagnostic(error, "execution")],
+                    tableRevisions,
+                };
             } finally {
                 lease.release();
                 await Promise.all(opened.map(table => table.disconnect()));
