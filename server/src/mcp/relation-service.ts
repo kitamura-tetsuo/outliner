@@ -368,7 +368,10 @@ export class OutlinerRelationService {
                     // #5253, REQ-001): a client correcting scheduled SQL must be able to
                     // read it from get_table alone, without a second get_schedule hop.
                     // sql-reference entries stay identifier-only, since their SQL lives
-                    // on a different Table's own write-target schedule.
+                    // on a different Table's own write-target schedule. Write-target
+                    // entries are sorted ahead of sql-reference ones before the bound
+                    // below is applied, so a Table's own schedule is never pushed out
+                    // by 25+ lexicographically earlier sql-reference schedules.
                     scheduleReferences: [...doc.getMap<Y.Map<ScheduleStored>>("schedules").entries()]
                         .sort(([a], [b]) => a.localeCompare(b))
                         .flatMap(([ruleId, rule]) => {
@@ -396,7 +399,12 @@ export class OutlinerRelationService {
                                     }
                                     : {}),
                             }];
-                        }).slice(0, 25),
+                        })
+                        .sort((a, b) =>
+                            Number(b.referenceKinds.includes("write-target"))
+                            - Number(a.referenceKinds.includes("write-target"))
+                        )
+                        .slice(0, 25),
                     provenance: {
                         sourceProjectId: table.sourceProjectId,
                         sourceTableId: table.sourceTableId,

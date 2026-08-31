@@ -480,12 +480,17 @@ export class OutlinerScheduleService {
         expectedRevision: string,
         dryRun?: boolean,
         operationId?: string,
+        // Callers with their own tool identity (update_table_schedule_sql)
+        // must pass a distinct namespace here: otherwise a client reusing one
+        // operationId across both tools for the same ruleId could replay a
+        // cached result for unrelated changes instead of running its own.
+        idempotencyNamespace = "update_schedule_rule",
     ) {
         for (const key of Object.keys(changes)) {
             if (!EDITABLE.has(key)) throw new McpReadError("invalid_argument", `Field ${key} cannot be changed`);
         }
         const key = this.idempotency.key(
-            "update_schedule_rule",
+            idempotencyNamespace,
             uid,
             projectId,
             ruleId,
@@ -574,9 +579,25 @@ export class OutlinerScheduleService {
     ) {
         if (!ID.test(tableId)) throw new McpReadError("invalid_argument", "Invalid table ID");
         const ruleId = await this.withProject(uid, projectId, doc => this.resolveTableScheduleRuleId(doc, tableId));
-        const result = await this.update(uid, projectId, ruleId, { sql }, expectedRevision, dryRun, operationId);
-        // Surface the persisted SQL at the top level (issue #5253, REQ-009) so
-        // a client can confirm what was written without digging into `diff`.
-        return { projectId, tableId, ...result, sql: result.diff.sql.after as string };
+        const result = await this.update(
+            uid,
+            projectId,
+            ruleId,
+            { sql },
+            expectedRevision,
+            dryRun,
+            operationId,
+            "update_table_schedule_sql",
+        );
+        // Surface the SQL at the top level (issue #5253, REQ-009) so a client
+        // can confirm the outcome without digging into `diff`: the persisted
+        // value once applied, or the unchanged stored value for a dry run,
+        // which never writes anything.
+        return {
+            projectId,
+            tableId,
+            ...result,
+            sql: (dryRun ? result.diff.sql.before : result.diff.sql.after) as string,
+        };
     }
 }

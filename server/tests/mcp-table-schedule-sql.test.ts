@@ -92,7 +92,7 @@ describe("MCP Table scheduled SQL (issue #5253)", () => {
         const call = (name: string, args: Record<string, unknown>) =>
             request(app).post("/mcp").set("Authorization", "Bearer token")
                 .set("Accept", "application/json, text/event-stream").send(rpc(name, args));
-        return { call, scope, rule, tableDoc };
+        return { call, scope, rule, tableDoc, project };
     }
 
     it("reads scheduled SQL from get_table without materializing rows or executing it (AC-001)", async () => {
@@ -262,5 +262,73 @@ describe("MCP Table scheduled SQL (issue #5253)", () => {
         const reread = payload(await call("get_table", { projectId: "project-1", tableId: "table-1" }));
         expect(reread.scheduleReferences.find((entry: { ruleId: string; }) => entry.ruleId === "rule-1").sql).to
             .equal(FIXED_SQL);
+    });
+
+    it("keeps the write-target schedule visible past 25 lexicographically earlier sql-reference schedules", async () => {
+        const { call, rule, project } = buildApp();
+        // Every "aaa-*" id sorts before "rule-1"; each merely mentions "tasks"
+        // in its own SQL so it counts as a sql-reference for table-1.
+        for (let index = 0; index < 30; index++) {
+            const filler = new Y.Map<unknown>();
+            filler.set("targetTableId", "table-2");
+            filler.set("sql", "SELECT tasks.id FROM tasks");
+            filler.set("rrule", "FREQ=DAILY");
+            filler.set("dtstart", "2099-01-01T09:00:00");
+            filler.set("timezone", "UTC");
+            project.schedules.set(`aaa-${String(index).padStart(2, "0")}`, filler as never);
+        }
+        const table = payload(await call("get_table", { projectId: "project-1", tableId: "table-1" }));
+        expect(table.scheduleReferences).to.have.lengthOf(25);
+        const reference = table.scheduleReferences.find((entry: { ruleId: string; }) => entry.ruleId === "rule-1");
+        expect(reference).to.include({ sql: BROKEN_SQL });
+        expect(rule.get("sql")).to.equal(BROKEN_SQL);
+    });
+
+    it("reports the unchanged stored SQL, not the proposed one, for a dry run", async () => {
+        const { call, scope, rule } = buildApp();
+        const reference = payload(await call("get_table", { projectId: "project-1", tableId: "table-1" }))
+            .scheduleReferences.find((entry: { ruleId: string; }) => entry.ruleId === "rule-1");
+        scope.write = true;
+        const dryRun = payload(
+            await call("update_table_schedule_sql", {
+                projectId: "project-1",
+                tableId: "table-1",
+                sql: FIXED_SQL,
+                expectedRevision: reference.revision,
+                dryRun: true,
+            }),
+        );
+        expect(dryRun).to.include({ applied: false, sql: BROKEN_SQL });
+        expect(rule.get("sql")).to.equal(BROKEN_SQL);
+    });
+
+    it("does not collide with update_schedule_rule's idempotency cache for the same ruleId/operationId", async () => {
+        const { call, scope } = buildApp();
+        const reference = payload(await call("get_table", { projectId: "project-1", tableId: "table-1" }))
+            .scheduleReferences.find((entry: { ruleId: string; }) => entry.ruleId === "rule-1");
+        scope.write = true;
+        const renamed = payload(
+            await call("update_schedule_rule", {
+                projectId: "project-1",
+                ruleId: "rule-1",
+                changes: { name: "Renamed import" },
+                expectedRevision: reference.revision,
+                operationId: "shared-operation-id",
+            }),
+        );
+        expect(renamed).to.include({ applied: true });
+        // Reusing the same operationId for the Table-centric shortcut on the
+        // same ruleId must run as its own mutation, not replay the rename's
+        // cached result (whose diff has no `sql` field at all).
+        const fixed = payload(
+            await call("update_table_schedule_sql", {
+                projectId: "project-1",
+                tableId: "table-1",
+                sql: FIXED_SQL,
+                expectedRevision: renamed.revision,
+                operationId: "shared-operation-id",
+            }),
+        );
+        expect(fixed).to.include({ applied: true, replayed: false, sql: FIXED_SQL });
     });
 });
