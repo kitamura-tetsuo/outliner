@@ -1,6 +1,6 @@
 {
     "dependencies": {
-        "@electric-sql/pglite": "^0.5.7",
+        "@electric-sql/pglite": "^0.5.8",
         "@hocuspocus/provider": "^4.6.0",
         "@sentry/sveltekit": "^10.71.0",
         "@sinclair/typebox": "^0.34.52",
@@ -28,7 +28,7 @@
         "typescript": "$typescript"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "^2.21.0",
+        "@dotenvx/dotenvx": "^2.22.0",
         "@eslint/compat": "^2.1.0",
         "@eslint/js": "^10.0.1",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
@@ -36,7 +36,7 @@
         "@inlang/message-lint-rule-missing-translation": "^1.4.8",
         "@inlang/message-lint-rule-valid-js-identifier": "^1.0.8",
         "@inlang/message-lint-rule-without-source": "^1.4.8",
-        "@inlang/paraglide-js": "2.24.1",
+        "@inlang/paraglide-js": "2.25.0",
         "@inlang/plugin-m-function-matcher": "^2.2.12",
         "@inlang/plugin-message-format": "^4.4.3",
         "@modelcontextprotocol/sdk": "^1.30.0",
@@ -59,7 +59,7 @@
         "@testing-library/user-event": "^14.6.6",
         "@types/diff-match-patch": "^1.0.36",
         "@types/jsdom": "^30.0.0",
-        "@types/node": "^26.3.0",
+        "@types/node": "^26.4.0",
         "@types/ws": "^8.18.1",
         "@vitest/coverage-v8": "^4.1.11",
         "@vitest/ui": "^4.1.8",
@@ -74,7 +74,7 @@
         "fs-extra": "^11.4.0",
         "globals": "^17.11.0",
         "jsdom": "^30.0.1",
-        "knip": "^6.32.2",
+        "knip": "^6.32.3",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.8",
         "monocart-coverage-reports": "^2.13.0",
