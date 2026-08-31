@@ -12,7 +12,7 @@ import { computeNextRunAt, computeOccurrencesAfter } from "../scheduler/schedule
 import { McpReadError } from "./mcp-error.js";
 import { assertRevision, IdempotencyCache, revisionOf } from "./mutation-contract.js";
 
-type Stored = string | boolean | number | undefined;
+export type Stored = string | boolean | number | undefined;
 export type ScheduleReferenceKind = "write-target" | "sql-reference";
 export interface ScheduleCandidate {
     targetTableId: string;
@@ -74,6 +74,29 @@ const MAX_SCHEDULE_SQL_BYTES = 16 * 1024;
 const MAX_SCHEDULE_TEXT_BYTES = 8 * 1024;
 const MAX_SCHEDULE_ENTITY_BYTES = 32 * 1024;
 
+/**
+ * Snapshot and revision for one Schedule rule, as pure functions of its Y.Map
+ * so any MCP surface reading the rule (get_schedule, get_table's embedded
+ * write-target schedule) can compute the exact same expectedRevision token
+ * that update_schedule_rule / update_table_schedule_sql check against.
+ */
+export function scheduleSnapshot(
+    ruleId: string,
+    rule: Y.Map<Stored>,
+): Record<string, unknown> & { ruleId: string; } {
+    return Object.fromEntries([
+        ["ruleId", ruleId],
+        ...FIELDS.flatMap(key => {
+            const value = rule.get(key);
+            return value === undefined ? [] : [[key, value]];
+        }),
+    ]) as Record<string, unknown> & { ruleId: string; };
+}
+
+export function scheduleRevision(ruleId: string, rule: Y.Map<Stored>): string {
+    return revisionOf(scheduleSnapshot(ruleId, rule));
+}
+
 export class OutlinerScheduleService {
     private readonly idempotency = new IdempotencyCache();
     constructor(
@@ -95,17 +118,11 @@ export class OutlinerScheduleService {
     }
 
     private snapshot(ruleId: string, rule: Y.Map<Stored>) {
-        return Object.fromEntries([
-            ["ruleId", ruleId],
-            ...FIELDS.flatMap(key => {
-                const value = rule.get(key);
-                return value === undefined ? [] : [[key, value]];
-            }),
-        ]) as Record<string, unknown> & { ruleId: string; };
+        return scheduleSnapshot(ruleId, rule);
     }
 
     private revision(ruleId: string, rule: Y.Map<Stored>): string {
-        return revisionOf(this.snapshot(ruleId, rule));
+        return scheduleRevision(ruleId, rule);
     }
 
     private assertBoundedSchedule(value: Record<string, unknown>, label: string): void {
@@ -463,12 +480,17 @@ export class OutlinerScheduleService {
         expectedRevision: string,
         dryRun?: boolean,
         operationId?: string,
+        // Callers with their own tool identity (update_table_schedule_sql)
+        // must pass a distinct namespace here: otherwise a client reusing one
+        // operationId across both tools for the same ruleId could replay a
+        // cached result for unrelated changes instead of running its own.
+        idempotencyNamespace = "update_schedule_rule",
     ) {
         for (const key of Object.keys(changes)) {
             if (!EDITABLE.has(key)) throw new McpReadError("invalid_argument", `Field ${key} cannot be changed`);
         }
         const key = this.idempotency.key(
-            "update_schedule_rule",
+            idempotencyNamespace,
             uid,
             projectId,
             ruleId,
@@ -509,5 +531,73 @@ export class OutlinerScheduleService {
                 }),
         );
         return { ...result, applied: replayed ? false : result.applied, replayed };
+    }
+
+    /**
+     * Resolve the one Schedule rule that writes to `tableId` (its
+     * write-target), so a Table-centric caller never needs to discover a
+     * ruleId through list_schedules first. Fails explicitly (issue #5253,
+     * REQ-007) rather than silently picking a rule when the Table has none
+     * or more than one — an ambiguous case must fall back to
+     * update_schedule_rule with an explicit ruleId.
+     */
+    private resolveTableScheduleRuleId(doc: Y.Doc, tableId: string): string {
+        if (!doc.getMap("yjsTables").has(tableId)) throw new McpReadError("not_found", "Table not found");
+        const matches = [...doc.getMap<Y.Map<Stored>>("schedules").entries()]
+            .filter(([, rule]) => rule.get("targetTableId") === tableId)
+            .map(([ruleId]) => ruleId)
+            .sort((a, b) => a.localeCompare(b));
+        if (matches.length === 0) {
+            throw new McpReadError("not_found", "Table has no applicable schedule", { tableId });
+        }
+        if (matches.length > 1) {
+            throw new McpReadError(
+                "invalid_argument",
+                "Table has multiple schedules targeting it; use update_schedule_rule with an explicit ruleId",
+                { tableId, candidateRuleIds: matches },
+            );
+        }
+        return matches[0]!;
+    }
+
+    /**
+     * Table-centric, field-specific mutation (issue #5253): replace only the
+     * SQL of the Schedule that writes to `tableId`. Delegates to the exact
+     * same validated, revision-guarded, idempotent update path as
+     * update_schedule_rule so correcting scheduled SQL from a Table id
+     * cannot accidentally touch the Table's title, schema, query
+     * configuration, or any other schedule property (cadence, name, ...).
+     */
+    async updateTableScheduleSql(
+        uid: string,
+        projectId: string,
+        tableId: string,
+        sql: string,
+        expectedRevision: string,
+        dryRun?: boolean,
+        operationId?: string,
+    ) {
+        if (!ID.test(tableId)) throw new McpReadError("invalid_argument", "Invalid table ID");
+        const ruleId = await this.withProject(uid, projectId, doc => this.resolveTableScheduleRuleId(doc, tableId));
+        const result = await this.update(
+            uid,
+            projectId,
+            ruleId,
+            { sql },
+            expectedRevision,
+            dryRun,
+            operationId,
+            "update_table_schedule_sql",
+        );
+        // Surface the SQL at the top level (issue #5253, REQ-009) so a client
+        // can confirm the outcome without digging into `diff`: the persisted
+        // value once applied, or the unchanged stored value for a dry run,
+        // which never writes anything.
+        return {
+            projectId,
+            tableId,
+            ...result,
+            sql: (dryRun ? result.diff.sql.before : result.diff.sql.after) as string,
+        };
     }
 }

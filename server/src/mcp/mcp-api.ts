@@ -319,6 +319,34 @@ export function createMcpRouter(
                 },
                 { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, mutating: true },
             );
+            tool(
+                "update_table_schedule_sql",
+                "Replace only the SQL of the Schedule that writes to a Table, identified by tableId, without "
+                    + "touching the Table's title, schema, query configuration, schedule cadence, or any other "
+                    + "schedule property. Fails explicitly if the Table has no schedule or more than one "
+                    + "candidate schedule (use update_schedule_rule with an explicit ruleId in that case).",
+                {
+                    projectId: z.string(),
+                    tableId: z.string(),
+                    sql: z.string(),
+                    expectedRevision: z.string(),
+                    operationId: z.string().min(1).max(200).optional(),
+                    dryRun: z.boolean().optional(),
+                },
+                args => {
+                    requireWrite();
+                    return scheduleService.updateTableScheduleSql(
+                        uid,
+                        args.projectId,
+                        args.tableId,
+                        args.sql,
+                        args.expectedRevision,
+                        args.dryRun,
+                        args.operationId,
+                    );
+                },
+                { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, mutating: true },
+            );
         }
         if (relationService) {
             tool("get_table", "Inspect bounded Table metadata, schema, and stable-id records.", {

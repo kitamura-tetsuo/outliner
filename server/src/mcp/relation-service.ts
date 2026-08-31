@@ -19,6 +19,7 @@ import {
     revisionOf,
 } from "./mutation-contract.js";
 import { McpReadError } from "./outliner-read-service.js";
+import { scheduleRevision, type Stored as ScheduleStored } from "./schedule-service.js";
 
 const MAX_WRITE_PAYLOAD_BYTES = 32 * 1024;
 const MAX_QUERY_BYTES = 16 * 1024;
@@ -363,7 +364,15 @@ export class OutlinerRelationService {
                         }
                         : {}),
                     revision: this.tableRevision(tableId, table.displayName, table.relation, source),
-                    scheduleReferences: [...doc.getMap<Y.Map<unknown>>("schedules").entries()]
+                    // Embed the write-target schedule's SQL and timing directly (issue
+                    // #5253, REQ-001): a client correcting scheduled SQL must be able to
+                    // read it from get_table alone, without a second get_schedule hop.
+                    // sql-reference entries stay identifier-only, since their SQL lives
+                    // on a different Table's own write-target schedule. Write-target
+                    // entries are sorted ahead of sql-reference ones before the bound
+                    // below is applied, so a Table's own schedule is never pushed out
+                    // by 25+ lexicographically earlier sql-reference schedules.
+                    scheduleReferences: [...doc.getMap<Y.Map<ScheduleStored>>("schedules").entries()]
                         .sort(([a], [b]) => a.localeCompare(b))
                         .flatMap(([ruleId, rule]) => {
                             const kinds: ("write-target" | "sql-reference")[] = [];
@@ -374,10 +383,28 @@ export class OutlinerRelationService {
                                 && table.relation
                                 && (identifiers.has(table.relation) || identifiers.has(table.relation.toLowerCase()))
                             ) kinds.push("sql-reference");
-                            return kinds.length
-                                ? [{ ruleId, name: rule.get("name"), referenceKinds: kinds }]
-                                : [];
-                        }).slice(0, 25),
+                            if (!kinds.length) return [];
+                            return [{
+                                ruleId,
+                                name: rule.get("name"),
+                                referenceKinds: kinds,
+                                ...(kinds.includes("write-target")
+                                    ? {
+                                        sql: rule.get("sql"),
+                                        rrule: rule.get("rrule"),
+                                        dtstart: rule.get("dtstart"),
+                                        timezone: rule.get("timezone"),
+                                        enabled: rule.get("enabled"),
+                                        revision: scheduleRevision(ruleId, rule),
+                                    }
+                                    : {}),
+                            }];
+                        })
+                        .sort((a, b) =>
+                            Number(b.referenceKinds.includes("write-target"))
+                            - Number(a.referenceKinds.includes("write-target"))
+                        )
+                        .slice(0, 25),
                     provenance: {
                         sourceProjectId: table.sourceProjectId,
                         sourceTableId: table.sourceTableId,

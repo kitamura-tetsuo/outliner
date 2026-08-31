@@ -1,0 +1,7 @@
+id: MCP-5253c0de
+title: Table-centric schedule SQL read and repair over MCP
+title-ja: MCPによるテーブル起点の定期実行SQL参照・修正
+status: implemented
+description: get_table now embeds the SQL, RRULE, DTSTART, timezone, enabled state, and revision of a Table's write-target Schedule directly in its response, so an MCP client can read a Table's scheduled SQL without a separate get_schedule call and without materializing rows or executing the SQL. A new update_table_schedule_sql tool lets an authorized client replace only that SQL by projectId/tableId, guarded by the same expectedRevision optimistic-concurrency precondition, operationId idempotency, and dryRun preview as update_schedule_rule, and it fails explicitly for a missing Table, a Table outside the authorized project, or a Table with no (or more than one) candidate Schedule rather than reporting false success.
+tests:
+- server/tests/mcp-table-schedule-sql.test.ts
