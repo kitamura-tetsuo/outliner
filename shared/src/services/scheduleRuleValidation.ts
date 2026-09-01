@@ -8,7 +8,7 @@ const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
 export function validateScheduleRuleExplicitAliases(sql: string): void {
     // This parser-only substitution must never be returned or persisted: validation
     // rejects invalid source instead of formatting or repairing authoritative SQL.
-    validateExplicitSelectAliases(sql.replaceAll(SCHEDULE_TARGET_PLACEHOLDER, PARSER_SCHEDULE_TARGET));
+    validateExplicitSelectAliases(sql.split(SCHEDULE_TARGET_PLACEHOLDER).join(PARSER_SCHEDULE_TARGET));
 }
 
 // rrule publishes ESM named exports to the client bundler and a CommonJS
