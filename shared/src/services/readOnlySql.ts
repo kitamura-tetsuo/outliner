@@ -82,5 +82,7 @@ export function validateReadOnlySelect(sql: string): string {
         throw new Error("Only read-only SELECT queries are allowed");
     }
     if (stripped.replace(/;\s*$/, "").includes(";")) throw new Error("Query must contain exactly one statement");
+    validateExplicitSelectAliases(trimmed);
     return trimmed;
 }
+import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";

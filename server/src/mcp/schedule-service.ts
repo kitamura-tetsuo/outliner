@@ -24,6 +24,7 @@ export interface ScheduleCandidate {
     catchUp?: boolean;
     completedAt?: string;
     lastRunAt?: string;
+    sqlAliasPolicyVersion?: number;
 }
 interface SchedulePreviewer {
     previewScheduleRule(
@@ -68,6 +69,7 @@ const FIELDS = [
     "completedAt",
     "validationError",
     "skippedOccurrences",
+    "sqlAliasPolicyVersion",
 ] as const;
 const EDITABLE = new Set(["name", "targetTableId", "sql", "rrule", "dtstart", "timezone", "enabled", "catchUp"]);
 const MAX_SCHEDULE_SQL_BYTES = 16 * 1024;
@@ -321,7 +323,7 @@ export class OutlinerScheduleService {
 
     private fieldValidation(candidate: ScheduleCandidate): Record<string, { valid: boolean; error?: unknown; }> {
         const validation = {
-            sql: validateScheduleRuleSql(candidate.sql),
+            sql: validateScheduleRuleSql(candidate.sql, candidate.sqlAliasPolicyVersion === 1),
             rrule: validateScheduleRuleRRule(candidate.rrule),
             dtstart: validateScheduleRuleDtstart(candidate.dtstart),
             timezone: validateScheduleRuleTimezone(candidate.timezone),
@@ -529,7 +531,12 @@ export class OutlinerScheduleService {
                     const before = this.snapshot(ruleId, rule);
                     const priorRevision = this.revision(ruleId, rule);
                     assertRevision(expectedRevision, priorRevision, { ruleId });
-                    const candidate = { ...before, ...changes } as unknown as ScheduleCandidate;
+                    const sqlChanged = changes.sql !== undefined && changes.sql !== before.sql;
+                    const candidate = {
+                        ...before,
+                        ...changes,
+                        ...(sqlChanged ? { sqlAliasPolicyVersion: 1 } : {}),
+                    } as unknown as ScheduleCandidate;
                     const validation = await this.validateSnapshot(uid, projectId, doc, candidate, ruleId);
                     if (!validation.accepted) {
                         throw new McpReadError("validation_failed", "Schedule validation failed", { validation });
@@ -538,9 +545,10 @@ export class OutlinerScheduleService {
                         // Recheck immediately before the transaction. Yjs observers can
                         // synchronously change the rule while validation is computed.
                         assertRevision(expectedRevision, this.revision(ruleId, rule), { ruleId });
-                        doc.transact(() =>
-                            Object.entries(changes).forEach(([field, value]) => rule.set(field, value as Stored))
-                        );
+                        doc.transact(() => {
+                            Object.entries(changes).forEach(([field, value]) => rule.set(field, value as Stored));
+                            if (sqlChanged) rule.set("sqlAliasPolicyVersion", 1);
+                        });
                     }
                     return {
                         ruleId,

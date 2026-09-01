@@ -5,6 +5,7 @@
     "private": true,
     "type": "module",
     "dependencies": {
+        "libpg-query": "18.1.4",
         "rrule": "^2.8.1",
         "uuid": "^14.0.1",
         "yjs": "13.6.32",

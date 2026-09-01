@@ -1,0 +1,25 @@
+id: FTR-5265a5a5
+title: Explicit SELECT output aliases
+title-ja: SELECT 出力エイリアスの明示
+description: >-
+  Grid, Calendar, Schedule, and MCP SQL mutations require SELECT output
+  aliases to use the explicit AS keyword. PostgreSQL 18 parsing and lexical
+  tokens distinguish explicit aliases from missing-comma implicit aliases at
+  every nested SELECT level. Unchanged legacy SQL remains compatible.
+category: data
+status: implemented
+components:
+  - shared/src/services/explicitSelectAlias.ts
+  - client/src/services/yjstable/gridDocs.ts
+  - client/src/services/calendar/calendarService.ts
+  - client/src/services/schedule/scheduleRuleService.ts
+  - server/src/mcp/relation-service.ts
+  - server/src/mcp/schedule-service.ts
+  - server/src/scheduler/Scheduler.ts
+tests:
+  - shared/tests/services/explicitSelectAlias.test.ts
+acceptance:
+  - Explicit AS output aliases are accepted and implicit output aliases are rejected.
+  - Nested SELECT target lists are validated using PostgreSQL 18 AST and scanner output.
+  - Rejected mutations leave the prior query and revision unchanged.
+  - Unchanged legacy SQL remains loadable and executable until its SQL text changes.

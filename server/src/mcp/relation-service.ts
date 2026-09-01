@@ -1743,11 +1743,6 @@ export class OutlinerRelationService {
         query: string,
         precondition: MutationPrecondition = {},
     ) {
-        try {
-            validateReadOnlySelect(query);
-        } catch (error) {
-            throw new McpReadError("invalid_argument", error instanceof Error ? error.message : String(error));
-        }
         const bytes = Buffer.byteLength(query, "utf8");
         if (bytes > MAX_QUERY_BYTES) {
             throw new McpReadError("size_limit", `Query of ${bytes} bytes exceeds the ${MAX_QUERY_BYTES}-byte limit`, {
@@ -1767,6 +1762,17 @@ export class OutlinerRelationService {
                 const registry = doc.getMap<Y.Map<unknown>>(kind === "grid" ? "yjsGrids" : "calendars");
                 const view = registry.get(viewId);
                 if (!view) throw new McpReadError("not_found", `${kind === "grid" ? "Grid" : "Calendar"} not found`);
+                const previousQuery = String(view.get("query") ?? "");
+                if (query !== previousQuery) {
+                    try {
+                        validateReadOnlySelect(query);
+                    } catch (error) {
+                        throw new McpReadError(
+                            "invalid_argument",
+                            error instanceof Error ? error.message : String(error),
+                        );
+                    }
+                }
                 const priorRevision = revisionOf(String(view.get("query") ?? ""));
                 if (precondition.expectedRevision !== undefined) {
                     assertRevision(precondition.expectedRevision, priorRevision, { kind, viewId });
@@ -1774,7 +1780,10 @@ export class OutlinerRelationService {
                 if (precondition.dryRun) {
                     return { kind, viewId, query, applied: false, priorRevision, revision: priorRevision };
                 }
-                doc.transact(() => view.set("query", query), "mcp-view-query");
+                doc.transact(() => {
+                    view.set("query", query);
+                    if (query !== previousQuery) view.set("sqlAliasPolicyVersion", 1);
+                }, "mcp-view-query");
                 return { kind, viewId, query, applied: true, priorRevision, revision: revisionOf(query) };
             }).then(({ result, replayed }) => ({ ...result, replayed }));
         });

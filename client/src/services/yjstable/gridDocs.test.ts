@@ -20,6 +20,15 @@ import {
 import { createTable, getTableHandles, listTables } from "./tableDocs";
 
 describe("Grid registry", () => {
+    it("rejects an implicit output alias without changing the saved query", () => {
+        const doc = new Y.Doc();
+        const gridId = createGrid(doc, "table-1", { query: "SELECT value FROM table1" });
+        const grid = getGridHandles(doc, gridId)!;
+
+        expect(() => setGridQuery(grid, "SELECT value v FROM table1")).toThrow(/explicit AS/);
+        expect(getGridQuery(grid)).toBe("SELECT value FROM table1");
+    });
+
     it("creates one project-level Grid entry per Grid, referencing its source Table", () => {
         const projectDoc = new Y.Doc();
         const tableId = createTable(projectDoc, "Tasks", "tasks");

@@ -1,4 +1,8 @@
 import type { Project } from "$shared/app-schema";
+import {
+    EXPLICIT_SELECT_ALIAS_POLICY_VERSION,
+    validateExplicitSelectAliases,
+} from "$shared/services/explicitSelectAlias";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
@@ -35,6 +39,7 @@ export function createScheduleRule(
     project: Project,
     options: Partial<ScheduleRule> & { targetTableId: string; sql: string; rrule: string; ruleId?: string; },
 ): string {
+    validateExplicitSelectAliases(options.sql);
     const ruleId = options.ruleId ?? uuid();
     const schedulesMap = project.schedules;
     const ruleMap = new Y.Map<ScheduleRuleValueType>();
@@ -49,6 +54,7 @@ export function createScheduleRule(
 
     ruleMap.set("targetTableId", options.targetTableId);
     ruleMap.set("sql", options.sql);
+    ruleMap.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
     ruleMap.set("rrule", options.rrule);
     ruleMap.set("dtstart", dtstart);
     ruleMap.set("timezone", timezone);
@@ -82,11 +88,16 @@ export function updateScheduleRule(
     if (!ruleMap) {
         throw new Error(`Schedule rule with id ${ruleId} not found`);
     }
+    const sqlChanged = updates.sql !== undefined && updates.sql !== String(ruleMap.get("sql") ?? "");
+    if (sqlChanged) validateExplicitSelectAliases(updates.sql!);
 
     // Apply updates
     if (updates.name !== undefined) ruleMap.set("name", updates.name);
     if (updates.targetTableId !== undefined) ruleMap.set("targetTableId", updates.targetTableId);
-    if (updates.sql !== undefined) ruleMap.set("sql", updates.sql);
+    if (sqlChanged) {
+        ruleMap.set("sql", updates.sql!);
+        ruleMap.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
+    }
     if (updates.rrule !== undefined) ruleMap.set("rrule", updates.rrule);
     if (updates.dtstart !== undefined) ruleMap.set("dtstart", updates.dtstart);
     if (updates.timezone !== undefined) ruleMap.set("timezone", updates.timezone);

@@ -1,4 +1,5 @@
 import * as rruleImport from "rrule";
+import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
 
 // rrule publishes ESM named exports to the client bundler and a CommonJS
 // default namespace to the server test loader. Resolve both package shapes.
@@ -12,7 +13,10 @@ const RRule = rruleImport.RRule
  * - Must be a single statement.
  * - Must be exactly an `INSERT ... RETURNING *` or `WITH ... INSERT ... RETURNING *` statement.
  */
-export function validateScheduleRuleSql(sql: string): { valid: boolean; error?: string; } {
+export function validateScheduleRuleSql(
+    sql: string,
+    requireExplicitAliases = true,
+): { valid: boolean; error?: string; } {
     const trimmed = (sql ?? "").trim();
     if (!trimmed) {
         return { valid: false, error: "SQL is empty" };
@@ -40,6 +44,14 @@ export function validateScheduleRuleSql(sql: string): { valid: boolean; error?: 
     const withoutTrailing = stripped.replace(/;\s*$/, "");
     if (withoutTrailing.includes(";")) {
         return { valid: false, error: "Query must contain exactly one statement" };
+    }
+
+    if (requireExplicitAliases) {
+        try {
+            validateExplicitSelectAliases(trimmed);
+        } catch (error) {
+            return { valid: false, error: error instanceof Error ? error.message : String(error) };
+        }
     }
 
     return { valid: true };

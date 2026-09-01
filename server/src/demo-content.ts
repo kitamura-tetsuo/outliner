@@ -21,7 +21,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // documents are re-seeded on the next /api/seed-demo call. One number covers
 // every locale: each document stores its own `metadata.templateVersion`, so a
 // single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 75;
+export const DEMO_TEMPLATE_VERSION = 76;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -618,6 +618,7 @@ export function registerDemoScheduleRules(projectDoc: Y.Doc, locale: DemoLocale 
         }
         ruleMap.set("targetTableId", rule.targetTableId);
         ruleMap.set("sql", rule.sql);
+        ruleMap.set("sqlAliasPolicyVersion", 1);
         ruleMap.set("rrule", rule.rrule);
         ruleMap.set("dtstart", rule.dtstart);
         ruleMap.set("timezone", rule.timezone);
@@ -716,6 +717,7 @@ export function registerDemoCalendars(projectDoc: Y.Doc, locale: DemoLocale = "e
         calendars.set(template.calendarId, calendarMap);
         calendarMap.set("name", template.name);
         calendarMap.set("query", template.query);
+        calendarMap.set("sqlAliasPolicyVersion", 1);
         calendarMap.set("viewType", template.viewType ?? "week");
         if (template.roleTitle) calendarMap.set("roleTitle", template.roleTitle);
         if (template.roleStart) calendarMap.set("roleStart", template.roleStart);
@@ -761,6 +763,7 @@ export function registerDemoTables(
         gridEntry.set("sourceTableId", template.tableId);
         gridEntry.set("name", template.name);
         gridEntry.set("query", template.query);
+        gridEntry.set("sqlAliasPolicyVersion", 1);
         const components = new Y.Map<Y.Map<unknown>>();
         for (const [column, def] of Object.entries(template.components)) {
             const cfg = new Y.Map<unknown>();
@@ -780,6 +783,7 @@ export function registerDemoTables(
             extraEntry.set("sourceTableId", template.tableId);
             extraEntry.set("name", extra.name);
             extraEntry.set("query", extra.query);
+            extraEntry.set("sqlAliasPolicyVersion", 1);
             const extraComponents = new Y.Map<Y.Map<unknown>>();
             for (const [column, def] of Object.entries(extra.components ?? {})) {
                 const cfg = new Y.Map<unknown>();
