@@ -26,6 +26,16 @@ const mutation = z.looseObject({
     revision,
     replayed: z.boolean(),
 });
+const relationMutation = z.looseObject({
+    relation: z.string(),
+    op: z.enum(["UPDATE", "INSERT", "DELETE"]),
+    rowId: z.string().optional(),
+    applied: z.boolean(),
+    // INSERT creates a new entity, so there is no prior entity revision.
+    priorRevision: revision.optional(),
+    revision,
+    replayed: z.boolean(),
+});
 
 /**
  * Successful result contracts for every tool exposed through the common MCP
@@ -107,7 +117,7 @@ export const toolOutputSchemas = {
         rows: z.array(jsonObject),
         truncated: z.boolean(),
     }),
-    write_relation: mutation,
+    write_relation: relationMutation,
     update_grid_query: mutation,
     set_view_query: mutation,
     update_table_schema: mutation,
