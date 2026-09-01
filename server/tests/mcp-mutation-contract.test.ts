@@ -360,6 +360,30 @@ describe("MCP mutation safety contract", () => {
         expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("title")).to.equal("First");
     });
 
+    it("returns structured success for an outline insert without a prior revision", async () => {
+        const { readService, relationService, textItem } = fixture();
+        const app = buildApp(readService, relationService, "outliner.read outliner.write");
+        const res = await call(app, "write_relation", {
+            projectId: "project-1",
+            relation: "outline_items",
+            write: {
+                op: "INSERT",
+                values: { text: "Inserted once" },
+                destination: { parentKey: textItem.key },
+            },
+        });
+        const result = bodyOf(res).result;
+        const payload = JSON.parse(result.content[0].text);
+
+        expect(result.isError).not.to.equal(true);
+        expect(result.structuredContent).to.deep.equal(payload);
+        expect(payload).to.include({ relation: "outline_items", op: "INSERT", applied: true, replayed: false });
+        expect(payload).not.to.have.property("priorRevision");
+        expect(payload.revision).to.be.a("string");
+        expect(textItem.items).to.have.lengthOf(1);
+        expect(textItem.items.at(0)?.text).to.equal("Inserted once");
+    });
+
     it("replays a write with the same operationId instead of duplicating it", async () => {
         const { readService, relationService, table } = fixture();
         const app = buildApp(readService, relationService, "outliner.read outliner.write");
