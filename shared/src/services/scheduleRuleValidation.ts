@@ -1,6 +1,16 @@
 import * as rruleImport from "rrule";
 import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
 
+const SCHEDULE_TARGET_PLACEHOLDER = "{{table}}";
+const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
+
+/** Validate aliases after replacing the Schedule-only target placeholder in parser input. */
+export function validateScheduleRuleExplicitAliases(sql: string): void {
+    // This parser-only substitution must never be returned or persisted: validation
+    // rejects invalid source instead of formatting or repairing authoritative SQL.
+    validateExplicitSelectAliases(sql.replaceAll(SCHEDULE_TARGET_PLACEHOLDER, PARSER_SCHEDULE_TARGET));
+}
+
 // rrule publishes ESM named exports to the client bundler and a CommonJS
 // default namespace to the server test loader. Resolve both package shapes.
 const RRule = rruleImport.RRule
@@ -48,7 +58,7 @@ export function validateScheduleRuleSql(
 
     if (requireExplicitAliases) {
         try {
-            validateExplicitSelectAliases(trimmed);
+            validateScheduleRuleExplicitAliases(trimmed);
         } catch (error) {
             return { valid: false, error: error instanceof Error ? error.message : String(error) };
         }

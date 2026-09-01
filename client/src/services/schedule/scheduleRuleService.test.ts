@@ -45,6 +45,19 @@ describe("scheduleRuleService", () => {
         expect(project.schedules.get(ruleId)).toBeUndefined();
     });
 
+    it("accepts and preserves the Schedule target placeholder", () => {
+        const project = Project.createInstance("Test Project");
+        const sql = "INSERT INTO {{table}} (title, id) VALUES ('test', gen_random_uuid())";
+
+        const ruleId = createScheduleRule(project, {
+            targetTableId: "table1",
+            sql,
+            rrule: "FREQ=DAILY",
+        });
+
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+    });
+
     // Issue #5012: a Schedule belongs to the project. Its relationship to a
     // Table is a reference — the Table it writes to, or any Table its SQL
     // names — and the same rule shows up for every Table it touches.
