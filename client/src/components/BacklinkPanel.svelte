@@ -92,6 +92,8 @@ onDestroy(() => {
         onclick={togglePanel}
         class="backlink-toggle-button"
         class:active={isOpen}
+        aria-expanded={isOpen}
+        aria-controls="backlink-content"
     >
         <span class="backlink-count">{hasLoaded ? backlinks.length : '-'}</span>
         <span class="backlink-label">Backlinks</span>
@@ -99,7 +101,7 @@ onDestroy(() => {
     </button>
 
     {#if isOpen}
-        <div class="backlink-content">
+        <div id="backlink-content" class="backlink-content">
             <div class="backlink-header">
                 <h3>Backlinks</h3>
 
