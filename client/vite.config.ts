@@ -67,6 +67,11 @@ export default defineConfig(async ({ mode }) => {
                 "yjs": fileURLToPath(new URL("./node_modules/yjs", import.meta.url)),
             },
         },
+        optimizeDeps: {
+            // Keep the patched Emscripten module in Vite's transform pipeline
+            // so its module-relative WASM URL becomes a built asset.
+            exclude: ["libpg-query"],
+        },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,

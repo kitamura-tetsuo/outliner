@@ -39,7 +39,7 @@ export function createScheduleRule(
     project: Project,
     options: Partial<ScheduleRule> & { targetTableId: string; sql: string; rrule: string; ruleId?: string; },
 ): string {
-    validateExplicitSelectAliases(options.sql);
+    if (options.sql.trim()) validateExplicitSelectAliases(options.sql);
     const ruleId = options.ruleId ?? uuid();
     const schedulesMap = project.schedules;
     const ruleMap = new Y.Map<ScheduleRuleValueType>();

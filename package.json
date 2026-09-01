@@ -17,5 +17,8 @@
     },
     "dependencies": {
         "libpg-query": "18.1.4"
+    },
+    "scripts": {
+        "postinstall": "patch-package"
     }
 }

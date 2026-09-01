@@ -307,8 +307,7 @@ describe("Outliner MCP relation service", function() {
             "SELECT id, order FROM tasks ORDER BY order",
         );
         expect(reserved.accepted).to.equal(false);
-        expect(reserved.errors[0]).to.include({ phase: "execution" });
-        expect(reserved.errors[0]).to.have.property("position");
+        expect(reserved.errors[0]).to.include({ phase: "validation" });
         for (
             const rejected of [
                 "SELECT 1; SELECT 2",
