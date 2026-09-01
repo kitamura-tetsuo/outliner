@@ -609,9 +609,9 @@ export function buildDemoScheduleRules(): DemoScheduleRuleTemplate[] {
 
 /** Write the demo's schedule rules into the project doc's `schedules` map. */
 export function registerDemoScheduleRules(projectDoc: Y.Doc, locale: DemoLocale = "en"): void {
-    const schedules = projectDoc.getMap<Y.Map<string | boolean>>("schedules");
+    const schedules = projectDoc.getMap<Y.Map<string | boolean | number>>("schedules");
     for (const rule of buildDemoScheduleRulesFor(locale)) {
-        const ruleMap = new Y.Map<string | boolean>();
+        const ruleMap = new Y.Map<string | boolean | number>();
         schedules.set(rule.ruleId, ruleMap);
         if (rule.name) {
             ruleMap.set("name", rule.name);
