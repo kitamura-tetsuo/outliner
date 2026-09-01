@@ -67,11 +67,6 @@ export default defineConfig(async ({ mode }) => {
                 "yjs": fileURLToPath(new URL("./node_modules/yjs", import.meta.url)),
             },
         },
-        optimizeDeps: {
-            // Keep the patched Emscripten module in Vite's transform pipeline
-            // so its module-relative WASM URL becomes a built asset.
-            exclude: ["libpg-query"],
-        },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
@@ -141,8 +136,10 @@ export default defineConfig(async ({ mode }) => {
             },
         },
         optimizeDeps: {
-            // PGlite ships its own WASM assets and must not be pre-bundled.
-            exclude: ["@electric-sql/pglite"],
+            // Both engines ship their own WASM assets and must not be
+            // pre-bundled. libpg-query's patched loader needs Vite's regular
+            // transform pipeline to emit its module-relative WASM URL.
+            exclude: ["@electric-sql/pglite", "libpg-query"],
             // The framework-neutral schema in ../shared/src imports these three.
             // Pre-bundle them at dev-server startup so Vite never discovers them
             // as "new" dependencies mid-run: a late discovery triggers a dep
