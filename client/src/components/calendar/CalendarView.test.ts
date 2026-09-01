@@ -41,6 +41,29 @@ afterAll(async () => {
 });
 
 describe("CalendarView", { timeout: 30000 }, () => {
+    it("keeps an unchanged pre-policy implicit alias executable but rejects it for a governed Calendar", async () => {
+        const projectId = "proj-calendar-legacy-alias";
+        const { projectDoc, project } = seedProject(projectId);
+        const legacyId = createCalendar(project, { name: "Legacy", query: "SELECT 1 AS value" });
+        const legacyMap = projectDoc.getMap("calendars").get(legacyId) as Y.Map<unknown>;
+        legacyMap.set("query", "SELECT 1 value");
+        legacyMap.delete("sqlAliasPolicyVersion");
+
+        let component = render(CalendarView, { props: { project, projectId, calendarId: legacyId } });
+        await waitFor(() => expect(component.queryByTestId("calendar-query-error")).toBeFalsy());
+        component.unmount();
+
+        const governedId = createCalendar(project, { name: "Governed", query: "SELECT 1 AS value" });
+        const governedMap = projectDoc.getMap("calendars").get(governedId) as Y.Map<unknown>;
+        governedMap.set("query", "SELECT 1 value");
+        component = render(CalendarView, { props: { project, projectId, calendarId: governedId } });
+        await waitFor(() =>
+            expect(component.getByTestId("calendar-query-error").textContent).toContain(
+                "SELECT output aliases must use explicit AS",
+            )
+        );
+    });
+
     it("panel absent by default with a non-empty query, present after clicking the toggle, present by default when the query is empty; error paragraphs render while collapsed", async () => {
         const projectId = "proj-calendar-settings-panel";
         const { projectDoc, project } = seedProject(projectId);

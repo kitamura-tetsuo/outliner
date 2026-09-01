@@ -34,7 +34,13 @@ PLUGIN_PACKAGES=(
 
 # The CLI is pinned the same way and decides formatting output just as much, so
 # it is verified alongside the plugins.
-CHECKED_PACKAGES=("dprint" "${PLUGIN_PACKAGES[@]}")
+# Shared source files are imported directly by the client and server. Their
+# bare imports therefore resolve through the repository-root node_modules,
+# rather than through shared/node_modules. Keep those root runtime packages in
+# the same branch-switch guard so a newly added shared dependency cannot leave
+# `scripts/test.sh` failing with an opaque Vite import-resolution error.
+ROOT_RUNTIME_PACKAGES=("libpg-query")
+CHECKED_PACKAGES=("dprint" "${PLUGIN_PACKAGES[@]}" "${ROOT_RUNTIME_PACKAGES[@]}")
 
 # A wasm module starts with the magic bytes 0x00 'a' 's' 'm'.
 is_wasm() {
@@ -56,11 +62,13 @@ stale_packages() {
   local package pinned installed
   for package in "${CHECKED_PACKAGES[@]}"; do
     pinned="$(node -p \
-      "try{require('${ROOT_DIR}/package.json').devDependencies['${package}']??''}catch(e){''}" 2>/dev/null)"
+      "try{const p=require('${ROOT_DIR}/package.json'); p.devDependencies?.['${package}']??p.dependencies?.['${package}']??''}catch(e){''}" \
+      2>/dev/null)"
     installed="$(json_field "${ROOT_DIR}/node_modules/${package}/package.json" version)"
     if [ -z "$installed" ] || { [ -n "$pinned" ] && [ "$installed" != "$pinned" ]; }; then
       echo "$package"
-    elif [ "$package" != "dprint" ] && ! is_wasm "${ROOT_DIR}/node_modules/${package}/plugin.wasm"; then
+    elif [[ " ${PLUGIN_PACKAGES[*]} " == *" ${package} "* ]] \
+      && ! is_wasm "${ROOT_DIR}/node_modules/${package}/plugin.wasm"; then
       echo "$package"
     fi
   done

@@ -1,4 +1,15 @@
 import * as rruleImport from "rrule";
+import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
+
+const SCHEDULE_TARGET_PLACEHOLDER = "{{table}}";
+const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
+
+/** Validate aliases after replacing the Schedule-only target placeholder in parser input. */
+export function validateScheduleRuleExplicitAliases(sql: string): void {
+    // This parser-only substitution must never be returned or persisted: validation
+    // rejects invalid source instead of formatting or repairing authoritative SQL.
+    validateExplicitSelectAliases(sql.split(SCHEDULE_TARGET_PLACEHOLDER).join(PARSER_SCHEDULE_TARGET));
+}
 
 // rrule publishes ESM named exports to the client bundler and a CommonJS
 // default namespace to the server test loader. Resolve both package shapes.
@@ -12,7 +23,10 @@ const RRule = rruleImport.RRule
  * - Must be a single statement.
  * - Must be exactly an `INSERT ... RETURNING *` or `WITH ... INSERT ... RETURNING *` statement.
  */
-export function validateScheduleRuleSql(sql: string): { valid: boolean; error?: string; } {
+export function validateScheduleRuleSql(
+    sql: string,
+    requireExplicitAliases = true,
+): { valid: boolean; error?: string; } {
     const trimmed = (sql ?? "").trim();
     if (!trimmed) {
         return { valid: false, error: "SQL is empty" };
@@ -40,6 +54,14 @@ export function validateScheduleRuleSql(sql: string): { valid: boolean; error?: 
     const withoutTrailing = stripped.replace(/;\s*$/, "");
     if (withoutTrailing.includes(";")) {
         return { valid: false, error: "Query must contain exactly one statement" };
+    }
+
+    if (requireExplicitAliases) {
+        try {
+            validateScheduleRuleExplicitAliases(trimmed);
+        } catch (error) {
+            return { valid: false, error: error instanceof Error ? error.message : String(error) };
+        }
     }
 
     return { valid: true };

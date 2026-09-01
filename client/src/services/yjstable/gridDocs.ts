@@ -18,6 +18,10 @@
 //   components     Y.Map     - nested Y.Map per column with {type,label,hidden}.
 
 import type { Project } from "$shared/app-schema";
+import {
+    EXPLICIT_SELECT_ALIAS_POLICY_VERSION,
+    validateExplicitSelectAliases,
+} from "$shared/services/explicitSelectAlias";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { findGridPlacements } from "../objectManager/objectPlacements";
@@ -116,11 +120,15 @@ export function createGrid(
     options: CreateGridOptions = {},
 ): string {
     const gridId = options.gridId ?? uuidv4();
+    if (options.query?.trim()) validateExplicitSelectAliases(options.query);
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
         entry.set("sourceTableId", sourceTableId);
         entry.set("name", options.name ?? "Grid");
-        if (options.query !== undefined) entry.set("query", options.query);
+        if (options.query !== undefined) {
+            entry.set("query", options.query);
+            if (options.query.trim()) entry.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
+        }
         if (options.columnOrder && options.columnOrder.length > 0) {
             entry.set("columnOrder", [...options.columnOrder]);
         }
@@ -224,7 +232,11 @@ export function getGridQuery(handles: GridHandles): string {
 /** Replace the SELECT query text. */
 export function setGridQuery(handles: GridHandles, query: string): void {
     if (query === getGridQuery(handles)) return;
-    handles.entry.set("query", query);
+    validateExplicitSelectAliases(query);
+    handles.projectDoc.transact(() => {
+        handles.entry.set("query", query);
+        handles.entry.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
+    });
 }
 
 export function getGridColumnOrder(handles: GridHandles): string[] {

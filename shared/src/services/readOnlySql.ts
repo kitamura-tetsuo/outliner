@@ -73,7 +73,7 @@ export function parseTopLevelInsertTarget(sql: string): string | undefined {
 }
 
 /** Validate the single, read-only SELECT contract shared by views and MCP. */
-export function validateReadOnlySelect(sql: string): string {
+export function validateReadOnlySelect(sql: string, requireExplicitAliases = true): string {
     const trimmed = (sql ?? "").trim();
     if (!trimmed) throw new Error("Query is empty");
     const stripped = stripSqlNoise(trimmed);
@@ -82,5 +82,7 @@ export function validateReadOnlySelect(sql: string): string {
         throw new Error("Only read-only SELECT queries are allowed");
     }
     if (stripped.replace(/;\s*$/, "").includes(";")) throw new Error("Query must contain exactly one statement");
+    if (requireExplicitAliases) validateExplicitSelectAliases(trimmed);
     return trimmed;
 }
+import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";

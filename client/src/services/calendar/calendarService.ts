@@ -6,6 +6,10 @@
 // uses (see scheduleRuleService.ts). See docs/crdt-sql-architecture.md §6.6.
 
 import type { Project } from "$shared/app-schema";
+import {
+    EXPLICIT_SELECT_ALIAS_POLICY_VERSION,
+    validateExplicitSelectAliases,
+} from "$shared/services/explicitSelectAlias";
 import type { CalendarValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
@@ -131,6 +135,11 @@ export function getCalendar(project: Project, calendarId: string): CalendarSetti
     return calendarMap ? readCalendarSettings(calendarMap) : undefined;
 }
 
+/** Whether this persisted Calendar query is governed by the explicit-alias policy. */
+export function calendarRequiresExplicitAliases(project: Project, calendarId: string): boolean {
+    return getCalendarMap(project, calendarId)?.get("sqlAliasPolicyVersion") === EXPLICIT_SELECT_ALIAS_POLICY_VERSION;
+}
+
 export function listCalendars(project: Project): CalendarListEntry[] {
     const entries: CalendarListEntry[] = [];
     project.calendars.forEach((calendarMap, id) => {
@@ -149,9 +158,11 @@ export function createCalendar(
     ensureCalendarUndoManager(project);
     const calendarId = options.calendarId ?? uuid();
     const calendarMap = new Y.Map<CalendarValueType>();
+    if (options.query?.trim()) validateExplicitSelectAliases(options.query);
 
     calendarMap.set("name", options.name);
     calendarMap.set("query", options.query ?? "");
+    if (options.query?.trim()) calendarMap.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
     calendarMap.set("viewType", options.viewType ?? DEFAULT_CALENDAR_VIEW_TYPE);
     if (options.timezone) calendarMap.set("timezone", assertValidTimezone(options.timezone));
     if (options.roleTitle) calendarMap.set("roleTitle", options.roleTitle);
@@ -220,10 +231,15 @@ export function updateCalendar(
     ensureCalendarUndoManager(project);
     const calendarMap = getCalendarMap(project, calendarId);
     if (!calendarMap) throw new Error(`Calendar with id ${calendarId} not found`);
+    const queryChanged = updates.query !== undefined && updates.query !== String(calendarMap.get("query") ?? "");
+    if (queryChanged) validateExplicitSelectAliases(updates.query!);
 
     project.ydoc.transact(() => {
         if (updates.name !== undefined) calendarMap.set("name", updates.name);
-        if (updates.query !== undefined) calendarMap.set("query", updates.query);
+        if (queryChanged) {
+            calendarMap.set("query", updates.query!);
+            calendarMap.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
+        }
         if (updates.viewType !== undefined) calendarMap.set("viewType", updates.viewType);
         if (updates.timezone !== undefined) {
             setOrClear(calendarMap, "timezone", updates.timezone === "" ? "" : assertValidTimezone(updates.timezone));

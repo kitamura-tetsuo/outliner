@@ -79,6 +79,11 @@ export abstract class TableQueryRunnerBase {
     /** The SELECT to execute right now. */
     protected abstract currentQuery(): string;
 
+    /** Whether this persisted query has opted into the explicit-alias policy. */
+    protected requireExplicitAliases(): boolean {
+        return true;
+    }
+
     /** Attach whatever observers make `currentQuery()` change over time. */
     protected observeQuerySource(): void {}
 
@@ -159,6 +164,7 @@ export abstract class TableQueryRunnerBase {
                 pgSchema: this.sourceAdapter.sharedPgSchema,
                 registry: this.registry,
                 isStale,
+                requireExplicitAliases: this.requireExplicitAliases(),
             });
             if (isStale()) return undefined;
             this.emitError(undefined);

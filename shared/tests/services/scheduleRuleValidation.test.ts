@@ -22,6 +22,13 @@ describe("scheduleRuleValidation", () => {
             ).toBe(true);
         });
 
+        it("accepts the Schedule target placeholder without rewriting the submitted SQL", () => {
+            const sql = "INSERT INTO {{table}} (id, val) SELECT id, val AS value FROM source RETURNING *";
+
+            expect(validateScheduleRuleSql(sql)).toEqual({ valid: true });
+            expect(sql).toContain("{{table}}");
+        });
+
         it("should reject SELECT", () => {
             const res = validateScheduleRuleSql("SELECT * FROM my_table");
             expect(res.valid).toBe(false);

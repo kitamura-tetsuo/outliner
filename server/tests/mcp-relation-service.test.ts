@@ -307,8 +307,10 @@ describe("Outliner MCP relation service", function() {
             "SELECT id, order FROM tasks ORDER BY order",
         );
         expect(reserved.accepted).to.equal(false);
-        expect(reserved.errors[0]).to.include({ phase: "execution" });
-        expect(reserved.errors[0]).to.have.property("position");
+        // Explicit-alias policy failures occur in the shared lexical validator
+        // before PGlite parsing, so this validation-phase diagnostic intentionally
+        // has no engine-reported source position.
+        expect(reserved.errors[0]).to.include({ phase: "validation" });
         for (
             const rejected of [
                 "SELECT 1; SELECT 2",
@@ -458,6 +460,79 @@ describe("Outliner MCP relation service", function() {
         expect(project.calendars.get("calendar-1")?.get("query")).to.equal("SELECT id FROM outline_items");
         const denied = fixture(false).service.listRelations("uid", "project-1");
         await expectFailure(denied, "inaccessible");
+    });
+
+    it("rejects implicit aliases at the server Grid and Calendar mutation boundary without changing state", async () => {
+        const { service, project } = fixture();
+        const cases = [
+            {
+                kind: "grid" as const,
+                viewId: "grid-1",
+                view: project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!,
+                implicit: "SELECT title value FROM tasks",
+                explicit: "SELECT title AS value FROM tasks",
+            },
+            {
+                kind: "calendar" as const,
+                viewId: "calendar-1",
+                view: project.calendars.get("calendar-1")!,
+                implicit: "SELECT id value FROM outline_items",
+                explicit: "SELECT id AS value FROM outline_items",
+            },
+        ];
+
+        for (const testCase of cases) {
+            const savedQuery = testCase.view.get("query");
+            const savedPolicyVersion = testCase.view.get("sqlAliasPolicyVersion");
+            const beforeState = Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64");
+            const beforeRevision = (await service.setViewQuery(
+                "uid",
+                "project-1",
+                testCase.kind,
+                testCase.viewId,
+                String(savedQuery),
+                { dryRun: true },
+            )).revision;
+
+            try {
+                await service.setViewQuery(
+                    "uid",
+                    "project-1",
+                    testCase.kind,
+                    testCase.viewId,
+                    testCase.implicit,
+                );
+                expect.fail("implicit output alias mutation should be rejected");
+            } catch (error) {
+                expect((error as { code?: string; }).code).to.equal("invalid_argument");
+                expect((error as Error).message).to.equal("SELECT output aliases must use explicit AS");
+            }
+
+            expect(testCase.view.get("query")).to.equal(savedQuery);
+            expect(testCase.view.get("sqlAliasPolicyVersion")).to.equal(savedPolicyVersion);
+            expect(Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64")).to.equal(beforeState);
+            const afterRevision = (await service.setViewQuery(
+                "uid",
+                "project-1",
+                testCase.kind,
+                testCase.viewId,
+                String(savedQuery),
+                { dryRun: true },
+            )).revision;
+            expect(afterRevision).to.equal(beforeRevision);
+
+            const accepted = await service.setViewQuery(
+                "uid",
+                "project-1",
+                testCase.kind,
+                testCase.viewId,
+                testCase.explicit,
+            );
+            expect(accepted).to.include({ applied: true, query: testCase.explicit });
+            expect(accepted.revision).to.not.equal(beforeRevision);
+            expect(testCase.view.get("query")).to.equal(testCase.explicit);
+            expect(testCase.view.get("sqlAliasPolicyVersion")).to.equal(1);
+        }
     });
 
     it("migrates a Table schema additively via update_table_schema with dry-run, retries, and revision checks", async () => {

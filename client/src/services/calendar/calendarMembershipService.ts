@@ -37,7 +37,7 @@ import {
     selectRelevantOccurrences,
     toScheduleOccurrence,
 } from "./calendarScheduleIndex.svelte";
-import { listCalendars, observeCalendars } from "./calendarService";
+import { calendarRequiresExplicitAliases, listCalendars, observeCalendars } from "./calendarService";
 import { resolveOutlineItemId } from "./calendarSourceIdentity";
 import { resolveCalendarTimezone } from "./calendarTimezone";
 
@@ -181,7 +181,14 @@ export function startCalendarMembershipIndexing(
                 continue;
             }
 
-            const outcome = await runCalendarQuery(session, pgSchema, settings.query, range, timeZone);
+            const outcome = await runCalendarQuery(
+                session,
+                pgSchema,
+                settings.query,
+                range,
+                timeZone,
+                calendarRequiresExplicitAliases(project, calendarId),
+            );
             if (disposed || round !== generation) return;
             if (!outcome.result) {
                 // A calendar whose query is broken contributes nothing rather

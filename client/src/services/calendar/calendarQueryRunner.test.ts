@@ -35,6 +35,20 @@ afterAll(async () => {
 });
 
 describe("runCalendarQuery", { timeout: 30000 }, () => {
+    it("executes unchanged pre-policy SQL with an implicit alias", async () => {
+        const outcome = await runCalendarQuery(
+            { resolveRelation: async () => undefined },
+            "public",
+            "SELECT 1 value",
+            undefined,
+            undefined,
+            false,
+        );
+
+        expect(outcome.error).toBeUndefined();
+        expect(outcome.result?.rows).toEqual([{ value: 1 }]);
+    });
+
     it("returns an empty result for a blank query, without touching the engine", async () => {
         const outcome = await runCalendarQuery({ resolveRelation: async () => undefined }, "irrelevant", "   ");
         expect(outcome).toEqual({ result: { columns: [], rows: [] } });

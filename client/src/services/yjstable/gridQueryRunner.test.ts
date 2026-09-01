@@ -46,6 +46,34 @@ afterAll(async () => {
 });
 
 describe("one Table, many Grids", { timeout: 30000 }, () => {
+    it("executes an unchanged pre-policy Grid with an implicit alias", async () => {
+        const projectId = "proj-legacy-grid-alias";
+        const { projectDoc, tasksId } = seedTasksTable(projectId);
+        const gridId = createGrid(projectDoc, tasksId, {
+            name: "Legacy",
+            query: "SELECT title AS value FROM tasks ORDER BY id",
+        });
+        const grid = getGridHandles(projectDoc, gridId)!;
+        // Seed the state shape written before the policy was introduced.
+        grid.entry.set("query", "SELECT title value FROM tasks ORDER BY id");
+        grid.entry.delete("sqlAliasPolicyVersion");
+
+        const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+        try {
+            const acquired = await session.acquire(tasksId);
+            const runner = new GridQueryRunner({ grid, sourceAdapter: acquired!.adapter });
+            try {
+                const result = await runner.runQueryNow();
+                expect(result?.rows.map(row => row.value)).toEqual(["Draft", "Ship", "Done"]);
+            } finally {
+                runner.dispose();
+            }
+        } finally {
+            session.dispose();
+            await waitForTableEngineIdle();
+        }
+    });
+
     it("runs two Grids' SELECTs independently against the same source Table", async () => {
         const projectId = "proj-one-table-many-grids";
         const { projectDoc, tasksId } = seedTasksTable(projectId);

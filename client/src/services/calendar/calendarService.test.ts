@@ -24,6 +24,15 @@ describe("calendarService", () => {
         globalUndoRouter.clear();
     });
 
+    it("rejects an implicit output alias without changing the saved query", () => {
+        const calendarId = createCalendar(project, { name: "Calendar", query: "SELECT value FROM table1" });
+
+        expect(() => updateCalendar(project, calendarId, { query: "SELECT value v FROM table1" })).toThrow(
+            /explicit AS/,
+        );
+        expect(getCalendar(project, calendarId)?.query).toBe("SELECT value FROM table1");
+    });
+
     it("creates, lists, updates, and deletes calendars through the calendars map", () => {
         const calendarId = createCalendar(project, { name: "My Calendar", query: "SELECT 1" });
 

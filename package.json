@@ -14,5 +14,11 @@
         "playwright": "^1.62.1",
         "pm2": "^7.0.4",
         "vitepress": "^1.6.4"
+    },
+    "dependencies": {
+        "libpg-query": "18.1.4"
+    },
+    "scripts": {
+        "postinstall": "patch-package"
     }
 }

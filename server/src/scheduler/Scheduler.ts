@@ -3,6 +3,7 @@ import { Hocuspocus } from "@hocuspocus/server";
 import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
+import { validateExplicitSelectAliases } from "../../../shared/src/services/explicitSelectAlias.js";
 import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
@@ -157,6 +158,7 @@ export class JobScheduler {
             let ruleSql = "";
             let targetTableId = "";
             let timezone = "UTC";
+            let strictAliases = false;
             try {
                 if (!conn.document) {
                     return { success: false, error: "Document not found" };
@@ -169,12 +171,20 @@ export class JobScheduler {
                 ruleSql = (ruleItem.get("sql") as string) || "";
                 targetTableId = (ruleItem.get("targetTableId") as string) || "";
                 timezone = (ruleItem.get("timezone") as string) || "UTC";
+                strictAliases = ruleItem.get("sqlAliasPolicyVersion") === 1;
             } finally {
                 conn.disconnect();
             }
 
             if (!ruleSql || !targetTableId) {
                 return { success: false, error: "Missing required rule data (sql or targetTableId)" };
+            }
+            if (strictAliases) {
+                try {
+                    validateExplicitSelectAliases(ruleSql);
+                } catch (error) {
+                    return { success: false, error: error instanceof Error ? error.message : String(error) };
+                }
             }
 
             // The recurrence fields come from the index when the rule is
@@ -321,6 +331,7 @@ export class JobScheduler {
         const mainRoomConn = await this.hocuspocus.openDirectConnection(rule.room);
         let catchUp = false;
         let ruleSql = "";
+        let strictAliases = false;
 
         try {
             if (mainRoomConn.document) {
@@ -329,6 +340,7 @@ export class JobScheduler {
                 if (ruleItem) {
                     ruleSql = (ruleItem.get("sql") as string) || "";
                     catchUp = (ruleItem.get("catchUp") as boolean) || false;
+                    strictAliases = ruleItem.get("sqlAliasPolicyVersion") === 1;
                 }
             }
         } finally {
@@ -346,6 +358,14 @@ export class JobScheduler {
             }
             logger.warn({ ruleId: rule.rule_id, room: rule.room }, "Skipping and orphaning rule: ruleSql is empty");
             return;
+        }
+        if (strictAliases) {
+            try {
+                validateExplicitSelectAliases(ruleSql);
+            } catch (error) {
+                logger.warn({ ruleId: rule.rule_id, error }, "Strict Schedule SQL violates explicit-alias policy");
+                return;
+            }
         }
 
         const skipAll = missed.length > 1 && !catchUp;
