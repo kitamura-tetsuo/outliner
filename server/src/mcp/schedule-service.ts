@@ -393,11 +393,12 @@ export class OutlinerScheduleService {
         ruleId?: string,
         occurrence?: string,
         resultLimit = 25,
+        requireExplicitAliases = true,
     ) {
         this.assertBoundedSchedule(candidate as unknown as Record<string, unknown>, "Schedule candidate");
         // Public validation evaluates a new candidate and is always governed,
         // regardless of whether callers know about the persistence marker.
-        const fields = this.fieldValidation(candidate, true);
+        const fields = this.fieldValidation(candidate, requireExplicitAliases);
         const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
         const references = this.references(doc, candidate);
         const missingTarget = !target;
@@ -542,7 +543,16 @@ export class OutlinerScheduleService {
                         ...changes,
                         ...(sqlChanged ? { sqlAliasPolicyVersion: 1 } : {}),
                     } as unknown as ScheduleCandidate;
-                    const validation = await this.validateSnapshot(uid, projectId, doc, candidate, ruleId);
+                    const validation = await this.validateSnapshot(
+                        uid,
+                        projectId,
+                        doc,
+                        candidate,
+                        ruleId,
+                        undefined,
+                        25,
+                        sqlChanged || candidate.sqlAliasPolicyVersion === 1,
+                    );
                     if (!validation.accepted) {
                         throw new McpReadError("validation_failed", "Schedule validation failed", { validation });
                     }

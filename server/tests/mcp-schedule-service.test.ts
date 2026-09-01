@@ -91,6 +91,36 @@ describe("MCP Schedule diagnostics", function() {
         expect(preview.candidateRows[0]).to.include({ id: "daily" });
         expect(preview.deterministicIds).to.include({ idempotent: true });
         expect(tableConnection.document.getMap("data").size).to.equal(0);
+        const legacySql =
+            "WITH source AS (SELECT 'legacy'::text AS id) INSERT INTO tasks (id) SELECT id value FROM source RETURNING *";
+        rule.set("sql", legacySql);
+        rule.delete("sqlAliasPolicyVersion");
+        const legacyRead = await service.getSchedule("user", "project-1", "rule-1");
+        const legacyUpdate = await service.update(
+            "user",
+            "project-1",
+            "rule-1",
+            { enabled: true },
+            legacyRead.revision,
+        );
+        expect(legacyUpdate).to.include({ applied: true });
+        expect(rule.get("sql")).to.equal(legacySql);
+        expect(rule.get("sqlAliasPolicyVersion")).to.equal(undefined);
+        const afterLegacyUpdate = await service.getSchedule("user", "project-1", "rule-1");
+        try {
+            await service.update(
+                "user",
+                "project-1",
+                "rule-1",
+                { sql: legacySql.replace("'legacy'", "'changed'") },
+                afterLegacyUpdate.revision,
+            );
+            expect.fail("changed implicit-alias SQL should be rejected");
+        } catch (error) {
+            expect((error as Error).message).to.equal("Schedule validation failed");
+        }
+        rule.set("sql", read.stored.sql);
+        rule.set("enabled", false);
         const cteSql =
             "WITH source AS (SELECT 'cte-task'::text AS id) INSERT INTO tasks (id) SELECT id FROM source RETURNING *";
         const ctePreview = await service.validate(

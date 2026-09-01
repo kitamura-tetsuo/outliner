@@ -59,6 +59,7 @@ import {
     DEFAULT_WORKING_HOURS_START_MINUTES,
     type CalendarSettings,
     DEFAULT_CALENDAR_VIEW_TYPE,
+    calendarRequiresExplicitAliases,
     destroyCalendarUndoManager,
     ensureCalendarUndoManager,
     getCalendarMap,
@@ -309,7 +310,14 @@ async function runQuery() {
     const currentSettings = settings;
     const currentRangeBounds = { startUtcMs: range.start, endUtcMs: range.end };
 
-    const outcome = await runCalendarQuery(session, pgSchema, currentQuery, currentRange, currentTimeZone);
+    const outcome = await runCalendarQuery(
+        session,
+        pgSchema,
+        currentQuery,
+        currentRange,
+        currentTimeZone,
+        calendarRequiresExplicitAliases(project, calendarId),
+    );
     if (generation !== queryGeneration) return;
     if (outcome.result) {
         result = outcome.result;
