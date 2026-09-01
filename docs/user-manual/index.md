@@ -26,7 +26,7 @@ An overview of the basic interface and navigation.
 
 ### Creating and Browsing Pages
 
-You can create and browse pages using the left sidebar or the Search button.
+You can create and browse pages using the left sidebar or the Search input in the top navigation bar.
 
 To browse your pages, click the sidebar toggle button in the top-left corner (hamburger menu) and expand the **Pages** section. This section lists all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
@@ -132,7 +132,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - You can also link to a page in another project with `[/project/page]` syntax.
 - **Link Previews:** Hovering over an internal link displays a preview of the page content.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** link at the top of the page to access it.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button at the top of the page to access it.
 
 ### External Links
 
@@ -144,7 +144,7 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search:** Click the **Search** button in the document toolbar to quickly search across the whole project. Recent searches are remembered for quick access.
+- **Search:** Use the **Search pages** input in the top navigation bar, or click the **Search** button on the page, to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find:** open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
@@ -220,7 +220,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Schedules page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
-- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it via the **History / Diff** link at the top of the page.
+- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it via the **History / Diff** link in the document toolbar.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 - **Remote MCP diagnostics and repairs:** Outliner's on-premises MCP endpoint lets compatible AI clients resolve canonical project/page/Table/Grid/Calendar URLs, inspect bounded semantic data, validate Table schemas and Grid queries without mutation, and trace Grid ordering and rendering. Every call uses the signed-in user's project access. Connect with `outliner.read` for diagnostics; writes remain unavailable until the user separately approves `outliner.write`. Before a repair, validate it, read the current revision, dry-run with `expectedRevision` and an `operationId`, prove no change, then apply and re-read. Stale revisions fail instead of overwriting concurrent work, and retrying an operation ID cannot duplicate an applied mutation. Tool results explicitly report truncation, ordering provenance, and structured error codes. See the [MCP operator guide](../chatgpt-mcp-integration.md) for the catalog, limits, audit privacy, and production checklist.
 
