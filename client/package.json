@@ -2,7 +2,7 @@
     "dependencies": {
         "@electric-sql/pglite": "^0.5.8",
         "@hocuspocus/provider": "^4.6.0",
-        "@sentry/sveltekit": "^10.71.0",
+        "@sentry/sveltekit": "^10.72.0",
         "@sinclair/typebox": "^0.34.52",
         "diff-match-patch": "^1.0.5",
         "echarts": "^6.1.0",
@@ -74,7 +74,7 @@
         "fs-extra": "^11.4.0",
         "globals": "^17.11.0",
         "jsdom": "^30.0.1",
-        "knip": "^6.32.3",
+        "knip": "^6.33.0",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.8",
         "monocart-coverage-reports": "^2.13.0",
