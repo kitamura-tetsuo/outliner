@@ -12,6 +12,7 @@ describe("validateExplicitSelectAliases", () => {
         "WITH q(a, b) AS (SELECT a, b FROM t) SELECT * FROM q",
         "SELECT count(*) FILTER (WHERE ok) AS total FROM t",
         "SELECT row_number() OVER (PARTITION BY a ORDER BY b) AS n FROM t",
+        "SELECT ARRAY[1,2] AS arr",
     ])("accepts %s", sql => expect(() => validateExplicitSelectAliases(sql)).not.toThrow());
 
     it.each([
@@ -21,5 +22,6 @@ describe("validateExplicitSelectAliases", () => {
         "SELECT * FROM (SELECT a b FROM t) AS q",
         'SELECT id, template_id, "order" title, cadence FROM inserted',
         "INSERT INTO destination SELECT value v FROM inserted RETURNING *",
+        "SELECT ARRAY[1,2] arr",
     ])("rejects %s", sql => expect(() => validateExplicitSelectAliases(sql)).toThrow(IMPLICIT_SELECT_ALIAS_ERROR));
 });

@@ -46,12 +46,13 @@ export async function runCalendarQuery(
     query: string,
     range?: CalendarRange,
     timeZone?: string,
+    requireExplicitAliases = true,
 ): Promise<CalendarQueryOutcome> {
     const trimmed = query.trim();
     if (!trimmed) return { result: { columns: [], rows: [] } };
 
     try {
-        const selectSql = assertSelectQuery(trimmed);
+        const selectSql = assertSelectQuery(trimmed, requireExplicitAliases);
         let result: TableQueryResult | undefined;
         for (let round = 0;; round++) {
             try {

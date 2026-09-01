@@ -158,6 +158,21 @@ describe("Schedule MCP HTTP contract", () => {
         ).value;
         expect(preview).to.include({ accepted: true, persisted: false });
         expect(preview.candidateRows[0]).to.include({ id: "fixed", order: 1 });
+        const implicitAliasPreview = payload(
+            await call(toolCall("validate_schedule_rule", {
+                projectId: "project-1",
+                candidate: {
+                    ...candidate,
+                    sql: "WITH source AS (SELECT 'implicit'::text AS id) INSERT INTO tasks (id) SELECT id value FROM source RETURNING *",
+                },
+                occurrence: "2099-01-01T09:00:00Z",
+            })),
+        ).value;
+        expect(implicitAliasPreview).to.include({ accepted: false, persisted: false });
+        expect(implicitAliasPreview.fieldValidation.sql).to.deep.include({
+            valid: false,
+            error: "SELECT output aliases must use explicit AS",
+        });
         const wrongDestination = payload(
             await call(toolCall("validate_schedule_rule", {
                 projectId: "project-1",

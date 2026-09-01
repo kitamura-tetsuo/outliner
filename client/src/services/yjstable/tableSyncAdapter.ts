@@ -517,11 +517,12 @@ export async function executeGridQuery(
         pgSchema: string;
         registry?: RelationRegistryPort;
         isStale?: () => boolean;
+        requireExplicitAliases?: boolean;
     },
 ): Promise<TableQueryResult> {
     const trimmed = selectQuery.trim();
     if (!trimmed) return { columns: [], rows: [] };
-    const selectSql = assertSelectQuery(trimmed);
+    const selectSql = assertSelectQuery(trimmed, context.requireExplicitAliases ?? true);
     for (let round = 0;; round++) {
         try {
             return await enqueueWrite(async (db) => {

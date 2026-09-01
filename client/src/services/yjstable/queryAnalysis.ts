@@ -43,9 +43,9 @@ export interface QueryEditability {
 }
 
 /** Reject anything that is not a single SELECT statement. */
-export function assertSelectQuery(sql: string): string {
+export function assertSelectQuery(sql: string, requireExplicitAliases = true): string {
     try {
-        return validateReadOnlySelect(sql);
+        return validateReadOnlySelect(sql, requireExplicitAliases);
     } catch (error) {
         throw new TableSqlError("query", error instanceof Error ? error.message : String(error));
     }

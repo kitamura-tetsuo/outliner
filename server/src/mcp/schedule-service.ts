@@ -321,9 +321,12 @@ export class OutlinerScheduleService {
         });
     }
 
-    private fieldValidation(candidate: ScheduleCandidate): Record<string, { valid: boolean; error?: unknown; }> {
+    private fieldValidation(
+        candidate: ScheduleCandidate,
+        requireExplicitAliases = candidate.sqlAliasPolicyVersion === 1,
+    ): Record<string, { valid: boolean; error?: unknown; }> {
         const validation = {
-            sql: validateScheduleRuleSql(candidate.sql, candidate.sqlAliasPolicyVersion === 1),
+            sql: validateScheduleRuleSql(candidate.sql, requireExplicitAliases),
             rrule: validateScheduleRuleRRule(candidate.rrule),
             dtstart: validateScheduleRuleDtstart(candidate.dtstart),
             timezone: validateScheduleRuleTimezone(candidate.timezone),
@@ -392,7 +395,9 @@ export class OutlinerScheduleService {
         resultLimit = 25,
     ) {
         this.assertBoundedSchedule(candidate as unknown as Record<string, unknown>, "Schedule candidate");
-        const fields = this.fieldValidation(candidate);
+        // Public validation evaluates a new candidate and is always governed,
+        // regardless of whether callers know about the persistence marker.
+        const fields = this.fieldValidation(candidate, true);
         const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
         const references = this.references(doc, candidate);
         const missingTarget = !target;

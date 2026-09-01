@@ -47,6 +47,10 @@ export class GridQueryRunner extends TableQueryRunnerBase {
         return getGridQuery(this.grid);
     }
 
+    protected requireExplicitAliases(): boolean {
+        return this.grid.entry.get("sqlAliasPolicyVersion") === 1;
+    }
+
     protected observeQuerySource(): void {
         this.grid.entry.observeDeep(this.gridObserver);
     }

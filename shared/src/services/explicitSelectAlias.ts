@@ -17,8 +17,8 @@ function tokenDepths(tokens: ScanToken[]): number[] {
     let depth = 0;
     return tokens.map(token => {
         const before = depth;
-        if (token.text === "(") depth++;
-        else if (token.text === ")") depth--;
+        if (token.text === "(" || token.text === "[") depth++;
+        else if (token.text === ")" || token.text === "]") depth--;
         return before;
     });
 }

@@ -135,6 +135,11 @@ export function getCalendar(project: Project, calendarId: string): CalendarSetti
     return calendarMap ? readCalendarSettings(calendarMap) : undefined;
 }
 
+/** Whether this persisted Calendar query is governed by the explicit-alias policy. */
+export function calendarRequiresExplicitAliases(project: Project, calendarId: string): boolean {
+    return getCalendarMap(project, calendarId)?.get("sqlAliasPolicyVersion") === EXPLICIT_SELECT_ALIAS_POLICY_VERSION;
+}
+
 export function listCalendars(project: Project): CalendarListEntry[] {
     const entries: CalendarListEntry[] = [];
     project.calendars.forEach((calendarMap, id) => {
