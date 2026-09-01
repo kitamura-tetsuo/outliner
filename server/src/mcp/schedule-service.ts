@@ -396,8 +396,8 @@ export class OutlinerScheduleService {
         requireExplicitAliases = true,
     ) {
         this.assertBoundedSchedule(candidate as unknown as Record<string, unknown>, "Schedule candidate");
-        // Public validation evaluates a new candidate and is always governed,
-        // regardless of whether callers know about the persistence marker.
+        // Public validation uses the strict default. Mutation callers may opt
+        // into legacy-compatible validation only when SQL is unchanged.
         const fields = this.fieldValidation(candidate, requireExplicitAliases);
         const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
         const references = this.references(doc, candidate);
