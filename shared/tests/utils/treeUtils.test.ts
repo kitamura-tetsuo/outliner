@@ -1,45 +1,49 @@
 import { describe, expect, it, vi } from "vitest";
 import { safeGetNodeParent } from "../../src/utils/treeUtils.js";
+import type { YTree } from "yjs-orderedtree";
 
-describe("safeGetNodeParent", () => {
-    it("returns undefined if tree is undefined or null", () => {
-        expect(safeGetNodeParent(undefined, "key1")).toBeUndefined();
-        expect(safeGetNodeParent(null, "key1")).toBeUndefined();
+describe("treeUtils", () => {
+  describe("safeGetNodeParent", () => {
+    it("returns undefined if tree is null/undefined", () => {
+      expect(safeGetNodeParent(undefined, "test-key")).toBeUndefined();
+      expect(safeGetNodeParent(null, "test-key")).toBeUndefined();
     });
 
-    it("returns undefined if key is undefined or null", () => {
-        const tree = { getNodeParentFromKey: vi.fn() } as any;
-        expect(safeGetNodeParent(tree, undefined)).toBeUndefined();
-        expect(safeGetNodeParent(tree, null)).toBeUndefined();
+    it("returns undefined if key is null/undefined or root", () => {
+      const tree = { getNodeParentFromKey: () => "parent" } as unknown as YTree;
+      expect(safeGetNodeParent(tree, undefined)).toBeUndefined();
+      expect(safeGetNodeParent(tree, null)).toBeUndefined();
+      expect(safeGetNodeParent(tree, "root")).toBeUndefined();
+      expect(safeGetNodeParent(tree, "")).toBeUndefined();
     });
 
-    it("returns undefined if key is 'root'", () => {
-        const tree = { getNodeParentFromKey: vi.fn() } as any;
-        expect(safeGetNodeParent(tree, "root")).toBeUndefined();
+    it("returns undefined if tree does not have getNodeParentFromKey method", () => {
+      const tree = {} as unknown as YTree;
+      expect(safeGetNodeParent(tree, "test-key")).toBeUndefined();
     });
 
-    it("returns undefined if tree.getNodeParentFromKey is not a function", () => {
-        const tree = { getNodeParentFromKey: "not-a-function" } as any;
-        expect(safeGetNodeParent(tree, "key1")).toBeUndefined();
+    it("returns parent key successfully", () => {
+      const tree = {
+        getNodeParentFromKey: vi.fn().mockReturnValue("parent-key"),
+      } as unknown as YTree;
+      expect(safeGetNodeParent(tree, "test-key")).toBe("parent-key");
+      expect(tree.getNodeParentFromKey).toHaveBeenCalledWith("test-key");
     });
 
-    it("returns the parent key from tree.getNodeParentFromKey", () => {
-        const tree = { getNodeParentFromKey: vi.fn().mockReturnValue("parent1") } as any;
-        expect(safeGetNodeParent(tree, "key1")).toBe("parent1");
-        expect(tree.getNodeParentFromKey).toHaveBeenCalledWith("key1");
+    it("returns undefined if getNodeParentFromKey returns null", () => {
+      const tree = {
+        getNodeParentFromKey: vi.fn().mockReturnValue(null),
+      } as unknown as YTree;
+      expect(safeGetNodeParent(tree, "test-key")).toBeUndefined();
     });
 
-    it("returns undefined if tree.getNodeParentFromKey returns falsy", () => {
-        const tree = { getNodeParentFromKey: vi.fn().mockReturnValue(null) } as any;
-        expect(safeGetNodeParent(tree, "key1")).toBeUndefined();
+    it("returns undefined if getNodeParentFromKey throws an error", () => {
+      const tree = {
+        getNodeParentFromKey: vi.fn().mockImplementation(() => {
+          throw new Error("test error");
+        }),
+      } as unknown as YTree;
+      expect(safeGetNodeParent(tree, "test-key")).toBeUndefined();
     });
-
-    it("returns undefined if tree.getNodeParentFromKey throws an error", () => {
-        const tree = {
-            getNodeParentFromKey: vi.fn().mockImplementation(() => {
-                throw new Error("error");
-            }),
-        } as any;
-        expect(safeGetNodeParent(tree, "key1")).toBeUndefined();
-    });
+  });
 });
