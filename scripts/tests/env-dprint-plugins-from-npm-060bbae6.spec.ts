@@ -121,8 +121,11 @@ describe("nothing vendors the plugins anymore", () => {
         // node_modules/<pkg>/plugin.wasm has no version in it, so a stale plugin
         // left by a branch switch sits at exactly the path the config points at.
         expect(script, "must read the installed version").toMatch(/node_modules\/\$\{package\}\/package\.json/);
-        expect(script, "must read the pinned version").toMatch(/devDependencies\['\$\{package\}'\]/);
+        expect(script, "must read the pinned version").toMatch(/devDependencies\?\.\['\$\{package\}'\]/);
         expect(script, "the CLI is pinned too and must be checked").toMatch(/CHECKED_PACKAGES=\("dprint"/);
+        expect(script, "shared runtime imports must survive a branch switch").toMatch(
+            /ROOT_RUNTIME_PACKAGES=\("libpg-query"\)/,
+        );
     });
 
     test("the guard never runs npm ci over an existing node_modules", () => {
