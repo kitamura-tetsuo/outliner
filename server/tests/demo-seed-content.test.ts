@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the spreadsheet-style Grid cell clipboard guidance (#5192)", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(76);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(77);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -191,6 +191,17 @@ describe("Demo seed content", () => {
         expect(guidance).to.contain("validate_table_schema");
         expect(guidance).to.contain("validate_grid_query");
         expect(guidance).to.contain("without changing this project");
+    });
+
+    it("seeds the explicit MCP Grid column visibility guidance (#5273)", () => {
+        const mcp = findChildByText(project.items, "Remote MCP Access");
+        expect(mcp).to.not.equal(undefined);
+
+        const guidance = childTexts(mcp!.items).find(text => text.startsWith("Grid metadata, query validation"));
+        expect(guidance, "MCP Grid visibility guidance exists").to.not.equal(undefined);
+        expect(guidance).to.contain("shown: true means the Grid renders it");
+        expect(guidance).to.contain("shown: false means the Grid definition intentionally hides it");
+        expect(guidance).to.contain("physical, computed, and joined columns");
     });
 
     it("seeds the MCP mutation OAuth scope / step-up authorization guidance (#5257)", () => {
