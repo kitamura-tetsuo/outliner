@@ -385,6 +385,53 @@ describe("Outliner MCP relation service", function() {
         expect(render.renderedColumns).to.deep.equal(["title", "order", "computed"]);
     });
 
+    it("preserves hidden visibility for computed result columns across validation and tracing", async () => {
+        const { service, project } = fixture();
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        const computed = new Y.Map<unknown>();
+        computed.set("hidden", true);
+        const components = new Y.Map<Y.Map<unknown>>();
+        components.set("computed", computed);
+        grid.set("components", components);
+        grid.set("query", "SELECT id, title || '!' AS computed FROM tasks");
+        const before = Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64");
+
+        const validation = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            "SELECT id, title || '!' AS computed FROM tasks",
+        );
+        expect(validation.accepted).to.equal(true);
+        expect(validation.resultColumns.find(column => column.name === "computed")).to.deep.include({
+            name: "computed",
+            shown: false,
+        });
+
+        const trace = await service.traceGrid("uid", "project-1", "grid-1");
+        const config = trace.stages.find(stage => stage.stage === "config")!;
+        const execution = trace.stages.find(stage => stage.stage === "query-execution")!;
+        const render = trace.stages.find(stage => stage.stage === "render")!;
+        expect(config.columns.find(column => column.name === "computed")).to.deep.equal({
+            name: "computed",
+            shown: false,
+        });
+        expect(execution.columns.find(column => column.name === "computed")).to.deep.equal({
+            name: "computed",
+            shown: false,
+        });
+        expect(render.columns.find(column => column.name === "computed")).to.deep.equal({
+            name: "computed",
+            shown: false,
+        });
+        expect(render.transforms.presentationColumns.find(column => column.name === "computed")).to.deep.equal({
+            name: "computed",
+            shown: false,
+        });
+        expect(render.renderedColumns).not.to.include("computed");
+        expect(Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64")).to.equal(before);
+    });
+
     it("distinguishes incidental ordering, read-only results, failures, stale sources, and authorization", async () => {
         const { service, project } = fixture();
         const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
