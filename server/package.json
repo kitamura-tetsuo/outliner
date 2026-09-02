@@ -30,7 +30,7 @@
         "ws": "^8.21.3",
         "yjs": "13.6.32",
         "yjs-orderedtree": "^1.0.1-beta.3",
-        "zod": "^4.5.2"
+        "zod": "^4.5.4"
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
@@ -64,7 +64,7 @@
         "testdouble": "^3.20.2",
         "ts-jest": "^29.4.12",
         "ts-node": "^10.9.2",
-        "tsx": "^4.23.12",
+        "tsx": "^4.23.13",
         "typescript": "^6.0.3",
         "y-websocket": "^3.1.0"
     },
