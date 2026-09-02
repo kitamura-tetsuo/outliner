@@ -11,6 +11,7 @@ import {
 import { validateScheduleRowIdentities } from "../scheduler/row-validation.js";
 import { materializeScheduleRecords } from "../scheduler/table-materialization.js";
 import { type Item, Project } from "../schema/app-schema.js";
+import { gridColumnsWithVisibility } from "./grid-visibility.js";
 import {
     assertRevision,
     IdempotencyCache,
@@ -943,9 +944,15 @@ export class OutlinerRelationService {
                 const result = await lease.db.query<Record<string, unknown>>(
                     `SELECT * FROM (${bounded}\n) AS mcp_grid_validation LIMIT ${resultLimit + 1}`,
                 );
+                const resultColumnNames = (result.fields ?? []).map(field => field.name);
+                const visibility = new Map(
+                    gridColumnsWithVisibility(grid.get("components"), resultColumnNames)
+                        .map(column => [column.name, column.shown]),
+                );
                 const resultColumns = (result.fields ?? []).map(field => ({
                     name: field.name,
                     type: String(field.dataTypeID),
+                    shown: visibility.get(field.name) ?? true,
                 }));
                 const dependencies = await this.queryPlanDependencies(
                     lease.db,
@@ -1150,12 +1157,8 @@ export class OutlinerRelationService {
             const query = String(grid.get("query") ?? "");
             const columnOrder = this.stringArray(grid.get("columnOrder"));
             const components = grid.get("components");
-            const hiddenColumns = components instanceof Y.Map
-                ? [...components.entries()].filter(([, value]) =>
-                    value instanceof Y.Map && value.get("hidden") === true
-                )
-                    .map(([name]) => name)
-                : [];
+            const configuredColumns = gridColumnsWithVisibility(components, columnOrder);
+            const hiddenColumns = configuredColumns.filter(column => !column.shown).map(column => column.name);
             const configRevision = revisionOf({
                 gridId,
                 sourceTableId,
@@ -1177,6 +1180,7 @@ export class OutlinerRelationService {
                     sourceTableId,
                     query,
                     columnOrder,
+                    columns: configuredColumns,
                     hiddenColumns,
                 }],
             };
@@ -1247,14 +1251,20 @@ export class OutlinerRelationService {
                     const result = await lease.db.query<Record<string, unknown>>(
                         `SELECT * FROM (${bounded}\n) AS mcp_grid_trace LIMIT ${maxRows + 1}`,
                     );
-                    const columns = (result.fields ?? []).map(field => field.name).slice(0, MAX_TRACE_COLUMNS);
+                    const columnNames = (result.fields ?? []).map(field => field.name).slice(0, MAX_TRACE_COLUMNS);
+                    const columns = gridColumnsWithVisibility(components, columnNames)
+                        .filter(column => columnNames.includes(column.name));
                     const rows = result.rows.slice(0, maxRows);
-                    const editability = this.gridEditability(select, schemaColumns, columns);
+                    const editability = this.gridEditability(select, schemaColumns, columnNames);
                     const ordered = [
-                        ...columnOrder.filter(column => columns.includes(column)),
-                        ...columns.filter(column => !columnOrder.includes(column)),
+                        ...columnOrder.filter(column => columnNames.includes(column)),
+                        ...columnNames.filter(column => !columnOrder.includes(column)),
                     ];
-                    const renderedColumns = ordered.filter(column => !hiddenColumns.includes(column));
+                    const presentationColumns = gridColumnsWithVisibility(components, ordered)
+                        .filter(column => ordered.includes(column.name));
+                    const renderedColumns = presentationColumns.filter(column => column.shown).map(column =>
+                        column.name
+                    );
                     const analyzedSql = stripSqlNoise(select);
                     const orderSource = /\border\s+by\b/i.test(analyzedSql)
                         ? "sql-order-by"
@@ -1267,7 +1277,7 @@ export class OutlinerRelationService {
                         columns,
                         rows: rows.map((values, index) => ({
                             identity: this.rowIdentity(values, index),
-                            values: this.boundedTraceRow(values, columns),
+                            values: this.boundedTraceRow(values, columnNames),
                         })),
                         rowCount: rows.length,
                         totalCount: result.rows.length > maxRows ? undefined : rows.length,
@@ -1278,13 +1288,15 @@ export class OutlinerRelationService {
                         stage: "render",
                         observed: false,
                         inferredFrom: "stored-grid-config-and-query-result",
-                        columns: renderedColumns,
+                        columns: presentationColumns,
+                        renderedColumns,
                         columnCount: renderedColumns.length,
                         rowCount: rows.length,
                         orderSource,
                         transforms: {
                             hiddenColumns,
                             presentationColumnOrder: ordered,
+                            presentationColumns,
                             filtering: /\bwhere\b/i.test(analyzedSql) ? "sql" : "none",
                             sorting: orderSource,
                         },

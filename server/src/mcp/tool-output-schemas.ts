@@ -1,6 +1,8 @@
 import * as z from "zod/v4";
 
 const jsonObject = z.looseObject({});
+const gridColumn = z.looseObject({ name: z.string(), shown: z.boolean() });
+const gridComponent = z.looseObject({ shown: z.boolean() });
 const revision = z.string();
 const outlineNode: z.ZodType = z.lazy(() =>
     z.looseObject({
@@ -59,7 +61,8 @@ export const toolOutputSchemas = {
         name: z.string(),
         query: z.string(),
         columnOrder: z.array(z.json()),
-        components: jsonObject,
+        columns: z.array(gridColumn),
+        components: z.record(z.string(), gridComponent),
         revision,
     }),
     get_calendar: z.looseObject({
@@ -102,7 +105,7 @@ export const toolOutputSchemas = {
     }),
     validate_grid_query: validation.extend({
         dependencies: z.array(z.string()),
-        resultColumns: z.array(jsonObject),
+        resultColumns: z.array(gridColumn),
         sampleRows: z.array(jsonObject),
         editability: jsonObject,
     }),

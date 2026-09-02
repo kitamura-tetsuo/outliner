@@ -161,7 +161,18 @@ describe("Outliner MCP read service", () => {
     });
 
     it("returns complete lightweight Grid and Calendar configuration", async () => {
-        const { service } = fixture();
+        const { service, project } = fixture();
+        const gridDefinition = project.ydoc.getMap<MapLike>("yjsGrids").get("grid-1")!;
+        gridDefinition.set("columnOrder", ["title", "computed", "id"]);
+        const MapConstructor = project.ydoc.getMap("yjsGrids").constructor as new() => MapLike;
+        const components = new MapConstructor();
+        const hidden = new MapConstructor();
+        hidden.set("hidden", true);
+        hidden.set("label", "Identifier");
+        components.set("id", hidden);
+        components.set("computed", new MapConstructor());
+        gridDefinition.set("components", components);
+        const stateBeforeRead = JSON.stringify(gridDefinition.toJSON());
         const grid = await service.getGrid("uid", "project-1", "grid-1");
         expect(grid).to.include({
             id: "grid-1",
@@ -169,8 +180,18 @@ describe("Outliner MCP read service", () => {
             sourceTableId: "table-1",
             query: "SELECT * FROM roadmap",
         });
-        expect(grid.columnOrder).to.deep.equal([]);
-        expect(grid.components).to.deep.equal({});
+        expect(grid.columnOrder).to.deep.equal(["title", "computed", "id"]);
+        expect(grid.columns).to.deep.equal([
+            { name: "title", shown: true },
+            { name: "computed", shown: true },
+            { name: "id", shown: false },
+        ]);
+        expect(grid.components).to.deep.equal({
+            computed: { shown: true },
+            id: { label: "Identifier", shown: false },
+        });
+        expect(grid.components).not.to.have.nested.property("id.hidden");
+        expect(JSON.stringify(gridDefinition.toJSON())).to.equal(stateBeforeRead);
         // The revision is the same content-hash formula setViewQuery/get_grid
         // share, so it must be reusable as write_relation's/set_view_query's
         // expectedRevision precondition for this grid's saved query.
@@ -317,6 +338,7 @@ describe("Outliner MCP read service", () => {
 
 interface MapLike {
     set(key: string, value: unknown): unknown;
+    toJSON(): Record<string, unknown>;
 }
 
 async function expectRejected(promise: Promise<unknown>, message: string): Promise<void> {

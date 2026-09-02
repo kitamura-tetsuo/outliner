@@ -255,6 +255,11 @@ describe("Outliner MCP relation service", function() {
         first.delete("done");
         first.set("order", 2);
         const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        const components = new Y.Map<Y.Map<unknown>>();
+        const hiddenId = new Y.Map<unknown>();
+        hiddenId.set("hidden", true);
+        components.set("id", hiddenId);
+        grid.set("components", components);
         const savedQuery = String(grid.get("query"));
         const before = Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64");
 
@@ -272,6 +277,10 @@ describe("Outliner MCP relation service", function() {
             inferredOrdering: "sql-order-by",
         });
         expect(quoted.resultColumns.map(column => column.name)).to.deep.equal(["id", "order"]);
+        expect(quoted.resultColumns.map(column => ({ name: column.name, shown: column.shown }))).to.deep.equal([
+            { name: "id", shown: false },
+            { name: "order", shown: true },
+        ]);
         expect(quoted.sampleRows).to.deep.equal([{ id: "r1", order: 2 }]);
         expect(quoted.editability).to.deep.include({ editable: true, rowIdentity: "id" });
 
@@ -357,11 +366,23 @@ describe("Outliner MCP relation service", function() {
         expect(source).to.include({ status: "current", observed: true });
         expect(source.schemaColumns).to.include("order");
         expect(execution).to.include({ status: "completed", orderSource: "sql-order-by", truncated: true });
+        expect(execution.columns).to.deep.equal([
+            { name: "id", shown: false },
+            { name: "order", shown: true },
+            { name: "title", shown: true },
+            { name: "computed", shown: true },
+        ]);
         expect(execution.rows.map(row => row.identity.value)).to.deep.equal(["r3", "r2"]);
         expect(execution.editability).to.deep.include({ editable: true, rowIdentity: "id" });
         expect(execution.editability.editableColumns).not.to.include("computed");
         expect(render).to.include({ observed: false, rowCount: 2, columnCount: 3 });
-        expect(render.columns).to.deep.equal(["title", "order", "computed"]);
+        expect(render.columns).to.deep.equal([
+            { name: "title", shown: true },
+            { name: "order", shown: true },
+            { name: "id", shown: false },
+            { name: "computed", shown: true },
+        ]);
+        expect(render.renderedColumns).to.deep.equal(["title", "order", "computed"]);
     });
 
     it("distinguishes incidental ordering, read-only results, failures, stale sources, and authorization", async () => {

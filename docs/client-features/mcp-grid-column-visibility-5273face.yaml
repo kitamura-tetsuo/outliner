@@ -1,0 +1,8 @@
+id: FTR-5273face
+title: Explicit MCP Grid column visibility
+title-ja: MCPグリッド列の明示的な表示状態
+status: implemented
+description: MCP Grid reads and diagnostics expose a positive shown boolean for every represented physical, computed, or joined result column. The MCP boundary derives this without changing the persisted sparse hidden setting.
+tests:
+- server/tests/mcp-read-service.test.ts
+- server/tests/mcp-relation-service.test.ts
