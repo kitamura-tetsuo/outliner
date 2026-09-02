@@ -249,7 +249,7 @@ Create database tables to manage structured data within your project. You can st
 
 Click the **Add Database** button in the top navigation bar.
 
-A new database block will be inserted at the bottom of the current page. Within this block, you can:
+A new database block will be inserted into the current page. Within this block, you can:
 
 - **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**. The SQL name used in queries is generated automatically and displayed below the input fields.
 - **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
@@ -266,7 +266,7 @@ Once the table is created, you will see a grid view where you can add, edit, or 
   - **Chart:** A visual representation of your data.
   - **Schema:** Allows you to define and edit the SQL schema for your table.
   - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
-- The table toolbar also provides **Undo** and **Redo** buttons for convenience; these seamlessly integrate with the project's single global history.
+- The top navigation bar provides **Undo** and **Redo** buttons for convenience; these seamlessly integrate with the project's single global history.
 - The table name in the toolbar links to the source table's own page.
 
 ### Grid selection
