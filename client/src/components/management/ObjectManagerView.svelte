@@ -453,6 +453,11 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
     selectedObjectIds.clear();
     for (const object of result.createdObjects) selectedObjectIds.add(object.id);
 }
+
+function focusNode(node: HTMLElement) {
+    node.focus();
+}
+
 </script>
 
 <svelte:head>
@@ -692,8 +697,7 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
                             <td class="name-cell" class:invalid-preview={bulkPreviewErrors.has(object.id)}>
                                 <div class="name-primary">
                                 {#if editingObjectId === object.id}
-                                    <!-- svelte-ignore a11y_autofocus -->
-                                    <input
+                                                                        <input
                                         type="text"
                                         bind:this={editInputEl}
                                         bind:value={editNameInput}
@@ -702,7 +706,7 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
                                             if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
                                             if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
                                         }}
-                                        autofocus
+                                        use:focusNode
                                         class="edit-input"
                                         class:has-error={!!editError}
                                         data-testid={`object-name-input-${object.id}`}
