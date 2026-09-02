@@ -244,7 +244,7 @@ export async function configureGrid(
     await titleInput.fill(titleLabel);
     await titleInput.press("Tab");
     await view.getByTestId("yjs-table-component-quantity").selectOption("number");
-    await view.getByTestId("yjs-table-hidden-done").check();
+    await view.getByTestId("yjs-table-hidden-done").uncheck();
     await expect(view.getByTestId("yjs-table-grid").locator("th", { hasText: titleLabel })).toBeVisible({
         timeout: 30000,
     });

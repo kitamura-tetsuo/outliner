@@ -12,7 +12,7 @@ tests:
 - client/e2e/new/tbl-column-visibility-b4e82a91.spec.ts
 acceptance:
 - Any column, including an identity column, can be hidden without affecting record writes.
-- Each query column has an accessible Hidden checkbox in the UI Definition editor.
+- Each query column has an accessible Shown checkbox whose checked state matches whether the column is rendered.
 - Hidden state persists across reloads and is a shared UI Definition setting visible to every client.
 - Hiding a column removes its header and every body cell without changing the stored column order.
 - The demo Sales table hides its identity column and lets visitors restore it from the UI panel.

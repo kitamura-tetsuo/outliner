@@ -68,8 +68,8 @@ function setComponentType(column: string, type: string) {
     setGridComponentField(grid, column, "type", type);
 }
 
-function setColumnHidden(column: string, hidden: boolean) {
-    setGridComponentField(grid, column, "hidden", hidden ? true : undefined);
+function setColumnShown(column: string, shown: boolean) {
+    setGridComponentField(grid, column, "hidden", shown ? undefined : true);
 }
 </script>
 
@@ -200,14 +200,14 @@ function setColumnHidden(column: string, hidden: boolean) {
                         <input
                             type="checkbox"
                             data-testid={`yjs-table-hidden-${column.name}`}
-                            checked={hiddenColumns[column.name] === true}
-                            onchange={(e) => setColumnHidden(column.name, (e.target as HTMLInputElement).checked)}
+                            checked={hiddenColumns[column.name] !== true}
+                            onchange={(e) => setColumnShown(column.name, (e.target as HTMLInputElement).checked)}
                             ondragstart={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                             }}
                         />
-                        Hidden
+                        Shown
                     </label>
                     {#if column.schemaColumn?.checkOptions && column.schemaColumn.checkOptions.length > 0}
                         <span class="check-options" title="Options from CHECK constraint">

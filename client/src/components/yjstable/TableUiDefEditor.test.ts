@@ -1,7 +1,7 @@
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { createGrid, getGridHandles, type GridHandles } from "../../services/yjstable/gridDocs";
+import { createGrid, getGridHandles, type GridHandles, setGridComponentField } from "../../services/yjstable/gridDocs";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTable } from "../../services/yjstable/tableDocs";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
@@ -138,7 +138,7 @@ describe("TableUiDefEditor", () => {
         expect(colACfg.has("label")).toBe(false);
     });
 
-    it("stores only true hidden values and removes an empty column config", async () => {
+    it("shows an unconfigured column and stores only true when Shown is unchecked", async () => {
         const schema: ParsedTableSchema = {
             tableName: "test",
             createSql: "CREATE TABLE test (col_a text);",
@@ -165,12 +165,38 @@ describe("TableUiDefEditor", () => {
             },
         });
         const checkbox = getByTestId("yjs-table-hidden-col_a");
+        expect(checkbox).toBeChecked();
+        expect(checkbox).toHaveAccessibleName("Shown");
 
         await fireEvent.click(checkbox);
         expect(grid.components.get("col_a")?.get("hidden")).toBe(true);
 
         await fireEvent.click(checkbox);
         expect(grid.components.has("col_a")).toBe(false);
+    });
+
+    it("loads hidden configuration as unchecked without rewriting it", () => {
+        const grid = makeGrid("SELECT col_a FROM test");
+        setGridComponentField(grid, "col_a", "hidden", true);
+        let updateCount = 0;
+        grid.entry.doc?.on("update", () => updateCount++);
+
+        const { getByTestId } = render(TableUiDefEditor, {
+            props: {
+                grid,
+                schema: undefined,
+                query: "SELECT col_a FROM test",
+                componentTypes: {},
+                columnLabels: {},
+                hiddenColumns: { col_a: true },
+                resultColumns: ["col_a"],
+                columnOrder: ["col_a"],
+            },
+        });
+
+        expect(getByTestId("yjs-table-hidden-col_a")).not.toBeChecked();
+        expect(grid.components.get("col_a")?.get("hidden")).toBe(true);
+        expect(updateCount).toBe(0);
     });
 
     it("offers visibility controls for computed query columns outside the schema", async () => {
@@ -189,7 +215,9 @@ describe("TableUiDefEditor", () => {
         });
 
         expect(getByText("query result")).toBeTruthy();
-        await fireEvent.click(getByTestId("yjs-table-hidden-doubled"));
+        const checkbox = getByTestId("yjs-table-hidden-doubled");
+        expect(checkbox).toBeChecked();
+        await fireEvent.click(checkbox);
         expect(grid.components.get("doubled")?.get("hidden")).toBe(true);
     });
 });
