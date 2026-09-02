@@ -197,11 +197,12 @@ describe("Demo seed content", () => {
         const mcp = findChildByText(project.items, "Remote MCP Access");
         expect(mcp).to.not.equal(undefined);
 
-        const guidance = childTexts(mcp!.items).find(text => text.startsWith("Grid metadata, query validation"));
+        const guidance = childTexts(mcp!.items).find(text => text.startsWith("Grid column visibility is explicit"));
         expect(guidance, "MCP Grid visibility guidance exists").to.not.equal(undefined);
-        expect(guidance).to.contain("shown: true means the Grid renders it");
-        expect(guidance).to.contain("shown: false means the Grid definition intentionally hides it");
-        expect(guidance).to.contain("physical, computed, and joined columns");
+        expect(guidance).to.contain("shown: true");
+        expect(guidance).to.contain("shown: false");
+        expect(guidance).to.contain("physical, computed, or joined result column");
+        expect(guidance).to.contain("never need to infer visibility");
     });
 
     it("seeds the MCP mutation OAuth scope / step-up authorization guidance (#5257)", () => {
