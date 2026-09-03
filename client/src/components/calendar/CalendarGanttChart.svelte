@@ -419,24 +419,28 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     {/if}
                 </div>
             {:else if row.startPointMs !== undefined && pointLeftPct(row.startPointMs) !== undefined}
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     class="start-point"
+                    role="button"
+                    tabindex="0"
                     data-testid={`calendar-gantt-point-${row.key}`}
                     data-navigable={isSourceNavigable(row.entry) ? "true" : undefined}
                     style={`left: ${pointLeftPct(row.startPointMs)}%`}
                     ondblclick={(e) => onRowDoubleClick(row, e)}
+                    onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") onRowDoubleClick(row, e as unknown as MouseEvent); }}
                     oncontextmenu={(e) => onEntryContextMenu?.(row.entry, e)}
                 >● {row.entry.title}</div>
             {/if}
             {#if row.dueMarkerMs !== undefined && pointLeftPct(row.dueMarkerMs) !== undefined}
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     class="due-marker"
+                    role="button"
+                    tabindex="0"
                     data-testid={`calendar-gantt-milestone-${row.key}`}
                     data-navigable={isSourceNavigable(row.entry) ? "true" : undefined}
                     style={`left: ${pointLeftPct(row.dueMarkerMs)}%`}
                     ondblclick={(e) => onRowDoubleClick(row, e)}
+                    onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") onRowDoubleClick(row, e as unknown as MouseEvent); }}
                     oncontextmenu={(e) => onEntryContextMenu?.(row.entry, e)}
                 >◆</div>
             {/if}
