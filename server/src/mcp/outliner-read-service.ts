@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { nodeKindOf, type OutlineNodeKind } from "../../../shared/src/services/outlineNodeKind.js";
 import { type ProjectDescriptor, ProjectDirectoryError } from "../project-directory.js";
 import { type Item, type Items, Project } from "../schema/app-schema.js";
+import { gridColumnsWithVisibility, mcpGridComponents } from "./grid-visibility.js";
 import { type McpErrorCode, McpReadError } from "./mcp-error.js";
 import { outlineItemRevision, revisionOf } from "./mutation-contract.js";
 
@@ -346,13 +347,19 @@ export class OutlinerReadService {
             const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
             if (!grid) throw new McpReadError("not_found", "Grid not found");
             const query = String(grid.get("query") ?? "");
+            const columnOrder = yValueToPlain(grid.get("columnOrder")) ?? [];
+            const orderedColumnNames = Array.isArray(columnOrder)
+                ? columnOrder.filter((value): value is string => typeof value === "string")
+                : [];
+            const components = grid.get("components");
             return {
                 id: gridId,
                 name: String(grid.get("name") ?? ""),
                 sourceTableId: grid.get("sourceTableId"),
                 query,
-                columnOrder: yValueToPlain(grid.get("columnOrder")) ?? [],
-                components: yValueToPlain(grid.get("components")) ?? {},
+                columnOrder,
+                columns: gridColumnsWithVisibility(components, orderedColumnNames),
+                components: mcpGridComponents(components),
                 // Matches OutlinerRelationService.setViewQuery's own
                 // revisionOf(query) formula exactly, so this can be passed
                 // straight back as set_view_query's expectedRevision.
