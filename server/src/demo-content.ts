@@ -803,9 +803,13 @@ export function registerDemoTables(
  * `yjsGrids` registry by `registerDemoTables`; the Table subdoc no longer
  * carries an authoritative `ui` map.
  */
-export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void {
+export function seedDemoTableDoc(
+    doc: Y.Doc,
+    template: DemoTableTemplate,
+    templateRevision: string = DEMO_TEMPLATE_REVISION,
+): void {
     const meta = doc.getMap<unknown>("metadata");
-    meta.set("templateRevision", DEMO_TEMPLATE_REVISION);
+    meta.set("templateRevision", templateRevision);
     meta.delete("templateVersion");
 
     const schema = doc.getText("schema");
@@ -1094,7 +1098,57 @@ export interface EffectiveDemoTemplate {
         tables: DemoTableTemplate[];
         calendars: DemoCalendarTemplate[];
         scheduleRules: DemoScheduleRuleTemplate[];
+        /** Values produced by the same registration functions used by seeding. */
+        registries: Record<string, unknown>;
+        /** Table subdocuments after the production table seed function runs. */
+        tableDocuments: Record<string, unknown>;
     }>;
+}
+
+function persistedYValue(value: unknown): unknown {
+    if (value instanceof Y.Doc) return { guid: value.guid };
+    if (value instanceof Y.Map) {
+        return Object.fromEntries(Array.from(value.entries(), ([key, child]) => [key, persistedYValue(child)]));
+    }
+    if (value instanceof Y.Array) return value.toArray().map(persistedYValue);
+    if (value instanceof Y.Text) return value.toString();
+    return value;
+}
+
+/**
+ * Capture the structural records written by production registration/seed
+ * functions. Keeping this output in the fingerprint prevents an injected
+ * persisted default from bypassing revision changes.
+ */
+function persistedDemoStructure(locale: DemoLocale, slug: string): {
+    registries: Record<string, unknown>;
+    tableDocuments: Record<string, unknown>;
+} {
+    const projectDoc = new Y.Doc();
+    registerDemoTables(projectDoc, slug, locale);
+    registerDemoScheduleRules(projectDoc, locale);
+    registerDemoCalendars(projectDoc, locale);
+
+    const registries = Object.fromEntries(
+        ["yjsTables", "yjsGrids", "schedules", "calendars"].map(name => [
+            name,
+            persistedYValue(projectDoc.getMap(name)),
+        ]),
+    );
+    const tableDocuments = Object.fromEntries(
+        demoTablesFor(locale).map(template => {
+            const tableDoc = new Y.Doc();
+            seedDemoTableDoc(tableDoc, template, "fingerprint-input");
+            // A document's own revision is an output of this hash, not an input.
+            tableDoc.getMap("metadata").delete("templateRevision");
+            return [template.tableId, {
+                metadata: persistedYValue(tableDoc.getMap("metadata")),
+                schema: persistedYValue(tableDoc.getText("schema")),
+                data: persistedYValue(tableDoc.getMap("data")),
+            }];
+        }),
+    );
+    return { registries, tableDocuments };
 }
 
 /** JSON with recursively sorted object keys; array order remains significant. */
@@ -1132,20 +1186,36 @@ export function effectiveDemoTemplate(): EffectiveDemoTemplate {
         static override now(): number {
             return fixedNow;
         }
+        override getFullYear(): number {
+            return this.getUTCFullYear();
+        }
+        override getMonth(): number {
+            return this.getUTCMonth();
+        }
+        override getDate(): number {
+            return this.getUTCDate();
+        }
+        override setDate(date: number): number {
+            return this.setUTCDate(date);
+        }
     }
 
     globalThis.Date = RevisionDate as DateConstructor;
     resetDemoLocaleCache();
     try {
         return {
-            projects: DEMO_PROJECTS.map(({ slug, locale }) => ({
-                slug,
-                locale,
-                pages: demoPagesFor(locale),
-                tables: demoTablesFor(locale),
-                calendars: demoCalendarsFor(locale),
-                scheduleRules: buildDemoScheduleRulesFor(locale),
-            })),
+            projects: DEMO_PROJECTS.map(({ slug, locale }) => {
+                const structure = persistedDemoStructure(locale, slug);
+                return {
+                    slug,
+                    locale,
+                    pages: demoPagesFor(locale),
+                    tables: demoTablesFor(locale),
+                    calendars: demoCalendarsFor(locale),
+                    scheduleRules: buildDemoScheduleRulesFor(locale),
+                    ...structure,
+                };
+            }),
         };
     } finally {
         globalThis.Date = RealDate;

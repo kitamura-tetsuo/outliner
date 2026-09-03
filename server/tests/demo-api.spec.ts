@@ -144,6 +144,11 @@ describe("Demo API", () => {
         expect(response.body.success).toBe(true);
         expect(mockDoc.getMap("metadata").get("templateRevision")).toBe(DEMO_TEMPLATE_REVISION);
         expect(mockDoc.getMap("metadata").has("templateVersion")).toBe(false);
+        expect(
+            (mockDoc.getMap("schedules").get("demo-rule-daily-routines") as Y.Map<unknown>).get(
+                "sqlAliasPolicyVersion",
+            ),
+        ).toBe(1);
     });
 
     it("should selectively re-seed missing/stale table documents without full reset", async () => {

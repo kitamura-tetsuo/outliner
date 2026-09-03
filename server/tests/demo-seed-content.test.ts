@@ -1,7 +1,9 @@
 import { expect } from "chai";
+import { execFileSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { pathToFileURL } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import * as Y from "yjs";
@@ -94,6 +96,34 @@ describe("Demo template revision", () => {
         const changed = structuredClone(effectiveDemoTemplate());
         const japanese = changed.projects.find(project => project.locale === "ja")!;
         japanese.pages[0].title = "変更されたデモ";
+        expect(deriveDemoTemplateRevision(changed)).to.not.equal(DEMO_TEMPLATE_REVISION);
+    });
+
+    it("is identical in independent processes with different host timezones", () => {
+        const moduleUrl = pathToFileURL(path.resolve(__dirname, "../src/demo-content.ts")).href;
+        const evaluate = (timezone: string) =>
+            execFileSync(
+                process.execPath,
+                [
+                    "--import",
+                    "tsx",
+                    "--input-type=module",
+                    "--eval",
+                    `
+                const { DEMO_TEMPLATE_REVISION } = await import(${JSON.stringify(moduleUrl)});
+                process.stdout.write(DEMO_TEMPLATE_REVISION);
+            `,
+                ],
+                { encoding: "utf8", env: { ...process.env, TZ: timezone } },
+            );
+
+        expect(evaluate("UTC")).to.equal(evaluate("Pacific/Kiritimati"));
+    });
+
+    it("includes persisted defaults emitted by production registration", () => {
+        const changed = structuredClone(effectiveDemoTemplate());
+        const schedules = changed.projects[0].registries.schedules as Record<string, Record<string, unknown>>;
+        schedules[DEMO_DAILY_RULE_ID].sqlAliasPolicyVersion = 2;
         expect(deriveDemoTemplateRevision(changed)).to.not.equal(DEMO_TEMPLATE_REVISION);
     });
 });
