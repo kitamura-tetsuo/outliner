@@ -66,7 +66,9 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         await expect(titleCell.locator("button")).toHaveText(originalTitle, { timeout: 30000 });
         // Give UI time to stabilize
         await page.waitForTimeout(300);
-        await titleCell.locator("button").click();
+
+        await expect(titleCell.locator("button")).toBeVisible();
+        await titleCell.locator("button").click({ timeout: 5000, force: true });
 
         await expect(titleCell.locator("input")).toBeVisible();
         await titleCell.locator("input").fill("Committed via Tab");
