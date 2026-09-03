@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import * as Y from "yjs";
 import { demoContentEn } from "./demo-content.en.js";
 import { demoContentJa } from "./demo-content.ja.js";
-import { DEFAULT_DEMO_SLUG, type DemoLocale, demoLocaleForSlug } from "./demo-projects.js";
+import { DEFAULT_DEMO_SLUG, DEMO_PROJECTS, type DemoLocale, demoLocaleForSlug } from "./demo-projects.js";
 import { Item, Items, Project } from "./schema/app-schema.js";
 
 // The public demo project is the living showcase of the product: every
@@ -16,12 +17,6 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // — types, ids, SQL, dates and the seeding logic — while the strings a
 // visitor reads live in demo-content.<locale>.ts. Adding a locale is one
 // registry entry plus one content pack; nothing here needs to change.
-
-// Bump this whenever the demo template changes so that already-seeded demo
-// documents are re-seeded on the next /api/seed-demo call. One number covers
-// every locale: each document stores its own `metadata.templateVersion`, so a
-// single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 77;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -142,25 +137,31 @@ export interface DemoTableTemplate {
 
 // Local date helpers so the seeded tasks/habits stay relative to the seeding
 // moment (the demo is re-seeded at least daily, so drift stays small).
+let demoTemplateReferenceDate: Date | undefined;
+
 export function demoDate(daysFromToday: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() + daysFromToday);
+    const d = demoTemplateReferenceDate ? new Date(demoTemplateReferenceDate) : new Date();
+    if (demoTemplateReferenceDate) d.setUTCDate(d.getUTCDate() + daysFromToday);
+    else d.setDate(d.getDate() + daysFromToday);
     const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const year = demoTemplateReferenceDate ? d.getUTCFullYear() : d.getFullYear();
+    const month = demoTemplateReferenceDate ? d.getUTCMonth() : d.getMonth();
+    const date = demoTemplateReferenceDate ? d.getUTCDate() : d.getDate();
+    return `${year}-${pad(month + 1)}-${pad(date)}`;
 }
 
 // Recurring-task helpers. The occurrences table is keyed by UTC dates because the
 // schedule rules that generate its rows run in the UTC timezone, so seeded and
 // generated occurrence ids must agree regardless of the server's local zone.
 export function demoUtcDate(daysFromToday: number): string {
-    const d = new Date();
+    const d = demoTemplateReferenceDate ? new Date(demoTemplateReferenceDate) : new Date();
     d.setUTCDate(d.getUTCDate() + daysFromToday);
     return d.toISOString().slice(0, 10);
 }
 
 // Monday (UTC) of the week `weeksAgo` weeks before the current one.
 export function demoUtcWeekStart(weeksAgo: number): string {
-    const d = new Date();
+    const d = demoTemplateReferenceDate ? new Date(demoTemplateReferenceDate) : new Date();
     const daysSinceMonday = (d.getUTCDay() + 6) % 7;
     d.setUTCDate(d.getUTCDate() - daysSinceMonday - weeksAgo * 7);
     return d.toISOString().slice(0, 10);
@@ -808,9 +809,14 @@ export function registerDemoTables(
  * `yjsGrids` registry by `registerDemoTables`; the Table subdoc no longer
  * carries an authoritative `ui` map.
  */
-export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void {
+export function seedDemoTableDoc(
+    doc: Y.Doc,
+    template: DemoTableTemplate,
+    templateRevision: string = DEMO_TEMPLATE_REVISION,
+): void {
     const meta = doc.getMap<unknown>("metadata");
-    meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+    meta.set("templateRevision", templateRevision);
+    meta.delete("templateVersion");
 
     const schema = doc.getText("schema");
     schema.delete(0, schema.length);
@@ -1089,6 +1095,121 @@ export function demoLandingPageTitle(locale: DemoLocale): string {
     const landing = demoPagesFor(locale).find(page => page.key === DEMO_LANDING_PAGE_KEY);
     return landing?.title ?? DEMO_LANDING_PAGE_TITLE;
 }
+
+export interface EffectiveDemoTemplate {
+    projects: Array<{
+        slug: string;
+        locale: DemoLocale;
+        pages: DemoPageTemplate[];
+        tables: DemoTableTemplate[];
+        calendars: DemoCalendarTemplate[];
+        scheduleRules: DemoScheduleRuleTemplate[];
+        /** Values produced by the same registration functions used by seeding. */
+        registries: Record<string, unknown>;
+        /** Table subdocuments after the production table seed function runs. */
+        tableDocuments: Record<string, unknown>;
+    }>;
+}
+
+function persistedYValue(value: unknown): unknown {
+    if (value instanceof Y.Doc) return { guid: value.guid };
+    if (value instanceof Y.Map) {
+        return Object.fromEntries(Array.from(value.entries(), ([key, child]) => [key, persistedYValue(child)]));
+    }
+    if (value instanceof Y.Array) return value.toArray().map(persistedYValue);
+    if (value instanceof Y.Text) return value.toString();
+    return value;
+}
+
+/**
+ * Capture the structural records written by production registration/seed
+ * functions. Keeping this output in the fingerprint prevents an injected
+ * persisted default from bypassing revision changes.
+ */
+function persistedDemoStructure(locale: DemoLocale, slug: string): {
+    registries: Record<string, unknown>;
+    tableDocuments: Record<string, unknown>;
+} {
+    const projectDoc = new Y.Doc();
+    registerDemoTables(projectDoc, slug, locale);
+    registerDemoScheduleRules(projectDoc, locale);
+    registerDemoCalendars(projectDoc, locale);
+
+    const registries = Object.fromEntries(
+        ["yjsTables", "yjsGrids", "schedules", "calendars"].map(name => [
+            name,
+            persistedYValue(projectDoc.getMap(name)),
+        ]),
+    );
+    const tableDocuments = Object.fromEntries(
+        demoTablesFor(locale).map(template => {
+            const tableDoc = new Y.Doc();
+            seedDemoTableDoc(tableDoc, template, "fingerprint-input");
+            // A document's own revision is an output of this hash, not an input.
+            tableDoc.getMap("metadata").delete("templateRevision");
+            return [template.tableId, {
+                metadata: persistedYValue(tableDoc.getMap("metadata")),
+                schema: persistedYValue(tableDoc.getText("schema")),
+                data: persistedYValue(tableDoc.getMap("data")),
+            }];
+        }),
+    );
+    return { registries, tableDocuments };
+}
+
+/** JSON with recursively sorted object keys; array order remains significant. */
+function canonicalJson(value: unknown): string {
+    if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+    if (value && typeof value === "object") {
+        return `{${
+            Object.entries(value as Record<string, unknown>)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`)
+                .join(",")
+        }}`;
+    }
+    return JSON.stringify(value) ?? "null";
+}
+
+/** Derive a stable, content-addressed revision from every registered demo. */
+export function deriveDemoTemplateRevision(template: EffectiveDemoTemplate): string {
+    return `sha256:${createHash("sha256").update(canonicalJson(template)).digest("hex")}`;
+}
+
+/**
+ * Materialize the complete production template under a fixed clock. Relative
+ * demo dates are deliberately evaluated at a constant instant: their offsets
+ * and surrounding records affect the fingerprint, but wall-clock time does
+ * not. The normal seed path still evaluates those dates at seed time.
+ */
+export function effectiveDemoTemplate(): EffectiveDemoTemplate {
+    const previousReferenceDate = demoTemplateReferenceDate;
+    demoTemplateReferenceDate = new Date("2000-01-03T12:00:00.000Z");
+    resetDemoLocaleCache();
+    try {
+        return {
+            projects: DEMO_PROJECTS.map(({ slug, locale }) => {
+                const structure = persistedDemoStructure(locale, slug);
+                return {
+                    slug,
+                    locale,
+                    pages: demoPagesFor(locale),
+                    tables: demoTablesFor(locale),
+                    calendars: demoCalendarsFor(locale),
+                    scheduleRules: buildDemoScheduleRulesFor(locale),
+                    ...structure,
+                };
+            }),
+        };
+    } finally {
+        demoTemplateReferenceDate = previousReferenceDate;
+        resetDemoLocaleCache();
+    }
+}
+
+// A source-controlled counter is intentionally unnecessary: edits to any
+// registered locale or shared template input automatically produce a new value.
+export const DEMO_TEMPLATE_REVISION = deriveDemoTemplateRevision(effectiveDemoTemplate());
 
 // ---------------------------------------------------------------------------
 // English views of the above, kept as consts so the many existing callers and

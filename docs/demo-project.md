@@ -70,7 +70,7 @@ table/schedule/calendar routes all pick it up with no further changes.
   ([`client/src/lib/demoSeed.ts`](../client/src/lib/demoSeed.ts)). The server
   ([`server/src/demo-api.ts`](../server/src/demo-api.ts)) re-seeds the shared
   document when it is empty, when its content is older than 24 hours, or when
-  `DEMO_TEMPLATE_VERSION` has changed.
+  its recorded revision differs from the content-derived `DEMO_TEMPLATE_REVISION`.
 - The demo project page also shows a "Reset demo content" button that sends
   `POST /api/seed-demo` with `{ "force": true }`, triggering the same reset
   immediately regardless of the 24-hour schedule (FTR-784f295f).
@@ -118,10 +118,10 @@ When you implement a new end-user feature (anything recorded in
    locale already overrides — the English fallback is per page, not per line, so
    that locale would otherwise never see the addition. A test enforces this; see
    the translation policy below.
-3. **Bump `DEMO_TEMPLATE_VERSION`** so already-seeded demo documents are
-   re-seeded with the new content. One number covers every locale: each
-   document stores its own `metadata.templateVersion`, so a single bump
-   reseeds them all on their next visit.
+3. **Do not maintain a revision counter.** `DEMO_TEMPLATE_REVISION` is a
+   deterministic fingerprint of the effective shared and locale-specific
+   templates for every registered demo project. Changing seeded content
+   automatically makes existing documents stale on their next visit.
 4. **Update the tests**: the expected page list in
    `client/e2e/core/dmo-demo-project-feature-tour-7d3e9a1c.spec.ts` and, when
    the structure changes, `server/tests/demo-seed-content.test.ts`.

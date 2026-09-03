@@ -1,7 +1,9 @@
 import { expect } from "chai";
+import { execFileSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { pathToFileURL } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import * as Y from "yjs";
@@ -20,12 +22,14 @@ import {
     DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
-    DEMO_TEMPLATE_VERSION,
+    DEMO_TEMPLATE_REVISION,
     DEMO_WEEKLY_RULE_ID,
     demoCalendars,
     demoPages,
     demoRoutineTemplates,
     demoTables,
+    deriveDemoTemplateRevision,
+    effectiveDemoTemplate,
     registerDemoTables,
     routineOccurrenceSql,
     seedDemoTableDoc,
@@ -75,6 +79,54 @@ function findCalendarBlock(items: Items | undefined, calendarId: string): Item |
 function findLayout(items: Items | undefined): Item | undefined {
     return findChildBy(items, item => item.componentType === "layout");
 }
+
+describe("Demo template revision", () => {
+    it("is stable when the effective production template is evaluated repeatedly", () => {
+        expect(deriveDemoTemplateRevision(effectiveDemoTemplate())).to.equal(DEMO_TEMPLATE_REVISION);
+        expect(deriveDemoTemplateRevision(effectiveDemoTemplate())).to.equal(DEMO_TEMPLATE_REVISION);
+    });
+
+    it("changes when shared seeded content changes", () => {
+        const changed = structuredClone(effectiveDemoTemplate());
+        changed.projects[0].pages[0].lines!.push("A new shared demo line");
+        expect(deriveDemoTemplateRevision(changed)).to.not.equal(DEMO_TEMPLATE_REVISION);
+    });
+
+    it("changes when a registered locale's seeded content changes", () => {
+        const changed = structuredClone(effectiveDemoTemplate());
+        const japanese = changed.projects.find(project => project.locale === "ja")!;
+        japanese.pages[0].title = "変更されたデモ";
+        expect(deriveDemoTemplateRevision(changed)).to.not.equal(DEMO_TEMPLATE_REVISION);
+    });
+
+    it("is identical in independent processes with different host timezones", () => {
+        const moduleUrl = pathToFileURL(path.resolve(__dirname, "../src/demo-content.ts")).href;
+        const evaluate = (timezone: string) =>
+            execFileSync(
+                process.execPath,
+                [
+                    "--import",
+                    "tsx",
+                    "--input-type=module",
+                    "--eval",
+                    `
+                const { DEMO_TEMPLATE_REVISION } = await import(${JSON.stringify(moduleUrl)});
+                process.stdout.write(DEMO_TEMPLATE_REVISION);
+            `,
+                ],
+                { encoding: "utf8", env: { ...process.env, TZ: timezone } },
+            );
+
+        expect(evaluate("UTC")).to.equal(evaluate("Pacific/Kiritimati"));
+    });
+
+    it("includes persisted defaults emitted by production registration", () => {
+        const changed = structuredClone(effectiveDemoTemplate());
+        const schedules = changed.projects[0].registries.schedules as Record<string, Record<string, unknown>>;
+        schedules[DEMO_DAILY_RULE_ID].sqlAliasPolicyVersion = 2;
+        expect(deriveDemoTemplateRevision(changed)).to.not.equal(DEMO_TEMPLATE_REVISION);
+    });
+});
 
 describe("Demo seed content", () => {
     it("the feature tour YAML specification matches the current demoPages list", () => {
@@ -170,7 +222,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the spreadsheet-style Grid cell clipboard guidance (#5192)", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(77);
+        expect(DEMO_TEMPLATE_REVISION).to.match(/^sha256:[0-9a-f]{64}$/);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);

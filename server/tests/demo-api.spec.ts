@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
 import { createDemoRouter, resetDemoWarmState } from "../src/demo-api.js";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION } from "../src/demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_REVISION } from "../src/demo-content.js";
 import { populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
 
@@ -17,7 +17,7 @@ describe("Demo API", () => {
         mockDoc = new Y.Doc();
         const metadata = mockDoc.getMap("metadata");
         metadata.set("lastReset", Date.now());
-        metadata.set("templateVersion", DEMO_TEMPLATE_VERSION);
+        metadata.set("templateRevision", DEMO_TEMPLATE_REVISION);
 
         // Populate tree using app-schema logic so it passes "missingTemplatePages" check
         const project = Project.fromDoc(mockDoc as any);
@@ -37,7 +37,7 @@ describe("Demo API", () => {
     it("should reset empty document", async () => {
         const emptyDoc = new Y.Doc();
         emptyDoc.getMap("metadata").set("lastReset", Date.now());
-        emptyDoc.getMap("metadata").set("templateVersion", DEMO_TEMPLATE_VERSION);
+        emptyDoc.getMap("metadata").set("templateRevision", DEMO_TEMPLATE_REVISION);
 
         mockDirectConnection.document = emptyDoc;
         mockDirectConnection.transact = jest.fn((cb: any) => cb(emptyDoc));
@@ -84,7 +84,7 @@ describe("Demo API", () => {
         });
 
         // Set version old to force reset
-        mockDoc.getMap("metadata").set("templateVersion", 1);
+        mockDoc.getMap("metadata").set("templateRevision", 1);
 
         const app = express();
         app.use(express.json());
@@ -129,7 +129,10 @@ describe("Demo API", () => {
     });
 
     it("should reset if template version changed", async () => {
-        mockDoc.getMap("metadata").set("templateVersion", 1); // Old version
+        // Production migration boundary: documents created by the old scheme
+        // contain only the numeric templateVersion field.
+        mockDoc.getMap("metadata").delete("templateRevision");
+        mockDoc.getMap("metadata").set("templateVersion", 77);
 
         const app = express();
         app.use(express.json());
@@ -139,6 +142,13 @@ describe("Demo API", () => {
         expect(response.status).toBe(200);
         expect(response.body.reset).toBe(true);
         expect(response.body.success).toBe(true);
+        expect(mockDoc.getMap("metadata").get("templateRevision")).toBe(DEMO_TEMPLATE_REVISION);
+        expect(mockDoc.getMap("metadata").has("templateVersion")).toBe(false);
+        expect(
+            (mockDoc.getMap("schedules").get("demo-rule-daily-routines") as Y.Map<unknown>).get(
+                "sqlAliasPolicyVersion",
+            ),
+        ).toBe(1);
     });
 
     it("should selectively re-seed missing/stale table documents without full reset", async () => {
