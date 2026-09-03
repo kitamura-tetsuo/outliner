@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import * as Y from "yjs";
 import { demoContentEn } from "./demo-content.en.js";
 import { demoContentJa } from "./demo-content.ja.js";
-import { DEFAULT_DEMO_SLUG, type DemoLocale, demoLocaleForSlug } from "./demo-projects.js";
+import { DEFAULT_DEMO_SLUG, DEMO_PROJECTS, type DemoLocale, demoLocaleForSlug } from "./demo-projects.js";
 import { Item, Items, Project } from "./schema/app-schema.js";
 
 // The public demo project is the living showcase of the product: every
@@ -16,12 +17,6 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // — types, ids, SQL, dates and the seeding logic — while the strings a
 // visitor reads live in demo-content.<locale>.ts. Adding a locale is one
 // registry entry plus one content pack; nothing here needs to change.
-
-// Bump this whenever the demo template changes so that already-seeded demo
-// documents are re-seeded on the next /api/seed-demo call. One number covers
-// every locale: each document stores its own `metadata.templateVersion`, so a
-// single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 77;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -810,7 +805,8 @@ export function registerDemoTables(
  */
 export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void {
     const meta = doc.getMap<unknown>("metadata");
-    meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+    meta.set("templateRevision", DEMO_TEMPLATE_REVISION);
+    meta.delete("templateVersion");
 
     const schema = doc.getText("schema");
     schema.delete(0, schema.length);
@@ -1089,6 +1085,77 @@ export function demoLandingPageTitle(locale: DemoLocale): string {
     const landing = demoPagesFor(locale).find(page => page.key === DEMO_LANDING_PAGE_KEY);
     return landing?.title ?? DEMO_LANDING_PAGE_TITLE;
 }
+
+export interface EffectiveDemoTemplate {
+    projects: Array<{
+        slug: string;
+        locale: DemoLocale;
+        pages: DemoPageTemplate[];
+        tables: DemoTableTemplate[];
+        calendars: DemoCalendarTemplate[];
+        scheduleRules: DemoScheduleRuleTemplate[];
+    }>;
+}
+
+/** JSON with recursively sorted object keys; array order remains significant. */
+function canonicalJson(value: unknown): string {
+    if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+    if (value && typeof value === "object") {
+        return `{${
+            Object.entries(value as Record<string, unknown>)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`)
+                .join(",")
+        }}`;
+    }
+    return JSON.stringify(value) ?? "null";
+}
+
+/** Derive a stable, content-addressed revision from every registered demo. */
+export function deriveDemoTemplateRevision(template: EffectiveDemoTemplate): string {
+    return `sha256:${createHash("sha256").update(canonicalJson(template)).digest("hex")}`;
+}
+
+/**
+ * Materialize the complete production template under a fixed clock. Relative
+ * demo dates are deliberately evaluated at a constant instant: their offsets
+ * and surrounding records affect the fingerprint, but wall-clock time does
+ * not. The normal seed path still evaluates those dates at seed time.
+ */
+export function effectiveDemoTemplate(): EffectiveDemoTemplate {
+    const RealDate = Date;
+    const fixedNow = new RealDate("2000-01-03T12:00:00.000Z").valueOf();
+    class RevisionDate extends RealDate {
+        constructor(value?: string | number | Date) {
+            super(value === undefined ? fixedNow : value);
+        }
+        static override now(): number {
+            return fixedNow;
+        }
+    }
+
+    globalThis.Date = RevisionDate as DateConstructor;
+    resetDemoLocaleCache();
+    try {
+        return {
+            projects: DEMO_PROJECTS.map(({ slug, locale }) => ({
+                slug,
+                locale,
+                pages: demoPagesFor(locale),
+                tables: demoTablesFor(locale),
+                calendars: demoCalendarsFor(locale),
+                scheduleRules: buildDemoScheduleRulesFor(locale),
+            })),
+        };
+    } finally {
+        globalThis.Date = RealDate;
+        resetDemoLocaleCache();
+    }
+}
+
+// A source-controlled counter is intentionally unnecessary: edits to any
+// registered locale or shared template input automatically produce a new value.
+export const DEMO_TEMPLATE_REVISION = deriveDemoTemplateRevision(effectiveDemoTemplate());
 
 // ---------------------------------------------------------------------------
 // English views of the above, kept as consts so the many existing callers and

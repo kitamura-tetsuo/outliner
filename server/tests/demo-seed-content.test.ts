@@ -20,12 +20,14 @@ import {
     DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
-    DEMO_TEMPLATE_VERSION,
+    DEMO_TEMPLATE_REVISION,
     DEMO_WEEKLY_RULE_ID,
     demoCalendars,
     demoPages,
     demoRoutineTemplates,
     demoTables,
+    deriveDemoTemplateRevision,
+    effectiveDemoTemplate,
     registerDemoTables,
     routineOccurrenceSql,
     seedDemoTableDoc,
@@ -75,6 +77,26 @@ function findCalendarBlock(items: Items | undefined, calendarId: string): Item |
 function findLayout(items: Items | undefined): Item | undefined {
     return findChildBy(items, item => item.componentType === "layout");
 }
+
+describe("Demo template revision", () => {
+    it("is stable when the effective production template is evaluated repeatedly", () => {
+        expect(deriveDemoTemplateRevision(effectiveDemoTemplate())).to.equal(DEMO_TEMPLATE_REVISION);
+        expect(deriveDemoTemplateRevision(effectiveDemoTemplate())).to.equal(DEMO_TEMPLATE_REVISION);
+    });
+
+    it("changes when shared seeded content changes", () => {
+        const changed = structuredClone(effectiveDemoTemplate());
+        changed.projects[0].pages[0].lines!.push("A new shared demo line");
+        expect(deriveDemoTemplateRevision(changed)).to.not.equal(DEMO_TEMPLATE_REVISION);
+    });
+
+    it("changes when a registered locale's seeded content changes", () => {
+        const changed = structuredClone(effectiveDemoTemplate());
+        const japanese = changed.projects.find(project => project.locale === "ja")!;
+        japanese.pages[0].title = "変更されたデモ";
+        expect(deriveDemoTemplateRevision(changed)).to.not.equal(DEMO_TEMPLATE_REVISION);
+    });
+});
 
 describe("Demo seed content", () => {
     it("the feature tour YAML specification matches the current demoPages list", () => {
@@ -170,7 +192,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the spreadsheet-style Grid cell clipboard guidance (#5192)", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(77);
+        expect(DEMO_TEMPLATE_REVISION).to.match(/^sha256:[0-9a-f]{64}$/);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);

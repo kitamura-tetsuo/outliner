@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
 import { createDemoRouter } from "../src/demo-api.js";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "../src/demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_REVISION, demoPages, populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
 
 describe("Demo rename template trigger", () => {
@@ -15,7 +15,7 @@ describe("Demo rename template trigger", () => {
         ydoc.getMap("orderedTree");
         const meta = ydoc.getMap("metadata");
         meta.set("title", DEMO_PROJECT_TITLE);
-        meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+        meta.set("templateRevision", DEMO_TEMPLATE_REVISION);
         meta.set("lastReset", Date.now()); // recent reset
 
         const project = Project.fromDoc(ydoc);

@@ -5,7 +5,7 @@ import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import { createDemoRouter } from "../src/demo-api.js";
 import { shouldResetDemo } from "../src/demo-api.js";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "../src/demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_REVISION, demoPages, populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
 
 // FTR-784f295f: the demo reset button manually triggers the same reset that
@@ -15,7 +15,7 @@ describe("Demo manual reset policy", function() {
     const fresh = {
         isEmpty: false,
         lastReset: now - 60 * 1000, // reset one minute ago
-        templateVersion: DEMO_TEMPLATE_VERSION,
+        templateRevision: DEMO_TEMPLATE_REVISION,
         now,
         force: false,
         missingTemplatePages: false,
@@ -39,8 +39,8 @@ describe("Demo manual reset policy", function() {
         expect(shouldResetDemo({ ...fresh, lastReset: undefined })).to.equal(true);
     });
 
-    it("still resets when the template version changed", function() {
-        expect(shouldResetDemo({ ...fresh, templateVersion: DEMO_TEMPLATE_VERSION - 1 })).to.equal(true);
+    it("still resets when the template revision changed", function() {
+        expect(shouldResetDemo({ ...fresh, templateRevision: "sha256:stale" })).to.equal(true);
     });
 });
 
@@ -56,7 +56,7 @@ describe("Demo reseed keeps the shared document tree valid", function() {
         Array.from(orderedTree.keys()).forEach(key => orderedTree.delete(key));
         const meta = ydoc.getMap("metadata");
         meta.set("title", DEMO_PROJECT_TITLE);
-        meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+        meta.set("templateRevision", DEMO_TEMPLATE_REVISION);
         populateDemoProject(Project.fromDoc(ydoc), "seed-server");
     }
 

@@ -5,7 +5,7 @@ import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import { type Config } from "./config.js";
 import {
-    DEMO_TEMPLATE_VERSION,
+    DEMO_TEMPLATE_REVISION,
     demoPagesFor,
     demoTablesFor,
     populateDemoProject,
@@ -40,7 +40,7 @@ const WARM_PATH_TTL_MS = 5 * 60 * 1000;
 
 interface DemoWarmState {
     lastReset: number;
-    templateVersion: number;
+    templateRevision: string;
     verifiedAt: number;
     doc: Y.Doc;
     onDocChanged: () => void;
@@ -74,12 +74,12 @@ function rememberDemoWarmState(
     room: string,
     doc: Y.Doc,
     lastReset: number,
-    templateVersion: number,
+    templateRevision: string,
     now: number,
 ): void {
     clearDemoWarmState(room);
     const onDocChanged = () => clearDemoWarmState(room);
-    demoWarmStates.set(room, { lastReset, templateVersion, verifiedAt: now, doc, onDocChanged });
+    demoWarmStates.set(room, { lastReset, templateRevision, verifiedAt: now, doc, onDocChanged });
     doc.on("update", onDocChanged);
     doc.on("destroy", onDocChanged);
 }
@@ -90,7 +90,7 @@ function rememberDemoWarmState(
 export function isDemoWarm(room: string, now: number): boolean {
     const state = demoWarmStates.get(room);
     if (!state) return false;
-    if (state.templateVersion !== DEMO_TEMPLATE_VERSION) return false;
+    if (state.templateRevision !== DEMO_TEMPLATE_REVISION) return false;
     if (now - state.verifiedAt > WARM_PATH_TTL_MS) return false;
     if (now - state.lastReset > RESET_INTERVAL_MS) return false;
     return true;
@@ -107,7 +107,7 @@ export function resetDemoWarmState(room?: string): void {
 export interface DemoResetState {
     isEmpty: boolean;
     lastReset: number | undefined;
-    templateVersion: number | undefined;
+    templateRevision: string | number | undefined;
     now: number;
     force: boolean;
     missingTemplatePages: boolean;
@@ -120,7 +120,7 @@ export function shouldResetDemo(state: DemoResetState): boolean {
         || state.isEmpty
         || !state.lastReset
         || (state.now - state.lastReset > RESET_INTERVAL_MS)
-        || state.templateVersion !== DEMO_TEMPLATE_VERSION
+        || state.templateRevision !== DEMO_TEMPLATE_REVISION
         || state.missingTemplatePages;
 }
 
@@ -233,7 +233,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
 
                     const metadata = doc.getMap("metadata") as Y.Map<unknown>;
                     const lastReset = metadata.get("lastReset") as number | undefined;
-                    const templateVersion = metadata.get("templateVersion") as number | undefined;
+                    // Fall back to the old numeric field so legacy documents
+                    // are treated as stale rather than failing a migration.
+                    const templateRevision = (metadata.get("templateRevision")
+                        ?? metadata.get("templateVersion")) as string | number | undefined;
 
                     const orderedTree = doc.getMap("orderedTree") as Y.Map<unknown>;
                     const keys = Array.from(orderedTree.keys());
@@ -311,14 +314,14 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     const shouldReset = shouldResetDemo({
                         isEmpty,
                         lastReset,
-                        templateVersion,
+                        templateRevision,
                         now,
                         force,
                         missingTemplatePages,
                     });
 
                     if (shouldReset) {
-                        logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
+                        logger.info({ event: "seed_demo_resetting", lastReset, templateRevision, now, force });
 
                         await directConnection.transact((document: unknown) => {
                             const ydoc = document as unknown as Y.Doc;
@@ -423,7 +426,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 const ydoc = document as unknown as Y.Doc;
                                 const meta = ydoc.getMap("metadata");
                                 meta.set("lastReset", now);
-                                meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+                                meta.set("templateRevision", DEMO_TEMPLATE_REVISION);
+                                meta.delete("templateVersion");
                             });
                         } finally {
                             await directConnection.transact((document: unknown) => {
@@ -433,7 +437,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                             });
                         }
                     } else {
-                        logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
+                        logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateRevision, now });
                     }
 
                     if (shouldReset) {
@@ -442,11 +446,11 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                             projectRoom,
                             doc as unknown as Y.Doc,
                             now,
-                            DEMO_TEMPLATE_VERSION,
+                            DEMO_TEMPLATE_REVISION,
                             Date.now(),
                         );
-                    } else if (lastReset !== undefined && templateVersion !== undefined) {
-                        rememberDemoWarmState(projectRoom, doc as unknown as Y.Doc, lastReset, templateVersion, now);
+                    } else if (lastReset !== undefined && templateRevision === DEMO_TEMPLATE_REVISION) {
+                        rememberDemoWarmState(projectRoom, doc as unknown as Y.Doc, lastReset, templateRevision, now);
 
                         // Independently verify each demo table room and re-seed if missing or stale
                         for (const template of demoTablesFor(locale)) {
@@ -458,8 +462,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 const tableDoc = tableConnection.document;
                                 if (tableDoc) {
                                     const meta = tableDoc.getMap("metadata") as Y.Map<unknown>;
-                                    const tableTemplateVersion = meta.get("templateVersion") as number | undefined;
-                                    if (tableTemplateVersion !== DEMO_TEMPLATE_VERSION) {
+                                    const tableTemplateRevision = (meta.get("templateRevision")
+                                        ?? meta.get("templateVersion")) as string | number | undefined;
+                                    if (tableTemplateRevision !== DEMO_TEMPLATE_REVISION) {
                                         logger.info({ event: "seed_demo_table_resetting", tableRoom });
                                         await tableConnection.transact((document: unknown) => {
                                             seedDemoTableDoc(document as unknown as Y.Doc, template);

@@ -4,7 +4,7 @@ import sinon from "sinon";
 import request from "supertest";
 import * as Y from "yjs";
 import { createDemoRouter, resetDemoWarmState } from "../src/demo-api.js";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "../src/demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_REVISION, demoPages, populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
 
 // FTR-7d3e9a1c / issue #4636: a warm visit to /demo must not pay for opening
@@ -19,7 +19,7 @@ describe("Demo warm-path validation", function() {
         ydoc.getMap("orderedTree");
         const meta = ydoc.getMap("metadata");
         meta.set("title", DEMO_PROJECT_TITLE);
-        meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+        meta.set("templateRevision", DEMO_TEMPLATE_REVISION);
         meta.set("lastReset", lastReset);
         populateDemoProject(Project.fromDoc(ydoc), "seed-server");
         return ydoc;
