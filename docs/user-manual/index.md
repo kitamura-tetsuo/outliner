@@ -48,7 +48,7 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ### User Authentication
 
-The user profile button located in the top right corner of the navigation bar indicates your current login state. For guest users or when accessing a public space, it may display "Not signed in". You can click it to manage your account or sign in.
+The login status indicator located in the top right corner of the navigation bar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
 
 ### Sidebar Navigation
 
