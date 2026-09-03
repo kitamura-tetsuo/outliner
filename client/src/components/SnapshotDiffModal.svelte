@@ -246,7 +246,7 @@ $effect(() => {
                     <div
                         class="diff diff-view flex-1 overflow-auto bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm whitespace-pre-wrap break-words"
                         tabindex="0"
-                        role="region"
+                        role="document"
                         aria-label="Inline diff content"
                     >
                         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -262,7 +262,7 @@ $effect(() => {
                             <div
                                 class="diff diff-view flex-1 overflow-auto bg-red-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
                                 tabindex="0"
-                                role="region"
+                                role="document"
                                 aria-label="Old diff content"
                             >
                                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -277,7 +277,7 @@ $effect(() => {
                             <div
                                 class="diff diff-view flex-1 overflow-auto bg-green-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
                                 tabindex="0"
-                                role="region"
+                                role="document"
                                 aria-label="New diff content"
                             >
                                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
