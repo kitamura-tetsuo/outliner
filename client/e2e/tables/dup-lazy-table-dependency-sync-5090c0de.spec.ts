@@ -15,7 +15,7 @@ test("duplicates the connected recurring-task graph after lazy Table sync", asyn
 
     await page.getByRole("button", { name: "Duplicate Table" }).click();
     await expect(page).toHaveURL(/\/objects\?selected=/, { timeout: 15000 });
-    const tableRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: /^Routine Occurrences$/ }).filter({
+    const tableRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Routine Occurrences" }).filter({
         has: page.locator(".type-badge.table"),
     }).first();
     await expect(tableRow).toBeVisible({ timeout: 15000 });
@@ -34,12 +34,12 @@ test("duplicates the connected recurring-task graph after lazy Table sync", asyn
     await expect(
         page.locator('[data-testid^="object-row-"]').filter({ hasText: "Routine Occurrences copy" }).filter({
             has: page.locator(".type-badge.table"),
-        }),
+        }).first(),
     ).toBeVisible({ timeout: 15000 });
     await expect(
-        page.locator('[data-testid^="object-row-"]').filter({ hasText: "Routine Occurrences · daily copy" }),
+        page.locator('[data-testid^="object-row-"]').filter({ hasText: "Routine Occurrences · daily copy" }).first(),
     ).toBeVisible();
     await expect(
-        page.locator('[data-testid^="object-row-"]').filter({ hasText: "Routine Occurrences · weekly copy" }),
+        page.locator('[data-testid^="object-row-"]').filter({ hasText: "Routine Occurrences · weekly copy" }).first(),
     ).toBeVisible();
 });
