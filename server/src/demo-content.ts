@@ -137,25 +137,31 @@ export interface DemoTableTemplate {
 
 // Local date helpers so the seeded tasks/habits stay relative to the seeding
 // moment (the demo is re-seeded at least daily, so drift stays small).
+let demoTemplateReferenceDate: Date | undefined;
+
 export function demoDate(daysFromToday: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() + daysFromToday);
+    const d = demoTemplateReferenceDate ? new Date(demoTemplateReferenceDate) : new Date();
+    if (demoTemplateReferenceDate) d.setUTCDate(d.getUTCDate() + daysFromToday);
+    else d.setDate(d.getDate() + daysFromToday);
     const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const year = demoTemplateReferenceDate ? d.getUTCFullYear() : d.getFullYear();
+    const month = demoTemplateReferenceDate ? d.getUTCMonth() : d.getMonth();
+    const date = demoTemplateReferenceDate ? d.getUTCDate() : d.getDate();
+    return `${year}-${pad(month + 1)}-${pad(date)}`;
 }
 
 // Recurring-task helpers. The occurrences table is keyed by UTC dates because the
 // schedule rules that generate its rows run in the UTC timezone, so seeded and
 // generated occurrence ids must agree regardless of the server's local zone.
 export function demoUtcDate(daysFromToday: number): string {
-    const d = new Date();
+    const d = demoTemplateReferenceDate ? new Date(demoTemplateReferenceDate) : new Date();
     d.setUTCDate(d.getUTCDate() + daysFromToday);
     return d.toISOString().slice(0, 10);
 }
 
 // Monday (UTC) of the week `weeksAgo` weeks before the current one.
 export function demoUtcWeekStart(weeksAgo: number): string {
-    const d = new Date();
+    const d = demoTemplateReferenceDate ? new Date(demoTemplateReferenceDate) : new Date();
     const daysSinceMonday = (d.getUTCDay() + 6) % 7;
     d.setUTCDate(d.getUTCDate() - daysSinceMonday - weeksAgo * 7);
     return d.toISOString().slice(0, 10);
@@ -1177,30 +1183,8 @@ export function deriveDemoTemplateRevision(template: EffectiveDemoTemplate): str
  * not. The normal seed path still evaluates those dates at seed time.
  */
 export function effectiveDemoTemplate(): EffectiveDemoTemplate {
-    const RealDate = Date;
-    const fixedNow = new RealDate("2000-01-03T12:00:00.000Z").valueOf();
-    class RevisionDate extends RealDate {
-        constructor(value?: string | number | Date) {
-            super(value === undefined ? fixedNow : value);
-        }
-        static override now(): number {
-            return fixedNow;
-        }
-        override getFullYear(): number {
-            return this.getUTCFullYear();
-        }
-        override getMonth(): number {
-            return this.getUTCMonth();
-        }
-        override getDate(): number {
-            return this.getUTCDate();
-        }
-        override setDate(date: number): number {
-            return this.setUTCDate(date);
-        }
-    }
-
-    globalThis.Date = RevisionDate as DateConstructor;
+    const previousReferenceDate = demoTemplateReferenceDate;
+    demoTemplateReferenceDate = new Date("2000-01-03T12:00:00.000Z");
     resetDemoLocaleCache();
     try {
         return {
@@ -1218,7 +1202,7 @@ export function effectiveDemoTemplate(): EffectiveDemoTemplate {
             }),
         };
     } finally {
-        globalThis.Date = RealDate;
+        demoTemplateReferenceDate = previousReferenceDate;
         resetDemoLocaleCache();
     }
 }
