@@ -523,8 +523,7 @@ function focusNode(node: HTMLElement) {
                     Select related ▾
                 </button>
                 {#if relatedMenuOpen}
-                    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-                    <div class="menu-backdrop" onclick={() => { relatedMenuOpen = false; }}></div>
+                    <div class="menu-backdrop" role="button" tabindex="0" onclick={() => { relatedMenuOpen = false; }} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { relatedMenuOpen = false; e.preventDefault(); } }}></div>
                     <div class="related-menu" role="menu" data-testid="object-manager-select-related-menu">
                         {#each RELATED_SELECTION_SCOPES as option (option.value)}
                             <button
@@ -597,8 +596,8 @@ function focusNode(node: HTMLElement) {
     </div>
 
     {#if previewOpen && bulkPreview.length > 0}
-        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-        <div class="preview-overlay" onclick={() => { previewOpen = false; }}>
+        <div class="preview-overlay" role="button" tabindex="0" onclick={() => { previewOpen = false; }} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { previewOpen = false; e.preventDefault(); } }}>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
                 class="bulk-preview"
                 role="dialog"
