@@ -72,6 +72,7 @@ test.describe("FTR-6f2ad91c: renaming the open demo page", () => {
 
         // The renamed URL is a real address: it resolves on a fresh load too.
         await page.reload();
+        await page.waitForTimeout(500);
         await expect(page.locator(".outliner-item.page-title")).toContainText(renamedAgain, { timeout: 30000 });
         await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
     });

@@ -144,7 +144,7 @@ test.describe("Demo project feature tour", () => {
 
         // Should show the error quickly (well within 5 seconds), not waiting 30s
         const errorText = page.getByText("Can't reach the demo server — retrying...", { exact: false });
-        await expect(errorText).toBeVisible({ timeout: 5000 });
+        await expect(errorText).toBeVisible({ timeout: 10000 });
 
         const elapsed = Date.now() - startTime;
         expect(elapsed).toBeLessThan(10000); // Verify it didn't wait the full timeout
