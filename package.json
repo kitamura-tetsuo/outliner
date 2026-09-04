@@ -6,7 +6,7 @@
         "@dprint/markdown": "0.23.2",
         "@dprint/toml": "0.8.0",
         "@dprint/typescript": "0.96.1",
-        "dprint": "0.56.1",
+        "dprint": "0.57.0",
         "dprint-plugin-malva": "0.16.0",
         "dprint-plugin-markup": "0.27.3",
         "dprint-plugin-yaml": "0.6.0",
