@@ -32,9 +32,13 @@ $effect(() => {
     if (dialogElement) {
         if (!dialogElement.showModal || !dialogElement.close) return;
         if (isOpen) {
-            dialogElement.showModal();
+            if (!dialogElement.open && typeof dialogElement.showModal === 'function') {
+                dialogElement.showModal();
+            }
         } else {
-            dialogElement.close();
+            if (dialogElement.open && typeof dialogElement.close === 'function') {
+                dialogElement.close();
+            }
         }
     }
 });
