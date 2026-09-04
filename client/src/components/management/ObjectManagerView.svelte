@@ -598,6 +598,7 @@ function focusNode(node: HTMLElement) {
     {#if previewOpen && bulkPreview.length > 0}
         <div class="preview-overlay" role="button" tabindex="0" onclick={() => { previewOpen = false; }} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { previewOpen = false; e.preventDefault(); } }}>
 
+
             <div
                 class="bulk-preview"
                 role="dialog"
@@ -606,6 +607,7 @@ function focusNode(node: HTMLElement) {
                 tabindex="-1"
                 data-testid="object-manager-bulk-preview"
                 onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === "Escape") { previewOpen = false; e.stopPropagation(); } }}
+
             >
                 <h4>Preview Changes ({bulkPreview.length})</h4>
                 <ul>
