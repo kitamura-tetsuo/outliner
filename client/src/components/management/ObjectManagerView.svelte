@@ -606,8 +606,8 @@ function focusNode(node: HTMLElement) {
                 aria-label="Bulk rename preview"
                 tabindex="-1"
                 data-testid="object-manager-bulk-preview"
-
                 onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === "Escape") { previewOpen = false; e.stopPropagation(); } }}
+
             >
                 <h4>Preview Changes ({bulkPreview.length})</h4>
                 <ul>
