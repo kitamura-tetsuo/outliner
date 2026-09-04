@@ -65,7 +65,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         // Move to the second item explicitly via locator to avoid keyboard navigation flakiness
         // with wrapped long text lines
         const secondItem = page.locator(".outliner-item").nth(2);
-        await secondItem.locator(".item-content").click({ force: true });
+        await secondItem.locator(".item-content").click({ force: true, position: { x: 5, y: 5 } });
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("End");
