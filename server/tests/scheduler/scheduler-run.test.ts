@@ -96,6 +96,13 @@ describe("Job scheduler run", function() {
                 all: function() {
                     return /SELECT \* FROM schedule_index/.test(sql) ? [indexRow] : [];
                 },
+                // This double models only the recurrence index; every other
+                // lookup — the document store the scheduler reads to verify
+                // durability among them — comes back empty, as it would from a
+                // real database that holds no such table.
+                get: function() {
+                    return /FROM schedule_index/.test(sql) ? indexRow : undefined;
+                },
                 run: (...args: any[]) => {
                     if (/SET next_run_at/.test(sql)) {
                         updates.push({ nextRunAt: args[0], seq: args[1] });

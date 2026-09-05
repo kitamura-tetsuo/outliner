@@ -115,6 +115,9 @@ export class JobScheduler {
      * instead of being dropped for the lifetime of the process.
      */
     private roomsAwaitingRunReconciliation: string[] | undefined = undefined;
+    /** Whether the stored documents can be read back (see `canObservePersistence`). */
+    private persistenceIsObservable = false;
+    private warnedAboutUnobservablePersistence = false;
 
     constructor(hocuspocus: Hocuspocus) {
         this.hocuspocus = hocuspocus;
@@ -491,11 +494,13 @@ export class JobScheduler {
 
                     // An execution that produced a result before it lost the
                     // ability to publish it is not interrupted — it finished.
-                    // Its own outcome and completion time are republished
-                    // verbatim, so a success stays a success and no SQL runs a
-                    // second time.
+                    // Its own outcome and completion time are republished, so a
+                    // success stays a success and no SQL runs a second time.
+                    // Its *cursor* is not replayed from memory: the recurrence
+                    // may have been withdrawn while the outcome waited, so the
+                    // published cursor is taken from the index as it stands.
                     if (pending.outcome) {
-                        applyRunOutcome(ruleItem, pending.outcome);
+                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, pending.outcome));
                         republished.push(ruleId);
                     } else {
                         markInterrupted(ruleItem, ruleId);
@@ -520,12 +525,23 @@ export class JobScheduler {
             // Persisted before the markers are dropped, for the same reason
             // `markRunFinished` waits: the markers are the only record that
             // these rooms are still owed a terminal state, so they must not be
-            // discarded while the write that settles them is only in memory.
-            await this.storeRoomDocument(document);
-            // Every execution this room could still be owing has now reached a
-            // terminal state, so the in-flight markers are spent. Cleared only
-            // after the document write is durable, so a retry still finds them.
-            this.sqliteDb?.prepare(`DELETE FROM schedule_active_runs WHERE room = ?`).run(room);
+            // discarded while the write that settles them is only in memory —
+            // nor on a store request that resolved without storing anything.
+            await this.requestRoomStore(document);
+            // Each marker is spent only once storage is observed to carry its
+            // execution's terminal state. Any that is not stays for the next
+            // sweep, which is why this throws rather than leaving them behind.
+            let unsettled = 0;
+            for (const [ruleId, pending] of owed) {
+                if (this.runIsDurablySettled(room, ruleId, pending.runSeq)) {
+                    this.clearActiveRun(room, ruleId, pending.runSeq);
+                } else {
+                    unsettled += 1;
+                }
+            }
+            if (unsettled > 0) {
+                throw new Error(`${unsettled} interrupted execution(s) in ${room} could not be settled durably`);
+            }
         } finally {
             connection.disconnect();
         }
@@ -894,9 +910,22 @@ export class JobScheduler {
                 throw new Error(`Schedule ${ruleId} is not present in ${room}`);
             }
 
+            // A previous execution whose result never reached the document is
+            // settled first. The ledger keeps one row per rule, so claiming
+            // over it would erase that result — and with it the successful
+            // completion it recorded, which this attempt's own terminal write
+            // will not restore if it fails. Settling first preserves that
+            // history: `Last successful run` keeps the earlier completion while
+            // `Last run` and `Result` go on to describe this attempt.
+            const pending = this.owedRuns(room).get(ruleId);
+
             let runSeq = 0;
             document.transact(() => {
-                runSeq = ((ruleItem.get("lastRunSeq") as number | undefined) ?? 0) + 1;
+                const currentSeq = (ruleItem.get("lastRunSeq") as number | undefined) ?? 0;
+                if (pending?.outcome && pending.runSeq >= currentSeq) {
+                    applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, pending.outcome));
+                }
+                runSeq = Math.max(currentSeq, pending?.runSeq ?? 0) + 1;
                 ruleItem.set("lastRunSeq", runSeq);
                 ruleItem.set("lastRunStartedAt", new Date().toISOString());
                 ruleItem.set("lastRunStatus", "running");
@@ -906,9 +935,22 @@ export class JobScheduler {
             // Recovery reads the durable document to decide what an owed
             // execution looks like, so a claim that only reached memory would
             // let a crash hide the fact that this generation ever started —
-            // while its SQL had already touched the target table. A store that
-            // fails aborts the attempt, like any other unclaimable generation.
-            await this.storeRoomDocument(document);
+            // while its SQL had already touched the target table. The store is
+            // therefore verified, not merely requested: `storeDocumentHooks`
+            // resolves even when persistence failed. An unverifiable claim
+            // aborts the attempt, like any other unclaimable generation, and
+            // leaves the previous execution's record untouched for recovery.
+            await this.requestRoomStore(document);
+            // A generation *newer* than this one in storage is equally proof
+            // that the claim reached it: another writer superseded this attempt
+            // immediately, and its result will be dropped by the generation
+            // guard rather than lost.
+            if (this.canObservePersistence()) {
+                const stored = this.storedRunGeneration(room, ruleId);
+                if (!stored || stored.seq < runSeq) {
+                    throw new Error(`Schedule ${ruleId} in ${room} could not store the start of execution ${runSeq}`);
+                }
+            }
             this.recordActiveRun(room, ruleId, runSeq);
             return runSeq;
         } finally {
@@ -952,14 +994,24 @@ export class JobScheduler {
                 }
 
                 document.transact(() => applyRunOutcome(ruleItem, outcome), SCHEDULER_ORIGIN);
-                // Persisted before the ledger row is dropped. The document
-                // write above only reaches memory — Hocuspocus stores it on a
-                // debounce — so a process that died in that window would leave
-                // the durable document saying `running` with no record that
-                // anything was still owed. The row is the proof the result
-                // needs publishing, so it outlives the write it describes.
-                await this.storeRoomDocument(document);
-                this.clearActiveRun(room, ruleId, runSeq);
+                // The document write above only reaches memory — Hocuspocus
+                // stores it on a debounce — so a process that died in that
+                // window would leave the durable document saying `running`
+                // with no record that anything was still owed. The ledger row
+                // is that record, so it outlives the write it describes and is
+                // dropped only once storage is *observed* to carry the result.
+                // Asking for the store is not observing it: the request
+                // resolves even when the persistence hook failed.
+                await this.requestRoomStore(document);
+                if (this.runIsDurablySettled(room, ruleId, runSeq)) {
+                    this.clearActiveRun(room, ruleId, runSeq);
+                } else {
+                    logger.warn(
+                        { room, ruleId, runSeq },
+                        "Schedule execution result is not durable yet; keeping its recovery record",
+                    );
+                    this.requeueRoomForReconciliation(room);
+                }
             } finally {
                 connection.disconnect();
             }
@@ -973,14 +1025,19 @@ export class JobScheduler {
     }
 
     /**
-     * Flush the room's document to storage.
+     * Ask Hocuspocus to flush the room's document to storage.
      *
      * `openDirectConnection` writes into the in-memory document and Hocuspocus
      * persists it on a debounce, so "the transaction returned" is not "the
-     * result is durable". Every point that discards the evidence an execution
-     * is still owed waits for this first.
+     * result is durable". Requesting the store is only half of it: this call
+     * resolving is **not** proof that it worked. `storeDocumentHooks` catches
+     * whatever the persistence hook throws, logs "Document stays in memory to
+     * avoid data loss", and resolves normally — a deliberate choice on its
+     * part, but it means a caller that trusts the resolution would discard its
+     * recovery evidence on the strength of a store that never happened. Every
+     * such caller pairs this with `storedRunGeneration` and believes that.
      */
-    private async storeRoomDocument(document: Y.Doc): Promise<void> {
+    private async requestRoomStore(document: Y.Doc): Promise<void> {
         const instance = this.hocuspocus as unknown as {
             storeDocumentHooks?: (document: Y.Doc, payload: unknown, immediately?: boolean) => Promise<unknown>;
         };
@@ -993,6 +1050,104 @@ export class JobScheduler {
             lastContext: {},
             lastTransactionOrigin: SCHEDULER_ORIGIN,
         }, true);
+    }
+
+    /**
+     * What the *stored* document says about a Schedule's execution, or
+     * `undefined` when nothing readable is stored for it.
+     *
+     * This is the proof `requestRoomStore` cannot give. The persistence
+     * extension writes each document into the `documents` table of the same
+     * database this scheduler indexes into — it is where `setDb` got that
+     * database from — so the bytes a restart would load are readable here. A
+     * generation is only safe to forget once those bytes carry it.
+     */
+    private storedRunGeneration(
+        room: string,
+        ruleId: string,
+    ): { seq: number; status: string | undefined; } | undefined {
+        if (!this.sqliteDb) return undefined;
+        const data = (this.sqliteDb.prepare(`SELECT data FROM "documents" WHERE name = ?`)
+            .get(room) as { data?: unknown; } | undefined)?.data;
+        if (!data) return undefined;
+        try {
+            const stored = new Y.Doc();
+            Y.applyUpdate(stored, new Uint8Array(data as ArrayBufferLike));
+            const ruleItem = stored.getMap("schedules").get(ruleId);
+            if (!(ruleItem instanceof Y.Map)) return undefined;
+            return {
+                seq: (ruleItem.get("lastRunSeq") as number | undefined) ?? 0,
+                status: ruleItem.get("lastRunStatus") as string | undefined,
+            };
+        } catch (err) {
+            logger.warn({ err, room, ruleId }, "Could not read the stored Schedule document");
+            return undefined;
+        }
+    }
+
+    /**
+     * Whether the document store can be read back at all.
+     *
+     * The proof above depends on the persistence extension keeping documents in
+     * the same database the scheduler indexes into, which is how it is deployed
+     * (`setDb` takes that database from the SQLite extension). A deployment
+     * that persists elsewhere leaves nothing to read, and refusing to run every
+     * execution would be a far worse failure than the one the proof prevents —
+     * so durability is simply unverifiable there, and the scheduler falls back
+     * to the store request's own word. Said out loud, once, rather than
+     * silently assumed. Only a positive answer is cached: the extension creates
+     * its table before serving, but nothing here depends on that ordering.
+     */
+    private canObservePersistence(): boolean {
+        if (!this.sqliteDb) return false;
+        if (this.persistenceIsObservable) return true;
+        const table = this.sqliteDb.prepare(`
+            SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'documents'
+        `).get();
+        if (table) {
+            this.persistenceIsObservable = true;
+            return true;
+        }
+        if (!this.warnedAboutUnobservablePersistence) {
+            this.warnedAboutUnobservablePersistence = true;
+            logger.warn(
+                "Schedule execution durability cannot be verified: no readable document store. "
+                    + "Recovery records will be cleared on the store request alone.",
+            );
+        }
+        return false;
+    }
+
+    /** Whether this execution's terminal state has actually reached storage. */
+    private runIsDurablySettled(room: string, ruleId: string, runSeq: number): boolean {
+        if (!this.canObservePersistence()) return true;
+        const stored = this.storedRunGeneration(room, ruleId);
+        if (!stored) return false;
+        // A newer generation in storage has already superseded this one, so
+        // this execution can no longer be presented as running either.
+        if (stored.seq > runSeq) return true;
+        return stored.seq === runSeq && stored.status !== "running";
+    }
+
+    /**
+     * The cursor the index holds for a rule *now*, or `undefined` if it holds
+     * none. A recorded outcome carries the cursor its execution consumed, which
+     * may have been withdrawn since — by an editor clearing the recurrence, say
+     * — so a delayed publication takes the cursor from the index rather than
+     * from its own memory. The index is the authority; the document mirrors it.
+     */
+    private currentIndexCursor(room: string, ruleId: string): SchedulerCursor | undefined {
+        if (!this.sqliteDb) return undefined;
+        const row = this.sqliteDb.prepare(`
+            SELECT next_run_at, state FROM schedule_index WHERE room = ? AND rule_id = ?
+        `).get(room, ruleId) as { next_run_at: string | null; state: string; } | undefined;
+        if (!row) return undefined;
+        return { state: row.state as SchedulerCursor["state"], nextRunAt: row.next_run_at };
+    }
+
+    /** A recorded outcome, re-aimed at the cursor the index holds now. */
+    private outcomeForReplay(room: string, ruleId: string, outcome: RunOutcome): RunOutcome {
+        return { ...outcome, cursor: this.currentIndexCursor(room, ruleId) };
     }
 
     /**

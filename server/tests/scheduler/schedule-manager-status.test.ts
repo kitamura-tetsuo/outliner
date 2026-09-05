@@ -140,10 +140,28 @@ describe("Schedules Manager status (production path)", function() {
             // Hocuspocus writes a direct-connection transaction into the
             // in-memory document and stores it on a debounce, so "the
             // transaction returned" is not "the result is durable". The
-            // scheduler forces the store through this hook; `persisted` is what
-            // a restart would actually read back off disk.
+            // scheduler forces the store through this hook.
+            //
+            // It models the real method's acknowledgement contract exactly:
+            // `storeDocumentHooks` wraps the persistence hook in try/catch,
+            // logs "Document stays in memory to avoid data loss" and
+            // **resolves anyway**. So a failing store here does not reject —
+            // the caller is told nothing went wrong. `storeDocument` below is
+            // the hook that actually persists, and tests fail *that* to model
+            // a storage failure. What lands in the `documents` table is what a
+            // restart would read back, exactly as extension-sqlite writes it.
             storeDocumentHooks: async (document: Y.Doc) => {
-                persisted.set(document, Y.encodeStateAsUpdate(document));
+                try {
+                    await hocuspocus.storeDocument(document);
+                } catch (err) {
+                    void err; // Swallowed, as the real implementation does.
+                }
+            },
+            storeDocument: async (document: Y.Doc) => {
+                const name = documentRoom(document);
+                db.prepare(`INSERT INTO "documents" ("name", "data") VALUES (?, ?)
+                    ON CONFLICT(name) DO UPDATE SET data = excluded.data`)
+                    .run(name, Buffer.from(Y.encodeStateAsUpdate(document)));
             },
         };
         const created = new JobScheduler(hocuspocus);
@@ -153,12 +171,23 @@ describe("Schedules Manager status (production path)", function() {
         return created;
     }
 
-    /** The last durably stored bytes of each document. */
-    let persisted: Map<Y.Doc, Uint8Array>;
+    /** The room a document belongs to, the way Hocuspocus names it. */
+    function documentRoom(doc: Y.Doc): string {
+        for (const [room, candidate] of docs) if (candidate === doc) return room;
+        throw new Error("document is not bound to a room");
+    }
+
+    /** The bytes storage actually holds for a room — what a restart would load. */
+    function storedBytes(room: string): Uint8Array | undefined {
+        const row = db.prepare(`SELECT data FROM "documents" WHERE name = ?`).get(room) as
+            | { data: Buffer; }
+            | undefined;
+        return row ? new Uint8Array(row.data) : undefined;
+    }
 
     /** Reload a document from storage, the way a restarted process would. */
-    function reloadFromStorage(doc: Y.Doc): Y.Doc {
-        const update = persisted.get(doc);
+    function reloadFromStorage(room: string): Y.Doc {
+        const update = storedBytes(room);
         expect(update, "the document had reached storage").to.not.be.undefined;
         const reloaded = new Y.Doc();
         Y.applyUpdate(reloaded, update!);
@@ -213,7 +242,12 @@ describe("Schedules Manager status (production path)", function() {
 
     beforeEach(function() {
         db = new Database(":memory:");
-        persisted = new Map();
+        // The same table @hocuspocus/extension-sqlite persists documents into,
+        // in the same database the scheduler indexes into — which is how the
+        // scheduler can tell a stored result from an unstored one.
+        db.prepare(`CREATE TABLE IF NOT EXISTS "documents" (
+            "name" varchar(255) NOT NULL, "data" blob NOT NULL, UNIQUE(name)
+        )`).run();
         initializeScheduleIndex(db);
         docs = buildDocs(buildProjectDoc());
         storeProjectDocument();
@@ -505,7 +539,7 @@ describe("Schedules Manager status (production path)", function() {
         hocuspocus.openDirectConnection = async (room: string) => {
             if (room === tableRoom && !diedWith) {
                 diedWith = {
-                    document: persisted.get(projectDoc)!,
+                    document: storedBytes(projectRoom)!,
                     activeRuns: db.prepare(`SELECT * FROM schedule_active_runs`).all(),
                 };
             }
@@ -841,15 +875,18 @@ describe("Schedules Manager status (production path)", function() {
         await scheduler.tick();
         expect(indexRow(), "the rule is no longer indexed").to.be.undefined;
 
-        // The process dies inside the debounce window of the *terminal* write:
-        // it reaches memory, its store never completes. The execution's start
-        // is stored normally, so this is a crash at completion rather than a
-        // Schedule that could not begin.
-        hocuspocus.storeDocumentHooks = async (document: Y.Doc) => {
+        // Persistence fails for the *terminal* write: it reaches memory, the
+        // store never lands. The failure is injected at the persistence hook,
+        // not at the acknowledgement — `storeDocumentHooks` swallows it and
+        // resolves, exactly as the real one does, so the scheduler is told
+        // nothing went wrong. The execution's start is stored normally, so this
+        // is a crash at completion rather than a Schedule that could not begin.
+        const storeDocument = hocuspocus.storeDocument;
+        hocuspocus.storeDocument = async (document: Y.Doc) => {
             if (document === projectDoc && owedRunRow()?.status) {
-                throw new Error("process terminated before the store completed");
+                throw new Error("persistence failed before the store completed");
             }
-            persisted.set(document, Y.encodeStateAsUpdate(document));
+            await storeDocument(document);
         };
 
         const result = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
@@ -860,7 +897,8 @@ describe("Schedules Manager status (production path)", function() {
 
         // Restart from what actually reached storage — which still says running.
         await scheduler.stop();
-        const restarted = reloadFromStorage(projectDoc);
+        hocuspocus.storeDocument = storeDocument;
+        const restarted = reloadFromStorage(projectRoom);
         expect(ruleMapOf(restarted).get("lastRunStatus"), "storage still says running").to.equal("running");
         expect(ruleMapOf(restarted).get("lastRunSeq")).to.equal(owed?.run_seq);
 
@@ -874,5 +912,135 @@ describe("Schedules Manager status (production path)", function() {
         expect(snapshot.lastSuccessfulRunAt).to.equal(owed?.completed_at);
         expect(snapshot.lastSuccessfulRunAt, "superseding the earlier success").to.not.equal(successAt);
         expect(owedRunRow(), "the record is spent once recovery is durable").to.be.undefined;
+    });
+
+    // REQ-003/REQ-009 — `storeDocumentHooks` catches persistence errors and
+    // resolves anyway, so a caller that trusts its resolution discards recovery
+    // evidence for a store that never happened. Durability has to be observed.
+    it("does not treat an acknowledged-but-failed store as durable", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        clearRecurrence(projectDoc);
+        await scheduler.tick();
+
+        // Persistence is down from here. Nothing rejects: every store request
+        // resolves, exactly as the real acknowledgement does.
+        const storeDocument = hocuspocus.storeDocument;
+        let acknowledgedFailures = 0;
+        hocuspocus.storeDocument = async (document: Y.Doc) => {
+            if (document === projectDoc) {
+                acknowledgedFailures += 1;
+                throw new Error("persistence is unavailable");
+            }
+            await storeDocument(document);
+        };
+        const storedBefore = storedBytes(projectRoom)!;
+
+        // A start that cannot be stored must not run any SQL: a crash would
+        // hide that the generation ever began, while its rows had landed.
+        let tableOpens = 0;
+        const openDirectConnection = hocuspocus.openDirectConnection;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === tableRoom) tableOpens += 1;
+            return openDirectConnection(room);
+        };
+
+        const blocked = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        expect(blocked.success, "the attempt is refused").to.equal(false);
+        expect(acknowledgedFailures, "its start store was attempted and 'succeeded'").to.be.at.least(1);
+        expect(tableOpens, "no SQL ran under a claim that was never stored").to.equal(0);
+        expect(owedRunRow(), "and no in-flight record was left behind for it").to.be.undefined;
+        expect(
+            storedBytes(projectRoom),
+            "storage is untouched by the refused attempt",
+        ).to.deep.equal(storedBefore);
+    });
+
+    // REQ-005/REQ-007 — a successful completion that has not been published yet
+    // is history the next attempt must not erase.
+    it("keeps an unpublished success when a further execution starts before recovery", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        const olderSuccessAt = managerSnapshot(projectDoc).lastSuccessfulRunAt;
+        clearRecurrence(projectDoc);
+        await scheduler.tick();
+
+        // Execution A succeeds; only its publication fails.
+        let denied = 0;
+        const openDirectConnection = hocuspocus.openDirectConnection;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === projectRoom && owedRunRow()?.status && denied === 0) {
+                denied += 1;
+                throw new Error("transient connection failure");
+            }
+            return openDirectConnection(room);
+        };
+        const a = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        expect(a.success, "execution A succeeded").to.equal(true);
+        const pendingSuccessAt = owedRunRow()?.completed_at;
+        expect(pendingSuccessAt, "A's success is recorded but unpublished").to.be.a("string");
+        expect(pendingSuccessAt, "and is newer than the published one").to.not.equal(olderSuccessAt);
+        expect(managerSnapshot(projectDoc).result).to.equal("running");
+
+        // Execution B starts before any recovery tick, and fails.
+        ruleMapOf(projectDoc).set("sql", "INSERT INTO no_such_table (id) VALUES (1)");
+        const b = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        expect(b.success, "execution B failed").to.equal(false);
+
+        const snapshot = managerSnapshot(projectDoc);
+        expect(snapshot.result, "B owns Last run and Result").to.equal("failed");
+        expect(
+            snapshot.lastSuccessfulRunAt,
+            "A's successful completion is not lost to B's claim",
+        ).to.equal(pendingSuccessAt);
+    });
+
+    // REQ-006/REQ-008 — a recorded outcome carries the cursor its execution
+    // consumed, which may have been withdrawn while the outcome waited.
+    it("does not restore a withdrawn cursor when replaying a delayed outcome", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+
+        // A scheduled execution completes and commits its successor cursor, but
+        // its terminal publication fails, so the cursor rides on the ledger row.
+        let denied = 0;
+        const openDirectConnection = hocuspocus.openDirectConnection;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === projectRoom && owedRunRow()?.status && denied === 0) {
+                denied += 1;
+                throw new Error("transient connection failure");
+            }
+            return openDirectConnection(room);
+        };
+        await scheduler.tick();
+        expect(denied, "the terminal publication was denied").to.equal(1);
+        expect(
+            db.prepare(`SELECT cursor_state, cursor_next_run_at FROM schedule_active_runs WHERE room = ?`)
+                .get(projectRoom),
+            "the pending outcome carries an active cursor",
+        ).to.deep.equal({ cursor_state: "active", cursor_next_run_at: indexRow().next_run_at });
+
+        // The recurrence is removed before recovery gets to it. Snapshots are
+        // judged from the point the withdrawal is complete: the editor's own
+        // `dtstart` write lands before the indexer runs, and the cursor is
+        // still legitimately the old one in between.
+        const rendered = recordRenderedSnapshots(projectDoc);
+        clearRecurrence(projectDoc);
+        expect(indexRow(), "the indexer dropped the rule").to.be.undefined;
+        const withdrawnAt = rendered.length;
+        expect(
+            managerSnapshot(projectDoc).next.state,
+            "the withdrawal took effect before recovery ran",
+        ).to.not.equal("scheduled");
+
+        await scheduler.tick();
+
+        const snapshot = managerSnapshot(projectDoc);
+        expect(snapshot.result, "the delayed result still reaches the manager").to.equal("success");
+        expect(snapshot.next.state, "but no occurrence is presented as eligible").to.not.equal("scheduled");
+        expect(snapshot.raw.schedulerNextRunAt, "and no timestamp is restored").to.be.undefined;
+        for (const captured of rendered.slice(withdrawnAt)) {
+            expect(captured.next.state, "no snapshot restores the withdrawn cursor").to.not.equal("scheduled");
+            expect(captured.raw.schedulerNextRunAt, "or its timestamp").to.be.undefined;
+        }
     });
 });
