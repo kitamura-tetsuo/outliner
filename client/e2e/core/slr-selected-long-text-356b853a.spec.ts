@@ -69,6 +69,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("End");
+        await page.waitForTimeout(500);
 
         // Wait for cursor position update
         await page.waitForTimeout(100);
