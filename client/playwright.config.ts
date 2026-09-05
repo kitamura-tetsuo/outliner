@@ -153,6 +153,15 @@ export default defineConfig({
             name: "tables",
             testDir: "./e2e/tables",
         },
+        {
+            name: "deployed",
+            use: {
+                ...devices["Desktop Chrome"],
+                baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:7080",
+            },
+            testMatch: "**/deployed/**/*.spec.ts",
+            retries: 0,
+        },
 
         {
             // Basic tests: For environment check and minimal configuration verification

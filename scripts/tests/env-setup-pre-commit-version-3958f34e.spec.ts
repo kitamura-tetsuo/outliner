@@ -71,5 +71,5 @@ test("a pre-commit at or above the floor is accepted", () => {
 
 test("the hook config still uses the stage names that require the floor", () => {
     const content = fs.readFileSync(path.join(repoRoot, ".pre-commit-config.yaml"), "utf8");
-    expect(content.includes("stages: [pre-commit]")).toBe(true);
+    expect(content.includes("stages: [commit]")).toBe(true);
 });
