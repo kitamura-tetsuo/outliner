@@ -176,7 +176,8 @@ export function renderAuthorizePage(
         }
         window.location.href = data.redirectTo;
       } catch (err) {
-        console.error("OAuth authorization error:", err);
+        const safeError = err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err;
+        console.error("OAuth authorization error:", safeError);
         errorEl.textContent = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
         statusEl.textContent = "";
         button.disabled = false;
