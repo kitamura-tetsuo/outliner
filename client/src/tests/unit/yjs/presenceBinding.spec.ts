@@ -54,8 +54,8 @@ describe("Presence Binding Leak", () => {
         );
 
         // Get the update function that was registered
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const observers = (awareness as unknown as { _observers: Map<string, Set<any>>; })._observers;
+        const observers =
+            (awareness as unknown as { _observers: Map<string, Set<(...args: unknown[]) => void>>; })._observers;
         const changeObservers = Array.from(observers.get("change") || []);
         const updateFn = changeObservers[0];
 
