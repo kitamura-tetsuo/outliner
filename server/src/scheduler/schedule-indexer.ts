@@ -66,21 +66,30 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
     // re-running the SQL. They stay NULL while the execution is in flight,
     // which is what makes an interrupted run distinguishable from a completed
     // one whose publication did not land.
+    // The key is the *generation*, not the rule: a rule can owe more than one
+    // at a time. An execution whose result could not be published leaves its
+    // row behind, and the next attempt must be able to record its own claim
+    // without erasing that one — which a row per rule cannot express.
     db.prepare(`
         CREATE TABLE IF NOT EXISTS schedule_active_runs (
-            room     TEXT,
-            rule_id  TEXT,
-            run_seq  INTEGER,
-            PRIMARY KEY (room, rule_id)
+            room               TEXT,
+            rule_id            TEXT,
+            run_seq            INTEGER,
+            status             TEXT,
+            error              TEXT,
+            completed_at       TEXT,
+            cursor_state       TEXT,
+            cursor_next_run_at TEXT,
+            PRIMARY KEY (room, rule_id, run_seq)
         )
     `).run();
-    // The outcome columns were added after the table, so a database created by
-    // an earlier build is widened in place rather than losing its in-flight
-    // markers to a recreate.
-    const activeRunColumns = new Set(
-        (db.prepare(`PRAGMA table_info(schedule_active_runs)`).all() as { name: string; }[])
-            .map(column => column.name),
-    );
+
+    // Earlier builds created this table without the outcome columns, and then
+    // with them but keyed by rule alone. A database from either is migrated in
+    // place rather than losing the in-flight markers it may be holding.
+    const activeRunColumns = db.prepare(`PRAGMA table_info(schedule_active_runs)`)
+        .all() as { name: string; pk: number; }[];
+    const columnNames = new Set(activeRunColumns.map(column => column.name));
     for (
         const [name, type] of [
             ["status", "TEXT"],
@@ -90,8 +99,34 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
             ["cursor_next_run_at", "TEXT"],
         ] as const
     ) {
-        if (!activeRunColumns.has(name)) {
+        if (!columnNames.has(name)) {
             db.prepare(`ALTER TABLE schedule_active_runs ADD COLUMN ${name} ${type}`).run();
+        }
+    }
+    const keyedByGeneration = activeRunColumns.some(column => column.name === "run_seq" && column.pk > 0);
+    if (activeRunColumns.length > 0 && !keyedByGeneration) {
+        for (
+            const statement of [
+                `ALTER TABLE schedule_active_runs RENAME TO schedule_active_runs_legacy`,
+                `CREATE TABLE schedule_active_runs (
+                    room               TEXT,
+                    rule_id            TEXT,
+                    run_seq            INTEGER,
+                    status             TEXT,
+                    error              TEXT,
+                    completed_at       TEXT,
+                    cursor_state       TEXT,
+                    cursor_next_run_at TEXT,
+                    PRIMARY KEY (room, rule_id, run_seq)
+                )`,
+                `INSERT INTO schedule_active_runs
+                    (room, rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at)
+                    SELECT room, rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at
+                    FROM schedule_active_runs_legacy`,
+                `DROP TABLE schedule_active_runs_legacy`,
+            ]
+        ) {
+            db.prepare(statement).run();
         }
     }
 }

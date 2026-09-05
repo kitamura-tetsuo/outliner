@@ -200,12 +200,21 @@ describe("Schedules Manager status (production path)", function() {
         status: string | null;
         completed_at: string | null;
     } | undefined {
-        return db.prepare(
-            `SELECT run_seq, status, completed_at FROM schedule_active_runs WHERE room = ? AND rule_id = ?`,
-        )
+        return db.prepare(`
+            SELECT run_seq, status, completed_at FROM schedule_active_runs
+            WHERE room = ? AND rule_id = ? ORDER BY run_seq DESC
+        `)
             .get(projectRoom, DEMO_DAILY_RULE_ID) as
                 | { run_seq: number; status: string | null; completed_at: string | null; }
                 | undefined;
+    }
+
+    /** Every generation the scheduler still owes a published terminal state. */
+    function owedRunRows(): { run_seq: number; status: string | null; }[] {
+        return db.prepare(`
+            SELECT run_seq, status FROM schedule_active_runs
+            WHERE room = ? AND rule_id = ? ORDER BY run_seq
+        `).all(projectRoom, DEMO_DAILY_RULE_ID) as { run_seq: number; status: string | null; }[];
     }
 
     /** Drop the rule's recurrence the way an editor save does, then re-index. */
@@ -945,15 +954,101 @@ describe("Schedules Manager status (production path)", function() {
             return openDirectConnection(room);
         };
 
+        const previousResult = managerSnapshot(projectDoc).result;
         const blocked = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
         expect(blocked.success, "the attempt is refused").to.equal(false);
         expect(acknowledgedFailures, "its start store was attempted and 'succeeded'").to.be.at.least(1);
         expect(tableOpens, "no SQL ran under a claim that was never stored").to.equal(0);
-        expect(owedRunRow(), "and no in-flight record was left behind for it").to.be.undefined;
         expect(
             storedBytes(projectRoom),
             "storage is untouched by the refused attempt",
         ).to.deep.equal(storedBefore);
+
+        // The refused attempt must not leave the Schedule presented as running:
+        // the caller was told the run failed, and the manager has to agree.
+        const abandoned = managerSnapshot(projectDoc);
+        expect(abandoned.result, "the abandoned claim is not left running").to.not.equal("running");
+        expect(abandoned.result, "it is reported as a failure to start").to.equal("failed");
+        expect(abandoned.lastRunError, "and says so").to.contain("could not record its start");
+        expect(previousResult, "the previous attempt had succeeded").to.equal("success");
+
+        // Its own settlement is not durable either, so the recovery record
+        // stays until storage can confirm it.
+        expect(owedRunRow()?.status, "the abandoned generation is still owed").to.equal("error");
+
+        // Storage returns; the same scheduler finishes what it left open.
+        hocuspocus.storeDocument = storeDocument;
+        await scheduler.tick();
+
+        expect(
+            managerSnapshot(projectDoc).result,
+            "no abandoned running state survives",
+        ).to.equal("failed");
+        expect(owedRunRows(), "and nothing is left owed").to.deep.equal([]);
+    });
+
+    // REQ-009 — the window between storing a `running` claim and recording the
+    // marker that makes it discoverable must not exist.
+    it("records its recovery marker before the claim can be stored", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        const successAt = managerSnapshot(projectDoc).lastSuccessfulRunAt;
+        expect(successAt, "a real success was recorded").to.be.a("string");
+        clearRecurrence(projectDoc);
+        await scheduler.tick();
+        expect(indexRow(), "the rule is no longer indexed").to.be.undefined;
+        expect(owedRunRows(), "nothing is owed before the attempt").to.deep.equal([]);
+
+        // Capture the durable state at the exact instant the claim reaches
+        // storage — the checkpoint a process termination would leave behind.
+        // Both halves are read out of the real run, not assembled.
+        const storeDocument = hocuspocus.storeDocument;
+        let checkpoint: { document: Uint8Array; activeRuns: Record<string, unknown>[]; } | undefined;
+        hocuspocus.storeDocument = async (document: Y.Doc) => {
+            await storeDocument(document);
+            if (checkpoint || document !== projectDoc) return;
+            if (ruleMapOf(projectDoc).get("lastRunStatus") !== "running") return;
+            checkpoint = {
+                document: storedBytes(projectRoom)!,
+                activeRuns: db.prepare(`SELECT * FROM schedule_active_runs`).all() as Record<string, unknown>[],
+            };
+        };
+
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        await scheduler.stop();
+
+        expect(checkpoint, "a stored running claim was captured").to.not.be.undefined;
+        // The marker is already there at the moment the claim becomes durable.
+        expect(
+            checkpoint!.activeRuns,
+            "the claim was discoverable before it could be stored",
+        ).to.have.length(1);
+        expect(
+            (checkpoint!.activeRuns[0] as { status: string | null; }).status,
+            "with no result recorded for it yet",
+        ).to.equal(null);
+
+        // Resume from exactly that durable state.
+        const restarted = new Y.Doc();
+        Y.applyUpdate(restarted, checkpoint!.document);
+        expect(ruleMapOf(restarted).get("lastRunStatus"), "storage says running").to.equal("running");
+        docs = buildDocs(restarted);
+        db.prepare(`DELETE FROM schedule_active_runs`).run();
+        for (const row of checkpoint!.activeRuns) {
+            db.prepare(`INSERT INTO schedule_active_runs (room, rule_id, run_seq) VALUES (?, ?, ?)`)
+                .run(row.room, row.rule_id, row.run_seq);
+        }
+        db.prepare(`DELETE FROM "documents"`).run();
+        db.prepare(`INSERT INTO "documents" ("name", "data") VALUES (?, ?)`)
+            .run(projectRoom, Buffer.from(checkpoint!.document));
+
+        scheduler = buildScheduler();
+        await scheduler.tick();
+
+        const snapshot = managerSnapshot(restarted);
+        expect(snapshot.result, "the stranded claim is terminated on restart").to.equal("interrupted");
+        expect(snapshot.lastSuccessfulRunAt, "with the earlier success preserved").to.equal(successAt);
+        expect(owedRunRows(), "and its record is spent").to.deep.equal([]);
     });
 
     // REQ-005/REQ-007 — a successful completion that has not been published yet

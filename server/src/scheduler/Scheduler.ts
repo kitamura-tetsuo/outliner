@@ -17,6 +17,12 @@ import {
     type SchedulerCursor,
 } from "./schedule-status-publisher.js";
 
+/** One generation a room still owes a published terminal state. */
+interface OwedRun {
+    runSeq: number;
+    outcome?: RunOutcome;
+}
+
 // Upper bound on how many past occurrences a single tick walks through, so a
 // rule whose dtstart lies far in the past cannot stall the scheduler.
 const MAX_CATCHUP_OCCURRENCES = 500;
@@ -371,14 +377,21 @@ export class JobScheduler {
         if (stillPending.length === 0) this.reconciledInterruptedRuns = true;
     }
 
-    /** Remember that an execution is in flight, so a restart can find it again. */
+    /**
+     * Remember that a generation is in flight, so a restart can find it again.
+     *
+     * Written *before* the generation's `running` state can be observed
+     * anywhere — in memory or in storage — because a `running` state nothing
+     * knows to recover is exactly the state this table exists to prevent. Rows
+     * are per generation, so recording this claim never disturbs a previous
+     * execution whose result is still owed.
+     */
     private recordActiveRun(room: string, ruleId: string, runSeq: number): void {
         if (!this.sqliteDb) return;
         this.sqliteDb.prepare(`
             INSERT INTO schedule_active_runs (room, rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at)
             VALUES (?, ?, ?, NULL, NULL, NULL, NULL, NULL)
-            ON CONFLICT(room, rule_id) DO UPDATE SET
-                run_seq = excluded.run_seq,
+            ON CONFLICT(room, rule_id, run_seq) DO UPDATE SET
                 status = NULL, error = NULL, completed_at = NULL,
                 cursor_state = NULL, cursor_next_run_at = NULL
         `).run(room, ruleId, runSeq);
@@ -419,13 +432,16 @@ export class JobScheduler {
         `).run(room, ruleId, runSeq);
     }
 
-    /** The executions this room still owes a published terminal result, by rule. */
-    private owedRuns(room: string): Map<string, { runSeq: number; outcome?: RunOutcome; }> {
-        const owed = new Map<string, { runSeq: number; outcome?: RunOutcome; }>();
+    /**
+     * The generations this room still owes a published terminal state, by rule
+     * and in ascending generation order — a rule can owe more than one.
+     */
+    private owedRuns(room: string): Map<string, OwedRun[]> {
+        const owed = new Map<string, OwedRun[]>();
         if (!this.sqliteDb) return owed;
         const rows = this.sqliteDb.prepare(`
             SELECT rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at
-            FROM schedule_active_runs WHERE room = ?
+            FROM schedule_active_runs WHERE room = ? ORDER BY rule_id, run_seq
         `).all(room) as {
             rule_id: string;
             run_seq: number;
@@ -436,7 +452,8 @@ export class JobScheduler {
             cursor_next_run_at: string | null;
         }[];
         for (const row of rows) {
-            owed.set(row.rule_id, {
+            const entries = owed.get(row.rule_id) ?? [];
+            entries.push({
                 runSeq: row.run_seq,
                 outcome: row.status && row.completed_at
                     ? {
@@ -452,6 +469,7 @@ export class JobScheduler {
                     }
                     : undefined,
             });
+            owed.set(row.rule_id, entries);
         }
         return owed;
     }
@@ -477,44 +495,52 @@ export class JobScheduler {
                 interrupted.push(ruleId);
             };
             document.transact(() => {
-                // The ledger is the record of what is actually owed, so it is
-                // read first: a `running` marker in the document is evidence,
-                // but not the only evidence, and not always present.
-                for (const [ruleId, pending] of owed) {
+                // Both halves of the evidence: what the ledger says is owed,
+                // and what the document itself is still showing as running.
+                // Neither implies the other — a claim can be recorded before it
+                // reaches the document, and a `running` state can outlive the
+                // process that wrote it — so every rule named by either is
+                // settled here.
+                for (const ruleId of new Set([...owed.keys(), ...schedulesMap.keys()])) {
                     const ruleItem = schedulesMap.get(ruleId);
                     if (!(ruleItem instanceof Y.Map)) continue;
-                    const currentSeq = (ruleItem.get("lastRunSeq") as number | undefined) ?? 0;
-                    // A newer execution has already claimed this Schedule, so
-                    // this result would pair an old outcome with a newer start.
-                    if (pending.runSeq < currentSeq) continue;
-                    // The document has not caught up with this generation at
-                    // all — its claim did not survive. Recording it keeps the
-                    // ordering consistent for whatever writes next.
-                    if (pending.runSeq > currentSeq) ruleItem.set("lastRunSeq", pending.runSeq);
+                    let currentSeq = (ruleItem.get("lastRunSeq") as number | undefined) ?? 0;
 
-                    // An execution that produced a result before it lost the
-                    // ability to publish it is not interrupted — it finished.
-                    // Its own outcome and completion time are republished, so a
-                    // success stays a success and no SQL runs a second time.
-                    // Its *cursor* is not replayed from memory: the recurrence
-                    // may have been withdrawn while the outcome waited, so the
-                    // published cursor is taken from the index as it stands.
-                    if (pending.outcome) {
-                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, pending.outcome));
+                    // Owed generations in order, oldest first, so a rule owing
+                    // several settles into the state it would have reached had
+                    // each publication landed when it was produced.
+                    for (const entry of owed.get(ruleId) ?? []) {
+                        // No result was ever produced under this generation, so
+                        // there is nothing to publish for it; whether it left a
+                        // `running` state behind is settled below.
+                        if (!entry.outcome) continue;
+                        // A newer execution has already claimed this Schedule,
+                        // so this result would pair an old outcome with a newer
+                        // start.
+                        if (entry.runSeq < currentSeq) continue;
+                        // The document has not caught up with this generation at
+                        // all — its claim did not survive. Recording it keeps
+                        // the ordering consistent for whatever writes next.
+                        if (entry.runSeq > currentSeq) {
+                            ruleItem.set("lastRunSeq", entry.runSeq);
+                            currentSeq = entry.runSeq;
+                        }
+                        // An execution that produced a result before it lost the
+                        // ability to publish it is not interrupted — it
+                        // finished. Its own outcome and completion time are
+                        // republished, so a success stays a success and no SQL
+                        // runs a second time. Its *cursor* is not replayed from
+                        // memory: the recurrence may have been withdrawn while
+                        // the outcome waited, so the published cursor is taken
+                        // from the index as it stands.
+                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, entry.outcome));
                         republished.push(ruleId);
-                    } else {
-                        markInterrupted(ruleItem, ruleId);
                     }
-                }
 
-                // Markers written before the ledger carried outcomes, and any
-                // `running` state whose execution left no record at all.
-                schedulesMap.forEach((ruleItem, ruleId) => {
-                    if (!(ruleItem instanceof Y.Map)) return;
-                    if (owed.has(ruleId)) return;
-                    if (ruleItem.get("lastRunStatus") !== "running") return;
-                    markInterrupted(ruleItem, ruleId);
-                });
+                    // Whatever generation the document is left showing as
+                    // running has no result coming for it.
+                    if (ruleItem.get("lastRunStatus") === "running") markInterrupted(ruleItem, ruleId);
+                }
             }, SCHEDULER_ORIGIN);
             if (interrupted.length > 0) {
                 logger.warn({ room, ruleIds: interrupted }, "Reconciled interrupted schedule executions");
@@ -532,11 +558,13 @@ export class JobScheduler {
             // execution's terminal state. Any that is not stays for the next
             // sweep, which is why this throws rather than leaving them behind.
             let unsettled = 0;
-            for (const [ruleId, pending] of owed) {
-                if (this.runIsDurablySettled(room, ruleId, pending.runSeq)) {
-                    this.clearActiveRun(room, ruleId, pending.runSeq);
-                } else {
-                    unsettled += 1;
+            for (const [ruleId, entries] of owed) {
+                for (const entry of entries) {
+                    if (this.runIsDurablySettled(room, ruleId, entry.runSeq, entry.outcome !== undefined)) {
+                        this.clearActiveRun(room, ruleId, entry.runSeq);
+                    } else {
+                        unsettled += 1;
+                    }
                 }
             }
             if (unsettled > 0) {
@@ -911,50 +939,112 @@ export class JobScheduler {
             }
 
             // A previous execution whose result never reached the document is
-            // settled first. The ledger keeps one row per rule, so claiming
-            // over it would erase that result — and with it the successful
-            // completion it recorded, which this attempt's own terminal write
-            // will not restore if it fails. Settling first preserves that
-            // history: `Last successful run` keeps the earlier completion while
-            // `Last run` and `Result` go on to describe this attempt.
-            const pending = this.owedRuns(room).get(ruleId);
+            // settled first, so `Last successful run` keeps the earlier
+            // completion while `Last run` and `Result` go on to describe this
+            // attempt — the state that would have existed had that publication
+            // landed when it was produced.
+            const owed = this.owedRuns(room).get(ruleId) ?? [];
+            const pending = [...owed].reverse().find(entry => entry.outcome !== undefined);
+            const currentSeq = (ruleItem.get("lastRunSeq") as number | undefined) ?? 0;
+            const highestOwed = owed.length > 0 ? owed[owed.length - 1].runSeq : 0;
+            const runSeq = Math.max(currentSeq, highestOwed) + 1;
 
-            let runSeq = 0;
-            document.transact(() => {
-                const currentSeq = (ruleItem.get("lastRunSeq") as number | undefined) ?? 0;
-                if (pending?.outcome && pending.runSeq >= currentSeq) {
-                    applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, pending.outcome));
-                }
-                runSeq = Math.max(currentSeq, pending?.runSeq ?? 0) + 1;
-                ruleItem.set("lastRunSeq", runSeq);
-                ruleItem.set("lastRunStartedAt", new Date().toISOString());
-                ruleItem.set("lastRunStatus", "running");
-                ruleItem.delete("lastRunError");
-            }, SCHEDULER_ORIGIN);
-            // Stored before the ledger row is written, and before any SQL runs.
-            // Recovery reads the durable document to decide what an owed
-            // execution looks like, so a claim that only reached memory would
-            // let a crash hide the fact that this generation ever started —
-            // while its SQL had already touched the target table. The store is
-            // therefore verified, not merely requested: `storeDocumentHooks`
-            // resolves even when persistence failed. An unverifiable claim
-            // aborts the attempt, like any other unclaimable generation, and
-            // leaves the previous execution's record untouched for recovery.
-            await this.requestRoomStore(document);
-            // A generation *newer* than this one in storage is equally proof
-            // that the claim reached it: another writer superseded this attempt
-            // immediately, and its result will be dropped by the generation
-            // guard rather than lost.
-            if (this.canObservePersistence()) {
-                const stored = this.storedRunGeneration(room, ruleId);
-                if (!stored || stored.seq < runSeq) {
-                    throw new Error(`Schedule ${ruleId} in ${room} could not store the start of execution ${runSeq}`);
-                }
-            }
+            // Recorded *before* the claim is written, so this generation is
+            // discoverable from the instant a `running` state could be observed
+            // for it — in memory or in storage. Recording it afterwards leaves
+            // a window in which an interruption strands a running Schedule that
+            // neither discovery table names. Rows are per generation, so this
+            // does not disturb the record of the execution being settled above.
             this.recordActiveRun(room, ruleId, runSeq);
-            return runSeq;
+
+            try {
+                document.transact(() => {
+                    if (pending?.outcome && pending.runSeq >= currentSeq) {
+                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, pending.outcome));
+                    }
+                    ruleItem.set("lastRunSeq", runSeq);
+                    ruleItem.set("lastRunStartedAt", new Date().toISOString());
+                    ruleItem.set("lastRunStatus", "running");
+                    ruleItem.delete("lastRunError");
+                }, SCHEDULER_ORIGIN);
+                // Stored before any SQL runs. Recovery reads the durable
+                // document to decide what an owed execution looks like, so a
+                // claim that only reached memory would let a crash hide the
+                // fact that this generation ever started — while its SQL had
+                // already touched the target table. The store is therefore
+                // verified, not merely requested: `storeDocumentHooks` resolves
+                // even when persistence failed.
+                await this.requestRoomStore(document);
+                // A generation *newer* than this one in storage is equally proof
+                // that the claim reached it: another writer superseded this
+                // attempt immediately, and its result will be dropped by the
+                // generation guard rather than lost.
+                if (this.canObservePersistence()) {
+                    const stored = this.storedRunGeneration(room, ruleId);
+                    if (!stored || stored.seq < runSeq) {
+                        throw new Error(
+                            `Schedule ${ruleId} in ${room} could not store the start of execution ${runSeq}`,
+                        );
+                    }
+                }
+                // The settle above is durable too, so the generations it
+                // published are spent.
+                for (const entry of owed) {
+                    if (this.runIsDurablySettled(room, ruleId, entry.runSeq, entry.outcome !== undefined)) {
+                        this.clearActiveRun(room, ruleId, entry.runSeq);
+                    }
+                }
+                return runSeq;
+            } catch (err) {
+                // The attempt never got off the ground, but it may already have
+                // published a `running` state. Left standing, that is a
+                // Schedule shown as running forever by a process that knows it
+                // is not. It is settled here rather than deferred: the caller
+                // is about to be told the run was refused, and the manager must
+                // not contradict that.
+                await this.abandonClaim(room, ruleId, runSeq, document, ruleItem);
+                throw err;
+            }
         } finally {
             connection.disconnect();
+        }
+    }
+
+    /**
+     * Terminate a generation whose claim could not be established.
+     *
+     * No SQL has run — nothing runs under an unverified claim — so this is a
+     * failure to start rather than a failed execution, and it says so. It never
+     * throws: it is called while another failure is already propagating, and
+     * anything it cannot finish is left to recovery, which the ledger row it
+     * declines to clear will reach.
+     */
+    private async abandonClaim(
+        room: string,
+        ruleId: string,
+        runSeq: number,
+        document: Y.Doc,
+        ruleItem: Y.Map<unknown>,
+    ): Promise<void> {
+        const outcome: RunOutcome = {
+            status: "error",
+            error: "Execution could not start: the scheduler could not record its start.",
+            completedAt: new Date().toISOString(),
+        };
+        try {
+            this.recordRunOutcome(room, ruleId, runSeq, outcome);
+            if (((ruleItem.get("lastRunSeq") as number | undefined) ?? 0) === runSeq) {
+                document.transact(() => applyRunOutcome(ruleItem, outcome), SCHEDULER_ORIGIN);
+            }
+            await this.requestRoomStore(document);
+            if (this.runIsDurablySettled(room, ruleId, runSeq)) {
+                this.clearActiveRun(room, ruleId, runSeq);
+            } else {
+                this.requeueRoomForReconciliation(room);
+            }
+        } catch (err) {
+            logger.warn({ err, room, ruleId, runSeq }, "Could not settle an abandoned schedule execution claim");
+            this.requeueRoomForReconciliation(room);
         }
     }
 
@@ -1118,15 +1208,30 @@ export class JobScheduler {
         return false;
     }
 
-    /** Whether this execution's terminal state has actually reached storage. */
-    private runIsDurablySettled(room: string, ruleId: string, runSeq: number): boolean {
+    /**
+     * Whether this generation's terminal state has actually reached storage, so
+     * its recovery record can be discarded.
+     *
+     * `producedResult` says whether the execution got as far as an outcome. It
+     * decides the one ambiguous case: storage sitting at an *older* generation.
+     * With a result, that means something ran whose outcome is not yet durable
+     * — keep the record. Without one, the claim never became durable, and since
+     * no SQL runs under an unverified claim, nothing happened under that
+     * generation at all: the record is spent and the previous state stands.
+     */
+    private runIsDurablySettled(
+        room: string,
+        ruleId: string,
+        runSeq: number,
+        producedResult = true,
+    ): boolean {
         if (!this.canObservePersistence()) return true;
-        const stored = this.storedRunGeneration(room, ruleId);
-        if (!stored) return false;
+        const stored = this.storedRunGeneration(room, ruleId) ?? { seq: 0, status: undefined };
         // A newer generation in storage has already superseded this one, so
         // this execution can no longer be presented as running either.
         if (stored.seq > runSeq) return true;
-        return stored.seq === runSeq && stored.status !== "running";
+        if (stored.seq < runSeq) return !producedResult;
+        return stored.status !== "running";
     }
 
     /**
