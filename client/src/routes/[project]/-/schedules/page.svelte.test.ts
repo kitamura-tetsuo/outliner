@@ -192,6 +192,23 @@ describe("Schedules Manager route", () => {
         return { ruleId, ruleMap };
     }
 
+    // The row shape the E2E specs address: one `schedule-row` per Schedule,
+    // keyed by rule id, carrying that Schedule's actions. Asserted here so a
+    // markup change that would break those specs fails in the unit suite first.
+    it("renders one addressable row per Schedule, carrying that Schedule's actions", async () => {
+        const { ruleId } = await renderWithRule();
+
+        const list = screen.getByTestId("project-schedule-list");
+        const rows = list.querySelectorAll("[data-testid='schedule-row']");
+        expect(rows.length).toBe(1);
+        expect(rows[0].getAttribute("data-rule-id")).toBe(ruleId);
+        expect(rows[0].querySelector("[data-testid='schedule-rule-run-now']")).toBeTruthy();
+        expect(rows[0].querySelector("[data-testid='schedule-rule-enabled']")).toBeTruthy();
+        expect(rows[0].querySelector("[data-testid='schedule-rule-delete']")).toBeTruthy();
+        // The cadence text the table-scoped Schedule specs still assert on.
+        expect(screen.getByTestId("schedule-rule-cadence").textContent).toContain("every day");
+    });
+
     it("renders the scheduler's authoritative next occurrence, never a local recomputation", async () => {
         // A cursor in the past: `rrule.after(now)` could never produce it.
         await renderWithRule({
