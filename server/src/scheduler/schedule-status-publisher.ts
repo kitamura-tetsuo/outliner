@@ -32,6 +32,47 @@ export interface SchedulerCursor {
 }
 
 /**
+ * What an execution produced, as it is recorded durably and then published.
+ *
+ * `completedAt` is fixed when the result is produced rather than when it is
+ * written, so a republication after a failed publish carries the instant the
+ * execution actually finished instead of the instant it was rescued.
+ */
+export interface RunOutcome {
+    status: "ok" | "error";
+    error?: string;
+    completedAt: string;
+    cursor?: SchedulerCursor;
+}
+
+/**
+ * Write one execution's terminal result into the rule map, with the cursor it
+ * consumed. Yjs delivers a transaction to observers as one change, so the
+ * manager transitions from "running, next run T1" straight to "finished, next
+ * run T2" with no intermediate state pairing the terminal result with the
+ * occurrence it just spent.
+ *
+ * Idempotent: republishing a result that already landed rewrites the same
+ * values, which is what lets recovery retry a publication it cannot confirm.
+ *
+ * Must be called inside a `document.transact(..., SCHEDULER_ORIGIN)`.
+ */
+export function applyRunOutcome(ruleItem: Y.Map<unknown>, outcome: RunOutcome): void {
+    // Kept for backwards compatibility: `lastRunAt` has always been a
+    // completion-time observation and stays one.
+    ruleItem.set("lastRunAt", outcome.completedAt);
+    if (outcome.status === "ok") {
+        ruleItem.set("lastRunStatus", "ok");
+        ruleItem.delete("lastRunError");
+        ruleItem.set("lastSuccessfulRunAt", outcome.completedAt);
+    } else {
+        ruleItem.set("lastRunStatus", "error");
+        ruleItem.set("lastRunError", outcome.error || "Unknown error");
+    }
+    if (outcome.cursor) applySchedulerCursor(ruleItem, outcome.cursor);
+}
+
+/**
  * Mirror one index row into the rule map. Writes are change-guarded: an
  * unchanged cursor produces no Yjs update, so republishing on every store or
  * tick cannot loop through the document-store hook that calls it.

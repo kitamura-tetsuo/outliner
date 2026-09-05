@@ -52,11 +52,20 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
         )
     `).run();
 
-    // Executions that have claimed a telemetry generation but not yet written
-    // a terminal result. A row that outlives its process is how the restarted
-    // scheduler finds the Schedule to reconcile — including a `Run now`
-    // execution of a rule that has no recurrence index row at all, which the
-    // recurrence index could never point at (issue #5290 REQ-009).
+    // Executions that have claimed a telemetry generation but whose terminal
+    // result is not yet known to be published. A row that outlives its process
+    // is how the restarted scheduler finds the Schedule to reconcile —
+    // including a `Run now` execution of a rule that has no recurrence index
+    // row at all, which the recurrence index could never point at (issue #5290
+    // REQ-009).
+    //
+    // The outcome columns are written the moment the job produces a result and
+    // before anything tries to publish it, so the result survives a failure to
+    // reach the document: recovery republishes the execution's real outcome
+    // and its original completion time instead of inventing an interruption or
+    // re-running the SQL. They stay NULL while the execution is in flight,
+    // which is what makes an interrupted run distinguishable from a completed
+    // one whose publication did not land.
     db.prepare(`
         CREATE TABLE IF NOT EXISTS schedule_active_runs (
             room     TEXT,
@@ -65,6 +74,26 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
             PRIMARY KEY (room, rule_id)
         )
     `).run();
+    // The outcome columns were added after the table, so a database created by
+    // an earlier build is widened in place rather than losing its in-flight
+    // markers to a recreate.
+    const activeRunColumns = new Set(
+        (db.prepare(`PRAGMA table_info(schedule_active_runs)`).all() as { name: string; }[])
+            .map(column => column.name),
+    );
+    for (
+        const [name, type] of [
+            ["status", "TEXT"],
+            ["error", "TEXT"],
+            ["completed_at", "TEXT"],
+            ["cursor_state", "TEXT"],
+            ["cursor_next_run_at", "TEXT"],
+        ] as const
+    ) {
+        if (!activeRunColumns.has(name)) {
+            db.prepare(`ALTER TABLE schedule_active_runs ADD COLUMN ${name} ${type}`).run();
+        }
+    }
 }
 
 export function computeNextRunAt(

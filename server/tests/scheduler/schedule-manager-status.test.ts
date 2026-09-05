@@ -137,12 +137,52 @@ describe("Schedules Manager status (production path)", function() {
                 document: docs.get(room) ?? null,
                 disconnect: function() {},
             }),
+            // Hocuspocus writes a direct-connection transaction into the
+            // in-memory document and stores it on a debounce, so "the
+            // transaction returned" is not "the result is durable". The
+            // scheduler forces the store through this hook; `persisted` is what
+            // a restart would actually read back off disk.
+            storeDocumentHooks: async (document: Y.Doc) => {
+                persisted.set(document, Y.encodeStateAsUpdate(document));
+            },
         };
         const created = new JobScheduler(hocuspocus);
         created.setDb(db);
         // No immediate tick: every test drives the ticks explicitly.
         created.start(3_600_000, false);
         return created;
+    }
+
+    /** The last durably stored bytes of each document. */
+    let persisted: Map<Y.Doc, Uint8Array>;
+
+    /** Reload a document from storage, the way a restarted process would. */
+    function reloadFromStorage(doc: Y.Doc): Y.Doc {
+        const update = persisted.get(doc);
+        expect(update, "the document had reached storage").to.not.be.undefined;
+        const reloaded = new Y.Doc();
+        Y.applyUpdate(reloaded, update!);
+        return reloaded;
+    }
+
+    /** The scheduler's durable record that an execution still owes a published result. */
+    function owedRunRow(): {
+        run_seq: number;
+        status: string | null;
+        completed_at: string | null;
+    } | undefined {
+        return db.prepare(
+            `SELECT run_seq, status, completed_at FROM schedule_active_runs WHERE room = ? AND rule_id = ?`,
+        )
+            .get(projectRoom, DEMO_DAILY_RULE_ID) as
+                | { run_seq: number; status: string | null; completed_at: string | null; }
+                | undefined;
+    }
+
+    /** Drop the rule's recurrence the way an editor save does, then re-index. */
+    function clearRecurrence(projectDoc: Y.Doc): void {
+        ruleMapOf(projectDoc).set("dtstart", "");
+        storeProjectDocument(projectDoc);
     }
 
     /**
@@ -173,6 +213,7 @@ describe("Schedules Manager status (production path)", function() {
 
     beforeEach(function() {
         db = new Database(":memory:");
+        persisted = new Map();
         initializeScheduleIndex(db);
         docs = buildDocs(buildProjectDoc());
         storeProjectDocument();
@@ -454,32 +495,45 @@ describe("Schedules Manager status (production path)", function() {
         storeProjectDocument(projectDoc);
         expect(indexRow(), "the project has no indexed rule left").to.be.undefined;
 
-        // A second manual run whose terminal write never lands, which is what a
-        // process dying mid-execution leaves behind: the claim is durable in
-        // the document, the result never arrives. Produced by the production
-        // path rather than assembled, so the in-flight bookkeeping it leaves is
-        // the real one. The project-room connections of a manual run are, in
-        // order: reading the rule, claiming the generation, loading referenced
-        // tables, writing the result — the last is the one denied here.
-        let projectOpens = 0;
+        // A second manual run, captured while it is genuinely in flight: the
+        // durable state a process leaves behind when it dies mid-execution is
+        // its stored document plus its in-flight ledger row, and both are read
+        // here out of the real thing rather than assembled. The target table is
+        // opened by the execution itself, so this is mid-SQL — before any
+        // result exists to be recorded.
+        let diedWith: { document: Uint8Array; activeRuns: unknown[]; } | undefined;
         hocuspocus.openDirectConnection = async (room: string) => {
-            if (room === projectRoom) {
-                projectOpens += 1;
-                if (projectOpens === 4) throw new Error("process died before the result was written");
+            if (room === tableRoom && !diedWith) {
+                diedWith = {
+                    document: persisted.get(projectDoc)!,
+                    activeRuns: db.prepare(`SELECT * FROM schedule_active_runs`).all(),
+                };
             }
             return { document: docs.get(room) ?? null, disconnect: function() {} };
         };
         await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
         await scheduler.stop();
 
+        expect(diedWith, "an execution was captured in flight").to.not.be.undefined;
+        expect(diedWith!.activeRuns, "with its in-flight record").to.have.length(1);
         expect(
-            ruleMapOf(projectDoc).get("lastRunStatus"),
+            (diedWith!.activeRuns[0] as { status: string | null; }).status,
+            "and no result recorded for it yet",
+        ).to.equal(null);
+
+        // Resume from exactly that durable state.
+        const restarted = new Y.Doc();
+        Y.applyUpdate(restarted, diedWith!.document);
+        expect(
+            ruleMapOf(restarted).get("lastRunStatus"),
             "the execution is persisted as running with no terminal result",
         ).to.equal("running");
-        expect(
-            db.prepare(`SELECT COUNT(*) AS n FROM schedule_active_runs WHERE room = ?`).get(projectRoom),
-            "the unfinished execution is still recorded as in flight",
-        ).to.deep.equal({ n: 1 });
+        docs = buildDocs(restarted);
+        db.prepare(`DELETE FROM schedule_active_runs`).run();
+        for (const row of diedWith!.activeRuns as Record<string, unknown>[]) {
+            db.prepare(`INSERT INTO schedule_active_runs (room, rule_id, run_seq) VALUES (?, ?, ?)`)
+                .run(row.room, row.rule_id, row.run_seq);
+        }
 
         // A fresh scheduler resumes over the same persisted state. Its only
         // route to this room is the in-flight record: the recurrence index
@@ -487,7 +541,7 @@ describe("Schedules Manager status (production path)", function() {
         scheduler = buildScheduler();
         await scheduler.tick();
 
-        const snapshot = managerSnapshot(projectDoc);
+        const snapshot = managerSnapshot(restarted);
         expect(snapshot.result, "the interrupted manual run is reconciled").to.equal("interrupted");
         expect(snapshot.lastSuccessfulRunAt, "no success is disturbed by recovery").to.equal(successAt);
     });
@@ -673,5 +727,152 @@ describe("Schedules Manager status (production path)", function() {
         const snapshot = managerSnapshot(restarted);
         expect(snapshot.result, "recovery is not abandoned after a transient failure").to.equal("interrupted");
         expect(snapshot.lastSuccessfulRunAt, "no success is disturbed by recovery").to.equal(successAt);
+    });
+
+    // REQ-006/REQ-008 — the cursor a tick is carrying describes the recurrence
+    // as it was when the tick began. A Schedule whose recurrence is removed
+    // while it executes must not have that cursor republished over the
+    // withdrawal the indexer just made.
+    it("withholds a consumed cursor when the recurrence is removed mid-execution", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+        const rendered = recordRenderedSnapshots(projectDoc);
+        expect(managerSnapshot(projectDoc).next.state, "the occurrence starts out scheduled").to.equal("scheduled");
+
+        // The editor save lands while the job is in flight: the target table is
+        // opened by the execution itself, so this is genuinely mid-execution
+        // rather than before or after the dispatch.
+        let withdrawnAt: number | undefined;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === tableRoom && withdrawnAt === undefined) {
+                clearRecurrence(projectDoc);
+                withdrawnAt = rendered.length;
+            }
+            return { document: docs.get(room) ?? null, disconnect: function() {} };
+        };
+
+        await scheduler.tick();
+
+        expect(withdrawnAt, "the recurrence was removed while the job was running").to.not.be.undefined;
+        expect(indexRow(), "the indexer dropped the rule").to.be.undefined;
+
+        const final = managerSnapshot(projectDoc);
+        expect(final.result, "the execution still published its own result").to.be.oneOf(TERMINAL_RESULTS);
+        expect(final.next.state, "no occurrence is presented as eligible").to.not.equal("scheduled");
+        expect(final.raw.schedulerNextRunAt, "no timestamp survives the withdrawal").to.be.undefined;
+
+        // Every state the manager could render after the withdrawal, not just
+        // the one it settles on.
+        for (const snapshot of rendered.slice(withdrawnAt!)) {
+            expect(snapshot.next.state, "a withdrawn cursor is never republished").to.not.equal("scheduled");
+            expect(snapshot.raw.schedulerNextRunAt, "a withdrawn timestamp is never republished").to.be.undefined;
+        }
+    });
+
+    // REQ-004/REQ-005/REQ-007 — a result the execution actually produced must
+    // not be lost because publishing it failed. The same process must finish
+    // the job, without re-running its SQL.
+    it("republishes a completed result whose publication failed, in the same process", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+
+        // A real success first, then the rule loses its recurrence: from here
+        // it is manually executable but carries no index row, so nothing but
+        // its own in-flight record can lead recovery back to it.
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        const successAt = managerSnapshot(projectDoc).lastSuccessfulRunAt;
+        expect(successAt, "a real success was recorded").to.be.a("string");
+        clearRecurrence(projectDoc);
+        expect(indexRow(), "the rule is no longer indexed").to.be.undefined;
+
+        // Startup reconciliation retires here, so nothing is left watching for
+        // unfinished work unless the failure below re-arms it.
+        await scheduler.tick();
+        expect(owedRunRow(), "no execution is outstanding").to.be.undefined;
+
+        // Fail exactly the terminal publication: by the time the outcome is
+        // recorded, the only project connection still to come is the one that
+        // publishes it.
+        let deniedPublication = 0;
+        let executions = 0;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === projectRoom && owedRunRow()?.status && deniedPublication === 0) {
+                deniedPublication += 1;
+                throw new Error("transient connection failure");
+            }
+            // The target table is opened once per execution of the rule's SQL.
+            if (room === tableRoom) executions += 1;
+            return { document: docs.get(room) ?? null, disconnect: function() {} };
+        };
+
+        const result = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        expect(result.success, "the execution itself succeeded").to.equal(true);
+        expect(deniedPublication, "its terminal publication was denied").to.equal(1);
+        expect(executions, "the SQL ran once").to.equal(1);
+
+        const owed = owedRunRow();
+        expect(owed?.status, "the outcome survives in the scheduler's own record").to.equal("ok");
+        expect(
+            managerSnapshot(projectDoc).result,
+            "the manager has not been told yet",
+        ).to.equal("running");
+
+        // The same process, still running, finishes the job it started.
+        await scheduler.tick();
+
+        const snapshot = managerSnapshot(projectDoc);
+        expect(snapshot.result, "the completed result reaches the manager").to.equal("success");
+        expect(
+            snapshot.raw.lastRunAt,
+            "it carries the instant the execution finished, not the instant it was rescued",
+        ).to.equal(owed?.completed_at);
+        expect(snapshot.lastSuccessfulRunAt).to.equal(owed?.completed_at);
+        expect(snapshot.lastSuccessfulRunAt, "and supersedes the earlier success").to.not.equal(successAt);
+        expect(executions, "recovery published the result rather than re-running the SQL").to.equal(1);
+        expect(owedRunRow(), "the record is spent once the result is published").to.be.undefined;
+    });
+
+    // REQ-009 — the record proving an execution is still owed must outlive the
+    // in-memory write that settles it. Hocuspocus stores a document on a
+    // debounce, so a process that dies in that window must still be recoverable.
+    it("keeps its recovery record until the terminal result is durably stored", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        const successAt = managerSnapshot(projectDoc).lastSuccessfulRunAt;
+        clearRecurrence(projectDoc);
+        await scheduler.tick();
+        expect(indexRow(), "the rule is no longer indexed").to.be.undefined;
+
+        // The process dies inside the debounce window of the *terminal* write:
+        // it reaches memory, its store never completes. The execution's start
+        // is stored normally, so this is a crash at completion rather than a
+        // Schedule that could not begin.
+        hocuspocus.storeDocumentHooks = async (document: Y.Doc) => {
+            if (document === projectDoc && owedRunRow()?.status) {
+                throw new Error("process terminated before the store completed");
+            }
+            persisted.set(document, Y.encodeStateAsUpdate(document));
+        };
+
+        const result = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        expect(result.success, "the execution itself succeeded").to.equal(true);
+
+        const owed = owedRunRow();
+        expect(owed?.status, "the recovery record survives the unstored write").to.equal("ok");
+
+        // Restart from what actually reached storage — which still says running.
+        await scheduler.stop();
+        const restarted = reloadFromStorage(projectDoc);
+        expect(ruleMapOf(restarted).get("lastRunStatus"), "storage still says running").to.equal("running");
+        expect(ruleMapOf(restarted).get("lastRunSeq")).to.equal(owed?.run_seq);
+
+        docs = buildDocs(restarted);
+        scheduler = buildScheduler();
+        await scheduler.tick();
+
+        const snapshot = managerSnapshot(restarted);
+        expect(snapshot.result, "the restarted process recovers the completed run").to.equal("success");
+        expect(snapshot.raw.lastRunAt, "with the completion time it actually reached").to.equal(owed?.completed_at);
+        expect(snapshot.lastSuccessfulRunAt).to.equal(owed?.completed_at);
+        expect(snapshot.lastSuccessfulRunAt, "superseding the earlier success").to.not.equal(successAt);
+        expect(owedRunRow(), "the record is spent once recovery is durable").to.be.undefined;
     });
 });

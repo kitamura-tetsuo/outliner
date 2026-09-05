@@ -104,6 +104,11 @@ describe("Job scheduler run", function() {
                     } else if (/state = 'completed'/.test(sql)) {
                         indexRow.state = "completed";
                     }
+                    // better-sqlite3 always reports how many rows a statement
+                    // touched, and the scheduler reads it to tell a committed
+                    // cursor from one whose index row has gone. The rule stays
+                    // indexed throughout these tests, so every write lands.
+                    return { changes: 1, lastInsertRowid: 0 };
                 },
             }),
         };
