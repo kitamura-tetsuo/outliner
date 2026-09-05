@@ -10,6 +10,7 @@
     import { listTables, type TableRegistryEntry } from "../../services/yjstable/tableDocs";
     import ScheduleRuleEditor from "../schedule/ScheduleRuleEditor.svelte";
     import { formatDateTime } from "../../utils/dateUtils";
+    import { SCHEDULE_RUN_RESULT_LABELS, summarizeScheduleRun } from "$shared/services/scheduleStatus";
     import {
         deleteScheduleRule,
         updateScheduleRule,
@@ -42,6 +43,7 @@
     let tables = $state<TableRegistryEntry[]>([]);
     let selectedTableId = $state("");
     let currentRule = $state<Partial<ScheduleRule> | undefined>(undefined);
+    let runSummary = $derived(currentRule ? summarizeScheduleRun(currentRule) : undefined);
     let ruleLoaded = $state(false);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
@@ -74,8 +76,10 @@
             enabled: ruleMap.get("enabled") as boolean,
             catchUp: ruleMap.get("catchUp") as boolean,
             lastRunAt: ruleMap.get("lastRunAt") as string | undefined,
-            lastRunStatus: ruleMap.get("lastRunStatus") as "ok" | "error" | undefined,
+            lastRunStatus: ruleMap.get("lastRunStatus") as ScheduleRule["lastRunStatus"],
             lastRunError: ruleMap.get("lastRunError") as string | undefined,
+            lastRunStartedAt: ruleMap.get("lastRunStartedAt") as string | undefined,
+            lastSuccessfulRunAt: ruleMap.get("lastSuccessfulRunAt") as string | undefined,
             completedAt: ruleMap.get("completedAt") as string | undefined,
             validationError: ruleMap.get("validationError") as string | undefined,
         };
@@ -91,8 +95,10 @@
         if (!ruleMap || !currentRule) return;
 
         currentRule.lastRunAt = ruleMap.get("lastRunAt") as string | undefined;
-        currentRule.lastRunStatus = ruleMap.get("lastRunStatus") as "ok" | "error" | undefined;
+        currentRule.lastRunStatus = ruleMap.get("lastRunStatus") as ScheduleRule["lastRunStatus"];
         currentRule.lastRunError = ruleMap.get("lastRunError") as string | undefined;
+        currentRule.lastRunStartedAt = ruleMap.get("lastRunStartedAt") as string | undefined;
+        currentRule.lastSuccessfulRunAt = ruleMap.get("lastSuccessfulRunAt") as string | undefined;
         currentRule.completedAt = ruleMap.get("completedAt") as string | undefined;
         currentRule.validationError = ruleMap.get("validationError") as string | undefined;
     }
@@ -295,19 +301,25 @@
                 </div>
             {/if}
 
-            {#if currentRule?.lastRunAt}
-                <div class="mb-6 p-4 border rounded bg-gray-50 flex flex-col space-y-2">
+            <!-- Same execution semantics as the Schedules Manager (issue
+                 #5290): `Last run` is when the attempt started, `Last
+                 successful run` when the most recent success completed. -->
+            {#if runSummary && runSummary.result !== "never"}
+                <div class="mb-6 p-4 border rounded bg-gray-50 flex flex-col space-y-2" data-testid="schedule-detail-run-summary">
                     <div class="text-sm">
-                        <span class="font-medium">Last run:</span> {formatDateTime(new Date(currentRule.lastRunAt).getTime())}
-                        {#if currentRule.lastRunStatus === "ok"}
-                            <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded font-medium">OK</span>
-                        {:else if currentRule.lastRunStatus === "error"}
-                            <span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded font-medium">Error</span>
-                        {/if}
+                        <span class="font-medium">Last run:</span>
+                        {runSummary.lastRunStartedAt ? formatDateTime(runSummary.lastRunStartedAt) : "—"}
+                        <span class="ml-2 text-xs px-2 py-0.5 rounded font-medium bg-gray-200 text-gray-800" data-testid="schedule-detail-result">
+                            {SCHEDULE_RUN_RESULT_LABELS[runSummary.result]}
+                        </span>
                     </div>
-                    {#if currentRule.lastRunStatus === "error" && currentRule.lastRunError}
+                    <div class="text-sm">
+                        <span class="font-medium">Last successful run:</span>
+                        {runSummary.lastSuccessfulRunAt ? formatDateTime(runSummary.lastSuccessfulRunAt) : "—"}
+                    </div>
+                    {#if runSummary.lastRunError}
                         <div class="text-sm text-red-700 bg-red-50 p-2 rounded border border-red-100 font-mono">
-                            {currentRule.lastRunError}
+                            {runSummary.lastRunError}
                         </div>
                     {/if}
                 </div>

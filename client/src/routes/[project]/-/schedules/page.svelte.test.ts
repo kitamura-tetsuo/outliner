@@ -154,3 +154,108 @@ describe("project schedules route", () => {
         expect(runScheduleRuleNow).toHaveBeenCalled();
     });
 });
+
+// The Schedules Manager (issue #5290) reads and writes the shared Schedule
+// document. These exercise that path end to end from the route: the status
+// columns come out of the Yjs map the scheduler writes, and the Enabled switch
+// writes back into that same map.
+describe("Schedules Manager route", () => {
+    beforeEach(() => {
+        mockPageStore.params = { project: "demo" };
+        projectDoc = new Y.Doc();
+        vi.mocked(runScheduleRuleNow).mockClear();
+    });
+
+    afterEach(() => {
+        cleanup();
+    });
+
+    async function renderWithRule(fields: Record<string, unknown> = {}) {
+        const tasksId = createTable(projectDoc, "Tasks", "tasks");
+        render(ProjectSchedulesPage);
+        await waitFor(() => {
+            expect(screen.getByTestId("project-schedule-list")).toBeTruthy();
+        });
+
+        const ruleId = createScheduleRule(currentProject(), {
+            name: "Nightly tasks",
+            targetTableId: tasksId,
+            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid())",
+            rrule: "FREQ=DAILY",
+        });
+        const ruleMap = currentProject().schedules.get(ruleId) as Y.Map<unknown>;
+        for (const [key, value] of Object.entries(fields)) ruleMap.set(key, value);
+
+        await waitFor(() => {
+            expect(screen.getByTestId("schedules-manager-table")).toBeTruthy();
+        });
+        return { ruleId, ruleMap };
+    }
+
+    it("renders the scheduler's authoritative next occurrence, never a local recomputation", async () => {
+        // A cursor in the past: `rrule.after(now)` could never produce it.
+        await renderWithRule({
+            schedulerState: "active",
+            schedulerNextRunAt: "2020-03-04T05:06:00.000Z",
+        });
+
+        const nextRun = screen.getByTestId("schedule-rule-next-run");
+        expect(nextRun.getAttribute("data-next-run-state")).toBe("scheduled");
+        expect(nextRun.textContent).toContain("2020-03-04");
+    });
+
+    it("follows the scheduler's execution lifecycle while the manager stays open", async () => {
+        const { ruleMap } = await renderWithRule({
+            schedulerState: "active",
+            schedulerNextRunAt: "2026-09-06T00:00:00.000Z",
+        });
+
+        expect(screen.getByTestId("schedule-rule-result").textContent?.trim()).toBe("Never run");
+
+        // The scheduler starts an execution...
+        projectDoc.transact(() => {
+            ruleMap.set("lastRunSeq", 1);
+            ruleMap.set("lastRunStartedAt", "2026-09-05T09:00:00.000Z");
+            ruleMap.set("lastRunStatus", "running");
+        }, "server-scheduler");
+        await waitFor(() => {
+            expect(screen.getByTestId("schedule-rule-result").textContent?.trim()).toBe("Running");
+        });
+        expect(screen.getByTestId("schedule-rule-last-run").textContent).toContain("2026-09-05");
+        expect(screen.getByTestId("schedule-rule-last-success").textContent?.trim()).toBe("—");
+
+        // ...and completes it successfully, advancing its own cursor.
+        projectDoc.transact(() => {
+            ruleMap.set("lastRunAt", "2026-09-05T09:00:20.000Z");
+            ruleMap.set("lastRunStatus", "ok");
+            ruleMap.set("lastSuccessfulRunAt", "2026-09-05T09:00:20.000Z");
+            ruleMap.set("schedulerNextRunAt", "2026-09-07T00:00:00.000Z");
+        }, "server-scheduler");
+        await waitFor(() => {
+            expect(screen.getByTestId("schedule-rule-result").textContent?.trim()).toBe("Success");
+        });
+        expect(screen.getByTestId("schedule-rule-last-success").textContent).toContain("2026-09-05");
+        expect(screen.getByTestId("schedule-rule-next-run").textContent).toContain("2026-09-07");
+    });
+
+    it("writes the Enabled switch back into the shared Schedule", async () => {
+        const { ruleMap } = await renderWithRule({
+            schedulerState: "active",
+            schedulerNextRunAt: "2026-09-06T00:00:00.000Z",
+        });
+
+        const toggle = screen.getByTestId("schedule-rule-enabled");
+        expect(toggle.getAttribute("aria-checked")).toBe("true");
+        expect(screen.getByTestId("schedule-rule-next-run").textContent).toContain("2026-09-06");
+
+        toggle.click();
+
+        await waitFor(() => {
+            expect(screen.getByTestId("schedule-rule-enabled").getAttribute("aria-checked")).toBe("false");
+        });
+        // The persisted state the production scheduler reads, not a local flag.
+        expect(ruleMap.get("enabled")).toBe(false);
+        // And the withdrawn occurrence is no longer presented as eligible.
+        expect(screen.getByTestId("schedule-rule-next-run").textContent?.trim()).toBe("Disabled");
+    });
+});

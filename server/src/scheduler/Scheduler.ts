@@ -9,6 +9,7 @@ import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
 import { validateScheduleRowIdentities } from "./row-validation.js";
 import { computeNextRunAt, ensureScheduleIndex, ScheduleIndexRow } from "./schedule-indexer.js";
+import { publishSchedulerCursor, type SchedulerCursor } from "./schedule-status-publisher.js";
 
 // Upper bound on how many past occurrences a single tick walks through, so a
 // rule whose dtstart lies far in the past cannot stall the scheduler.
@@ -93,6 +94,13 @@ export class JobScheduler {
     private sqliteDb: BetterSqlite3.Database | undefined;
     private ticking = false;
     private runQueue: Promise<void> = Promise.resolve();
+    /**
+     * Whether the interrupted-run sweep already ran in this process. It has to
+     * happen once the persistence database is resolvable (which is only true
+     * from the first tick onwards) and strictly before this process dispatches
+     * anything, so that it can never mistake a live execution for a stale one.
+     */
+    private reconciledInterruptedRuns = false;
 
     constructor(hocuspocus: Hocuspocus) {
         this.hocuspocus = hocuspocus;
@@ -254,6 +262,11 @@ export class JobScheduler {
             }
         }
 
+        if (!this.reconciledInterruptedRuns) {
+            this.reconciledInterruptedRuns = true;
+            await this.reconcileInterruptedRuns();
+        }
+
         try {
             const now = DateTime.utc();
             const nowIso = now.toISO();
@@ -274,6 +287,65 @@ export class JobScheduler {
             }
         } catch (err) {
             logger.error({ err }, "JobScheduler tick error");
+        }
+    }
+
+    /**
+     * Terminate executions this process can no longer complete.
+     *
+     * `lastRunStatus: "running"` is written before a job is dispatched and
+     * overwritten by the terminal result afterwards. If the process dies in
+     * between, that `running` marker outlives the execution it describes and
+     * would otherwise be presented as "currently running" forever. Any marker
+     * still present when a fresh scheduler starts belongs to an execution that
+     * cannot finish, so it becomes `interrupted` — a non-success terminal
+     * result that deliberately leaves `lastSuccessfulRunAt` untouched.
+     *
+     * The sweep runs before this process dispatches anything, so a `running`
+     * marker it finds can never belong to a live execution.
+     */
+    private async reconcileInterruptedRuns(): Promise<void> {
+        if (!this.sqliteDb) return;
+
+        let rooms: { room: string; }[] = [];
+        try {
+            // Every rule the scheduler can execute has an index row, so the
+            // index is the complete set of rooms that can hold a stale marker.
+            rooms = this.sqliteDb.prepare(`SELECT DISTINCT room FROM schedule_index`).all() as { room: string; }[];
+        } catch (err) {
+            logger.error({ err }, "JobScheduler could not list rooms to reconcile interrupted runs");
+            return;
+        }
+
+        for (const { room } of rooms) {
+            try {
+                const connection = await this.hocuspocus.openDirectConnection(room);
+                try {
+                    const document = connection.document;
+                    if (!document) continue;
+                    const schedulesMap = document.getMap("schedules");
+                    const interrupted: string[] = [];
+                    document.transact(() => {
+                        schedulesMap.forEach((ruleItem, ruleId) => {
+                            if (!(ruleItem instanceof Y.Map)) return;
+                            if (ruleItem.get("lastRunStatus") !== "running") return;
+                            ruleItem.set("lastRunStatus", "interrupted");
+                            ruleItem.set(
+                                "lastRunError",
+                                "Execution did not complete: the scheduler restarted while it was running.",
+                            );
+                            interrupted.push(ruleId);
+                        });
+                    }, "server-scheduler");
+                    if (interrupted.length > 0) {
+                        logger.warn({ room, ruleIds: interrupted }, "Reconciled interrupted schedule executions");
+                    }
+                } finally {
+                    connection.disconnect();
+                }
+            } catch (err) {
+                logger.error({ err, room }, "JobScheduler failed to reconcile interrupted runs for a room");
+            }
         }
     }
 
@@ -320,7 +392,7 @@ export class JobScheduler {
         const { missed, nextRunAt, nextSeq, exhausted } = this.collectDueOccurrences(rule, now);
 
         if (missed.length === 0) {
-            if (nextRunAt) this.updateNextRunAt(rule.room, rule.rule_id, nextRunAt, nextSeq);
+            if (nextRunAt) await this.updateNextRunAt(rule.room, rule.rule_id, nextRunAt, nextSeq);
             return;
         }
 
@@ -357,6 +429,7 @@ export class JobScheduler {
                 `).run(rule.room, rule.rule_id);
             }
             logger.warn({ ruleId: rule.rule_id, room: rule.room }, "Skipping and orphaning rule: ruleSql is empty");
+            await this.publishCursor(rule.room, rule.rule_id, { state: "orphaned", nextRunAt: null });
             return;
         }
         if (strictAliases) {
@@ -409,18 +482,36 @@ export class JobScheduler {
                     WHERE room = ? AND rule_id = ?
                 `).run(nextSeq, rule.room, rule.rule_id);
             }
+            await this.publishCursor(rule.room, rule.rule_id, { state: "completed", nextRunAt: null });
         } else {
-            this.updateNextRunAt(rule.room, rule.rule_id, nextRunAt, nextSeq);
+            await this.updateNextRunAt(rule.room, rule.rule_id, nextRunAt, nextSeq);
         }
     }
 
-    private updateNextRunAt(room: string, ruleId: string, nextRunAtIso: string, seq: number) {
+    private async updateNextRunAt(room: string, ruleId: string, nextRunAtIso: string, seq: number) {
         if (this.sqliteDb) {
             this.sqliteDb.prepare(`
                 UPDATE schedule_index
                 SET next_run_at = ?, occurrence_seq = ?
                 WHERE room = ? AND rule_id = ?
             `).run(nextRunAtIso, seq, room, ruleId);
+        }
+        await this.publishCursor(room, ruleId, { state: "active", nextRunAt: nextRunAtIso });
+    }
+
+    /**
+     * Mirror the cursor the tick just moved into the shared document, so the
+     * Schedules Manager sees the scheduler's own `Next run` without polling
+     * and without recomputing the recurrence for itself.
+     */
+    private async publishCursor(room: string, ruleId: string, cursor: SchedulerCursor): Promise<void> {
+        try {
+            await publishSchedulerCursor(this.hocuspocus, room, ruleId, cursor);
+        } catch (err) {
+            // Publishing is telemetry: the index remains authoritative and the
+            // manager falls back to an explicit "unavailable" state, so a
+            // failure here must never abort the tick.
+            logger.warn({ err, room, ruleId }, "Failed to publish scheduler cursor");
         }
     }
 
@@ -481,7 +572,116 @@ export class JobScheduler {
         return tables;
     }
 
+    /**
+     * Run one execution attempt and record its full lifecycle (issue #5290).
+     *
+     * The start marker is written *before* the job is dispatched, so `Last run`
+     * is the instant execution actually began — never the occurrence instant
+     * the recurrence produced, never the queue time, and never the completion
+     * time the old `lastRunAt` recorded. The terminal result is written on
+     * every exit, including a throw, so no attempt is left presented as
+     * running by a process that is still alive.
+     */
     private async dispatchJob(
+        rule: ScheduleIndexRow,
+        occurrenceIso: string,
+        ruleSql: string,
+    ): Promise<{ success: boolean; error?: string; }> {
+        const runSeq = await this.markRunStarted(rule.room, rule.rule_id);
+        try {
+            const result = await this.executeRuleJob(rule, occurrenceIso, ruleSql);
+            await this.markRunFinished(rule.room, rule.rule_id, runSeq, result);
+            return result;
+        } catch (err: unknown) {
+            await this.markRunFinished(rule.room, rule.rule_id, runSeq, {
+                success: false,
+                error: err instanceof Error ? err.message : String(err),
+            });
+            throw err;
+        }
+    }
+
+    /**
+     * Claim the Schedule's telemetry for a new execution attempt.
+     *
+     * The returned sequence number identifies this attempt. It is bumped under
+     * the same transaction that writes the start marker, so a later attempt
+     * always owns a higher number and a slow terminal write from an earlier one
+     * can be recognised as stale (see `markRunFinished`).
+     */
+    private async markRunStarted(room: string, ruleId: string): Promise<number | undefined> {
+        try {
+            const connection = await this.hocuspocus.openDirectConnection(room);
+            try {
+                const document = connection.document;
+                const ruleItem = document?.getMap("schedules").get(ruleId);
+                if (!document || !(ruleItem instanceof Y.Map)) return undefined;
+
+                let runSeq = 0;
+                document.transact(() => {
+                    runSeq = ((ruleItem.get("lastRunSeq") as number | undefined) ?? 0) + 1;
+                    ruleItem.set("lastRunSeq", runSeq);
+                    ruleItem.set("lastRunStartedAt", new Date().toISOString());
+                    ruleItem.set("lastRunStatus", "running");
+                    ruleItem.delete("lastRunError");
+                }, "server-scheduler");
+                return runSeq;
+            } finally {
+                connection.disconnect();
+            }
+        } catch (err) {
+            logger.warn({ err, room, ruleId }, "Failed to record schedule execution start");
+            return undefined;
+        }
+    }
+
+    /**
+     * Write the terminal result of the attempt `runSeq` identifies.
+     *
+     * A result whose sequence number is no longer the current one belongs to an
+     * execution that has already been superseded: writing it would pair an old
+     * outcome with a newer start timestamp, so it is dropped instead. Only a
+     * successful completion touches `lastSuccessfulRunAt` — a failure or an
+     * interruption leaves the previous success standing.
+     */
+    private async markRunFinished(
+        room: string,
+        ruleId: string,
+        runSeq: number | undefined,
+        result: { success: boolean; error?: string; },
+    ): Promise<void> {
+        if (runSeq === undefined) return;
+        try {
+            const connection = await this.hocuspocus.openDirectConnection(room);
+            try {
+                const document = connection.document;
+                const ruleItem = document?.getMap("schedules").get(ruleId);
+                if (!document || !(ruleItem instanceof Y.Map)) return;
+                if (((ruleItem.get("lastRunSeq") as number | undefined) ?? 0) !== runSeq) return;
+
+                const completedAt = new Date().toISOString();
+                document.transact(() => {
+                    // Kept for backwards compatibility: `lastRunAt` has always
+                    // been a completion-time observation and stays one.
+                    ruleItem.set("lastRunAt", completedAt);
+                    if (result.success) {
+                        ruleItem.set("lastRunStatus", "ok");
+                        ruleItem.delete("lastRunError");
+                        ruleItem.set("lastSuccessfulRunAt", completedAt);
+                    } else {
+                        ruleItem.set("lastRunStatus", "error");
+                        ruleItem.set("lastRunError", result.error || "Unknown error");
+                    }
+                }, "server-scheduler");
+            } finally {
+                connection.disconnect();
+            }
+        } catch (err) {
+            logger.warn({ err, room, ruleId }, "Failed to record schedule execution result");
+        }
+    }
+
+    private async executeRuleJob(
         rule: ScheduleIndexRow,
         occurrenceIso: string,
         ruleSql: string,
@@ -569,26 +769,6 @@ export class JobScheduler {
                     }
                 }, "server-scheduler");
             }
-
-            const mainRoomConn2 = await this.hocuspocus.openDirectConnection(rule.room);
-            if (mainRoomConn2.document) {
-                const schedulesMap = mainRoomConn2.document.getMap("schedules");
-                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<unknown> | undefined;
-                if (ruleItem) {
-                    mainRoomConn2.document.transact(() => {
-                        // ISO string: the UI parses lastRunAt with new Date(...).
-                        ruleItem.set("lastRunAt", new Date().toISOString());
-                        if (result.success) {
-                            ruleItem.set("lastRunStatus", "ok");
-                            ruleItem.delete("lastRunError");
-                        } else {
-                            ruleItem.set("lastRunStatus", "error");
-                            ruleItem.set("lastRunError", result.error || "Unknown error");
-                        }
-                    }, "server-scheduler");
-                }
-            }
-            mainRoomConn2.disconnect();
 
             return { success: result.success, error: result.error };
         } finally {

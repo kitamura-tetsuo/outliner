@@ -1,6 +1,7 @@
 import type { Project } from "$shared/app-schema";
 import { EXPLICIT_SELECT_ALIAS_POLICY_VERSION } from "$shared/services/explicitSelectAlias";
 import { validateScheduleRuleExplicitAliases } from "$shared/services/scheduleRuleValidation";
+import type { ScheduleRunStatusValue } from "$shared/services/scheduleStatus";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
@@ -22,9 +23,24 @@ export interface ScheduleRule {
     timezone: string;
     enabled: boolean;
     catchUp: boolean;
+    /**
+     * Completion-time observation kept from before the Schedules Manager
+     * (issue #5290). It is written after every execution, successful or not,
+     * and is never an execution-start time.
+     */
     lastRunAt?: string;
-    lastRunStatus?: "ok" | "error";
+    lastRunStatus?: ScheduleRunStatusValue;
     lastRunError?: string;
+    /** Wall clock at which the most recent execution attempt began. */
+    lastRunStartedAt?: string;
+    /** Completion instant of the most recent execution that succeeded. */
+    lastSuccessfulRunAt?: string;
+    /** Execution generation, bumped by the scheduler on every attempt. */
+    lastRunSeq?: number;
+    /** The scheduler index state the server mirrors into the rule. */
+    schedulerState?: string;
+    /** The scheduler's authoritative next occurrence, when it has one. */
+    schedulerNextRunAt?: string;
     completedAt?: string;
     validationError?: string;
     skippedOccurrences?: number;
@@ -65,6 +81,11 @@ export function createScheduleRule(
     if (options.lastRunAt) ruleMap.set("lastRunAt", options.lastRunAt);
     if (options.lastRunStatus) ruleMap.set("lastRunStatus", options.lastRunStatus);
     if (options.lastRunError) ruleMap.set("lastRunError", options.lastRunError);
+    if (options.lastRunStartedAt) ruleMap.set("lastRunStartedAt", options.lastRunStartedAt);
+    if (options.lastSuccessfulRunAt) ruleMap.set("lastSuccessfulRunAt", options.lastSuccessfulRunAt);
+    if (options.lastRunSeq !== undefined) ruleMap.set("lastRunSeq", options.lastRunSeq);
+    if (options.schedulerState) ruleMap.set("schedulerState", options.schedulerState);
+    if (options.schedulerNextRunAt) ruleMap.set("schedulerNextRunAt", options.schedulerNextRunAt);
     if (options.completedAt) ruleMap.set("completedAt", options.completedAt);
     if (options.validationError) ruleMap.set("validationError", options.validationError);
     if (options.skippedOccurrences) ruleMap.set("skippedOccurrences", options.skippedOccurrences);
@@ -76,6 +97,12 @@ export function createScheduleRule(
 
 /**
  * Updates an existing schedule rule.
+ *
+ * `lastRunSeq`, `schedulerState` and `schedulerNextRunAt` are deliberately not
+ * writable here: they are the production scheduler's own state, mirrored into
+ * the Schedule for the Schedules Manager to read (issue #5290). A client that
+ * could set them could make the manager show a next run the scheduler will
+ * never honour.
  */
 export function updateScheduleRule(
     project: Project,
@@ -108,6 +135,8 @@ export function updateScheduleRule(
     if (updates.lastRunAt !== undefined) ruleMap.set("lastRunAt", updates.lastRunAt);
     if (updates.lastRunStatus !== undefined) ruleMap.set("lastRunStatus", updates.lastRunStatus);
     if (updates.lastRunError !== undefined) ruleMap.set("lastRunError", updates.lastRunError);
+    if (updates.lastRunStartedAt !== undefined) ruleMap.set("lastRunStartedAt", updates.lastRunStartedAt);
+    if (updates.lastSuccessfulRunAt !== undefined) ruleMap.set("lastSuccessfulRunAt", updates.lastSuccessfulRunAt);
     if (updates.completedAt !== undefined) ruleMap.set("completedAt", updates.completedAt);
     if (updates.validationError !== undefined) ruleMap.set("validationError", updates.validationError);
     if (updates.skippedOccurrences !== undefined) ruleMap.set("skippedOccurrences", updates.skippedOccurrences);
@@ -135,8 +164,13 @@ export function getScheduleRule(project: Project, ruleId: string): (ScheduleRule
         enabled: ruleMap.get("enabled") as boolean,
         catchUp: ruleMap.get("catchUp") as boolean,
         lastRunAt: ruleMap.get("lastRunAt") as string | undefined,
-        lastRunStatus: ruleMap.get("lastRunStatus") as "ok" | "error" | undefined,
+        lastRunStatus: ruleMap.get("lastRunStatus") as ScheduleRunStatusValue | undefined,
         lastRunError: ruleMap.get("lastRunError") as string | undefined,
+        lastRunStartedAt: ruleMap.get("lastRunStartedAt") as string | undefined,
+        lastSuccessfulRunAt: ruleMap.get("lastSuccessfulRunAt") as string | undefined,
+        lastRunSeq: ruleMap.get("lastRunSeq") as number | undefined,
+        schedulerState: ruleMap.get("schedulerState") as string | undefined,
+        schedulerNextRunAt: ruleMap.get("schedulerNextRunAt") as string | undefined,
         completedAt: ruleMap.get("completedAt") as string | undefined,
         validationError: ruleMap.get("validationError") as string | undefined,
         skippedOccurrences: ruleMap.get("skippedOccurrences") as number | undefined,

@@ -22,6 +22,7 @@
         deleteScheduleRule,
         type ScheduleRule,
         scheduleTableReferences,
+        updateScheduleRule,
     } from "../../services/schedule/scheduleRuleService";
     import { runScheduleRuleNow } from "../../services/schedule/scheduleRunService";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
@@ -43,6 +44,7 @@
     let isLoading = $state(true);
     let runningRuleId: string | undefined = $state(undefined);
     let runError: string | undefined = $state(undefined);
+    let toggleError: string | undefined = $state(undefined);
 
     // Yjs -> UI mirrors (AGENTS.md §11).
     let rules = $state<{ id: string; rule: ScheduleRule; }[]>([]);
@@ -103,11 +105,21 @@
                     timezone: ruleMap.get("timezone") as string,
                     enabled: ruleMap.get("enabled") as boolean,
                     catchUp: ruleMap.get("catchUp") as boolean,
+                    // Read in one pass so the manager never assembles `Last
+                    // run`, `Result`, `Last successful run` and `Next run`
+                    // from snapshots of different lifecycle generations
+                    // (issue #5290 REQ-008).
                     lastRunAt: ruleMap.get("lastRunAt") as string | undefined,
-                    lastRunStatus: ruleMap.get("lastRunStatus") as "ok" | "error" | undefined,
+                    lastRunStatus: ruleMap.get("lastRunStatus") as ScheduleRule["lastRunStatus"],
                     lastRunError: ruleMap.get("lastRunError") as string | undefined,
+                    lastRunStartedAt: ruleMap.get("lastRunStartedAt") as string | undefined,
+                    lastSuccessfulRunAt: ruleMap.get("lastSuccessfulRunAt") as string | undefined,
+                    lastRunSeq: ruleMap.get("lastRunSeq") as number | undefined,
+                    schedulerState: ruleMap.get("schedulerState") as string | undefined,
+                    schedulerNextRunAt: ruleMap.get("schedulerNextRunAt") as string | undefined,
                     completedAt: ruleMap.get("completedAt") as string | undefined,
                     validationError: ruleMap.get("validationError") as string | undefined,
+                    skippedOccurrences: ruleMap.get("skippedOccurrences") as number | undefined,
                 },
             });
             nextReferences[ruleId] = scheduleTableReferences(project, ruleId).map(reference => ({
@@ -212,6 +224,24 @@
         goto(scheduleHref(id));
     }
 
+    /**
+     * Turn one Schedule on or off (issue #5290 REQ-002).
+     *
+     * The switch renders from the Yjs mirror rather than from a local
+     * optimistic flag, so a rejected write simply leaves the previous state on
+     * screen — the manager can never present a failed mutation as committed.
+     */
+    function handleToggleEnabled(id: string, enabled: boolean) {
+        if (!store.project || !hasWriteAccess) return;
+        toggleError = undefined;
+        try {
+            updateScheduleRule(store.project, id, { enabled });
+        } catch (err) {
+            logger.error({ error: err, ruleId: id }, "Failed to change schedule enabled state");
+            toggleError = err instanceof Error ? err.message : "Failed to change the enabled state.";
+        }
+    }
+
     function handleDelete(id: string) {
         if (!store.project || !hasWriteAccess) return;
         if (confirm("Are you sure you want to delete this schedule rule?")) {
@@ -306,15 +336,24 @@
                     {runError}
                 </div>
             {/if}
-            <ScheduleRuleList
-                {rules}
-                {runningRuleId}
-                onRunNow={handleRunNow}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                tableReferences={referencedTables}
-                canWrite={hasWriteAccess}
-            />
+            {#if toggleError}
+                <div class="mb-3 text-xs text-red-700 bg-red-50 p-2 rounded border border-red-100" data-testid="schedule-toggle-error">
+                    {toggleError}
+                </div>
+            {/if}
+            <div class="overflow-x-auto">
+                <ScheduleRuleList
+                    {rules}
+                    {runningRuleId}
+                    onRunNow={handleRunNow}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onToggleEnabled={hasWriteAccess ? handleToggleEnabled : undefined}
+                    detailHref={scheduleHref}
+                    tableReferences={referencedTables}
+                    canWrite={hasWriteAccess}
+                />
+            </div>
         </div>
     {/if}
 </main>

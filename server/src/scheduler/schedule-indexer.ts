@@ -3,6 +3,7 @@ import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import { default as rruleImport, RRule } from "rrule";
 import * as Y from "yjs";
+import { applyLegacyTelemetryMigration, applySchedulerCursor, SCHEDULER_ORIGIN } from "./schedule-status-publisher.js";
 
 export interface ScheduleIndexRow {
     room: string;
@@ -13,7 +14,12 @@ export interface ScheduleIndexRow {
     dtstart: string;
     next_run_at: string | null;
     occurrence_seq: number;
-    state: "active" | "disabled" | "exhausted" | "invalid";
+    /**
+     * `completed` and `orphaned` are written by the scheduler itself once a
+     * recurrence is exhausted or its rule loses its SQL; the indexer only ever
+     * produces the first four.
+     */
+    state: "active" | "disabled" | "exhausted" | "invalid" | "completed" | "orphaned";
 }
 
 const { rrulestr } = rruleImport;
@@ -246,88 +252,49 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
 
             const existingRow = getRow.get(documentName, ruleId) as ScheduleIndexRow | undefined;
 
-            let seq = 0;
-            if (existingRow) {
-                // Check if we need to recompute
-                if (
-                    existingRow.rrule === rruleStr && existingRow.dtstart === dtstartStr
-                    && existingRow.timezone === timezoneStr
-                ) {
-                    const targetTableChanged = existingRow.target_table_id !== (targetTableId || null);
-                    seq = existingRow.occurrence_seq;
-                    if (!enabled && existingRow.state !== "disabled") {
-                        upsertRow.run(
-                            documentName,
-                            ruleId,
-                            targetTableId || null,
-                            timezoneStr,
-                            rruleStr,
-                            dtstartStr,
-                            existingRow.next_run_at,
-                            seq,
-                            "disabled",
-                        );
-                        return;
-                    } else if (enabled && existingRow.state === "disabled") {
-                        // Fall through to recompute/update state to active
-                    } else if (enabled) {
-                        if (targetTableChanged) {
-                            upsertRow.run(
-                                documentName,
-                                ruleId,
-                                targetTableId || null,
-                                timezoneStr,
-                                rruleStr,
-                                dtstartStr,
-                                existingRow.next_run_at,
-                                seq,
-                                existingRow.state,
-                            );
-                            return;
-                        }
-                        return; // Nothing changed, active -> active
-                    }
-                } else {
-                    seq = 0; // Reset on change
-                }
-            }
+            const recurrenceUnchanged = !!existingRow
+                && existingRow.rrule === rruleStr
+                && existingRow.dtstart === dtstartStr
+                && existingRow.timezone === timezoneStr;
+            // The cursor survives an edit that leaves the recurrence alone
+            // (a renamed rule, a new target table); anything else restarts it.
+            const seq = recurrenceUnchanged ? existingRow!.occurrence_seq : 0;
+
+            let cursor: { next_run_at: string | null; seq: number; state: ScheduleIndexRow["state"]; };
 
             if (!enabled) {
-                upsertRow.run(
-                    documentName,
-                    ruleId,
-                    targetTableId || null,
-                    timezoneStr,
-                    rruleStr,
-                    dtstartStr,
-                    existingRow?.next_run_at || null,
-                    seq,
-                    "disabled",
-                );
-                return;
+                // A disabled rule keeps its stored cursor so that re-enabling it
+                // resumes where it stopped instead of replaying from dtstart.
+                cursor = { next_run_at: existingRow?.next_run_at ?? null, seq, state: "disabled" };
+            } else if (recurrenceUnchanged && existingRow!.state !== "disabled") {
+                // Already indexed and still running on the same recurrence: the
+                // scheduler owns the cursor from here on (it advances it on
+                // every tick), so re-deriving it here would undo catch-up and
+                // overdue state. Only the denormalised columns are refreshed.
+                cursor = { next_run_at: existingRow!.next_run_at, seq, state: existingRow!.state };
+            } else {
+                const computed = computeNextRunAt(rruleStr, dtstartStr, timezoneStr, seq);
+
+                // Transaction origin: server-scheduler (per spec)
+                document.transact(() => {
+                    // Write back validation error if invalid
+                    if (computed.state === "invalid" && computed.error) {
+                        if (ruleObj.get("validationError") !== computed.error) {
+                            ruleObj.set("validationError", computed.error);
+                        }
+                    } else if (ruleObj.get("validationError") !== undefined) {
+                        ruleObj.delete("validationError");
+                    }
+
+                    if (computed.state === "exhausted") {
+                        if (!ruleObj.get("completedAt")) {
+                            ruleObj.set("completedAt", new Date().toISOString());
+                        }
+                    }
+                }, "server-scheduler");
+
+                cursor = { next_run_at: computed.next_run_at, seq: computed.nextSeq, state: computed.state };
             }
-
-            const computed = computeNextRunAt(rruleStr, dtstartStr, timezoneStr, seq);
-
-            let finalState = computed.state;
-
-            // Transaction origin: server-scheduler (per spec)
-            document.transact(() => {
-                // Write back validation error if invalid
-                if (computed.state === "invalid" && computed.error) {
-                    if (ruleObj.get("validationError") !== computed.error) {
-                        ruleObj.set("validationError", computed.error);
-                    }
-                } else if (ruleObj.get("validationError") !== undefined) {
-                    ruleObj.delete("validationError");
-                }
-
-                if (computed.state === "exhausted") {
-                    if (!ruleObj.get("completedAt")) {
-                        ruleObj.set("completedAt", new Date().toISOString());
-                    }
-                }
-            }, "server-scheduler");
 
             upsertRow.run(
                 documentName,
@@ -336,10 +303,19 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
                 timezoneStr,
                 rruleStr,
                 dtstartStr,
-                computed.next_run_at,
-                computed.nextSeq,
-                finalState,
+                cursor.next_run_at,
+                cursor.seq,
+                cursor.state,
             );
+
+            // The Schedules Manager reads `Next run` from the document, so the
+            // index state is mirrored back on every store — including the
+            // "nothing changed" path, which is the only one a long-lived
+            // Schedule ever takes after its first indexing (issue #5290).
+            document.transact(() => {
+                applySchedulerCursor(ruleObj, { state: cursor.state, nextRunAt: cursor.next_run_at });
+                applyLegacyTelemetryMigration(ruleObj);
+            }, SCHEDULER_ORIGIN);
         });
 
         // Delete deleted schedules
