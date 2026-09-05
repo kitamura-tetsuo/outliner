@@ -9,7 +9,12 @@ import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
 import { validateScheduleRowIdentities } from "./row-validation.js";
 import { computeNextRunAt, ensureScheduleIndex, ScheduleIndexRow } from "./schedule-indexer.js";
-import { publishSchedulerCursor, type SchedulerCursor } from "./schedule-status-publisher.js";
+import {
+    applySchedulerCursor,
+    publishSchedulerCursor,
+    SCHEDULER_ORIGIN,
+    type SchedulerCursor,
+} from "./schedule-status-publisher.js";
 
 // Upper bound on how many past occurrences a single tick walks through, so a
 // rule whose dtstart lies far in the past cannot stall the scheduler.
@@ -95,12 +100,20 @@ export class JobScheduler {
     private ticking = false;
     private runQueue: Promise<void> = Promise.resolve();
     /**
-     * Whether the interrupted-run sweep already ran in this process. It has to
-     * happen once the persistence database is resolvable (which is only true
-     * from the first tick onwards) and strictly before this process dispatches
-     * anything, so that it can never mistake a live execution for a stale one.
+     * Whether every indexed room has been swept for interrupted runs. The sweep
+     * has to happen once the persistence database is resolvable (which is only
+     * true from the first tick onwards) and, within a tick, strictly before
+     * anything is dispatched, so that it can never mistake a live execution for
+     * a stale one.
      */
     private reconciledInterruptedRuns = false;
+    /**
+     * Rooms still owing a sweep: `undefined` until the index has been
+     * enumerated, then the rooms whose sweep has not yet succeeded. Recovery
+     * that fails transiently stays pending and is retried on later ticks
+     * instead of being dropped for the lifetime of the process.
+     */
+    private roomsAwaitingRunReconciliation: string[] | undefined = undefined;
 
     constructor(hocuspocus: Hocuspocus) {
         this.hocuspocus = hocuspocus;
@@ -262,10 +275,9 @@ export class JobScheduler {
             }
         }
 
-        if (!this.reconciledInterruptedRuns) {
-            this.reconciledInterruptedRuns = true;
-            await this.reconcileInterruptedRuns();
-        }
+        // Self-guarding: it retries on later ticks until every indexed room has
+        // actually been swept, and becomes a no-op afterwards.
+        await this.reconcileInterruptedRuns();
 
         try {
             const now = DateTime.utc();
@@ -301,51 +313,76 @@ export class JobScheduler {
      * cannot finish, so it becomes `interrupted` — a non-success terminal
      * result that deliberately leaves `lastSuccessfulRunAt` untouched.
      *
-     * The sweep runs before this process dispatches anything, so a `running`
-     * marker it finds can never belong to a live execution.
+     * Recovery is retried until it succeeds. A room whose sweep fails
+     * transiently (the document cannot be opened, the write is rejected) stays
+     * pending and is attempted again on the next tick: dropping it would leave
+     * that Schedule presented as running for the lifetime of the process, which
+     * is the very state this sweep exists to end.
+     *
+     * Within a tick the sweep runs before anything is dispatched, and ticks and
+     * manual runs are serialised through `runQueue`, so a `running` marker it
+     * finds can never belong to an execution that is still live.
      */
     private async reconcileInterruptedRuns(): Promise<void> {
-        if (!this.sqliteDb) return;
+        if (this.reconciledInterruptedRuns || !this.sqliteDb) return;
 
-        let rooms: { room: string; }[] = [];
-        try {
-            // Every rule the scheduler can execute has an index row, so the
-            // index is the complete set of rooms that can hold a stale marker.
-            rooms = this.sqliteDb.prepare(`SELECT DISTINCT room FROM schedule_index`).all() as { room: string; }[];
-        } catch (err) {
-            logger.error({ err }, "JobScheduler could not list rooms to reconcile interrupted runs");
-            return;
+        if (!this.roomsAwaitingRunReconciliation) {
+            try {
+                // Every rule the scheduler can execute has an index row, so the
+                // index is the complete set of rooms that can hold a stale
+                // marker. A failure here leaves the list unset so that the next
+                // tick enumerates again rather than skipping recovery.
+                const rows = this.sqliteDb.prepare(`SELECT DISTINCT room FROM schedule_index`).all() as {
+                    room: string;
+                }[];
+                this.roomsAwaitingRunReconciliation = rows.map(row => row.room);
+            } catch (err) {
+                logger.error({ err }, "JobScheduler could not list rooms to reconcile interrupted runs");
+                return;
+            }
         }
 
-        for (const { room } of rooms) {
+        const stillPending: string[] = [];
+        for (const room of this.roomsAwaitingRunReconciliation) {
             try {
-                const connection = await this.hocuspocus.openDirectConnection(room);
-                try {
-                    const document = connection.document;
-                    if (!document) continue;
-                    const schedulesMap = document.getMap("schedules");
-                    const interrupted: string[] = [];
-                    document.transact(() => {
-                        schedulesMap.forEach((ruleItem, ruleId) => {
-                            if (!(ruleItem instanceof Y.Map)) return;
-                            if (ruleItem.get("lastRunStatus") !== "running") return;
-                            ruleItem.set("lastRunStatus", "interrupted");
-                            ruleItem.set(
-                                "lastRunError",
-                                "Execution did not complete: the scheduler restarted while it was running.",
-                            );
-                            interrupted.push(ruleId);
-                        });
-                    }, "server-scheduler");
-                    if (interrupted.length > 0) {
-                        logger.warn({ room, ruleIds: interrupted }, "Reconciled interrupted schedule executions");
-                    }
-                } finally {
-                    connection.disconnect();
-                }
+                await this.reconcileInterruptedRunsInRoom(room);
             } catch (err) {
-                logger.error({ err, room }, "JobScheduler failed to reconcile interrupted runs for a room");
+                logger.error({ err, room }, "JobScheduler failed to reconcile interrupted runs for a room; retrying");
+                stillPending.push(room);
             }
+        }
+
+        this.roomsAwaitingRunReconciliation = stillPending;
+        if (stillPending.length === 0) this.reconciledInterruptedRuns = true;
+    }
+
+    /** Sweep one room. Throws when the room could not be reconciled, so the caller can retry it. */
+    private async reconcileInterruptedRunsInRoom(room: string): Promise<void> {
+        const connection = await this.hocuspocus.openDirectConnection(room);
+        try {
+            const document = connection.document;
+            // A room that resolves to no document holds no marker to reconcile;
+            // that is a completed sweep, not a failure to retry forever.
+            if (!document) return;
+            const schedulesMap = document.getMap("schedules");
+            const interrupted: string[] = [];
+            document.transact(() => {
+                schedulesMap.forEach((ruleItem, ruleId) => {
+                    if (!(ruleItem instanceof Y.Map)) return;
+                    if (ruleItem.get("lastRunStatus") !== "running") return;
+                    ruleItem.set("lastRunStatus", "interrupted");
+                    ruleItem.set(
+                        "lastRunError",
+                        "Execution did not complete: the scheduler restarted while it was running.",
+                    );
+                    interrupted.push(ruleId);
+                });
+            }, "server-scheduler");
+            if (interrupted.length > 0) {
+                logger.warn({ room, ruleIds: interrupted }, "Reconciled interrupted schedule executions");
+            }
+        } finally {
+            connection.disconnect();
         }
     }
 
@@ -441,62 +478,79 @@ export class JobScheduler {
             }
         }
 
+        // The cursor this rule holds once every occurrence dispatched below has
+        // been consumed. Each dispatch is handed the cursor its own occurrence
+        // leaves behind, so the execution's terminal result and the recurrence
+        // state it produced reach the document in one transaction — the manager
+        // can never observe a terminal Result still paired with the occurrence
+        // that execution just consumed (issue #5290 REQ-006/REQ-008).
+        const finalCursor: SchedulerCursor = exhausted || !nextRunAt
+            ? { state: "completed", nextRunAt: null }
+            : { state: "active", nextRunAt };
+        const baseSeq = rule.occurrence_seq ?? 0;
+
         const skipAll = missed.length > 1 && !catchUp;
         if (!skipAll) {
-            if (catchUp) {
-                for (const occurrenceIso of missed) {
-                    await this.dispatchJob(rule, occurrenceIso, ruleSql);
-                }
-            } else {
-                await this.dispatchJob(rule, missed[0], ruleSql);
+            // Without catch-up only the most recent missed occurrence runs, but
+            // it still consumes every earlier one, so its follow-on cursor is
+            // the final one either way.
+            const occurrences = catchUp ? missed : [missed[0]];
+            for (const [index, occurrenceIso] of occurrences.entries()) {
+                const isLast = index === occurrences.length - 1;
+                await this.dispatchJob(rule, occurrenceIso, ruleSql, {
+                    cursor: isLast ? finalCursor : { state: "active", nextRunAt: occurrences[index + 1] },
+                    seq: isLast ? nextSeq : baseSeq + index + 1,
+                });
             }
-        } else {
-            logger.warn(
-                {
-                    ruleId: rule.rule_id,
-                    room: rule.room,
-                    count: missed.length,
-                    skippedRange: `${missed[0]} to ${missed[missed.length - 1]}`,
-                },
-                "JobScheduler skipped occurrences",
-            );
-            const mainRoomConn2 = await this.hocuspocus.openDirectConnection(rule.room);
-            if (mainRoomConn2.document) {
-                const schedulesMap = mainRoomConn2.document.getMap("schedules");
-                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<unknown> | undefined;
-                if (ruleItem) {
-                    mainRoomConn2.document.transact(() => {
-                        const currentSkipped = (ruleItem.get("skippedOccurrences") as number) || 0;
-                        ruleItem.set("skippedOccurrences", currentSkipped + missed.length);
-                    }, "server-scheduler");
-                }
-            }
-            mainRoomConn2.disconnect();
+            // Every dispatched occurrence committed its own follow-on cursor.
+            return;
         }
 
-        if (exhausted || !nextRunAt) {
-            if (this.sqliteDb) {
-                this.sqliteDb.prepare(`
-                    UPDATE schedule_index
-                    SET state = 'completed', occurrence_seq = ?
-                    WHERE room = ? AND rule_id = ?
-                `).run(nextSeq, rule.room, rule.rule_id);
+        logger.warn(
+            {
+                ruleId: rule.rule_id,
+                room: rule.room,
+                count: missed.length,
+                skippedRange: `${missed[0]} to ${missed[missed.length - 1]}`,
+            },
+            "JobScheduler skipped occurrences",
+        );
+        const mainRoomConn2 = await this.hocuspocus.openDirectConnection(rule.room);
+        if (mainRoomConn2.document) {
+            const schedulesMap = mainRoomConn2.document.getMap("schedules");
+            const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<unknown> | undefined;
+            if (ruleItem) {
+                mainRoomConn2.document.transact(() => {
+                    const currentSkipped = (ruleItem.get("skippedOccurrences") as number) || 0;
+                    ruleItem.set("skippedOccurrences", currentSkipped + missed.length);
+                }, "server-scheduler");
             }
-            await this.publishCursor(rule.room, rule.rule_id, { state: "completed", nextRunAt: null });
-        } else {
-            await this.updateNextRunAt(rule.room, rule.rule_id, nextRunAt, nextSeq);
         }
+        mainRoomConn2.disconnect();
+
+        // Nothing ran, so no execution owns this cursor move.
+        this.commitIndexCursor(rule.room, rule.rule_id, finalCursor, nextSeq);
+        await this.publishCursor(rule.room, rule.rule_id, finalCursor);
     }
 
+    /** Move the scheduler's own recurrence cursor in the index. */
+    private commitIndexCursor(room: string, ruleId: string, cursor: SchedulerCursor, seq: number): void {
+        if (!this.sqliteDb) return;
+        this.sqliteDb.prepare(`
+            UPDATE schedule_index
+            SET next_run_at = ?, occurrence_seq = ?, state = ?
+            WHERE room = ? AND rule_id = ?
+        `).run(cursor.nextRunAt, seq, cursor.state, room, ruleId);
+    }
+
+    /**
+     * Correct the cursor of a rule that turned out not to be due after all. No
+     * execution is involved, so there is no terminal result to write it with.
+     */
     private async updateNextRunAt(room: string, ruleId: string, nextRunAtIso: string, seq: number) {
-        if (this.sqliteDb) {
-            this.sqliteDb.prepare(`
-                UPDATE schedule_index
-                SET next_run_at = ?, occurrence_seq = ?
-                WHERE room = ? AND rule_id = ?
-            `).run(nextRunAtIso, seq, room, ruleId);
-        }
-        await this.publishCursor(room, ruleId, { state: "active", nextRunAt: nextRunAtIso });
+        const cursor: SchedulerCursor = { state: "active", nextRunAt: nextRunAtIso };
+        this.commitIndexCursor(room, ruleId, cursor, seq);
+        await this.publishCursor(room, ruleId, cursor);
     }
 
     /**
@@ -581,18 +635,39 @@ export class JobScheduler {
      * time the old `lastRunAt` recorded. The terminal result is written on
      * every exit, including a throw, so no attempt is left presented as
      * running by a process that is still alive.
+     *
+     * The generation is claimed *before* any SQL runs and the job is abandoned
+     * if it cannot be: an execution that mutated its target while `Last run`
+     * and `Result` still described the previous attempt would be invisible in
+     * the manager, and a success it could not publish would be lost from
+     * `Last successful run`. Aborting leaves the occurrence unconsumed, so the
+     * next tick retries it.
+     *
+     * `consumes` describes the recurrence cursor this occurrence leaves behind.
+     * It is committed to the index and then written into the document *in the
+     * same transaction as the terminal result*, so the manager never sees a
+     * finished execution paired with the occurrence it just consumed. It is
+     * absent for a manual run, which consumes no occurrence.
      */
     private async dispatchJob(
         rule: ScheduleIndexRow,
         occurrenceIso: string,
         ruleSql: string,
+        consumes?: { cursor: SchedulerCursor; seq: number; },
     ): Promise<{ success: boolean; error?: string; }> {
-        const runSeq = await this.markRunStarted(rule.room, rule.rule_id);
+        const runSeq = await this.claimRunGeneration(rule.room, rule.rule_id);
         try {
             const result = await this.executeRuleJob(rule, occurrenceIso, ruleSql);
-            await this.markRunFinished(rule.room, rule.rule_id, runSeq, result);
+            // A failed statement still consumes its occurrence: the scheduler
+            // does not retry one. The index moves first so that a crash before
+            // the document write leaves the index authoritative and the indexer
+            // republishes it, rather than advertising a cursor already spent.
+            if (consumes) this.commitIndexCursor(rule.room, rule.rule_id, consumes.cursor, consumes.seq);
+            await this.markRunFinished(rule.room, rule.rule_id, runSeq, result, consumes?.cursor);
             return result;
         } catch (err: unknown) {
+            // The occurrence was not consumed — the job never reached a result —
+            // so the cursor stays where it is and this occurrence is retried.
             await this.markRunFinished(rule.room, rule.rule_id, runSeq, {
                 success: false,
                 error: err instanceof Error ? err.message : String(err),
@@ -608,30 +683,31 @@ export class JobScheduler {
      * the same transaction that writes the start marker, so a later attempt
      * always owns a higher number and a slow terminal write from an earlier one
      * can be recognised as stale (see `markRunFinished`).
+     *
+     * Throws when the claim cannot be recorded. The caller must not execute
+     * anything in that case: an unclaimed execution can publish neither its
+     * start nor its result.
      */
-    private async markRunStarted(room: string, ruleId: string): Promise<number | undefined> {
+    private async claimRunGeneration(room: string, ruleId: string): Promise<number> {
+        const connection = await this.hocuspocus.openDirectConnection(room);
         try {
-            const connection = await this.hocuspocus.openDirectConnection(room);
-            try {
-                const document = connection.document;
-                const ruleItem = document?.getMap("schedules").get(ruleId);
-                if (!document || !(ruleItem instanceof Y.Map)) return undefined;
-
-                let runSeq = 0;
-                document.transact(() => {
-                    runSeq = ((ruleItem.get("lastRunSeq") as number | undefined) ?? 0) + 1;
-                    ruleItem.set("lastRunSeq", runSeq);
-                    ruleItem.set("lastRunStartedAt", new Date().toISOString());
-                    ruleItem.set("lastRunStatus", "running");
-                    ruleItem.delete("lastRunError");
-                }, "server-scheduler");
-                return runSeq;
-            } finally {
-                connection.disconnect();
+            const document = connection.document;
+            const ruleItem = document?.getMap("schedules").get(ruleId);
+            if (!document || !(ruleItem instanceof Y.Map)) {
+                throw new Error(`Schedule ${ruleId} is not present in ${room}`);
             }
-        } catch (err) {
-            logger.warn({ err, room, ruleId }, "Failed to record schedule execution start");
-            return undefined;
+
+            let runSeq = 0;
+            document.transact(() => {
+                runSeq = ((ruleItem.get("lastRunSeq") as number | undefined) ?? 0) + 1;
+                ruleItem.set("lastRunSeq", runSeq);
+                ruleItem.set("lastRunStartedAt", new Date().toISOString());
+                ruleItem.set("lastRunStatus", "running");
+                ruleItem.delete("lastRunError");
+            }, "server-scheduler");
+            return runSeq;
+        } finally {
+            connection.disconnect();
         }
     }
 
@@ -643,14 +719,20 @@ export class JobScheduler {
      * outcome with a newer start timestamp, so it is dropped instead. Only a
      * successful completion touches `lastSuccessfulRunAt` — a failure or an
      * interruption leaves the previous success standing.
+     *
+     * `cursor`, when this execution consumed an occurrence, is written in the
+     * same transaction. Yjs delivers a transaction to observers as one change,
+     * so the manager transitions from "running, next run T1" straight to
+     * "finished, next run T2" with no intermediate state pairing the terminal
+     * result with the spent occurrence.
      */
     private async markRunFinished(
         room: string,
         ruleId: string,
-        runSeq: number | undefined,
+        runSeq: number,
         result: { success: boolean; error?: string; },
+        cursor?: SchedulerCursor,
     ): Promise<void> {
-        if (runSeq === undefined) return;
         try {
             const connection = await this.hocuspocus.openDirectConnection(room);
             try {
@@ -672,7 +754,8 @@ export class JobScheduler {
                         ruleItem.set("lastRunStatus", "error");
                         ruleItem.set("lastRunError", result.error || "Unknown error");
                     }
-                }, "server-scheduler");
+                    if (cursor) applySchedulerCursor(ruleItem, cursor);
+                }, SCHEDULER_ORIGIN);
             } finally {
                 connection.disconnect();
             }

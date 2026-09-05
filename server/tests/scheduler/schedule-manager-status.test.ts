@@ -44,6 +44,10 @@ describe("Schedules Manager status (production path)", function() {
     // Two days back, so the rule is both due now and — because it has never
     // run — carries an overdue first occurrence as its authoritative cursor.
     const dtstart = `${DateTime.utc().minus({ days: 2 }).toFormat("yyyy-MM-dd")}T00:00:00`;
+    // Midnight today: exactly one occurrence is in the past, so a tick
+    // dispatches exactly one execution and the occurrence it consumes is
+    // unambiguous.
+    const singleOccurrenceDtstart = `${DateTime.utc().toFormat("yyyy-MM-dd")}T00:00:00`;
 
     let db: Database.Database;
     let docs: Map<string, Y.Doc>;
@@ -83,15 +87,17 @@ describe("Schedules Manager status (production path)", function() {
         );
     }
 
-    function buildProjectDoc(): Y.Doc {
+    function buildProjectDoc(
+        options: { dtstart?: string; rrule?: string; } = {},
+    ): Y.Doc {
         const projectDoc = new Y.Doc();
         const ruleMap = new Y.Map<unknown>();
         projectDoc.getMap("schedules").set(dailyRule.ruleId, ruleMap);
         ruleMap.set("name", dailyRule.name);
         ruleMap.set("targetTableId", DEMO_ROUTINE_OCCURRENCES_TABLE_ID);
         ruleMap.set("sql", dailyRule.sql);
-        ruleMap.set("rrule", dailyRule.rrule);
-        ruleMap.set("dtstart", dtstart);
+        ruleMap.set("rrule", options.rrule ?? dailyRule.rrule);
+        ruleMap.set("dtstart", options.dtstart ?? dtstart);
         ruleMap.set("timezone", "UTC");
         ruleMap.set("enabled", true);
         ruleMap.set("catchUp", true);
@@ -138,6 +144,32 @@ describe("Schedules Manager status (production path)", function() {
         created.start(3_600_000, false);
         return created;
     }
+
+    /**
+     * Re-seed the project on a different recurrence and index it from scratch
+     * through the real indexer. The scheduler resolves rooms through the
+     * `docs` binding on every call, so it follows the new documents.
+     */
+    function reseed(options: { dtstart?: string; rrule?: string; }): Y.Doc {
+        const projectDoc = buildProjectDoc(options);
+        docs = buildDocs(projectDoc);
+        db.prepare(`DELETE FROM schedule_index`).run();
+        storeProjectDocument(projectDoc);
+        return projectDoc;
+    }
+
+    /**
+     * Every manager snapshot the shared document passes through, captured the
+     * way the manager sees them: `ScheduleListView` rebuilds its rows from one
+     * `observeDeep` callback, so one callback is one rendered state.
+     */
+    function recordRenderedSnapshots(projectDoc: Y.Doc): ReturnType<typeof managerSnapshot>[] {
+        const rendered: ReturnType<typeof managerSnapshot>[] = [];
+        projectDoc.getMap("schedules").observeDeep(() => rendered.push(managerSnapshot(projectDoc)));
+        return rendered;
+    }
+
+    const TERMINAL_RESULTS = ["success", "failed", "interrupted"];
 
     beforeEach(function() {
         db = new Database(":memory:");
@@ -382,5 +414,188 @@ describe("Schedules Manager status (production path)", function() {
         expect(snapshot.lastRunStartedAt).to.be.undefined;
         expect(snapshot.lastSuccessfulRunAt).to.be.undefined;
         expect(snapshot.lastRunError).to.contain("does not exist");
+    });
+
+    // REQ-006 / REQ-008 — the manager rebuilds its rows on every shared-document
+    // change, so *every* intermediate state it can render is asserted, not only
+    // the state left behind once the tick has finished. A terminal result must
+    // never still advertise the occurrence that execution consumed.
+    describe("lifecycle generations never mix while a tick runs", function() {
+        function assertNoTerminalResultKeepsConsumedCursor(
+            rendered: ReturnType<typeof managerSnapshot>[],
+            consumed: string,
+        ) {
+            const terminal = rendered.filter(snapshot => TERMINAL_RESULTS.includes(snapshot.result));
+            expect(terminal.length, "a terminal result was rendered").to.be.greaterThan(0);
+            for (const snapshot of terminal) {
+                expect(
+                    snapshot.next.nextRunAt,
+                    `a ${snapshot.result} execution still advertised the occurrence it consumed`,
+                ).to.not.equal(consumed);
+            }
+        }
+
+        it("advances the cursor with the terminal result of a successful execution", async function() {
+            const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+            const consumed = indexRow().next_run_at!;
+            const rendered = recordRenderedSnapshots(projectDoc);
+
+            await scheduler.tick();
+
+            assertNoTerminalResultKeepsConsumedCursor(rendered, consumed);
+
+            const settled = managerSnapshot(projectDoc);
+            expect(settled.result).to.equal("success");
+            expect(settled.next.state).to.equal("scheduled");
+            expect(settled.next.nextRunAt).to.equal(indexRow().next_run_at);
+            expect(settled.next.nextRunAt).to.not.equal(consumed);
+        });
+
+        it("advances the cursor with the terminal result of a failed execution", async function() {
+            const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+            ruleMapOf(projectDoc).set(
+                "sql",
+                "INSERT INTO no_such_table (id) VALUES (gen_random_uuid()) RETURNING *;",
+            );
+            const consumed = indexRow().next_run_at!;
+            const rendered = recordRenderedSnapshots(projectDoc);
+
+            await scheduler.tick();
+
+            assertNoTerminalResultKeepsConsumedCursor(rendered, consumed);
+            expect(managerSnapshot(projectDoc).result).to.equal("failed");
+        });
+
+        it("completes the recurrence with the terminal result of its final execution", async function() {
+            const projectDoc = reseed({
+                dtstart: singleOccurrenceDtstart,
+                rrule: "RRULE:FREQ=DAILY;COUNT=1",
+            });
+            const consumed = indexRow().next_run_at!;
+            const rendered = recordRenderedSnapshots(projectDoc);
+
+            await scheduler.tick();
+
+            assertNoTerminalResultKeepsConsumedCursor(rendered, consumed);
+
+            const settled = managerSnapshot(projectDoc);
+            expect(settled.result).to.equal("success");
+            // Exhausted: no eligible occurrence rather than the spent one.
+            expect(settled.next.state).to.equal("completed");
+            expect(settled.next.nextRunAt).to.be.undefined;
+        });
+    });
+
+    // REQ-003 / REQ-004 / REQ-005 — an execution that cannot claim its start
+    // telemetry would mutate its target while the manager still described the
+    // previous attempt, and could not credit its own success.
+    it("runs no SQL when the execution's start telemetry cannot be claimed", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+
+        // Settle the interrupted-run sweep on a tick with nothing due, so the
+        // connections counted below are only the ones the dispatch itself
+        // makes: `processRule` reading the rule, then the start claim.
+        const dueAt = indexRow().next_run_at;
+        db.prepare(`UPDATE schedule_index SET next_run_at = ? WHERE room = ? AND rule_id = ?`)
+            .run(DateTime.utc().plus({ days: 1 }).toISO(), projectRoom, DEMO_DAILY_RULE_ID);
+        await scheduler.tick();
+        db.prepare(`UPDATE schedule_index SET next_run_at = ? WHERE room = ? AND rule_id = ?`)
+            .run(dueAt, projectRoom, DEMO_DAILY_RULE_ID);
+
+        const before = managerSnapshot(projectDoc);
+        const rowsBefore = docs.get(tableRoom)!.getMap("data").size;
+
+        // The project document is unreachable for exactly the connection the
+        // start claim needs. Every other room — the target table above all —
+        // stays reachable, so nothing but the missing claim can stop the job.
+        let projectOpens = 0;
+        let tableOpens = 0;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === projectRoom) {
+                projectOpens += 1;
+                if (projectOpens === 2) throw new Error("transient connection failure");
+            }
+            if (room === tableRoom) tableOpens += 1;
+            return { document: docs.get(room) ?? null, disconnect: function() {} };
+        };
+
+        await scheduler.tick();
+
+        expect(projectOpens, "the start claim was attempted").to.be.at.least(2);
+        // The job never reached its target: an execution with no claimed
+        // generation can publish neither its start nor its result.
+        expect(tableOpens, "the target table was never opened").to.equal(0);
+        expect(
+            docs.get(tableRoom)!.getMap("data").size,
+            "no rows were written by an execution with no claimed telemetry",
+        ).to.equal(rowsBefore);
+
+        const after = managerSnapshot(projectDoc);
+        expect(after.result, "the manager still describes the previous attempt").to.equal(before.result);
+        expect(after.lastRunStartedAt).to.equal(before.lastRunStartedAt);
+        expect(after.lastSuccessfulRunAt).to.equal(before.lastSuccessfulRunAt);
+        // Unconsumed, so the occurrence is retried rather than silently skipped.
+        expect(indexRow().next_run_at).to.equal(dueAt);
+    });
+
+    // REQ-009 — recovery that fails transiently must not be abandoned for the
+    // lifetime of the process.
+    it("retries interrupted-run recovery after a transient failure", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+
+        // A real successful execution first, so the preserved
+        // `lastSuccessfulRunAt` below comes from the production path.
+        await scheduler.tick();
+        const successAt = managerSnapshot(projectDoc).lastSuccessfulRunAt;
+        expect(successAt, "a real success was recorded").to.be.a("string");
+
+        // Due again, then captured mid-flight exactly as persistence would have
+        // stored it when the process died.
+        db.prepare(`UPDATE schedule_index SET next_run_at = ?, state = 'active' WHERE room = ? AND rule_id = ?`)
+            .run(DateTime.utc().minus({ minutes: 1 }).toISO(), projectRoom, DEMO_DAILY_RULE_ID);
+        let interruptedState: Uint8Array | undefined;
+        const liveRule = ruleMapOf(projectDoc);
+        liveRule.observe(() => {
+            if (!interruptedState && liveRule.get("lastRunStatus") === "running") {
+                interruptedState = Y.encodeStateAsUpdate(projectDoc);
+            }
+        });
+        await scheduler.tick();
+        expect(interruptedState, "an in-flight execution was captured").to.not.be.undefined;
+        await scheduler.stop();
+
+        const restarted = new Y.Doc();
+        Y.applyUpdate(restarted, interruptedState!);
+        expect(ruleMapOf(restarted).get("lastRunStatus")).to.equal("running");
+        expect(ruleMapOf(restarted).get("lastSuccessfulRunAt")).to.equal(successAt);
+
+        docs = buildDocs(restarted);
+        // Nothing is due, so the sweep is the only work these ticks perform.
+        db.prepare(`UPDATE schedule_index SET next_run_at = ?, state = 'active' WHERE room = ? AND rule_id = ?`)
+            .run(DateTime.utc().plus({ days: 1 }).toISO(), projectRoom, DEMO_DAILY_RULE_ID);
+        scheduler = buildScheduler();
+
+        let failNextProjectOpen = true;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === projectRoom && failNextProjectOpen) {
+                failNextProjectOpen = false;
+                throw new Error("transient connection failure");
+            }
+            return { document: docs.get(room) ?? null, disconnect: function() {} };
+        };
+
+        await scheduler.tick();
+        expect(failNextProjectOpen, "the first sweep attempt failed").to.equal(false);
+        expect(
+            ruleMapOf(restarted).get("lastRunStatus"),
+            "the failed sweep left the marker untouched",
+        ).to.equal("running");
+
+        // The next tick retries the room that could not be swept.
+        await scheduler.tick();
+
+        const snapshot = managerSnapshot(restarted);
+        expect(snapshot.result, "recovery is not abandoned after a transient failure").to.equal("interrupted");
+        expect(snapshot.lastSuccessfulRunAt, "no success is disturbed by recovery").to.equal(successAt);
     });
 });
