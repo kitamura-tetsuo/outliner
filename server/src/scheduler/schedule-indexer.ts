@@ -75,6 +75,7 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
             room               TEXT,
             rule_id            TEXT,
             run_seq            INTEGER,
+            started_at         TEXT,
             status             TEXT,
             error              TEXT,
             completed_at       TEXT,
@@ -92,6 +93,7 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
     const columnNames = new Set(activeRunColumns.map(column => column.name));
     for (
         const [name, type] of [
+            ["started_at", "TEXT"],
             ["status", "TEXT"],
             ["error", "TEXT"],
             ["completed_at", "TEXT"],
@@ -112,6 +114,7 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
                     room               TEXT,
                     rule_id            TEXT,
                     run_seq            INTEGER,
+                    started_at         TEXT,
                     status             TEXT,
                     error              TEXT,
                     completed_at       TEXT,
@@ -120,8 +123,8 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
                     PRIMARY KEY (room, rule_id, run_seq)
                 )`,
                 `INSERT INTO schedule_active_runs
-                    (room, rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at)
-                    SELECT room, rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at
+                    (room, rule_id, run_seq, started_at, status, error, completed_at, cursor_state, cursor_next_run_at)
+                    SELECT room, rule_id, run_seq, started_at, status, error, completed_at, cursor_state, cursor_next_run_at
                     FROM schedule_active_runs_legacy`,
                 `DROP TABLE schedule_active_runs_legacy`,
             ]

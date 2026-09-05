@@ -43,6 +43,12 @@ export interface RunOutcome {
     error?: string;
     completedAt: string;
     cursor?: SchedulerCursor;
+    /**
+     * When this execution began, supplied only where the document may not
+     * already know: a result published onto a document that predates its own
+     * claim would otherwise wear the *previous* execution's start time.
+     */
+    startedAt?: string;
 }
 
 /**
@@ -58,6 +64,10 @@ export interface RunOutcome {
  * Must be called inside a `document.transact(..., SCHEDULER_ORIGIN)`.
  */
 export function applyRunOutcome(ruleItem: Y.Map<unknown>, outcome: RunOutcome): void {
+    // `Last run` and `Result` must describe the same attempt, so a result that
+    // knows when its execution began says so — otherwise it lands on whatever
+    // start the document happens to be holding.
+    if (outcome.startedAt) ruleItem.set("lastRunStartedAt", outcome.startedAt);
     // Kept for backwards compatibility: `lastRunAt` has always been a
     // completion-time observation and stays one.
     ruleItem.set("lastRunAt", outcome.completedAt);

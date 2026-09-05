@@ -20,6 +20,8 @@ import {
 /** One generation a room still owes a published terminal state. */
 interface OwedRun {
     runSeq: number;
+    /** When this generation's execution began, so a replay can restore it. */
+    startedAt?: string;
     outcome?: RunOutcome;
 }
 
@@ -386,15 +388,16 @@ export class JobScheduler {
      * are per generation, so recording this claim never disturbs a previous
      * execution whose result is still owed.
      */
-    private recordActiveRun(room: string, ruleId: string, runSeq: number): void {
+    private recordActiveRun(room: string, ruleId: string, runSeq: number, startedAt: string): void {
         if (!this.sqliteDb) return;
         this.sqliteDb.prepare(`
-            INSERT INTO schedule_active_runs (room, rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at)
-            VALUES (?, ?, ?, NULL, NULL, NULL, NULL, NULL)
+            INSERT INTO schedule_active_runs (room, rule_id, run_seq, started_at, status, error, completed_at, cursor_state, cursor_next_run_at)
+            VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL)
             ON CONFLICT(room, rule_id, run_seq) DO UPDATE SET
+                started_at = excluded.started_at,
                 status = NULL, error = NULL, completed_at = NULL,
                 cursor_state = NULL, cursor_next_run_at = NULL
-        `).run(room, ruleId, runSeq);
+        `).run(room, ruleId, runSeq, startedAt);
     }
 
     /**
@@ -440,11 +443,12 @@ export class JobScheduler {
         const owed = new Map<string, OwedRun[]>();
         if (!this.sqliteDb) return owed;
         const rows = this.sqliteDb.prepare(`
-            SELECT rule_id, run_seq, status, error, completed_at, cursor_state, cursor_next_run_at
+            SELECT rule_id, run_seq, started_at, status, error, completed_at, cursor_state, cursor_next_run_at
             FROM schedule_active_runs WHERE room = ? ORDER BY rule_id, run_seq
         `).all(room) as {
             rule_id: string;
             run_seq: number;
+            started_at: string | null;
             status: string | null;
             error: string | null;
             completed_at: string | null;
@@ -455,6 +459,7 @@ export class JobScheduler {
             const entries = owed.get(row.rule_id) ?? [];
             entries.push({
                 runSeq: row.run_seq,
+                startedAt: row.started_at ?? undefined,
                 outcome: row.status && row.completed_at
                     ? {
                         status: row.status === "ok" ? "ok" : "error",
@@ -533,7 +538,7 @@ export class JobScheduler {
                         // memory: the recurrence may have been withdrawn while
                         // the outcome waited, so the published cursor is taken
                         // from the index as it stands.
-                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, entry.outcome));
+                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, entry));
                         republished.push(ruleId);
                     }
 
@@ -955,15 +960,22 @@ export class JobScheduler {
             // a window in which an interruption strands a running Schedule that
             // neither discovery table names. Rows are per generation, so this
             // does not disturb the record of the execution being settled above.
-            this.recordActiveRun(room, ruleId, runSeq);
+            //
+            // The start instant is recorded with it, and is the same value the
+            // claim writes: a result recovered onto a document that predates
+            // this claim has to be able to say when its own execution began,
+            // rather than inheriting the start of whatever attempt that
+            // document last knew about.
+            const startedAt = new Date().toISOString();
+            this.recordActiveRun(room, ruleId, runSeq, startedAt);
 
             try {
                 document.transact(() => {
                     if (pending?.outcome && pending.runSeq >= currentSeq) {
-                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, pending.outcome));
+                        applyRunOutcome(ruleItem, this.outcomeForReplay(room, ruleId, pending));
                     }
                     ruleItem.set("lastRunSeq", runSeq);
-                    ruleItem.set("lastRunStartedAt", new Date().toISOString());
+                    ruleItem.set("lastRunStartedAt", startedAt);
                     ruleItem.set("lastRunStatus", "running");
                     ruleItem.delete("lastRunError");
                 }, SCHEDULER_ORIGIN);
@@ -1250,9 +1262,20 @@ export class JobScheduler {
         return { state: row.state as SchedulerCursor["state"], nextRunAt: row.next_run_at };
     }
 
-    /** A recorded outcome, re-aimed at the cursor the index holds now. */
-    private outcomeForReplay(room: string, ruleId: string, outcome: RunOutcome): RunOutcome {
-        return { ...outcome, cursor: this.currentIndexCursor(room, ruleId) };
+    /**
+     * A recorded outcome, ready to publish: re-aimed at the cursor the index
+     * holds now, and carrying the start of the execution that produced it. The
+     * document being published onto may predate that execution's claim, in
+     * which case its `lastRunStartedAt` belongs to an older attempt — writing
+     * the result alone would pair this generation's outcome with that one's
+     * start.
+     */
+    private outcomeForReplay(room: string, ruleId: string, entry: OwedRun): RunOutcome {
+        return {
+            ...entry.outcome!,
+            cursor: this.currentIndexCursor(room, ruleId),
+            startedAt: entry.startedAt,
+        };
     }
 
     /**

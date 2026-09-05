@@ -987,6 +987,63 @@ describe("Schedules Manager status (production path)", function() {
         expect(owedRunRows(), "and nothing is left owed").to.deep.equal([]);
     });
 
+    // REQ-003/REQ-004 — `Last run` and `Result` must describe the same attempt.
+    // A result recovered onto a document that predates its own claim would
+    // otherwise inherit the previous execution's start time.
+    it("recovers an abandoned claim with its own start, not the previous execution's", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+
+        // Execution A: a real success, durably stored.
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        const a = managerSnapshot(projectDoc);
+        expect(a.result, "execution A succeeded").to.equal("success");
+        const aStartedAt = a.lastRunStartedAt;
+        const aSuccessAt = a.lastSuccessfulRunAt;
+        clearRecurrence(projectDoc);
+        await scheduler.tick();
+        const storedAfterA = storedBytes(projectRoom)!;
+
+        // Persistence fails for everything execution B does — its claim and the
+        // settlement of that claim alike — so storage never learns B exists.
+        const storeDocument = hocuspocus.storeDocument;
+        hocuspocus.storeDocument = async (document: Y.Doc) => {
+            if (document === projectDoc) throw new Error("persistence is unavailable");
+            await storeDocument(document);
+        };
+
+        const blocked = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        expect(blocked.success, "execution B is refused").to.equal(false);
+        const bStartedAt = managerSnapshot(projectDoc).lastRunStartedAt;
+        expect(bStartedAt, "B published a start of its own").to.be.a("string");
+        expect(bStartedAt, "later than A's").to.not.equal(aStartedAt);
+        expect(
+            storedBytes(projectRoom),
+            "and storage still holds only execution A",
+        ).to.deep.equal(storedAfterA);
+        const owed = owedRunRow();
+        expect(owed?.status, "B's outcome is owed").to.equal("error");
+
+        // Restart from that older durable document, keeping the ledger.
+        await scheduler.stop();
+        const restarted = new Y.Doc();
+        Y.applyUpdate(restarted, storedAfterA);
+        expect(ruleMapOf(restarted).get("lastRunStartedAt"), "storage predates B").to.equal(aStartedAt);
+        docs = buildDocs(restarted);
+        scheduler = buildScheduler();
+        await scheduler.tick();
+
+        const recovered = managerSnapshot(restarted);
+        expect(ruleMapOf(restarted).get("lastRunSeq"), "the recovered generation is B's").to.equal(owed?.run_seq);
+        expect(recovered.result, "with B's result").to.equal("failed");
+        expect(recovered.lastRunError, "and B's diagnostic").to.contain("could not record its start");
+        expect(
+            recovered.lastRunStartedAt,
+            "and B's own start — not the start of the execution before it",
+        ).to.equal(bStartedAt);
+        expect(recovered.lastSuccessfulRunAt, "A's successful completion is preserved").to.equal(aSuccessAt);
+        expect(owedRunRows(), "and nothing is left owed").to.deep.equal([]);
+    });
+
     // REQ-009 — the window between storing a `running` claim and recording the
     // marker that makes it discoverable must not exist.
     it("records its recovery marker before the claim can be stored", async function() {
