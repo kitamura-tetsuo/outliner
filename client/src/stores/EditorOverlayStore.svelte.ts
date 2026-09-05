@@ -2237,25 +2237,8 @@ export class EditorOverlayStore {
                 return this.getTextFromMultiItemSelection(sel);
             }
         } catch (error) {
-            // Log to console if an error occurs
-            if (
-                typeof window !== "undefined"
-                && (window as Window & typeof globalThis & {
-                    DEBUG_MODE?: boolean;
-                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-
-                    itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: { id?: string; }; };
-                    editorOverlayStore?: unknown;
-                }).DEBUG_MODE
-            ) {
-                logger.error({ error }, "Error in getTextFromSelection");
-                if (error instanceof Error) {
-                    // Error message is logged above
-                    // Error stack is logged above
-                }
-            }
+            // Log if an error occurs
+            logger.error({ error }, "Error in getTextFromSelection");
             // Return empty string if an error occurs
             return "";
         }
