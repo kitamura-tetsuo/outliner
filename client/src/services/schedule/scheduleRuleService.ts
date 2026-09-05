@@ -47,6 +47,16 @@ export interface ScheduleRule {
 }
 
 /**
+ * The half of a Schedule a user edits. Everything outside it — execution
+ * telemetry and the scheduler's own cursor — is written by the production
+ * scheduler alone (issue #5290).
+ */
+export type ScheduleRuleConfiguration = Pick<
+    ScheduleRule,
+    "name" | "targetTableId" | "sql" | "rrule" | "dtstart" | "timezone" | "enabled" | "catchUp"
+>;
+
+/**
  * Creates a new schedule rule with default timezone and dtstart.
  */
 export function createScheduleRule(
@@ -96,18 +106,26 @@ export function createScheduleRule(
 }
 
 /**
- * Updates an existing schedule rule.
+ * Update the *configuration* of an existing schedule rule.
  *
- * `lastRunSeq`, `schedulerState` and `schedulerNextRunAt` are deliberately not
- * writable here: they are the production scheduler's own state, mirrored into
- * the Schedule for the Schedules Manager to read (issue #5290). A client that
- * could set them could make the manager show a next run the scheduler will
- * never honour.
+ * Execution telemetry and scheduler state are deliberately not writable here
+ * (issue #5290): `lastRunStartedAt`, `lastRunStatus`, `lastRunError`,
+ * `lastRunAt`, `lastSuccessfulRunAt`, `lastRunSeq`, `schedulerState`,
+ * `schedulerNextRunAt` and `completedAt` all belong to the production
+ * scheduler, which owns their generation guard.
+ *
+ * The Schedule editor saves by spreading the whole rule it loaded, so a page
+ * that loaded before an execution finished would otherwise write that older
+ * snapshot back over the newer result — regressing `Last run`, `Result` and
+ * `Last successful run` to a superseded execution while leaving the
+ * scheduler's `lastRunSeq` untouched. Dropping these fields here makes that
+ * unrepresentable rather than merely unlikely: configuration edits and
+ * execution telemetry never travel together.
  */
 export function updateScheduleRule(
     project: Project,
     ruleId: string,
-    updates: Partial<ScheduleRule>,
+    updates: Partial<ScheduleRuleConfiguration>,
 ): void {
     const schedulesMap = project.schedules;
     const ruleMap = schedulesMap.get(ruleId) as Y.Map<ScheduleRuleValueType> | undefined;
@@ -132,14 +150,7 @@ export function updateScheduleRule(
     if (updates.timezone !== undefined) ruleMap.set("timezone", updates.timezone);
     if (updates.enabled !== undefined) ruleMap.set("enabled", updates.enabled);
     if (updates.catchUp !== undefined) ruleMap.set("catchUp", updates.catchUp);
-    if (updates.lastRunAt !== undefined) ruleMap.set("lastRunAt", updates.lastRunAt);
-    if (updates.lastRunStatus !== undefined) ruleMap.set("lastRunStatus", updates.lastRunStatus);
-    if (updates.lastRunError !== undefined) ruleMap.set("lastRunError", updates.lastRunError);
-    if (updates.lastRunStartedAt !== undefined) ruleMap.set("lastRunStartedAt", updates.lastRunStartedAt);
-    if (updates.lastSuccessfulRunAt !== undefined) ruleMap.set("lastSuccessfulRunAt", updates.lastSuccessfulRunAt);
-    if (updates.completedAt !== undefined) ruleMap.set("completedAt", updates.completedAt);
-    if (updates.validationError !== undefined) ruleMap.set("validationError", updates.validationError);
-    if (updates.skippedOccurrences !== undefined) ruleMap.set("skippedOccurrences", updates.skippedOccurrences);
+    // Scheduler-owned fields are intentionally absent — see the note above.
 }
 
 /**

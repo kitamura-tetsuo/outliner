@@ -416,6 +416,82 @@ describe("Schedules Manager status (production path)", function() {
         expect(snapshot.lastRunError).to.contain("does not exist");
     });
 
+    // REQ-006 — a Schedule the indexer drops keeps its rule map but loses its
+    // index row. The cursor it published while it was still schedulable has to
+    // go with the row, or the manager advertises an occurrence forever.
+    it("withdraws the published cursor when the scheduler drops the Schedule from its index", function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+        const published = managerSnapshot(projectDoc);
+        expect(published.next.state, "the Schedule starts out scheduled").to.equal("scheduled");
+        expect(published.next.nextRunAt).to.be.a("string");
+
+        // The user clears Start Time in the editor and saves. `dtstart` is the
+        // only thing that changes; the rule stays in the document.
+        ruleMapOf(projectDoc).set("dtstart", "");
+        storeProjectDocument(projectDoc);
+
+        expect(indexRow(), "the scheduler dropped its index row").to.be.undefined;
+        const snapshot = managerSnapshot(projectDoc);
+        expect(snapshot.next.state, "no occurrence is presented as eligible").to.not.equal("scheduled");
+        expect(snapshot.next.nextRunAt, "the spent cursor is gone from the document").to.be.undefined;
+    });
+
+    // REQ-009 — a `Run now` execution of a rule the recurrence index does not
+    // carry is still an execution that a restart has to reconcile.
+    it("recovers an interrupted manual run of a Schedule with no index row", async function() {
+        const projectDoc = reseed({ dtstart: singleOccurrenceDtstart });
+
+        // A real successful manual run first, so the preserved success below
+        // comes from the production path.
+        const first = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        expect(first.success, first.error).to.equal(true);
+        const successAt = managerSnapshot(projectDoc).lastSuccessfulRunAt;
+        expect(successAt, "a real success was recorded").to.be.a("string");
+
+        // The rule loses its recurrence, so the indexer drops it entirely. It
+        // stays manually runnable: `Run now` needs only SQL and a target.
+        ruleMapOf(projectDoc).set("dtstart", "");
+        storeProjectDocument(projectDoc);
+        expect(indexRow(), "the project has no indexed rule left").to.be.undefined;
+
+        // A second manual run whose terminal write never lands, which is what a
+        // process dying mid-execution leaves behind: the claim is durable in
+        // the document, the result never arrives. Produced by the production
+        // path rather than assembled, so the in-flight bookkeeping it leaves is
+        // the real one. The project-room connections of a manual run are, in
+        // order: reading the rule, claiming the generation, loading referenced
+        // tables, writing the result — the last is the one denied here.
+        let projectOpens = 0;
+        hocuspocus.openDirectConnection = async (room: string) => {
+            if (room === projectRoom) {
+                projectOpens += 1;
+                if (projectOpens === 4) throw new Error("process died before the result was written");
+            }
+            return { document: docs.get(room) ?? null, disconnect: function() {} };
+        };
+        await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
+        await scheduler.stop();
+
+        expect(
+            ruleMapOf(projectDoc).get("lastRunStatus"),
+            "the execution is persisted as running with no terminal result",
+        ).to.equal("running");
+        expect(
+            db.prepare(`SELECT COUNT(*) AS n FROM schedule_active_runs WHERE room = ?`).get(projectRoom),
+            "the unfinished execution is still recorded as in flight",
+        ).to.deep.equal({ n: 1 });
+
+        // A fresh scheduler resumes over the same persisted state. Its only
+        // route to this room is the in-flight record: the recurrence index
+        // holds nothing for this project.
+        scheduler = buildScheduler();
+        await scheduler.tick();
+
+        const snapshot = managerSnapshot(projectDoc);
+        expect(snapshot.result, "the interrupted manual run is reconciled").to.equal("interrupted");
+        expect(snapshot.lastSuccessfulRunAt, "no success is disturbed by recovery").to.equal(successAt);
+    });
+
     // REQ-006 / REQ-008 — the manager rebuilds its rows on every shared-document
     // change, so *every* intermediate state it can render is asserted, not only
     // the state left behind once the tick has finished. A terminal result must

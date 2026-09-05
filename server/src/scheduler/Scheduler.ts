@@ -328,13 +328,19 @@ export class JobScheduler {
 
         if (!this.roomsAwaitingRunReconciliation) {
             try {
-                // Every rule the scheduler can execute has an index row, so the
-                // index is the complete set of rooms that can hold a stale
-                // marker. A failure here leaves the list unset so that the next
+                // Runs that claimed a generation without writing a terminal
+                // result are the direct evidence of an interrupted execution,
+                // and the only evidence for a `Run now` of a rule the
+                // recurrence index does not carry (no recurrence, or one the
+                // indexer rejected). The recurrence index is swept as well, so
+                // a marker written before this bookkeeping existed is still
+                // recovered. A failure here leaves the list unset so the next
                 // tick enumerates again rather than skipping recovery.
-                const rows = this.sqliteDb.prepare(`SELECT DISTINCT room FROM schedule_index`).all() as {
-                    room: string;
-                }[];
+                const rows = this.sqliteDb.prepare(`
+                    SELECT room FROM schedule_active_runs
+                    UNION
+                    SELECT room FROM schedule_index
+                `).all() as { room: string; }[];
                 this.roomsAwaitingRunReconciliation = rows.map(row => row.room);
             } catch (err) {
                 logger.error({ err }, "JobScheduler could not list rooms to reconcile interrupted runs");
@@ -354,6 +360,27 @@ export class JobScheduler {
 
         this.roomsAwaitingRunReconciliation = stillPending;
         if (stillPending.length === 0) this.reconciledInterruptedRuns = true;
+    }
+
+    /** Remember that an execution is in flight, so a restart can find it again. */
+    private recordActiveRun(room: string, ruleId: string, runSeq: number): void {
+        if (!this.sqliteDb) return;
+        this.sqliteDb.prepare(`
+            INSERT INTO schedule_active_runs (room, rule_id, run_seq) VALUES (?, ?, ?)
+            ON CONFLICT(room, rule_id) DO UPDATE SET run_seq = excluded.run_seq
+        `).run(room, ruleId, runSeq);
+    }
+
+    /**
+     * Forget an execution that reached a terminal result. Scoped to its own
+     * generation so a slow finisher cannot erase the marker of the newer
+     * execution that superseded it.
+     */
+    private clearActiveRun(room: string, ruleId: string, runSeq: number): void {
+        if (!this.sqliteDb) return;
+        this.sqliteDb.prepare(`
+            DELETE FROM schedule_active_runs WHERE room = ? AND rule_id = ? AND run_seq = ?
+        `).run(room, ruleId, runSeq);
     }
 
     /** Sweep one room. Throws when the room could not be reconciled, so the caller can retry it. */
@@ -381,6 +408,10 @@ export class JobScheduler {
             if (interrupted.length > 0) {
                 logger.warn({ room, ruleIds: interrupted }, "Reconciled interrupted schedule executions");
             }
+            // Every execution this room could still be owing has now reached a
+            // terminal state, so the in-flight markers are spent. Cleared only
+            // after the document write succeeds, so a retry still finds them.
+            this.sqliteDb?.prepare(`DELETE FROM schedule_active_runs WHERE room = ?`).run(room);
         } finally {
             connection.disconnect();
         }
@@ -705,6 +736,9 @@ export class JobScheduler {
                 ruleItem.set("lastRunStatus", "running");
                 ruleItem.delete("lastRunError");
             }, "server-scheduler");
+            // Recorded after the claim is durable in the document, so recovery
+            // never chases a marker the document does not carry.
+            this.recordActiveRun(room, ruleId, runSeq);
             return runSeq;
         } finally {
             connection.disconnect();
@@ -756,6 +790,9 @@ export class JobScheduler {
                     }
                     if (cursor) applySchedulerCursor(ruleItem, cursor);
                 }, SCHEDULER_ORIGIN);
+                // This execution is no longer in flight, so a later restart has
+                // nothing to recover for it.
+                this.clearActiveRun(room, ruleId, runSeq);
             } finally {
                 connection.disconnect();
             }

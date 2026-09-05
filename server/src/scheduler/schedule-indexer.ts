@@ -51,6 +51,20 @@ export function initializeScheduleIndex(db: BetterSqlite3.Database) {
             PRIMARY KEY (room, rule_id)
         )
     `).run();
+
+    // Executions that have claimed a telemetry generation but not yet written
+    // a terminal result. A row that outlives its process is how the restarted
+    // scheduler finds the Schedule to reconcile — including a `Run now`
+    // execution of a rule that has no recurrence index row at all, which the
+    // recurrence index could never point at (issue #5290 REQ-009).
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS schedule_active_runs (
+            room     TEXT,
+            rule_id  TEXT,
+            run_seq  INTEGER,
+            PRIMARY KEY (room, rule_id)
+        )
+    `).run();
 }
 
 export function computeNextRunAt(
@@ -245,6 +259,17 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
             const sqlStr = ruleObj.get("sql") as string;
 
             if (!rruleStr || !dtstartStr || !timezoneStr || !sqlStr) {
+                // The rule is missing something the scheduler needs, so its
+                // index row is dropped below and it will never run. Whatever
+                // cursor it published while it was still complete has to be
+                // withdrawn with it: leaving `active` and the old occurrence
+                // in the document would keep the manager advertising a next
+                // run nothing will ever honour (issue #5290 REQ-006).
+                const state = !sqlStr ? "orphaned" : "invalid";
+                document.transact(() => {
+                    applySchedulerCursor(ruleObj, { state, nextRunAt: null });
+                    applyLegacyTelemetryMigration(ruleObj);
+                }, SCHEDULER_ORIGIN);
                 return;
             }
 

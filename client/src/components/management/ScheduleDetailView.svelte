@@ -48,6 +48,21 @@
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
 
+    // Yjs -> UI mirror (AGENTS.md §11). The project loads asynchronously, so
+    // the subscription is taken once it exists rather than at mount: opening
+    // this page directly used to leave it with no observer at all, freezing
+    // the execution status it shows at whatever the first load found
+    // (issue #5290 REQ-008).
+    let observedSchedules: NonNullable<typeof store.project>["schedules"] | undefined = undefined;
+    const schedulesObserver = () => loadRuleMetadata();
+
+    function observeSchedules(schedules: NonNullable<typeof store.project>["schedules"] | undefined) {
+        if (observedSchedules === schedules) return;
+        observedSchedules?.unobserveDeep(schedulesObserver);
+        observedSchedules = schedules;
+        observedSchedules?.observeDeep(schedulesObserver);
+    }
+
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
     // callbacks below from clobbering it once Firebase resolves to no user.
@@ -137,6 +152,7 @@
                 return;
             }
 
+            observeSchedules(store.project.schedules);
             loadRule();
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
@@ -158,12 +174,9 @@
     onMount(() => {
         isAuthenticated = userManager.getCurrentUser() !== null;
 
-        const observer = () => loadRuleMetadata();
-        store.project?.schedules.observeDeep(observer);
-
         return () => {
             isDestroyed = true;
-            store.project?.schedules.unobserveDeep(observer);
+            observeSchedules(undefined);
             projectHandle?.release();
             projectHandle = undefined;
         };

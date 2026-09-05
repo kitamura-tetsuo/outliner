@@ -177,7 +177,7 @@ function handleSave() {
 
     <div class="mb-4">
         <label class="block text-sm font-medium mb-1" for="name-input">Rule Name (optional)</label>
-        <input id="name-input" type="text" class="w-full p-2 border rounded" bind:value={ruleName} placeholder="Custom rule name" />
+        <input id="name-input" data-testid="schedule-rule-name-input" type="text" class="w-full p-2 border rounded" bind:value={ruleName} placeholder="Custom rule name" />
     </div>
 
     <div class="mb-4">
@@ -294,7 +294,7 @@ function handleSave() {
 
     <div class="flex justify-end space-x-2">
         <button class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50" onclick={onCancel}>Cancel</button>
-        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 min-w-[5rem]" onclick={handleSave}>
+        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 min-w-[5rem]" data-testid="schedule-rule-save" onclick={handleSave}>
             {#if isSaved}
                 Saved
             {:else}
