@@ -1,7 +1,7 @@
 import { Project } from "$shared/app-schema";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { createScheduleRule, type ScheduleRule, updateScheduleRule } from "../schedule/scheduleRuleService";
+import { createScheduleRule, type ScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid, getGridColumnOrder, getGridHandles, getGridSourceTableId, listGrids } from "./gridDocs";
 import { duplicateObjects, previewObjectDuplication } from "./objectDuplication";
 import { addRecord, createTable, getTableHandles, listTables } from "./tableDocs";
@@ -341,12 +341,16 @@ describe("dependency-aware Schedule duplication", () => {
     it("does not copy runtime/execution state onto the duplicated Schedule", async () => {
         const source = new Y.Doc();
         const occurrences = table(source, "Occurrences", "occurrences");
+        // Scheduler-owned state, seeded at creation: `updateScheduleRule` only
+        // carries a Schedule's configuration, never its execution telemetry
+        // (issue #5290).
         const ruleId = schedule(source, occurrences, "INSERT INTO occurrences (id) SELECT 1 RETURNING *", {
             lastRunAt: "2026-01-01T00:00:00.000Z",
             lastRunStatus: "ok",
             completedAt: "2026-01-01T00:05:00.000Z",
+            skippedOccurrences: 3,
+            validationError: "bad sql",
         });
-        updateScheduleRule(Project.fromDoc(source), ruleId, { skippedOccurrences: 3, validationError: "bad sql" });
 
         const result = await duplicateObjects(source, source, { type: "schedule", id: ruleId }, "item-only");
         const copied = scheduleRuleMap(source, result.primaryId);

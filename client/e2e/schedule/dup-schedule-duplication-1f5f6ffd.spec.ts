@@ -62,11 +62,11 @@ test.describe("Schedule duplication", () => {
             .filter({ has: page.locator(".type-badge.schedule") });
         await expect(copyRow).toBeVisible({ timeout: 15000 });
 
-        // The original rule is untouched and still lists alongside its copy
-        // (the list itself shows no name, only rrule/status/table references).
+        // The original rule is untouched and still lists alongside its copy:
+        // one Schedules Manager row each.
         await page.goto(`/${projectSegment}/-/schedules`);
         const list = page.getByTestId("project-schedule-list");
         await expect(list).toBeVisible({ timeout: 30000 });
-        await expect(list.locator(".schedule-rule-list li")).toHaveCount(2);
+        await expect(list.locator("[data-testid='schedule-row']")).toHaveCount(2);
     });
 });

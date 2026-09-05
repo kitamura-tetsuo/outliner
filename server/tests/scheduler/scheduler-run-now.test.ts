@@ -20,20 +20,27 @@ describe("Job Scheduler - runRuleNow", () => {
         };
 
         sqliteDb = {
-            prepare: () => ({
+            // `get` answers the query it is given rather than one canned row
+            // for everything: this double models only the recurrence index, so
+            // anything else — the document store the scheduler reads to verify
+            // durability, for one — must come back empty like a real database.
+            prepare: (sql: string) => ({
                 all: () => [],
-                run: () => {},
-                get: () => ({
-                    room: "projects/proj1",
-                    rule_id: "rule1",
-                    target_table_id: "table1",
-                    timezone: "UTC",
-                    rrule: "",
-                    dtstart: "",
-                    next_run_at: "2023-01-01T00:00:00.000Z",
-                    occurrence_seq: 1,
-                    state: "active",
-                }),
+                run: () => ({ changes: 1, lastInsertRowid: 0 }),
+                get: () =>
+                    /FROM schedule_index/.test(sql)
+                        ? {
+                            room: "projects/proj1",
+                            rule_id: "rule1",
+                            target_table_id: "table1",
+                            timezone: "UTC",
+                            rrule: "",
+                            dtstart: "",
+                            next_run_at: "2023-01-01T00:00:00.000Z",
+                            occurrence_seq: 1,
+                            state: "active",
+                        }
+                        : undefined,
             }),
         };
 
@@ -134,18 +141,21 @@ describe("Job Scheduler - runRuleNow", () => {
             statements.push(sql);
             return {
                 all: () => [],
-                run: () => {},
-                get: () => ({
-                    room: "projects/proj1",
-                    rule_id: "rule1",
-                    target_table_id: "table1",
-                    timezone: "UTC",
-                    rrule: "FREQ=DAILY",
-                    dtstart: "2023-01-01T00:00:00.000Z",
-                    next_run_at: "2023-01-02T00:00:00.000Z",
-                    occurrence_seq: 1,
-                    state: "active",
-                }),
+                run: () => ({ changes: 1, lastInsertRowid: 0 }),
+                get: () =>
+                    /FROM schedule_index/.test(sql)
+                        ? {
+                            room: "projects/proj1",
+                            rule_id: "rule1",
+                            target_table_id: "table1",
+                            timezone: "UTC",
+                            rrule: "FREQ=DAILY",
+                            dtstart: "2023-01-01T00:00:00.000Z",
+                            next_run_at: "2023-01-02T00:00:00.000Z",
+                            occurrence_seq: 1,
+                            state: "active",
+                        }
+                        : undefined,
             };
         };
         sinon.stub((scheduler as any).executor, "executeJob").resolves({ success: true, rows: [] });

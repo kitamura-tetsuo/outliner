@@ -66,6 +66,13 @@ const FIELDS = [
     "lastRunAt",
     "lastRunStatus",
     "lastRunError",
+    // Execution telemetry the Schedules Manager reads (issue #5290):
+    // `lastRunStartedAt` is when the most recent attempt began and
+    // `lastSuccessfulRunAt` when the most recent success completed. The older
+    // `lastRunAt` above stays what it always was — a completion-time
+    // observation for the attempt regardless of its outcome.
+    "lastRunStartedAt",
+    "lastSuccessfulRunAt",
     "completedAt",
     "validationError",
     "skippedOccurrences",
@@ -312,6 +319,8 @@ export class OutlinerScheduleService {
                         "lastRunAt",
                         "lastRunStatus",
                         "lastRunError",
+                        "lastRunStartedAt",
+                        "lastSuccessfulRunAt",
                         "completedAt",
                         "validationError",
                         "skippedOccurrences",
