@@ -48,7 +48,7 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ### User Authentication
 
-The login status indicator located in the top right corner of the navigation bar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
+The login status indicator located in the top right corner of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
 
 ### Sidebar Navigation
 
@@ -57,7 +57,7 @@ Click the sidebar toggle button (hamburger menu) in the top-left corner to acces
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the **Add new page** button in the section header.
 - **Tables:** View and manage database tables.
-- **Object Manager:** Manage Grids, Tables, Calendars, and Schedules centrally.
+- **Object Manager:** Manage Grids, Tables, and Schedules centrally.
 - **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **Add new scheduled SQL** button in the section header.
 - **Settings:** Access project configurations.
 - **Docs:** Quick link to the documentation.
