@@ -1,0 +1,32 @@
+id: FTR-4b7e2a91
+title: Schedules Manager with authoritative execution status
+title-ja: 実行状態を表示するスケジュールマネージャー
+description: The project Schedule list at /:project/-/schedules is a compact management table exposing Enabled, Name, Target, Cadence, Last run, Result, Last successful run, Next run and row actions. Last run is the instant an execution attempt began, Last successful run the completion of the most recent success, and Next run the production scheduler's own recurrence cursor rather than a client-side rrule calculation.
+category: schedule
+status: implemented
+acceptance:
+- A later failure keeps the previous Last successful run untouched
+- A successful execution sets Result to Success and updates Last successful run
+- An enabled Schedule that never ran shows Never run with the scheduler's indexed occurrence as Next run
+- An execution interrupted by a scheduler restart is reconciled to a terminal non-success result
+- An overdue or catch-up-adjusted cursor is displayed as the scheduler holds it
+- Delayed telemetry from an older execution never overwrites a newer one
+- Disabling a Schedule withdraws its next occurrence; re-enabling waits for the scheduler instead of guessing
+- Pre-existing completion-style lastRunAt is never shown as an execution start time
+- Read-only viewers can read every status column but cannot enable, run or delete
+- Run now updates the execution telemetry without moving the recurrence cursor
+- Starting an execution publishes its start time and a Running result before completion
+components:
+- client/src/components/management/ScheduleDetailView.svelte
+- client/src/components/management/ScheduleListView.svelte
+- client/src/components/schedule/ScheduleRuleList.svelte
+- server/src/scheduler/Scheduler.ts
+- server/src/scheduler/schedule-indexer.ts
+- server/src/scheduler/schedule-status-publisher.ts
+- shared/src/services/scheduleStatus.ts
+tests:
+- client/e2e/schedule/sch-schedules-manager-status-4b7e2a91.spec.ts
+- client/src/components/schedule/ScheduleRuleList.test.ts
+- client/src/routes/[project]/-/schedules/page.svelte.test.ts
+- server/tests/scheduler/schedule-manager-status.test.ts
+- shared/tests/services/scheduleStatus.test.ts

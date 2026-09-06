@@ -199,6 +199,24 @@ export function demoContentJa(): DemoLocaleContent {
                         text:
                             "Edit / Delete の左にある Run now を押すと、次回の実行を待たずにルールの SQL をその場で実行できます。定期実行のスケジュールは変わらず、ルールが無効でも実行できます。",
                     },
+                    {
+                        text:
+                            "スケジュール一覧は管理テーブルです。1行が1ルールで、有効/無効スイッチ、対象テーブル、周期、そして実行状態が並びます。",
+                        children: [
+                            {
+                                text:
+                                    "Last run は直近の実行が「開始」した時刻で、Result はその同じ実行の結果（Never run / Running / Success / Failed / Interrupted）を表します。",
+                            },
+                            {
+                                text:
+                                    "Last successful run は直近に成功した実行が完了した時刻です。後の実行が失敗しても、最後に成功した時刻は失われません。",
+                            },
+                            {
+                                text:
+                                    "Next run はブラウザ側の推測ではなく、サーバーのスケジューラが保持する次回実行時刻そのものです。無効・終了・不正なルールでは、架空の時刻ではなく理由が表示されます。",
+                            },
+                        ],
+                    },
                 ],
             },
             {
