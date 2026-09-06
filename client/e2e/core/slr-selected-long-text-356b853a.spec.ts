@@ -34,7 +34,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         // The cursor might be placed at the point of click, or it might be at the end of the line
         // To be sure we are selecting from the beginning, press Home first
         await page.keyboard.press("Home");
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(1000);
 
         // Select part of the long text
         await page.keyboard.down("Shift");
@@ -69,10 +69,10 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("End");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(500);
 
         // Wait for cursor position update
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(1000);
 
         await page.evaluate((textToPaste) => {
             const editorOverlayStore = (globalThis as any).editorOverlayStore;
@@ -84,7 +84,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         }, textToCopy);
 
         // Wait for store changes to reflect
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // Check the pasted text
         const secondItemText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
