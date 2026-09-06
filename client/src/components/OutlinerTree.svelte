@@ -2456,10 +2456,10 @@
                                 ariaPosInSet={ariaTreeMeta.get(displayItems[0].model.id)?.posInSet}
                                 index={0}
                                 on:toggle-collapse={handleToggleCollapse}
-                                on:indent={(e: CustomEvent<{ itemId: string }>) => handleIndent(e.detail?.itemId)}
-                                on:unindent={(e: CustomEvent<{ itemId: string }>) => handleUnindent(e.detail?.itemId)}
+                                on:indent={(e) => handleIndent(e.detail?.itemId)}
+                                on:unindent={(e) => handleUnindent(e.detail?.itemId)}
                                 on:navigate-to-item={handleNavigateToItem}
-                                on:add-sibling={(e: CustomEvent<{ itemId: string }>) => handleAddSibling(e.detail?.itemId)}
+                                on:add-sibling={(e) => handleAddSibling(e.detail?.itemId)}
                                 on:drag-start={handleItemDragStart}
                                 on:drag={handleItemDrag}
                                 on:drop={handleItemDrop}
@@ -2489,10 +2489,10 @@
                                     ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
                                     {index}
                                     on:toggle-collapse={handleToggleCollapse}
-                                    on:indent={(e: CustomEvent<{ itemId: string }>) => handleIndent(e.detail?.itemId)}
-                                    on:unindent={(e: CustomEvent<{ itemId: string }>) => handleUnindent(e.detail?.itemId)}
+                                    on:indent={(e) => handleIndent(e.detail?.itemId)}
+                                    on:unindent={(e) => handleUnindent(e.detail?.itemId)}
                                     on:navigate-to-item={handleNavigateToItem}
-                                    on:add-sibling={(e: CustomEvent<{ itemId: string }>) => handleAddSibling(e.detail?.itemId)}
+                                    on:add-sibling={(e) => handleAddSibling(e.detail?.itemId)}
                                     on:drag-start={handleItemDragStart}
                                     on:drag={handleItemDrag}
                                     on:drop={handleItemDrop}
