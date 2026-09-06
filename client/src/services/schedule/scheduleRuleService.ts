@@ -1,6 +1,7 @@
 import type { Project } from "$shared/app-schema";
 import { EXPLICIT_SELECT_ALIAS_POLICY_VERSION } from "$shared/services/explicitSelectAlias";
 import { validateScheduleRuleExplicitAliases } from "$shared/services/scheduleRuleValidation";
+import type { ScheduleRunStatusValue } from "$shared/services/scheduleStatus";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
@@ -22,13 +23,38 @@ export interface ScheduleRule {
     timezone: string;
     enabled: boolean;
     catchUp: boolean;
+    /**
+     * Completion-time observation kept from before the Schedules Manager
+     * (issue #5290). It is written after every execution, successful or not,
+     * and is never an execution-start time.
+     */
     lastRunAt?: string;
-    lastRunStatus?: "ok" | "error";
+    lastRunStatus?: ScheduleRunStatusValue;
     lastRunError?: string;
+    /** Wall clock at which the most recent execution attempt began. */
+    lastRunStartedAt?: string;
+    /** Completion instant of the most recent execution that succeeded. */
+    lastSuccessfulRunAt?: string;
+    /** Execution generation, bumped by the scheduler on every attempt. */
+    lastRunSeq?: number;
+    /** The scheduler index state the server mirrors into the rule. */
+    schedulerState?: string;
+    /** The scheduler's authoritative next occurrence, when it has one. */
+    schedulerNextRunAt?: string;
     completedAt?: string;
     validationError?: string;
     skippedOccurrences?: number;
 }
+
+/**
+ * The half of a Schedule a user edits. Everything outside it — execution
+ * telemetry and the scheduler's own cursor — is written by the production
+ * scheduler alone (issue #5290).
+ */
+export type ScheduleRuleConfiguration = Pick<
+    ScheduleRule,
+    "name" | "targetTableId" | "sql" | "rrule" | "dtstart" | "timezone" | "enabled" | "catchUp"
+>;
 
 /**
  * Creates a new schedule rule with default timezone and dtstart.
@@ -65,6 +91,11 @@ export function createScheduleRule(
     if (options.lastRunAt) ruleMap.set("lastRunAt", options.lastRunAt);
     if (options.lastRunStatus) ruleMap.set("lastRunStatus", options.lastRunStatus);
     if (options.lastRunError) ruleMap.set("lastRunError", options.lastRunError);
+    if (options.lastRunStartedAt) ruleMap.set("lastRunStartedAt", options.lastRunStartedAt);
+    if (options.lastSuccessfulRunAt) ruleMap.set("lastSuccessfulRunAt", options.lastSuccessfulRunAt);
+    if (options.lastRunSeq !== undefined) ruleMap.set("lastRunSeq", options.lastRunSeq);
+    if (options.schedulerState) ruleMap.set("schedulerState", options.schedulerState);
+    if (options.schedulerNextRunAt) ruleMap.set("schedulerNextRunAt", options.schedulerNextRunAt);
     if (options.completedAt) ruleMap.set("completedAt", options.completedAt);
     if (options.validationError) ruleMap.set("validationError", options.validationError);
     if (options.skippedOccurrences) ruleMap.set("skippedOccurrences", options.skippedOccurrences);
@@ -75,12 +106,26 @@ export function createScheduleRule(
 }
 
 /**
- * Updates an existing schedule rule.
+ * Update the *configuration* of an existing schedule rule.
+ *
+ * Execution telemetry and scheduler state are deliberately not writable here
+ * (issue #5290): `lastRunStartedAt`, `lastRunStatus`, `lastRunError`,
+ * `lastRunAt`, `lastSuccessfulRunAt`, `lastRunSeq`, `schedulerState`,
+ * `schedulerNextRunAt` and `completedAt` all belong to the production
+ * scheduler, which owns their generation guard.
+ *
+ * The Schedule editor saves by spreading the whole rule it loaded, so a page
+ * that loaded before an execution finished would otherwise write that older
+ * snapshot back over the newer result — regressing `Last run`, `Result` and
+ * `Last successful run` to a superseded execution while leaving the
+ * scheduler's `lastRunSeq` untouched. Dropping these fields here makes that
+ * unrepresentable rather than merely unlikely: configuration edits and
+ * execution telemetry never travel together.
  */
 export function updateScheduleRule(
     project: Project,
     ruleId: string,
-    updates: Partial<ScheduleRule>,
+    updates: Partial<ScheduleRuleConfiguration>,
 ): void {
     const schedulesMap = project.schedules;
     const ruleMap = schedulesMap.get(ruleId) as Y.Map<ScheduleRuleValueType> | undefined;
@@ -105,12 +150,7 @@ export function updateScheduleRule(
     if (updates.timezone !== undefined) ruleMap.set("timezone", updates.timezone);
     if (updates.enabled !== undefined) ruleMap.set("enabled", updates.enabled);
     if (updates.catchUp !== undefined) ruleMap.set("catchUp", updates.catchUp);
-    if (updates.lastRunAt !== undefined) ruleMap.set("lastRunAt", updates.lastRunAt);
-    if (updates.lastRunStatus !== undefined) ruleMap.set("lastRunStatus", updates.lastRunStatus);
-    if (updates.lastRunError !== undefined) ruleMap.set("lastRunError", updates.lastRunError);
-    if (updates.completedAt !== undefined) ruleMap.set("completedAt", updates.completedAt);
-    if (updates.validationError !== undefined) ruleMap.set("validationError", updates.validationError);
-    if (updates.skippedOccurrences !== undefined) ruleMap.set("skippedOccurrences", updates.skippedOccurrences);
+    // Scheduler-owned fields are intentionally absent — see the note above.
 }
 
 /**
@@ -135,8 +175,13 @@ export function getScheduleRule(project: Project, ruleId: string): (ScheduleRule
         enabled: ruleMap.get("enabled") as boolean,
         catchUp: ruleMap.get("catchUp") as boolean,
         lastRunAt: ruleMap.get("lastRunAt") as string | undefined,
-        lastRunStatus: ruleMap.get("lastRunStatus") as "ok" | "error" | undefined,
+        lastRunStatus: ruleMap.get("lastRunStatus") as ScheduleRunStatusValue | undefined,
         lastRunError: ruleMap.get("lastRunError") as string | undefined,
+        lastRunStartedAt: ruleMap.get("lastRunStartedAt") as string | undefined,
+        lastSuccessfulRunAt: ruleMap.get("lastSuccessfulRunAt") as string | undefined,
+        lastRunSeq: ruleMap.get("lastRunSeq") as number | undefined,
+        schedulerState: ruleMap.get("schedulerState") as string | undefined,
+        schedulerNextRunAt: ruleMap.get("schedulerNextRunAt") as string | undefined,
         completedAt: ruleMap.get("completedAt") as string | undefined,
         validationError: ruleMap.get("validationError") as string | undefined,
         skippedOccurrences: ruleMap.get("skippedOccurrences") as number | undefined,

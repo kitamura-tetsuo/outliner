@@ -116,4 +116,60 @@ describe("scheduleRuleService", () => {
             { ruleId, ruleName: "Untitled Schedule", kind: "write-target", enabled: true },
         ]);
     });
+
+    // Execution telemetry belongs to the production scheduler (issue #5290).
+    // The Schedule editor saves by spreading the whole rule it is holding, so
+    // this is the boundary that has to refuse the scheduler-owned half of that
+    // spread — otherwise a snapshot loaded before an execution finished writes
+    // itself back over the newer result.
+    it("writes a Schedule's configuration without touching its execution telemetry", () => {
+        const project = Project.createInstance("Test Project");
+        const ruleId = createScheduleRule(project, {
+            name: "Nightly audit",
+            targetTableId: "table1",
+            sql: "INSERT INTO table1 (id) VALUES (1) RETURNING *",
+            rrule: "FREQ=DAILY",
+        });
+        const ruleMap = project.schedules.get(ruleId)!;
+
+        // Execution B, as the scheduler recorded it.
+        ruleMap.set("lastRunSeq", 2);
+        ruleMap.set("lastRunStartedAt", "2026-09-02T10:00:00.000Z");
+        ruleMap.set("lastRunStatus", "ok");
+        ruleMap.set("lastRunAt", "2026-09-02T10:00:20.000Z");
+        ruleMap.set("lastSuccessfulRunAt", "2026-09-02T10:00:20.000Z");
+        ruleMap.set("schedulerState", "active");
+        ruleMap.set("schedulerNextRunAt", "2026-09-03T00:00:00.000Z");
+
+        // A save that spreads a snapshot taken while execution A was current.
+        updateScheduleRule(
+            project,
+            ruleId,
+            {
+                name: "Renamed audit",
+                lastRunSeq: 1,
+                lastRunStartedAt: "2026-09-01T10:00:00.000Z",
+                lastRunStatus: "ok",
+                lastRunAt: "2026-09-01T10:00:20.000Z",
+                lastSuccessfulRunAt: "2026-09-01T10:00:20.000Z",
+                schedulerState: "invalid",
+                schedulerNextRunAt: "2026-09-01T00:00:00.000Z",
+                completedAt: "2026-09-01T10:00:20.000Z",
+                validationError: "stale",
+                skippedOccurrences: 7,
+                // Typed as configuration; the stale half is what a spread carries.
+            } as Parameters<typeof updateScheduleRule>[2],
+        );
+
+        expect(ruleMap.get("name")).toBe("Renamed audit");
+        expect(ruleMap.get("lastRunSeq")).toBe(2);
+        expect(ruleMap.get("lastRunStartedAt")).toBe("2026-09-02T10:00:00.000Z");
+        expect(ruleMap.get("lastRunAt")).toBe("2026-09-02T10:00:20.000Z");
+        expect(ruleMap.get("lastSuccessfulRunAt")).toBe("2026-09-02T10:00:20.000Z");
+        expect(ruleMap.get("schedulerState")).toBe("active");
+        expect(ruleMap.get("schedulerNextRunAt")).toBe("2026-09-03T00:00:00.000Z");
+        expect(ruleMap.get("completedAt")).toBeUndefined();
+        expect(ruleMap.get("validationError")).toBeUndefined();
+        expect(ruleMap.get("skippedOccurrences")).toBeUndefined();
+    });
 });

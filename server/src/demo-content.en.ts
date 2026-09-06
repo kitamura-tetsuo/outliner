@@ -166,6 +166,24 @@ export function demoContentEn(): DemoLocaleContent {
                         text:
                             "Run now next to Edit and Delete runs a rule's SQL immediately, so you can try it out without waiting for the next occurrence. It leaves the recurrence untouched and works even while the rule is disabled.",
                     },
+                    {
+                        text:
+                            "The Schedules section is a management table: one row per rule with its Enabled switch, target tables, cadence, and its operational status.",
+                        children: [
+                            {
+                                text:
+                                    "Last run is when the most recent execution attempt started, and Result describes that same execution: Never run, Running, Success, Failed or Interrupted.",
+                            },
+                            {
+                                text:
+                                    "Last successful run is the completion time of the most recent execution that succeeded, so a later failure never hides when the rule last worked.",
+                            },
+                            {
+                                text:
+                                    "Next run is the server scheduler's own recurrence cursor, not a guess made in the browser: a disabled, finished or invalid rule shows why it has no next occurrence instead of a made-up time.",
+                            },
+                        ],
+                    },
                 ],
             },
             {
