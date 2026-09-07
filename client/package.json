@@ -63,7 +63,7 @@
         "@types/node": "^26.4.1",
         "@types/ws": "^8.18.1",
         "@vitest/coverage-v8": "^4.1.11",
-        "@vitest/ui": "^4.1.8",
+        "@vitest/ui": "^5.0.0",
         "chokidar-cli": "^3.0.0",
         "concurrently": "^10.0.5",
         "dprint": "^0.57.1",
