@@ -277,9 +277,9 @@ Click a numbered row header or a column header; Shift-click extends a contiguous
 
 A table, a grid and a schedule are three independent things, and each has its own page.
 
-- **Table** (`/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
-- **Grid** (`/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
-- **Schedule** (`/schedules/<project>`, one rule at `/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
+- **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
+- **Grid** (`/-/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
+- **Schedule** (`/-/schedules/<project>`, one rule at `/-/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
 
 ### Collaboration
 
