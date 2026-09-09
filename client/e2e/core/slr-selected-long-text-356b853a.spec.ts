@@ -71,10 +71,13 @@ test.describe("SLR-356b853a: Long text selection range", () => {
             // Fallback to keyboard navigation if click fails
             await page.keyboard.press("ArrowDown");
             await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(500);
         }
         await TestHelpers.waitForCursorVisible(page);
 
+        await page.keyboard.press("End");
+        await page.waitForTimeout(500);
         await page.keyboard.press("End");
         await page.waitForTimeout(1000);
 
