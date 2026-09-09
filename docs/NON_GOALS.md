@@ -53,6 +53,16 @@ engine was removed together with those features.
 
 Outliner does not support deleting individual pages. Pages are append-only and permanent once created. This is a deliberate design choice because deleting a page is destructive and interacts deeply with backlinks, the graph view, and search indexing. Instead of deleting pages, users can rename them to indicate they are no longer in use (e.g., prefixing with `[Archived]`), or simply remove all content from the page. Whole-project deletion is supported (`docs/client-features/del-project-deletion-page-c8da7a47.yaml`).
 
+## Undo and Redo
+
+### UND-NON Application-specific semantic tree Undo/Redo
+
+Outliner does not currently define application-specific semantic Undo/Redo behavior for collaborative tree edits. Structural Undo/Redo should remain as close as practical to the semantics provided by the underlying CRDT and tree libraries unless a specific behavior is defined elsewhere.
+
+In particular, Outliner does not guarantee preservation, automatic reparenting, or node-identity continuity for changes made by another collaborator when an earlier structural operation is undone or redone. Introducing a separate stable semantic node identity, dependency tracking, causal reconstruction, or similar application-level machinery solely to provide stronger structural Undo/Redo semantics is intentionally out of scope.
+
+This may be reconsidered if real-world usage shows that these cases are frequent or materially harmful. Until then, the project should prefer the underlying libraries' default structural Undo/Redo behavior over adding an Outliner-specific semantic Undo model.
+
 ## Fluid Service
 
 ### FLD-NON Ability to retrieve FluidClient
