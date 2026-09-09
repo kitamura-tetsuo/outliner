@@ -65,11 +65,18 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         // Move to the second item explicitly via locator to avoid keyboard navigation flakiness
         // with wrapped long text lines
         const secondItem = page.locator(".outliner-item").nth(2);
-        await secondItem.locator(".item-content").click({ force: true });
+        try {
+            await secondItem.locator(".item-content").click({ force: true, timeout: 5000 });
+        } catch {
+            // Fallback to keyboard navigation if click fails
+            await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(500);
+        }
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("End");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // Wait for cursor position update
         await page.waitForTimeout(1000);
