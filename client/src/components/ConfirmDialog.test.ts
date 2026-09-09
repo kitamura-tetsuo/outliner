@@ -1,6 +1,7 @@
-import { fireEvent, render } from "@testing-library/svelte";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ConfirmDialog from "./ConfirmDialog.svelte";
+import ConfirmDialogWrapper from "./ConfirmDialogWrapper.test.svelte";
 
 describe("ConfirmDialog", () => {
     let onConfirm: () => void;
@@ -11,6 +12,10 @@ describe("ConfirmDialog", () => {
         onCancel = vi.fn();
         HTMLDialogElement.prototype.showModal = vi.fn();
         HTMLDialogElement.prototype.close = vi.fn();
+    });
+
+    afterEach(() => {
+        cleanup();
     });
 
     it("confirm invokes onConfirm exactly once and onCancel zero times", async () => {
@@ -42,8 +47,30 @@ describe("ConfirmDialog", () => {
     });
 
     it("isOpen updates when buttons are clicked (wrapper test)", async () => {
-        // Skipping actual binding test in unit tests since typical testing library svelte tests don't easily test bound props without wrapper components. The previous tests verify component behavior.
-        expect(1).toBe(1);
+        const { getByText, getByTestId, unmount } = render(ConfirmDialogWrapper, {
+            isOpen: true,
+            onConfirm: vi.fn(),
+            onCancel: vi.fn(),
+        });
+
+        const cancelButton = getByText("Cancel", { selector: "button" });
+        await fireEvent.click(cancelButton);
+
+        expect(getByTestId("is-open").textContent).toBe("false");
+
+        unmount();
+
+        // Re-render and test confirm button
+        const { getByText: getByText2, getByTestId: getByTestId2 } = render(ConfirmDialogWrapper, {
+            isOpen: true,
+            onConfirm: vi.fn(),
+            onCancel: vi.fn(),
+        });
+
+        const confirmButton = getByText2("Confirm", { selector: "button" });
+        await fireEvent.click(confirmButton);
+
+        expect(getByTestId2("is-open").textContent).toBe("false");
     });
 
     it("Escape behaves as cancel", async () => {
