@@ -6,7 +6,8 @@ import cors from "cors";
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import http from "http";
-import { WebSocketServer } from "ws";
+import WebSocket, { WebSocketServer } from "ws";
+import { Socket } from "net";
 import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
@@ -231,7 +232,7 @@ export async function startServer(
 
     // Detailed Health/Debug endpoint
     app.get("/health", (req: Request, res: Response) => {
-        const response: any = {
+        const response: Record<string, unknown> = {
             status: firebaseState === "failed" ? "degraded" : "ok",
             firebase: firebaseState,
             timestamp: new Date().toISOString(),
@@ -538,8 +539,8 @@ export async function startServer(
     });
 
     // Explicitly handle upgrade requests to ensure Hocuspocus receives them
-    server.on("upgrade", (request: any, socket: any, head: any) => {
-        wss.handleUpgrade(request, socket, head, (ws: any) => {
+    server.on("upgrade", (request: http.IncomingMessage, socket: Socket, head: Buffer) => {
+        wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
             // --- Synchronous pre-checks only ---
             // IMPORTANT: Do NOT await async operations here before calling handleConnection!
             // The client immediately sends a Hocuspocus Auth message after the WS handshake.
@@ -618,7 +619,7 @@ export async function startServer(
             roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
             logger.info({ event: "ws_connection_accepted", room: documentName });
 
-            let clientConnection: any;
+            let clientConnection: any; // Type issues with ClientConnection
 
             // Register close handler before try/catch so counters are always decremented
             // even if handleConnection throws and we manually close the socket
