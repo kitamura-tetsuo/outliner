@@ -146,7 +146,7 @@ Easily find content and execute actions within Outliner.
 
 - **Search:** Use the **Search pages** input in the top navigation bar, or click the **Search** button on the page, to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find:** open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten.
-- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
+- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
