@@ -366,6 +366,10 @@ function handleContextMenu(event: MouseEvent) {
     }
 
     event.preventDefault();
+    // Otherwise the event bubbles to the outline row's own context menu
+    // (OutlinerItem.svelte), which would open on top of this one and
+    // intercept every click meant for it.
+    event.stopPropagation();
     isContextMenuOpen = true;
     contextMenuX = event.clientX;
     contextMenuY = event.clientY;
