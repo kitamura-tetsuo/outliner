@@ -13,7 +13,7 @@ export function validateScheduleRuleExplicitAliases(sql: string): void {
 
 function getRRuleFallback(mod: unknown): typeof rruleImport.RRule | undefined {
     // A trick to bypass Vite's static analysis of the 'default' export.
-    return (mod as { [key: string]: { RRule?: typeof rruleImport.RRule } | undefined })["defa" + "ult"]?.RRule;
+    return (mod as { [key: string]: { RRule?: typeof rruleImport.RRule; } | undefined; })["defa" + "ult"]?.RRule;
 }
 
 // rrule publishes ESM named exports to the client bundler and a CommonJS
