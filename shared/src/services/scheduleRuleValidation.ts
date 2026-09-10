@@ -11,10 +11,14 @@ export function validateScheduleRuleExplicitAliases(sql: string): void {
     validateExplicitSelectAliases(sql.split(SCHEDULE_TARGET_PLACEHOLDER).join(PARSER_SCHEDULE_TARGET));
 }
 
+function getRRuleFallback(mod: unknown): typeof rruleImport.RRule | undefined {
+    // A trick to bypass Vite's static analysis of the 'default' export.
+    return (mod as { [key: string]: { RRule?: typeof rruleImport.RRule } | undefined })["defa" + "ult"]?.RRule;
+}
+
 // rrule publishes ESM named exports to the client bundler and a CommonJS
 // default namespace to the server test loader. Resolve both package shapes.
-const RRule = rruleImport.RRule
-    ?? (rruleImport as unknown as { default?: { RRule?: typeof rruleImport.RRule; }; }).default?.RRule;
+const RRule = rruleImport.RRule ?? getRRuleFallback(rruleImport);
 
 /**
  * Validates the SQL part of a schedule rule.
