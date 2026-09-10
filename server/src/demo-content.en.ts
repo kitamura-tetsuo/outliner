@@ -14,6 +14,7 @@
 import {
     DEMO_ATTACHMENT_IMAGE,
     DEMO_CALENDAR_ID,
+    DEMO_DIAGRAM_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_HOUR_MAP_CALENDAR_ID,
@@ -55,6 +56,7 @@ export function demoContentEn(): DemoLocaleContent {
                     "  [Schedule Rules]: automate database operations",
                     "  [Layout]: arrange visual blocks side by side on a 12-column grid.",
                     "  [Remote MCP Access]: securely inspect semantic outline data from compatible AI clients.",
+                    "  [Mermaid Diagrams]: a project-owned Mermaid diagram you can transclude onto any page.",
                     "Give it a try! Everything in this project is editable.",
                 ],
             },
@@ -718,6 +720,31 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text:
                             'Node kinds are fixed at creation (#5015). A Text node owns text and children; Grid and Calendar are leaf blocks; Layout only arranges blocks. None of them can be turned into another, so there is no "Change to ..." action: press Enter for a new empty item and type /Grid, /Calendar or /Layout, and the block is created in exactly that position. A heading for a block is an ordinary Text node placed above it, as with the two blocks below.',
+                    },
+                ],
+            },
+            {
+                key: "mermaid diagrams",
+                title: "Mermaid Diagrams",
+                items: [
+                    {
+                        text:
+                            "A Diagram is a project-owned Mermaid source, not something that lives on one page: like a Calendar, it keeps its own identity in the project's diagrams registry, and any page can transclude it.",
+                    },
+                    {
+                        text:
+                            "This preview renders a minimal typed placeholder only — an excerpt of the source plus the Diagram's id. Native Mermaid rendering is not implemented yet.",
+                    },
+                    {
+                        text:
+                            "Type /New Mermaid diagram on an empty item to create one, or /Insert transclusion to reuse an existing Diagram — including the one below — elsewhere in this project.",
+                    },
+                    {
+                        text: "One existing Diagram, already placed on this page:",
+                    },
+                    {
+                        componentType: "diagram",
+                        diagramId: DEMO_DIAGRAM_ID,
                     },
                 ],
             },

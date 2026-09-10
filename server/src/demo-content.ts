@@ -42,7 +42,7 @@ export interface DemoItem {
     // The item's plain text. Optional for component/alias items.
     text?: string;
     // Render this item as a live component instead of plain text.
-    componentType?: "yjstable" | "calendar" | "layout";
+    componentType?: "yjstable" | "calendar" | "layout" | "diagram";
     // For "layout" children (#4997): how many of the Layout's 12 columns this
     // item occupies. Order comes from the item's position among its siblings,
     // so this is the only placement value the template carries.
@@ -55,6 +55,12 @@ export interface DemoItem {
     // a table there is no separate room to seed — registerDemoCalendars
     // writes it straight into the project doc's `calendars` map.
     calendarId?: string;
+    // For "diagram" components: id of the demo Diagram (see demoDiagrams
+    // below) this item transcludes (issue #5310). A Diagram has no subdoc of
+    // its own, so unlike a table there is no separate room to seed —
+    // registerDemoDiagrams writes it straight into the project doc's
+    // `diagrams` map.
+    diagramId?: string;
     // Seed votes from these voter ids.
     votes?: string[];
     // Seed a comment thread.
@@ -731,6 +737,48 @@ export function registerDemoCalendars(projectDoc: Y.Doc, locale: DemoLocale = "e
     }
 }
 
+// ---------------------------------------------------------------------------
+// Demo diagrams (the project-owned Mermaid Diagram registry, issue #5310).
+// A Diagram owns exactly one authoritative Y.Text source and no other data —
+// unlike a Calendar it needs no query/role assignment, and unlike a Table it
+// needs no subdoc. It is written straight into the project doc's `diagrams`
+// map, in the same id -> Y.Map shape `calendars` already uses.
+// ---------------------------------------------------------------------------
+
+export interface DemoDiagramTemplate {
+    // Fixed id so a reseed replaces the diagram instead of adding a copy.
+    diagramId: string;
+    // Mermaid source. Stage 1 renders only a minimal typed placeholder (an
+    // excerpt of this text plus the Diagram's id) — native Mermaid rendering
+    // is owned by a later stage, so this need not be exhaustively validated.
+    source: string;
+}
+
+export const DEMO_DIAGRAM_ID = "demo-diagram-project-flow";
+
+const demoDiagramsEn: DemoDiagramTemplate[] = [
+    {
+        diagramId: DEMO_DIAGRAM_ID,
+        source: "graph TD\n"
+            + "    A[Idea] --> B[Draft page]\n"
+            + "    B --> C[Share with team]\n"
+            + "    C --> D[Diagram stays linked everywhere it's inserted]",
+    },
+];
+
+/** Write the demo's diagrams into the project doc's `diagrams` map. */
+export function registerDemoDiagrams(projectDoc: Y.Doc): void {
+    const diagrams = projectDoc.getMap<Y.Map<unknown>>("diagrams");
+    for (const template of demoDiagramsEn) {
+        const diagramMap = new Y.Map<unknown>();
+        diagrams.set(template.diagramId, diagramMap);
+        diagramMap.set("format", "mermaid");
+        const source = new Y.Text();
+        source.insert(0, template.source);
+        diagramMap.set("source", source);
+    }
+}
+
 /**
  * Register every demo table in the project doc: a registry entry (display
  * name + subdoc reference) per table. The subdoc guid is deterministic so all
@@ -867,6 +915,10 @@ export function populateDemoProject(
     // see the "Calendars" page).
     registerDemoCalendars(project.ydoc, locale);
 
+    // The diagrams registry (Mermaid source, no subdoc of its own; see the
+    // "Mermaid Diagrams" page).
+    registerDemoDiagrams(project.ydoc);
+
     for (const pageTemplate of demoPagesFor(locale)) {
         const page = project.addPage(pageTemplate.title, author);
         // Locale-stable: the title is translated, the key is not. The seeding
@@ -922,6 +974,7 @@ function addDemoItems(
             node.yjsGridId = demoGridIdFor(def.yjsTableId);
         }
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;
+        if (def.diagramId !== undefined) node.diagramId = def.diagramId;
         if (def.columnSpan !== undefined) node.columnSpan = def.columnSpan;
         if (def.start !== undefined) node.start = def.start;
         if (def.allDay !== undefined) node.allDay = def.allDay;
@@ -1134,9 +1187,10 @@ function persistedDemoStructure(locale: DemoLocale, slug: string): {
     registerDemoTables(projectDoc, slug, locale);
     registerDemoScheduleRules(projectDoc, locale);
     registerDemoCalendars(projectDoc, locale);
+    registerDemoDiagrams(projectDoc);
 
     const registries = Object.fromEntries(
-        ["yjsTables", "yjsGrids", "schedules", "calendars"].map(name => [
+        ["yjsTables", "yjsGrids", "schedules", "calendars", "diagrams"].map(name => [
             name,
             persistedYValue(projectDoc.getMap(name)),
         ]),
@@ -1220,3 +1274,4 @@ export const demoPages: DemoPageTemplate[] = demoPagesFor("en");
 export const demoTables: DemoTableTemplate[] = demoTablesFor("en");
 export const demoRoutineTemplates: DemoRoutineTemplate[] = demoRoutineTemplatesEn;
 export const demoCalendars: DemoCalendarTemplate[] = demoCalendarsEn;
+export const demoDiagrams: DemoDiagramTemplate[] = demoDiagramsEn;
