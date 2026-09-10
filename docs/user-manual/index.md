@@ -46,6 +46,15 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 - Move to the beginning of the line: `Home`
 - Move to the end of the line: `End`
 
+### Page Toolbar
+
+The toolbar at the top of each page provides quick access to page-specific actions:
+
+- **Add Item:** Adds a new item to the bottom of the page.
+- **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
+- **History / Diff:** Opens the snapshot diff viewer, showing how the page has changed compared to earlier versions.
+- **Keyboard & accessibility help:** Opens a dialog displaying available keyboard shortcuts and accessibility features.
+
 ### User Authentication
 
 The login status indicator located in the top right corner of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
@@ -247,7 +256,7 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-Click the **Add Database** button in the top navigation bar.
+Type `/` on a new line to open the Command Palette, and select **Grid**.
 
 A new database block will be inserted into the current page. Within this block, you can:
 
