@@ -17,7 +17,7 @@ test.describe("DIA-c60db19e: Diagram identity, source and placement survive relo
 
     test("keeps Diagram id, full source and tree position after a reload", async ({ page }) => {
         const target = page.locator(".outliner-item").nth(1);
-        await target.locator(".item-text").click();
+        await target.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
         await page.keyboard.press("End");
         await page.keyboard.type("/");
@@ -54,7 +54,7 @@ test.describe("DIA-c60db19e: Diagram identity, source and placement survive relo
 
     test("keeps a Diagram and its exact source available for reinsertion after its only occurrence is removed", async ({ page }) => {
         const target = page.locator(".outliner-item").nth(1);
-        await target.locator(".item-text").click();
+        await target.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
         await page.keyboard.press("End");
         await page.keyboard.type("/");
@@ -84,7 +84,7 @@ test.describe("DIA-c60db19e: Diagram identity, source and placement survive relo
 
         // Reinsert via the chooser: same id and source come back.
         const newTarget = page.locator(".outliner-item").nth(0);
-        await newTarget.locator(".item-text").click();
+        await newTarget.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
         await page.keyboard.press("End");
         await page.keyboard.type("/");

@@ -14,7 +14,7 @@ async function runSlashCommand(
     item: import("@playwright/test").Locator,
     testId: string,
 ) {
-    await item.locator(".item-text").click();
+    await item.locator(".item-content").click({ force: true });
     await page.waitForTimeout(300);
     await page.keyboard.press("End");
     await page.keyboard.type("/");
@@ -32,7 +32,7 @@ async function diagramBlockIds(page: import("@playwright/test").Page): Promise<s
 test.describe("DIA-c60db19e: creating and reusing a Mermaid Diagram from the outline UI", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["", "Second page target"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First page target", "Second page target"]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
     });
 
