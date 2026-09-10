@@ -2333,7 +2333,6 @@ export function setSelectionPosition(start: number, end: number = start) {
      the only thing heading navigation can find the page by. It is rendered
      outside the tree role (see OutlinerTree), so it breaks no
      aria-required-children rule. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="outliner-item"
     class:page-title={isPageTitle}
@@ -2349,7 +2348,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     class:touch-selecting={isTouchSelecting}
 
     id={isPageTitle ? undefined : model.id}
-    role={isPageTitle ? "heading" : "treeitem"}
+    role="treeitem"
     aria-labelledby={!isPageTitle && !isVisualNodeItem && model.original.text ? `item-text-${model.id}` : undefined}
     aria-label={isPageTitle ? undefined : (isVisualNodeItem ? visualNodeLabel : (!model.original.text ? "Blank outline item" : undefined))}
     tabindex={isPageTitle ? undefined : (isItemActive || (!editorOverlayStore.getActiveItem() && index === 1) ? 0 : -1)}
