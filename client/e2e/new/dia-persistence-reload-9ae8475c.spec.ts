@@ -69,10 +69,18 @@ test.describe("DIA-c60db19e: Diagram identity, source and placement survive relo
             );
         }, diagramId);
 
-        // Remove the only occurrence (delete the outline row).
+        // Remove the only occurrence (delete the outline row). Found by kind
+        // rather than a fixed index: the slash command replaces an eligible
+        // empty target in place, but inserts as the next sibling otherwise.
         await page.evaluate(() => {
             const items = (globalThis as any).generalStore.currentPage.items;
-            items.at(1).delete();
+            for (const item of items) {
+                if (item.componentType === "diagram") {
+                    item.delete();
+                    return;
+                }
+            }
+            throw new Error("no diagram occurrence found to delete");
         });
         await expect(page.locator('[data-testid="diagram-block"]')).toHaveCount(0, { timeout: 10000 });
 
