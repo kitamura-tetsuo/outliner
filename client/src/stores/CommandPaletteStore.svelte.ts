@@ -1,15 +1,29 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Store");
-import { CALENDAR_COMPONENT_TYPE, GRID_COMPONENT_TYPE, LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
+import { createMermaidDiagramAtTarget } from "../services/diagram/diagramPlacement";
+import {
+    CALENDAR_COMPONENT_TYPE,
+    DIAGRAM_COMPONENT_TYPE,
+    GRID_COMPONENT_TYPE,
+    LAYOUT_COMPONENT_TYPE,
+} from "../services/layout/layoutModel";
 import { createVisualNodeAtTarget } from "../services/outline/visualNodePlacement";
+import { getProjectCapabilities } from "../services/project/projectCapabilities";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
+import { diagramChooserStore } from "./DiagramChooserStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
+import { store as generalStore } from "./store.svelte";
+
+/** The command type behind "Insert transclusion" (issue #5310, REQ-003): picks an existing Diagram rather than creating one. */
+export const DIAGRAM_TRANSCLUSION_COMMAND = "diagram-transclusion";
 
 export type CommandType =
     | typeof GRID_COMPONENT_TYPE
     | typeof CALENDAR_COMPONENT_TYPE
     | typeof LAYOUT_COMPONENT_TYPE
+    | typeof DIAGRAM_COMPONENT_TYPE
+    | typeof DIAGRAM_TRANSCLUSION_COMMAND
     | "alias";
 
 interface Position {
@@ -39,6 +53,12 @@ class CommandPaletteStore {
         { label: "Grid", type: GRID_COMPONENT_TYPE, keywords: ["database", "table"] },
         { label: "Calendar", type: CALENDAR_COMPONENT_TYPE, keywords: ["schedule"] },
         { label: "Layout", type: LAYOUT_COMPONENT_TYPE },
+        { label: "New Mermaid diagram", type: DIAGRAM_COMPONENT_TYPE, keywords: ["mermaid", "diagram"] },
+        {
+            label: "Insert transclusion",
+            type: DIAGRAM_TRANSCLUSION_COMMAND,
+            keywords: ["mermaid", "diagram", "existing", "transclude"],
+        },
         { label: "Alias", type: "alias" },
     ];
 
@@ -335,6 +355,29 @@ class CommandPaletteStore {
             }
             if (aliasItem.id) aliasPickerStore.show(aliasItem.id);
             this.focusCreatedItem(aliasItem.id, cursor, userId);
+            return;
+        }
+
+        // "Insert transclusion" (#5310) picks an existing Diagram before
+        // anything is created: opening the chooser mutates nothing, and
+        // Cancel leaves project state untouched. The chosen `target` and
+        // `remainingText` — already computed above, exactly as every other
+        // command uses them — travel with the chooser to its own confirm step.
+        if (type === DIAGRAM_TRANSCLUSION_COMMAND) {
+            diagramChooserStore.showAtTarget(target, remainingText, userId);
+            return;
+        }
+
+        // "New Mermaid diagram" (#5310) creates one Diagram and one
+        // transclusion of it atomically: unlike Grid/Calendar it needs no
+        // further configuration, so there is no unbound intermediate state.
+        if (type === DIAGRAM_COMPONENT_TYPE) {
+            const project = generalStore.project;
+            if (!project) return;
+            const auth = { capabilities: getProjectCapabilities(project), surfaceWritable: true };
+            const result = createMermaidDiagramAtTarget(project, target, remainingText, userId, auth);
+            if (!result.ok) return;
+            this.focusCreatedItem(result.itemId, cursor, userId);
             return;
         }
 

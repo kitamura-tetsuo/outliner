@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { Item, type PlainItemData, Project } from "../../src/app-schema";
 
 /**
@@ -29,8 +30,8 @@ describe("Item node kinds (#5015)", () => {
         return String(item.yMap.get("text"));
     }
 
-    it("refuses to write outline text onto a Grid, Calendar or Layout node", () => {
-        for (const componentType of ["yjstable", "calendar", "layout"]) {
+    it("refuses to write outline text onto a Grid, Calendar, Layout or Diagram node", () => {
+        for (const componentType of ["yjstable", "calendar", "layout", "diagram"]) {
             const item = pageItem();
             item.componentType = componentType;
             item.updateText("a caption that must not stick");
@@ -40,7 +41,7 @@ describe("Item node kinds (#5015)", () => {
     });
 
     it("refuses a keystroke on a visual node, the path typing actually takes", () => {
-        for (const componentType of ["yjstable", "calendar", "layout"]) {
+        for (const componentType of ["yjstable", "calendar", "layout", "diagram"]) {
             const item = pageItem();
             item.componentType = componentType;
             // CursorEditor inserts one character at a time through insertTextAt,
@@ -99,5 +100,21 @@ describe("Item node kinds (#5015)", () => {
     it("leaves the plain-object Item constructor usable for text", () => {
         const item = new Item({ id: "plain", text: "Hello" } as PlainItemData);
         expect(item.text).toBe("Hello");
+    });
+
+    it("stores a Diagram transclusion's target id, mirroring calendarId (#5310)", () => {
+        const item = pageItem();
+        expect(item.diagramId).toBeUndefined();
+        item.componentType = "diagram";
+        item.diagramId = "diagram-1";
+        expect(item.diagramId).toBe("diagram-1");
+    });
+
+    it("exposes a project-level diagrams registry, separate from the outline tree (#5310)", () => {
+        const project = Project.createInstance("Diagrams");
+        expect(project.diagrams.size).toBe(0);
+        project.diagrams.set("diagram-1", new Y.Map());
+        expect(project.diagrams.size).toBe(1);
+        expect(project.items.length).toBe(0);
     });
 });

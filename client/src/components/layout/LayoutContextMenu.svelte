@@ -3,6 +3,7 @@
     import {
         GRID_COMPONENT_TYPE,
         CALENDAR_COMPONENT_TYPE,
+        DIAGRAM_COMPONENT_TYPE,
     } from "../../services/layout/layoutModel";
 
     interface Props {
@@ -10,9 +11,10 @@
         y: number;
         onClose: () => void;
         onAction: (componentType: string) => void;
+        onInsertExistingDiagram: () => void;
     }
 
-    let { x, y, onClose, onAction }: Props = $props();
+    let { x, y, onClose, onAction, onInsertExistingDiagram }: Props = $props();
     let menuRef: HTMLDivElement | undefined = $state();
     let previousFocus: HTMLElement | null = null;
     let activeIndex = $state(0);
@@ -95,6 +97,14 @@
     <button type="button" role="menuitem" tabindex={activeIndex === 1 ? 0 : -1} onclick={() => { onAction(CALENDAR_COMPONENT_TYPE); handleClose(); }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         Add Calendar
+    </button>
+    <button type="button" role="menuitem" tabindex={activeIndex === 2 ? 0 : -1} data-testid="layout-add-diagram" onclick={() => { onAction(DIAGRAM_COMPONENT_TYPE); handleClose(); }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 2 17 12 22 22 17 22 7"></polygon><line x1="12" y1="22" x2="12" y2="12"></line><line x1="22" y1="7" x2="12" y2="12"></line><line x1="2" y1="7" x2="12" y2="12"></line></svg>
+        New Mermaid diagram
+    </button>
+    <button type="button" role="menuitem" tabindex={activeIndex === 3 ? 0 : -1} data-testid="layout-insert-diagram" onclick={() => { onInsertExistingDiagram(); handleClose(); }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 2 17 12 22 22 17 22 7"></polygon></svg>
+        Insert transclusion
     </button>
 </div>
 

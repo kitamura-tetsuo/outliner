@@ -21,6 +21,7 @@
 import {
     CALENDAR_COMPONENT_TYPE,
     canAcceptChild,
+    DIAGRAM_COMPONENT_TYPE,
     GRID_COMPONENT_TYPE,
     isLayoutNode,
     isVisualLeafNode,
@@ -31,6 +32,7 @@ export {
     CALENDAR_COMPONENT_TYPE,
     canAcceptChild,
     canNodeHaveChildren,
+    DIAGRAM_COMPONENT_TYPE,
     GRID_COMPONENT_TYPE,
     isLayoutNode,
     isTextNode,
@@ -91,5 +93,5 @@ export function normalizeColumnSpan(value: unknown): number {
 
 /** The component types a Layout accepts, for UI that has to enumerate them. */
 export function visualComponentTypes(): string[] {
-    return [GRID_COMPONENT_TYPE, CALENDAR_COMPONENT_TYPE];
+    return [GRID_COMPONENT_TYPE, CALENDAR_COMPONENT_TYPE, DIAGRAM_COMPONENT_TYPE];
 }

@@ -21,6 +21,8 @@ const forbiddenGlobals = [
     "presenceStore",
     "commandPaletteStore",
     "aliasPickerStore",
+    "diagramChooserStore",
+    "diagramService",
     "userPreferencesStore",
     "__YJS_STORE__",
     "__YJS_SERVICE__",

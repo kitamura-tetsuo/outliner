@@ -1,0 +1,19 @@
+id: DIA-c60db19e
+title: Durable Mermaid Diagram objects and page transclusions
+title-ja: 永続的な Mermaid Diagram オブジェクトとページへのトランスクルージョン
+description: 'A Diagram is a project-owned object independent of any page: exactly one authoritative Y.Text source, addressed by a stable id, held in a flat `diagrams` Y.Map on the project doc (id -> Y.Map{format, source}), the same top-level-registry shape `calendars`/`yjsGrids` already use. A page never holds the source itself, only a transclusion — an outline node (componentType "diagram") that stores a `diagramId` and owns no text or children, mirroring how a Calendar/Grid node stores only an id. "New Mermaid diagram" creates one Diagram and one transclusion atomically; "Insert transclusion" picks an existing Diagram from a chooser and inserts another occurrence, sharing the same source. Destination validity (page root, under a Text item, or directly inside a Layout) reuses the existing node-kind placement rule (`canAcceptChild`/`VISUAL_LEAF_KINDS`) rather than a Diagram-specific one, so a Diagram, Grid or Calendar as parent is rejected the same way any other invalid parent already is. Moving or removing a transclusion, or removing the last one, never touches the Diagram or its source — it stays available for later reinsertion, with no permanent-deletion path in this stage. An occurrence whose Diagram state has not yet loaded renders as a pending/unavailable placeholder rather than an empty Diagram, and resolves in place once the state arrives. This is independent of the legacy `Alias`/`aliasTargetId` feature. Native source editing and Mermaid rendering are later stages; this stage renders a minimal typed placeholder.'
+category: client
+status: implemented
+tests:
+- client/e2e/new/dia-create-via-slash-command-c60db19e.spec.ts
+- client/e2e/new/dia-layout-placement-e3a64248.spec.ts
+- client/e2e/new/dia-pending-occurrence-1156c20b.spec.ts
+- client/e2e/new/dia-persistence-reload-9ae8475c.spec.ts
+- client/src/services/diagram/diagramAuthorization.test.ts
+- client/src/services/diagram/diagramBinding.test.ts
+- client/src/services/diagram/diagramPlacement.test.ts
+- client/src/services/diagram/diagramQueries.test.ts
+- client/src/services/diagram/diagramService.test.ts
+- client/src/services/project/projectCapabilities.test.ts
+- shared/tests/models/ItemNodeKind.test.ts
+- shared/tests/services/outlineNodeKind.test.ts
