@@ -11,6 +11,7 @@ import { isAllowedKindWrite, ownsOutlineText } from "./services/outlineNodeKind.
 import type {
     CalendarValueType,
     CommentValueType,
+    DiagramValueType,
     ItemValueType,
     PlainItemData,
     RowValueType,
@@ -541,6 +542,17 @@ export class Item {
     }
     set calendarId(v: string | undefined) {
         this.value.set("calendarId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Id of the Diagram (an entry in the project's `diagrams` map) this node
+    // transcludes (componentType "diagram", issue #5310). The node owns no
+    // source of its own — this is a plain lookup key, mirroring `calendarId`.
+    get diagramId(): string | undefined {
+        return this.value.get("diagramId") as string | undefined;
+    }
+    set diagramId(v: string | undefined) {
+        this.value.set("diagramId", v);
         this.value.set("lastChanged", Date.now());
     }
 
@@ -1173,6 +1185,14 @@ export class Project {
     // own, so it needs no subdoc (docs/crdt-sql-architecture.md §6.6).
     get calendars(): Y.Map<Y.Map<CalendarValueType>> {
         return this.ydoc.getMap("calendars") as Y.Map<Y.Map<CalendarValueType>>;
+    }
+
+    // Diagrams directly under project root, in the same id -> Y.Map shape as
+    // `calendars`. A Diagram owns exactly one authoritative Y.Text source and
+    // no other data, and exists independently of any page that transcludes it
+    // (issue #5310, REQ-001).
+    get diagrams(): Y.Map<Y.Map<DiagramValueType>> {
+        return this.ydoc.getMap("diagrams") as Y.Map<Y.Map<DiagramValueType>>;
     }
 
     // Items directly under root (parent key 'root')

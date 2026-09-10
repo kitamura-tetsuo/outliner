@@ -13,6 +13,7 @@ const logger = getLogger("OutlinerBase");
     import PresenceAvatars from "./PresenceAvatars.svelte";
     import SlashCommandPalette from "./SlashCommandPalette.svelte";
     import AliasPicker from "./AliasPicker.svelte";
+    import DiagramChooser from "./diagram/DiagramChooser.svelte";
     import CalendarMembershipScope from "./calendar/CalendarMembershipScope.svelte";
     import { yjsStore } from "../stores/yjsStore.svelte";
 
@@ -115,6 +116,7 @@ const logger = getLogger("OutlinerBase");
     <GlobalTextArea />
     <SlashCommandPalette />
     <AliasPicker />
+    <DiagramChooser />
     <PresenceAvatars />
 </div>
 

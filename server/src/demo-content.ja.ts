@@ -21,6 +21,7 @@ import {
     DEMO_ATTACHMENT_IMAGE,
     DEMO_CALENDAR_ID,
     DEMO_DAILY_RULE_ID,
+    DEMO_DIAGRAM_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_HOUR_MAP_CALENDAR_ID,
@@ -107,6 +108,7 @@ export function demoContentJa(): DemoLocaleContent {
                     "  [スケジュールルール]: データベース操作の自動化。",
                     "  [レイアウト]: 12カラムのグリッド上にビジュアルブロックを横並びに配置します。",
                     "  [Remote MCP Access]: 対応する AI クライアントから意味構造を保ったデータを参照し、承認後は検証・ドライラン・リビジョン確認を経て Grid クエリや Table のスキーマ・レコードを安全に修復します。各ツールは必要な OAuth スコープ（参照は outliner.read、変更操作は outliner.write も追加）を宣言し、書き込み権限が不足する場合は再認可を促す標準形式のチャレンジを返します。",
+                    "  [Mermaid ダイアグラム]: プロジェクトが持つひとつの Mermaid ダイアグラムを、どのページにも埋め込み（transclude）できます。",
                     "ぜひ試してみてください。このプロジェクトの中身はすべて編集できます。",
                 ],
             },
@@ -751,6 +753,31 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         text:
                             "ノードの種類は作成時に決まり、後から変わりません（#5015）。テキストノードはテキストと子を持ち、グリッドとカレンダーは葉のブロック、レイアウトはブロックを並べるだけの入れ物です。互いに変換はできないため「◯◯に変更」の操作はありません。Enter で空の項目を作り /Grid・/Calendar・/Layout と入力すれば、その位置にブロックが作られます。ブロックの見出しが必要なときは、上に通常のテキストノードを置いてください。",
+                    },
+                ],
+            },
+            {
+                key: "mermaid diagrams",
+                title: "Mermaid ダイアグラム",
+                items: [
+                    {
+                        text:
+                            "Diagram はプロジェクトが持つひとつの Mermaid ソースで、特定のページに属するものではありません。Calendar と同じように、プロジェクトの diagrams レジストリの中でそれ自身の識別子を保ち、どのページからでも埋め込み（transclude）できます。",
+                    },
+                    {
+                        text:
+                            "このプレビュー段階では、最小限の型付きプレースホルダーのみを表示します——ソースの抜粋と Diagram の id だけです。ネイティブな Mermaid 描画はまだ実装されていません。",
+                    },
+                    {
+                        text:
+                            "空の項目で /New Mermaid diagram と入力すると新しい Diagram を作成できます。/Insert transclusion と入力すると、下の Diagram を含め、既存の Diagram をこのプロジェクトの他の場所に再利用できます。",
+                    },
+                    {
+                        text: "このページにすでに配置されている、既存の Diagram:",
+                    },
+                    {
+                        componentType: "diagram",
+                        diagramId: DEMO_DIAGRAM_ID,
                     },
                 ],
             },

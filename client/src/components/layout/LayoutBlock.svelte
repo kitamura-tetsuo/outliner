@@ -23,6 +23,7 @@ import { onDragSessionClear } from "../../services/dnd/dragSessionCleanup";
 import {
     isVisualComponentType,
     DEFAULT_COLUMN_SPAN,
+    DIAGRAM_COMPONENT_TYPE,
     LAYOUT_CHILD_DND_TYPE,
     LAYOUT_COLUMN_COUNT,
     nodeKindOf,
@@ -41,6 +42,10 @@ import { store as generalStore } from "../../stores/store.svelte";
 import LayoutContextMenu from "./LayoutContextMenu.svelte";
 import { createVisualNodeUnderParent } from "../../services/outline/visualNodePlacement";
 import { writeGridPlacementDrag } from "../../services/yjstable/gridPlacement";
+import { createMermaidDiagramUnderParent } from "../../services/diagram/diagramPlacement";
+import { getProjectCapabilities } from "../../services/project/projectCapabilities";
+import { Project } from "$shared/app-schema";
+import { diagramChooserStore } from "../../stores/DiagramChooserStore.svelte";
 
 /** `DataTransfer` type an OutlinerItem drag carries (OutlinerItem.handleDragStart). */
 const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
@@ -361,16 +366,33 @@ function handleContextMenu(event: MouseEvent) {
     }
 
     event.preventDefault();
+    // Otherwise the event bubbles to the outline row's own context menu
+    // (OutlinerItem.svelte), which would open on top of this one and
+    // intercept every click meant for it.
+    event.stopPropagation();
     isContextMenuOpen = true;
     contextMenuX = event.clientX;
     contextMenuY = event.clientY;
 }
 
 function handleContextMenuAction(componentType: string) {
+    if (componentType === DIAGRAM_COMPONENT_TYPE) {
+        // Diagram creation is atomic (issue #5310): the Diagram object and its
+        // transclusion are created together, never as an unbound intermediate
+        // node the way Grid/Calendar's own create-panel briefly is.
+        const project = Project.fromDoc(item.ydoc);
+        const auth = { capabilities: getProjectCapabilities(project), surfaceWritable: true };
+        createMermaidDiagramUnderParent(project, item, "local", auth, { columnSpan: DEFAULT_COLUMN_SPAN });
+        return;
+    }
     // Creation and the documented full-width default belong to the same Yjs
     // transaction, so collaborators never observe a newly inserted child in a
     // partially initialized state.
     createVisualNodeUnderParent(item, componentType, "local", { columnSpan: DEFAULT_COLUMN_SPAN });
+}
+
+function handleInsertExistingDiagram() {
+    diagramChooserStore.showUnderParent(item, "local", { columnSpan: DEFAULT_COLUMN_SPAN });
 }
 
 </script>
@@ -538,6 +560,7 @@ function handleContextMenuAction(componentType: string) {
             y={contextMenuY}
             onClose={() => { isContextMenuOpen = false; }}
             onAction={handleContextMenuAction}
+            onInsertExistingDiagram={handleInsertExistingDiagram}
         />
     {/if}
 </div>

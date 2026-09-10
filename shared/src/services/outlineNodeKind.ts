@@ -10,6 +10,8 @@
  * Grid      gridId, no text, leaf
  * Calendar  calendarId, no text, leaf
  * Layout    no text, container of visual children only
+ * Diagram   diagramId, no text, leaf (transclusion of a project-owned Mermaid
+ *           Diagram object; see services/diagram/ and issue #5310)
  * ```
  *
  * The kind is still *stored* in the pre-existing `componentType` field — this
@@ -32,8 +34,16 @@ export const CALENDAR_COMPONENT_TYPE = "calendar";
 /** `Item.componentType` of a Layout container. */
 export const LAYOUT_COMPONENT_TYPE = "layout";
 
+/**
+ * `Item.componentType` of a Diagram transclusion node (#5310). The node holds
+ * no source of its own — it references a project-owned Diagram object by id
+ * (`Item.diagramId`), the same "leaf that owns an id, not the data" shape as
+ * Grid/Calendar.
+ */
+export const DIAGRAM_COMPONENT_TYPE = "diagram";
+
 /** The semantic kinds an outline node can have. */
-export type OutlineNodeKind = "text" | "grid" | "calendar" | "layout";
+export type OutlineNodeKind = "text" | "grid" | "calendar" | "layout" | "diagram";
 
 /**
  * The single registry mapping stored discriminator to semantic kind. A future
@@ -44,10 +54,11 @@ const KIND_BY_COMPONENT_TYPE: ReadonlyMap<string, OutlineNodeKind> = new Map([
     [GRID_COMPONENT_TYPE, "grid" as const],
     [CALENDAR_COMPONENT_TYPE, "calendar" as const],
     [LAYOUT_COMPONENT_TYPE, "layout" as const],
+    [DIAGRAM_COMPONENT_TYPE, "diagram" as const],
 ]);
 
 /** Kinds that render as a self-contained visual block and may sit in a Layout. */
-const VISUAL_LEAF_KINDS: ReadonlySet<OutlineNodeKind> = new Set(["grid", "calendar"]);
+const VISUAL_LEAF_KINDS: ReadonlySet<OutlineNodeKind> = new Set(["grid", "calendar", "diagram"]);
 
 /** Anything that stores a node kind: the Yjs `Item`, or a plain test double. */
 export interface NodeKindLike {

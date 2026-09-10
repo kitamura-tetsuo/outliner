@@ -12,10 +12,11 @@ import {
 
 describe("layoutModel", () => {
     describe("the visual component registry", () => {
-        it("accepts the Grid and Calendar blocks", () => {
+        it("accepts the Grid, Calendar and Diagram blocks", () => {
             expect(isVisualComponentType("yjstable")).toBe(true);
             expect(isVisualComponentType("calendar")).toBe(true);
-            expect(visualComponentTypes().sort()).toEqual(["calendar", "yjstable"]);
+            expect(isVisualComponentType("diagram")).toBe(true);
+            expect(visualComponentTypes().sort()).toEqual(["calendar", "diagram", "yjstable"]);
         });
 
         it("rejects ordinary text items, which carry no component type", () => {

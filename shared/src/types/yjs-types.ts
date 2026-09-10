@@ -42,6 +42,14 @@ export type ScheduleRuleValueType = string | boolean | number | undefined;
 export type CalendarValueType = string | boolean | number | undefined | Y.Array<string> | string[];
 
 /**
+ * Type for the value stored in a Diagram registry entry's Y.Map (issue #5310).
+ * `format` is a plain string (`"mermaid"` in this experiment); `source` is the
+ * Diagram's one authoritative collaborative text instance — it has no
+ * independent lifecycle or reusable object id of its own (REQ-001).
+ */
+export type DiagramValueType = string | Y.Text | undefined;
+
+/**
  * Type for Y.Doc options
  */
 export interface YDocOptions {
