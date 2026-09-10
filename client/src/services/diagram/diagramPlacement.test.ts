@@ -21,7 +21,7 @@ const {
     insertExistingMermaidDiagramAtTarget,
     insertExistingMermaidDiagramUnderParent,
 } = await import("./diagramPlacement");
-const { createDiagram, getDiagram, getDiagramSourceYText } = await import("./diagramService");
+const { getDiagram, getDiagramSourceYText } = await import("./diagramService");
 const { getItemDiagramId } = await import("./diagramBinding");
 
 function fullAuth(): DiagramAuthorization {
@@ -209,9 +209,9 @@ describe("diagram placement (#5310)", () => {
 
     describe("createMermaidDiagramAtTarget / insertExistingMermaidDiagramAtTarget (AS-001, AS-003)", () => {
         it("replaces an eligible empty Text node at the cursor with a Diagram occurrence", () => {
-            const before = addText("A");
+            addText("A");
             const blank = addText("");
-            const after = addText("B");
+            addText("B");
 
             const result = createMermaidDiagramAtTarget(project, blank, "", "tester", fullAuth());
             expect(result.ok).toBe(true);
