@@ -145,7 +145,7 @@ Paste any URL to automatically create an external link.
 Easily find content and execute actions within Outliner.
 
 - **Search:** Use the **Search pages** input in the top navigation bar, or click the **Search** button on the page, to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Unified Find:** open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten.
+- **Unified Find:** open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -165,7 +165,15 @@ Efficiently select and copy multiple items or text ranges.
 ### Copy and Paste
 
 - **Cross-project copy:** Copying and pasting items works smoothly even between different projects, transferring all nested content.
-- **Paste Special:** Press `Ctrl/Cmd+Shift+V` for Paste Special: choose another live view, an independent copy with or without data, or plain values. Unavailable choices stay visible and explain why.
+- **Clipboard:** within one project, copying and pasting a selection that crosses a Grid creates another live view of the same table and Data Storage. Across projects, paste instead creates an independent Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL names are rewritten, and Calendar blocks retain their portable settings. Press `Ctrl/Cmd+Shift+V` for Paste Special: choose another live view, an independent copy with or without data, or plain values. Unavailable choices stay visible and explain why. Cut and paste moves the view without deleting its data. When a cross-project paste has a hidden consequence—such as copying query dependencies, renaming SQL relations, rebinding outline_items, omitting schedule rules, or leaving a cut table in the source—a transient summary names exactly what happened. Outside Outliner the same copy pastes as what you see: a spreadsheet receives the Grid's rows as cells, a document receives them as a table, and with the Chart view open the picture travels with the numbers.
+
+### Cell Clipboard
+
+- **Cell clipboard:** select a cell or range and press `Ctrl/Cmd+C` to copy it as tab/newline text (rows), no header row; row and column selections copy every cell they cover. `Ctrl/Cmd+V` pastes: a single copied cell repeats across a larger selection, a rectangle pasted at one active cell fills the corresponding cells starting there, and a smaller rectangle that evenly tiles a larger selection repeats to fill it — any other size mismatch is rejected rather than silently truncated. Only writable cells are touched, and an incompatible value cancels the whole paste as one Undo step. On touch, the selection toolbar's Copy and Paste buttons do the same thing.
+
+### Selecting Across Blocks
+
+- **Selecting across blocks:** drag a selection from the text above, across the table, into this paragraph. The text keeps its character-level highlight at both ends, and the table between them is outlined as one selected block — a Layout is outlined as a single container rather than as its separate blocks. Copying such a selection keeps the block's live binding, while the plain text another application receives stays the selected text.
 
 ### Touch Selection (Phone or Tablet)
 
@@ -190,16 +198,6 @@ With an active selection you can:
 - Drag and drop the selected text to move it.
 - Apply formatting such as bold or italic to the selected range.
 
-When a copied selection contains a component block:
-
-- Pasting a **Grid** in the same project creates another live view of the same table and Data Storage.
-- Across projects, paste instead creates an independent Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL names are rewritten.
-- **Calendar** blocks retain their portable settings when pasted across projects.
-- Press `Ctrl+Shift+V` (or `Cmd+Shift+V`) for Paste Special: choose another live view, an independent copy with or without data, or plain values. Unavailable choices stay visible and explain why.
-- Cut and paste moves the view without deleting its data.
-- When a cross-project paste has a hidden consequence—such as copying query dependencies, renaming SQL relations, rebinding outline_items, omitting schedule rules, or leaving a cut table in the source—a transient summary names exactly what happened.
-- Outside Outliner the same copy pastes as what you see: a spreadsheet receives the Grid's rows as cells, a document receives them as a table, and with the Chart view open the picture travels with the numbers.
-
 ---
 
 ## Attachments
@@ -218,6 +216,8 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
+- **Dependency-aware duplication:** Grid, Table, Schedule, and Calendar copies can include referenced, referencing, or all connected objects recursively—a duplicated Schedule brings along the Tables it reads and writes, and a duplicated Calendar brings along every Table its query reads. The confirmation previews the object count and omitted references; Table copies can include or omit their rows, cross-project Schedule copies start disabled, and cross-project copies clear excluded links (a Calendar's query included).
+- **Object Manager:** open it from the sidebar to browse every Grid, Calendar, Table and Schedule in this project. Each Grid/Calendar row lists the Pages it is directly placed on — click one to jump straight to that block. Click a name to rename it in place; select several objects and use the compact toolbar's literal find/replace, whose before/after preview opens as a popover so the object list never shifts; delete is undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the same dependency graph duplication uses — Dependencies, Dependents, or All connected — so selecting one Table and choosing Dependents adds every Grid, Schedule and Calendar that reads it. "Duplicate selected" then copies exactly that checked set — never a recomputed scope — into this or another project, with the same undo/redo as the rest of the toolbar; an individual Grid/Table/Schedule/Calendar page's own Duplicate button opens Object Manager with it preselected instead of asking for a scope itself. Use "Place on Page…" or drag a Grid/Calendar row onto a sidebar Page to add another placement of that existing object without duplicating its definition.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Schedules page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
 - **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.
@@ -272,6 +272,14 @@ Once the table is created, you will see a grid view where you can add, edit, or 
 ### Grid selection
 
 Click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
+
+### Touch Interactions
+
+On touch, tap a cell to activate it, double-tap to edit, or long-press for range mode. Drag the blue handles to resize the range; the floating toolbar provides additive selection without modifier keys. Ordinary swipes still scroll.
+
+### Grid placement
+
+Choose a destination Page when duplicating, or drag a Grid's outline handle to a Page in the sidebar. Hold Ctrl (Option on macOS) while dragging to copy instead of move.
 
 ### Tables, Grids and Schedules are separate
 
