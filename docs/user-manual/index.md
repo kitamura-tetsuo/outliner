@@ -16,7 +16,8 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 10. [Layouts](#layouts)
 11. [Database Tables](#database-tables)
 12. [Calendars](#calendars)
-13. [Keyboard Shortcuts](#keyboard-shortcuts)
+13. [Diagrams](#diagrams)
+14. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -146,7 +147,7 @@ Easily find content and execute actions within Outliner.
 
 - **Search:** Use the **Search pages** input in the top navigation bar, or click the **Search** button on the page, to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find:** open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten.
-- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, or an Alias.
+- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a New Mermaid diagram, an Insert transclusion, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
@@ -298,6 +299,17 @@ A calendar is a query plus a role assignment over its result columns — which c
 - **Drag and Drop:** Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Hour Map / Multi-day / Week / Month / Gantt with the toolbar select. While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land — "Thu, Aug 3 09:15 – 09:45" for a move, "09:00 – 10:30 (1h30m)" for a resize, a date alone in Month and Gantt — formatted in the calendar's own timezone and snapped the same way the drop is, so the label never promises something different from what gets written.
 - **Swimlanes:** Grouping by "tags" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry's small handle onto another lane to replace its tag set; hold `Ctrl` (`Cmd` on macOS) while dropping to add the lane's tag instead of replacing.
 - **Safe Operations:** "New entry" always asks which page to create it under — there is no implicit inbox — and offers previously used destinations first. Deleting an entry always prompts between removing it and just clearing its date, so a keystroke never silently discards writing.
+
+---
+
+## Diagrams
+
+You can create and manage Mermaid diagrams within your project.
+
+- **Project-Owned Source:** A Diagram is a project-owned Mermaid source, not something that lives on one page: like a Calendar, it keeps its own identity in the project's diagrams registry, and any page can transclude it.
+- **Transclusion:** Type `/Insert transclusion` to reuse an existing Diagram — elsewhere in this project.
+- **Creation:** Type `/New Mermaid diagram` on an empty item to create one.
+- **Preview:** The preview renders a minimal typed placeholder only — an excerpt of the source plus the Diagram's id. Native Mermaid rendering is not implemented yet.
 
 ---
 
