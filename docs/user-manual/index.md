@@ -216,6 +216,7 @@ You can upload attachments by dragging and dropping an image or file directly on
 
 Outliner includes advanced capabilities like aliases and schedule rules.
 
+- **Mermaid Diagrams:** A Diagram is a project-owned Mermaid source. It keeps its own identity in the project's diagrams registry, and any page can transclude it. Type `/New Mermaid diagram` on an empty item to create one, or `/Insert transclusion` to reuse an existing Diagram.
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Schedules page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
