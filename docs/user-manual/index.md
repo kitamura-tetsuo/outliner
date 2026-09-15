@@ -14,9 +14,10 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 8. [Attachments](#attachments)
 9. [Advanced Features](#advanced-features)
 10. [Layouts](#layouts)
-11. [Database Tables](#database-tables)
-12. [Calendars](#calendars)
-13. [Keyboard Shortcuts](#keyboard-shortcuts)
+11. [Mermaid Diagrams](#mermaid-diagrams)
+12. [Database Tables](#database-tables)
+13. [Calendars](#calendars)
+14. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -146,7 +147,7 @@ Easily find content and execute actions within Outliner.
 
 - **Search:** Use the **Search pages** input in the top navigation bar, or click the **Search** button on the page, to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find:** open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten.
-- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, or an Alias.
+- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a Mermaid diagram, an Alias, or a transclusion.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
@@ -237,6 +238,13 @@ A Layout arranges visual blocks side by side. It is a normal outline item that o
 - **Stacking:** When the Layout gets too narrow for side-by-side reading, the blocks stack one per row in outline order — the stored spans stay as they are and come back with the width.
 - **Removing Layout:** Right-click the Layout for "Remove layout (keep blocks)": the blocks move up to the Layout's position and the container alone is removed, unlike "Delete item", which takes the whole subtree.
 - **Creation:** Type `/Layout` on an empty item to create one, then drag a Database or Calendar block onto it. An empty Layout stays where it is, ready for the next block.
+
+## Mermaid Diagrams
+
+A Diagram is a project-owned Mermaid source, not something that lives on one page: like a Calendar, it keeps its own identity in the project's diagrams registry, and any page can transclude it.
+
+- **Minimal preview:** This preview renders a minimal typed placeholder only — an excerpt of the source plus the Diagram's id. Native Mermaid rendering is not implemented yet.
+- **Creation and reuse:** Type `/New Mermaid diagram` on an empty item to create one, or `/Insert transclusion` to reuse an existing Diagram elsewhere in this project.
 
 ## Database Tables
 
