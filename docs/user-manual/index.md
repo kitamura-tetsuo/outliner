@@ -223,6 +223,7 @@ You can upload attachments by dragging and dropping an image or file directly on
 
 Outliner includes advanced capabilities like aliases and schedule rules.
 
+- **Mermaid Diagrams:** A Diagram is a project-owned Mermaid source. It keeps its own identity in the project's diagrams registry, and any page can transclude it. Type `/New Mermaid diagram` on an empty item to create one, or `/Insert transclusion` to reuse an existing Diagram.
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Dependency-aware duplication:** Grid, Table, Schedule, and Calendar copies can include referenced, referencing, or all connected objects recursively—a duplicated Schedule brings along the Tables it reads and writes, and a duplicated Calendar brings along every Table its query reads. The confirmation previews the object count and omitted references; Table copies can include or omit their rows, cross-project Schedule copies start disabled, and cross-project copies clear excluded links (a Calendar's query included).
