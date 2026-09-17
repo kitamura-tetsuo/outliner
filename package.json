@@ -3,7 +3,7 @@
     "devDependencies": {
         "@dprint/dockerfile": "0.6.0",
         "@dprint/json": "0.23.0",
-        "@dprint/markdown": "0.23.3",
+        "@dprint/markdown": "0.24.0",
         "@dprint/toml": "0.8.0",
         "@dprint/typescript": "0.96.1",
         "dprint": "0.57.4",
