@@ -52,8 +52,6 @@ The toolbar at the top of each page provides quick access to page-specific actio
 
 - **Add Item:** Adds a new item to the bottom of the page.
 - **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
-- **History / Diff:** Opens the snapshot diff viewer, showing how the page has changed compared to earlier versions.
-- **Keyboard & accessibility help:** Opens a dialog displaying available keyboard shortcuts and accessibility features.
 
 ### User Authentication
 
