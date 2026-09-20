@@ -121,7 +121,7 @@ Undo and redo run off a single history for the whole project.
 
 ### Toolbar buttons
 
-The **Undo** and **Redo** buttons in the toolbar at the top of the window do exactly the same thing as the shortcuts. On a phone they sit in the action toolbar at the bottom — a software keyboard has no `Ctrl` key, so that is how you reach your history there.
+The **Undo** and **Redo** buttons in the top navigation bar do exactly the same thing as the shortcuts. On a phone they sit in the action toolbar at the bottom — a software keyboard has no `Ctrl` key, so that is how you reach your history there.
 
 Each button is greyed out while there is nothing to undo (or redo) and becomes available as soon as you make a change. Pressing one while you are editing keeps your cursor where it was and leaves the software keyboard open, so you can carry straight on typing.
 
@@ -259,7 +259,7 @@ Create database tables to manage structured data within your project. You can st
 
 Type `/` on a new line to open the Command Palette, and select **Grid**.
 
-A new database block will be inserted into the current page. Within this block, you can:
+A new database block will be inserted into the current page. You can also create a database by clicking the **Add Database** button in the top navigation bar. Within this block, you can:
 
 - **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**. The SQL name used in queries is generated automatically and displayed below the input fields.
 - **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
