@@ -1,8 +1,11 @@
 {
     "name": "scripts",
     "version": "1.0.0",
-    "type": "module",
     "description": "A collection of scripts for executing the Localhost configuration defined in VSCode's launch.json via bash.",
+    "keywords": [],
+    "license": "ISC",
+    "author": "",
+    "type": "module",
     "main": "backup-production-data.cjs",
     "directories": {
         "test": "tests"
@@ -13,21 +16,18 @@
         "test:coverage": "vitest run --coverage",
         "seed": "ts-node test-data-seeder.ts"
     },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "devDependencies": {
-        "@types/node": "^26.6.1",
-        "@types/uuid": "^11.0.0",
-        "@types/ws": "^8.18.1",
-        "ts-node": "^10.9.2",
-        "vitest": "^5.0.1"
-    },
     "dependencies": {
         "firebase-admin": "^14.4.0",
         "uuid": "^14.0.2",
         "ws": "^8.21.3",
         "y-websocket": "^3.1.0",
         "yjs": "^13.6.32"
+    },
+    "devDependencies": {
+        "@types/node": "^26.6.1",
+        "@types/uuid": "^11.0.0",
+        "@types/ws": "^8.18.1",
+        "ts-node": "^10.9.2",
+        "vitest": "^5.0.1"
     }
 }
