@@ -265,7 +265,7 @@ A new database block will be inserted into the current page. Within this block, 
 - **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
 - **Existing Grid:** embed a previously created grid by switching to this tab, selecting the grid, and clicking **Select**.
 
-Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens a right-side drawer. This sidebar lists all your TABLES (e.g., Sales, Tasks, Routine Templates, Routine Occurrences).
+Additionally, you can view and manage your existing databases by expanding the **Tables** section in the main left sidebar. This section lists all your tables (e.g., Sales, Tasks, Routine Templates, Routine Occurrences).
 
 ### Managing Data
 
