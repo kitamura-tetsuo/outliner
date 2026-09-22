@@ -1,9 +1,12 @@
 {
     "name": "@outliner/shared",
     "version": "1.0.0",
-    "description": "Framework-neutral SharedTree/Yjs schema wrappers shared by the client and server workspaces.",
     "private": true,
+    "description": "Framework-neutral SharedTree/Yjs schema wrappers shared by the client and server workspaces.",
     "type": "module",
+    "scripts": {
+        "test:unit": "vitest run"
+    },
     "dependencies": {
         "libpg-query": "18.1.4",
         "rrule": "^2.8.1",
@@ -13,8 +16,5 @@
     },
     "devDependencies": {
         "typescript": "^7.0.2"
-    },
-    "scripts": {
-        "test:unit": "vitest run"
     }
 }
