@@ -95,8 +95,3 @@ function handleCancel(_e?: Event) {
 {/if}
 </dialog>
 
-<style>
-    dialog::backdrop {
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-</style>
