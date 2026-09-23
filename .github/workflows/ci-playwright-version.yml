@@ -44,9 +44,7 @@ jobs:
               # REQ-005: If CI does not have authority to persist the correction, it must not report the mismatch as fixed.
               echo "⚠️ Push failed. The branch might be read-only."
               git reset --hard HEAD
-              echo "CI does not have authority to persist the correction to the pull-request branch."
-              node scripts/check-playwright-version.mjs
-              node -e "process.exit(1);"
+              # Do not exit here! Let the next step run to naturally fail with the diagnostic message.
             fi
           fi
 
