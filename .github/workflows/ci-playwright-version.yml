@@ -16,5 +16,35 @@ jobs:
 
       # No dependency install: the check only reads the Dockerfile and the
       # lockfile, so it stays fast enough to fail before the E2E shards start.
+      - name: Sync the test container with the client's Playwright version
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: node scripts/sync-playwright-version.mjs
+
+      - name: Persist corrections to the pull-request branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! git diff --quiet .github/container/Dockerfile; then
+            echo "🔧 Auto-fixing Playwright Dockerfile version..."
+            git config user.email "action@github.com" || git config --global user.email "action@github.com"
+            git config user.name "GitHub Action" || git config --global user.name "GitHub Action"
+            git add .github/container/Dockerfile
+            git commit -m "Auto-fix: Sync Playwright Dockerfile image version with lockfile"
+            if git push; then
+              echo "✅ Changes pushed successfully."
+              # REQ-006: GITHUB_TOKEN pushes do not trigger new workflows. We must
+              # explicitly trigger a fresh run so the updated head is evaluated.
+              # We can close and reopen the PR to trigger a new run, then fail this one.
+              gh pr close ${{ github.event.pull_request.number }}
+              gh pr reopen ${{ github.event.pull_request.number }}
+              # Force failure so the CI isn't falsely marked green before the new commit is checked
+              node -e "process.exit(1);"
+            else
+              echo "⚠️ Push failed. The branch might be read-only."
+              git reset --hard HEAD
+            fi
+          fi
+
       - name: Check the test container matches the client's Playwright version
         run: node scripts/check-playwright-version.mjs
