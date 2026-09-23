@@ -5,20 +5,32 @@
 // authoritative Y.Text source — lives in the project's `diagrams` map and
 // survives independently of any page that transcludes it.
 //
-// This stage renders a minimal typed placeholder only (REQ-002's Non-goals):
-// native source editing and safe Mermaid rendering are owned by later
-// siblings (#5311-#5314). A pending/unavailable occurrence (its Diagram
-// state not yet loaded, or a diagramId that never resolves) is shown as
-// such — never as an empty Diagram, and never repaired by creating one
-// (REQ-007).
-import { onDestroy, onMount } from "svelte";
+// Native source editing (issue #5311): while any local logical cursor targets
+// this Diagram's source, every mounted occurrence shows that source and paints
+// the same carets and source-internal selections; with none, the preview
+// surface is shown. Painting is a projection only — it never creates a cursor
+// or an input recipient, and switching presentation writes nothing. All
+// offsets are canonical Y.Text offsets (UTF-16 code units).
+//
+// A pending/unavailable occurrence (its Diagram state not yet loaded, or a
+// diagramId that never resolves) is shown as such — never as an empty
+// Diagram, and never repaired by creating one (#5310 REQ-007).
+import { onDestroy, onMount, untrack } from "svelte";
 import { Project } from "$shared/app-schema";
+import type { Item } from "../../schema/app-schema";
 import { getItemDiagramId, observeItemDiagramId } from "../../services/diagram/diagramBinding";
 import { type DiagramSummary, getDiagram, observeDiagrams } from "../../services/diagram/diagramService";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
-import { getProjectCapabilities } from "../../services/project/projectCapabilities";
-import { canReadDiagrams } from "../../services/diagram/diagramAuthorization";
-import { diagramIdForItem, registerDiagramOccurrence } from "../../services/diagram/diagramEditing";
+import { store as generalStore } from "../../stores/store.svelte";
+import { searchItem } from "../../lib/cursor/CursorNavigationUtils";
+import {
+    canReadDiagramSource,
+    diagramIdForItem,
+    registerDiagramOccurrence,
+} from "../../services/diagram/diagramEditing";
+import { diagramComposition } from "../../services/diagram/diagramComposition.svelte";
+import { buildSourceSegments, type SourceRangeMark } from "../../services/diagram/diagramSourceView";
+import { offsetFromPoint } from "../../services/diagram/diagramSourceDom";
 
 interface ItemLike {
     ydoc: import("yjs").Doc;
@@ -36,41 +48,60 @@ let { item, isReadOnly = false }: Props = $props();
 let diagramId = $state<string | undefined>();
 // Bumped by the Diagram registry observer so the $derived lookup re-reads.
 let registryVersion = $state(0);
-let cursorVersion = $state(0);
+// Bumped whenever the editor overlay's cursors or selections change.
+let overlayVersion = $state(0);
 
 const project = $derived(Project.fromDoc(item.ydoc));
-const mayRead = $derived(canReadDiagrams({ capabilities: getProjectCapabilities(project), surfaceWritable: false }));
+const mayRead = $derived(canReadDiagramSource(project));
 const diagram = $derived.by<DiagramSummary | undefined>(() => {
     void registryVersion;
     return mayRead && diagramId ? getDiagram(project, diagramId) : undefined;
 });
+
+/** The Diagram an item of the current page transcludes, if it is an occurrence. */
+function diagramOfItem(itemId: string): string | undefined {
+    const root = generalStore.currentPage as Item | undefined;
+    const found = root ? searchItem(root, itemId) : undefined;
+    return diagramIdForItem(found as Item | undefined);
+}
+
+/** Local logical cursors whose edit target is this Diagram's source. */
 const sourceCursors = $derived.by(() => {
-    void cursorVersion;
+    void overlayVersion;
+    void registryVersion;
     if (!diagramId) return [];
-    return editorOverlayStore.getLocalCursorInstances().filter(cursor => {
-        const target = cursor.findTarget();
-        return diagramIdForItem(target) === diagramId;
-    });
+    return editorOverlayStore.getLocalCursorInstances().filter(cursor =>
+        diagramIdForItem(cursor.findTarget()) === diagramId
+    );
 });
 const sourceVisible = $derived(sourceCursors.length > 0);
-const sourceCharacters = $derived(Array.from(diagram?.source ?? ""));
-function cursorsAt(offset: number) { return sourceCursors.filter(cursor => cursor.offset === offset); }
 
-function hitTestOffset(event: MouseEvent): number {
-    const element = event.currentTarget as HTMLElement;
-    const position = document.caretPositionFromPoint?.(event.clientX, event.clientY);
-    if (!position?.offsetNode || !element.contains(position.offsetNode)) return 0;
-    const range = document.createRange();
-    range.setStart(element, 0);
-    range.setEnd(position.offsetNode, position.offset);
-    return Math.min(range.toString().length, diagram?.source.length ?? 0);
-}
-function enterSource(event: MouseEvent) {
-    event.stopPropagation();
-    if (!mayRead || !diagram) return;
-    const offset = sourceVisible ? hitTestOffset(event) : 0;
-    editorOverlayStore.placeLocalCaret({ itemId: item.id, offset });
-}
+/** Source-internal selections of any occurrence of this Diagram, in canonical offsets. */
+const sourceRanges = $derived.by<SourceRangeMark[]>(() => {
+    void overlayVersion;
+    if (!diagramId) return [];
+    const ranges: SourceRangeMark[] = [];
+    for (const selection of Object.values(editorOverlayStore.selections)) {
+        if ((selection.userId ?? "local") !== "local") continue;
+        if (selection.start.kind !== "text" || selection.end.kind !== "text") continue;
+        if (selection.start.itemId !== selection.end.itemId) continue;
+        if (diagramOfItem(selection.start.itemId) !== diagramId) continue;
+        ranges.push({ start: selection.start.offset, end: selection.end.offset });
+    }
+    return ranges;
+});
+
+const segments = $derived.by(() => {
+    void registryVersion;
+    const source = diagram?.source ?? "";
+    const preedits = diagramId ? diagramComposition.preeditsFor(diagramId) : [];
+    return buildSourceSegments(
+        source,
+        sourceCursors.map(cursor => ({ key: cursor.cursorId, offset: cursor.offset })),
+        sourceRanges,
+        preedits,
+    );
+});
 
 const EXCERPT_LENGTH = 60;
 const excerpt = $derived.by(() => {
@@ -81,15 +112,96 @@ const excerpt = $derived.by(() => {
     return trimmed.length > EXCERPT_LENGTH ? `${trimmed.slice(0, EXCERPT_LENGTH)}…` : trimmed;
 });
 
+/**
+ * Place a caret in this occurrence. A plain gesture retargets the single local
+ * caret (clicking another occurrence moves the cursor, it never duplicates it);
+ * Alt adds an independent logical cursor (REQ-012).
+ */
+function placeCaret(offset: number, addCursor: boolean): string {
+    const cursorId = addCursor
+        ? editorOverlayStore.addCursor({ itemId: item.id, offset, isActive: true, userId: "local" })
+        : (editorOverlayStore.clearCursorAndSelection("local"),
+            editorOverlayStore.placeLocalCaret({ itemId: item.id, offset }));
+    // Keyboard input reaches the source through the shared hidden input bridge.
+    editorOverlayStore.getTextareaRef()?.focus();
+    return cursorId;
+}
+
+/** Keep focus on the shared input bridge rather than the preview button. */
+function keepEditorFocus(event: PointerEvent) {
+    event.preventDefault();
+}
+
+/** Clicking the preview/empty surface enters the source at its beginning (REQ-003). */
+function enterSource(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!mayRead || !diagram) return;
+    placeCaret(0, event.altKey);
+}
+
+let drag: { cursorId: string; anchor: number; } | undefined;
+
+/** Pointer on visible source: caret at the hit-tested canonical position; drag selects. */
+function onSourcePointerDown(event: PointerEvent) {
+    if (event.button !== 0 || !mayRead || !diagram) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const root = event.currentTarget as HTMLElement;
+    const offset = offsetFromPoint(root, event.clientX, event.clientY) ?? diagram.source.length;
+    const cursorId = placeCaret(offset, event.altKey);
+    drag = { cursorId, anchor: offset };
+    root.setPointerCapture?.(event.pointerId);
+}
+
+function onSourcePointerMove(event: PointerEvent) {
+    if (!drag || (event.buttons & 1) === 0) return;
+    const root = event.currentTarget as HTMLElement;
+    const focus = offsetFromPoint(root, event.clientX, event.clientY);
+    const cursor = editorOverlayStore.cursorInstances.get(drag.cursorId);
+    if (focus === undefined || !cursor || cursor.offset === focus) return;
+    cursor.offset = focus;
+    editorOverlayStore.setCursorSelection(
+        drag.cursorId,
+        focus === drag.anchor ? undefined : {
+            startItemId: item.id,
+            startOffset: Math.min(drag.anchor, focus),
+            endItemId: item.id,
+            endOffset: Math.max(drag.anchor, focus),
+            userId: "local",
+            isReversed: focus < drag.anchor,
+        },
+    );
+    cursor.applyToStore();
+}
+
+function onSourcePointerUp(event: PointerEvent) {
+    drag = undefined;
+    (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+}
+
+function swallowClick(event: MouseEvent) {
+    event.stopPropagation();
+}
+
+// A surface can turn read-only while this occurrence stays mounted (read-only
+// presentation, demo reset). Mutations already read writability through the
+// live getter registered below; this effect exists only because nothing else
+// signals the transition, and a pending composition bound to this occurrence
+// must be invalidated the moment write access disappears (REQ-014).
+$effect(() => {
+    if (isReadOnly) untrack(() => diagramComposition.occurrenceInvalidated(item.id));
+});
+
 let unobserveItem: (() => void) | undefined;
 let unobserveRegistry: (() => void) | undefined;
-let unobserveCursors: (() => void) | undefined;
+let unobserveOverlay: (() => void) | undefined;
 let unregisterOccurrence: (() => void) | undefined;
 
 onMount(() => {
     diagramId = getItemDiagramId(item);
-    unregisterOccurrence = registerDiagramOccurrence(item.id, !isReadOnly);
-    unobserveCursors = editorOverlayStore.subscribe(() => cursorVersion++);
+    unregisterOccurrence = registerDiagramOccurrence(item.id, () => !isReadOnly);
+    unobserveOverlay = editorOverlayStore.subscribe(() => overlayVersion++);
     unobserveRegistry = observeDiagrams(project, () => {
         registryVersion++;
     });
@@ -100,9 +212,17 @@ onMount(() => {
 
 onDestroy(() => {
     unobserveRegistry?.();
-    unobserveCursors?.();
+    unobserveOverlay?.();
     unregisterOccurrence?.();
     unobserveItem?.();
+    // Unmounting the active occurrence clears the local editing targets anchored
+    // to it without touching the Diagram source (REQ-005), and invalidates a
+    // composition bound to it (REQ-014). Reflections elsewhere are unaffected.
+    diagramComposition.occurrenceInvalidated(item.id);
+    for (const cursor of editorOverlayStore.getLocalCursorInstances()) {
+        if (cursor.itemId === item.id) editorOverlayStore.removeCursor(cursor.cursorId);
+    }
+    if (editorOverlayStore.getActiveItem() === item.id) editorOverlayStore.setActiveItem(null);
 });
 </script>
 
@@ -123,14 +243,25 @@ onDestroy(() => {
         <div class="diagram-block diagram-block--pending" data-testid="diagram-block" data-diagram-state="pending" data-diagram-id={diagramId}>
             <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label">Loading Mermaid diagram…</span>
         </div>
+    {:else if sourceVisible}
+        <div class="diagram-block diagram-source-visible" data-testid="diagram-block" data-diagram-state="ready"
+            data-diagram-id={diagram.id} data-diagram-format={diagram.format}>
+            <!-- No whitespace between runs: the rendered text must be exactly the canonical source.
+                 Keyboard input reaches the source through the shared hidden input bridge
+                 (GlobalTextArea), not through this element; the click handler only keeps the
+                 pointer gesture from reaching the outline row's own click handling. -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <div class="diagram-source" data-testid="diagram-source" data-diagram-source role="textbox" tabindex="-1"
+                aria-multiline="true" aria-readonly={isReadOnly} aria-label="Mermaid source"
+                onpointerdown={onSourcePointerDown} onpointermove={onSourcePointerMove} onpointerup={onSourcePointerUp}
+                onclick={swallowClick}
+            >{#each segments as segment (segment.key)}{#if segment.kind === "text"}<span class="diagram-source-run" class:diagram-source-selected={segment.selected} data-source-run data-source-start={segment.start}>{segment.text}</span>{:else if segment.kind === "caret"}<span class="diagram-caret" data-testid="diagram-caret" data-caret-offset={segment.offset} aria-hidden="true"></span>{:else}<span class="diagram-preedit" data-testid="diagram-preedit" data-ephemeral>{segment.text}</span>{/if}{/each}</div>
+        </div>
     {:else}
-        <button type="button" class="diagram-block" class:diagram-source-visible={sourceVisible} data-testid="diagram-block"
-            data-diagram-state="ready" data-diagram-id={diagram.id} data-diagram-format={diagram.format} onclick={enterSource}>
-            {#if sourceVisible}
-                <code class="diagram-source" data-testid="diagram-source">{#each sourceCharacters as character, index (`${index}:${character}`)}{#each cursorsAt(index) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}{character}{/each}{#each cursorsAt(sourceCharacters.length) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}</code>
-            {:else}
-                <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label" data-testid="diagram-block-excerpt">{excerpt}</span>
-            {/if}
+        <button type="button" class="diagram-block" data-testid="diagram-block" data-diagram-state="ready"
+            data-diagram-id={diagram.id} data-diagram-format={diagram.format} onpointerdown={keepEditorFocus}
+            onclick={enterSource}>
+            <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label" data-testid="diagram-block-excerpt">{excerpt}</span>
         </button>
     {/if}
 {/key}
@@ -165,7 +296,17 @@ onDestroy(() => {
     white-space: nowrap;
 }
 
-.diagram-source { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.diagram-source {
+    flex: 1;
+    min-height: 1.2em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    cursor: text;
+    outline: none;
+}
+.diagram-source-selected { background: rgba(99, 102, 241, 0.25); }
+.diagram-preedit { text-decoration: underline; }
 .diagram-caret { display: inline-block; width: 1px; height: 1.2em; margin-right: -1px; vertical-align: text-bottom; background: currentColor; animation: diagram-blink 1s step-end infinite; }
 @keyframes diagram-blink { 50% { opacity: 0; } }
 </style>

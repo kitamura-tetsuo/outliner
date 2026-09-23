@@ -19,7 +19,7 @@ describe("native Diagram editing target (#5311)", () => {
 
     it("edits the project-owned Y.Text and never the occurrence text", () => {
         const { item, diagramId } = occurrence("ab");
-        const unregister = registerDiagramOccurrence(item.id, true);
+        const unregister = registerDiagramOccurrence(item.id, () => true);
         const target = diagramEditingTarget(project, item)!;
         target.insertTextAt(1, "X");
         expect(getDiagramSourceYText(project, diagramId)?.toString()).toBe("aXb");
@@ -29,7 +29,7 @@ describe("native Diagram editing target (#5311)", () => {
 
     it("preserves literal multiline, tab, bracket, and Unicode input", () => {
         const { item, diagramId } = occurrence("");
-        const unregister = registerDiagramOccurrence(item.id, true);
+        const unregister = registerDiagramOccurrence(item.id, () => true);
         diagramEditingTarget(project, item)!.insertTextAt(0, "graph TD\n\tA[日本]");
         expect(getDiagramSourceYText(project, diagramId)?.toString()).toBe("graph TD\n\tA[日本]");
         unregister();
@@ -37,7 +37,7 @@ describe("native Diagram editing target (#5311)", () => {
 
     it("refuses writes from a read-only or unmounted occurrence", () => {
         const { item, diagramId } = occurrence("safe");
-        const unregister = registerDiagramOccurrence(item.id, false);
+        const unregister = registerDiagramOccurrence(item.id, () => false);
         const target = diagramEditingTarget(project, item)!;
         target.insertTextAt(0, "unsafe");
         expect(getDiagramSourceYText(project, diagramId)?.toString()).toBe("safe");
@@ -46,12 +46,17 @@ describe("native Diagram editing target (#5311)", () => {
         expect(getDiagramSourceYText(project, diagramId)?.toString()).toBe("safe");
     });
 
-    it("resolves no editing target, and so exposes no source, without read capability", () => {
-        const { item } = occurrence("secret");
-        const unregister = registerDiagramOccurrence(item.id, true);
-        expect(diagramEditingTarget(project, item, { canRead: false, canWrite: true })).toBeUndefined();
-        expect(diagramEditingTarget(project, item, { canRead: true, canWrite: false })?.text.toString())
-            .toBe("secret");
+    it("consults the invoking surface's writability when the mutation is attempted", () => {
+        const { item, diagramId } = occurrence("ab");
+        let writable = true;
+        const unregister = registerDiagramOccurrence(item.id, () => writable);
+        const target = diagramEditingTarget(project, item)!;
+        writable = false;
+        target.insertTextAt(0, "X");
+        expect(getDiagramSourceYText(project, diagramId)?.toString()).toBe("ab");
+        writable = true;
+        target.insertTextAt(0, "X");
+        expect(getDiagramSourceYText(project, diagramId)?.toString()).toBe("Xab");
         unregister();
     });
 

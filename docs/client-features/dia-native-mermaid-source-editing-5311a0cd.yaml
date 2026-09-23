@@ -5,4 +5,10 @@ description: Diagram transclusions enter a shared native outline editing mode. E
 category: editor
 status: implemented
 tests:
-- client/src/services/diagram/diagramEditing.test.ts - client/e2e/new/dia-native-source-literal-keys-3208f490.spec.ts - client/e2e/new/dia-cross-owner-range-refused-38e3d7cd.spec.ts
+- client/e2e/new/dia-cross-owner-range-refused-38e3d7cd.spec.ts
+- client/e2e/new/dia-native-source-literal-keys-3208f490.spec.ts
+- client/e2e/new/dia-source-utf16-offsets-f247039e.spec.ts
+- client/e2e/new/dia-surface-writability-live-a2809186.spec.ts
+- client/src/services/diagram/diagramCommand.test.ts
+- client/src/services/diagram/diagramEditing.test.ts
+- client/src/services/diagram/diagramSourceView.test.ts

@@ -1,5 +1,6 @@
 import type { Item as AppItem } from "../../schema/app-schema";
 import type { Item } from "../../schema/yjs-schema";
+import { diagramEditingTarget, isDiagramItem } from "../../services/diagram/diagramEditing";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
@@ -60,6 +61,20 @@ export function collectAllItemIds(node: AppItem, ids: string[]): string[] {
     }
 
     return ids;
+}
+
+/**
+ * The text a caret moves through when it enters `item`: a Diagram occurrence is
+ * entered through its Diagram's source (#5311), never its own empty item text.
+ */
+function navigableText(item: Item | undefined): string {
+    const appItem = item as unknown as AppItem | undefined;
+    if (appItem && isDiagramItem(appItem)) {
+        const project = generalStore.project;
+        const target = project ? diagramEditingTarget(project, appItem) : undefined;
+        return target ? resolveItemText(target) : "";
+    }
+    return resolveItemText(item);
 }
 
 export class CursorNavigation {
@@ -519,7 +534,7 @@ export class CursorNavigation {
                             }
                             newItemId = prevItemId;
                             const treeTextLength = prevItem
-                                ? resolveItemText(prevItem).length
+                                ? navigableText(prevItem).length
                                 : undefined;
                             const domTextLength = prevEl.querySelector(".item-text")?.textContent?.length
                                 ?? prevEl.textContent?.length
@@ -533,7 +548,7 @@ export class CursorNavigation {
 
             if (prevItem && !itemChanged) {
                 newItemId = prevItem.id;
-                newOffset = prevItem.text?.length || 0;
+                newOffset = navigableText(prevItem).length;
                 itemChanged = true;
 
                 // Debug information
@@ -773,9 +788,7 @@ export class CursorNavigation {
             if (prevItem || hasParentToNavigateTo) {
                 const targetPrevItem = prevItem || parentItemInstance!;
                 newItemId = targetPrevItem.id;
-                const prevText = (targetPrevItem.text && typeof targetPrevItem.text.toString === "function")
-                    ? targetPrevItem.text.toString()
-                    : "";
+                const prevText = navigableText(targetPrevItem as Item);
                 const prevLines = prevText.split("\n");
                 const lastLineIndex = prevLines.length - 1;
                 const lastLineStart = getLineStartOffset(prevText, lastLineIndex);
@@ -828,7 +841,7 @@ export class CursorNavigation {
             if (nextItem) {
                 newItemId = nextItem.id;
 
-                const nextText = resolveItemText(nextItem);
+                const nextText = navigableText(nextItem);
                 // const nextLines = nextText.split("\n");  // Not used
                 const firstLineIndex = 0;
                 const firstLineStart = getLineStartOffset(nextText, firstLineIndex);

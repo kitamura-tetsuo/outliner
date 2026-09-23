@@ -40,6 +40,7 @@
     } from "../services/clipboard/gridPasteEvents";
     import { setItemCalendarId } from "../services/calendar/calendarBinding";
     import { registerPageOutline } from "../services/navigation/outlinePageRegistry";
+    import { registerEditorSurface } from "../services/editorSurface";
     import { createVisualNodeAtTarget } from "../services/outline/visualNodePlacement";
     import { setItemGridId, setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
@@ -345,6 +346,13 @@
     onMount(() => {
         if (isEmbedded || !pageItem?.key) return;
         return registerPageOutline(pageItem.key, { expandItems: expandItemsForReveal });
+    });
+
+    // The page outline is the surface project commands such as Undo/Redo are
+    // invoked from. Its writability is read live, when a command runs (#5311).
+    onMount(() => {
+        if (isEmbedded) return;
+        return registerEditorSurface(() => !isReadOnly);
     });
 
     onMount(() => {
