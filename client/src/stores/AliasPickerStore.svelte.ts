@@ -48,20 +48,6 @@ class AliasPickerStore {
             logger.error(_e);
         }
 
-        // DOM presence check (async) for debugging E2E timing
-        try {
-            if (typeof document !== "undefined") {
-                setTimeout(() => {
-                    try {
-                        document.querySelector(".alias-picker");
-                    } catch (_e) {
-                        logger.error(_e);
-                    }
-                }, 0);
-            }
-        } catch (_e) {
-            logger.error(_e);
-        }
         // Single-shot refresh using microtask to avoid layout feedback
         queueMicrotask(() => {
             if (this.isVisible) {
