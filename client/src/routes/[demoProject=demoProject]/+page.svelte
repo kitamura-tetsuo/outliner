@@ -121,6 +121,7 @@
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">Public Demo Project</h1>
             <button type="button"
+                aria-label="Reset demo content"
                 onclick={() => showResetConfirm = true}
                 disabled={isResetting || isLoading}
                 data-testid="demo-reset-button"

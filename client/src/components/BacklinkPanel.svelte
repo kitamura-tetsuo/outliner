@@ -90,6 +90,7 @@ onDestroy(() => {
 <div class="backlink-panel">
     <button type="button"
         onclick={togglePanel}
+        aria-label="Toggle Backlinks"
         class="backlink-toggle-button"
         class:active={isOpen}
         aria-expanded={isOpen}
