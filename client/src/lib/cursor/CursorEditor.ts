@@ -4,7 +4,7 @@ const logger = getLogger("CursorEditor");
 
 import type { Item } from "../../schema/yjs-schema";
 import { Items } from "../../schema/yjs-schema";
-import { isDiagramItem } from "../../services/diagram/diagramEditing";
+import { isDiagramItem, refuseCrossOwnerDiagramRange } from "../../services/diagram/diagramEditing";
 import { isVisualNode } from "../../services/outline/nodeTree";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
@@ -177,6 +177,7 @@ export class CursorEditor {
         const currentText = node.text?.toString?.() ?? "";
         const fullSelection = this.getSelection();
         if (fullSelection && selectionSpansMultipleItems(fullSelection)) {
+            if (this.refusesCrossOwnerRange(fullSelection)) return;
             this.deleteMultiItemSelection(fullSelection);
 
             const updatedNode = cursor.findTarget();
@@ -695,6 +696,10 @@ export class CursorEditor {
                 const selection = this.getSelection();
                 if (selection && selectionHasRange(selection)) {
                     if (selectionSpansMultipleItems(selection)) {
+                        if (this.refusesCrossOwnerRange(selection)) {
+                            this.targetRangesForNextInput = null;
+                            return;
+                        }
                         this.deleteMultiItemSelection(selection);
                     } else {
                         this.deleteSelection();
@@ -1058,9 +1063,24 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
+    /**
+     * Character ranges joining Diagram source with another owner are refused
+     * before any mutation (see refuseCrossOwnerDiagramRange).
+     */
+    private refusesCrossOwnerRange(selection: SelectionRange): boolean {
+        if (!selectionSpansMultipleItems(selection)) return false;
+        const root = generalStore.currentPage as unknown as Item | undefined;
+        if (!root) return false;
+        return refuseCrossOwnerDiagramRange(
+            { item: searchItem(root, selection.start.itemId), character: selection.start.kind === "text" },
+            { item: searchItem(root, selection.end.itemId), character: selection.end.kind === "text" },
+        );
+    }
+
     deleteMultiItemSelection(selection: SelectionRange) {
         const cursor = this.cursor;
         if (!selection) return;
+        if (this.refusesCrossOwnerRange(selection)) return;
 
         if (!selectionSpansMultipleItems(selection) && !this.selectsOneAtomicNode(selection)) {
             this.deleteSelection();
@@ -1231,6 +1251,10 @@ export class CursorEditor {
         if (!selection || !selectionHasRange(selection)) {
             return;
         }
+
+        // Diagram source is literal Mermaid text: Scrapbox markup never applies.
+        if (this.refusesCrossOwnerRange(selection)) return;
+        if (isDiagramItem(cursor.findTarget())) return;
 
         if (selectionSpansMultipleItems(selection)) {
             this.applyScrapboxFormattingToMultipleItems(selection, formatType);

@@ -1,7 +1,7 @@
 import { Project } from "$shared/app-schema";
 import { beforeEach, describe, expect, it } from "vitest";
 import { setItemDiagramId } from "./diagramBinding";
-import { diagramEditingTarget, registerDiagramOccurrence } from "./diagramEditing";
+import { diagramEditingTarget, refuseCrossOwnerDiagramRange, registerDiagramOccurrence } from "./diagramEditing";
 import { createDiagram, getDiagramSourceYText } from "./diagramService";
 
 describe("native Diagram editing target (#5311)", () => {
@@ -44,5 +44,38 @@ describe("native Diagram editing target (#5311)", () => {
         unregister();
         target.deleteTextAt(0, 4);
         expect(getDiagramSourceYText(project, diagramId)?.toString()).toBe("safe");
+    });
+
+    it("resolves no editing target, and so exposes no source, without read capability", () => {
+        const { item } = occurrence("secret");
+        const unregister = registerDiagramOccurrence(item.id, true);
+        expect(diagramEditingTarget(project, item, { canRead: false, canWrite: true })).toBeUndefined();
+        expect(diagramEditingTarget(project, item, { canRead: true, canWrite: false })?.text.toString())
+            .toBe("secret");
+        unregister();
+    });
+
+    it("refuses character ranges joining Diagram source with another owner", () => {
+        const { item: diagramA } = occurrence("a");
+        const { item: diagramB } = occurrence("b");
+        const page = project.addPage("Text page", "tester");
+        const text = page.items.addNode("tester");
+        const other = page.items.addNode("tester");
+        const refusals: string[] = [];
+        const listener = (event: Event) => refusals.push((event as CustomEvent).detail.itemId);
+        window.addEventListener("diagram-edit-refused", listener);
+
+        const at = (item: typeof text) => ({ item, character: true });
+        expect(refuseCrossOwnerDiagramRange(at(diagramA), at(text))).toBe(true);
+        expect(refuseCrossOwnerDiagramRange(at(text), at(diagramA))).toBe(true);
+        expect(refuseCrossOwnerDiagramRange(at(diagramA), at(diagramB))).toBe(true);
+        // Ranges inside one owner, Text-only ranges, and structural selections
+        // of whole occurrences (node-boundary ends) stay supported.
+        expect(refuseCrossOwnerDiagramRange(at(diagramA), at(diagramA))).toBe(false);
+        expect(refuseCrossOwnerDiagramRange(at(text), at(other))).toBe(false);
+        expect(refuseCrossOwnerDiagramRange({ item: diagramA, character: false }, at(text))).toBe(false);
+
+        window.removeEventListener("diagram-edit-refused", listener);
+        expect(refusals).toEqual([diagramA.id, diagramA.id, diagramA.id]);
     });
 });

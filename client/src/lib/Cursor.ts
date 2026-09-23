@@ -629,7 +629,13 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                     this.clearSelection();
                     break;
                 case "Tab":
-                    this.indent();
+                    // Diagram source is literal text: Tab inserts a tab
+                    // character instead of indenting the occurrence.
+                    if (isDiagramItem(this.findTarget())) {
+                        this.insertText("\t");
+                    } else {
+                        this.indent();
+                    }
                     break;
                 default:
                     return false;
