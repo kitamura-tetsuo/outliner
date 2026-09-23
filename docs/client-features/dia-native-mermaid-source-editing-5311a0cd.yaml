@@ -1,0 +1,8 @@
+id: FTR-5311a0cd
+title: Native Mermaid source editing
+title-ja: ネイティブ Mermaid ソース編集
+description: Diagram transclusions enter a shared native outline editing mode. Each occurrence projects the same project-owned collaborative source and logical cursors, while literal multiline input remains Diagram source rather than outline structure.
+category: editor
+status: implemented
+tests:
+  - client/src/services/diagram/diagramEditing.test.ts

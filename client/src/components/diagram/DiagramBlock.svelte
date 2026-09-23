@@ -15,6 +15,10 @@ import { onDestroy, onMount } from "svelte";
 import { Project } from "$shared/app-schema";
 import { getItemDiagramId, observeItemDiagramId } from "../../services/diagram/diagramBinding";
 import { type DiagramSummary, getDiagram, observeDiagrams } from "../../services/diagram/diagramService";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { getProjectCapabilities } from "../../services/project/projectCapabilities";
+import { canReadDiagrams } from "../../services/diagram/diagramAuthorization";
+import { diagramIdForItem, registerDiagramOccurrence } from "../../services/diagram/diagramEditing";
 
 interface ItemLike {
     ydoc: import("yjs").Doc;
@@ -23,20 +27,50 @@ interface ItemLike {
 }
 
 interface Props {
-    item: ItemLike;
+    item: ItemLike & { id: string; componentType?: string; };
+    isReadOnly?: boolean;
 }
 
-let { item }: Props = $props();
+let { item, isReadOnly = false }: Props = $props();
 
 let diagramId = $state<string | undefined>();
 // Bumped by the Diagram registry observer so the $derived lookup re-reads.
 let registryVersion = $state(0);
+let cursorVersion = $state(0);
 
 const project = $derived(Project.fromDoc(item.ydoc));
+const mayRead = $derived(canReadDiagrams({ capabilities: getProjectCapabilities(project), surfaceWritable: false }));
 const diagram = $derived.by<DiagramSummary | undefined>(() => {
     void registryVersion;
-    return diagramId ? getDiagram(project, diagramId) : undefined;
+    return mayRead && diagramId ? getDiagram(project, diagramId) : undefined;
 });
+const sourceCursors = $derived.by(() => {
+    void cursorVersion;
+    if (!diagramId) return [];
+    return editorOverlayStore.getLocalCursorInstances().filter(cursor => {
+        const target = cursor.findTarget();
+        return diagramIdForItem(target) === diagramId;
+    });
+});
+const sourceVisible = $derived(sourceCursors.length > 0);
+const sourceCharacters = $derived(Array.from(diagram?.source ?? ""));
+function cursorsAt(offset: number) { return sourceCursors.filter(cursor => cursor.offset === offset); }
+
+function hitTestOffset(event: MouseEvent): number {
+    const element = event.currentTarget as HTMLElement;
+    const position = document.caretPositionFromPoint?.(event.clientX, event.clientY);
+    if (!position?.offsetNode || !element.contains(position.offsetNode)) return 0;
+    const range = document.createRange();
+    range.setStart(element, 0);
+    range.setEnd(position.offsetNode, position.offset);
+    return Math.min(range.toString().length, diagram?.source.length ?? 0);
+}
+function enterSource(event: MouseEvent) {
+    event.stopPropagation();
+    if (!mayRead || !diagram) return;
+    const offset = sourceVisible ? hitTestOffset(event) : 0;
+    editorOverlayStore.placeLocalCaret({ itemId: item.id, offset });
+}
 
 const EXCERPT_LENGTH = 60;
 const excerpt = $derived.by(() => {
@@ -49,9 +83,13 @@ const excerpt = $derived.by(() => {
 
 let unobserveItem: (() => void) | undefined;
 let unobserveRegistry: (() => void) | undefined;
+let unobserveCursors: (() => void) | undefined;
+let unregisterOccurrence: (() => void) | undefined;
 
 onMount(() => {
     diagramId = getItemDiagramId(item);
+    unregisterOccurrence = registerDiagramOccurrence(item.id, !isReadOnly);
+    unobserveCursors = editorOverlayStore.subscribe(() => cursorVersion++);
     unobserveRegistry = observeDiagrams(project, () => {
         registryVersion++;
     });
@@ -62,6 +100,8 @@ onMount(() => {
 
 onDestroy(() => {
     unobserveRegistry?.();
+    unobserveCursors?.();
+    unregisterOccurrence?.();
     unobserveItem?.();
 });
 </script>
@@ -73,30 +113,25 @@ onDestroy(() => {
 {#key diagramId}
     {#if !diagramId}
         <div class="diagram-block diagram-block--pending" data-testid="diagram-block" data-diagram-state="unbound">
-            <span class="diagram-icon" aria-hidden="true">◇</span>
-            <span class="diagram-label">Mermaid diagram unavailable</span>
+            <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label">Mermaid diagram unavailable</span>
+        </div>
+    {:else if !mayRead}
+        <div class="diagram-block diagram-block--pending" data-testid="diagram-block" data-diagram-state="denied" data-diagram-id={diagramId}>
+            <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label">Mermaid diagram unavailable</span>
         </div>
     {:else if !diagram}
-        <div
-            class="diagram-block diagram-block--pending"
-            data-testid="diagram-block"
-            data-diagram-state="pending"
-            data-diagram-id={diagramId}
-        >
-            <span class="diagram-icon" aria-hidden="true">◇</span>
-            <span class="diagram-label">Loading Mermaid diagram…</span>
+        <div class="diagram-block diagram-block--pending" data-testid="diagram-block" data-diagram-state="pending" data-diagram-id={diagramId}>
+            <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label">Loading Mermaid diagram…</span>
         </div>
     {:else}
-        <div
-            class="diagram-block"
-            data-testid="diagram-block"
-            data-diagram-state="ready"
-            data-diagram-id={diagram.id}
-            data-diagram-format={diagram.format}
-        >
-            <span class="diagram-icon" aria-hidden="true">◇</span>
-            <span class="diagram-label" data-testid="diagram-block-excerpt">{excerpt}</span>
-        </div>
+        <button type="button" class="diagram-block" class:diagram-source-visible={sourceVisible} data-testid="diagram-block"
+            data-diagram-state="ready" data-diagram-id={diagram.id} data-diagram-format={diagram.format} onclick={enterSource}>
+            {#if sourceVisible}
+                <code class="diagram-source" data-testid="diagram-source">{#each sourceCharacters as character, index}{#each cursorsAt(index) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}{character}{/each}{#each cursorsAt(sourceCharacters.length) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}</code>
+            {:else}
+                <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label" data-testid="diagram-block-excerpt">{excerpt}</span>
+            {/if}
+        </button>
     {/if}
 {/key}
 
@@ -110,6 +145,8 @@ onDestroy(() => {
     border-radius: 6px;
     background: #fafafa;
     font-size: 0.875rem;
+    text-align: left;
+    width: 100%;
     color: #374151;
 }
 
@@ -127,4 +164,8 @@ onDestroy(() => {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.diagram-source { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.diagram-caret { display: inline-block; width: 1px; height: 1.2em; margin-right: -1px; vertical-align: text-bottom; background: currentColor; animation: diagram-blink 1s step-end infinite; }
+@keyframes diagram-blink { 50% { opacity: 0; } }
 </style>

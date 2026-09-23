@@ -4,6 +4,7 @@ const logger = getLogger("CursorEditor");
 
 import type { Item } from "../../schema/yjs-schema";
 import { Items } from "../../schema/yjs-schema";
+import { isDiagramItem } from "../../services/diagram/diagramEditing";
 import { isVisualNode } from "../../services/outline/nodeTree";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
@@ -285,6 +286,7 @@ export class CursorEditor {
                 }
                 cursor.offset = Math.max(0, cursor.offset - 1);
             } else {
+                if (isDiagramItem(node)) return;
                 this.mergeWithPreviousItem();
                 return; // Early return after merge since it handles its own state updates
             }
@@ -356,6 +358,7 @@ export class CursorEditor {
                     node.updateText(txt);
                 }
             } else {
+                if (isDiagramItem(node)) return;
                 if (txt.length === 0) {
                     this.deleteEmptyItem();
                     return;
@@ -383,6 +386,15 @@ export class CursorEditor {
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
+
+        if (isDiagramItem(target)) {
+            target.insertTextAt(cursor.offset, "\n");
+            cursor.offset += 1;
+            cursor.clearSelection();
+            cursor.applyToStore();
+            store.triggerOnEdit();
+            return;
+        }
 
         if (pageTitle) {
             if (target.items && target.items instanceof Items) {
@@ -473,6 +485,15 @@ export class CursorEditor {
         if (!target) return;
 
         const pageTitle = isPageItem(target);
+
+        if (isDiagramItem(target)) {
+            target.insertTextAt(cursor.offset, "\n");
+            cursor.offset += 1;
+            cursor.clearSelection();
+            cursor.applyToStore();
+            store.triggerOnEdit();
+            return;
+        }
 
         if (pageTitle) {
             if (target.items && target.items instanceof Items) {

@@ -21,6 +21,7 @@ import {
 import { collectAllItemIds, CursorNavigation, type CursorNavigationContext } from "./cursor/CursorNavigation";
 import { searchItem } from "./cursor/CursorNavigationUtils";
 
+import { diagramEditingTarget, isDiagramItem } from "../services/diagram/diagramEditing";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 import { getLogger } from "./logger";
 import { readOutlineRows } from "./selection/outlineSelectionDom";
@@ -145,7 +146,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const target = this.findTarget();
         // Some non-Yjs Item implementations (including lightweight Fluid test
         // stubs) do not expose a backing map; they keep using the numeric offset.
-        const text = target?.yMap?.get("text");
+        const candidate: unknown = target?.text;
+        const text = candidate instanceof Y.Text ? candidate : target?.yMap?.get("text");
         if (!(text instanceof Y.Text) || !text.doc) return;
 
         if (this.observedText !== text) {
@@ -205,7 +207,14 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
     findTarget(): Item | undefined {
-        return this._findTarget();
+        const occurrence = this._findTarget();
+        if (!occurrence || !isDiagramItem(occurrence)) return occurrence;
+        try {
+            const project = generalStore.project;
+            return project ? diagramEditingTarget(project, occurrence) : undefined;
+        } catch {
+            return undefined;
+        }
     }
 
     private getTargetText(target: { text?: unknown; } | undefined): string {
