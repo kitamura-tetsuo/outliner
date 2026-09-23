@@ -182,7 +182,6 @@ export function createMcpRouter(
             uidFingerprint,
             tool: name,
             projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
-            operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
             entity: typeof typedArgs.relation === "string"
                 ? typedArgs.relation
                 : typeof typedArgs.ruleId === "string"
