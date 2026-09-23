@@ -5,4 +5,4 @@ description: Diagram transclusions enter a shared native outline editing mode. E
 category: editor
 status: implemented
 tests:
-  - client/src/services/diagram/diagramEditing.test.ts
+- client/src/services/diagram/diagramEditing.test.ts
