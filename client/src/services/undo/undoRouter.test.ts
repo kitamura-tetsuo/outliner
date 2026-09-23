@@ -338,4 +338,68 @@ describe("UndoRouter", () => {
             expect(treeMap.has("item1")).toBe(false);
         });
     });
+
+    describe("Diagram-involving commands (#5311)", () => {
+        it("captureCommand records one command across two scopes as a single step", () => {
+            const router = new UndoRouter();
+            const outline = scope(router, "outline");
+            const diagram = scope(router, "diagram");
+            outline.edit("before", 1);
+
+            router.captureCommand(() => {
+                outline.edit("text", 2);
+                diagram.edit("source", 3);
+            });
+            expect(router.undoDepth).toBe(2);
+
+            router.undo();
+            expect(outline.map.has("text")).toBe(false);
+            expect(diagram.map.has("source")).toBe(false);
+            // The earlier step was neither merged into nor undone with the command.
+            expect(outline.map.get("before")).toBe(1);
+
+            router.redo();
+            expect(outline.map.get("text")).toBe(2);
+            expect(diagram.map.get("source")).toBe(3);
+        });
+
+        it("a refused replay consumes, skips and reorders nothing", () => {
+            const router = new UndoRouter();
+            const outline = scope(router, "outline");
+            const doc = new Y.Doc();
+            const map = doc.getMap<number>("diagram");
+            const undo = new Y.UndoManager(map);
+            let allowed = false;
+            router.register(undo, { authorize: () => allowed });
+
+            outline.edit("a", 1);
+            doc.transact(() => map.set("source", 1));
+            router.undo();
+            expect(map.get("source")).toBe(1);
+            expect(outline.map.get("a")).toBe(1);
+            expect(router.undoDepth).toBe(2);
+
+            allowed = true;
+            router.undo();
+            expect(map.has("source")).toBe(false);
+            allowed = false;
+            router.redo();
+            expect(map.has("source")).toBe(false);
+            expect(router.redoDepth).toBe(1);
+            allowed = true;
+            router.redo();
+            expect(map.get("source")).toBe(1);
+        });
+
+        it("runs before-history listeners ahead of every Undo/Redo", () => {
+            const router = new UndoRouter();
+            const outline = scope(router, "outline");
+            outline.edit("a", 1);
+            const seen: string[] = [];
+            router.onBeforeHistory(() => seen.push(outline.map.has("a") ? "present" : "gone"));
+            router.undo();
+            router.redo();
+            expect(seen).toEqual(["present", "gone"]);
+        });
+    });
 });

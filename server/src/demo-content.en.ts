@@ -746,6 +746,18 @@ export function demoContentEn(): DemoLocaleContent {
                         componentType: "diagram",
                         diagramId: DEMO_DIAGRAM_ID,
                     },
+                    {
+                        text:
+                            "Click the preview to edit its source right here, with the outline's own caret: Enter inserts a newline and Tab a tab, and nothing you type becomes formatting or outline structure. Alt+click adds another cursor, and Undo/Redo steps through source edits together with your other edits.",
+                    },
+                    {
+                        text:
+                            "The same Diagram again, transcluded a second time — while you edit, both places show the one source and the same caret:",
+                    },
+                    {
+                        componentType: "diagram",
+                        diagramId: DEMO_DIAGRAM_ID,
+                    },
                 ],
             },
         ],
