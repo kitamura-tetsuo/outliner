@@ -1,4 +1,28 @@
 {
+    "name": "fluid-outliner-server",
+    "version": "1.0.0",
+    "description": "Authentication server for Fluid Outliner app",
+    "type": "module",
+    "main": "dist/server/src/index.js",
+    "scripts": {
+        "prebuild": "rm -rf dist",
+        "build": "tsc",
+        "create-test-user": "node utils/create-test-user.js",
+        "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/log-service.ts",
+        "start": "node dist/server/src/index.js",
+        "start:log-service": "node dist/server/src/log-service.js",
+        "mcp:resolve:local": "tsx src/scripts/invoke-local-mcp.ts",
+        "test": "bash ../scripts/run-server-tests.sh",
+        "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+        "test:hocuspocus": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js",
+        "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
+        "postinstall": "patch-package && (test -e ../shared/node_modules || ln -s ../server/node_modules ../shared/node_modules || true)",
+        "postbuild": "ls -la dist",
+        "test:unit": "npm run test:jest"
+    },
+    "overrides": {
+        "yjs": "13.6.32"
+    },
     "dependencies": {
         "@dotenvx/dotenvx": "^2.28.2",
         "@electric-sql/pglite": "^0.5.8",
@@ -32,7 +56,6 @@
         "yjs-orderedtree": "^1.0.1-beta.3",
         "zod": "^4.6.5"
     },
-    "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
         "@hocuspocus/provider": "^4.7.0",
         "@jest/globals": "^30.2.0",
@@ -67,28 +90,5 @@
         "tsx": "^4.23.15",
         "typescript": "^6.0.3",
         "y-websocket": "^3.1.0"
-    },
-    "main": "dist/server/src/index.js",
-    "name": "fluid-outliner-server",
-    "type": "module",
-    "scripts": {
-        "prebuild": "rm -rf dist",
-        "build": "tsc",
-        "create-test-user": "node utils/create-test-user.js",
-        "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/log-service.ts",
-        "start": "node dist/server/src/index.js",
-        "start:log-service": "node dist/server/src/log-service.js",
-        "mcp:resolve:local": "tsx src/scripts/invoke-local-mcp.ts",
-        "test": "bash ../scripts/run-server-tests.sh",
-        "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-        "test:hocuspocus": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js",
-        "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
-        "postinstall": "patch-package && (test -e ../shared/node_modules || ln -s ../server/node_modules ../shared/node_modules || true)",
-        "postbuild": "ls -la dist",
-        "test:unit": "npm run test:jest"
-    },
-    "version": "1.0.0",
-    "overrides": {
-        "yjs": "13.6.32"
     }
 }
