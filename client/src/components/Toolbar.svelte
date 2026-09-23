@@ -201,6 +201,7 @@ function handleRedo() {
                 class="add-database-btn"
                 aria-label="Add Database"
                 title="Add Database"
+                disabled={!store.currentPage}
                 onclick={() => commandPaletteStore.insert("yjstable")}
             >
                 <span class="btn-icon">
@@ -357,8 +358,13 @@ function handleRedo() {
     align-items: center;
 }
 
-.add-database-btn:hover {
+.add-database-btn:hover:not(:disabled) {
     background-color: #e5e7eb;
+}
+
+.add-database-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
 }
 
 .history-btn {
