@@ -127,7 +127,7 @@ onDestroy(() => {
         <button type="button" class="diagram-block" class:diagram-source-visible={sourceVisible} data-testid="diagram-block"
             data-diagram-state="ready" data-diagram-id={diagram.id} data-diagram-format={diagram.format} onclick={enterSource}>
             {#if sourceVisible}
-                <code class="diagram-source" data-testid="diagram-source">{#each sourceCharacters as character, index}{#each cursorsAt(index) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}{character}{/each}{#each cursorsAt(sourceCharacters.length) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}</code>
+                <code class="diagram-source" data-testid="diagram-source">{#each sourceCharacters as character, index (`${index}:${character}`)}{#each cursorsAt(index) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}{character}{/each}{#each cursorsAt(sourceCharacters.length) as cursor (cursor.cursorId)}<span class="diagram-caret" aria-hidden="true"></span>{/each}</code>
             {:else}
                 <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label" data-testid="diagram-block-excerpt">{excerpt}</span>
             {/if}
