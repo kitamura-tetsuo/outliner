@@ -44,13 +44,13 @@ $effect(() => {
 });
 
 function handleConfirm() {
-    isOpen = false;
     onConfirm();
+    isOpen = false;
 }
 
 function handleCancel(_e?: Event) {
-    isOpen = false;
     if (onCancel) onCancel();
+    isOpen = false;
 }
 </script>
 
