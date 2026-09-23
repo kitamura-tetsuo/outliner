@@ -17,7 +17,7 @@
     }
 </script>
 
-<div class="backdrop" role="presentation" onkeydown={onKeydown}>
+<div class="backdrop" role="presentation" tabindex="-1" onkeydown={onKeydown}>
     <div class="dialog" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="paste-special-title" bind:this={dialog} data-testid="paste-special-dialog">
         <h2 id="paste-special-title">Paste Special</h2>
         <div class="choices">

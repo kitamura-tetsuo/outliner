@@ -324,6 +324,7 @@ const logger = getLogger("SearchBox");
             class="clear-button"
             aria-label="Clear search"
             title="Clear search"
+            tabindex="-1"
             onclick={() => {
                 query = "";
                 inputEl?.focus();

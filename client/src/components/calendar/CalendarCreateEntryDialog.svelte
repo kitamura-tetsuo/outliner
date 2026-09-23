@@ -139,6 +139,7 @@ function onKeydown(e: KeyboardEvent) {
 <div
     class="dialog-backdrop"
     role="presentation"
+    tabindex="-1"
     onkeydown={onKeydown}
 >
     <div
