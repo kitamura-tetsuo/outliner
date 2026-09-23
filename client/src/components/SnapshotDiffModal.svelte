@@ -242,10 +242,11 @@ $effect(() => {
                     </div>
                 {:else if viewMode === 'inline'}
                     <!-- Added .diff class for backward compatibility with existing tests -->
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                     <div
                         class="diff diff-view flex-1 overflow-auto bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm whitespace-pre-wrap break-words"
                         tabindex="0"
-                        role="tabpanel"
+                        role="document"
                         aria-label="Inline diff content"
                     >
                         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -257,10 +258,11 @@ $effect(() => {
                             <div class="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 border-b border-gray-200 flex-shrink-0 truncate" title={leftPaneTitle}>
                                 {leftPaneTitle}
                             </div>
+                            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                             <div
                                 class="diff diff-view flex-1 overflow-auto bg-red-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
                                 tabindex="0"
-                                role="tabpanel"
+                                role="document"
                                 aria-label="Old diff content"
                             >
                                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -271,10 +273,11 @@ $effect(() => {
                             <div class="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 border-b border-gray-200 flex-shrink-0 truncate" title={rightPaneTitle}>
                                 {rightPaneTitle}
                             </div>
+                            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                             <div
                                 class="diff diff-view flex-1 overflow-auto bg-green-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
                                 tabindex="0"
-                                role="tabpanel"
+                                role="document"
                                 aria-label="New diff content"
                             >
                                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->

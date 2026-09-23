@@ -51,6 +51,22 @@
     // since both the button that triggers the click and the input element itself
     // live in this component's markup now.
     let fileInput: HTMLInputElement | null = $state(null);
+    let showA11yHelp = $state(false);
+    let a11yDialog: HTMLDialogElement | undefined = $state();
+
+    $effect(() => {
+        if (showA11yHelp && a11yDialog && !a11yDialog.open) {
+            a11yDialog.showModal();
+        } else if (!showA11yHelp && a11yDialog && a11yDialog.open) {
+            a11yDialog.close();
+        }
+    });
+
+    function handleDialogBackdropClick(event: MouseEvent) {
+        if (event.target === a11yDialog) {
+            showA11yHelp = false;
+        }
+    }
 
     let mobileActiveIndex = $state(0);
 
@@ -122,17 +138,23 @@
                 style="display: none;"
             />
             <a href={resolvePath(`${projectPagePath(projectName, pageName)}/diff`)} class="button-style">History / Diff</a>
+            <button type="button" class="button-style" onclick={() => showA11yHelp = true}>Keyboard Shortcuts</button>
         </div>
-        <details class="a11y-help">
-            <summary>Keyboard &amp; accessibility help</summary>
-            <ul>
-                <li><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
-                <li><kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>: move the current item (and its children) up or down among its siblings (alternative to drag-and-drop reordering)</li>
-                <li><kbd>↑</kbd> / <kbd>↓</kbd>: move the cursor between items</li>
-                <li><kbd>Enter</kbd>: add a new item below the current one</li>
-                <li><kbd>Shift+F10</kbd> or <kbd>Menu</kbd>: open context menu for per-item actions (delete, vote, comments, database). <em>Note: The tree itself is a single tab stop; navigate items with arrow keys.</em></li>
-            </ul>
-        </details>
+                <dialog class="a11y-dialog" bind:this={a11yDialog} onclose={() => showA11yHelp = false} onclick={handleDialogBackdropClick} aria-labelledby="a11y-dialog-title">
+            <div class="dialog-content" role="document">
+                <h2 id="a11y-dialog-title">Keyboard &amp; accessibility help</h2>
+                <ul>
+                    <li><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
+                    <li><kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>: move the current item (and its children) up or down among its siblings (alternative to drag-and-drop reordering)</li>
+                    <li><kbd>↑</kbd> / <kbd>↓</kbd>: move the cursor between items</li>
+                    <li><kbd>Enter</kbd>: add a new item below the current one</li>
+                    <li><kbd>Shift+F10</kbd> or <kbd>Menu</kbd>: open context menu for per-item actions (delete, vote, comments, database). <em>Note: The tree itself is a single tab stop; navigate items with arrow keys.</em></li>
+                </ul>
+                <div class="dialog-actions">
+                    <button type="button" class="button-style" onclick={() => showA11yHelp = false}>Close</button>
+                </div>
+            </div>
+        </dialog>
     </div>
 {:else}
     <!-- Mobile Action Toolbar (appears on mobile devices when needed) -->
@@ -324,21 +346,27 @@
         background: #e8e8e8;
     }
 
-    .a11y-help {
-        margin-top: 8px;
-        font-size: 13px;
-        color: #444;
+    .a11y-dialog {
+        width: min(32rem, calc(100vw - 2rem));
+        padding: 0;
+        border: none;
+        border-radius: 0.75rem;
+        background: white;
+        box-shadow: 0 18px 48px rgb(0 0 0 / 25%);
     }
 
-    .a11y-help summary {
-        cursor: pointer;
-        color: #2563eb;
+    .a11y-dialog::backdrop {
+        background: rgb(0 0 0 / 35%);
     }
 
-    .a11y-help ul {
-        margin: 8px 0 0;
-        padding-left: 20px;
+    .dialog-content {
+        padding: 1.25rem;
     }
+
+    .a11y-dialog h2 { margin: 0 0 1rem; font-size: 1.2rem; }
+    .a11y-dialog ul { margin: 8px 0 1rem; padding-left: 20px; font-size: 13px; color: #444; }
+    .a11y-dialog li { margin-bottom: 8px; }
+    .dialog-actions { margin-top: 1.5rem; text-align: right; }
 
     /* Mobile Action Toolbar */
     .mobile-action-toolbar {

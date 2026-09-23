@@ -22,14 +22,14 @@ function dismiss() {
     >
         <div class="error-icon" aria-hidden="true">⚠️</div>
         <div class="error-content">
-            <h2>Server Connection Error</h2>
+            <h3>Server Connection Error</h3>
             <p>{error}</p>
             <div class="error-actions">
                 {#if retryCallback}
-                    <button type="button" class="retry-btn" onclick={retryCallback}>Retry</button>
+                    <button type="button" class="retry-btn" onclick={retryCallback} aria-label="Retry network request">Retry</button>
                 {/if}
                 {#if dismissable}
-                    <button type="button" class="dismiss-btn" onclick={dismiss}>Close</button>
+                    <button type="button" class="dismiss-btn" onclick={dismiss} aria-label="Dismiss error message">Close</button>
                 {/if}
             </div>
         </div>
@@ -72,7 +72,7 @@ function dismiss() {
     flex: 1;
 }
 
-h2 {
+h3 {
     margin: 0 0 8px 0;
     color: #d32f2f;
     font-size: 18px;

@@ -26,7 +26,7 @@ const consoleLogger: Logger = {
     error: (...args) => console.error(...args),
     debug: (...args) => console.debug(...args),
     trace: (...args) => console.trace(...args),
-    fatal: (...args) => console.error(...args),
+    fatal: (...args) => console.error("[FATAL]", ...args),
 };
 
 const consoleFactory: LoggerFactory = () => consoleLogger;

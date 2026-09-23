@@ -1194,7 +1194,7 @@ export class KeyEventHandler {
                                         return;
                                     }
                                     if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
+                                        requestAnimationFrame(() => tryOpen(attempt + 1));
                                     } else {
                                         logger.warn(
                                             "KeyEventHandler(Post): active item not found to open AliasPicker",
@@ -1289,7 +1289,7 @@ export class KeyEventHandler {
                                         return;
                                     }
                                     if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
+                                        requestAnimationFrame(() => tryOpen(attempt + 1));
                                     } else {
                                         logger.warn(
                                             "KeyEventHandler(Post2): active item not found to open AliasPicker",
