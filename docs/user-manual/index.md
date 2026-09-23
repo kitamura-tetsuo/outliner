@@ -88,7 +88,7 @@ Powerful item manipulation features expected in an outliner.
 
 ### Adding New Items
 
-Press `Enter` to insert a new item below the current one.
+Press `Enter` to insert a new item below the current one, or click the **Add Item** button at the top right of the page.
 
 ### Indenting Items
 
@@ -132,7 +132,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - You can also link to a page in another project with `[/project/page]` syntax.
 - **Link Previews:** Hovering over an internal link displays a preview of the page content.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. You can access it via the purple **Graph View** button at the top right of the project page.
 
 ### External Links
 
@@ -208,7 +208,7 @@ You can easily add attachments to your items.
 
 ### Uploading Attachments
 
-You can upload attachments by dragging and dropping an image or file directly onto the editor.
+You can upload attachments by dragging and dropping an image or file directly onto the editor, or by clicking the **Add Image** button at the top right of the page.
 
 ---
 
@@ -220,7 +220,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Schedules page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
-- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.
+- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it using the **History / Diff** button at the top right of the page.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 - **Remote MCP diagnostics and repairs:** Outliner's on-premises MCP endpoint lets compatible AI clients resolve canonical project/page/Table/Grid/Calendar URLs, inspect bounded semantic data, validate Table schemas and Grid queries without mutation, and trace Grid ordering and rendering. Every call uses the signed-in user's project access. Connect with `outliner.read` for diagnostics; writes remain unavailable until the user separately approves `outliner.write`. Before a repair, validate it, read the current revision, dry-run with `expectedRevision` and an `operationId`, prove no change, then apply and re-read. Stale revisions fail instead of overwriting concurrent work, and retrying an operation ID cannot duplicate an applied mutation. Tool results explicitly report truncation, ordering provenance, and structured error codes. See the [MCP operator guide](../chatgpt-mcp-integration.md) for the catalog, limits, audit privacy, and production checklist.
 
@@ -303,7 +303,7 @@ A calendar is a query plus a role assignment over its result columns — which c
 
 ## Keyboard Shortcuts
 
-Here is a complete list of shortcuts.
+Here is a complete list of shortcuts. You can also view this list by clicking the **Keyboard & accessibility help** link at the top right of the page.
 
 | Action                  | Windows/Linux                    | Mac                            |
 | ----------------------- | -------------------------------- | ------------------------------ |
