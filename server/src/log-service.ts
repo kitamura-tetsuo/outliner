@@ -164,12 +164,13 @@ function startLogService() {
         res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
     });
 
-    app.post("/api/login", async (req, res): Promise<any> => {
+    app.post("/api/login", async (req, res) => {
         try {
             const { email, password } = req.body;
 
             if (!email || !password) {
-                return res.status(400).json({ error: "Email and password are required" });
+                res.status(400).json({ error: "Email and password are required" });
+                return;
             }
 
             if (isDevelopment) {
@@ -186,7 +187,7 @@ function startLogService() {
                             role: "admin",
                         });
 
-                        return res.status(200).json({
+                        res.status(200).json({
                             customToken,
                             user: {
                                 uid: userRecord.uid,
@@ -194,6 +195,7 @@ function startLogService() {
                                 displayName: userRecord.displayName,
                             },
                         });
+                        return;
                     }
                 } catch (error: unknown) {
                     logger.error(
@@ -206,22 +208,25 @@ function startLogService() {
                     );
                 }
             }
-            return res.status(401).json({ error: "Invalid credentials" });
+            res.status(401).json({ error: "Invalid credentials" });
+            return;
         } catch (error: unknown) {
             logger.error(
                 { error: new Error(`Login error: ${error instanceof Error ? error.message : String(error)}`) },
                 `Login error: ${error instanceof Error ? error.message : String(error)}`,
             );
-            return res.status(500).json({ error: "Authentication failed" });
+            res.status(500).json({ error: "Authentication failed" });
+            return;
         }
     });
 
-    app.post("/api/log", (req: Request, res: Response): any => {
+    app.post("/api/log", (req: Request, res: Response) => {
         try {
             const logData = req.body;
             if (!logData || !logData.level || !logData.log) {
                 logger.warn(`Received invalid log format: ${JSON.stringify({ receivedData: logData })}`);
-                return res.status(400).json({ error: "Invalid log format" });
+                res.status(400).json({ error: "Invalid log format" });
+                return;
             }
 
             const enrichedLog = {
@@ -257,21 +262,24 @@ function startLogService() {
                     targetLogger.info(JSON.stringify(enrichedLog));
             }
 
-            return res.status(200).json({ success: true });
+            res.status(200).json({ success: true });
+            return;
         } catch (error: unknown) {
             logger.error(
                 { error: new Error(`Log processing error: ${error instanceof Error ? error.message : String(error)}`) },
                 `Log processing error: ${error instanceof Error ? error.message : String(error)}`,
             );
-            return res.status(500).json({ error: "Failed to process log" });
+            res.status(500).json({ error: "Failed to process log" });
+            return;
         }
     });
 
     if (isDevelopment) {
-        app.get("/api/telemetry-logs", (req: Request, res: Response): any => {
+        app.get("/api/telemetry-logs", (req: Request, res: Response) => {
             try {
                 if (!fs.existsSync(telemetryLogPath)) {
-                    return res.status(404).json({ error: "Telemetry log file not found" });
+                    res.status(404).json({ error: "Telemetry log file not found" });
+                    return;
                 }
 
                 const stats = fs.statSync(telemetryLogPath);
@@ -330,7 +338,8 @@ function startLogService() {
                     },
                     `Telemetry log retrieval error: ${error instanceof Error ? error.message : String(error)}`,
                 );
-                return res.status(500).json({ error: "Failed to retrieve Telemetry log" });
+                res.status(500).json({ error: "Failed to retrieve Telemetry log" });
+                return;
             }
         });
     }
@@ -390,61 +399,70 @@ function startLogService() {
     });
 
     if (process.env.NODE_ENV !== "production") {
-        app.get("/debug/token-info", async (req, res): Promise<any> => {
+        app.get("/debug/token-info", async (req, res) => {
             try {
                 const { token } = req.query;
 
                 if (!token) {
-                    return res.status(400).json({ error: "Token is required" });
+                    res.status(400).json({ error: "Token is required" });
+                    return;
                 }
 
                 const decoded = jwt.decode(token as string, { complete: true });
 
                 if (!decoded) {
-                    return res.status(400).json({ error: "Invalid JWT token" });
+                    res.status(400).json({ error: "Invalid JWT token" });
+                    return;
                 }
 
                 const payload = decoded.payload as jwt.JwtPayload;
-                return res.json({
+                res.json({
                     header: decoded.header,
                     payload: payload,
                     expiresIn: payload.exp ? new Date(payload.exp * 1000).toISOString() : "N/A",
                     issuedAt: payload.iat ? new Date(payload.iat * 1000).toISOString() : "N/A",
                 });
+                return;
             } catch (error: unknown) {
-                return res.status(500).json({
+                res.status(500).json({
                     error: `Failed to retrieve token information: ${
                         error instanceof Error ? error.message : String(error)
                     }`,
                 });
+                return;
             }
         });
     }
 
-    app.post("/api/create-test-user", async (req, res): Promise<any> => {
+    app.post("/api/create-test-user", async (req, res) => {
         if (process.env.ALLOW_TEST_USERS !== "true") {
-            return res.status(403).json({ error: "Test user creation is disabled" });
+            res.status(403).json({ error: "Test user creation is disabled" });
+            return;
         }
 
         const { email, password, displayName, idToken } = req.body;
 
         if (process.env.NODE_ENV === "production") {
             if (!idToken) {
-                return res.status(400).json({ error: "ID token is required in production" });
+                res.status(400).json({ error: "ID token is required in production" });
+                return;
             }
             try {
                 const auth = getAuth();
                 const decodedToken = await auth.verifyIdToken(idToken);
                 if (decodedToken.role !== "admin") {
-                    return res.status(403).json({ error: "Admin privileges required" });
+                    res.status(403).json({ error: "Admin privileges required" });
+                    return;
                 }
             } catch (authError) {
-                return res.status(401).json({ error: "Authentication failed" });
+                res.status(401).json({ error: "Authentication failed" });
+                return;
             }
         }
 
         if (!email || !password || !displayName) {
-            return res.status(400).json({ error: "Missing required fields" });
+            res.status(400).json({ error: "Missing required fields" });
+            return;
         }
 
         try {
@@ -452,10 +470,11 @@ function startLogService() {
 
             try {
                 const existingUser = await auth.getUserByEmail(email);
-                return res.status(200).json({
+                res.status(200).json({
                     message: "User already exists",
                     uid: existingUser.uid,
                 });
+                return;
             } catch (error: unknown) {
                 const errorCode = error && typeof error === "object" && "code" in error
                     ? (error as { code: string; }).code
@@ -478,10 +497,11 @@ function startLogService() {
             });
 
             logger.info(`Successfully created test user: ${userRecord.uid}`);
-            return res.status(200).json({
+            res.status(200).json({
                 message: "User created successfully",
                 uid: userRecord.uid,
             });
+            return;
         } catch (error: unknown) {
             logger.error(
                 {
@@ -491,7 +511,8 @@ function startLogService() {
                 },
                 `Error creating test user: ${error instanceof Error ? error.message : String(error)}`,
             );
-            return res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+            res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+            return;
         }
     });
 
