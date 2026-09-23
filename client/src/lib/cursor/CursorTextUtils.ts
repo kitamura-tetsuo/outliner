@@ -1,3 +1,4 @@
+import { DIAGRAM_SOURCE_SELECTOR, sourceVisualLines } from "../../services/diagram/diagramSourceDom";
 import { getLogger } from "../logger";
 
 const logger = getLogger("CursorTextUtils");
@@ -120,6 +121,23 @@ export function getVisualLineInfo(itemId: string, offset: number): VisualLineInf
 
     const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
     if (!itemElement) return null;
+
+    // A Diagram occurrence showing its source measures the rendered source view,
+    // in canonical offsets (#5311). Only the occurrence's own view counts, not a
+    // descendant item's.
+    const sourceView = itemElement.querySelector(DIAGRAM_SOURCE_SELECTOR);
+    if (sourceView && sourceView.closest("[data-item-id]") === itemElement) {
+        const lines = sourceVisualLines(sourceView);
+        let lineIndex = lines.findIndex(line => offset >= line.startOffset && offset <= line.endOffset);
+        if (lineIndex === -1) lineIndex = lines.length - 1;
+        return {
+            lineIndex,
+            lineStartOffset: lines[lineIndex].startOffset,
+            lineEndOffset: lines[lineIndex].endOffset,
+            totalLines: lines.length,
+            lines,
+        };
+    }
 
     const textElement = itemElement.querySelector(".item-text") as HTMLElement | null;
     if (!textElement) return null;

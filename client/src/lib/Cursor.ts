@@ -21,7 +21,10 @@ import {
 import { collectAllItemIds, CursorNavigation, type CursorNavigationContext } from "./cursor/CursorNavigation";
 import { searchItem } from "./cursor/CursorNavigationUtils";
 
+import { diagramEditingTarget, isDiagramItem } from "../services/diagram/diagramEditing";
+import { nextCharacterOffset, previousCharacterOffset } from "../services/diagram/diagramSourceView";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
+import { notifyLocalCursorIntent } from "./localCursorIntent";
 import { getLogger } from "./logger";
 import { readOutlineRows } from "./selection/outlineSelectionDom";
 import {
@@ -145,7 +148,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const target = this.findTarget();
         // Some non-Yjs Item implementations (including lightweight Fluid test
         // stubs) do not expose a backing map; they keep using the numeric offset.
-        const text = target?.yMap?.get("text");
+        const candidate: unknown = target?.text;
+        const text = candidate instanceof Y.Text ? candidate : target?.yMap?.get("text");
         if (!(text instanceof Y.Text) || !text.doc) return;
 
         if (this.observedText !== text) {
@@ -205,14 +209,30 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
     findTarget(): Item | undefined {
-        return this._findTarget();
+        const occurrence = this._findTarget();
+        if (!occurrence || !isDiagramItem(occurrence)) return occurrence;
+        try {
+            const project = generalStore.project;
+            return project ? diagramEditingTarget(project, occurrence) : undefined;
+        } catch {
+            return undefined;
+        }
     }
 
     private getTargetText(target: { text?: unknown; } | undefined): string {
         return resolveItemText(target);
     }
 
+    /**
+     * Whether this cursor sits on a Diagram occurrence — its active occurrence,
+     * used for navigation — whether or not that Diagram's source resolves.
+     */
+    isOnDiagramOccurrence(): boolean {
+        return isDiagramItem(this._findTarget());
+    }
+
     applyToStore() {
+        if ((this.userId ?? "local") === "local") notifyLocalCursorIntent();
         this.bindCaretAnchor();
         // Debug information
         if (
@@ -368,7 +388,101 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         this.editor.onBeforeInput(event);
     }
 
+    /**
+     * Caret movement and selection inside Diagram source (#5311). Source is
+     * addressed in canonical UTF-16 offsets, so a step moves over a whole
+     * character, never into a surrogate pair. Each cursor owns its own range,
+     * which lets several independent ranges coexist in one source. A range
+     * never leaves the source: extending past its boundary clamps there.
+     */
+    private handleDiagramNavigationKey(event: KeyboardEvent): boolean | undefined {
+        const key = event.key;
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Escape"].includes(key)) {
+            return undefined;
+        }
+        const target = this.findTarget();
+        if (!isDiagramItem(target)) return undefined;
+        const source = this.getTargetText(target);
+        const occurrenceId = this.itemId;
+        const selection = store.getCursorSelection(this.cursorId);
+        const range = selection && selection.start.kind === "text" && selection.end.kind === "text"
+                && selection.start.itemId === occurrenceId && selection.end.itemId === occurrenceId
+            ? { start: selection.start.offset, end: selection.end.offset, reversed: !!selection.isReversed }
+            : undefined;
+
+        if (key === "Escape") {
+            store.setCursorSelection(this.cursorId, undefined);
+            return true;
+        }
+
+        if (key !== "ArrowUp" && key !== "ArrowDown") this.resetInitialColumn();
+        if (!event.shiftKey) {
+            if (range) store.setCursorSelection(this.cursorId, undefined);
+            if (key === "ArrowLeft") {
+                if (range) this.offset = Math.min(range.start, range.end);
+                else if (this.offset > 0) this.offset = previousCharacterOffset(source, this.offset);
+                else {
+                    this.moveLeft();
+                    return true;
+                }
+                this.applyToStore();
+            } else if (key === "ArrowRight") {
+                if (range) this.offset = Math.max(range.start, range.end);
+                else if (this.offset < source.length) this.offset = nextCharacterOffset(source, this.offset);
+                else {
+                    this.moveRight();
+                    return true;
+                }
+                this.applyToStore();
+            } else if (key === "ArrowUp") this.moveUp();
+            else if (key === "ArrowDown") this.moveDown();
+            else if (key === "Home") this.moveToLineStart();
+            else this.moveToLineEnd();
+            return true;
+        }
+
+        // Shift: extend this cursor's own range, clamped to the source.
+        const anchor = range ? (range.reversed ? range.end : range.start) : this.offset;
+        const lineInfo = getVisualLineInfo(occurrenceId, this.offset);
+        if (key === "ArrowLeft") this.offset = previousCharacterOffset(source, this.offset);
+        else if (key === "ArrowRight") this.offset = nextCharacterOffset(source, this.offset);
+        else if (key === "ArrowUp") {
+            if (lineInfo && lineInfo.lineIndex > 0) this.moveUp();
+            else this.offset = 0;
+        } else if (key === "ArrowDown") {
+            if (lineInfo && lineInfo.lineIndex < lineInfo.totalLines - 1) this.moveDown();
+            else this.offset = source.length;
+        } else if (key === "Home") this.moveToLineStart();
+        else this.moveToLineEnd();
+        if (this.itemId !== occurrenceId) {
+            this.itemId = occurrenceId;
+            this.offset = key === "ArrowUp" || key === "ArrowLeft" || key === "Home" ? 0 : source.length;
+        }
+        const focus = this.offset;
+        store.setCursorSelection(
+            this.cursorId,
+            focus === anchor ? undefined : {
+                startItemId: occurrenceId,
+                startOffset: Math.min(anchor, focus),
+                endItemId: occurrenceId,
+                endOffset: Math.max(anchor, focus),
+                userId: this.userId,
+                isReversed: focus < anchor,
+            },
+        );
+        this.applyToStore();
+        return true;
+    }
+
     onKeyDown(event: KeyboardEvent): boolean {
+        if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            const diagramHandled = this.handleDiagramNavigationKey(event);
+            if (diagramHandled !== undefined) {
+                store.startCursorBlink();
+                return diagramHandled;
+            }
+        }
+
         // Debug information
         if (
             typeof window !== "undefined"
@@ -620,7 +734,13 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                     this.clearSelection();
                     break;
                 case "Tab":
-                    this.indent();
+                    // Diagram source is literal text: Tab inserts a tab
+                    // character instead of indenting the occurrence.
+                    if (isDiagramItem(this.findTarget())) {
+                        this.insertText("\t");
+                    } else {
+                        this.indent();
+                    }
                     break;
                 default:
                     return false;

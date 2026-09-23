@@ -1,6 +1,7 @@
 import { tick } from "svelte";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { isForeignInput } from "../lib/KeyEventHandler";
+import { notifyLocalCursorIntent } from "../lib/localCursorIntent";
 import { getLogger } from "../lib/logger";
 import { isVisualRow, readOutlineRows } from "../lib/selection/outlineSelectionDom";
 import { getItemSelectionInterval } from "../lib/selection/selectionContent";
@@ -77,6 +78,13 @@ export interface SelectionRange {
     }>;
     // Whether the selection range is updating (for visual feedback)
     isUpdating?: boolean;
+    /**
+     * The local logical cursor that owns this range, when the range belongs to
+     * one cursor rather than to its user as a whole. Diagram source selections
+     * are per cursor (#5311), so several independent ranges can coexist in one
+     * source.
+     */
+    cursorId?: string;
 }
 
 /**
@@ -292,6 +300,7 @@ export class EditorOverlayStore {
      * @returns New cursor ID
      */
     addCursor(omitProps: Omit<CursorPosition, "cursorId">) {
+        if ((omitProps.userId ?? "local") === "local") notifyLocalCursorIntent();
         // Debug info
         if (
             typeof window !== "undefined"
@@ -523,8 +532,38 @@ export class EditorOverlayStore {
         return newId;
     }
 
+    /**
+     * Replace the range owned by one logical cursor (#5311). Passing undefined
+     * clears it. Other cursors' ranges, and user-level ranges, are untouched.
+     */
+    setCursorSelection(cursorId: string, input: SelectionRangeInput | undefined): string | undefined {
+        notifyLocalCursorIntent();
+        this.dropSelectionsOfCursors([cursorId], false);
+        if (!input) {
+            this.notifyChange();
+            return undefined;
+        }
+        return this.setSelection({ ...input, cursorId });
+    }
+
+    /** The range owned by one logical cursor, if any. */
+    getCursorSelection(cursorId: string): SelectionRange | undefined {
+        return Object.values(this.selections).find(selection => selection.cursorId === cursorId);
+    }
+
+    private dropSelectionsOfCursors(cursorIds: readonly string[], notify = true) {
+        if (cursorIds.length === 0) return;
+        const entries = Object.entries(this.selections);
+        const kept = entries.filter(([, selection]) => !selection.cursorId || !cursorIds.includes(selection.cursorId));
+        if (kept.length === entries.length) return;
+        this.selections = Object.fromEntries(kept);
+        if (notify) this.notifyChange();
+    }
+
     removeCursor(cursorId: string) {
         const removed = this.cursors[cursorId];
+        if ((removed?.userId ?? "local") === "local") notifyLocalCursorIntent();
+        this.dropSelectionsOfCursors([cursorId], false);
         // Delete instance from Map
         this.cursorInstances.get(cursorId)?.destroy();
         this.cursorInstances.delete(cursorId);
@@ -559,6 +598,7 @@ export class EditorOverlayStore {
         // endpoints (#5025). An input that describes no position is dropped.
         const selection = toSelectionRange(input);
         if (!selection) return undefined;
+        if ((selection.userId ?? "local") === "local") notifyLocalCursorIntent();
 
         // Uniquely identify selection range key using UUID
         const key = this.genUUID();
@@ -721,6 +761,7 @@ export class EditorOverlayStore {
      * Clear all selection ranges
      */
     clearSelections() {
+        notifyLocalCursorIntent();
         this.selections = {};
         this.notifyChange();
         this.schedulePresenceSync();
@@ -731,6 +772,7 @@ export class EditorOverlayStore {
      * @param userId User ID (default is "local")
      */
     clearSelectionForUser(userId = "local") {
+        if (userId === "local") notifyLocalCursorIntent();
         // Debug info
         if (
             typeof window !== "undefined"
@@ -910,6 +952,7 @@ export class EditorOverlayStore {
      * @param preserveAltClick Whether to preserve cursors added with Alt+Click (default is false)
      */
     clearCursorAndSelection(userId = "local", clearSelections = false, preserveAltClick = false) {
+        if (userId === "local") notifyLocalCursorIntent();
         // Debug info
         if (
             typeof window !== "undefined"
@@ -968,6 +1011,7 @@ export class EditorOverlayStore {
 
             // Remove all identified cursors
             if (cursorIdsToRemove.length > 0) {
+                this.dropSelectionsOfCursors(cursorIdsToRemove, false);
                 // Delete instance from Map
                 cursorIdsToRemove.forEach(id => {
                     this.cursorInstances.get(id)?.destroy();
@@ -996,6 +1040,7 @@ export class EditorOverlayStore {
 
             // Remove all identified cursors
             if (cursorIdsToRemove.length > 0) {
+                this.dropSelectionsOfCursors(cursorIdsToRemove, false);
                 // Delete instance from Map
                 cursorIdsToRemove.forEach(id => {
                     this.cursorInstances.get(id)?.destroy();
@@ -1156,6 +1201,7 @@ export class EditorOverlayStore {
      */
     setCursor(cursorProps: Omit<CursorPosition, "cursorId">) {
         const userId = cursorProps.userId ?? "local";
+        if (userId === "local") notifyLocalCursorIntent();
         const itemId = cursorProps.itemId;
         cursorProps.offset = Math.max(0, cursorProps.offset);
 
@@ -1190,6 +1236,7 @@ export class EditorOverlayStore {
 
         // Remove all identified cursors
         if (cursorIdsToRemove.length > 0) {
+            this.dropSelectionsOfCursors(cursorIdsToRemove, false);
             // Delete instance from Map
             cursorIdsToRemove.forEach(id => {
                 this.cursorInstances.get(id)?.destroy();
@@ -1316,6 +1363,7 @@ export class EditorOverlayStore {
     }
 
     clearCursorForItem(itemId: string) {
+        notifyLocalCursorIntent();
         // Collect cursor IDs to remove
         const cursorIdsToRemove: string[] = [];
 
@@ -1328,6 +1376,7 @@ export class EditorOverlayStore {
 
         // Remove all identified cursors
         if (cursorIdsToRemove.length > 0) {
+            this.dropSelectionsOfCursors(cursorIdsToRemove, false);
             // Delete instance from Map
             cursorIdsToRemove.forEach(id => {
                 this.cursorInstances.get(id)?.destroy();

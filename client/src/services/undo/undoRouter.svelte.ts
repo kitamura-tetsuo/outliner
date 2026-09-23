@@ -79,7 +79,26 @@ export interface ManualUndoEntry {
     redo: () => void;
 }
 
-export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry;
+/**
+ * One user command that edited several scopes at once — a multi-cursor
+ * command spanning outline Text and Diagram source (#5311, REQ-009). Its
+ * managers are listed in the order their stack items were pushed; undo walks
+ * them backwards and redo forwards, so the command reverses as one step.
+ */
+export interface GroupUndoEntry {
+    type: "group";
+    managers: Y.UndoManager[];
+}
+
+export interface UndoScopeOptions {
+    /**
+     * Consulted before an entry of this scope is replayed. Returning false
+     * refuses the Undo/Redo without consuming, skipping or reordering history.
+     */
+    authorize?: () => boolean;
+}
+
+export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry | GroupUndoEntry;
 
 export class UndoRouter {
     private undoStack: UndoRouterEntry[] = $state([]);
@@ -90,6 +109,7 @@ export class UndoRouter {
     // stacks above, which drop a scope's entries when it unregisters.
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- see above
     private registered = new Set<Y.UndoManager>();
+    private authorizers = new WeakMap<Y.UndoManager, () => boolean>();
 
     // Handlers are kept per manager so they can be detached on unregister.
     private addedHandlers = new WeakMap<Y.UndoManager, (event: { type: "undo" | "redo"; }) => void>();
@@ -112,9 +132,10 @@ export class UndoRouter {
      */
     private routingDepth = 0;
 
-    public register(um: Y.UndoManager): void {
+    public register(um: Y.UndoManager, options: UndoScopeOptions = {}): void {
         if (this.registered.has(um)) return;
         this.registered.add(um);
+        if (options.authorize) this.authorizers.set(um, options.authorize);
 
         const onAdded = (event: { type: "undo" | "redo"; }) => {
             // Events raised by our own undo()/redo() are already accounted for
@@ -154,11 +175,13 @@ export class UndoRouter {
             // Emitted when a manager drops history of its own accord — notably
             // when a new operation clears its redo stack. Drop the matching
             // entries so the router never points at a stack item that is gone.
+            const keep = (entry: UndoRouterEntry) =>
+                entry !== um && !("type" in entry && entry.type === "group" && entry.managers.includes(um));
             if (event.undoStackCleared) {
-                this.undoStack = this.undoStack.filter((entry) => entry !== um);
+                this.undoStack = this.undoStack.filter(keep);
             }
             if (event.redoStackCleared) {
-                this.redoStack = this.redoStack.filter((entry) => entry !== um);
+                this.redoStack = this.redoStack.filter(keep);
             }
         };
 
@@ -179,20 +202,64 @@ export class UndoRouter {
         if (onCleared) um.off("stack-cleared", onCleared);
 
         this.registered.delete(um);
+        this.authorizers.delete(um);
         this.addedHandlers.delete(um);
         this.clearedHandlers.delete(um);
 
-        this.undoStack = this.undoStack.filter((entry) => entry !== um);
-        this.redoStack = this.redoStack.filter((entry) => entry !== um);
+        const keep = (entry: UndoRouterEntry) =>
+            entry !== um && !("type" in entry && entry.type === "group" && entry.managers.includes(um));
+        this.undoStack = this.undoStack.filter(keep);
+        this.redoStack = this.redoStack.filter(keep);
+    }
+
+    /**
+     * Run one user command and record it as a single history step, even when
+     * it edits several scopes (#5311, REQ-009). Capture windows are closed on
+     * both sides so the command neither merges into the previous step nor
+     * absorbs the next one. Used only for commands involving Diagram source;
+     * ordinary Text editing keeps its existing merge behavior.
+     */
+    public captureCommand(command: () => void): void {
+        for (const um of this.registered) um.stopCapturing();
+        const start = this.undoStack.length;
+        try {
+            command();
+        } finally {
+            for (const um of this.registered) um.stopCapturing();
+            const added = this.undoStack.slice(start);
+            if (added.length > 1 && added.every(entry => !("type" in entry))) {
+                this.undoStack.length = start;
+                this.undoStack.push({ type: "group", managers: added as Y.UndoManager[] });
+            }
+        }
+    }
+
+    // Bookkeeping only, like `registered`: nothing renders from it.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- see above
+    private beforeHistoryListeners = new Set<() => void>();
+
+    /**
+     * Run `listener` before every Undo/Redo is processed — e.g. to cancel a
+     * pending Diagram composition first (#5311, REQ-009).
+     */
+    public onBeforeHistory(listener: () => void): () => void {
+        this.beforeHistoryListeners.add(listener);
+        return () => this.beforeHistoryListeners.delete(listener);
+    }
+
+    private notifyBeforeHistory(): void {
+        for (const listener of Array.from(this.beforeHistoryListeners)) listener();
     }
 
     /** Reverse the most recent operation, whichever scope it belongs to. */
     public undo(): void {
+        this.notifyBeforeHistory();
         this.run(this.undoStack, this.redoStack, (um) => um.undo(), true);
     }
 
     /** Restore the most recently undone operation. */
     public redo(): void {
+        this.notifyBeforeHistory();
         this.run(this.redoStack, this.undoStack, (um) => um.redo(), false);
     }
 
@@ -401,6 +468,13 @@ export class UndoRouter {
         this.redoStack = [];
     }
 
+    private authorizeEntry(entry: UndoRouterEntry): boolean {
+        const managers = "type" in entry
+            ? (entry.type === "group" ? entry.managers : entry.type === "composite" ? [entry.mainManager] : [])
+            : [entry];
+        return managers.every(um => this.authorizers.get(um)?.() ?? true);
+    }
+
     /**
      * Pop `from` until a scope actually applies the operation, then record it on
      * `to`. An entry whose scope has nothing left to apply is stale — its stack
@@ -418,6 +492,27 @@ export class UndoRouter {
             while (from.length > 0) {
                 const entry = from.pop();
                 if (!entry) continue;
+
+                // A scope that refuses replay right now (e.g. a Diagram whose
+                // invoking surface turned read-only) keeps its entry where it
+                // was: the refused command consumes nothing.
+                if (!this.authorizeEntry(entry)) {
+                    from.push(entry);
+                    return;
+                }
+
+                if ("type" in entry && entry.type === "group") {
+                    const managers = isUndo ? entry.managers.toReversed() : entry.managers;
+                    let applied = false;
+                    for (const um of managers) {
+                        if (apply(um)) applied = true;
+                    }
+                    if (applied) {
+                        to.push(entry);
+                        return;
+                    }
+                    continue;
+                }
 
                 if ("type" in entry && entry.type === "manual") {
                     this.runWithoutAutoCapture(() => {
@@ -479,3 +574,10 @@ export class UndoRouter {
 }
 
 export const globalUndoRouter = new UndoRouter();
+
+// History depth is observable from E2E tests (e.g. that switching presentation
+// creates no undo step). The literal MODE comparison lets Rollup drop this from
+// the production bundle.
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    (window as Window & typeof globalThis & { globalUndoRouter?: UndoRouter; }).globalUndoRouter = globalUndoRouter;
+}

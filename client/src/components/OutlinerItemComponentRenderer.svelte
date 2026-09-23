@@ -13,9 +13,10 @@ interface Props {
      * Layout's children are part of its picture, not rows a selection can name (#5026).
      */
     outlineRow?: boolean;
+    isReadOnly?: boolean;
 }
 
-let { componentType, item, outlineRow = true }: Props = $props();
+let { componentType, item, outlineRow = true, isReadOnly = false }: Props = $props();
 
 /**
  * The wrapper is the visual node's root box (#5024): everything the block draws
@@ -73,7 +74,7 @@ const selectionSurfaceAttributes = $derived({ [VISUAL_NODE_SELECTION_SURFACE_ATT
     {#await import("./diagram/DiagramBlock.svelte") then { default: DiagramBlock }}
         <div class="component-wrapper" class:outline-row={outlineRow} {...rootAttributes}>
             {@render selectionSurface()}
-            <DiagramBlock item={item} />
+            <DiagramBlock item={item} {isReadOnly} />
         </div>
     {/await}
 {/if}

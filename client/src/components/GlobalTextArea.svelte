@@ -12,6 +12,7 @@ import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { keepsEditorFocus } from "../lib/editorFocus";
+import { diagramComposition } from "../services/diagram/diagramComposition.svelte";
 
 let textareaRef: HTMLTextAreaElement;
 
@@ -80,6 +81,8 @@ onMount(() => {
 });
 
 onDestroy(() => {
+    // Tearing down the editing session invalidates a pending Diagram composition (#5311).
+    diagramComposition.cancel("unavailable");
     if (typeof document !== "undefined") {
         document.removeEventListener("selectionchange", handleSelectionChange);
     }

@@ -31,7 +31,9 @@ test.describe("DIA-c60db19e: Diagram identity, source and placement survive relo
             const project = (globalThis as any).generalStore.project;
             (globalThis as any).diagramService.setDiagramSource(project, id, "graph TD; A-->B-->C");
         }, diagramId);
-        await expect(page.locator('[data-testid="diagram-block-excerpt"]')).toHaveText("graph TD; A-->B-->C", {
+        // The caret is still on the freshly inserted occurrence, so it shows
+        // its native source editor (FTR-5311a0cd) rather than the excerpt.
+        await expect(page.locator('[data-testid="diagram-source"]')).toHaveText("graph TD; A-->B-->C", {
             timeout: 10000,
         });
 
@@ -105,6 +107,8 @@ test.describe("DIA-c60db19e: Diagram identity, source and placement survive relo
         await expect(page.locator('[data-testid="diagram-block"]')).toHaveAttribute("data-diagram-id", diagramId!, {
             timeout: 15000,
         });
-        await expect(page.locator('[data-testid="diagram-block-excerpt"]')).toHaveText("graph TD; X-->Y");
+        // The chooser leaves the caret on the reinserted occurrence, which
+        // therefore shows its native source editor (FTR-5311a0cd).
+        await expect(page.locator('[data-testid="diagram-source"]')).toHaveText("graph TD; X-->Y");
     });
 });

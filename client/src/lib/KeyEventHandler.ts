@@ -16,6 +16,9 @@ import {
     type PasteSpecialVariant,
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
+import { isOnDiagramOccurrence } from "../services/diagram/diagramCommand";
+import { diagramComposition } from "../services/diagram/diagramComposition.svelte";
+import { handleDiagramInput, handleDiagramKeyDown, handleDiagramPaste } from "../services/diagram/diagramInput";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId } from "../services/yjstable/itemBinding";
@@ -705,7 +708,8 @@ export class KeyEventHandler {
         // Palette Activation via Slash
         if (k === "/") {
             // Context verification: prevent opening immediately after [ or inside internal links
-            let shouldShow = true;
+            // Diagram source is literal Mermaid text: "/" never opens the palette there.
+            let shouldShow = !store.getLocalCursorInstances().some(isOnDiagramOccurrence);
             try {
                 const cursors = store.getLocalCursorInstances();
                 if (cursors.length > 0) {
@@ -837,7 +841,7 @@ export class KeyEventHandler {
         }
 
         // Pre-processing: Ensure command palette displays on slash input
-        if (event.key === "/") {
+        if (event.key === "/" && !cursorInstances.some(isOnDiagramOccurrence)) {
             try {
                 let preventPalette = false;
                 if (cursorInstances.length > 0) {
@@ -1225,6 +1229,13 @@ export class KeyEventHandler {
             return;
         }
 
+        // Commands mutating Diagram source run once for the whole cursor set (#5311).
+        if (handleDiagramKeyDown(event, cursorInstances)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
         // Call onKeyDown method for each cursor instance
         let handled = false;
 
@@ -1334,6 +1345,9 @@ export class KeyEventHandler {
      */
     static handleBeforeInput(event: Event) {
         if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
+        // Input belonging to a Diagram-involving composition (including the browser's
+        // commit/cancel input before compositionend) is owned by that session (#5311).
+        if (diagramComposition.handlesCurrentComposition) return;
         const inputEvent = event as InputEvent;
         if (inputEvent.isComposing || inputEvent.inputType?.startsWith("insertComposition")) return;
         const cursorInstances = store.getLocalCursorInstances();
@@ -1348,6 +1362,11 @@ export class KeyEventHandler {
 
     static handleInput(event: Event) {
         if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
+        // Chromium delivers the commit/cancel input of a composition (e.g. a
+        // non-composing deleteContentBackward) before compositionend. For a
+        // Diagram-involving composition that input belongs to the session, which
+        // alone decides what is written (#5311, REQ-013/014).
+        if (diagramComposition.handlesCurrentComposition) return;
 
         const inputEvent = event as InputEvent;
 
@@ -1397,7 +1416,7 @@ export class KeyEventHandler {
         // Get cursor instances from the store
         const cursorInstances = store.getLocalCursorInstances();
 
-        if (inputEvent.data === "/") {
+        if (inputEvent.data === "/" && !cursorInstances.some(isOnDiagramOccurrence)) {
             // Check character before cursor position to determine if it's part of an internal link
             if (cursorInstances.length > 0) {
                 const cursor = cursorInstances[0];
@@ -1487,12 +1506,14 @@ export class KeyEventHandler {
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Applying input to ${cursorInstances.length} cursor instances`);
         }
-        cursorInstances.forEach((cursor, index) => {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
-            }
-            cursor.onInput(inputEvent);
-        });
+        if (!handleDiagramInput(inputEvent, cursorInstances)) {
+            cursorInstances.forEach((cursor, index) => {
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    logger.debug(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+                }
+                cursor.onInput(inputEvent);
+            });
+        }
 
         // Call onEdit callback
         store.triggerOnEdit();
@@ -1605,12 +1626,19 @@ export class KeyEventHandler {
     static handleCompositionStart(_event: CompositionEvent) {
         KeyEventHandler.lastCompositionLength = 0;
         store.setCompositionLength(0);
+        // A composition involving Diagram source is session-bound (#5311, REQ-013).
+        diagramComposition.start(store.getLocalCursorInstances());
     }
     /**
      * Process IME compositionupdate event and display intermediate input characters
      */
     static handleCompositionUpdate(event: CompositionEvent) {
         const data = event.data || "";
+        if (diagramComposition.handlesCurrentComposition) {
+            // Preedit stays ephemeral; nothing canonical changes until completion.
+            diagramComposition.update(data);
+            return;
+        }
         const cursorInstances = store.getLocalCursorInstances();
         // Remove previous intermediate characters
         if (KeyEventHandler.lastCompositionLength > 0) {
@@ -1633,6 +1661,10 @@ export class KeyEventHandler {
      */
     static handleCompositionEnd(event: CompositionEvent) {
         const data = event.data || "";
+        if (diagramComposition.handlesCurrentComposition) {
+            diagramComposition.end(data);
+            return;
+        }
         const cursorInstances = store.getLocalCursorInstances();
         // Remove intermediate characters
         if (KeyEventHandler.lastCompositionLength > 0) {
@@ -2589,6 +2621,9 @@ export class KeyEventHandler {
                     logger.debug(`Using text from global variable: "${text}"`);
                 }
             }
+
+            // Diagram source takes a paste as literal text (#5311, REQ-007/008).
+            if (handleDiagramPaste(text, store.getLocalCursorInstances())) return;
 
             const cached = KeyEventHandler.lastStructuredClipboard;
             // The same-tab fallback is keyed on the copied plain text, so it

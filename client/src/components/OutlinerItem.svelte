@@ -2548,7 +2548,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             </div>
 
             <!-- Component display -->
-            <OutlinerItemComponentRenderer componentType={compTypeValue} item={model.original} />
+            <OutlinerItemComponentRenderer componentType={compTypeValue} item={model.original} {isReadOnly} />
         </div>
 
         </div>

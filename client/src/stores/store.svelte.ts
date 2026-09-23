@@ -12,6 +12,7 @@ import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Items } from "../schema/app-schema";
 import { Item, Project } from "../schema/app-schema";
+import { destroyDiagramUndoManager } from "../services/diagram/diagramUndo";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { ITEMS_RELATION_ORIGIN } from "../services/yjstable/itemsRelation";
 import { CHECKBOX_ROLLUP_ORIGIN, updateParentCheckboxStatus } from "../utils/checkboxHelpers";
@@ -338,6 +339,7 @@ export class GeneralStore {
         if (!v) {
             this._project = undefined;
             this.projectVersion += 1;
+            destroyDiagramUndoManager();
             if (this.undoManager) {
                 globalUndoRouter.unregister(this.undoManager);
                 this.undoManager.destroy();
@@ -350,6 +352,8 @@ export class GeneralStore {
         this._project = v;
         this.projectVersion += 1;
 
+        // Diagram source history belongs to the previous project's document.
+        destroyDiagramUndoManager();
         if (this.undoManager) {
             globalUndoRouter.unregister(this.undoManager);
             this.undoManager.destroy();

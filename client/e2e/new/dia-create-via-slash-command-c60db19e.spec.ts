@@ -76,7 +76,9 @@ test.describe("DIA-c60db19e: creating and reusing a Mermaid Diagram from the out
         await expect(page.locator('[data-testid="diagram-block"]')).toHaveCount(1, { timeout: 15000 });
         const firstDiagramId = await page.locator('[data-testid="diagram-block"]').getAttribute("data-diagram-id");
 
-        const secondTarget = page.locator(".outliner-item").nth(2);
+        // Located by text: the new Diagram occurrence now sits between the two targets,
+        // and "/" typed into Diagram source is literal text, not a slash command (#5311).
+        const secondTarget = page.locator(".outliner-item", { hasText: "Second page target" });
         await runSlashCommand(page, secondTarget, "command-item-diagram-transclusion");
 
         const chooser = page.locator('[data-testid="diagram-chooser"]');

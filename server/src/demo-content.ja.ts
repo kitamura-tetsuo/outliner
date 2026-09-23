@@ -779,6 +779,18 @@ export function demoContentJa(): DemoLocaleContent {
                         componentType: "diagram",
                         diagramId: DEMO_DIAGRAM_ID,
                     },
+                    {
+                        text:
+                            "プレビューをクリックすると、アウトラインと同じキャレットでその場でソースを編集できます。Enter は改行、Tab はタブを挿入し、入力した内容が書式やアウトライン構造として解釈されることはありません。Alt+クリックでカーソルを追加でき、元に戻す/やり直しはソースの編集もほかの編集と同じ順序でたどります。",
+                    },
+                    {
+                        text:
+                            "同じ Diagram をもう一度埋め込んだもの——編集中は、どちらにもひとつのソースと同じキャレットが表示されます:",
+                    },
+                    {
+                        componentType: "diagram",
+                        diagramId: DEMO_DIAGRAM_ID,
+                    },
                 ],
             },
         ],
