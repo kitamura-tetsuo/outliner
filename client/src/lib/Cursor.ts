@@ -396,12 +396,12 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
      * never leaves the source: extending past its boundary clamps there.
      */
     private handleDiagramNavigationKey(event: KeyboardEvent): boolean | undefined {
-        const target = this.findTarget();
-        if (!isDiagramItem(target)) return undefined;
         const key = event.key;
         if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Escape"].includes(key)) {
             return undefined;
         }
+        const target = this.findTarget();
+        if (!isDiagramItem(target)) return undefined;
         const source = this.getTargetText(target);
         const occurrenceId = this.itemId;
         const selection = store.getCursorSelection(this.cursorId);

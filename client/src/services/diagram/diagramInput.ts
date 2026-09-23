@@ -72,6 +72,8 @@ function runDiagramCommand(cursors: readonly Cursor[], edit: SourceEdit, applyTo
 /** Keyboard commands that mutate Diagram source. Returns true when handled. */
 export function handleDiagramKeyDown(event: KeyboardEvent, cursors: readonly Cursor[]): boolean {
     if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return false;
+    // Only these keys mutate source; others never pay for resolving cursor targets.
+    if (!["Backspace", "Delete", "Enter", "Tab"].includes(event.key)) return false;
     if (!involvesDiagram(cursors)) return false;
     let edit: SourceEdit;
     switch (event.key) {
