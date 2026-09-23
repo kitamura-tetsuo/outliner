@@ -257,7 +257,7 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-Type `/` on a new line to open the Command Palette, and select **Grid**.
+You can create a new database table by clicking the **Add Database** button in the top navigation bar, or by typing `/` on a new line to open the Command Palette and selecting **Grid**.
 
 A new database block will be inserted into the current page. Within this block, you can:
 
