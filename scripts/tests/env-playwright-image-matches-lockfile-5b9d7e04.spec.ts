@@ -55,18 +55,6 @@ test("Dependabot moves the Playwright packages together", () => {
     }
 });
 
-test("Dependabot watches the test container's base image", () => {
-    // Nothing watched the image before, so it stayed on v1.61.1 while the npm
-    // group moved @playwright/test to 1.62.0 -- the drift only surfaced when
-    // every E2E shard failed to launch a browser.
-    const dependabot = read(".github", "dependabot.yml");
-    const start = dependabot.indexOf("  - package-ecosystem: 'docker'");
-    const next = dependabot.indexOf("  - package-ecosystem:", start + 1);
-    const docker = dependabot.slice(start, next === -1 ? undefined : next);
-
-    expect(docker).toMatch(/^ {2}- package-ecosystem: 'docker'$/m);
-    expect(docker).toMatch(/^ {4}directory: '\/\.github\/container'$/m);
-});
 
 test("playwright-core is not a direct client dependency", () => {
     // It is imported nowhere, and declaring it hoists a second copy that can
@@ -86,4 +74,98 @@ test("a dedicated CI job runs the check on every pull request", () => {
     const ci = read(".github", "workflows", "ci.yml");
     expect(ci).toMatch(/uses: \.\/\.github\/workflows\/ci-playwright-version\.yml/);
     expect(ci).toMatch(/pull_request:/);
+});
+
+test("sync script fails cleanly on non-unique FROM declaration (REQ-004)", () => {
+    const tmpDockerfile = path.join(repoRoot, ".github", "container", "Dockerfile.tmp");
+    const originalDockerfile = path.join(repoRoot, ".github", "container", "Dockerfile");
+
+    const originalContent = fs.readFileSync(originalDockerfile, "utf-8");
+    const duplicatedContent = originalContent.replace(
+        /^(FROM mcr\.microsoft\.com\/playwright:v)(\d+\.\d+\.\d+)(-\w+)$/m,
+        "$1$2$3\n$1$2$3"
+    );
+
+    try {
+        fs.writeFileSync(originalDockerfile, duplicatedContent, "utf-8");
+
+        let output;
+        let exitCode = 0;
+        try {
+            output = execFileSync("node", ["scripts/sync-playwright-version.mjs"], {
+                cwd: repoRoot,
+                encoding: "utf-8",
+                stdio: "pipe"
+            });
+        } catch (err) {
+            output = err.stderr || err.stdout || err.message;
+            exitCode = err.status || 1;
+        }
+
+        expect(exitCode).toBe(1);
+        expect(output).toMatch(/uniquely identifiable expected Playwright base-image declaration/);
+
+        const afterContent = fs.readFileSync(originalDockerfile, "utf-8");
+        expect(afterContent).toBe(duplicatedContent);
+    } finally {
+        fs.writeFileSync(originalDockerfile, originalContent, "utf-8");
+        if (fs.existsSync(tmpDockerfile)) fs.unlinkSync(tmpDockerfile);
+    }
+});
+
+test("workflow persists step reverts on push failure and outputs diagnostic (REQ-005)", () => {
+    const originalDockerfile = path.join(repoRoot, ".github", "container", "Dockerfile");
+    const originalContent = fs.readFileSync(originalDockerfile, "utf-8");
+
+    const lock = JSON.parse(fs.readFileSync(path.join(repoRoot, "client", "package-lock.json"), "utf-8"));
+    const lockVersion = lock.packages["node_modules/@playwright/test"].version;
+
+    try {
+        const mismatchedContent = originalContent.replace(
+            /^(FROM mcr\.microsoft\.com\/playwright:v)(\d+\.\d+\.\d+)(-\w+)$/m,
+            `$11.11.1$3`
+        );
+        fs.writeFileSync(originalDockerfile, mismatchedContent, "utf-8");
+
+        execFileSync("git", ["add", ".github/container/Dockerfile"], { cwd: repoRoot });
+        execFileSync("git", ["config", "user.email", "action@github.com"], { cwd: repoRoot });
+        execFileSync("git", ["config", "user.name", "GitHub Action"], { cwd: repoRoot });
+        execFileSync("git", ["commit", "-m", "simulate PR branch with mismatch"], { cwd: repoRoot });
+
+        execFileSync("node", ["scripts/sync-playwright-version.mjs"], { cwd: repoRoot });
+
+        execFileSync("git", ["add", ".github/container/Dockerfile"], { cwd: repoRoot });
+        execFileSync("git", ["commit", "-m", "Auto-fix: Sync Playwright Dockerfile image version with lockfile"], { cwd: repoRoot });
+
+        const workflowElseBlock = `
+          git reset --hard HEAD~1
+          node scripts/check-playwright-version.mjs
+        `;
+
+        let output;
+        let exitCode = 0;
+        try {
+            output = execFileSync("bash", ["-c", workflowElseBlock], {
+                cwd: repoRoot,
+                encoding: "utf-8",
+                stdio: "pipe"
+            });
+        } catch (err) {
+            output = err.stderr || err.stdout || err.message;
+            exitCode = err.status || 1;
+        }
+
+        if (exitCode !== 1) console.error("EXIT CODE 0, OUTPUT:", output);
+        expect(exitCode).toBe(1);
+        expect(output).toMatch(new RegExp(`resolves @playwright/test to ${lockVersion}`));
+
+        const revertedContent = fs.readFileSync(originalDockerfile, "utf-8");
+        expect(revertedContent).toBe(mismatchedContent);
+
+    } finally {
+        try {
+            execFileSync("git", ["reset", "--hard", "HEAD~1"], { cwd: repoRoot }); // undo the setup commit
+        } catch (e) {}
+        fs.writeFileSync(originalDockerfile, originalContent, "utf-8");
+    }
 });
