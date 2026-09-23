@@ -135,7 +135,9 @@ class DiagramCompositionState {
         }
         if (isOnDiagramOccurrence(cursor)) return undefined;
         const target = cursor.findTarget();
-        const candidate: unknown = target?.text;
+        // Item.text reads as a string; the owning Y.Text is on the item's map.
+        const candidate: unknown = (target as unknown as { yMap?: { get(key: string): unknown; }; } | undefined)
+            ?.yMap?.get("text");
         const text = candidate instanceof Y.Text ? candidate : undefined;
         if (!target || !text) return undefined;
         const selection = editorOverlayStore.getItemCursorsAndSelections(target.id).selections.find(s =>

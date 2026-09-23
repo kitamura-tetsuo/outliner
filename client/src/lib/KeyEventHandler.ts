@@ -1345,6 +1345,9 @@ export class KeyEventHandler {
      */
     static handleBeforeInput(event: Event) {
         if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
+        // Input belonging to a Diagram-involving composition (including the browser's
+        // commit/cancel input before compositionend) is owned by that session (#5311).
+        if (diagramComposition.handlesCurrentComposition) return;
         const inputEvent = event as InputEvent;
         if (inputEvent.isComposing || inputEvent.inputType?.startsWith("insertComposition")) return;
         const cursorInstances = store.getLocalCursorInstances();
@@ -1359,6 +1362,11 @@ export class KeyEventHandler {
 
     static handleInput(event: Event) {
         if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
+        // Chromium delivers the commit/cancel input of a composition (e.g. a
+        // non-composing deleteContentBackward) before compositionend. For a
+        // Diagram-involving composition that input belongs to the session, which
+        // alone decides what is written (#5311, REQ-013/014).
+        if (diagramComposition.handlesCurrentComposition) return;
 
         const inputEvent = event as InputEvent;
 

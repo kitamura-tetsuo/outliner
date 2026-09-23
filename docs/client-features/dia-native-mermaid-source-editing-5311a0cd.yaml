@@ -11,4 +11,4 @@ tests:
 - client/e2e/new/dia-surface-writability-live-a2809186.spec.ts
 - client/src/services/diagram/diagramCommand.test.ts
 - client/src/services/diagram/diagramEditing.test.ts
-- client/src/services/diagram/diagramSourceView.test.ts - client/e2e/new/dia-source-navigation-occurrence-a87ece6e.spec.ts - client/e2e/new/dia-source-selection-unmount-26bc3dd1.spec.ts - client/e2e/new/dia-multi-cursor-cardinality-8dd8846b.spec.ts
+- client/src/services/diagram/diagramSourceView.test.ts - client/e2e/new/dia-source-navigation-occurrence-a87ece6e.spec.ts - client/e2e/new/dia-source-selection-unmount-26bc3dd1.spec.ts - client/e2e/new/dia-multi-cursor-cardinality-8dd8846b.spec.ts - client/e2e/new/dia-history-chronology-37d0b0bf.spec.ts - client/e2e/new/dia-composition-preedit-commit-71d1bf85.spec.ts - client/e2e/new/dia-composition-lifecycle-75daf517.spec.ts - client/e2e/new/dia-composition-captured-set-de7fac31.spec.ts - client/e2e/new/dia-command-authorization-1ac1d45a.spec.ts

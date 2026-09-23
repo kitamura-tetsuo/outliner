@@ -182,3 +182,42 @@ function readRenderedSource(page: Page, occurrenceId: string): Promise<string> {
         return text;
     }, occurrenceId);
 }
+
+/**
+ * Native IME composition through Chromium's input pipeline (CDP): the browser
+ * itself fires compositionstart/update/end and the associated input events on
+ * the focused shared input bridge.
+ */
+export async function imeSession(page: Page) {
+    const client = await page.context().newCDPSession(page);
+    return {
+        compose: (text: string) =>
+            client.send("Input.imeSetComposition", {
+                text,
+                selectionStart: text.length,
+                selectionEnd: text.length,
+            }),
+        commit: (text: string) => client.send("Input.insertText", { text }),
+    };
+}
+
+export const compositionOutcome = (page: Page) =>
+    page.evaluate(() => (globalThis as any).diagramComposition?.outcome as string | undefined);
+
+export const undoDepth = (page: Page) => page.evaluate(() => (globalThis as any).globalUndoRouter?.undoDepth ?? -1);
+
+/**
+ * Put the page into (or out of) the demo-reset state exactly as the server's
+ * demo reset does — through the project document's `metadata` flags, which
+ * OutlinerBase turns into a read-only presentation of the mounted outline.
+ */
+export async function setDemoResetting(page: Page, resetting: boolean): Promise<void> {
+    await page.evaluate(on => {
+        const meta = (globalThis as any).generalStore.project.ydoc.getMap("metadata");
+        meta.set("resetStartedAt", Date.now());
+        meta.set("isResetting", on);
+    }, resetting);
+    const banner = page.getByText("Demo content is being reset");
+    if (resetting) await expect(banner).toBeVisible();
+    else await expect(banner).toHaveCount(0);
+}
