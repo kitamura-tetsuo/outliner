@@ -136,3 +136,49 @@ export function caretX(page: Page, occurrenceId: string): Promise<number> {
         el.getBoundingClientRect().left
     );
 }
+
+/** Click inside one occurrence's rendered source so the hit test resolves `offset`. */
+export async function clickSourceAt(
+    page: Page,
+    occurrenceId: string,
+    offset: number,
+    options: { alt?: boolean; } = {},
+) {
+    const source = await readRenderedSource(page, occurrenceId);
+    const point = await offsetPoint(page, occurrenceId, offset);
+    const x = offset >= source.length ? point.x + 20 : point.x + 1;
+    if (options.alt) await page.keyboard.down("Alt");
+    await page.mouse.click(x, point.y);
+    if (options.alt) await page.keyboard.up("Alt");
+}
+
+/** Drag across one occurrence's rendered source from one canonical offset to another. */
+export async function dragSource(
+    page: Page,
+    occurrenceId: string,
+    from: number,
+    to: number,
+    options: { alt?: boolean; } = {},
+) {
+    const start = await offsetPoint(page, occurrenceId, from);
+    const end = await offsetPoint(page, occurrenceId, to);
+    if (options.alt) await page.keyboard.down("Alt");
+    await page.mouse.move(start.x + 1, start.y);
+    await page.mouse.down();
+    await page.mouse.move(end.x + 1, end.y, { steps: 4 });
+    await page.mouse.up();
+    if (options.alt) await page.keyboard.up("Alt");
+}
+
+function readRenderedSource(page: Page, occurrenceId: string): Promise<string> {
+    return page.evaluate(occ => {
+        const root = document.querySelector(`[data-item-id="${occ}"] [data-testid="diagram-source"]`);
+        if (!root) return "";
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let text = "";
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (!(node.parentElement?.closest("[data-ephemeral]"))) text += (node as Text).data;
+        }
+        return text;
+    }, occurrenceId);
+}

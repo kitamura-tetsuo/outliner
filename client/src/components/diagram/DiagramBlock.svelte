@@ -193,14 +193,17 @@ $effect(() => {
     if (isReadOnly) untrack(() => diagramComposition.occurrenceInvalidated(item.id));
 });
 
+// The occurrence id, captured at mount: a deleted Yjs node no longer reports its id.
+let occurrenceId = "";
 let unobserveItem: (() => void) | undefined;
 let unobserveRegistry: (() => void) | undefined;
 let unobserveOverlay: (() => void) | undefined;
 let unregisterOccurrence: (() => void) | undefined;
 
 onMount(() => {
+    occurrenceId = item.id;
     diagramId = getItemDiagramId(item);
-    unregisterOccurrence = registerDiagramOccurrence(item.id, () => !isReadOnly);
+    unregisterOccurrence = registerDiagramOccurrence(occurrenceId, () => !isReadOnly);
     unobserveOverlay = editorOverlayStore.subscribe(() => overlayVersion++);
     unobserveRegistry = observeDiagrams(project, () => {
         registryVersion++;
@@ -218,11 +221,11 @@ onDestroy(() => {
     // Unmounting the active occurrence clears the local editing targets anchored
     // to it without touching the Diagram source (REQ-005), and invalidates a
     // composition bound to it (REQ-014). Reflections elsewhere are unaffected.
-    diagramComposition.occurrenceInvalidated(item.id);
+    diagramComposition.occurrenceInvalidated(occurrenceId);
     for (const cursor of editorOverlayStore.getLocalCursorInstances()) {
-        if (cursor.itemId === item.id) editorOverlayStore.removeCursor(cursor.cursorId);
+        if (cursor.itemId === occurrenceId) editorOverlayStore.removeCursor(cursor.cursorId);
     }
-    if (editorOverlayStore.getActiveItem() === item.id) editorOverlayStore.setActiveItem(null);
+    if (editorOverlayStore.getActiveItem() === occurrenceId) editorOverlayStore.setActiveItem(null);
 });
 </script>
 
