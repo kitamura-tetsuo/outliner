@@ -76,11 +76,11 @@ describe("tablePresets", () => {
             expect(gridEntry.get("query")).toBe(BLANK_PRESET.query("custom_sql_name"));
 
             // Verify components mapping in grid
-            const components = gridEntry.get("components") as Y.Map<any>;
+            const components = gridEntry.get("components") as Y.Map<unknown>;
             expect(components).toBeDefined();
-            const titleCol = components.get("title") as Y.Map<any>;
+            const titleCol = components.get("title") as Y.Map<unknown>;
             expect(titleCol.get("type")).toBe("text");
-            const doneCol = components.get("done") as Y.Map<any>;
+            const doneCol = components.get("done") as Y.Map<unknown>;
             expect(doneCol.get("type")).toBe("checkbox");
         });
 
