@@ -55,7 +55,6 @@ test("Dependabot moves the Playwright packages together", () => {
     }
 });
 
-
 test("playwright-core is not a direct client dependency", () => {
     // It is imported nowhere, and declaring it hoists a second copy that can
     // shadow the one the test runner resolves.
@@ -83,7 +82,7 @@ test("sync script fails cleanly on non-unique FROM declaration (REQ-004)", () =>
     const originalContent = fs.readFileSync(originalDockerfile, "utf-8");
     const duplicatedContent = originalContent.replace(
         /^(FROM mcr\.microsoft\.com\/playwright:v)(\d+\.\d+\.\d+)(-\w+)$/m,
-        "$1$2$3\n$1$2$3"
+        "$1$2$3\n$1$2$3",
     );
 
     try {
@@ -95,7 +94,7 @@ test("sync script fails cleanly on non-unique FROM declaration (REQ-004)", () =>
             output = execFileSync("node", ["scripts/sync-playwright-version.mjs"], {
                 cwd: repoRoot,
                 encoding: "utf-8",
-                stdio: "pipe"
+                stdio: "pipe",
             });
         } catch (err) {
             output = err.stderr || err.stdout || err.message;
@@ -123,7 +122,7 @@ test("workflow persists step reverts on push failure and outputs diagnostic (REQ
     try {
         const mismatchedContent = originalContent.replace(
             /^(FROM mcr\.microsoft\.com\/playwright:v)(\d+\.\d+\.\d+)(-\w+)$/m,
-            `$11.11.1$3`
+            `$11.11.1$3`,
         );
         fs.writeFileSync(originalDockerfile, mismatchedContent, "utf-8");
 
@@ -135,7 +134,9 @@ test("workflow persists step reverts on push failure and outputs diagnostic (REQ
         execFileSync("node", ["scripts/sync-playwright-version.mjs"], { cwd: repoRoot });
 
         execFileSync("git", ["add", ".github/container/Dockerfile"], { cwd: repoRoot });
-        execFileSync("git", ["commit", "-m", "Auto-fix: Sync Playwright Dockerfile image version with lockfile"], { cwd: repoRoot });
+        execFileSync("git", ["commit", "-m", "Auto-fix: Sync Playwright Dockerfile image version with lockfile"], {
+            cwd: repoRoot,
+        });
 
         const workflowElseBlock = `
           git reset --hard HEAD~1
@@ -148,7 +149,7 @@ test("workflow persists step reverts on push failure and outputs diagnostic (REQ
             output = execFileSync("bash", ["-c", workflowElseBlock], {
                 cwd: repoRoot,
                 encoding: "utf-8",
-                stdio: "pipe"
+                stdio: "pipe",
             });
         } catch (err) {
             output = err.stderr || err.stdout || err.message;
@@ -161,7 +162,6 @@ test("workflow persists step reverts on push failure and outputs diagnostic (REQ
 
         const revertedContent = fs.readFileSync(originalDockerfile, "utf-8");
         expect(revertedContent).toBe(mismatchedContent);
-
     } finally {
         try {
             execFileSync("git", ["reset", "--hard", "HEAD~1"], { cwd: repoRoot }); // undo the setup commit
