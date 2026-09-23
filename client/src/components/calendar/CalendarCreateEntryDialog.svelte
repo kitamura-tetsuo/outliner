@@ -136,10 +136,10 @@ function onKeydown(e: KeyboardEvent) {
 }
 </script>
 
+<svelte:window onkeydown={onKeydown} />
 <div
     class="dialog-backdrop"
     role="presentation"
-    onkeydown={onKeydown}
 >
     <div
         class="dialog"
