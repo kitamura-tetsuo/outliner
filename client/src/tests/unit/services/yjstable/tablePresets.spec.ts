@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { GRID_REGISTRY_KEY } from "../../../../services/yjstable/gridDocs";
+import { TABLE_REGISTRY_KEY } from "../../../../services/yjstable/tableDocs";
 import {
     BLANK_PRESET,
+    createTableFromPreset,
     HABITS_PRESET,
     TABLE_PRESETS,
     TASKS_PRESET,
-    createTableFromPreset,
 } from "../../../../services/yjstable/tablePresets";
-import { TABLE_REGISTRY_KEY } from "../../../../services/yjstable/tableDocs";
-import { GRID_REGISTRY_KEY } from "../../../../services/yjstable/gridDocs";
 
 describe("tablePresets", () => {
     it("should export the predefined presets", () => {
