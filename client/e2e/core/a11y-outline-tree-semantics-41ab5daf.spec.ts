@@ -52,10 +52,14 @@ test.describe("Accessible outline tree semantics", () => {
     });
 
     test("keyboard accessibility help documents indent/outdent and move shortcuts", async ({ page }) => {
-        const details = page.locator("details.a11y-help");
-        await expect(details.locator("summary")).toBeVisible();
-        await expect(details).toContainText("Tab");
-        await expect(details).toContainText("Alt+");
+        const button = page.locator("button", { hasText: "Keyboard Shortcuts" });
+        await expect(button).toBeVisible();
+        await button.click();
+
+        const dialog = page.locator("dialog.a11y-dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog).toContainText("Tab");
+        await expect(dialog).toContainText("Alt+");
     });
 
     test("item text is not truncated in accessible name", async ({ page }, testInfo) => {
