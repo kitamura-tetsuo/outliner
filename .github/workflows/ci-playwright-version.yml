@@ -41,8 +41,12 @@ jobs:
               # Force failure so the CI isn't falsely marked green before the new commit is checked
               node -e "process.exit(1);"
             else
+              # REQ-005: If CI does not have authority to persist the correction, it must not report the mismatch as fixed.
               echo "⚠️ Push failed. The branch might be read-only."
+              # Reset so the subsequent check fails against the mismatched Dockerfile
               git reset --hard HEAD
+              # Do NOT exit 0 if there's a mismatch we couldn't push!
+              # By resetting and proceeding, the next step (check-playwright-version.mjs) will legitimately fail.
             fi
           fi
 

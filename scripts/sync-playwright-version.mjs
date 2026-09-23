@@ -41,21 +41,18 @@ try {
     process.exit(1);
 }
 
-const regex = /^(FROM mcr\.microsoft\.com\/playwright:v)(\d+\.\d+\.\d+)(-\w+)$/m;
-const match = dockerfileContent.match(regex);
-if (!match) {
-    console.error(
-        `Dockerfile at ${DOCKERFILE} does not contain a uniquely identifiable expected Playwright base-image declaration.`,
-    );
+const regex = /^(FROM mcr\.microsoft\.com\/playwright:v)(\d+\.\d+\.\d+)(-\w+)$/gm;
+const matches = [...dockerfileContent.matchAll(regex)];
+if (matches.length !== 1) {
+    console.error(`Dockerfile at ${DOCKERFILE} does not contain a uniquely identifiable expected Playwright base-image declaration.`);
     process.exit(1);
 }
 
+const match = matches[0];
 const currentImageVersion = match[2];
 
 if (currentImageVersion !== testVersion) {
-    console.log(
-        `Mismatch detected: Dockerfile is at ${currentImageVersion}, lockfile requires ${testVersion}. Syncing...`,
-    );
+    console.log(`Mismatch detected: Dockerfile is at ${currentImageVersion}, lockfile requires ${testVersion}. Syncing...`);
     const newContent = dockerfileContent.replace(match[0], `${match[1]}${testVersion}${match[3]}`);
     fs.writeFileSync(path.join(repoRoot, DOCKERFILE), newContent, "utf-8");
     console.log(`Synced ${DOCKERFILE} to v${testVersion}.`);
