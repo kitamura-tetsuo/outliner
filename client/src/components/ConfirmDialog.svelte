@@ -32,9 +32,13 @@ $effect(() => {
     if (dialogElement) {
         if (!dialogElement.showModal || !dialogElement.close) return;
         if (isOpen) {
-            dialogElement.showModal();
+            if (!dialogElement.open && typeof dialogElement.showModal === 'function') {
+                dialogElement.showModal();
+            }
         } else {
-            dialogElement.close();
+            if (dialogElement.open && typeof dialogElement.close === 'function') {
+                dialogElement.close();
+            }
         }
     }
 });
@@ -53,8 +57,13 @@ function handleCancel(_e?: Event) {
 <dialog
     bind:this={dialogElement}
     oncancel={handleCancel}
+    onclick={(e) => {
+        if (e.target === dialogElement) {
+            handleCancel();
+        }
+    }}
     class="backdrop:bg-black backdrop:bg-opacity-50 p-0 rounded-lg shadow-xl border border-gray-200"
-    role="alertdialog"
+    role="alertdialog" tabindex="-1"
     aria-modal="true"
     aria-labelledby={`confirm-dialog-title-${dialogId}`}
     aria-describedby={`confirm-dialog-message-${dialogId}`}
