@@ -1,0 +1,13 @@
+id: DIA-8dbdf16d
+title: Cross-client Diagram cursor presence
+title-ja: クライアント間での Diagram カーソルプレゼンス共有
+description: A Diagram's source cursor presence is addressed by Diagram identity rather than page or occurrence, so two independent browser clients editing or viewing the same transcluded Diagram see each other's caret and live edits regardless of which page or occurrence each client is on.
+category: editor
+status: implemented
+tests:
+- client/e2e/new/dia-cross-context-cursor-sync-8dbdf16d.spec.ts
+- client/e2e/new/prs-cursor-sync-4d2e1b6a.spec.ts
+- client/src/services/diagram/diagramPresence.test.ts
+- client/src/stores/DiagramPresenceStore.test.ts
+- client/src/tests/integration/yjs/dia-cross-client-cursor-presence-286cd939.integration.spec.ts
+- client/src/tests/unit/yjs/diagramPresenceRemoval.spec.ts
