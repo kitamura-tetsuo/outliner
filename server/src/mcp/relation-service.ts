@@ -1111,6 +1111,7 @@ export class OutlinerRelationService {
         uid: string,
         projectId: string,
         request: { sourceTableId: string; pageId: string; query: string; name?: string; },
+        precondition: MutationPrecondition = {},
     ) {
         const { sourceTableId, pageId, query, name } = request;
         if (typeof sourceTableId !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(sourceTableId)) {
@@ -1133,57 +1134,80 @@ export class OutlinerRelationService {
             throw new McpReadError("invalid_argument", "Grid name must be a string");
         }
         return this.withProject(uid, projectId, async doc => {
-            const sources = new Map<string, TableDoc>();
-            try {
-                for (let attempt = 1; attempt <= MAX_CREATE_GRID_VALIDATIONS; attempt++) {
-                    this.resolveGridCreationTargets(doc, sourceTableId, pageId);
-                    const { validation, snapshot } = await this.validateGridCandidate(
-                        uid,
-                        projectId,
-                        doc,
-                        query,
-                        undefined,
-                        25,
-                        sources,
-                    );
-                    if (!validation.accepted) {
-                        throw new McpReadError("validation_failed", "Grid query validation failed", { validation });
-                    }
-                    const dependencies = new Set<string>(validation.dependencies);
-                    const dependencyWarnings = validation.warnings.filter(warning =>
-                        dependencies.has(warning.relation)
-                    );
-                    if (dependencyWarnings.length > 0) {
-                        throw new McpReadError(
-                            "validation_failed",
-                            "Grid query dependencies could not be safely materialized",
-                            { validation: { ...validation, warnings: dependencyWarnings } },
+            const cacheKey = this.idempotency.key(
+                "create_grid",
+                uid,
+                projectId,
+                precondition?.dryRun ? undefined : precondition?.operationId,
+            );
+            const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
+                const sources = new Map<string, TableDoc>();
+                try {
+                    for (let attempt = 1; attempt <= MAX_CREATE_GRID_VALIDATIONS; attempt++) {
+                        this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                        const { validation, snapshot } = await this.validateGridCandidate(
+                            uid,
+                            projectId,
+                            doc,
+                            query,
+                            undefined,
+                            25,
+                            sources,
                         );
+                        if (!validation.accepted) {
+                            throw new McpReadError("validation_failed", "Grid query validation failed", { validation });
+                        }
+                        const dependencies = new Set<string>(validation.dependencies);
+                        const dependencyWarnings = validation.warnings.filter(warning =>
+                            dependencies.has(warning.relation)
+                        );
+                        if (dependencyWarnings.length > 0) {
+                            throw new McpReadError(
+                                "validation_failed",
+                                "Grid query dependencies could not be safely materialized",
+                                { validation: { ...validation, warnings: dependencyWarnings } },
+                            );
+                        }
+                        // Mutation boundary: nothing below awaits until publication
+                        // has completed, so no collaborator update can interleave.
+                        const { table, page } = this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                        if (this.validationSnapshot(doc, sources) !== snapshot) continue;
+                        const gridName = name ?? String(table.get("name") ?? "");
+                        const revision = revisionOf(query);
+                        if (precondition?.dryRun) {
+                            return {
+                                applied: false,
+                                sourceTableId,
+                                pageId,
+                                name: gridName,
+                                query,
+                                revision,
+                                validation,
+                            };
+                        }
+                        const created = this.publishGridPlacement(doc, uid, page, sourceTableId, gridName, query);
+                        return {
+                            applied: true,
+                            gridId: created.gridId,
+                            placementId: created.itemId,
+                            sourceTableId,
+                            pageId,
+                            name: gridName,
+                            query,
+                            revision,
+                            validation,
+                        };
                     }
-                    // Mutation boundary: nothing below awaits until publication
-                    // has completed, so no collaborator update can interleave.
-                    const { table, page } = this.resolveGridCreationTargets(doc, sourceTableId, pageId);
-                    if (this.validationSnapshot(doc, sources) !== snapshot) continue;
-                    const gridName = name ?? String(table.get("name") ?? "");
-                    const created = this.publishGridPlacement(doc, uid, page, sourceTableId, gridName, query);
-                    return {
-                        gridId: created.gridId,
-                        placementId: created.itemId,
-                        sourceTableId,
-                        pageId,
-                        name: gridName,
-                        query,
-                        validation,
-                    };
+                    throw new McpReadError(
+                        "stale_revision",
+                        "Grid query inputs kept changing during validation; nothing was created",
+                        { attempts: MAX_CREATE_GRID_VALIDATIONS },
+                    );
+                } finally {
+                    for (const source of sources.values()) await source.disconnect();
                 }
-                throw new McpReadError(
-                    "stale_revision",
-                    "Grid query inputs kept changing during validation; nothing was created",
-                    { attempts: MAX_CREATE_GRID_VALIDATIONS },
-                );
-            } finally {
-                for (const source of sources.values()) await source.disconnect();
-            }
+            });
+            return { ...result, replayed };
         });
     }
 
