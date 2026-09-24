@@ -1,5 +1,11 @@
 {
     "type": "module",
+    "scripts": {
+        "postinstall": "patch-package"
+    },
+    "dependencies": {
+        "libpg-query": "18.1.5"
+    },
     "devDependencies": {
         "@dprint/dockerfile": "0.6.0",
         "@dprint/json": "0.24.0",
@@ -14,11 +20,5 @@
         "playwright": "^1.62.1",
         "pm2": "^7.0.4",
         "vitepress": "^1.6.4"
-    },
-    "dependencies": {
-        "libpg-query": "18.1.5"
-    },
-    "scripts": {
-        "postinstall": "patch-package"
     }
 }
