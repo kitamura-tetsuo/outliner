@@ -114,7 +114,7 @@ describe("websocket auth security (regression)", () => {
             // It catches the security error and swallows it!
             // I need to fix the implementation to NOT swallow that specific error.
 
-            if (e instanceof Error ? e.message : String(e).includes("alg:none tokens are not allowed")) {
+            if ((e instanceof Error ? e.message : String(e)).includes("alg:none tokens are not allowed")) {
                 return; // Success
             }
 
@@ -153,7 +153,7 @@ describe("websocket auth security (regression)", () => {
             await verifyIdTokenCached(token);
             throw new Error("Should have failed");
         } catch (e: unknown) {
-            if (e instanceof Error ? e.message : String(e).includes("alg:none tokens are not allowed")) {
+            if ((e instanceof Error ? e.message : String(e)).includes("alg:none tokens are not allowed")) {
                 return;
             }
             throw e;
