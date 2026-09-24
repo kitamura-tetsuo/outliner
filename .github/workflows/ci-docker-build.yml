@@ -64,11 +64,25 @@ jobs:
             const ts = FieldValue.serverTimestamp();
             console.log('firebase-admin/firestore binding OK');
             console.log('Node version: ' + process.version);
+
             const fs = require('fs');
             const packageJson = JSON.parse(fs.readFileSync('node_modules/firebase-admin/package.json', 'utf8'));
             console.log('Admin version: ' + packageJson.version);
+            const adminV = packageJson.version.split('.').map(Number);
+            if (adminV[0] !== 14 || adminV[1] < 4) {
+              console.error('Firebase Admin version out of range: ' + packageJson.version);
+              process.exitCode = 1;
+              throw new Error('Admin version must be >=14.4.0 and <15.0.0');
+            }
+
             const fsPackageJson = JSON.parse(fs.readFileSync('node_modules/@google-cloud/firestore/package.json', 'utf8'));
             console.log('Firestore version: ' + fsPackageJson.version);
+            const fsV = fsPackageJson.version.split('.').map(Number);
+            if (fsV[0] !== 9 || fsV[1] < 2) {
+              console.error('Firestore version out of range: ' + fsPackageJson.version);
+              process.exitCode = 1;
+              throw new Error('Firestore version must be >=9.2.0 and <10.0.0');
+            }
           "
 
   server-debug-image:
@@ -116,9 +130,23 @@ jobs:
             const ts = FieldValue.serverTimestamp();
             console.log('firebase-admin/firestore binding OK');
             console.log('Node version: ' + process.version);
+
             const fs = require('fs');
             const packageJson = JSON.parse(fs.readFileSync('node_modules/firebase-admin/package.json', 'utf8'));
             console.log('Admin version: ' + packageJson.version);
+            const adminV = packageJson.version.split('.').map(Number);
+            if (adminV[0] !== 14 || adminV[1] < 4) {
+              console.error('Firebase Admin version out of range: ' + packageJson.version);
+              process.exitCode = 1;
+              throw new Error('Admin version must be >=14.4.0 and <15.0.0');
+            }
+
             const fsPackageJson = JSON.parse(fs.readFileSync('node_modules/@google-cloud/firestore/package.json', 'utf8'));
             console.log('Firestore version: ' + fsPackageJson.version);
+            const fsV = fsPackageJson.version.split('.').map(Number);
+            if (fsV[0] !== 9 || fsV[1] < 2) {
+              console.error('Firestore version out of range: ' + fsPackageJson.version);
+              process.exitCode = 1;
+              throw new Error('Firestore version must be >=9.2.0 and <10.0.0');
+            }
           "
