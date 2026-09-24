@@ -762,6 +762,10 @@ export function demoContentEn(): DemoLocaleContent {
                         text:
                             "A collaborator's cursor in this Diagram shows up here too, even while they're on a different page transcluding the same one — presence is addressed to the Diagram, not to a page.",
                     },
+                    {
+                        text:
+                            "Select a whole Diagram row together with its neighbours and Copy/Paste it to get an independent duplicate with its own source; Cut/Paste moves the same Diagram instead. /Insert transclusion stays the way to show this same Diagram in one more place.",
+                    },
                 ],
             },
         ],

@@ -88,6 +88,11 @@ export interface ManualUndoEntry {
 export interface GroupUndoEntry {
     type: "group";
     managers: Y.UndoManager[];
+    /**
+     * Authority the command itself needs to be replayed (e.g. a Diagram
+     * clipboard Paste, #5314 REQ-012), on top of its scopes' own authorizers.
+     */
+    authorize?: () => boolean;
 }
 
 export interface UndoScopeOptions {
@@ -216,10 +221,15 @@ export class UndoRouter {
      * Run one user command and record it as a single history step, even when
      * it edits several scopes (#5311, REQ-009). Capture windows are closed on
      * both sides so the command neither merges into the previous step nor
-     * absorbs the next one. Used only for commands involving Diagram source;
-     * ordinary Text editing keeps its existing merge behavior.
+     * absorbs the next one. Used only for commands involving Diagram source
+     * or Diagram placements; ordinary Text editing keeps its existing merge
+     * behavior.
+     *
+     * `authorize`, when given, gates every later replay of this command: a
+     * refusal consumes nothing and leaves both stacks unchanged. Replay itself
+     * stays each scope's native Yjs selective undo/redo.
      */
-    public captureCommand(command: () => void): void {
+    public captureCommand(command: () => void, options: { authorize?: () => boolean; } = {}): void {
         for (const um of this.registered) um.stopCapturing();
         const start = this.undoStack.length;
         try {
@@ -227,9 +237,14 @@ export class UndoRouter {
         } finally {
             for (const um of this.registered) um.stopCapturing();
             const added = this.undoStack.slice(start);
-            if (added.length > 1 && added.every(entry => !("type" in entry))) {
+            const grouped = options.authorize ? added.length > 0 : added.length > 1;
+            if (grouped && added.every(entry => !("type" in entry))) {
                 this.undoStack.length = start;
-                this.undoStack.push({ type: "group", managers: added as Y.UndoManager[] });
+                this.undoStack.push({
+                    type: "group",
+                    managers: added as Y.UndoManager[],
+                    ...(options.authorize ? { authorize: options.authorize } : {}),
+                });
             }
         }
     }
@@ -469,6 +484,7 @@ export class UndoRouter {
     }
 
     private authorizeEntry(entry: UndoRouterEntry): boolean {
+        if ("type" in entry && entry.type === "group" && entry.authorize && !entry.authorize()) return false;
         const managers = "type" in entry
             ? (entry.type === "group" ? entry.managers : entry.type === "composite" ? [entry.mainManager] : [])
             : [entry];

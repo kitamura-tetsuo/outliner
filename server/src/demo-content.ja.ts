@@ -795,6 +795,10 @@ export function demoContentJa(): DemoLocaleContent {
                         text:
                             "共同編集者のカーソルもここに表示されます。相手が同じ Diagram を別のページから埋め込んでいても構いません——プレゼンスはページではなく Diagram に紐づいているためです。",
                     },
+                    {
+                        text:
+                            "Diagram の行を前後の行ごと選択してコピー＆貼り付けすると、独自のソースを持つ独立した複製ができます。切り取り＆貼り付けでは複製せずに同じ Diagram を移動します。同じ Diagram をもう一か所に表示するには、引き続き /Insert transclusion を使います。",
+                    },
                 ],
             },
         ],

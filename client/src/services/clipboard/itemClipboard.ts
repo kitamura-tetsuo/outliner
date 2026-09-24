@@ -1,9 +1,19 @@
 import type { CalendarSettings } from "../calendar/calendarService";
-import { canAcceptChild, LAYOUT_COLUMN_COUNT, LAYOUT_COMPONENT_TYPE, normalizeColumnSpan } from "../layout/layoutModel";
+import {
+    canAcceptChild,
+    DIAGRAM_COMPONENT_TYPE,
+    LAYOUT_COLUMN_COUNT,
+    LAYOUT_COMPONENT_TYPE,
+    normalizeColumnSpan,
+} from "../layout/layoutModel";
 export const OUTLINER_ITEMS_MIME = "application/x-outliner-items";
 const OUTLINER_ITEMS_HTML_ATTRIBUTE = "data-outliner-items";
 
-export type ClipboardComponentType = "yjstable" | "calendar" | typeof LAYOUT_COMPONENT_TYPE;
+export type ClipboardComponentType =
+    | "yjstable"
+    | "calendar"
+    | typeof LAYOUT_COMPONENT_TYPE
+    | typeof DIAGRAM_COMPONENT_TYPE;
 
 export interface ClipboardItem {
     text: string;
@@ -22,6 +32,12 @@ export interface ClipboardItem {
      */
     yjsGridId?: string;
     calendarId?: string;
+    /**
+     * The Diagram a whole transclusion references (#5314). Only a version 4
+     * payload may carry it: a Copy payload resolves it against the payload's
+     * own `diagrams` snapshots, a Cut payload against its pending transfer.
+     */
+    diagramId?: string;
     /**
      * Width inside a Layout container (#4997). Carried per item so a copied
      * Layout pastes with its arrangement intact; the children's order is the
@@ -78,7 +94,66 @@ export interface ItemClipboardPayloadV3 {
     calendars?: Record<string, CalendarSettings>;
 }
 
-export type ItemClipboardPayload = ItemClipboardPayloadV1 | ItemClipboardPayloadV2 | ItemClipboardPayloadV3;
+/**
+ * The Diagram an occurrence referenced, captured when a structural Copy was
+ * made (#5314, REQ-002/REQ-004). Only the authoritative content travels:
+ * cursors, source/preview mode, presence and rendered SVG are view state.
+ */
+export interface DiagramSnapshot {
+    format: string;
+    source: string;
+}
+
+/**
+ * A structural selection containing whole Diagram transclusions (#5314).
+ *
+ * A Copy payload carries a copy-time snapshot per referenced Diagram, and a
+ * paste allocates fresh Diagrams from them. A Cut payload carries no snapshot
+ * at all: it names a pending transfer held by the originating editor session,
+ * and a paste moves the live nodes that transfer staged. Older builds reject
+ * this version outright rather than pasting a Diagram as an empty Text row.
+ */
+export interface ItemClipboardPayloadV4 {
+    version: 4;
+    sourceProjectId: string;
+    items: ClipboardItem[];
+    operation?: "cut";
+    tables?: Record<string, GridTableSnapshot>;
+    calendars?: Record<string, CalendarSettings>;
+    /** Copy only: snapshots keyed by the original Diagram id. */
+    diagrams?: Record<string, DiagramSnapshot>;
+    /** Cut only: the session-local pending transfer this payload refers to. */
+    transferId?: string;
+}
+
+export type ItemClipboardPayload =
+    | ItemClipboardPayloadV1
+    | ItemClipboardPayloadV2
+    | ItemClipboardPayloadV3
+    | ItemClipboardPayloadV4;
+
+/** True when a payload carries at least one whole Diagram transclusion. */
+export function payloadHasDiagram(payload: ItemClipboardPayload): payload is ItemClipboardPayloadV4 {
+    return payload.version === 4 && payload.items.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE);
+}
+
+/**
+ * Whether undecodable clipboard data claims to be a Diagram payload. Such data
+ * must be refused as a whole rather than degrade into a plain-text paste that
+ * would silently drop or flatten the Diagram (#5314, REQ-007).
+ */
+export function looksLikeDiagramPayload(encoded: string): boolean {
+    if (!encoded) return false;
+    try {
+        const payload: unknown = JSON.parse(encoded);
+        if (!isRecord(payload)) return false;
+        if (payload.version === 4) return true;
+        return Array.isArray(payload.items)
+            && payload.items.some(item => isRecord(item) && item.componentType === DIAGRAM_COMPONENT_TYPE);
+    } catch {
+        return false;
+    }
+}
 
 interface ItemLike {
     text?: unknown;
@@ -89,11 +164,23 @@ interface ItemLike {
 const bindings = {
     yjstable: "yjsTableId",
     calendar: "calendarId",
+    diagram: "diagramId",
 } as const;
 
 const PAYLOAD_V1_KEYS = new Set(["version", "sourceProjectId", "items", "operation"]);
 const PAYLOAD_V2_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "operation"]);
 const PAYLOAD_V3_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "calendars", "operation"]);
+const PAYLOAD_V4_KEYS = new Set([
+    "version",
+    "sourceProjectId",
+    "items",
+    "tables",
+    "calendars",
+    "diagrams",
+    "transferId",
+    "operation",
+]);
+const DIAGRAM_SNAPSHOT_KEYS = new Set(["format", "source"]);
 const CALENDAR_SETTINGS_KEYS = new Set([
     "name",
     "query",
@@ -112,7 +199,16 @@ const CALENDAR_SETTINGS_KEYS = new Set([
     "workingHoursEndMinutes",
     "ganttScale",
 ]);
-const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "yjsGridId", "calendarId", "columnSpan"]);
+const ITEM_KEYS = new Set([
+    "text",
+    "depth",
+    "componentType",
+    "yjsTableId",
+    "yjsGridId",
+    "calendarId",
+    "diagramId",
+    "columnSpan",
+]);
 const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
 const UI_KEYS = new Set(["query", "components", "columnOrder", "showAddRowButton"]);
 const COMPONENT_KEYS = new Set(["type", "label", "hidden"]);
@@ -149,6 +245,7 @@ function isClipboardItem(value: unknown): value is ClipboardItem {
         return false;
     }
 
+    if (value.componentType !== DIAGRAM_COMPONENT_TYPE && value.diagramId !== undefined) return false;
     if (value.componentType === undefined) {
         return value.yjsTableId === undefined && value.calendarId === undefined;
     }
@@ -156,6 +253,10 @@ function isClipboardItem(value: unknown): value is ClipboardItem {
     // which travel as the following, deeper clipboard items.
     if (value.componentType === LAYOUT_COMPONENT_TYPE) {
         return value.yjsTableId === undefined && value.calendarId === undefined;
+    }
+    if (value.componentType === DIAGRAM_COMPONENT_TYPE) {
+        return typeof value.diagramId === "string" && value.diagramId.length > 0
+            && value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === "yjstable") {
         // yjsTableId is the required identity (used to resolve/clone the
@@ -260,6 +361,38 @@ function isCalendarSettingsMap(value: unknown): value is Record<string, Calendar
         );
 }
 
+function isDiagramSnapshot(value: unknown): value is DiagramSnapshot {
+    return isRecord(value) && hasOnlyKeys(value, DIAGRAM_SNAPSHOT_KEYS)
+        && typeof value.format === "string" && value.format.length > 0 && typeof value.source === "string";
+}
+
+function isDiagramSnapshotMap(value: unknown): value is Record<string, DiagramSnapshot> {
+    return isRecord(value)
+        && Object.entries(value).every(([diagramId, snapshot]) => diagramId.length > 0 && isDiagramSnapshot(snapshot));
+}
+
+/**
+ * A version 4 payload is exactly one of the two Diagram transfers (#5314):
+ * a Copy that snapshots every referenced Diagram and names no transfer, or a
+ * Cut that names its pending transfer and needs — and carries — no snapshot.
+ */
+function isValidDiagramTransfer(
+    items: ClipboardItem[],
+    operation: unknown,
+    diagrams: unknown,
+    transferId: unknown,
+): boolean {
+    if (!items.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE)) return false;
+    if (operation === "cut") {
+        return diagrams === undefined && typeof transferId === "string" && transferId.length > 0;
+    }
+    if (transferId !== undefined || !isDiagramSnapshotMap(diagrams)) return false;
+    return items.every(item =>
+        item.componentType !== DIAGRAM_COMPONENT_TYPE
+        || Object.prototype.hasOwnProperty.call(diagrams, item.diagramId as string)
+    );
+}
+
 function isSnapshotMap(value: unknown): value is Record<string, GridTableSnapshot> {
     return isRecord(value)
         && Object.entries(value).every(([sourceTableId, snapshot]) =>
@@ -275,11 +408,13 @@ export function serializeClipboardItems(
     tables?: Readonly<Record<string, GridTableSnapshot>>,
     calendars?: Readonly<Record<string, CalendarSettings>>,
     operation?: "cut",
+    diagramTransfer?: { diagrams?: Readonly<Record<string, DiagramSnapshot>>; transferId?: string; },
 ): string {
     const serialized = items.map(({ item, depth, text: textOverride }) => {
         const value = nodeValue(item);
         const rawType = value?.get?.("componentType");
-        const isBoundComponent = rawType === "yjstable" || rawType === "calendar";
+        const isBoundComponent = rawType === "yjstable" || rawType === "calendar"
+            || rawType === DIAGRAM_COMPONENT_TYPE;
         const componentType = isBoundComponent || rawType === LAYOUT_COMPONENT_TYPE ? rawType : undefined;
         const bindingField = isBoundComponent ? bindings[rawType] : undefined;
         const binding = bindingField ? value?.get?.(bindingField) : undefined;
@@ -314,6 +449,33 @@ export function serializeClipboardItems(
     });
 
     if (!serialized.every(isClipboardItem)) throw new TypeError("Cannot serialize invalid clipboard items");
+    if (serialized.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE)) {
+        const snapshotMap = tables ? { ...tables } : undefined;
+        if (snapshotMap && !isSnapshotMap(snapshotMap)) {
+            throw new TypeError("Cannot serialize invalid Grid table snapshots");
+        }
+        const calendarMap = calendars ? { ...calendars } : undefined;
+        if (calendarMap && !isCalendarSettingsMap(calendarMap)) {
+            throw new TypeError("Cannot serialize invalid calendar settings");
+        }
+        const diagrams = diagramTransfer?.diagrams ? { ...diagramTransfer.diagrams } : undefined;
+        const transferId = diagramTransfer?.transferId;
+        if (!isValidDiagramTransfer(serialized, operation, diagrams, transferId)) {
+            throw new TypeError("Cannot serialize an incomplete Diagram transfer");
+        }
+        return JSON.stringify(
+            {
+                version: 4,
+                sourceProjectId,
+                items: serialized,
+                ...(snapshotMap ? { tables: snapshotMap } : {}),
+                ...(calendarMap ? { calendars: calendarMap } : {}),
+                ...(diagrams ? { diagrams } : {}),
+                ...(transferId ? { transferId } : {}),
+                ...(operation ? { operation } : {}),
+            } satisfies ItemClipboardPayloadV4,
+        );
+    }
     if (tables === undefined && calendars === undefined) {
         return JSON.stringify(
             {
@@ -373,6 +535,17 @@ export function deserializeClipboardItems(value: string): ItemClipboardPayload |
         }
         if (!payload.items.every(isClipboardItem)) return undefined;
         if (!hasValidKindStructure(payload.items)) return undefined;
+        if (payload.version === 4) {
+            if (!hasOnlyKeys(payload, PAYLOAD_V4_KEYS)) return undefined;
+            if (payload.tables !== undefined && !isSnapshotMap(payload.tables)) return undefined;
+            if (payload.calendars !== undefined && !isCalendarSettingsMap(payload.calendars)) return undefined;
+            if (!isValidDiagramTransfer(payload.items, payload.operation, payload.diagrams, payload.transferId)) {
+                return undefined;
+            }
+            return payload as unknown as ItemClipboardPayloadV4;
+        }
+        // Only a version 4 payload may describe a Diagram occurrence.
+        if (payload.items.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE)) return undefined;
         if (payload.version === 1) {
             if (!hasOnlyKeys(payload, PAYLOAD_V1_KEYS)) return undefined;
             return payload as unknown as ItemClipboardPayloadV1;
