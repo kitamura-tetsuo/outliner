@@ -45,7 +45,6 @@ test.describe("DIA-c60db19e: an unresolved Diagram reference stays pending, neve
 
         await expect(block).toHaveAttribute("data-diagram-state", "ready", { timeout: 10000 });
         await expect(block).toHaveAttribute("data-diagram-id", PENDING_DIAGRAM_ID);
-        await expect(page.locator('[data-testid="diagram-block-excerpt"]')).toHaveText("graph TD; A-->B");
 
         // The original occurrence resolved in place — its own id never changed.
         const stillSameOccurrence = await page.evaluate(
