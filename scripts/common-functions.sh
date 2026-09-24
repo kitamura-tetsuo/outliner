@@ -624,7 +624,7 @@ start_and_wait_for_services() {
 
   # Loop to check services and ports in parallel
   echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
-  local MAX_WAIT_SECONDS=300
+  local MAX_WAIT_SECONDS=600
   local START_TIME
   START_TIME=$(date +%s)
 

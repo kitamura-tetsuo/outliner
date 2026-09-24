@@ -33,7 +33,7 @@ To browse your pages, click the sidebar toggle button in the top-left corner and
 To create a new page, you can either:
 
 - Enter a title in the "New page name" input field on the project homepage and click **Create**.
-- Click the **Add new page** button in the **Pages** section header of the sidebar.
+- Click the **+** (Add page) button in the **Pages** section header of the sidebar.
 
 ### Switching to Edit Mode
 
@@ -62,10 +62,10 @@ The login status indicator located in the top right corner of the top toolbar sh
 Click the sidebar toggle button in the top-left corner to access the main sidebar navigation. Sections in the sidebar can be expanded or collapsed by clicking their headers. The sidebar provides quick access to:
 
 - **Projects:** Switch between your projects or go home.
-- **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the **Add new page** button in the section header.
+- **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the **+** (Add page) button in the section header.
 - **Tables:** View and manage database tables.
 - **Object Manager:** Manage Grids, Tables, and Schedules centrally.
-- **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **Add new scheduled SQL** button in the section header.
+- **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **+** (Add scheduled SQL) button in the section header.
 - **Settings:** Access project configurations.
 - **Docs:** Quick link to the documentation.
 - **GitHub:** Quick link to the source code.
