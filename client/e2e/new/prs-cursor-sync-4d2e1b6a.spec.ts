@@ -69,8 +69,21 @@ test.describe("PRS-4d2e1b6a: cursor presence", () => {
 
             const itemId = await page1.locator(".outliner-item").nth(1).getAttribute("data-item-id");
             expect(itemId).toBeTruthy();
-            await TestHelpers.setCursor(page1, itemId!, 4, "local");
+            await TestHelpers.setCursor(page1, itemId!, 0, "local");
             await TestHelpers.waitForCursorVisible(page1);
+
+            // Advance the cursor to a known non-zero offset through the real
+            // insertion path (`Cursor.insertText`), not by poking the store's raw
+            // offset field: that path also syncs the shared hidden textarea's own
+            // selection, which a bare offset write does not — a later native
+            // `selectionchange` event would otherwise snap the store's cursor back
+            // to the textarea's stale position (observed while writing this test).
+            await page1.evaluate((itemId) => {
+                const editorStore = (globalThis as any).editorOverlayStore;
+                const cursor = editorStore.getLocalCursorInstances().find((c: any) => c.itemId === itemId);
+                cursor?.insertText("wxyz");
+            }, itemId);
+            await expect(page1.locator(`[data-item-id="${itemId}"] .item-text`)).toHaveText("wxyzAlpha line");
 
             // Real cross-client propagation: the remote cursor renders in page2's DOM
             // at the same offset, and the store it was rendered from names the same
