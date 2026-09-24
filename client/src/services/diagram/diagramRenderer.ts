@@ -1,5 +1,5 @@
-import mermaid from "mermaid";
 import DOMPurify from "dompurify";
+import mermaid from "mermaid";
 
 let initialized = false;
 
@@ -20,6 +20,6 @@ export const sanitizeSvg = (svg: string) => {
     return DOMPurify.sanitize(svg, {
         USE_PROFILES: { svg: true },
         ADD_TAGS: ["foreignObject"],
-        ADD_ATTR: ["xmlns:xhtml"]
+        ADD_ATTR: ["xmlns:xhtml"],
     });
-}
+};
