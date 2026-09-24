@@ -2,6 +2,11 @@ import DOMPurify from "dompurify";
 import mermaid from "mermaid";
 
 let initialized = false;
+let globalInstanceCounter = 0;
+
+export function getNextDiagramInstanceId(): number {
+    return ++globalInstanceCounter;
+}
 
 export function initMermaid() {
     if (initialized) return;

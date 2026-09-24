@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount, untrack } from "svelte";
 import mermaid from "mermaid";
-import { initMermaid, sanitizeSvg } from "../../services/diagram/diagramRenderer";
+import { getNextDiagramInstanceId, initMermaid, sanitizeSvg } from "../../services/diagram/diagramRenderer";
 
 interface Props {
     id: string;
@@ -19,11 +19,9 @@ let renderedSvg = $state("");
 
 const MAX_SOURCE_LENGTH = 50000;
 
-let _globalCounter = 0;
-
 onMount(() => {
     initMermaid();
-    instanceId = ++_globalCounter;
+    instanceId = getNextDiagramInstanceId();
 });
 
 $effect(() => {
