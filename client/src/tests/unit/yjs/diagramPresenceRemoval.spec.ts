@@ -38,8 +38,8 @@ describe("Diagram cursor presence withdrawal on departure (#5312)", () => {
             awarenessA.setLocalStateField("presence", { diagramCursors: [wire] });
             relay(awarenessA, awarenessB);
 
-            expect(diagramPresenceStore.hasLiveFor(diagramId)).toBe(true);
-            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project)).toEqual([
+            expect(diagramPresenceStore.hasLiveFor(diagramId, true)).toBe(true);
+            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project, true)).toEqual([
                 expect.objectContaining({ userId: "alice", cursorId: "cursor-1", offset: 3 }),
             ]);
 
@@ -49,8 +49,8 @@ describe("Diagram cursor presence withdrawal on departure (#5312)", () => {
             removeAwarenessStates(awarenessA, [awarenessA.clientID], "connection closed");
             relay(awarenessA, awarenessB);
 
-            expect(diagramPresenceStore.hasLiveFor(diagramId)).toBe(false);
-            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project)).toEqual([]);
+            expect(diagramPresenceStore.hasLiveFor(diagramId, true)).toBe(false);
+            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project, true)).toEqual([]);
         } finally {
             unbindB();
         }
@@ -79,12 +79,12 @@ describe("Diagram cursor presence withdrawal on departure (#5312)", () => {
             });
             relay(awarenessC, awarenessB);
 
-            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project)).toHaveLength(2);
+            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project, true)).toHaveLength(2);
 
             removeAwarenessStates(awarenessA, [awarenessA.clientID], "connection closed");
             relay(awarenessA, awarenessB);
 
-            const remaining = diagramPresenceStore.resolvedEntriesFor(diagramId, project);
+            const remaining = diagramPresenceStore.resolvedEntriesFor(diagramId, project, true);
             expect(remaining).toHaveLength(1);
             expect(remaining[0].userId).toBe("carol");
         } finally {

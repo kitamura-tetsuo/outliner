@@ -88,7 +88,7 @@ const remoteSourceCursors = $derived.by(() => {
     void presenceVersion;
     void registryVersion;
     if (!diagramId) return [];
-    return diagramPresenceStore.resolvedEntriesFor(diagramId, project);
+    return diagramPresenceStore.resolvedEntriesFor(diagramId, project, mayRead);
 });
 
 /**
@@ -100,7 +100,7 @@ const remoteSourceCursors = $derived.by(() => {
 const sourceVisible = $derived.by(() => {
     void presenceVersion;
     if (sourceCursors.length > 0) return true;
-    return !!diagramId && diagramPresenceStore.hasLiveFor(diagramId);
+    return !!diagramId && diagramPresenceStore.hasLiveFor(diagramId, mayRead);
 });
 
 /** Source-internal selections of any occurrence of this Diagram, in canonical offsets. */
@@ -225,6 +225,15 @@ function swallowClick(event: MouseEvent) {
 // must be invalidated the moment write access disappears (REQ-014).
 $effect(() => {
     if (isReadOnly) untrack(() => diagramComposition.occurrenceInvalidated(item.id));
+});
+
+// Diagram presence disclosure requires current project read capability
+// (REQ-010): losing it must invalidate any remote presence already held, not
+// just hide it, so restoring capability alone can never repaint a stale
+// caret — only a fresh publish from the peer can. There is no change event
+// to observe here either, so this mirrors the isReadOnly effect above.
+$effect(() => {
+    if (!mayRead) untrack(() => diagramPresenceStore.invalidateIfUnauthorized(false));
 });
 
 // The occurrence id, captured at mount: a deleted Yjs node no longer reports its id.

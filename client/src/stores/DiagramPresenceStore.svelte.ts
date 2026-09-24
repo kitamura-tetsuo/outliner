@@ -96,14 +96,37 @@ export class DiagramPresenceStore {
     }
 
     /**
+     * Read loss must stop protected presence disclosure and invalidate
+     * affected — including pending — presence outright, so restoring
+     * capability alone can never revive it: only a fresh live publish can
+     * (REQ-010). Callers recheck their current read authority at the actual
+     * disclosure/deferred-resolution boundary (every call to
+     * `resolvedEntriesFor`/`hasLiveFor` below, not just once at mount) and
+     * invoke this the moment it goes false — see `DiagramBlock.svelte`'s
+     * `$effect`, which mirrors its existing isReadOnly-transition effect.
+     * This is deliberately not folded into `resolvedEntriesFor`/`hasLiveFor`
+     * themselves: those run inside Svelte `$derived` evaluations, where
+     * mutating state (this clear's `notify()` bumps a consumer's version
+     * counter) is unsafe — the invalidating side effect belongs in an
+     * `$effect`, the read-only gate stays pure.
+     */
+    invalidateIfUnauthorized(canRead: boolean): void {
+        if (canRead || this.sessions.size === 0) return;
+        this.sessions.clear();
+        this.notify();
+    }
+
+    /**
      * Every live cursor addressed to `diagramId`, resolved against the
      * current project doc. An entry that cannot yet resolve (its Diagram or
      * referenced text is not locally available) is omitted here — it still
      * counts toward `hasLiveFor` — rather than painted at a fabricated
-     * position (REQ-004/REQ-005).
+     * position (REQ-004/REQ-005). `canRead` is the caller's current project
+     * read authority (REQ-010): false discloses nothing here; pair every call
+     * site with `invalidateIfUnauthorized` to also discard held presence.
      */
-    resolvedEntriesFor(diagramId: string, project: Project | undefined): RemoteDiagramCursor[] {
-        if (!project) return [];
+    resolvedEntriesFor(diagramId: string, project: Project | undefined, canRead: boolean): RemoteDiagramCursor[] {
+        if (!canRead || !project) return [];
         const out: RemoteDiagramCursor[] = [];
         for (const [sessionId, entry] of this.sessions) {
             for (const wire of entry.wires.values()) {
@@ -127,9 +150,12 @@ export class DiagramPresenceStore {
     /**
      * Whether any live cursor — resolved or still pending its source/text
      * evidence — targets `diagramId`. An authorized live record awaiting
-     * evidence still forces source-mode presentation (REQ-004).
+     * evidence still forces source-mode presentation (REQ-004). `canRead` is
+     * rechecked here too (REQ-010): unauthorized never contributes source-mode
+     * intent; pair every call site with `invalidateIfUnauthorized`.
      */
-    hasLiveFor(diagramId: string): boolean {
+    hasLiveFor(diagramId: string, canRead: boolean): boolean {
+        if (!canRead) return false;
         for (const entry of this.sessions.values()) {
             for (const wire of entry.wires.values()) {
                 if (wire.diagramId === diagramId) return true;

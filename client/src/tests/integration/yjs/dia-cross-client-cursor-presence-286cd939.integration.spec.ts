@@ -61,16 +61,16 @@ describe("Diagram cursor presence (#5312)", () => {
             c1.awareness!.setLocalStateField("user", { userId: "u1", name: "Alice" });
             c1.awareness!.setLocalStateField("presence", { diagramCursors: [wire] });
 
-            await waitFor(() => diagramPresenceStore.hasLiveFor(diagramId));
+            await waitFor(() => diagramPresenceStore.hasLiveFor(diagramId, true));
 
-            const resolved = diagramPresenceStore.resolvedEntriesFor(diagramId, project2);
+            const resolved = diagramPresenceStore.resolvedEntriesFor(diagramId, project2, true);
             expect(resolved).toHaveLength(1);
             expect(resolved[0]).toMatchObject({ userId: "u1", cursorId: "cursor-1", offset: 1 });
 
             // The peer's cursor withdraws once its session stops publishing it.
             c1.awareness!.setLocalStateField("presence", { diagramCursors: [] });
-            await waitFor(() => !diagramPresenceStore.hasLiveFor(diagramId));
-            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project2)).toEqual([]);
+            await waitFor(() => !diagramPresenceStore.hasLiveFor(diagramId, true));
+            expect(diagramPresenceStore.resolvedEntriesFor(diagramId, project2, true)).toEqual([]);
         } finally {
             unbind2();
             await c1.dispose();
