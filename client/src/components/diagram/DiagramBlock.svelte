@@ -32,6 +32,7 @@ import { diagramComposition } from "../../services/diagram/diagramComposition.sv
 import { buildSourceSegments, type SourceCaretMark, type SourceRangeMark } from "../../services/diagram/diagramSourceView";
 import { offsetFromPoint } from "../../services/diagram/diagramSourceDom";
 import { diagramPresenceStore } from "../../stores/DiagramPresenceStore.svelte";
+import DiagramRenderer from "./DiagramRenderer.svelte";
 
 interface ItemLike {
     ydoc: import("yjs").Doc;
@@ -135,15 +136,6 @@ const segments = $derived.by(() => {
         })),
     ];
     return buildSourceSegments(source, carets, sourceRanges, preedits);
-});
-
-const EXCERPT_LENGTH = 60;
-const excerpt = $derived.by(() => {
-    const source = diagram?.source ?? "";
-    const firstLine = source.split("\n").find((line) => line.trim().length > 0) ?? "";
-    const trimmed = firstLine.trim();
-    if (!trimmed) return "(empty diagram)";
-    return trimmed.length > EXCERPT_LENGTH ? `${trimmed.slice(0, EXCERPT_LENGTH)}…` : trimmed;
 });
 
 /**
@@ -307,11 +299,13 @@ onDestroy(() => {
             >{#each segments as segment (segment.key)}{#if segment.kind === "text"}<span class="diagram-source-run" class:diagram-source-selected={segment.selected} data-source-run data-source-start={segment.start}>{segment.text}</span>{:else if segment.kind === "caret"}<span class="diagram-caret" class:diagram-caret--remote={segment.remote} data-testid={segment.remote ? "diagram-remote-caret" : "diagram-caret"} data-caret-offset={segment.offset} style={segment.color ? `color:${segment.color}` : undefined} aria-hidden="true"></span>{:else}<span class="diagram-preedit" data-testid="diagram-preedit" data-ephemeral>{segment.text}</span>{/if}{/each}</div>
         </div>
     {:else}
-        <button type="button" class="diagram-block" data-testid="diagram-block" data-diagram-state="ready"
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="diagram-block diagram-preview" data-testid="diagram-block" data-diagram-state="ready"
             data-diagram-id={diagram.id} data-diagram-format={diagram.format} onpointerdown={keepEditorFocus}
             onclick={enterSource}>
-            <span class="diagram-icon" aria-hidden="true">◇</span><span class="diagram-label" data-testid="diagram-block-excerpt">{excerpt}</span>
-        </button>
+            <DiagramRenderer id={diagram.id} source={diagram.source} />
+        </div>
     {/if}
 {/key}
 
