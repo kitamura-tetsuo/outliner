@@ -11,5 +11,5 @@
         "verbatimModuleSyntax": false,
         "noEmit": true
     },
-    "include": ["*.spec.ts", "*.test.ts", "vitest.config.ts"]
+    "include": ["*.spec.ts", "*.test.ts", "helpers/*.ts", "vitest.config.ts"]
 }
