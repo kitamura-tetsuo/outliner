@@ -8,57 +8,102 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
+// Two independent browser CONTEXTS over the real collaboration transport
+// (real auth, real Yjs WebSocket connection, real awareness), asserting the
+// actual rendered remote-cursor DOM element in context 2 — not merely that
+// both contexts have an `awareness` object. A prior version of this test
+// only checked `!!c1.awareness && !!c2.awareness`, which is infrastructure
+// existence, not propagation.
 test.describe("PRS-4d2e1b6a: cursor presence", () => {
-    test("propagates cursor between clients", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo);
-        const projectId = `p-${Date.now()}`;
+    test(
+        "a cursor placed in one browser context renders as a remote cursor in another, and clearing it withdraws it",
+        async ({ browser }, testInfo) => {
+            test.setTimeout(90000);
+            const projectName = `Test Project Cursor Presence ${Date.now()}`;
+            const pageName = `prs-presence-page-${Date.now()}`;
 
-        // Test the basic infrastructure for cursor presence sync functionality.
-        // In test environments, the full synchronization between clients may not be available
-        // due to missing websocket server infrastructure, but we can at least verify that
-        // the basic components are available and can be used for presence functionality.
-        const received = await page.evaluate(async pid => {
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
-            const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
-            const { Project } = await import("/src/schema/app-schema.ts");
+            const context1 = await browser.newContext();
+            const page1 = await context1.newPage();
+            await TestHelpers.seedProjectAndNavigate(
+                page1,
+                testInfo,
+                ["Alpha line", "Beta line"],
+                undefined,
+                { projectName, pageName, ws: "force" },
+            );
+            await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+            await page1.waitForFunction(
+                () => (globalThis as any).__YJS_STORE__?.getIsConnected?.() === true,
+                null,
+                { timeout: 15000 },
+            ).catch(() => {});
 
-            console.log("Starting test setup");
+            const context2 = await browser.newContext({ storageState: TestHelpers.createTestStorageState() as any });
+            const page2 = await context2.newPage();
+            await page2.addInitScript(() => {
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                (globalThis as any).__E2E__ = true;
+            });
+            await page2.goto(page1.url(), { waitUntil: "domcontentloaded" });
+            await page2.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__, { timeout: 10000 });
+            await page2.evaluate(async () => {
+                const mgr = (globalThis as any).__USER_MANAGER__;
+                if (mgr?.loginWithEmailPassword) await mgr.loginWithEmailPassword("test@example.com", "password");
+            });
+            await page2.waitForFunction(
+                () => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(),
+                { timeout: 10000 },
+            );
+            await page2.waitForFunction(
+                () => (globalThis as any).__YJS_STORE__?.getIsConnected?.() === true,
+                null,
+                { timeout: 30000 },
+            );
+            await TestHelpers.waitForPageData(page2, pageName, 30000);
+            await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
-            // Create both connections to the same project
-            const c1 = await createProjectConnection(pid);
-            const c2 = await createProjectConnection(pid);
+            // Second context has issued no cursor of its own, so any `.cursor` overlay
+            // element it renders can only have arrived over the wire from context 1.
+            await expect(page2.locator(".editor-overlay .cursor")).toHaveCount(0);
 
-            console.log("Connections created:", !!c1, !!c2);
-            console.log("c1 awareness:", !!c1?.awareness);
-            console.log("c2 awareness:", !!c2?.awareness);
+            const itemId = await page1.locator(".outliner-item").nth(1).getAttribute("data-item-id");
+            expect(itemId).toBeTruthy();
+            await TestHelpers.setCursor(page1, itemId!, 0, "local");
+            await TestHelpers.waitForCursorVisible(page1);
 
-            // Wait to ensure connection establishment
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Advance the cursor to a known non-zero offset through the real
+            // insertion path (`Cursor.insertText`), not by poking the store's raw
+            // offset field: that path also syncs the shared hidden textarea's own
+            // selection, which a bare offset write does not — a later native
+            // `selectionchange` event would otherwise snap the store's cursor back
+            // to the textarea's stale position (observed while writing this test).
+            await page1.evaluate((itemId) => {
+                const editorStore = (globalThis as any).editorOverlayStore;
+                const cursor = editorStore.getLocalCursorInstances().find((c: any) => c.itemId === itemId);
+                cursor?.insertText("wxyz");
+            }, itemId);
+            await expect(page1.locator(`[data-item-id="${itemId}"] .item-text`)).toHaveText("wxyzAlpha line");
 
-            // Create a page in the first project (not strictly needed for presence test but good for integration check)
-            const project = Project.fromDoc(c1.doc);
-            const page = project.addPage("P", "u1");
-            const pageId = page.id;
+            // Real cross-client propagation: the remote cursor renders in page2's DOM
+            // at the same offset, and the store it was rendered from names the same
+            // item and a non-local peer.
+            const remoteCursor = page2.locator(".editor-overlay .cursor");
+            await expect(remoteCursor).toHaveCount(1, { timeout: 20000 });
+            await expect(remoteCursor).toHaveAttribute("data-offset", "4");
+            const remoteEntry = await page2.evaluate(() => {
+                const cursors = (globalThis as any).editorOverlayStore?.cursors ?? {};
+                return Object.values(cursors).find((c: any) => c.userId && c.userId !== "local");
+            });
+            expect(remoteEntry).toMatchObject({ itemId, offset: 4 });
 
-            console.log("Page created with ID:", pageId);
+            // Withdrawal: clearing the cursor in context 1 removes the remote cursor
+            // from context 2 rather than leaving a stale rendering behind.
+            await page1.evaluate(() => (globalThis as any).editorOverlayStore.clearCursorAndSelection("local"));
+            await expect(page2.locator(".editor-overlay .cursor")).toHaveCount(0, { timeout: 20000 });
 
-            // Wait for awareness to be established
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // At this point, we'll return true if we have project connections with awareness,
-            // which indicates the infrastructure is properly set up
-            const hasProjectConnections = !!c1 && !!c2;
-            const hasProjectAwareness = hasProjectConnections && !!c1.awareness && !!c2.awareness;
-
-            console.log("Project connections exist:", hasProjectConnections);
-            console.log("Project awareness exists:", hasProjectAwareness);
-
-            // The core test is about infrastructure availability for presence sync
-            return hasProjectAwareness;
-        }, projectId);
-
-        // Expect the cursor to be propagated between clients
-        expect(received).toBe(true);
-    });
+            await context1.close();
+            await context2.close();
+        },
+    );
 });

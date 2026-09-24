@@ -2,7 +2,9 @@ import { canAcceptChild } from "$shared/services/outlineNodeKind";
 import type { Awareness } from "y-protocols/awareness";
 import { YTree } from "yjs-orderedtree";
 import { Item, Items, Project } from "../../schema/yjs-schema";
+import { parseDiagramCursorsWire } from "../../services/diagram/diagramPresence";
 import { colorForUser } from "../../stores/colorForUser";
+import { diagramPresenceStore } from "../../stores/DiagramPresenceStore.svelte";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
 import { store } from "../../stores/store.svelte";
@@ -79,11 +81,25 @@ function applyPresenceToOverlay(
             // Whatever a peer put on the wire: this build's endpoints, an older build's
             // flat text fields, or something neither. It is validated, never trusted.
             selection?: RemoteSelectionPayload;
+            // Diagram cursors are addressed by Diagram identity, not page (#5312);
+            // validated the same way, never trusted.
+            diagramCursors?: unknown;
         }
         | null
         | undefined,
+    sessionId: string,
 ) {
     if (!overlay || !user) return;
+
+    // Diagram source cursors are applied unconditionally: unlike an ordinary
+    // item cursor, a Diagram can be transcluded onto pages other than the
+    // sender's, so filtering by page would hide a real remote cursor on
+    // exactly the cross-page case this routing exists for (#5312 REQ-003).
+    diagramPresenceStore.applySession(
+        sessionId,
+        { userId: user.userId, userName: user.name, color: user.color },
+        parseDiagramCursorsWire(presence?.diagramCursors),
+    );
 
     // Filter out presence that belongs to a different page
     const currentPage = store.currentPage;
@@ -316,7 +332,7 @@ export const yjsService = {
                 target.setUser({ userId: user.userId, userName: user.name, color });
 
                 if (overlay && id !== clientId) {
-                    applyPresenceToOverlay(overlay, { ...user, color }, s?.presence);
+                    applyPresenceToOverlay(overlay, { ...user, color }, s?.presence, String(id));
                 }
             });
 
@@ -330,9 +346,15 @@ export const yjsService = {
                     target.removeUser(user.userId);
 
                     if (overlay && id !== clientId) {
-                        applyPresenceToOverlay(overlay, { ...user }, null);
+                        applyPresenceToOverlay(overlay, { ...user }, null, String(id));
                     }
                 }
+
+                // A Diagram cursor is addressed per editing session (one browser
+                // connection), not per user, so its withdrawal never waits on
+                // whether the same userId is still present through another
+                // connection (#5312 REQ-006/REQ-007).
+                if (id !== clientId) diagramPresenceStore.removeSession(String(id));
             });
         };
         awareness.on("change", update);
@@ -357,7 +379,7 @@ export const yjsService = {
             const user = s?.user;
             if (!user) return;
             if (id === clientId) return;
-            applyPresenceToOverlay(overlay, user, s?.presence);
+            applyPresenceToOverlay(overlay, user, s?.presence, String(id));
         });
     },
 

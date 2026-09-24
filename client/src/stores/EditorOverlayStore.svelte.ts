@@ -1,4 +1,5 @@
 import { tick } from "svelte";
+import * as Y from "yjs";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { isForeignInput } from "../lib/KeyEventHandler";
 import { notifyLocalCursorIntent } from "../lib/localCursorIntent";
@@ -15,6 +16,8 @@ import {
     textSelectionEndpoints,
 } from "../lib/selection/selectionEndpoints";
 import { yjsService } from "../lib/yjs/service";
+import { diagramIdForItem } from "../services/diagram/diagramEditing";
+import { type DiagramCursorWire, encodeDiagramCursor } from "../services/diagram/diagramPresence";
 import { escapeId } from "../utils/domUtils";
 import { store } from "./store.svelte";
 import { yjsStore } from "./yjsStore.svelte";
@@ -2649,6 +2652,7 @@ export class EditorOverlayStore {
 
             const cursor = this.getLocalPrimaryCursor();
             const selection = this.getLocalPrimarySelection();
+            const diagramCursors = this.computeLocalDiagramCursors();
 
             const presenceState = {
                 pageId,
@@ -2670,6 +2674,10 @@ export class EditorOverlayStore {
                         boxSelectionRanges: selection.isBoxSelection ? selection.boxSelectionRanges ?? [] : undefined,
                     }
                     : undefined,
+                // Addressed by Diagram identity, not page/occurrence (#5312): every
+                // local logical cursor currently on a Diagram's source, not just the
+                // primary cursor, since several may independently target one source.
+                diagramCursors: diagramCursors.length > 0 ? diagramCursors : undefined,
             };
 
             // Set to project-level awareness
@@ -2677,6 +2685,46 @@ export class EditorOverlayStore {
         } catch {
             // Skip presence sync in environments where Awareness is not available
         }
+    }
+
+    /**
+     * Every local logical cursor whose edit target is a Diagram source,
+     * encoded as a Yjs relative position so a receiver can resolve it against
+     * its own replica regardless of which occurrence/page it was placed
+     * through (#5312 REQ-002/REQ-003/REQ-005).
+     */
+    private computeLocalDiagramCursors(): DiagramCursorWire[] {
+        const out: DiagramCursorWire[] = [];
+        for (const cursorInst of this.getLocalCursorInstances()) {
+            if (!cursorInst.isOnDiagramOccurrence()) continue;
+            const target = cursorInst.findTarget();
+            const diagramId = diagramIdForItem(target);
+            const sourceText: unknown = target?.text;
+            if (!diagramId || !(sourceText instanceof Y.Text)) continue;
+
+            let selectionInterval: { start: number; end: number; isReversed?: boolean; } | undefined;
+            const selection = this.getCursorSelection(cursorInst.cursorId);
+            if (
+                selection && selection.start.kind === "text" && selection.end.kind === "text"
+                && selection.start.itemId === cursorInst.itemId && selection.end.itemId === cursorInst.itemId
+            ) {
+                selectionInterval = {
+                    start: selection.start.offset,
+                    end: selection.end.offset,
+                    isReversed: selection.isReversed,
+                };
+            }
+
+            const wire = encodeDiagramCursor(
+                diagramId,
+                cursorInst.cursorId,
+                sourceText,
+                cursorInst.offset,
+                selectionInterval,
+            );
+            if (wire) out.push(wire);
+        }
+        return out;
     }
 
     private getLocalPrimaryCursor(): CursorPosition | undefined {

@@ -791,6 +791,10 @@ export function demoContentJa(): DemoLocaleContent {
                         componentType: "diagram",
                         diagramId: DEMO_DIAGRAM_ID,
                     },
+                    {
+                        text:
+                            "共同編集者のカーソルもここに表示されます。相手が同じ Diagram を別のページから埋め込んでいても構いません——プレゼンスはページではなく Diagram に紐づいているためです。",
+                    },
                 ],
             },
         ],

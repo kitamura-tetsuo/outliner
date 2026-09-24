@@ -29,8 +29,9 @@ import {
     registerDiagramOccurrence,
 } from "../../services/diagram/diagramEditing";
 import { diagramComposition } from "../../services/diagram/diagramComposition.svelte";
-import { buildSourceSegments, type SourceRangeMark } from "../../services/diagram/diagramSourceView";
+import { buildSourceSegments, type SourceCaretMark, type SourceRangeMark } from "../../services/diagram/diagramSourceView";
 import { offsetFromPoint } from "../../services/diagram/diagramSourceDom";
+import { diagramPresenceStore } from "../../stores/DiagramPresenceStore.svelte";
 
 interface ItemLike {
     ydoc: import("yjs").Doc;
@@ -50,6 +51,8 @@ let diagramId = $state<string | undefined>();
 let registryVersion = $state(0);
 // Bumped whenever the editor overlay's cursors or selections change.
 let overlayVersion = $state(0);
+// Bumped whenever remote Diagram cursor presence changes (#5312).
+let presenceVersion = $state(0);
 
 const project = $derived(Project.fromDoc(item.ydoc));
 const mayRead = $derived(canReadDiagramSource(project));
@@ -74,7 +77,31 @@ const sourceCursors = $derived.by(() => {
         diagramIdForItem(cursor.findTarget()) === diagramId
     );
 });
-const sourceVisible = $derived(sourceCursors.length > 0);
+
+/**
+ * Remote cursors addressed to this Diagram, resolved against the current
+ * project doc — regardless of the page or occurrence they were placed
+ * through (#5312 REQ-002/REQ-003). Painting is display-only: these never
+ * become local input recipients or an editing lock.
+ */
+const remoteSourceCursors = $derived.by(() => {
+    void presenceVersion;
+    void registryVersion;
+    if (!diagramId) return [];
+    return diagramPresenceStore.resolvedEntriesFor(diagramId, project, mayRead);
+});
+
+/**
+ * Diagram source mode follows the union of local live cursors and accepted
+ * remote live cursors, including one still pending its source/text evidence
+ * (#5312 REQ-004) — `diagramPresenceStore.hasLiveFor` counts a pending entry
+ * even when `remoteSourceCursors` above cannot yet paint it.
+ */
+const sourceVisible = $derived.by(() => {
+    void presenceVersion;
+    if (sourceCursors.length > 0) return true;
+    return !!diagramId && diagramPresenceStore.hasLiveFor(diagramId, mayRead);
+});
 
 /** Source-internal selections of any occurrence of this Diagram, in canonical offsets. */
 const sourceRanges = $derived.by<SourceRangeMark[]>(() => {
@@ -88,6 +115,9 @@ const sourceRanges = $derived.by<SourceRangeMark[]>(() => {
         if (diagramOfItem(selection.start.itemId) !== diagramId) continue;
         ranges.push({ start: selection.start.offset, end: selection.end.offset });
     }
+    for (const remote of remoteSourceCursors) {
+        if (remote.selection) ranges.push({ start: remote.selection.start, end: remote.selection.end });
+    }
     return ranges;
 });
 
@@ -95,12 +125,16 @@ const segments = $derived.by(() => {
     void registryVersion;
     const source = diagram?.source ?? "";
     const preedits = diagramId ? diagramComposition.preeditsFor(diagramId) : [];
-    return buildSourceSegments(
-        source,
-        sourceCursors.map(cursor => ({ key: cursor.cursorId, offset: cursor.offset })),
-        sourceRanges,
-        preedits,
-    );
+    const carets: SourceCaretMark[] = [
+        ...sourceCursors.map(cursor => ({ key: cursor.cursorId, offset: cursor.offset })),
+        ...remoteSourceCursors.map(remote => ({
+            key: `remote:${remote.sessionId}:${remote.cursorId}`,
+            offset: remote.offset,
+            remote: true,
+            color: remote.color,
+        })),
+    ];
+    return buildSourceSegments(source, carets, sourceRanges, preedits);
 });
 
 const EXCERPT_LENGTH = 60;
@@ -193,11 +227,21 @@ $effect(() => {
     if (isReadOnly) untrack(() => diagramComposition.occurrenceInvalidated(item.id));
 });
 
+// Diagram presence disclosure requires current project read capability
+// (REQ-010): losing it must invalidate any remote presence already held, not
+// just hide it, so restoring capability alone can never repaint a stale
+// caret — only a fresh publish from the peer can. There is no change event
+// to observe here either, so this mirrors the isReadOnly effect above.
+$effect(() => {
+    if (!mayRead) untrack(() => diagramPresenceStore.invalidateIfUnauthorized(false));
+});
+
 // The occurrence id, captured at mount: a deleted Yjs node no longer reports its id.
 let occurrenceId = "";
 let unobserveItem: (() => void) | undefined;
 let unobserveRegistry: (() => void) | undefined;
 let unobserveOverlay: (() => void) | undefined;
+let unobservePresence: (() => void) | undefined;
 let unregisterOccurrence: (() => void) | undefined;
 
 onMount(() => {
@@ -205,6 +249,7 @@ onMount(() => {
     diagramId = getItemDiagramId(item);
     unregisterOccurrence = registerDiagramOccurrence(occurrenceId, () => !isReadOnly);
     unobserveOverlay = editorOverlayStore.subscribe(() => overlayVersion++);
+    unobservePresence = diagramPresenceStore.subscribe(() => presenceVersion++);
     unobserveRegistry = observeDiagrams(project, () => {
         registryVersion++;
     });
@@ -216,6 +261,7 @@ onMount(() => {
 onDestroy(() => {
     unobserveRegistry?.();
     unobserveOverlay?.();
+    unobservePresence?.();
     unregisterOccurrence?.();
     unobserveItem?.();
     // Unmounting the active occurrence clears the local editing targets anchored
@@ -258,7 +304,7 @@ onDestroy(() => {
                 aria-multiline="true" aria-readonly={isReadOnly} aria-label="Mermaid source"
                 onpointerdown={onSourcePointerDown} onpointermove={onSourcePointerMove} onpointerup={onSourcePointerUp}
                 onclick={swallowClick}
-            >{#each segments as segment (segment.key)}{#if segment.kind === "text"}<span class="diagram-source-run" class:diagram-source-selected={segment.selected} data-source-run data-source-start={segment.start}>{segment.text}</span>{:else if segment.kind === "caret"}<span class="diagram-caret" data-testid="diagram-caret" data-caret-offset={segment.offset} aria-hidden="true"></span>{:else}<span class="diagram-preedit" data-testid="diagram-preedit" data-ephemeral>{segment.text}</span>{/if}{/each}</div>
+            >{#each segments as segment (segment.key)}{#if segment.kind === "text"}<span class="diagram-source-run" class:diagram-source-selected={segment.selected} data-source-run data-source-start={segment.start}>{segment.text}</span>{:else if segment.kind === "caret"}<span class="diagram-caret" class:diagram-caret--remote={segment.remote} data-testid={segment.remote ? "diagram-remote-caret" : "diagram-caret"} data-caret-offset={segment.offset} style={segment.color ? `color:${segment.color}` : undefined} aria-hidden="true"></span>{:else}<span class="diagram-preedit" data-testid="diagram-preedit" data-ephemeral>{segment.text}</span>{/if}{/each}</div>
         </div>
     {:else}
         <button type="button" class="diagram-block" data-testid="diagram-block" data-diagram-state="ready"
@@ -311,5 +357,6 @@ onDestroy(() => {
 .diagram-source-selected { background: rgba(99, 102, 241, 0.25); }
 .diagram-preedit { text-decoration: underline; }
 .diagram-caret { display: inline-block; width: 1px; height: 1.2em; margin-right: -1px; vertical-align: text-bottom; background: currentColor; animation: diagram-blink 1s step-end infinite; }
+.diagram-caret--remote { width: 2px; animation: none; }
 @keyframes diagram-blink { 50% { opacity: 0; } }
 </style>

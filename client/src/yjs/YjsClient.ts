@@ -8,6 +8,7 @@ import * as Y from "yjs";
 import { createProjectConnection } from "../lib/yjs/connection";
 import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
+import { diagramPresenceStore } from "../stores/DiagramPresenceStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
 export interface YjsClientParams {
@@ -241,6 +242,14 @@ export class YjsClient {
         }
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));
+        } catch (_e) {
+            logger.error(_e);
+        }
+        try {
+            // Diagram cursor presence is keyed by this connection's project doc;
+            // leaving the project must not leak a peer's cursor into whatever
+            // project connects next (#5312 REQ-010).
+            diagramPresenceStore.clear();
         } catch (_e) {
             logger.error(_e);
         }
