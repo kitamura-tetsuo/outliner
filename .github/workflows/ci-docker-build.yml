@@ -54,6 +54,21 @@ jobs:
             const { c } = db.prepare('SELECT COUNT(*) AS c FROM t').get();
             if (c !== 1) throw new Error('unexpected row count: ' + c);
             console.log('better-sqlite3 binding OK');
+
+            const admin = require('firebase-admin');
+            const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+            admin.initializeApp({ projectId: 'dummy-project' });
+            const firestore = getFirestore();
+            const coll = firestore.collection('dummy');
+            const doc = coll.doc('dummy-id');
+            const ts = FieldValue.serverTimestamp();
+            console.log('firebase-admin/firestore binding OK');
+            console.log('Node version: ' + process.version);
+            const fs = require('fs');
+            const packageJson = JSON.parse(fs.readFileSync('node_modules/firebase-admin/package.json', 'utf8'));
+            console.log('Admin version: ' + packageJson.version);
+            const fsPackageJson = JSON.parse(fs.readFileSync('node_modules/@google-cloud/firestore/package.json', 'utf8'));
+            console.log('Firestore version: ' + fsPackageJson.version);
           "
 
   server-debug-image:
@@ -76,5 +91,34 @@ jobs:
           context: .
           file: ./server/Dockerfile.debug
           push: false
+          load: true
+          tags: yjs-ws-server:ci-debug
           cache-from: type=gha,scope=server-debug-image
           cache-to: type=gha,mode=max,scope=server-debug-image
+
+      - name: Verify native modules load in the built image
+        run: |
+          docker run --rm -w /usr/src/app/server yjs-ws-server:ci-debug node -e "
+            const Database = require('better-sqlite3');
+            const db = new Database(':memory:');
+            db.exec('CREATE TABLE t (a INTEGER)');
+            db.prepare('INSERT INTO t VALUES (1)').run();
+            const { c } = db.prepare('SELECT COUNT(*) AS c FROM t').get();
+            if (c !== 1) throw new Error('unexpected row count: ' + c);
+            console.log('better-sqlite3 binding OK');
+
+            const admin = require('firebase-admin');
+            const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+            admin.initializeApp({ projectId: 'dummy-project' });
+            const firestore = getFirestore();
+            const coll = firestore.collection('dummy');
+            const doc = coll.doc('dummy-id');
+            const ts = FieldValue.serverTimestamp();
+            console.log('firebase-admin/firestore binding OK');
+            console.log('Node version: ' + process.version);
+            const fs = require('fs');
+            const packageJson = JSON.parse(fs.readFileSync('node_modules/firebase-admin/package.json', 'utf8'));
+            console.log('Admin version: ' + packageJson.version);
+            const fsPackageJson = JSON.parse(fs.readFileSync('node_modules/@google-cloud/firestore/package.json', 'utf8'));
+            console.log('Firestore version: ' + fsPackageJson.version);
+          "

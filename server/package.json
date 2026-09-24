@@ -2,6 +2,7 @@
     "dependencies": {
         "@dotenvx/dotenvx": "^2.23.0",
         "@electric-sql/pglite": "^0.5.8",
+        "@google-cloud/firestore": "^9.2.0",
         "@google-cloud/secret-manager": "^7.0.0",
         "@hocuspocus/extension-logger": "^4.6.0",
         "@hocuspocus/extension-sqlite": "^4.6.0",
@@ -14,7 +15,7 @@
         "cors": "^2.8.6",
         "express": "^5.2.1",
         "find-process": "^2.1.1",
-        "firebase-admin": "^14.2.0",
+        "firebase-admin": "^14.4.0",
         "fs-extra": "^11.4.0",
         "helmet": "^8.3.0",
         "jose": "^6.2.12",
