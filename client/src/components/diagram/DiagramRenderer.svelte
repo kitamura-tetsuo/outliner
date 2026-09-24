@@ -1,33 +1,35 @@
 <script lang="ts">
 import { onMount, untrack } from "svelte";
 import mermaid from "mermaid";
-import DOMPurify from "dompurify";
+import { initMermaid, sanitizeSvg } from "../../services/diagram/diagramRenderer";
 
 interface Props {
     id: string;
     source: string;
+    mayRead: boolean;
 }
-let { id, source }: Props = $props();
+let { id, source, mayRead }: Props = $props();
 
 let currentRenderId = $state(0);
+// Global counter for unique DOM IDs across instances (REQ-007)
+let instanceId = $state(0);
 let hasError = $state(false);
 let errorMessage = $state("");
 let renderedSvg = $state("");
 
 const MAX_SOURCE_LENGTH = 50000;
 
+let _globalCounter = 0;
+
 onMount(() => {
-    mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "strict",
-        theme: "default",
-        maxEdges: 500, // REQ-009
-    });
+    initMermaid();
+    instanceId = ++_globalCounter;
 });
 
 $effect(() => {
     void id;
     void source;
+    void mayRead;
     untrack(() => renderDiagram());
 });
 
@@ -40,6 +42,11 @@ async function renderDiagram() {
     errorMessage = "";
     renderedSvg = "";
 
+    if (!mayRead) {
+        // REQ-011: Do not render if read capability is missing
+        return;
+    }
+
     if (!source || source.trim() === "") {
         return; // Empty placeholder rendered via markup
     }
@@ -51,17 +58,17 @@ async function renderDiagram() {
     }
 
     try {
-        const diagramId = `mermaid-${id}-${renderId}`;
+        const diagramId = `mermaid-${id}-${instanceId}-${renderId}`;
         const result = await mermaid.render(diagramId, source);
 
-        if (renderId !== currentRenderId) return; // Stale
+        if (renderId !== currentRenderId || !mayRead) return; // Stale or access revoked
 
         // Render inert SVG using DOMPurify as an extra safety measure (REQ-008)
-        renderedSvg = DOMPurify.sanitize(result.svg);
+        renderedSvg = sanitizeSvg(result.svg);
 
         // DO NOT call bindFunctions to avoid callbacks (REQ-008)
     } catch (err: unknown) {
-        if (renderId !== currentRenderId) return;
+        if (renderId !== currentRenderId || !mayRead) return;
         hasError = true;
         errorMessage = `Mermaid syntax error: ${err instanceof Error ? err.message : String(err)}`;
     }
@@ -75,7 +82,7 @@ async function renderDiagram() {
         <div class="diagram-empty-placeholder">(empty diagram)</div>
     {:else}
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        <div class="diagram-container">{@html renderedSvg}</div>
+        <div class="diagram-container" data-testid="diagram-block-excerpt">{@html renderedSvg}</div>
     {/if}
 </div>
 

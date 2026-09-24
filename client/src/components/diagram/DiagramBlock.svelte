@@ -304,7 +304,7 @@ onDestroy(() => {
         <div class="diagram-block diagram-preview" data-testid="diagram-block" data-diagram-state="ready"
             data-diagram-id={diagram.id} data-diagram-format={diagram.format} onpointerdown={keepEditorFocus}
             onclick={enterSource}>
-            <DiagramRenderer id={diagram.id} source={diagram.source} />
+            <DiagramRenderer id={diagram.id} source={diagram.source} mayRead={mayRead} />
         </div>
     {/if}
 {/key}
