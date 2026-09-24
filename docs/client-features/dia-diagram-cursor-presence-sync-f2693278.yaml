@@ -1,0 +1,11 @@
+id: DIA-f2693278
+title: Cross-client Diagram source and cursor presence sync
+title-ja: クライアント間での Mermaid ダイアグラムのソースとカーソル同期
+description: A Diagram source cursor is addressed by (project, Diagram, peer editing session, logical cursor), never by the page or occurrence it was placed through. Every mounted occurrence of a Diagram, on any page, shows a live source cursor and its selection resolved as a Yjs relative position against the current collaborative source — pending until the Diagram/text is locally available, rebasing across concurrent edits, and withdrawn when its session stops publishing it or disconnects.
+category: collaboration
+status: implemented
+tests:
+- client/src/services/diagram/diagramPresence.test.ts
+- client/src/stores/DiagramPresenceStore.test.ts
+- client/src/tests/integration/yjs/dia-cross-client-cursor-presence-286cd939.integration.spec.ts
+- client/src/tests/unit/yjs/diagramPresenceRemoval.spec.ts

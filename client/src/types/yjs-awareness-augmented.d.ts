@@ -22,9 +22,23 @@ declare module "y-protocols/awareness" {
         endItemId?: string;
         endOffset?: number;
     }
+    /** A Diagram source cursor as it travels over awareness, addressed by Diagram identity rather than page/occurrence (#5312). */
+    export interface PresenceDiagramCursor {
+        diagramId: string;
+        cursorId: string;
+        position: unknown;
+        selection?: { anchor: unknown; head: unknown; };
+    }
+
     export interface LocalPresenceState {
         user?: { userId: string; name: string; color?: string; } | null;
-        presence?: { cursor?: PresenceCursor; selection?: PresenceSelection; } | null;
+        presence?:
+            | {
+                cursor?: PresenceCursor;
+                selection?: PresenceSelection;
+                diagramCursors?: PresenceDiagramCursor[];
+            }
+            | null;
         cursor?: PresenceCursor | null; // used by older helpers
         selection?: PresenceSelection | null; // used by older helpers
         lastSeen?: number;
@@ -32,6 +46,7 @@ declare module "y-protocols/awareness" {
 
     export class Awareness {
         constructor(doc: import("yjs").Doc);
+        readonly clientID: number;
         getLocalState(): LocalPresenceState | undefined;
         setLocalStateField<K extends keyof LocalPresenceState>(field: K, value: LocalPresenceState[K]): void;
         on(
@@ -44,4 +59,6 @@ declare module "y-protocols/awareness" {
         ): void;
         getStates(): Map<number, LocalPresenceState>;
     }
+
+    export function removeAwarenessStates(awareness: Awareness, clients: number[], origin: unknown): void;
 }

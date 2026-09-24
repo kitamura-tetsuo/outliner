@@ -758,6 +758,10 @@ export function demoContentEn(): DemoLocaleContent {
                         componentType: "diagram",
                         diagramId: DEMO_DIAGRAM_ID,
                     },
+                    {
+                        text:
+                            "A collaborator's cursor in this Diagram shows up here too, even while they're on a different page transcluding the same one — presence is addressed to the Diagram, not to a page.",
+                    },
                 ],
             },
         ],

@@ -11,6 +11,9 @@
 export interface SourceCaretMark {
     key: string;
     offset: number;
+    /** A remote peer's cursor is painted display-only, in its presence color (#5312). */
+    remote?: boolean;
+    color?: string;
 }
 
 /** A source-internal selection, as a half-open canonical interval. */
@@ -27,7 +30,7 @@ export interface SourcePreeditMark {
 
 export type SourceSegment =
     | { kind: "text"; key: string; start: number; end: number; text: string; selected: boolean; }
-    | { kind: "caret"; key: string; offset: number; }
+    | { kind: "caret"; key: string; offset: number; remote?: boolean; color?: string; }
     | { kind: "preedit"; key: string; offset: number; text: string; };
 
 /** Clamp an offset into the source and off the inside of a surrogate pair. */
@@ -93,7 +96,13 @@ export function buildSourceSegments(
         });
         for (const caret of carets) {
             if (snapSourceOffset(source, caret.offset) === offset) {
-                segments.push({ kind: "caret", key: `caret:${caret.key}`, offset });
+                segments.push({
+                    kind: "caret",
+                    key: `caret:${caret.key}`,
+                    offset,
+                    remote: caret.remote,
+                    color: caret.color,
+                });
             }
         }
     };
