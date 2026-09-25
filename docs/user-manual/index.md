@@ -52,10 +52,12 @@ The toolbar at the top of each page provides quick access to page-specific actio
 
 - **Add Item:** Adds a new item to the bottom of the page.
 - **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
+- **History / Diff:** Opens the snapshot diff viewer to show how the page changed compared to earlier versions.
+- **Keyboard Shortcuts:** Opens a list of available keyboard shortcuts.
 
 ### User Authentication
 
-The login status indicator located in the top right corner of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
+The login status indicator located in the top left area of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
 
 ### Sidebar Navigation
 
