@@ -1,3 +1,4 @@
+import { Item as OutlineItem } from "../schema/app-schema";
 import { getItemCalendarId } from "../services/calendar/calendarBinding";
 import { type CalendarSettings, createCalendar, getCalendar } from "../services/calendar/calendarService";
 import { escapeHtml, serializeGridToHtml, serializeGridToTsv } from "../services/clipboard/gridClipboardExport";
@@ -5,8 +6,12 @@ import { GRID_PASTE_PROGRESS_EVENT } from "../services/clipboard/gridPasteEvents
 import {
     clipboardPlainText,
     deserializeClipboardItems,
+    type DiagramSnapshot,
     type GridTableSnapshot,
+    type ItemClipboardPayload,
+    looksLikeDiagramPayload,
     OUTLINER_ITEMS_MIME,
+    payloadHasDiagram,
     serializeClipboardItems,
     structuredClipboardFromHtml,
     structuredClipboardHtml,
@@ -16,9 +21,22 @@ import {
     type PasteSpecialVariant,
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
+import { getItemDiagramId } from "../services/diagram/diagramBinding";
+import {
+    currentDiagramAuthorization,
+    type DiagramClipboardFailureReason,
+    pasteDiagramPayload,
+    reportDiagramClipboardResult,
+    snapshotDiagramsForCopy,
+    stageDiagramCut,
+    structuralSelectionRoots,
+} from "../services/diagram/diagramClipboard";
+import { invalidatePendingCut, nodeExists } from "../services/diagram/diagramClipboardTransfer";
 import { isOnDiagramOccurrence } from "../services/diagram/diagramCommand";
 import { diagramComposition } from "../services/diagram/diagramComposition.svelte";
 import { handleDiagramInput, handleDiagramKeyDown, handleDiagramPaste } from "../services/diagram/diagramInput";
+import { readDiagram } from "../services/diagram/diagramQueries";
+import { DIAGRAM_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId } from "../services/yjstable/itemBinding";
@@ -79,6 +97,25 @@ interface StructuredClipboard {
     pngDataUrl?: string;
     /** True when a cap trimmed the export; the notice travels with the content. */
     truncated?: boolean;
+    /** A structural Cut of whole Diagram-containing nodes: staged, nothing removed (#5314). */
+    diagramCut?: { transferId: string; };
+    /**
+     * A Diagram-containing capture that was refused (#5314): nothing may be
+     * written to the clipboard and — for a Cut — nothing removed.
+     */
+    refused?: DiagramClipboardFailureReason;
+}
+
+function isDiagramNode(item: { componentType?: unknown; }): boolean {
+    try {
+        return item.componentType === DIAGRAM_COMPONENT_TYPE;
+    } catch {
+        return false;
+    }
+}
+
+function refusedCapture(reason: DiagramClipboardFailureReason): StructuredClipboard {
+    return { encoded: "", plainText: "", refused: reason };
 }
 
 /**
@@ -166,12 +203,12 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     // the encoded payload keeps carrying the display name, so in-app paste
     // fidelity is exactly what it was.
     const gridExports = new Map<string, NonNullable<ReturnType<typeof renderedGridExport>>>();
-    const entries = visible.slice(first, last + 1).flatMap((entry) => {
+    const entries = visible.slice(first, last + 1).flatMap((entry, offset) => {
         const item = entry.model.original;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
         const isLayout = isLayoutItem(item);
-        const isComponent = Boolean(tableId || calendarId) || isLayout;
+        const isComponent = Boolean(tableId || calendarId) || isLayout || isDiagramNode(item);
         const text = String(item.text ?? "");
         // What the endpoints select of this item: an interval for a Text node, the whole
         // block for a component - both read from the one traversal (#5025).
@@ -190,11 +227,30 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
             const exported = renderedGridExport(tableId);
             if (exported) gridExports.set(tableId, exported);
         }
-        const collected = [{
+        const collected: Array<{ item: typeof item; depth: number; text?: string; collapsed?: boolean; }> = [{
             item,
             depth: entry.depth,
             text: isComponent ? undefined : text.substring(sliceStart, sliceEnd),
         }];
+        // A whole Text node whose children are folded away is still a whole
+        // subtree: a Diagram hidden beneath it must travel rather than vanish
+        // (#5314, REQ-007). These rows only join the payload when it carries a
+        // Diagram, so every other copy stays exactly what it was.
+        const next = visible[first + offset + 1];
+        if (
+            !isComponent && sliceStart === 0 && sliceEnd === text.length
+            && (!next || next.depth <= entry.depth)
+        ) {
+            const collectFolded = (node: typeof item, depth: number) => {
+                collected.push({ item: node, depth, text: undefined, collapsed: true });
+                for (const descendant of node.items) collectFolded(descendant, depth + 1);
+            };
+            try {
+                for (const child of item.items) collectFolded(child, entry.depth + 1);
+            } catch {
+                // A node without readable children contributes only itself.
+            }
+        }
         // A Layout renders its own children, so neither they nor anything
         // beneath them are visible rows of the outline, and a copy would
         // otherwise leave them behind. They are ordinary tree items, so the
@@ -215,9 +271,42 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
             for (const child of layoutChildren(item)) collectSubtree(child, entry.depth + 1);
         }
         return collected;
-    });
+    }).filter((entry, _index, all) => !entry.collapsed || all.some(other => isDiagramNode(other.item)));
     if (entries.length === 0) return undefined;
     if (!coversWholeRange && !hasComponent) return undefined;
+
+    // Whole Diagram transclusions travel as a Diagram transfer (#5314): a Copy
+    // snapshots each referenced Diagram now, a Cut stages its live nodes.
+    const diagramIds = entries.filter(entry => isDiagramNode(entry.item)).map(entry => getItemDiagramId(entry.item));
+    let diagramTransfer: { diagrams?: Record<string, DiagramSnapshot>; transferId?: string; } | undefined;
+    let diagramCut: StructuredClipboard["diagramCut"];
+    const diagramSources = new Map<string, string>();
+    if (diagramIds.length > 0) {
+        if (diagramIds.some(id => id === undefined)) return refusedCapture("snapshot-unavailable");
+        const auth = currentDiagramAuthorization(project);
+        if (operation === "cut") {
+            if (!coversWholeRange) return refusedCapture("unsupported-selection");
+            const roots = structuralSelectionRoots(
+                project,
+                entries.map(entry => entry.item.key),
+                generalStore.currentPage?.key,
+            );
+            if (!roots) return refusedCapture("unsupported-selection");
+            const staged = stageDiagramCut(project, roots, auth);
+            if (!staged.ok) return refusedCapture(staged.reason);
+            diagramTransfer = { transferId: staged.transferId };
+            diagramCut = { transferId: staged.transferId };
+            for (const id of diagramIds as string[]) {
+                const read = readDiagram(project, id, auth);
+                if (read.ok && read.data) diagramSources.set(id, read.data.source);
+            }
+        } else {
+            const snapshots = snapshotDiagramsForCopy(project, diagramIds as string[], auth);
+            if (!snapshots.ok) return refusedCapture(snapshots.reason);
+            diagramTransfer = { diagrams: snapshots.diagrams };
+            for (const [id, snapshot] of Object.entries(snapshots.diagrams)) diagramSources.set(id, snapshot.source);
+        }
+    }
 
     const tableSnapshots: Record<string, GridTableSnapshot> = {};
     const initialTableIds = new Set(
@@ -280,9 +369,10 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
         Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
+        diagramTransfer,
     );
     const payload = deserializeClipboardItems(encoded);
-    if (!payload) return undefined;
+    if (!payload) return diagramTransfer ? refusedCapture("unsupported-payload") : undefined;
 
     const exportOf = (item: { componentType?: string; yjsTableId?: string; }) =>
         item.componentType === "yjstable" && item.yjsTableId ? gridExports.get(item.yjsTableId) : undefined;
@@ -293,15 +383,25 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     // has rendered leaves no line behind rather than an invented title (#5024).
     // The structured payload still carries the block itself, so an in-app paste
     // is unaffected.
+    //
+    // A Diagram's authoritative content is its source, so external text
+    // destinations receive the selected sources in document order (#5314,
+    // REQ-008); the structured payload is what an in-app paste follows.
+    const sourceOf = (item: { componentType?: string; diagramId?: string; }) =>
+        item.componentType === DIAGRAM_COMPONENT_TYPE && item.diagramId !== undefined
+            ? diagramSources.get(item.diagramId)
+            : undefined;
     const outward = payload.items
-        .map(item => ({ item, exported: exportOf(item) }))
-        .filter(entry => entry.exported !== undefined || entry.item.componentType === undefined);
+        .map(item => ({ item, exported: exportOf(item), source: sourceOf(item) }))
+        .filter(entry =>
+            entry.exported !== undefined || entry.source !== undefined || entry.item.componentType === undefined
+        );
 
-    const plainText = outward.map(({ item, exported }) => exported?.tsv ?? item.text).join("\n");
-    if (gridExports.size === 0) return { encoded, plainText };
+    const plainText = outward.map(({ item, exported, source }) => exported?.tsv ?? source ?? item.text).join("\n");
+    if (gridExports.size === 0) return { encoded, plainText, diagramCut };
 
-    const html = outward.map(({ item, exported }) => {
-        if (!exported) return escapeHtml(item.text).replaceAll("\n", "<br>");
+    const html = outward.map(({ item, exported, source }) => {
+        if (!exported) return escapeHtml(source ?? item.text).replaceAll("\n", "<br>");
         // The picture and the numbers both belong on the clipboard: a document
         // takes the image, a spreadsheet takes the cells (§8.1).
         return exported.chartImage
@@ -317,7 +417,7 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     const pngDataUrl = chartImages.length === 1 ? chartImages[0] : undefined;
 
     const truncated = [...gridExports.values()].some(exported => exported.truncated);
-    return { encoded, plainText, html, pngDataUrl, truncated };
+    return { encoded, plainText, html, pngDataUrl, truncated, diagramCut };
 }
 
 /**
@@ -569,7 +669,19 @@ export class KeyEventHandler {
             // If it hasn't fired in the same loop, we fire a synthetic one
             setTimeout(() => {
                 if (KeyEventHandler._nativeCopyFired) return;
-                const structured = selectedItemsClipboardData();
+                const captured = selectedItemsClipboardData();
+                // A refused Diagram capture still reaches handleCopy, which reports it.
+                const structured = captured?.refused ? undefined : captured;
+                if (captured?.refused) {
+                    (store.getTextareaRef() ?? document).dispatchEvent(
+                        new ClipboardEvent("copy", {
+                            clipboardData: new DataTransfer(),
+                            bubbles: true,
+                            cancelable: true,
+                        }),
+                    );
+                    return;
+                }
                 // A component host contributes its view name to the structured
                 // payload only, so the structured plain text is authoritative
                 // whenever the selection carries one.
@@ -1707,6 +1819,9 @@ export class KeyEventHandler {
         // Prevent browser default copy action
         event.preventDefault();
 
+        // A new Copy replaces the editor's pending Cut (#5314, REQ-014).
+        invalidatePendingCut();
+
         // Check if box selection
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
@@ -1714,6 +1829,10 @@ export class KeyEventHandler {
         let selectedText: string;
         let isBoxSelectionCopy = false;
         const structured = selectedItemsClipboardData();
+        if (structured?.refused) {
+            reportDiagramClipboardResult({ ok: false, operation: "copy", reason: structured.refused });
+            return;
+        }
 
         if (boxSelection) {
             // If box selection
@@ -2622,19 +2741,31 @@ export class KeyEventHandler {
                 }
             }
 
-            // Diagram source takes a paste as literal text (#5311, REQ-007/008).
-            if (handleDiagramPaste(text, store.getLocalCursorInstances())) return;
-
             const cached = KeyEventHandler.lastStructuredClipboard;
             // The same-tab fallback is keyed on the copied plain text, so it
             // only ever answers a paste that carries that same text.
             const encoded = encodedItems || encodedHtmlItems
                 || (text && cached?.plainText === text ? cached.encoded : "");
+            const structured = encoded ? deserializeClipboardItems(encoded) : undefined;
+
+            // Whole Diagram transclusions are a structural transfer (#5314). In
+            // Diagram source they are refused rather than flattened into text,
+            // unless the user explicitly asked for a plain-text paste; anywhere
+            // else they never fall back to the ordinary text path.
+            const carriesDiagram = structured ? payloadHasDiagram(structured) : looksLikeDiagramPayload(encoded);
+            const inDiagramSource = store.getLocalCursorInstances().some(isOnDiagramOccurrence);
+            if (carriesDiagram && !(isSpecial && inDiagramSource)) {
+                KeyEventHandler.pasteDiagramStructure(inDiagramSource ? undefined : structured, inDiagramSource);
+                return;
+            }
+
+            // Diagram source takes a paste as literal text (#5311, REQ-007/008).
+            if (handleDiagramPaste(text, store.getLocalCursorInstances())) return;
+
             // A copy made only of textless blocks carries no plain text at all
             // (#5024): its structured payload is then the whole paste.
             if (!text && !encoded) return;
 
-            const structured = deserializeClipboardItems(encoded);
             const destinationProjectId = generalStore.project?.ydoc?.guid;
             let specialVariant: PasteSpecialVariant | undefined;
             if (
@@ -3171,6 +3302,38 @@ export class KeyEventHandler {
     }
 
     /**
+     * Paste a Diagram-containing structural payload (#5314): every check runs
+     * before the first write, and the outcome — success or refusal — is
+     * reported. A payload that could not be decoded is refused whole.
+     */
+    private static pasteDiagramStructure(payload: ItemClipboardPayload | undefined, inDiagramSource: boolean): void {
+        if (inDiagramSource) {
+            reportDiagramClipboardResult({ ok: false, operation: "paste", reason: "source-editing-target" });
+            return;
+        }
+        const project = generalStore.project;
+        const pageItem = generalStore.currentPage;
+        if (!payload || !payloadHasDiagram(payload) || !project || !pageItem) {
+            reportDiagramClipboardResult({ ok: false, operation: "paste", reason: "unsupported-payload" });
+            return;
+        }
+        const cursor = store.getLocalCursorInstances().find(value => value.isActive);
+        const anchorId = cursor?.itemId ?? store.getActiveItem() ?? undefined;
+        const anchor = anchorId && nodeExists(project, anchorId)
+            ? new OutlineItem(project.ydoc, project.tree, anchorId)
+            : undefined;
+        const result = pasteDiagramPayload(payload, {
+            project,
+            pageItem,
+            anchor,
+            author: cursor?.userId ?? "local",
+            auth: currentDiagramAuthorization(project),
+        });
+        reportDiagramClipboardResult(result);
+        if (result.ok) store.clearSelections();
+    }
+
+    /**
      * Process cut event
      * @param event ClipboardEvent
      */
@@ -3193,6 +3356,9 @@ export class KeyEventHandler {
         // Prevent browser default cut action
         event.preventDefault();
 
+        // A new Cut replaces the editor's pending one (#5314, REQ-014).
+        invalidatePendingCut();
+
         // Check if box selection
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
@@ -3200,6 +3366,11 @@ export class KeyEventHandler {
         let selectedText: string;
         let isBoxSelectionCut = false;
         const structured = selectedItemsClipboardData("cut");
+        if (structured?.refused) {
+            // Refused before anything is written or removed.
+            reportDiagramClipboardResult({ ok: false, operation: "cut", reason: structured.refused });
+            return;
+        }
 
         if (boxSelection) {
             // If box selection
@@ -3357,6 +3528,13 @@ export class KeyEventHandler {
                     logger.error({ error }, "Error in handleCut:");
                 }
             }
+        }
+
+        // A structural Cut containing a Diagram only stages a pending transfer:
+        // its nodes stay where they are until a Paste moves them (#5314, REQ-005).
+        if (structured?.diagramCut) {
+            reportDiagramClipboardResult({ ok: true, operation: "cut", transferId: structured.diagramCut.transferId });
+            return;
         }
 
         // Delete the selection range (essence of cut action). A selection made

@@ -1,0 +1,13 @@
+id: FTR-9e4b5314
+title: Diagram clipboard duplicates on Copy and moves on Cut
+title-ja: Diagram のコピーは複製、切り取りは移動
+description: A structural selection of whole Diagram transclusions carries the Diagram relationship through the clipboard. Normal Copy snapshots each referenced Diagram's source and Paste allocates independent Diagrams (one per original within a Paste); Cut stages a single-use, session-local transfer that leaves the nodes in place until a same-project Paste moves the live nodes once. Refusals — cross-project, unauthorized, invalid destinations, stale or consumed Cuts, structural payloads pasted into Diagram source — happen before any write, and each Paste is one native Undo/Redo command that never deletes or recreates Diagram objects.
+category: editor
+status: implemented
+tests:
+- client/e2e/new/dia-clipboard-copy-duplicates-9e4b5314.spec.ts
+- client/e2e/new/dia-clipboard-cut-moves-9e4b5314.spec.ts
+- client/e2e/new/dia-clipboard-refusals-9e4b5314.spec.ts
+- client/src/lib/KeyEventHandler.diagramClipboard.test.ts
+- client/src/services/diagram/diagramClipboard.copy.test.ts
+- client/src/services/diagram/diagramClipboard.cut.test.ts
