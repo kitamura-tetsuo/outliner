@@ -132,11 +132,14 @@ test("the CI pull_request entry reaches the publisher with PR metadata, not the 
     expect(ci).toMatch(/^ {2}pull_request:$/m);
     expect(ci).toMatch(/^ {2}contents: write$/m);
     expect(ci).toMatch(/uses: \.\/\.github\/workflows\/ci-playwright-version\.yml/);
+    // The publisher's target is the normalised PR context from PR Guards.
+    expect(ci).toMatch(/head_ref: \$\{\{ needs\.pr-guards\.outputs\.head_ref \}\}/);
+    expect(ci).toMatch(/head_sha: \$\{\{ needs\.pr-guards\.outputs\.head_sha \}\}/);
 
     const workflow = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "ci-playwright-version.yml"), "utf-8");
-    expect(workflow).toMatch(/PR_HEAD_REF: \$\{\{ github\.event\.pull_request\.head\.ref \}\}/);
-    expect(workflow).toMatch(/PR_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
-    expect(workflow).toMatch(/PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
+    expect(workflow).toMatch(/PR_HEAD_REF: \$\{\{ inputs\.head_ref \}\}/);
+    expect(workflow).toMatch(/PR_HEAD_SHA: \$\{\{ inputs\.head_sha \}\}/);
+    expect(workflow).toMatch(/PR_NUMBER: \$\{\{ inputs\.pr_number \}\}/);
     expect(workflow).toMatch(/sync_result: \$\{\{ steps\.publish\.outputs\.result \}\}/);
     expect(workflow).not.toMatch(/git push/);
     expect(workflow).not.toMatch(/sync-playwright-version\.mjs/);

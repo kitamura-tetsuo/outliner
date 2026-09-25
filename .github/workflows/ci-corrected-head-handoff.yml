@@ -1,0 +1,54 @@
+name: Corrected-Head CI Handoff
+
+# Retry entry for the Playwright corrected-head handoff. When CI published a
+# Dockerfile correction but could not start full CI for it (the failing run
+# prints this command), run:
+#
+#   gh workflow run ci-corrected-head-handoff.yml -f pr_number=<n> [-f head_sha=<sha>]
+#
+# It reads the PR's current head, checks it against the branch and requires the
+# Playwright image to be aligned already, then reuses a queued, running or
+# successful full-CI run for that head or dispatches ci.yml for it. It never
+# commits, pushes, closes, reopens or merges anything.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request whose current (already corrected) head needs full CI'
+        required: true
+        type: string
+      head_sha:
+        description: 'Optional: refuse unless the PR head is still this commit'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: corrected-head-handoff-${{ inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Request full CI on the corrected head
+        id: handoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          EXPECTED_SHA: ${{ inputs.head_sha }}
+        run: node scripts/ci/request-corrected-head-ci.mjs
