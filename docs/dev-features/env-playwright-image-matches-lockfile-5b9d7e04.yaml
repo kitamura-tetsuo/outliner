@@ -11,6 +11,9 @@ components:
 - client/package-lock.json
 - scripts/check-playwright-version.mjs
 - scripts/common-functions.sh
+- scripts/playwright-version-sync-lib.mjs
+- scripts/sync-playwright-version.mjs
 tests:
+- scripts/tests/env-playwright-check-rejects-mismatch-5b9d7e04.spec.ts
 - scripts/tests/env-playwright-image-matches-lockfile-5b9d7e04.spec.ts
 title-ja: Test container Playwright image matches the locked Playwright version

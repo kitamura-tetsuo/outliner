@@ -2,11 +2,17 @@ name: Playwright Version Check
 
 on:
   workflow_call:
+    outputs:
+      sync_result:
+        description: 'JSON result of the source-branch correction (outcome, repository, pr_number, source_ref, source_sha, result_sha); empty when no publication was attempted.'
+        value: ${{ jobs.playwright-version.outputs.sync_result }}
   workflow_dispatch:
 
 jobs:
   playwright-version:
     runs-on: ubuntu-latest
+    outputs:
+      sync_result: ${{ steps.publish.outputs.result }}
     steps:
       - uses: actions/checkout@v5
 
@@ -14,39 +20,42 @@ jobs:
         with:
           node-version: '22'
 
-      # No dependency install: the check only reads the Dockerfile and the
-      # lockfile, so it stays fast enough to fail before the E2E shards start.
-      - name: Sync the test container with the client's Playwright version
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: node scripts/sync-playwright-version.mjs
-
-      - name: Persist corrections to the pull-request branch
+      # No dependency install: both scripts only read the Dockerfile and the
+      # lockfile, so the job stays fast enough to fail before the E2E shards start.
+      #
+      # The checkout above is the synthetic merge commit in detached HEAD, so the
+      # correction is computed from, and pushed to, the PR's own source head as
+      # named by the event payload. Fork PRs and push/manual runs never get here
+      # and stay verification-only.
+      - name: Publish the Playwright image correction to the PR source branch
+        id: publish
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if ! git diff --quiet .github/container/Dockerfile; then
-            echo "🔧 Auto-fixing Playwright Dockerfile version..."
-            git config user.email "action@github.com" || git config --global user.email "action@github.com"
-            git config user.name "GitHub Action" || git config --global user.name "GitHub Action"
-            git add .github/container/Dockerfile
-            git commit -m "Auto-fix: Sync Playwright Dockerfile image version with lockfile"
-            if git push; then
-              echo "✅ Changes pushed successfully."
-              # REQ-006: GITHUB_TOKEN pushes do not trigger new workflows. We must
-              # explicitly trigger a fresh run so the updated head is evaluated.
-              # We can close and reopen the PR to trigger a new run, then fail this one.
-              gh pr close ${{ github.event.pull_request.number }}
-              gh pr reopen ${{ github.event.pull_request.number }}
-              # Force failure so the CI isn't falsely marked green before the new commit is checked
-              node -e "process.exit(1);"
-            else
-              # REQ-005: If CI does not have authority to persist the correction, it must not report the mismatch as fixed.
-              echo "⚠️ Push failed. The branch might be read-only."
-              git reset --hard HEAD~1
-              # Do not exit here! Let the next step run to naturally fail with the diagnostic message.
-            fi
-          fi
+          PR_REPOSITORY: ${{ github.repository }}
+          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/publish-playwright-sync.mjs
 
+      - name: Re-run CI on the corrected head
+        if: steps.publish.outputs.outcome == 'published'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_REPOSITORY: ${{ steps.publish.outputs.repository }}
+          PR_NUMBER: ${{ steps.publish.outputs.pr_number }}
+          RESULT_SHA: ${{ steps.publish.outputs.result_sha }}
+        run: |
+          # Pushes made with GITHUB_TOKEN do not trigger workflows, so close and
+          # reopen the PR to start a run on the corrected head.
+          gh pr close "$PR_NUMBER" --repo "$PR_REPOSITORY"
+          gh pr reopen "$PR_NUMBER" --repo "$PR_REPOSITORY"
+          # This run tested the old head; it must not go green.
+          echo "::error::Published $RESULT_SHA; this run checked the previous head and is superseded by the run on the corrected head."
+          exit 1
+
+      # Always verifies the checked-out tree independently of the publisher, so
+      # a correction that did not reach the branch cannot turn this job green.
       - name: Check the test container matches the client's Playwright version
+        if: ${{ !cancelled() }}
         run: node scripts/check-playwright-version.mjs
