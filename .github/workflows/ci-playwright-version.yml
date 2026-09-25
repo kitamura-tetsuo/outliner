@@ -2,10 +2,32 @@ name: Playwright Version Check
 
 on:
   workflow_call:
+    # The normalised PR context from PR Guards: identical for a pull_request run
+    # and for a validated corrected-head handoff dispatch, empty otherwise.
+    inputs:
+      pr_number:
+        required: false
+        default: ''
+        type: string
+      head_repository:
+        required: false
+        default: ''
+        type: string
+      head_ref:
+        required: false
+        default: ''
+        type: string
+      head_sha:
+        required: false
+        default: ''
+        type: string
     outputs:
       sync_result:
         description: 'JSON result of the source-branch correction (outcome, repository, pr_number, source_ref, source_sha, result_sha); empty when no publication was attempted.'
         value: ${{ jobs.playwright-version.outputs.sync_result }}
+      handoff_result:
+        description: 'JSON result of requesting full CI on the published correction; empty when nothing was published.'
+        value: ${{ jobs.playwright-version.outputs.handoff_result }}
   workflow_dispatch:
 
 jobs:
@@ -13,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sync_result: ${{ steps.publish.outputs.result }}
+      handoff_result: ${{ steps.handoff.outputs.result }}
     steps:
       - uses: actions/checkout@v5
 
@@ -23,36 +46,34 @@ jobs:
       # No dependency install: both scripts only read the Dockerfile and the
       # lockfile, so the job stays fast enough to fail before the E2E shards start.
       #
-      # The checkout above is the synthetic merge commit in detached HEAD, so the
-      # correction is computed from, and pushed to, the PR's own source head as
-      # named by the event payload. Fork PRs and push/manual runs never get here
-      # and stay verification-only.
+      # The checkout above may be the synthetic merge commit in detached HEAD, so
+      # the correction is computed from, and pushed to, the PR's own source head
+      # as named by the PR context. Fork PRs and push/manual runs never get here
+      # and stay verification-only. A handoff run on an already corrected head
+      # reports `aligned` here and therefore requests nothing further.
       - name: Publish the Playwright image correction to the PR source branch
         id: publish
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: inputs.pr_number != '' && inputs.head_repository == github.repository
         env:
           PR_REPOSITORY: ${{ github.repository }}
-          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REPOSITORY: ${{ inputs.head_repository }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          PR_HEAD_REF: ${{ inputs.head_ref }}
+          PR_HEAD_SHA: ${{ inputs.head_sha }}
         run: node scripts/publish-playwright-sync.mjs
 
-      - name: Re-run CI on the corrected head
+      # A push made with GITHUB_TOKEN starts no executable pull_request run, but a
+      # workflow_dispatch made with it does: request the full CI graph for the
+      # published commit, with its PR identity for PR Guards to re-validate. The
+      # PR is never closed, reopened or merged. This run keeps failing below,
+      # because it checked the previous head; the dispatched run verifies C.
+      - name: Request full CI on the corrected head
+        id: handoff
         if: steps.publish.outputs.outcome == 'published'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_REPOSITORY: ${{ steps.publish.outputs.repository }}
-          PR_NUMBER: ${{ steps.publish.outputs.pr_number }}
-          RESULT_SHA: ${{ steps.publish.outputs.result_sha }}
-        run: |
-          # Pushes made with GITHUB_TOKEN do not trigger workflows, so close and
-          # reopen the PR to start a run on the corrected head.
-          gh pr close "$PR_NUMBER" --repo "$PR_REPOSITORY"
-          gh pr reopen "$PR_NUMBER" --repo "$PR_REPOSITORY"
-          # This run tested the old head; it must not go green.
-          echo "::error::Published $RESULT_SHA; this run checked the previous head and is superseded by the run on the corrected head."
-          exit 1
+          GH_TOKEN: ${{ github.token }}
+          SYNC_RESULT: ${{ steps.publish.outputs.result }}
+        run: node scripts/ci/request-corrected-head-ci.mjs
 
       # Always verifies the checked-out tree independently of the publisher, so
       # a correction that did not reach the branch cannot turn this job green.

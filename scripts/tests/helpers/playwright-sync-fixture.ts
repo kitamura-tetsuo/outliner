@@ -8,16 +8,20 @@
  * synthetic merge ref -- the same shape actions/checkout gives a pull_request
  * run -- so the workflow step executes the production code path unchanged.
  */
-import { execFileSync, spawnSync } from "child_process";
+import { execFileSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
+import { callInputs, type Context, runJobSync } from "./workflow-harness";
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 export const REAL_GIT = execFileSync("bash", ["-c", "command -v git"], { encoding: "utf-8" }).trim();
-const WORKFLOW = path.join(repoRoot, ".github", "workflows", "ci-playwright-version.yml");
 const PRODUCTION_FILES = [
+    "scripts/ci/github-rest.mjs",
+    "scripts/ci/pr-guards.sh",
+    "scripts/ci/request-corrected-head-ci.mjs",
+    "scripts/ci/resolve-pr-context.mjs",
     "scripts/publish-playwright-sync.mjs",
     "scripts/playwright-version-sync-lib.mjs",
     "scripts/sync-playwright-version.mjs",
@@ -95,6 +99,9 @@ export interface Fixture {
     branch: string;
     prNumber: number;
     H: string;
+    /** main after its base-only commit, and refs/pull/<n>/merge. */
+    base: string;
+    merge: string;
 }
 
 /**
@@ -134,7 +141,8 @@ export function createFixture(
     const merge = git(tmp, seed, "rev-parse", "HEAD");
     git(tmp, seed, "push", "-q", "origin", "main", opts.branch, `${merge}:refs/pull/${opts.prNumber}/merge`);
     git(tmp, seed, "checkout", "-q", "main");
-    return { tmp, remote, seed, branch: opts.branch, prNumber: opts.prNumber, H };
+    const baseSha = git(tmp, seed, "rev-parse", "main");
+    return { tmp, remote, seed, branch: opts.branch, prNumber: opts.prNumber, H, base: baseSha, merge };
 }
 
 /** A clone shaped like actions/checkout on pull_request: shallow, detached at the merge ref. */
@@ -154,11 +162,18 @@ export function remoteRefs(fx: Fixture): Record<string, string> {
     return Object.fromEntries(out.split("\n").filter(Boolean).map((l) => l.split(" ")));
 }
 
-export function prEvent(fx: Fixture, opts: { sha?: string; author?: string; headRepo?: string; } = {}) {
+/** The `github` context of a pull_request run for the fixture's PR. */
+export function prEvent(
+    fx: Fixture,
+    opts: { sha?: string; author?: string; headRepo?: string; labels?: string[]; apiUrl?: string; } = {},
+): Context {
     return {
         repository: "example/outliner",
         event_name: "pull_request",
         actor: opts.author ?? "octocat",
+        ref: `refs/pull/${fx.prNumber}/merge`,
+        sha: fx.merge,
+        api_url: opts.apiUrl ?? "http://127.0.0.1:9/unused",
         event: {
             pull_request: {
                 number: fx.prNumber,
@@ -168,6 +183,8 @@ export function prEvent(fx: Fixture, opts: { sha?: string; author?: string; head
                     sha: opts.sha ?? fx.H,
                     repo: { full_name: opts.headRepo ?? "example/outliner" },
                 },
+                base: { ref: "main", sha: fx.base },
+                labels: (opts.labels ?? []).map((name) => ({ name })),
             },
         },
     };
@@ -191,66 +208,42 @@ export function gitShim(fx: Fixture, beforePush = "") {
     };
 }
 
-type Context = Record<string, unknown>;
-const lookup = (ctx: Context, expr: string) =>
-    expr.split(".").reduce<unknown>((v, k) => (v as Record<string, unknown> | undefined)?.[k], ctx);
-
-/** Evaluates the small subset of GitHub expressions the workflow uses. */
-function evaluate(expr: string, ctx: Context): unknown {
-    const js = expr.replace(
-        /'([^']*)'|\b(github|steps|secrets)(\.[\w-]+)+/g,
-        (m, str) => str !== undefined ? JSON.stringify(str) : JSON.stringify(lookup(ctx, m) ?? ""),
-    ).replace(/==/g, "===");
-    return new Function("cancelled", `return (${js});`)(() => false);
-}
-
-/** Extracts a step from ci-playwright-version.yml: its `if`, `env` and `run`. */
-export function workflowStep(name: string) {
-    const lines = fs.readFileSync(WORKFLOW, "utf-8").split("\n");
-    const start = lines.findIndex((l) => l === `      - name: ${name}`);
-    if (start < 0) throw new Error(`step ${name} not found`);
-    let end = lines.findIndex((l, i) => i > start && /^ {6}- /.test(l));
-    if (end < 0) end = lines.length;
-    const body = lines.slice(start + 1, end);
-    const field = (key: string) => body.find((l) => l.startsWith(`        ${key}: `))?.slice(10 + key.length);
-    const envStart = body.indexOf("        env:");
-    const env: Record<string, string> = {};
-    for (const l of envStart < 0 ? [] : body.slice(envStart + 1)) {
-        const m = /^ {10}([A-Z_]+): (.*)$/.exec(l);
-        if (!m) break;
-        env[m[1]] = m[2];
-    }
-    return { condition: field("if"), env, run: field("run") };
-}
-
 /**
- * Runs a workflow step the way Actions would: evaluate `if`, expand `env`, execute `run` with bash.
- * `extraEnv` is applied last, so a test can also stand in for a misconfigured caller.
+ * Runs one step of the playwright-version job the way CI reaches it: the PR
+ * context is resolved by the real PR Guards `context` job, passed through
+ * ci.yml's `with:` into ci-playwright-version.yml, and the step's `if`, `env`
+ * and `run` are evaluated from the workflow file. `extraEnv` is applied last,
+ * so a test can also stand in for a misconfigured caller.
  */
 export function runStep(name: string, cwd: string, github: Context, extraEnv: Record<string, string> = {}) {
-    const step = workflowStep(name);
-    const ctx = { github, secrets: { GITHUB_TOKEN: "unused" }, steps: {} };
-    const expand = (v: string) => v.replace(/\$\{\{\s*(.*?)\s*\}\}/g, (_, e) => String(evaluate(e, ctx)));
-    if (step.condition && !evaluate(step.condition.replace(/^\$\{\{\s*|\s*\}\}$/g, ""), ctx)) {
-        return { skipped: true, status: 0, output: "", outputs: {} as Record<string, string> };
-    }
-    const outputFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "pw-out-")), "output");
-    fs.writeFileSync(outputFile, "");
-    const env: Record<string, string> = { GITHUB_OUTPUT: outputFile };
-    for (const [k, v] of Object.entries(step.env)) env[k] = expand(v);
-    Object.assign(env, extraEnv);
-    const result = spawnSync("bash", ["-e", "-c", step.run!], {
+    const env = gitEnv(path.dirname(cwd));
+    const guards = runJobSync(
+        "ci-pr-guards.yml",
+        "context",
+        { github, inputs: callInputs("ci.yml", "pr-guards", { github, inputs: github.inputs ?? {} }) },
         cwd,
-        env: gitEnv(path.dirname(cwd), env),
-        encoding: "utf-8",
-    });
-    const outputs = Object.fromEntries(
-        fs.readFileSync(outputFile, "utf-8").split("\n").filter(Boolean).map((l) => {
-            const i = l.indexOf("=");
-            return [l.slice(0, i), l.slice(i + 1)];
-        }),
+        env,
     );
-    return { skipped: false, status: result.status, output: result.stdout + result.stderr, outputs };
+    if (guards.failed) throw new Error(`PR context rejected: ${guards.steps.map((s) => s.output).join("")}`);
+    const inputs = callInputs("ci.yml", "playwright-version", {
+        github,
+        needs: { "pr-guards": { outputs: guards.outputs } },
+    });
+    const job = runJobSync(
+        "ci-playwright-version.yml",
+        "playwright-version",
+        { github, inputs, secrets: { GITHUB_TOKEN: "unused" } },
+        cwd,
+        env,
+        { only: name, stepEnv: { [name]: extraEnv } },
+    );
+    const step = job.step(name);
+    return {
+        skipped: step.skipped,
+        status: step.skipped ? 0 : step.status,
+        output: step.output,
+        outputs: step.outputs,
+    };
 }
 
 export const PUBLISH = "Publish the Playwright image correction to the PR source branch";

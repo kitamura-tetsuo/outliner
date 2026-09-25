@@ -1,7 +1,27 @@
 name: CI
 
+# A dispatch from the Playwright corrected-head handoff is named after the PR and
+# commit it verifies, so the handoff can find (and reuse) it. Every other run
+# keeps GitHub's default name.
+run-name: "${{ inputs.pr_number && format('CI: PR #{0} corrected head {1}', inputs.pr_number, inputs.head_sha) || '' }}"
+
 on:
   workflow_dispatch:
+    inputs:
+      # Set only by scripts/ci/request-corrected-head-ci.mjs (or its retry
+      # workflow). They are a claim that PR Guards validates against the PR
+      # record before anything else runs; a plain manual dispatch leaves them
+      # empty and runs without PR context, as before.
+      pr_number:
+        description: 'Pull request whose head this run verifies (corrected-head handoff only)'
+        required: false
+        default: ''
+        type: string
+      head_sha:
+        description: 'The PR head commit the run must be dispatched on (corrected-head handoff only)'
+        required: false
+        default: ''
+        type: string
   push:
     branches: [main, develop]
     paths-ignore:
@@ -29,6 +49,9 @@ jobs:
   pr-guards:
     name: PR Guards
     uses: ./.github/workflows/ci-pr-guards.yml
+    with:
+      handoff_pr_number: ${{ inputs.pr_number }}
+      handoff_head_sha: ${{ inputs.head_sha }}
     secrets: inherit
 
   format:
@@ -90,6 +113,8 @@ jobs:
     needs: [pr-guards, format]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-lint-diff-lines.yml
+    with:
+      base_ref: ${{ needs.pr-guards.outputs.base_ref }}
     secrets: inherit
 
   playwright-version:
@@ -97,4 +122,9 @@ jobs:
     needs: [pr-guards, format]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-playwright-version.yml
+    with:
+      pr_number: ${{ needs.pr-guards.outputs.pr_number }}
+      head_repository: ${{ needs.pr-guards.outputs.head_repository }}
+      head_ref: ${{ needs.pr-guards.outputs.head_ref }}
+      head_sha: ${{ needs.pr-guards.outputs.head_sha }}
     secrets: inherit

@@ -2,19 +2,80 @@ name: PR Guards
 
 on:
   workflow_call:
+    inputs:
+      handoff_pr_number:
+        description: 'ci.yml workflow_dispatch input pr_number (corrected-head handoff only)'
+        required: false
+        default: ''
+        type: string
+      handoff_head_sha:
+        description: 'ci.yml workflow_dispatch input head_sha (corrected-head handoff only)'
+        required: false
+        default: ''
+        type: string
+    outputs:
+      trigger:
+        description: 'pull_request, handoff (validated corrected-head dispatch) or none (push / plain manual run)'
+        value: ${{ jobs.context.outputs.trigger }}
+      pr_number:
+        value: ${{ jobs.context.outputs.pr_number }}
+      head_repository:
+        value: ${{ jobs.context.outputs.head_repository }}
+      head_ref:
+        value: ${{ jobs.context.outputs.head_ref }}
+      head_sha:
+        value: ${{ jobs.context.outputs.head_sha }}
+      base_ref:
+        value: ${{ jobs.context.outputs.base_ref }}
+      base_sha:
+        value: ${{ jobs.context.outputs.base_sha }}
+      labels:
+        value: ${{ jobs.context.outputs.labels }}
 
 jobs:
+  # One normalised PR context for every CI entry point. A pull_request run takes
+  # it from the webhook payload; a corrected-head handoff dispatch has no
+  # payload, so its claimed PR/commit is validated against the PR record and
+  # the PR's base and labels are read from there. An invalid handoff fails here,
+  # so nothing downstream runs for it.
+  context:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      trigger: ${{ steps.resolve.outputs.trigger }}
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      head_repository: ${{ steps.resolve.outputs.head_repository }}
+      head_ref: ${{ steps.resolve.outputs.head_ref }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+      base_ref: ${{ steps.resolve.outputs.base_ref }}
+      base_sha: ${{ steps.resolve.outputs.base_sha }}
+      labels: ${{ steps.resolve.outputs.labels }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: scripts
+      - name: Resolve the pull-request context
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HANDOFF_PR_NUMBER: ${{ inputs.handoff_pr_number }}
+          HANDOFF_HEAD_SHA: ${{ inputs.handoff_head_sha }}
+        run: node scripts/ci/resolve-pr-context.mjs
+
   pr-guards:
+    needs: context
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           # Guard the PR head itself (what a squash merge will land), not the
           # synthetic merge commit.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ needs.context.outputs.head_sha || github.sha }}
           fetch-depth: 0
       - name: Run PR guards
         env:
-          BASE_REF: ${{ github.base_ref }}
-          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+          BASE_REF: ${{ needs.context.outputs.base_ref }}
+          PR_LABELS: ${{ needs.context.outputs.labels }}
         run: bash scripts/ci/pr-guards.sh

@@ -1,0 +1,22 @@
+id: ENV-3d7a9c51
+title: A published Playwright correction gets full CI on the corrected head
+description: 'After scripts/publish-playwright-sync.mjs confirms that the Dockerfile correction C is on a same-repository PR source branch, the playwright-version job hands C to full CI without closing, reopening or merging the PR and without a PAT or App credential. A push made with GITHUB_TOKEN starts no executable pull_request run, but a workflow_dispatch made with it does, so scripts/ci/request-corrected-head-ci.mjs (a) accepts only the publisher''s "published" result whose C is a single-parent child of the prior head H changing nothing but the Dockerfile Playwright version token computed from H''s lockfile, (b) requires the PR record to name an open same-repository PR whose source branch is the published ref at C and the branch itself to read C (waiting briefly while the PR record still names H), (c) reuses a queued, running or successful full-CI run for exactly that PR and commit, and otherwise (d) dispatches ci.yml on the source branch with pr_number and head_sha inputs and observes the created run. A denied dispatch, an approval-waiting run, an acknowledged dispatch without a run, or a branch that moved is never reported as verification: the correction stays on the branch and the error names the repository, PR, branch, C and the retry entry `gh workflow run ci-corrected-head-handoff.yml -f pr_number=<n> -f head_sha=<C>`. That retry workflow reads and cross-checks the current head, requires it to be aligned already, and reuses or requests full CI without committing. In ci.yml the new PR Guards `context` job (scripts/ci/resolve-pr-context.mjs) normalises the PR context for every entry point: pull_request runs take it from the payload; a handoff dispatch is accepted only when github.sha equals head_sha, the dispatched ref is the PR''s same-repository source branch and both the PR record and the branch read that commit, and then takes the base branch/SHA and labels from the PR record; push and plain manual runs have no PR context as before. The guards, lint-diff-lines and the Playwright publisher consume that context, so a handoff run executes the same job graph, shards, scope/revert guard decisions and failure gates as a pull_request run and its checks are attributed to C. The dispatched run titles itself "CI: PR #<n> corrected head <C>", finds its own head aligned and requests nothing further, and a run started on a newer head D with C''s claim fails in PR Guards before any other job, so C''s results never verify D.'
+category: environment
+status: implemented
+components:
+- .github/workflows/ci.yml
+- .github/workflows/ci-pr-guards.yml
+- .github/workflows/ci-playwright-version.yml
+- .github/workflows/ci-lint-diff-lines.yml
+- .github/workflows/ci-corrected-head-handoff.yml
+- scripts/ci/github-rest.mjs
+- scripts/ci/resolve-pr-context.mjs
+- scripts/ci/request-corrected-head-ci.mjs
+tests:
+- scripts/tests/env-ci-corrected-head-full-ci-publish-handoff-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-no-false-success-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-recovery-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-stale-authority-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-guard-parity-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-input-isolation-3d7a9c51.spec.ts
+title-ja: 公開された Playwright 修正コミットに対して修正後ヘッドでフル CI を実行する
