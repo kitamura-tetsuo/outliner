@@ -170,15 +170,3 @@ test("C's successful evaluation never verifies a newer head D (AS-005)", async (
     );
     expect(handoffResult(stale.step(HANDOFF).output)).toMatchObject({ outcome: "stale" });
 });
-
-test("a PR record that still lags the push is waited for, not treated as stale", async () => {
-    const { fx, fake, runner, github, ctx } = await setup(25);
-    fake.pulls.get(25)!.headSha = fx.H;
-    let prReads = 0;
-    fake.beforeRequest = (r) => {
-        if (r.path.endsWith("/pulls/25") && ++prReads === 2) delete fake.pulls.get(25)!.headSha;
-    };
-    const job = await runPlaywrightJob(fx, github, ctx, runner);
-    expect(handoffResult(job.step(HANDOFF).output)).toMatchObject({ outcome: "requested" });
-    expect(prReads).toBeGreaterThanOrEqual(3);
-});

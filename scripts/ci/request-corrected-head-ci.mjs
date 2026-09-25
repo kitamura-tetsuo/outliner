@@ -182,9 +182,24 @@ async function publishedTarget(api, syncResult) {
             });
             return target;
         } catch (err) {
-            if (!(err instanceof HandoffRefusal) || err.outcome !== "lagging" || i >= attempts) {
-                if (err instanceof HandoffRefusal && err.outcome === "lagging") err.outcome = "stale";
-                throw err;
+            if (!(err instanceof HandoffRefusal) || err.outcome !== "lagging") throw err;
+            if (i >= attempts) {
+                // The PR record never caught up. If the branch still reads C, the
+                // correction stands and only the scheduling failed: say so, with
+                // the retry entry. If the branch moved, C's authority is gone.
+                const branch = await api.branchHead(target.repository, target.source_ref);
+                if (branch !== target.head_sha) {
+                    throw new HandoffRefusal(
+                        "stale",
+                        `refs/heads/${target.source_ref} in ${target.repository} reads ${
+                            branch || "(missing)"
+                        }, not ${target.head_sha}.`,
+                    );
+                }
+                throw new HandoffRefusal(
+                    "scheduling_failed",
+                    `${err.message} The branch reads ${target.head_sha}, but the PR record still named the previous head after ${attempts} checks; full CI was not requested.`,
+                );
             }
             await sleep(pollMs);
         }

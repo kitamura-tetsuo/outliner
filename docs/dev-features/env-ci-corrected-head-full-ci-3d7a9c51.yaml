@@ -17,6 +17,7 @@ tests:
 - scripts/tests/env-ci-corrected-head-full-ci-no-false-success-3d7a9c51.spec.ts
 - scripts/tests/env-ci-corrected-head-full-ci-recovery-3d7a9c51.spec.ts
 - scripts/tests/env-ci-corrected-head-full-ci-stale-authority-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-lagging-pr-record-3d7a9c51.spec.ts
 - scripts/tests/env-ci-corrected-head-full-ci-guard-parity-3d7a9c51.spec.ts
 - scripts/tests/env-ci-corrected-head-full-ci-input-isolation-3d7a9c51.spec.ts
 title-ja: 公開された Playwright 修正コミットに対して修正後ヘッドでフル CI を実行する
