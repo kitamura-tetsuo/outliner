@@ -1218,7 +1218,7 @@ export class OutlinerRelationService {
         const page = project.findPage(pageId);
         if (!page || page.parent?.parentKey !== "root") {
             if (this.allItems(project).some(item => item.id === pageId)) {
-                throw new McpReadError("kind_mismatch", "Destination item is not a top-level Page", { pageId });
+                throw new McpReadError("invalid_argument", "Destination item is not a top-level Page", { pageId });
             }
             throw new McpReadError("not_found", "Destination Page not found", { pageId });
         }

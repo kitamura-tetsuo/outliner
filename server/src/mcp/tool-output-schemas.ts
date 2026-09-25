@@ -126,6 +126,15 @@ export const toolOutputSchemas = {
     set_view_query: mutation,
     update_table_schema: mutation,
     update_table_records: mutation.extend({ records: z.array(jsonObject) }),
+    create_grid: mutation.extend({
+        gridId: z.string().optional(),
+        placementId: z.string().optional(),
+        sourceTableId: z.string(),
+        pageId: z.string(),
+        name: z.string(),
+        query: z.string(),
+        validation,
+    }),
 } as const;
 
 export type OutlinerToolName = keyof typeof toolOutputSchemas;

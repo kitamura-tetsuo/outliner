@@ -136,7 +136,7 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
                     sourceTableId: "table-tasks",
                     pageId: item.id,
                 }),
-                "kind_mismatch",
+                "invalid_argument",
             );
         }
         await expectRejected(

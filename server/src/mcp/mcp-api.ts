@@ -541,6 +541,32 @@ export function createMcpRouter(
                 },
             );
             tool(
+                "create_grid",
+                "Create a new Grid and place it on a Page.",
+                {
+                    projectId: z.string(),
+                    tableId: z.string(),
+                    pageId: z.string(),
+                    query: z.string().min(1),
+                    name: z.string().optional(),
+                    operationId: z.string().min(1).max(200),
+                    dryRun: z.boolean().optional(),
+                },
+                args => {
+                    requireWrite();
+                    return relationService.createGridOnPage(
+                        uid,
+                        args.projectId,
+                        { sourceTableId: args.tableId, pageId: args.pageId, query: args.query, name: args.name },
+                        { operationId: args.operationId, dryRun: args.dryRun },
+                    );
+                },
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                    mutating: true,
+                },
+            );
+            tool(
                 "update_grid_query",
                 "Validate and safely update a Grid's saved read-only SELECT query.",
                 {

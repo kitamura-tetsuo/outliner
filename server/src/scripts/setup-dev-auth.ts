@@ -79,15 +79,6 @@ export async function setupTestUser(): Promise<UserRecord> {
             return userRecord;
         }
     } catch (error) {
-        const errorCode = error && typeof error === "object" && "code" in error
-            ? (error as { code: string; }).code
-            : undefined;
-        if (errorCode === "auth/email-already-exists") {
-            const auth = getAuth();
-            const userRecord = await auth.getUserByEmail("test@example.com");
-            logger.info(`Test user already exists (caught from createUser): ${userRecord.uid}`);
-            return userRecord;
-        }
         if (
             error && (error as { code?: string; message?: string; }).code === "app/invalid-credential"
             && (error as { code?: string; message?: string; }).message
