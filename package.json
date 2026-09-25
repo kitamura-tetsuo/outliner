@@ -4,6 +4,7 @@
         "postinstall": "patch-package"
     },
     "dependencies": {
+        "axe-playwright": "^2.2.2",
         "libpg-query": "18.1.5"
     },
     "devDependencies": {

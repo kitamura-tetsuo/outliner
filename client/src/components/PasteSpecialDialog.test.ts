@@ -42,9 +42,11 @@ describe("PasteSpecialDialog", () => {
 
     it("cancels on Escape", async () => {
         const onchoose = vi.fn();
+        HTMLDialogElement.prototype.showModal = vi.fn();
         const { getByTestId } = render(PasteSpecialDialog, { choices, onchoose });
 
-        await fireEvent.keyDown(getByTestId("paste-special-dialog"), { key: "Escape" });
+        const dialog = getByTestId("paste-special-dialog");
+        await fireEvent(dialog, new Event("cancel"));
 
         expect(onchoose).toHaveBeenCalledWith(undefined);
     });
