@@ -8,18 +8,34 @@
     }
 
     let { choices, onchoose }: Props = $props();
-    let dialog: HTMLDivElement | undefined = $state();
+let dialog: HTMLDialogElement | undefined = $state();
 
-    onMount(() => dialog?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus());
+onMount(() => {
+    if (dialog && !dialog.open && typeof dialog.showModal === 'function') {
+        dialog.showModal();
+    }
+    dialog?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+});
 
-    function onKeydown(event: KeyboardEvent) {
-        if (event.key === "Escape") onchoose(undefined);
+function handleCancel() {
+    onchoose(undefined);
+}
+
+function handleBackdropClick(event: MouseEvent) {
+    if (event.target === dialog) {
+        handleCancel();
+    }
     }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-<div class="backdrop" role="presentation">
-    <div class="dialog" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="paste-special-title" bind:this={dialog} data-testid="paste-special-dialog">
+<dialog
+    bind:this={dialog}
+    oncancel={handleCancel}
+    onclick={handleBackdropClick}
+    aria-labelledby="paste-special-title"
+    data-testid="paste-special-dialog"
+>
+    <div class="dialog-content" role="document">
         <h2 id="paste-special-title">Paste Special</h2>
         <div class="choices">
             {#each choices as choice (choice.variant)}
@@ -37,13 +53,25 @@
                 </button>
             {/each}
         </div>
-        <button type="button" class="cancel" onclick={() => onchoose(undefined)}>Cancel</button>
+        <button type="button" class="cancel" onclick={handleCancel}>Cancel</button>
     </div>
-</div>
+</dialog>
 
 <style>
-    .backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: rgb(0 0 0 / 35%); }
-    .dialog { width: min(32rem, calc(100vw - 2rem)); padding: 1.25rem; border-radius: .75rem; background: white; box-shadow: 0 18px 48px rgb(0 0 0 / 25%); }
+    dialog {
+        width: min(32rem, calc(100vw - 2rem));
+        padding: 0;
+        border: none;
+        border-radius: .75rem;
+        background: white;
+        box-shadow: 0 18px 48px rgb(0 0 0 / 25%);
+    }
+    dialog::backdrop {
+        background: rgb(0 0 0 / 35%);
+    }
+    .dialog-content {
+        padding: 1.25rem;
+    }
     h2 { margin: 0 0 1rem; font-size: 1.2rem; }
     .choices { display: grid; gap: .5rem; }
     .choices button { display: grid; gap: .2rem; padding: .75rem; text-align: left; border: 1px solid #d1d5db; border-radius: .5rem; background: white; }
