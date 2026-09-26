@@ -27,7 +27,10 @@ export const GET: RequestHandler = async ({ request, getClientAddress, fetch }) 
             try {
                 headers.set("x-forwarded-for", getClientAddress());
             } catch (_e) {
-                logger.warn({ err: _e }, "Failed to get client address");
+                logger.warn(
+                    { err: _e instanceof Error ? { message: _e.message, name: _e.name } : _e },
+                    "Failed to get client address",
+                );
             }
         }
 
@@ -52,7 +55,9 @@ export const GET: RequestHandler = async ({ request, getClientAddress, fetch }) 
         const data = await response.json();
         return json(data);
     } catch (error) {
-        logger.error({ error: error }, "Azure health check error:");
+        logger.error({
+            error: error instanceof Error ? { message: error.message, name: error.name, stack: error.stack } : error,
+        }, "Azure health check error:");
         return json(
             {
                 error: "Internal server error",

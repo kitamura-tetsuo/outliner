@@ -42,7 +42,10 @@ const proxyRequest = async (event: RequestEvent) => {
         try {
             headers.set("x-forwarded-for", event.getClientAddress());
         } catch (_e) {
-            logger.warn({ err: _e }, "Failed to get client address");
+            logger.warn(
+                { err: _e instanceof Error ? { message: _e.message, name: _e.name } : _e },
+                "Failed to get client address",
+            );
         }
     }
 

@@ -34,7 +34,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
             try {
                 headers["x-forwarded-for"] = getClientAddress();
             } catch (_e) {
-                logger.warn({ err: _e }, "Failed to get client address");
+                logger.warn(
+                    { err: _e instanceof Error ? { message: _e.message, name: _e.name } : _e },
+                    "Failed to get client address",
+                );
             }
         }
 
@@ -55,7 +58,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         const result = await response.json();
         return json(result);
     } catch (error) {
-        logger.error({ error }, "Save container API error");
+        logger.error({
+            error: error instanceof Error ? { message: error.message, name: error.name, stack: error.stack } : error,
+        }, "Save container API error");
         return json({ error: "Internal server error" }, { status: 500 });
     }
 };
