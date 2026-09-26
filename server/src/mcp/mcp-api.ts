@@ -269,7 +269,7 @@ export function createMcpRouter(
                     }, error instanceof Error ? error.message : String(error));
                     if (options.mutating) {
                         recordMcpAudit({
-                            ...auditBase,
+                            ...buildAuditBase(name, typedArgs),
                             outcome: "internal_failure",
                             applied: false,
                             replayed: false,
