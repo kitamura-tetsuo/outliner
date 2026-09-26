@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import sinon from "sinon";
 import { afterFirstValidation, gridIds, gridPlacements } from "./mcp-create-grid-fixture.js";
 import { httpGridFixture } from "./mcp-create-grid-http-fixture.js";
 
@@ -107,4 +108,48 @@ describe("create_grid authorization and replay boundaries (#5350)", function() {
             expect((await f.call("create_grid", f.args)).payload).to.deep.equal({ ...a.payload, replayed: true });
         });
     }
+
+    it("keeps an apply joinable beyond the completed-result retention window", async () => {
+        const clock = sinon.stub(Date, "now");
+        clock.returns(1_000);
+        try {
+            const f = httpGridFixture();
+            const gate = pauseValidation(f);
+            const first = f.call("create_grid", f.args, undefined, "first");
+            await gate.started.promise;
+
+            // Five minutes is the retention period for a completed result,
+            // but elapsed time must never evict an operation still in flight.
+            clock.returns(5 * 60 * 1000 + 1_001);
+            const retry = f.call("create_grid", f.args, undefined, "retry");
+            await new Promise<void>(resolve => setImmediate(resolve));
+            expect(gate.count()).to.equal(1);
+
+            gate.release.resolve();
+            const [original, replay] = await Promise.all([first, retry]);
+            expect(original.payload).to.include({ applied: true, replayed: false });
+            expect(replay.payload).to.deep.equal({ ...original.payload, replayed: true });
+            expect(gridIds(f.project)).to.have.length(2);
+            expect(gridPlacements(f.project)).to.deep.equal([
+                `${original.payload.placementId}:${original.payload.gridId}`,
+            ]);
+            expect(
+                (await f.call("get_grid", {
+                    projectId: f.args.projectId,
+                    gridId: original.payload.gridId,
+                })).payload.id,
+            ).to.equal(original.payload.gridId);
+            expect(
+                (await f.call("get_item", {
+                    projectId: f.args.projectId,
+                    itemId: original.payload.placementId,
+                })).payload,
+            ).to.include({
+                id: original.payload.placementId,
+                gridId: original.payload.gridId,
+            });
+        } finally {
+            clock.restore();
+        }
+    });
 });
