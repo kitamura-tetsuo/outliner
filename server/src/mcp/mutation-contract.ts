@@ -110,7 +110,7 @@ const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
  * in-flight promise is cached synchronously before it is ever awaited.
  */
 export class IdempotencyCache {
-    private readonly entries = new Map<string, { expiresAt: number; result: Promise<unknown>; }>();
+    private readonly entries = new Map<string, { expiresAt?: number; result: Promise<unknown>; }>();
 
     key(...parts: (string | undefined)[]): string | undefined {
         return parts.every(part => part !== undefined) ? parts.join(" ") : undefined;
@@ -120,7 +120,10 @@ export class IdempotencyCache {
         if (!key) return { result: await run(), replayed: false };
         const now = Date.now();
         for (const [existingKey, entry] of this.entries) {
-            if (entry.expiresAt <= now) this.entries.delete(existingKey);
+            // Pending operations have no expiry. Removing one would only
+            // forget the promise; it would not cancel the underlying write,
+            // and a retry could then apply the same logical mutation again.
+            if (entry.expiresAt !== undefined && entry.expiresAt <= now) this.entries.delete(existingKey);
         }
         const cached = this.entries.get(key);
         if (cached) return { result: await cached.result as T, replayed: true };
@@ -129,13 +132,27 @@ export class IdempotencyCache {
         // concurrent call with the same key can never slip past the
         // `cached` check above and race this attempt.
         const promise = (async () => run())();
-        this.entries.set(key, { expiresAt: now + IDEMPOTENCY_TTL_MS, result: promise });
+        const entry: { expiresAt?: number; result: Promise<unknown>; } = { result: promise };
+        this.entries.set(key, entry);
+        void promise.then(
+            () => {
+                // Retention starts only once the result exists. Long-running
+                // validation and queue waits therefore remain joinable for
+                // their entire lifetime and still receive the full replay TTL.
+                entry.expiresAt = Date.now() + IDEMPOTENCY_TTL_MS;
+            },
+            () => {
+                // Delete only this attempt in case cache lifecycle behavior is
+                // changed later to permit replacement entries.
+                if (this.entries.get(key) === entry) this.entries.delete(key);
+            },
+        );
         try {
             return { result: await promise, replayed: false };
         } catch (error) {
             // A failed attempt is never replayed; remove it so a retry
             // with the same operationId gets a fresh attempt.
-            this.entries.delete(key);
+            if (this.entries.get(key) === entry) this.entries.delete(key);
             throw error;
         }
     }

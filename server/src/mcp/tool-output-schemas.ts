@@ -122,6 +122,21 @@ export const toolOutputSchemas = {
         truncated: z.boolean(),
     }),
     write_relation: relationMutation,
+    create_grid: z.object({
+        applied: z.boolean(),
+        replayed: z.boolean(),
+        gridId: z.string().min(1).optional(),
+        placementId: z.string().min(1).optional(),
+        sourceTableId: z.string(),
+        pageId: z.string(),
+        name: z.string(),
+        query: z.string().min(1),
+        revision,
+    }).refine(result =>
+        result.applied
+            ? !!result.gridId && !!result.placementId
+            : result.gridId === undefined && result.placementId === undefined && !result.replayed
+    ),
     update_grid_query: mutation,
     set_view_query: mutation,
     update_table_schema: mutation,
