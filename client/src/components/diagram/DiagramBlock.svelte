@@ -158,6 +158,15 @@ function keepEditorFocus(event: PointerEvent) {
     event.preventDefault();
 }
 
+function onPreviewKeyDown(event: KeyboardEvent) {
+    if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!mayRead || !diagram) return;
+        placeCaret(0, event.altKey);
+    }
+}
+
 /** Clicking the preview/empty surface enters the source at its beginning (REQ-003). */
 function enterSource(event: MouseEvent) {
     event.preventDefault();
@@ -206,7 +215,7 @@ function onSourcePointerUp(event: PointerEvent) {
     (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
 }
 
-function swallowClick(event: MouseEvent) {
+function swallowEvent(event: Event) {
     event.stopPropagation();
 }
 
@@ -291,19 +300,16 @@ onDestroy(() => {
                  Keyboard input reaches the source through the shared hidden input bridge
                  (GlobalTextArea), not through this element; the click handler only keeps the
                  pointer gesture from reaching the outline row's own click handling. -->
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div class="diagram-source" data-testid="diagram-source" data-diagram-source role="textbox" tabindex="-1"
                 aria-multiline="true" aria-readonly={isReadOnly} aria-label="Mermaid source"
                 onpointerdown={onSourcePointerDown} onpointermove={onSourcePointerMove} onpointerup={onSourcePointerUp}
-                onclick={swallowClick}
+            onclick={swallowEvent} onkeydown={swallowEvent}
             >{#each segments as segment (segment.key)}{#if segment.kind === "text"}<span class="diagram-source-run" class:diagram-source-selected={segment.selected} data-source-run data-source-start={segment.start}>{segment.text}</span>{:else if segment.kind === "caret"}<span class="diagram-caret" class:diagram-caret--remote={segment.remote} data-testid={segment.remote ? "diagram-remote-caret" : "diagram-caret"} data-caret-offset={segment.offset} style={segment.color ? `color:${segment.color}` : undefined} aria-hidden="true"></span>{:else}<span class="diagram-preedit" data-testid="diagram-preedit" data-ephemeral>{segment.text}</span>{/if}{/each}</div>
         </div>
     {:else}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="diagram-block diagram-preview" data-testid="diagram-block" data-diagram-state="ready"
+        <div class="diagram-block diagram-preview" role="button" tabindex="0" data-testid="diagram-block" data-diagram-state="ready"
             data-diagram-id={diagram.id} data-diagram-format={diagram.format} onpointerdown={keepEditorFocus}
-            onclick={enterSource}>
+            onclick={enterSource} onkeydown={onPreviewKeyDown}>
             <DiagramRenderer id={diagram.id} source={diagram.source} mayRead={mayRead} />
         </div>
     {/if}
