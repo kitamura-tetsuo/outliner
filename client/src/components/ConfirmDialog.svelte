@@ -23,6 +23,7 @@ let {
 
 let dialogElement: HTMLDialogElement;
 let dialogId = $state("");
+let triggerElement: HTMLElement | null = null;
 
 onMount(() => {
     dialogId = Math.random().toString(36).substring(2, 9);
@@ -33,11 +34,16 @@ $effect(() => {
         if (!dialogElement.showModal || !dialogElement.close) return;
         if (isOpen) {
             if (!dialogElement.open && typeof dialogElement.showModal === 'function') {
+                triggerElement = document.activeElement as HTMLElement;
                 dialogElement.showModal();
             }
         } else {
             if (dialogElement.open && typeof dialogElement.close === 'function') {
                 dialogElement.close();
+                if (triggerElement) {
+                    triggerElement.focus();
+                    triggerElement = null;
+                }
             }
         }
     }
