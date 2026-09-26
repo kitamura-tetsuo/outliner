@@ -2,7 +2,7 @@ id: FTR-5349c0de
 title: Atomic server Grid creation with Page placement
 title-ja: ページ配置を伴うサーバー側グリッドのアトミック作成
 status: implemented
-description: The server relation service can create one Grid over an existing Table and append one Grid placement to the end of an existing top-level Page as a single all-or-nothing mutation. The candidate SELECT is validated with the same executable Grid query semantics as validate_grid_query before any write, the source Table, destination Page, and validation inputs are re-resolved at the synchronous mutation boundary (revalidating when they changed), concurrent peer edits are preserved, and a failed publication leaves neither a Grid definition nor a placement. Not yet exposed as an MCP tool.
+description: The server relation service can create one Grid over an existing Table and append one Grid placement to the end of an existing top-level Page as a single all-or-nothing mutation. The candidate SELECT is validated with the same executable Grid query semantics as validate_grid_query before any write, the source Table, destination Page, and validation inputs are re-resolved at the synchronous mutation boundary (revalidating when they changed), concurrent peer edits are preserved, and a failed publication leaves neither a Grid definition nor a placement. Exposed by the create_grid MCP mutation (FTR-5350c0de).
 tests:
 - server/tests/mcp-create-grid-on-page-concurrency.test.ts
 - server/tests/mcp-create-grid-on-page.test.ts
