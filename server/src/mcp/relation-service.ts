@@ -1091,6 +1091,66 @@ export class OutlinerRelationService {
         });
     }
 
+    /** MCP replay scope is the logical creation, not either newly allocated ID. */
+    async createGrid(
+        uid: string,
+        projectId: string,
+        request: {
+            tableId: string;
+            pageId: string;
+            query: string;
+            name?: string;
+            operationId: string;
+            dryRun?: boolean;
+        },
+    ) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) {
+            throw new McpReadError("invalid_argument", "Invalid project ID");
+        }
+        const authorize = async () => {
+            if (!await this.canAccess(uid, projectId)) {
+                throw new McpReadError("forbidden", "Project is inaccessible");
+            }
+        };
+        // Unauthorized retries must not even consult (or expire) cache entries.
+        await authorize();
+        if (
+            typeof request.operationId !== "string" || !request.operationId.trim() || request.operationId.length > 200
+        ) {
+            throw new McpReadError("invalid_argument", "A non-empty operation ID is required");
+        }
+        const key = this.idempotency.key(
+            "create_grid",
+            uid,
+            projectId,
+            request.dryRun ? undefined : request.operationId,
+        );
+        const { result, replayed } = await this.idempotency.run(key, async () => {
+            try {
+                const created = await this.createGridOnPage(uid, projectId, {
+                    sourceTableId: request.tableId,
+                    pageId: request.pageId,
+                    query: request.query,
+                    name: request.name,
+                }, { dryRun: request.dryRun, beforePublication: authorize });
+                const { validation, ...configuration } = created;
+                return { ...configuration, applied: !request.dryRun, revision: revisionOf(created.query) };
+            } catch (error) {
+                if (error instanceof McpReadError && error.code === "kind_mismatch") {
+                    throw new McpReadError("invalid_argument", "Destination item is not a top-level Page");
+                }
+                if (error instanceof McpReadError && error.code === "internal_failure") {
+                    throw new McpReadError("internal_failure", "Grid creation failed");
+                }
+                throw error;
+            }
+        });
+        // An awaiting replay is a separate disclosure boundary. Revocation here
+        // leaves the original successful cache entry intact for authorized callers.
+        await authorize();
+        return { ...result, replayed };
+    }
+
     /**
      * Create one Grid definition over an existing Table and append one Grid
      * placement to the end of an existing top-level Page, as one
@@ -1111,6 +1171,7 @@ export class OutlinerRelationService {
         uid: string,
         projectId: string,
         request: { sourceTableId: string; pageId: string; query: string; name?: string; },
+        options: { dryRun?: boolean; beforePublication?: () => Promise<void>; } = {},
     ) {
         const { sourceTableId, pageId, query, name } = request;
         if (typeof sourceTableId !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(sourceTableId)) {
@@ -1160,15 +1221,17 @@ export class OutlinerRelationService {
                             { validation: { ...validation, warnings: dependencyWarnings } },
                         );
                     }
+                    await options.beforePublication?.();
                     // Mutation boundary: nothing below awaits until publication
                     // has completed, so no collaborator update can interleave.
                     const { table, page } = this.resolveGridCreationTargets(doc, sourceTableId, pageId);
                     if (this.validationSnapshot(doc, sources) !== snapshot) continue;
                     const gridName = name ?? String(table.get("name") ?? "");
-                    const created = this.publishGridPlacement(doc, uid, page, sourceTableId, gridName, query);
+                    const created = options.dryRun
+                        ? undefined
+                        : this.publishGridPlacement(doc, uid, page, sourceTableId, gridName, query);
                     return {
-                        gridId: created.gridId,
-                        placementId: created.itemId,
+                        ...(created ? { gridId: created.gridId, placementId: created.itemId } : {}),
                         sourceTableId,
                         pageId,
                         name: gridName,

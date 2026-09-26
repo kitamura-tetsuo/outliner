@@ -1,0 +1,9 @@
+id: FTR-5350c0de
+title: Create a Grid on a Page through MCP
+title-ja: MCPによるページ上のグリッド作成
+status: implemented
+description: The create_grid mutation validates a source Table, top-level Page and exact SELECT, then atomically creates a project-owned Grid and appends its placement. It returns both identifiers and the saved query revision for immediate production reads. Dry runs validate without mutating or consuming an operation ID. Authorized concurrent and completed retries reuse the same creation through the existing replay cache. Current project authorization is checked before replay lookup, before publication and before result disclosure. Structured errors and privacy-bounded audits cover every attempt, and successful apply/replay audit entries identify the created Grid.
+tests:
+- server/tests/mcp-create-grid-http.test.ts
+- server/tests/mcp-create-grid-authorization.test.ts
+- server/tests/mcp-create-grid-audit.test.ts

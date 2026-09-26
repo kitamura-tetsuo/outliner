@@ -219,6 +219,9 @@ export function createMcpRouter(
                             : {};
                         recordMcpAudit({
                             ...auditBase,
+                            entity: name === "create_grid" && typeof fields.gridId === "string"
+                                ? `grid:${fields.gridId}`
+                                : auditBase.entity,
                             outcome: "success",
                             priorRevision: typeof fields.priorRevision === "string"
                                 ? fields.priorRevision
@@ -541,6 +544,27 @@ export function createMcpRouter(
                 },
             );
             tool(
+                "create_grid",
+                "Create a validated Grid over a Table and append its placement to a Page. Retry the same logical creation with the same operationId; use a new ID for different input. Dry runs do not consume the ID.",
+                {
+                    projectId: z.string(),
+                    tableId: z.string(),
+                    pageId: z.string(),
+                    query: z.string().refine(value => value.trim().length > 0),
+                    name: z.string().optional(),
+                    operationId: z.string().max(200).refine(value => value.trim().length > 0),
+                    dryRun: z.boolean().optional(),
+                },
+                args => {
+                    requireWrite();
+                    return relationService.createGrid(uid, args.projectId, args);
+                },
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                    mutating: true,
+                },
+            );
+            tool(
                 "update_grid_query",
                 "Validate and safely update a Grid's saved read-only SELECT query.",
                 {
@@ -699,6 +723,15 @@ export function createMcpRouter(
                 }
                 const parsed = z.object(entry.shape).safeParse(typedArgs);
                 if (!parsed.success) {
+                    if (name === "create_grid") {
+                        recordMcpAudit({
+                            ...buildAuditBase(name, typedArgs),
+                            outcome: "invalid_argument",
+                            applied: false,
+                            replayed: false,
+                        });
+                        return errorResponse("Invalid create_grid arguments", "invalid_argument", { requestId });
+                    }
                     return {
                         content: [{
                             type: "text" as const,
