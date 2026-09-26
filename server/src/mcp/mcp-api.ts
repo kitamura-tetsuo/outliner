@@ -177,25 +177,35 @@ export function createMcpRouter(
             outputSchema: z.ZodType;
             callback: (args: unknown) => Promise<unknown>;
         }>();
-        const buildAuditBase = (name: string, typedArgs: Record<string, unknown>) => ({
-            requestId,
-            uidFingerprint,
-            tool: name,
-            projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
-            entity: typeof typedArgs.relation === "string"
-                ? typedArgs.relation
-                : typeof typedArgs.ruleId === "string"
-                ? `schedule:${typedArgs.ruleId}`
-                : typeof typedArgs.gridId === "string"
-                ? `grid:${typedArgs.gridId}`
-                : typeof typedArgs.viewId === "string"
-                ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
-                : typeof typedArgs.tableId === "string"
-                ? `table:${typedArgs.tableId}`
-                : undefined,
-            operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
-            dryRun: typedArgs.dryRun === true,
-        });
+        const buildAuditBase = (
+            name: string,
+            typedArgs: Record<string, unknown>,
+            resultFields?: Record<string, unknown>,
+        ) => {
+            let entity: string | undefined = undefined;
+            if (name === "create_grid" && resultFields && typeof resultFields.gridId === "string") {
+                entity = `grid:${resultFields.gridId}`;
+            } else if (typeof typedArgs.relation === "string") {
+                entity = typedArgs.relation;
+            } else if (typeof typedArgs.ruleId === "string") {
+                entity = `schedule:${typedArgs.ruleId}`;
+            } else if (typeof typedArgs.gridId === "string") {
+                entity = `grid:${typedArgs.gridId}`;
+            } else if (typeof typedArgs.viewId === "string") {
+                entity = `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`;
+            } else if (typeof typedArgs.tableId === "string") {
+                entity = `table:${typedArgs.tableId}`;
+            }
+            return {
+                requestId,
+                uidFingerprint,
+                tool: name,
+                projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
+                entity,
+                operationId: typeof typedArgs.operationId === "string" ? typedArgs.operationId : undefined,
+                dryRun: typedArgs.dryRun === true,
+            };
+        };
         const tool = <Name extends OutlinerToolName, T extends z.ZodRawShape>(
             name: Name,
             description: string,
@@ -209,7 +219,6 @@ export function createMcpRouter(
         ) => {
             const callback = (async (args: unknown) => {
                 const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
-                const auditBase = buildAuditBase(name, typedArgs);
                 try {
                     const result = await handler(args as z.infer<z.ZodObject<T>>);
                     const validated = toolOutputSchemas[name].parse(result) as z.infer<typeof z.json>;
@@ -218,7 +227,7 @@ export function createMcpRouter(
                             ? result as Record<string, unknown>
                             : {};
                         recordMcpAudit({
-                            ...auditBase,
+                            ...buildAuditBase(name, typedArgs, fields),
                             outcome: "success",
                             priorRevision: typeof fields.priorRevision === "string"
                                 ? fields.priorRevision
@@ -240,7 +249,12 @@ export function createMcpRouter(
                             ...safeLogDiagnostics(error.debug),
                         }, error.message);
                         if (options.mutating) {
-                            recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
+                            recordMcpAudit({
+                                ...buildAuditBase(name, typedArgs),
+                                outcome: error.code,
+                                applied: false,
+                                replayed: false,
+                            });
                         }
                         const meta = error.requiredScope
                             ? insufficientScopeMeta(error.message, error.requiredScope)

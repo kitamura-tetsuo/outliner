@@ -1,9 +1,11 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { expect } from "chai";
+import * as sinon from "sinon";
+import * as Y from "yjs";
 import { createServer } from "../src/mcp/mcp-api";
+import { IdempotencyCache } from "../src/mcp/mutation-contract";
 import { OutlinerRelationService } from "../src/mcp/relation-service";
-import { YjsGrids } from "../src/yjs/yjs-grids";
+import { Project } from "../src/project-directory";
+import { YjsTables } from "../src/yjs/yjs-tables";
 
 // Testing REQ-010: Use actual tools/call dispatch for regressions.
 // Since the exact test framework structure and dependencies (like database, firebase, auth)
