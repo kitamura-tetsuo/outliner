@@ -110,7 +110,7 @@ const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
  * in-flight promise is cached synchronously before it is ever awaited.
  */
 export class IdempotencyCache {
-    private readonly entries = new Map<string, { expiresAt: number; result: Promise<unknown>; }>();
+    private readonly entries = new Map<string, { expiresAt: number; result: Promise<unknown>; settled: boolean; }>();
 
     key(...parts: (string | undefined)[]): string | undefined {
         return parts.every(part => part !== undefined) ? parts.join(" ") : undefined;
@@ -120,7 +120,9 @@ export class IdempotencyCache {
         if (!key) return { result: await run(), replayed: false };
         const now = Date.now();
         for (const [existingKey, entry] of this.entries) {
-            if (entry.expiresAt <= now) this.entries.delete(existingKey);
+            // Keep pending promises so long-running operations block concurrent duplicates.
+            // Only evict settled promises that have passed their TTL.
+            if (entry.settled && entry.expiresAt <= now) this.entries.delete(existingKey);
         }
         const cached = this.entries.get(key);
         if (cached) return { result: await cached.result as T, replayed: true };
@@ -129,7 +131,9 @@ export class IdempotencyCache {
         // concurrent call with the same key can never slip past the
         // `cached` check above and race this attempt.
         const promise = (async () => run())();
-        this.entries.set(key, { expiresAt: now + IDEMPOTENCY_TTL_MS, result: promise });
+        const entry = { expiresAt: now + IDEMPOTENCY_TTL_MS, result: promise, settled: false };
+        this.entries.set(key, entry);
+        promise.finally(() => { entry.settled = true; entry.expiresAt = Date.now() + IDEMPOTENCY_TTL_MS; });
         try {
             return { result: await promise, replayed: false };
         } catch (error) {

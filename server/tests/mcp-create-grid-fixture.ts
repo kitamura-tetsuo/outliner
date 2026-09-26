@@ -9,7 +9,7 @@ import { Item, Project } from "../src/schema/app-schema.js";
  * with pre-existing children. The Hocuspocus stand-in hands the services the
  * same live Y.Docs, exactly as openDirectConnection does in the server.
  */
-export function createGridFixture() {
+export function createGridFixture(canAccess: (uid: string, projectId: string) => Promise<boolean> = async () => true) {
     const project = Project.createInstance("Grid creation");
     const tables = project.ydoc.getMap<Y.Map<unknown>>("yjsTables");
     const rooms = new Map<string, Y.Doc>([["projects/project-1", project.ydoc]]);
@@ -68,8 +68,8 @@ export function createGridFixture() {
             disconnect: async () => {},
         }),
     } as never;
-    const relations = new OutlinerRelationService(hocuspocus, async () => true);
-    const reads = new OutlinerReadService(hocuspocus, async () => true, async () => []);
+    const relations = new OutlinerRelationService(hocuspocus, canAccess);
+    const reads = new OutlinerReadService(hocuspocus, canAccess, async () => []);
     return { project, tasks, people, page, first, nested, otherPage, relations, reads };
 }
 
