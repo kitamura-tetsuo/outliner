@@ -770,9 +770,9 @@ cleanup_ports() {
   echo "Cleaning up ports: ${REQUIRED_PORTS[*]}"
   for port in "${REQUIRED_PORTS[@]}"; do
     if [ -n "$port" ]; then
-      # Find processes using the port
+      # Find processes using the port, transform newlines to spaces for `kill`
       local pids
-      pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+      pids=$(lsof -t -i :"$port" 2>/dev/null | tr '\n' ' ' | sed 's/ $//' || true)
 
       if [ -n "$pids" ]; then
         echo "Killing processes on port $port: $pids"
@@ -781,7 +781,7 @@ cleanup_ports() {
         sleep 1
 
         # Check if still running and force kill
-        pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+        pids=$(lsof -t -i :"$port" 2>/dev/null | tr '\n' ' ' | sed 's/ $//' || true)
         if [ -n "$pids" ]; then
              echo "Force killing processes on port $port: $pids"
              kill -9 $pids 2>/dev/null || true
