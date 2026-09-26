@@ -26,7 +26,11 @@ beforeAll(() => {
         HTMLElement?: typeof HTMLElement;
         Node?: typeof Node;
     };
-    Object.defineProperty(globalAny, "window", { value: dom.window as unknown as Window & typeof globalThis, writable: true, configurable: true });
+    Object.defineProperty(globalAny, "window", {
+        value: dom.window as unknown as Window & typeof globalThis,
+        writable: true,
+        configurable: true,
+    });
     Object.defineProperty(globalAny, "document", { value: dom.window.document, writable: true, configurable: true });
     globalAny.Element = dom.window.Element;
     globalAny.HTMLElement = dom.window.HTMLElement;
