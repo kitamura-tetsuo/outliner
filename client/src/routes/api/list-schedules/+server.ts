@@ -10,7 +10,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         const idToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
         const body = await request.json().catch((err) => {
-            logger.warn({ err }, "[list-schedules] Failed to parse request JSON");
+            logger.warn({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+            }, "[list-schedules] Failed to parse request JSON");
             return {};
         });
         const pageId = body.pageId;
@@ -41,7 +43,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
             try {
                 headers["x-forwarded-for"] = getClientAddress();
             } catch (_e) {
-                logger.warn({ err: _e }, "Failed to get client address");
+                logger.warn(
+                    { err: _e instanceof Error ? { message: _e.message, name: _e.name } : _e },
+                    "Failed to get client address",
+                );
             }
         }
 
@@ -62,7 +67,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         const result = await response.json();
         return json(result);
     } catch (error) {
-        logger.error({ error }, "List schedules API error");
+        logger.error({
+            error: error instanceof Error ? { message: error.message, name: error.name, stack: error.stack } : error,
+        }, "List schedules API error");
         return json({ error: "Internal server error" }, { status: 500 });
     }
 };

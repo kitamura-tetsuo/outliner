@@ -87,7 +87,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         if (!cp) return false;
         const items = store.project?.items;
         if (!items) return false;
-        return findPageByKey(items, cp.key ?? cp.id) !== undefined;
+        return findPageByKey(items, cp?.key ?? cp?.id) !== undefined;
     }
 
     async function loadDemoPage() {
