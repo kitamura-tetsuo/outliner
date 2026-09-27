@@ -11,10 +11,17 @@
 let dialog: HTMLDialogElement | undefined = $state();
 
 onMount(() => {
+    const triggerElement = document.activeElement as HTMLElement;
     if (dialog && !dialog.open && typeof dialog.showModal === 'function') {
         dialog.showModal();
     }
     dialog?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+
+    return () => {
+        if (triggerElement && typeof triggerElement.focus === 'function') {
+            triggerElement.focus();
+        }
+    };
 });
 
 function handleCancel() {
