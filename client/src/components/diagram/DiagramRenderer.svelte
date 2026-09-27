@@ -1,7 +1,6 @@
 <script lang="ts">
-import { onMount, untrack } from "svelte";
-import mermaid from "mermaid";
-import { getNextDiagramInstanceId, initMermaid, sanitizeSvg } from "../../services/diagram/diagramRenderer";
+import { onDestroy, onMount, untrack } from "svelte";
+import { getNextDiagramInstanceId, initMermaid, renderMermaidDiagram, sanitizeSvg } from "../../services/diagram/diagramRenderer";
 
 interface Props {
     id: string;
@@ -16,12 +15,20 @@ let instanceId = $state(0);
 let hasError = $state(false);
 let errorMessage = $state("");
 let renderedSvg = $state("");
+let rootElement: HTMLDivElement | null = $state(null);
 
 const MAX_SOURCE_LENGTH = 50000;
 
 onMount(() => {
     initMermaid();
     instanceId = getNextDiagramInstanceId();
+});
+
+onDestroy(() => {
+    // Invalidate already-started renders so a late settlement after this
+    // occurrence unmounts (AS-005) cannot commit state here. Staging cleanup
+    // is owned by renderMermaidDiagram's finally block either way.
+    currentRenderId++;
 });
 
 $effect(() => {
@@ -57,7 +64,9 @@ async function renderDiagram() {
 
     try {
         const diagramId = `mermaid-${id}-${instanceId}-${renderId}`;
-        const result = await mermaid.render(diagramId, source);
+        // Staging lives inside this block's own subtree and is removed on
+        // settle, so failed attempts leave nothing outside it (REQ-001).
+        const result = await renderMermaidDiagram(rootElement, diagramId, source);
 
         if (renderId !== currentRenderId || !mayRead) return; // Stale or access revoked
 
@@ -73,7 +82,7 @@ async function renderDiagram() {
 }
 </script>
 
-<div class="diagram-renderer">
+<div class="diagram-renderer" bind:this={rootElement}>
     {#if hasError}
         <div class="diagram-error">{errorMessage}</div>
     {:else if !source || source.trim() === ""}
