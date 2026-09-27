@@ -399,6 +399,89 @@ describe("LayoutBlock", () => {
         unmount();
     });
 
+    it("yields to the native menu on Shift+right-click without opening or cancelling (#5407)", async () => {
+        const { layout } = buildLayout([]);
+        const { getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+
+        const emptyState = getByTestId("layout-empty");
+        const cancelled = !emptyState.dispatchEvent(
+            new MouseEvent("contextmenu", { bubbles: true, cancelable: true, shiftKey: true, button: 2 }),
+        );
+
+        expect(cancelled).toBe(false);
+        expect(queryByTestId("layout-context-menu")).toBeNull();
+
+        unmount();
+    });
+
+    it("dismisses its open menu on Shift+right-click and still opens on the next ordinary right-click (#5407)", async () => {
+        const { layout } = buildLayout([]);
+        const { container, getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+
+        const emptyState = getByTestId("layout-empty");
+        emptyState.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).not.toBeNull();
+        });
+
+        const overlay = container.querySelector(".context-menu-overlay") as HTMLElement;
+        const cancelled = !overlay.dispatchEvent(
+            new MouseEvent("contextmenu", { bubbles: true, cancelable: true, shiftKey: true, button: 2 }),
+        );
+        expect(cancelled).toBe(false);
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).toBeNull();
+        });
+
+        // Per-gesture escape, not a stored mode: the next ordinary right-click reopens.
+        emptyState.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).not.toBeNull();
+        });
+
+        unmount();
+    });
+
+    it("dismisses its open menu on a Shift+right press that never becomes a contextmenu event (#5407)", async () => {
+        const { layout } = buildLayout([]);
+        const { container, getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+
+        const emptyState = getByTestId("layout-empty");
+        emptyState.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).not.toBeNull();
+        });
+
+        // Firefox shows the native menu for Shift+right-click without
+        // dispatching `contextmenu`; the press phase alone must dismiss.
+        // Dispatched as a MouseEvent carrying pointer semantics because the
+        // handler only reads button/shiftKey.
+        const overlay = container.querySelector(".context-menu-overlay") as HTMLElement;
+        const overlayCancelled = !overlay.dispatchEvent(
+            new MouseEvent("pointerdown", { bubbles: true, cancelable: true, shiftKey: true, button: 2 }),
+        );
+        expect(overlayCancelled).toBe(false);
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).toBeNull();
+        });
+
+        emptyState.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).not.toBeNull();
+        });
+
+        const panel = getByTestId("layout-context-menu");
+        const panelCancelled = !panel.dispatchEvent(
+            new MouseEvent("pointerdown", { bubbles: true, cancelable: true, shiftKey: true, button: 2 }),
+        );
+        expect(panelCancelled).toBe(false);
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).toBeNull();
+        });
+
+        unmount();
+    });
+
     describe("dropping an outline item onto the empty-state surface (#5087)", () => {
         it("inserts an eligible standalone Grid dropped on the visible empty-state frame", async () => {
             const { page, layout } = buildLayout([]);

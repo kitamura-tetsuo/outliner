@@ -68,6 +68,7 @@ import {
 import { layoutTimeGrid } from "../../services/calendar/calendarTimeGridLayout";
 import { listSupportedTimeZones, resolveCalendarTimezone } from "../../services/calendar/calendarTimezone";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
+import { isNativeContextMenuEvent } from "../../lib/nativeContextMenu";
 import { projectSchemaName } from "../../services/yjstable/sqlNames";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
@@ -499,6 +500,14 @@ function requestDelete(entry: CalendarEntry) {
     deletingEntry = entry;
 }
 function openEntryContextMenu(entry: CalendarEntry, event: MouseEvent | KeyboardEvent) {
+    // Shift+right-click yields to the browser's native menu (#5407): close an
+    // already-open entry menu and return without cancelling the native action
+    // or opening a menu. Keyboard activation (`Shift+F10`, `ContextMenu` key)
+    // arrives as a KeyboardEvent and keeps its application menu.
+    if (event instanceof MouseEvent && isNativeContextMenuEvent(event)) {
+        closeEntryContextMenu();
+        return;
+    }
     if (!isDeletable(entry)) return;
     event.preventDefault();
     event.stopPropagation();

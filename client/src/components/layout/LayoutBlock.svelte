@@ -39,6 +39,7 @@ import {
     setColumnSpan,
 } from "../../services/layout/layoutTree";
 import { store as generalStore } from "../../stores/store.svelte";
+import { isNativeContextMenuEvent } from "../../lib/nativeContextMenu";
 import LayoutContextMenu from "./LayoutContextMenu.svelte";
 import { createVisualNodeUnderParent } from "../../services/outline/visualNodePlacement";
 import { writeGridPlacementDrag } from "../../services/yjstable/gridPlacement";
@@ -360,6 +361,15 @@ function handleMoveOut(child: Item) {
 }
 
 function handleContextMenu(event: MouseEvent) {
+    // Shift+right-click yields to the browser's native menu (#5407): never
+    // cancel it or open the Layout menu, even when the gesture arrives via a
+    // child that already yielded. An already-open menu is closed so the same
+    // gesture dismisses the application menu and allows the native one.
+    if (isNativeContextMenuEvent(event)) {
+        isContextMenuOpen = false;
+        return;
+    }
+
     // Do not steal native/component context-menu behavior from interactive descendants
     if (event.target !== event.currentTarget && (event.target as HTMLElement).closest('[data-testid="layout-cell"]')) {
         return;

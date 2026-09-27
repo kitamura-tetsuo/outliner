@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
 
     import { type OutlineNodeKind } from "$shared/services/outlineNodeKind";
+    import { isNativeContextMenuEvent, isShiftSecondaryPointerPress } from "../lib/nativeContextMenu";
 
     interface Props {
         x: number;
@@ -50,6 +51,24 @@
         onClose();
     }
 
+    // Shift+right-click yields to the browser's native menu (#5407): dismiss
+    // the application menu without cancelling the native action.
+    function handleOverlayContextMenu(event: MouseEvent) {
+        if (isNativeContextMenuEvent(event)) {
+            handleClose();
+            return;
+        }
+        event.preventDefault();
+        handleClose();
+    }
+
+    // Press-phase dismissal for engines (e.g. Firefox) that show the native
+    // menu for Shift+right-click without dispatching `contextmenu` at all.
+    // Never preventDefault: the browser action from this same gesture must proceed.
+    function handleEscapePointerDown(event: PointerEvent) {
+        if (isShiftSecondaryPointerPress(event)) handleClose();
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             handleClose();
@@ -80,7 +99,7 @@
 
 <svelte:window on:keydown={handleKeyDown} />
 
-<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={(e) => { e.preventDefault(); handleClose(); }}></div>
+<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={handleOverlayContextMenu} onpointerdown={handleEscapePointerDown}></div>
 
 <div
     bind:this={menuRef}
@@ -88,6 +107,7 @@
     style="left: {x}px; top: {y}px;"
     role="menu"
     aria-label="Item Actions"
+    onpointerdown={handleEscapePointerDown}
 >
     <button type="button" role="menuitem" tabindex={activeIndex === 0 ? 0 : -1} onclick={() => { onAction('add-item'); handleClose(); }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>

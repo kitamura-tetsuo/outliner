@@ -1,0 +1,24 @@
+id: CTX-08eff580
+title: Shift+right-click native context menu escape
+description: Shift+right-click yields to the browser's native context menu on every Outliner-managed surface instead of opening an application menu
+category: client
+status: implemented
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerItemContextMenu.svelte
+- client/src/components/calendar/CalendarEntryContextMenu.svelte
+- client/src/components/calendar/CalendarView.svelte
+- client/src/components/layout/LayoutBlock.svelte
+- client/src/components/layout/LayoutContextMenu.svelte
+- client/src/lib/nativeContextMenu.ts
+tests:
+- client/e2e/core/outliner-shift-right-click-native-menu.spec.ts
+- client/src/components/calendar/CalendarView.test.ts
+- client/src/components/layout/LayoutBlock.test.ts
+- client/src/lib/nativeContextMenu.test.ts
+acceptance:
+- Ordinary right-click still opens each surface's own menu and keyboard Shift+F10/ContextMenu activation is unchanged
+- Shift+right-clicking a Layout background, Grid cell, or Calendar entry yields to the native menu without ancestor interception
+- Shift+right-clicking an open application menu or its backdrop dismisses it without running a command, including when no DOM contextmenu event is dispatched
+- Shift+right-clicking an outline row opens no application menu and leaves the native contextmenu action uncancelled
+title-ja: Shift+右クリックによるブラウザ標準メニューの呼び出し

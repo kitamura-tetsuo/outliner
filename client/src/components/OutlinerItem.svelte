@@ -108,6 +108,7 @@ import OutlinerItemCommentButton from "./OutlinerItemCommentButton.svelte";
 import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
 import OutlinerItemContextMenu from "./OutlinerItemContextMenu.svelte";
+import { isNativeContextMenuEvent } from "../lib/nativeContextMenu";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
 import { nodeKindOfComponentType } from "$shared/services/outlineNodeKind";
 import { unwrapLayout } from "../services/layout/layoutTree";
@@ -206,6 +207,14 @@ function handleContextMenu(e: MouseEvent) {
     // or the keyboard menu key never has a touch pointer down, so both still work.
     if (touchSelection.isTracking || isTouchSelecting) {
         e.preventDefault();
+        return;
+    }
+
+    // Shift+right-click yields to the browser's native menu (#5407): never
+    // cancel it or open the item menu. An already-open menu is closed so the
+    // same gesture dismisses the application menu and allows the native one.
+    if (isNativeContextMenuEvent(e)) {
+        isContextMenuOpen = false;
         return;
     }
 

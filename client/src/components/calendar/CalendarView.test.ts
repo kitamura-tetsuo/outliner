@@ -369,6 +369,68 @@ describe("CalendarView", { timeout: 30000 }, () => {
         destroyCalendarUndoManager(projectDoc);
     });
 
+    it("yields entry Shift+right-clicks to the native menu and dismisses the open entry menu (#5407)", async () => {
+        const projectId = "proj-calendar-entry-shift-right-click";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const first = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        first.text = "First event";
+        first.start = `${todayIso()}T09:00:00.000Z`;
+        first.allDay = false;
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+        });
+        const { container, getByTestId, queryByTestId, unmount } = render(CalendarView, {
+            props: { project, projectId, calendarId },
+        });
+        const firstEntry = await waitFor(() => getByTestId(`calendar-entry-outline_items:${first.key}`));
+
+        // Shift+right-click: no application menu opens and the native action is not cancelled.
+        const cancelled = !firstEntry.dispatchEvent(
+            new MouseEvent("contextmenu", {
+                bubbles: true,
+                cancelable: true,
+                shiftKey: true,
+                button: 2,
+                clientX: 40,
+                clientY: 50,
+            }),
+        );
+        expect(cancelled).toBe(false);
+        expect(queryByTestId("calendar-entry-context-menu")).toBeNull();
+
+        // Ordinary right-click still opens that exact entry's menu.
+        await fireEvent.contextMenu(firstEntry, { clientX: 40, clientY: 50 });
+        expect(getByTestId("calendar-entry-context-menu")).toBeTruthy();
+
+        // Shift+right-click on the open menu's overlay dismisses it without cancelling.
+        const overlay = container.querySelector(".overlay") as HTMLElement;
+        const overlayCancelled = !overlay.dispatchEvent(
+            new MouseEvent("contextmenu", { bubbles: true, cancelable: true, shiftKey: true, button: 2 }),
+        );
+        expect(overlayCancelled).toBe(false);
+        await waitFor(() => expect(queryByTestId("calendar-entry-context-menu")).toBeNull());
+
+        // A Shift+right press that never becomes a `contextmenu` event (Firefox)
+        // still dismisses the reopened menu.
+        await fireEvent.contextMenu(firstEntry, { clientX: 40, clientY: 50 });
+        expect(getByTestId("calendar-entry-context-menu")).toBeTruthy();
+        const panel = getByTestId("calendar-entry-context-menu");
+        const pressCancelled = !panel.dispatchEvent(
+            new MouseEvent("pointerdown", { bubbles: true, cancelable: true, shiftKey: true, button: 2 }),
+        );
+        expect(pressCancelled).toBe(false);
+        await waitFor(() => expect(queryByTestId("calendar-entry-context-menu")).toBeNull());
+
+        unmount();
+        destroyCalendarUndoManager(projectDoc);
+    });
+
     it("groups entries into tag swimlanes in the week view (#4348)", async () => {
         const projectId = "proj-calendar-view-lanes-week";
         const { projectDoc, project, page } = seedProject(projectId);

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { isNativeContextMenuEvent, isShiftSecondaryPointerPress } from "../../lib/nativeContextMenu";
     import {
         GRID_COMPONENT_TYPE,
         CALENDAR_COMPONENT_TYPE,
@@ -50,6 +51,24 @@
         onClose();
     }
 
+    // Shift+right-click yields to the browser's native menu (#5407): dismiss
+    // the application menu without cancelling the native action.
+    function handleOverlayContextMenu(event: MouseEvent) {
+        if (isNativeContextMenuEvent(event)) {
+            handleClose();
+            return;
+        }
+        event.preventDefault();
+        handleClose();
+    }
+
+    // Press-phase dismissal for engines (e.g. Firefox) that show the native
+    // menu for Shift+right-click without dispatching `contextmenu` at all.
+    // Never preventDefault: the browser action from this same gesture must proceed.
+    function handleEscapePointerDown(event: PointerEvent) {
+        if (isShiftSecondaryPointerPress(event)) handleClose();
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             handleClose();
@@ -80,7 +99,7 @@
 
 <svelte:window onkeydown={handleKeyDown} />
 
-<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={(e) => { e.preventDefault(); handleClose(); }}></div>
+<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={handleOverlayContextMenu} onpointerdown={handleEscapePointerDown}></div>
 
 <div
     bind:this={menuRef}
@@ -89,6 +108,7 @@
     role="menu"
     aria-label="Layout Actions"
     data-testid="layout-context-menu"
+    onpointerdown={handleEscapePointerDown}
 >
     <button type="button" role="menuitem" tabindex={activeIndex === 0 ? 0 : -1} onclick={() => { onAction(GRID_COMPONENT_TYPE); handleClose(); }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
