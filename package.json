@@ -15,7 +15,7 @@
         "@dprint/typescript": "0.96.1",
         "dprint": "0.57.4",
         "dprint-plugin-malva": "0.16.0",
-        "dprint-plugin-markup": "0.27.3",
+        "dprint-plugin-markup": "0.27.5",
         "dprint-plugin-yaml": "0.6.0",
         "patch-package": "^8.0.1",
         "playwright": "^1.63.0",
