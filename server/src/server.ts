@@ -21,10 +21,11 @@ import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
 import { OutlinerRelationService } from "./mcp/relation-service.js";
 import { OutlinerScheduleService } from "./mcp/schedule-service.js";
+import { OutlinerTableCreationService } from "./mcp/table-creation.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { getOAuthFirebaseWebConfig } from "./oauth/authorize-page.js";
 import { createOAuthRouter } from "./oauth/oauth-api.js";
-import { createPersistence } from "./persistence.js";
+import { createDocumentStore, createPersistence } from "./persistence.js";
 import { createProjectDirectoryRouter } from "./project-directory-api.js";
 import { listAccessibleProjectDescriptors } from "./project-directory.js";
 import { parseRoom } from "./room-validator.js";
@@ -442,6 +443,13 @@ export async function startServer(
     // project operation reuses the established projectUsers ACL and direct
     // Hocuspocus document lifecycle.
     const mcpRelations = new OutlinerRelationService(hocuspocus, checkContainerAccess);
+    // Standalone Table creation (issue #5411) acknowledges success only once
+    // both the prepared Table room and the registry publication are stored.
+    const tableCreation = new OutlinerTableCreationService(
+        hocuspocus,
+        checkContainerAccess,
+        persistence ? createDocumentStore(persistence) : undefined,
+    );
     app.use(createMcpRouter(
         new OutlinerReadService(
             hocuspocus,
@@ -730,5 +738,5 @@ export async function startServer(
         });
     };
 
-    return { server, hocuspocus, persistence, shutdown };
+    return { server, hocuspocus, persistence, tableCreation, mcpRelations, shutdown };
 }
