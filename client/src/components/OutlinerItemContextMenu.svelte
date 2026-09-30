@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
 
     import { type OutlineNodeKind } from "$shared/services/outlineNodeKind";
+    import { shouldYieldToNativeContextMenu } from "../lib/nativeContextMenu";
 
     interface Props {
         x: number;
@@ -50,6 +51,25 @@
         onClose();
     }
 
+    function handleOverlayContextMenu(event: MouseEvent) {
+        // Shift+right-click yields to the browser's native menu (#5407): close
+        // this menu but leave the event itself uncancelled.
+        if (shouldYieldToNativeContextMenu(event)) {
+            handleClose();
+            return;
+        }
+        event.preventDefault();
+        handleClose();
+    }
+
+    function handleWindowMouseDown(event: MouseEvent) {
+        // Some browsers show the native menu for Shift+right-click without
+        // dispatching a DOM `contextmenu` event at all (#5407). The press that
+        // starts that gesture still fires, so dismiss from it — without
+        // cancelling anything, so the browser action proceeds untouched.
+        if (shouldYieldToNativeContextMenu(event)) handleClose();
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             handleClose();
@@ -78,16 +98,18 @@
     }
 </script>
 
-<svelte:window on:keydown={handleKeyDown} />
+<svelte:window on:keydown={handleKeyDown} onmousedown={handleWindowMouseDown} />
 
-<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={(e) => { e.preventDefault(); handleClose(); }}></div>
+<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={handleOverlayContextMenu}></div>
 
 <div
     bind:this={menuRef}
     class="context-menu"
     style="left: {x}px; top: {y}px;"
     role="menu"
+    tabindex="-1"
     aria-label="Item Actions"
+    oncontextmenu={handleWindowMouseDown}
 >
     <button type="button" role="menuitem" tabindex={activeIndex === 0 ? 0 : -1} onclick={() => { onAction('add-item'); handleClose(); }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>

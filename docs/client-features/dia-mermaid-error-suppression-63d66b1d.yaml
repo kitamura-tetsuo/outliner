@@ -1,0 +1,9 @@
+id: FTR-63d66b1d
+title: Mermaid syntax-error output stays inside the Diagram block
+title-ja: Mermaid 構文エラー出力の Diagram ブロック内への封じ込め
+description: Invalid Mermaid source shows Outliner's own in-block error and never inserts the library's built-in syntax-error diagram into the page. The shared initializer sets suppressErrorRendering with the host-owned secure key boundary so diagram directives cannot re-enable it, and each render runs inside a staging element owned by its Diagram block that is removed once the attempt settles.
+category: editor
+status: implemented
+tests:
+- client/e2e/new/dia-mermaid-error-suppression-63d66b1d.spec.ts
+- client/src/services/diagram/diagramRenderer.test.ts

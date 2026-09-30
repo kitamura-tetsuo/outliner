@@ -369,6 +369,77 @@ describe("CalendarView", { timeout: 30000 }, () => {
         destroyCalendarUndoManager(projectDoc);
     });
 
+    it("yields Shift+right-click to the native menu without opening or cancelling (#5407)", async () => {
+        const projectId = "proj-calendar-entry-native-menu";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const first = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        first.text = "First event";
+        first.start = `${todayIso()}T09:00:00.000Z`;
+        first.allDay = false;
+        const second = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        second.text = "Second event";
+        second.start = `${todayIso()}T10:00:00.000Z`;
+        second.allDay = false;
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+        });
+        const { getByTestId, queryByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${first.key}`)).toBeTruthy());
+
+        const nativeGesture = () =>
+            new MouseEvent("contextmenu", {
+                bubbles: true,
+                cancelable: true,
+                button: 2,
+                shiftKey: true,
+                clientX: 40,
+                clientY: 50,
+            });
+
+        // The native gesture opens no application menu and leaves the event uncancelled.
+        expect(getByTestId(`calendar-entry-outline_items:${first.key}`).dispatchEvent(nativeGesture())).toBe(true);
+        expect(queryByTestId("calendar-entry-context-menu")).toBeNull();
+
+        // A follow-up unmodified right-click still opens that exact entry's menu.
+        await fireEvent.contextMenu(getByTestId(`calendar-entry-outline_items:${first.key}`), {
+            clientX: 40,
+            clientY: 50,
+        });
+        expect(getByTestId("calendar-entry-context-menu")).toBeTruthy();
+
+        // The same gesture dismisses the open menu without cancelling.
+        expect(getByTestId("calendar-entry-context-menu").dispatchEvent(nativeGesture())).toBe(true);
+        await waitFor(() => expect(queryByTestId("calendar-entry-context-menu")).toBeNull());
+
+        // The no-contextmenu browser path dismisses from the press alone.
+        await fireEvent.contextMenu(getByTestId(`calendar-entry-outline_items:${first.key}`), {
+            clientX: 40,
+            clientY: 50,
+        });
+        expect(getByTestId("calendar-entry-context-menu")).toBeTruthy();
+        const press = new MouseEvent("mousedown", {
+            bubbles: true,
+            cancelable: true,
+            button: 2,
+            shiftKey: true,
+        });
+        expect(getByTestId(`calendar-entry-outline_items:${first.key}`).dispatchEvent(press)).toBe(true);
+        await waitFor(() => expect(queryByTestId("calendar-entry-context-menu")).toBeNull());
+
+        // Neither entry was moved, resized, or deleted by the escape gestures.
+        expect([...new Items(projectDoc, project.tree, page.key)].map((item) => item.key)).toEqual(
+            expect.arrayContaining([first.key, second.key]),
+        );
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
     it("groups entries into tag swimlanes in the week view (#4348)", async () => {
         const projectId = "proj-calendar-view-lanes-week";
         const { projectDoc, project, page } = seedProject(projectId);

@@ -97,6 +97,7 @@ import { findBestOffsetBinary, getMeasurementSpan } from '../utils/domUtils';
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import { allocatePageTitle } from "../utils/pageUtils";
 import { isReservedPageSegment } from "../lib/managementPaths";
+import { shouldYieldToNativeContextMenu } from "../lib/nativeContextMenu";
 import CommentThread from "./CommentThread.svelte";
 import { goto } from "$app/navigation";
 import { resolvePath } from "../utils/pathUtils";
@@ -200,6 +201,15 @@ let contextMenuX = $state(0);
 let contextMenuY = $state(0);
 
 function handleContextMenu(e: MouseEvent) {
+    // Shift+right-click always yields to the browser's native context menu
+    // (#5407): neither cancel the event nor open the item menu. Dismissing a
+    // menu this row already opened is the only side effect allowed here; the
+    // browser owns the menu from this gesture.
+    if (shouldYieldToNativeContextMenu(e)) {
+        isContextMenuOpen = false;
+        return;
+    }
+
     // Mobile browsers fire `contextmenu` for a touch-and-hold, which is the gesture the
     // touch path uses to select a word. Swallow it for the duration of a tracked touch
     // gesture so the menu never opens over the selection just made; a mouse right-click

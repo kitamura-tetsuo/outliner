@@ -46,6 +46,7 @@ import { createMermaidDiagramUnderParent } from "../../services/diagram/diagramP
 import { getProjectCapabilities } from "../../services/project/projectCapabilities";
 import { Project } from "$shared/app-schema";
 import { diagramChooserStore } from "../../stores/DiagramChooserStore.svelte";
+import { shouldYieldToNativeContextMenu } from "../../lib/nativeContextMenu";
 
 /** `DataTransfer` type an OutlinerItem drag carries (OutlinerItem.handleDragStart). */
 const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
@@ -360,6 +361,14 @@ function handleMoveOut(child: Item) {
 }
 
 function handleContextMenu(event: MouseEvent) {
+    // Shift+right-click always yields to the browser's native context menu
+    // (#5407): neither cancel the event nor open the insertion menu. An
+    // already-open insertion menu is dismissed; the browser owns this gesture.
+    if (shouldYieldToNativeContextMenu(event)) {
+        isContextMenuOpen = false;
+        return;
+    }
+
     // Do not steal native/component context-menu behavior from interactive descendants
     if (event.target !== event.currentTarget && (event.target as HTMLElement).closest('[data-testid="layout-cell"]')) {
         return;
