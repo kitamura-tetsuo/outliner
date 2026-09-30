@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="en" dir="ltr"><head>
+        <meta charset="utf-8">
+        <link rel="icon" href="/favicon.png">
+        <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+        <link href="/_app/immutable/entry/start.DN6nUZ_z.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/DVrZXK1a.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CgDEQc4E.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/Dd_uD5pT.js" rel="modulepreload">
+		<link href="/_app/immutable/entry/app.B2nU6V5L.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/uBIymjUX.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/qDSPflmZ.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/W1kb7pqa.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
+		<link href="/_app/immutable/nodes/0.CU5iT8nf.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/C6WiJYXQ.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/jGDC2qX3.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CWTKTwwu.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/Bn6Q5bsg.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/DDdyfk2q.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/C71vDjLG.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/DAvB7zHy.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/DQXLviRo.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/Dj4NeGsR.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/QDcRsUhc.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/GjEdq4Hv.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/ByJlj8bP.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CF3k66W2.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CrKbcwZ9.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CfYOXJcC.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/DfZGi0sj.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/Byw2V_-0.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/ELiP1wiW.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/qIOR6Eki.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/fZNCloys.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/Bs2f_5Hr.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CTzFVMSt.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/D2K7n1yz.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/awY_o5io.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/B9OK1n1r.js" rel="modulepreload">
+
+		<link href="/_app/immutable/assets/AliasPicker.HsMe352-.css" rel="stylesheet">
+		<link href="/_app/immutable/assets/NetworkErrorAlert.DOorfMZe.css" rel="stylesheet">
+		<link href="/_app/immutable/assets/0.BZhc9mT-.css" rel="stylesheet">
+    </head>
+    <body data-sveltekit-preload-data="hover">
+        <!-- Prepare a minimal placeholder so that E2E can detect it immediately even when SSR is disabled -->
+        <div data-testid="main-toolbar" aria-hidden="true" style="
+                position: fixed; top: 0; left: 0; right: 0;
+                height: 0; /* Zero height so as not to interfere with the actual UI */
+                overflow: hidden; z-index: 0; opacity: 0; pointer-events: none;
+            ">
+            <div role="search">
+                <input type="text" aria-label="Search pages" tabindex="-1" disabled="" style="">
+            </div>
+        </div>
+        <div style="display: contents" data-testid="sveltekit-shell">
+			<script>
+				{
+					__sveltekit_17dl3p5 = {
+						base: ""
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/_app/immutable/entry/start.DN6nUZ_z.js"),
+						import("/_app/immutable/entry/app.B2nU6V5L.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
+        <script>
+            // Environment variable fallback: if import.meta.env variables were replaced with undefined during build,
+            // try to get them from localStorage where TestHelpers sets them
+            (function() {
+                if (typeof window === "undefined") {
+                    return;
+                }
+
+                // Ensure import.meta.env structure exists
+                if (!window.import) window.import = {};
+                if (!window.import.meta) window.import.meta = {};
+                if (!window.import.meta.env) window.import.meta.env = {};
+
+                // Fallback for VITE_IS_TEST if it's undefined in the built code
+                if (typeof window.import.meta.env.VITE_IS_TEST === 'undefined') {
+                    const localStorageValue = window.localStorage.getItem('VITE_IS_TEST');
+                    if (localStorageValue !== null) {
+                        window.import.meta.env.VITE_IS_TEST = localStorageValue;
+                        // Also set it directly on the window for backward compatibility
+                        window.VITE_IS_TEST = localStorageValue;
+                    } else {
+                        // If not in localStorage either, try to set it to a default value
+                        // This is for cases where the app might be running outside of tests
+                        window.import.meta.env.VITE_IS_TEST = 'false';
+                    }
+                }
+
+                // Make sure window.VITE_IS_TEST is also set if it doesn't exist
+                if (typeof window.VITE_IS_TEST === 'undefined') {
+                    window.VITE_IS_TEST = window.import.meta.env.VITE_IS_TEST;
+                }
+            })();
+        </script>
+        <script>
+            // Security: Remove VITE_IS_TEST from window and environment to prevent it from leaking to client
+            (function() {
+                if (typeof window !== "undefined") {
+                    // Remove VITE_IS_TEST from window object
+                    delete window.VITE_IS_TEST;
+
+                    // Remove VITE_IS_TEST from import.meta.env if it exists
+                    if (window.import && window.import.meta && window.import.meta.env) {
+                        delete window.import.meta.env.VITE_IS_TEST;
+                    }
+                }
+            })();
+        </script>
+        <script type="module">
+            (() => {
+                if (typeof window === "undefined") {
+                    return;
+                }
+                const w = window;
+                const g = globalThis;
+                if (typeof w.__FIRESTORE_STORE__ !== "undefined") {
+                    return;
+                }
+
+                const isDev = typeof (w).__sveltekit_dev !== "undefined";
+                if (!isDev) {
+                    return;
+                }
+
+                let realStore = null;
+                let loadPromise = null;
+
+                const ensureStore = () => {
+                    if (realStore) {
+                        return Promise.resolve(realStore);
+                    }
+                    if (!loadPromise) {
+                        loadPromise = import("/src/stores/firestoreStore.svelte.ts").then(mod => {
+                            realStore = mod.firestoreStore;
+                            if (realStore) {
+                                realStore.__isRealFirestoreStore = true;
+                                w.__FIRESTORE_STORE__ = realStore;
+                                g.__FIRESTORE_STORE__ = realStore;
+                            }
+                            return realStore;
+                        }).catch(error => {
+                            console.debug("[bootstrap] Failed to load firestoreStore", error);
+                            loadPromise = null;
+                            throw error;
+                        });
+                    }
+                    return loadPromise;
+                };
+
+                const placeholder = {
+                    __isRealFirestoreStore: false,
+                    setUserProject: (...args) => ensureStore().then(store => store && store.setUserProject?.(...args)),
+                    reset: (...args) => ensureStore().then(store => store && store.reset?.(...args)),
+                    saveContainerId: (...args) => ensureStore().then(store => store && store.saveContainerId?.(...args)),
+                    saveContainerIdToServer: (...args) => ensureStore().then(store => store && store.saveContainerIdToServer?.(...args)),
+                    getDefaultContainerId: (...args) => ensureStore().then(store => store && store.getDefaultContainerId?.(...args)),
+                };
+
+                Object.defineProperty(placeholder, "userProject", {
+                    get() {
+                        return realStore ? realStore.userProject : null;
+                    },
+                    set(value) {
+                        ensureStore().then(store => {
+                            if (store) {
+                                store.userProject = value;
+                            }
+                        });
+                    },
+                    configurable: true,
+                    enumerable: true,
+                });
+
+                Object.defineProperty(placeholder, "ucVersion", {
+                    get() {
+                        return realStore ? realStore.ucVersion : 0;
+                    },
+                    configurable: true,
+                    enumerable: true,
+                });
+
+                w.__FIRESTORE_STORE__ = placeholder;
+                g.__FIRESTORE_STORE__ = placeholder;
+                ensureStore().catch((err) => {
+                    console.debug("[bootstrap] ensureStore failed", err);
+                    // errors already logged in ensureStore
+                });
+            })();
+        </script>
+        <script>
+            // Remove the placeholder once the real Toolbar is generated after Hydration
+            (function cleanupPlaceholder(){
+              var removed=false;
+              function tryRemove(){
+                if(removed) return;
+                var real=document.querySelector('.main-toolbar[data-testid="main-toolbar"]');
+                var ph=document.querySelector('div[data-testid="main-toolbar"][aria-hidden="true"]');
+                if(real && ph){ ph.remove(); removed=true; }
+              }
+              document.addEventListener('DOMContentLoaded', tryRemove);
+              window.addEventListener('load', tryRemove);
+              setTimeout(tryRemove, 1000);
+            })();
+        </script>
+
+
+</body></html>
