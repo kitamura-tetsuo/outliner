@@ -30,7 +30,9 @@ export class JobExecutor {
         const ready = this.teardown.then(() => this.spawn());
         this.workerReady = ready;
         ready.catch((err) => {
-            logger.error({ err }, "Failed to start JobExecutor worker");
+            logger.error({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+            }, "Failed to start JobExecutor worker");
             if (this.workerReady === ready) this.workerReady = null;
         });
     }
@@ -54,7 +56,9 @@ export class JobExecutor {
             }
         });
         worker.on("error", (err) => {
-            logger.error({ err }, "JobExecutor worker error");
+            logger.error({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+            }, "JobExecutor worker error");
             // The worker is dead, but if it is still the current one, clean up
             // and restart once its termination has fully settled.
             if (this.worker !== worker) return;
@@ -63,7 +67,15 @@ export class JobExecutor {
             this.rejectPending(new Error("Worker error"));
             this.teardown = this.teardown
                 .then(() => worker.terminate())
-                .then(() => {}, (err) => logger.warn({ err }, "Failed to terminate worker"));
+                .then(
+                    () => {},
+                    (err) =>
+                        logger.warn({
+                            err: err instanceof Error
+                                ? { message: err.message, name: err.name, stack: err.stack }
+                                : err,
+                        }, "Failed to terminate worker"),
+                );
             this.startWorker();
         });
         worker.on("exit", (code) => {
@@ -105,7 +117,11 @@ export class JobExecutor {
                     const r = this.resolvers.get(id)!;
                     this.resolvers.delete(id);
                     this.stopWorker().catch((err) => {
-                        logger.error({ err }, "Error stopping worker on timeout");
+                        logger.error({
+                            err: err instanceof Error
+                                ? { message: err.message, name: err.name, stack: err.stack }
+                                : err,
+                        }, "Error stopping worker on timeout");
                     });
                     this.startWorker();
                     r.reject(new Error("Job timeout"));

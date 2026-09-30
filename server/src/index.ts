@@ -32,13 +32,18 @@ if (config.SENTRY_DSN) {
         const { shutdown } = await startServer(config);
 
         initializeFirebase().catch(err => {
-            logger.error({ err }, "Firebase init failed");
+            logger.error({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+            }, "Firebase init failed");
         });
 
         process.on("SIGINT", () => shutdown().then(() => process.exit(0)));
         process.on("SIGTERM", () => shutdown().then(() => process.exit(0)));
     } catch (err) {
-        logger.error({ err }, "Failed to start server");
+        logger.error(
+            { err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err },
+            "Failed to start server",
+        );
         process.exit(1);
     }
 })();

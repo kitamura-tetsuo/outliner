@@ -146,7 +146,9 @@ export class JobScheduler {
         this.executor.startWorker();
         const runTick = () => {
             this.tick().catch(err => {
-                logger.error({ err }, "JobScheduler tick error");
+                logger.error({
+                    err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                }, "JobScheduler tick error");
             });
         };
         if (runImmediately) runTick();
@@ -306,11 +308,17 @@ export class JobScheduler {
                 try {
                     await this.processRule(rule, now);
                 } catch (err: unknown) {
-                    logger.error({ err, ruleId: rule.rule_id, room: rule.room }, "JobScheduler rule failed");
+                    logger.error({
+                        err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                        ruleId: rule.rule_id,
+                        room: rule.room,
+                    }, "JobScheduler rule failed");
                 }
             }
         } catch (err) {
-            logger.error({ err }, "JobScheduler tick error");
+            logger.error({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+            }, "JobScheduler tick error");
         }
     }
 
@@ -360,7 +368,9 @@ export class JobScheduler {
                 `).all() as { room: string; }[];
                 this.roomsAwaitingRunReconciliation = rows.map(row => row.room);
             } catch (err) {
-                logger.error({ err }, "JobScheduler could not list rooms to reconcile interrupted runs");
+                logger.error({
+                    err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                }, "JobScheduler could not list rooms to reconcile interrupted runs");
                 return;
             }
         }
@@ -370,7 +380,10 @@ export class JobScheduler {
             try {
                 await this.reconcileInterruptedRunsInRoom(room);
             } catch (err) {
-                logger.error({ err, room }, "JobScheduler failed to reconcile interrupted runs for a room; retrying");
+                logger.error({
+                    err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                    room,
+                }, "JobScheduler failed to reconcile interrupted runs for a room; retrying");
                 stillPending.push(room);
             }
         }
@@ -773,7 +786,11 @@ export class JobScheduler {
             // Publishing is telemetry: the index remains authoritative and the
             // manager falls back to an explicit "unavailable" state, so a
             // failure here must never abort the tick.
-            logger.warn({ err, room, ruleId }, "Failed to publish scheduler cursor");
+            logger.warn({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                room,
+                ruleId,
+            }, "Failed to publish scheduler cursor");
         }
     }
 
@@ -1055,7 +1072,12 @@ export class JobScheduler {
                 this.requeueRoomForReconciliation(room);
             }
         } catch (err) {
-            logger.warn({ err, room, ruleId, runSeq }, "Could not settle an abandoned schedule execution claim");
+            logger.warn({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                room,
+                ruleId,
+                runSeq,
+            }, "Could not settle an abandoned schedule execution claim");
             this.requeueRoomForReconciliation(room);
         }
     }
@@ -1121,7 +1143,11 @@ export class JobScheduler {
             // The result is safe in the ledger; queue the room so a later tick
             // publishes it rather than leaving the Schedule presented as
             // running until something else happens to reset the process.
-            logger.warn({ err, room, ruleId }, "Failed to record schedule execution result; will retry");
+            logger.warn({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                room,
+                ruleId,
+            }, "Failed to record schedule execution result; will retry");
             this.requeueRoomForReconciliation(room);
         }
     }
@@ -1182,7 +1208,11 @@ export class JobScheduler {
                 status: ruleItem.get("lastRunStatus") as string | undefined,
             };
         } catch (err) {
-            logger.warn({ err, room, ruleId }, "Could not read the stored Schedule document");
+            logger.warn({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                room,
+                ruleId,
+            }, "Could not read the stored Schedule document");
             return undefined;
         }
     }
@@ -1359,10 +1389,14 @@ export class JobScheduler {
                                 try {
                                     validRow[col.name] = castValueForColumn(validRow[col.name], col.type);
                                 } catch (err) {
-                                    logger.warn(
-                                        { err, ruleId: rule.rule_id, id, col: col.name },
-                                        "Cast failed for returning row",
-                                    );
+                                    logger.warn({
+                                        err: err instanceof Error
+                                            ? { message: err.message, name: err.name, stack: err.stack }
+                                            : err,
+                                        ruleId: rule.rule_id,
+                                        id,
+                                        col: col.name,
+                                    }, "Cast failed for returning row");
                                 }
                             }
                         }

@@ -112,7 +112,10 @@ export function createScheduleRunRouter(
             logger.info({ event: "schedule_run_now", projectId, ruleId, success: result.success });
             res.status(200).json({ ok: result.success, error: result.error });
         } catch (err) {
-            logger.error({ err, event: "schedule_run_now_error" }, "Error running rule manually");
+            logger.error({
+                err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+                event: "schedule_run_now_error",
+            }, "Error running rule manually");
             res.status(500).json({ error: "Internal Server Error" });
         }
     });

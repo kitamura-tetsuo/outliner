@@ -68,7 +68,10 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch((err) => {
-        logger.error({ err }, "Backup failed");
+        logger.error(
+            { err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err },
+            "Backup failed",
+        );
         process.exit(1);
     });
 }

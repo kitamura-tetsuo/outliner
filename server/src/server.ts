@@ -380,7 +380,11 @@ export async function startServer(
                             meta.set("isResetting", false);
                         }
                     } catch (err) {
-                        logger.error({ err }, "[Hocuspocus] Failed to clear isResetting in demo document");
+                        logger.error({
+                            err: err instanceof Error
+                                ? { message: err.message, name: err.name, stack: err.stack }
+                                : err,
+                        }, "[Hocuspocus] Failed to clear isResetting in demo document");
                     }
                 }
             },
@@ -690,7 +694,11 @@ export async function startServer(
                                 clientConnection.sendStateless(errorMsg);
                             }
                         } catch (err) {
-                            logger.error({ error: err }, "Failed to send stateless message for 4005");
+                            logger.error({
+                                error: err instanceof Error
+                                    ? { message: err.message, name: err.name, stack: err.stack }
+                                    : err,
+                            }, "Failed to send stateless message for 4005");
                         }
                         ws.close(4005, "MESSAGE_TOO_LARGE");
                         return;
@@ -700,7 +708,10 @@ export async function startServer(
                     }
                 });
             } catch (e) {
-                logger.error({ error: e }, "Error handling Hocuspocus connection");
+                logger.error(
+                    { error: e instanceof Error ? { message: e.message, name: e.name, stack: e.stack } : e },
+                    "Error handling Hocuspocus connection",
+                );
                 ws.close(1011);
             }
         });
