@@ -57,9 +57,9 @@
 
     $effect(() => {
         if (showA11yHelp && a11yDialog && !a11yDialog.open) {
-            a11yDialog.showModal();
+            if (typeof a11yDialog.showModal === 'function') a11yDialog.showModal();
         } else if (!showA11yHelp && a11yDialog && a11yDialog.open) {
-            a11yDialog.close();
+            if (typeof a11yDialog.close === 'function') a11yDialog.close();
             if (triggerElement) {
                 triggerElement.focus();
                 triggerElement = null;
