@@ -1,0 +1,12 @@
+id: FTR-5411c0de
+title: Authoritative server-side standalone Table creation
+title-ja: サーバー側での単独テーブルの権威的作成
+status: implemented
+description: The server can create one standalone, empty, project-owned Table from a supplied display name and a single ordinary CREATE TABLE declaration, without creating a Grid, Page, placement, schedule, or records. The declaration is validated by executing it in an otherwise empty isolated PGlite database, whose catalog name becomes the SQL name. Creation prepares the Table room (projects/<projectId>/tables/<tableId>) with the exact schema and durably stores it, re-authorizes against the resource-side projectUsers/containerUsers ACL, re-reads the project's live SQL-name claims, and then publishes one complete yjsTables registry entry. Success is reported only after that publication is also durably stored; a storage failure after publication is reported as an unknown outcome with the candidate Table ID, and every refusal before publication is a confirmed non-publication. A dry run makes the same decisions without writing or reserving anything. The MCP adapter is a separate follow-up.
+tests:
+- server/tests/server-create-table-standalone.test.ts
+- server/tests/server-create-table-validation.test.ts
+- server/tests/server-create-table-concurrency.test.ts
+- server/tests/server-create-table-dry-run.test.ts
+- server/tests/server-create-table-failures.test.ts
+- server/tests/server-create-table-authorization.test.ts

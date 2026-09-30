@@ -47,7 +47,12 @@ const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const mcpDb = new PGlite();
 let dbTail = Promise.resolve();
 
-async function acquireDb(): Promise<{ db: PGlite; release: () => void; }> {
+/**
+ * Exclusively lease the shared scratch PGlite database with every public
+ * table dropped. Shared with standalone Table creation (table-creation.ts),
+ * which validates a candidate declaration in this same isolated database.
+ */
+export async function acquireDb(): Promise<{ db: PGlite; release: () => void; }> {
     const previous = dbTail;
     let release = () => {};
     dbTail = new Promise<void>(resolve => release = resolve);
@@ -74,6 +79,21 @@ interface TableDoc {
     schema: string;
     data: Y.Map<Y.Map<RelationValue>>;
     disconnect(): Promise<void> | void;
+}
+
+/**
+ * The whole-Table revision formula (see OutlinerRelationService.tableRevision),
+ * exported so standalone Table creation reports the same token get_table
+ * later computes for the unchanged Table.
+ */
+export function tableContentRevision(tableId: string, displayName: string, sqlName: string, doc: Y.Doc): string {
+    return revisionOf({
+        tableId,
+        displayName,
+        sqlName,
+        rawSchemaSql: doc.getText("schema").toString(),
+        tableStateVector: Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
+    });
 }
 
 export class OutlinerRelationService {
@@ -1779,13 +1799,7 @@ export class OutlinerRelationService {
      * already applied earlier in the same call.
      */
     private tableRevision(tableId: string, displayName: string, sqlName: string, source: TableDoc): string {
-        return revisionOf({
-            tableId,
-            displayName,
-            sqlName,
-            rawSchemaSql: source.doc.getText("schema").toString(),
-            tableStateVector: Buffer.from(Y.encodeStateVector(source.doc)).toString("base64url"),
-        });
+        return tableContentRevision(tableId, displayName, sqlName, source.doc);
     }
 
     writeRelation(
