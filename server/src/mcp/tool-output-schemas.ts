@@ -137,6 +137,21 @@ export const toolOutputSchemas = {
             ? !!result.gridId && !!result.placementId
             : result.gridId === undefined && result.placementId === undefined && !result.replayed
     ),
+    // A dry run has no Table yet: no ID and no persisted revision. A confirmed
+    // apply (or its replay) always has both, describing the original creation.
+    create_table: z.strictObject({
+        applied: z.boolean(),
+        replayed: z.boolean(),
+        tableId: z.string().min(1).optional(),
+        displayName: z.string(),
+        sqlName: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+        schemaSql: z.string().min(1),
+        revision: revision.optional(),
+    }).refine(result =>
+        result.applied
+            ? result.tableId !== undefined && result.revision !== undefined
+            : result.tableId === undefined && result.revision === undefined && !result.replayed
+    ),
     update_grid_query: mutation,
     set_view_query: mutation,
     update_table_schema: mutation,

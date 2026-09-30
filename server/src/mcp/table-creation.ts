@@ -30,8 +30,11 @@ import { acquireDb, tableContentRevision } from "./relation-service.js";
  * could not be established). Every thrown McpReadError is a confirmed
  * non-publication (no registry entry was added by this attempt), except a
  * `forbidden` whose debug outcome is `published_undisclosed`: access was
- * revoked after an authorized publication, so its result is withheld. A prepared
- * but unpublished Table room may physically remain; it is not a Table.
+ * revoked after an authorized publication, so its result is withheld (the
+ * thrown TableCreationUndisclosedError still carries the established outcome
+ * for internal use). Every other thrown error is also converted to such a
+ * confirmed non-publication. A prepared but unpublished Table room may
+ * physically remain; it is not a Table.
  */
 
 const PROJECT_ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -68,6 +71,9 @@ export type CreateTableOutcome =
      */
     | CandidateMetadata & { status: "unknown"; applied: false; tableId: string; reason: string; };
 
+/** An apply's outcome once its registry publication was attempted. */
+export type PublishedOutcome = Extract<CreateTableOutcome, { status: "created" | "unknown"; }>;
+
 export interface CreateTableOptions {
     /**
      * Awaited after the Table room is prepared (and stored) and before the
@@ -75,6 +81,19 @@ export interface CreateTableOptions {
      * regression tests observe the contested pre-publication boundary.
      */
     beforePublication?: () => Promise<void>;
+}
+
+/**
+ * Access was revoked after an authorized publication: the result is withheld
+ * from the caller (`forbidden`, debug `published_undisclosed`), but the
+ * publication's established outcome (created or unknown) is kept on the error
+ * for internal bookkeeping such as replay retention and auditing. Never
+ * serialize `outcome` into a response.
+ */
+export class TableCreationUndisclosedError extends McpReadError {
+    constructor(public readonly outcome: PublishedOutcome) {
+        super("forbidden", "Project is inaccessible", { outcome: "published_undisclosed" });
+    }
 }
 
 type DirectConnection = Awaited<ReturnType<Hocuspocus["openDirectConnection"]>>;
@@ -200,7 +219,7 @@ export class OutlinerTableCreationService {
                     ...(publicationError !== undefined ? { cause: String(publicationError) } : {}),
                 });
             }
-            let outcome: CreateTableOutcome;
+            let outcome: PublishedOutcome;
             try {
                 if (publicationError !== undefined) throw publicationError;
                 await this.storeDocument?.(projectRoom, project);
@@ -222,12 +241,28 @@ export class OutlinerTableCreationService {
             }
             // A grant revoked while publication was being stored does not
             // authorize disclosing its result. The publication itself stays:
-            // it was authorized, and is never rolled back destructively.
-            await this.authorize(uid, projectId, "published_undisclosed");
+            // it was authorized, and is never rolled back destructively. The
+            // established outcome travels only on the error object, so an
+            // outer layer can remember it without showing it to this caller.
+            try {
+                await this.authorize(uid, projectId, "published_undisclosed");
+            } catch {
+                throw new TableCreationUndisclosedError(outcome);
+            }
             return outcome;
+        } catch (error) {
+            // Only the steps before publication can reach here (everything
+            // after it is caught above and becomes an outcome), so an
+            // unexpected failure is a confirmed non-publication.
+            if (error instanceof McpReadError) throw error;
+            throw new McpReadError("internal_failure", "Table creation failed; no Table was published", {
+                outcome: "not_published",
+                cause: error instanceof Error ? error.message : String(error),
+            });
         } finally {
-            if (tableConnection) await this.close(tableConnection);
-            await this.close(projectConnection);
+            // Releasing a connection never changes the established outcome.
+            if (tableConnection) await this.close(tableConnection).catch(() => {});
+            await this.close(projectConnection).catch(() => {});
         }
     }
 

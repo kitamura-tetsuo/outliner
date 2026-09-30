@@ -99,7 +99,7 @@ export function outlineItemRevision(item: Item): string {
     });
 }
 
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+export const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Per-service replay cache keyed by operationId. A mutation tool checks
@@ -112,13 +112,16 @@ const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 export class IdempotencyCache {
     private readonly entries = new Map<string, { expiresAt?: number; result: Promise<unknown>; }>();
 
+    /** `now` is the retention clock; injectable so retention can be observed deterministically. */
+    constructor(private readonly now: () => number = Date.now) {}
+
     key(...parts: (string | undefined)[]): string | undefined {
         return parts.every(part => part !== undefined) ? parts.join(" ") : undefined;
     }
 
     async run<T>(key: string | undefined, run: () => Promise<T> | T): Promise<{ result: T; replayed: boolean; }> {
         if (!key) return { result: await run(), replayed: false };
-        const now = Date.now();
+        const now = this.now();
         for (const [existingKey, entry] of this.entries) {
             // Pending operations have no expiry. Removing one would only
             // forget the promise; it would not cancel the underlying write,
@@ -139,7 +142,7 @@ export class IdempotencyCache {
                 // Retention starts only once the result exists. Long-running
                 // validation and queue waits therefore remain joinable for
                 // their entire lifetime and still receive the full replay TTL.
-                entry.expiresAt = Date.now() + IDEMPOTENCY_TTL_MS;
+                entry.expiresAt = this.now() + IDEMPOTENCY_TTL_MS;
             },
             () => {
                 // Delete only this attempt in case cache lifecycle behavior is

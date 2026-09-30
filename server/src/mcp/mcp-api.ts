@@ -7,6 +7,8 @@ import { getOAuthIssuer } from "../oauth/config.js";
 import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
+import type { CreateTableTool } from "./create-table-tool.js";
+import { McpEffectError } from "./mcp-error.js";
 import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 import { OutlinerRelationService } from "./relation-service.js";
 import { OutlinerScheduleService } from "./schedule-service.js";
@@ -79,12 +81,19 @@ const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
         }
         : {};
 
+/** The argument fields a zod input issue refers to (unrecognized keys included). */
+const issueFields = (issue: z.core.$ZodIssue): string[] =>
+    issue.code === "unrecognized_keys"
+        ? issue.keys
+        : [issue.path.length > 0 ? issue.path.map(String).join(".") : "(arguments)"];
+
 export function createMcpRouter(
     service: OutlinerReadService,
     verifyToken: (token: string) => { uid: string; scope: string; } = verifyAccessToken,
     configuredIssuer?: string,
     relationService?: OutlinerRelationService,
     scheduleService?: OutlinerScheduleService,
+    tableCreation?: CreateTableTool,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -173,7 +182,7 @@ export function createMcpRouter(
          */
         const toolRegistry = new Map<string, {
             requiresWrite: boolean;
-            shape: z.ZodRawShape;
+            inputSchema: z.ZodObject;
             outputSchema: z.ZodType;
             callback: (args: unknown) => Promise<unknown>;
         }>();
@@ -182,7 +191,11 @@ export function createMcpRouter(
             uidFingerprint,
             tool: name,
             projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
-            entity: typeof typedArgs.relation === "string"
+            // create_table's entity is the Table it created, known only from
+            // its result; an unsupported input field must never name one.
+            entity: name === "create_table"
+                ? undefined
+                : typeof typedArgs.relation === "string"
                 ? typedArgs.relation
                 : typeof typedArgs.ruleId === "string"
                 ? `schedule:${typedArgs.ruleId}`
@@ -205,6 +218,8 @@ export function createMcpRouter(
                 annotations?: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; };
                 /** Mutation tools get every attempt recorded to the audit log. */
                 mutating?: boolean;
+                /** Reject unlisted argument fields instead of silently dropping them. */
+                strict?: boolean;
             } = {},
         ) => {
             const callback = (async (args: unknown) => {
@@ -221,7 +236,12 @@ export function createMcpRouter(
                             ...auditBase,
                             entity: name === "create_grid" && typeof fields.gridId === "string"
                                 ? `grid:${fields.gridId}`
+                                : name === "create_table" && typeof fields.tableId === "string"
+                                ? `table:${fields.tableId}`
                                 : auditBase.entity,
+                            ...(name === "create_table" && fields.applied === true
+                                ? { creationOutcome: "created" as const }
+                                : {}),
                             outcome: "success",
                             priorRevision: typeof fields.priorRevision === "string"
                                 ? fields.priorRevision
@@ -243,7 +263,15 @@ export function createMcpRouter(
                             ...safeLogDiagnostics(error.debug),
                         }, error.message);
                         if (options.mutating) {
-                            recordMcpAudit({ ...auditBase, outcome: error.code, applied: false, replayed: false });
+                            // An error can still follow a known (or explicitly
+                            // unknown) effect; the audit keeps that effect.
+                            recordMcpAudit({
+                                ...auditBase,
+                                outcome: error.code,
+                                applied: false,
+                                replayed: false,
+                                ...(error instanceof McpEffectError ? error.effect : {}),
+                            });
                         }
                         const meta = error.requiredScope
                             ? insufficientScopeMeta(error.message, error.requiredScope)
@@ -271,12 +299,13 @@ export function createMcpRouter(
                 }
             }) as (args: unknown) => Promise<unknown>;
             const outputSchema = toolOutputSchemas[name];
-            toolRegistry.set(name, { requiresWrite: !!options.mutating, shape, outputSchema, callback });
+            const inputSchema = options.strict ? z.strictObject(shape) : z.object(shape);
+            toolRegistry.set(name, { requiresWrite: !!options.mutating, inputSchema, outputSchema, callback });
             return mcp.registerTool(
                 name,
                 {
                     description,
-                    inputSchema: z.object(shape),
+                    inputSchema,
                     outputSchema,
                     annotations: options.annotations ?? readOnly,
                     _meta: securitySchemesMeta(!!options.mutating),
@@ -564,6 +593,41 @@ export function createMcpRouter(
                     mutating: true,
                 },
             );
+            if (tableCreation) {
+                tool(
+                    "create_table",
+                    "Create one standalone, empty Table from a display name and a single CREATE TABLE "
+                        + "declaration (at most 16384 UTF-8 bytes). It creates no records, Grid, or placement: use "
+                        + "write_relation and create_grid with the returned sqlName/tableId for those. The SQL name "
+                        + "is resolved from the declaration and must not be used by another Table in the project. "
+                        + "Retry a lost or failed response with the same operationId; use a new operationId for "
+                        + "different creation input. Results are retained for replay for five minutes after the "
+                        + "creation settles, in this server process only: there is no guarantee across a restart "
+                        + "or after expiry, so this is not unlimited exactly-once execution. A replay returns the "
+                        + "original creation, not current Table state. dryRun: true validates without creating, "
+                        + "reserving, or consuming the operationId. An internal_failure with creationOutcome "
+                        + '"unknown" means the Table may exist: inspect tableId with get_table instead of '
+                        + "creating again.",
+                    {
+                        projectId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+                        name: z.string(),
+                        schemaSql: z.string().refine(value => value.trim().length > 0).describe(
+                            "One CREATE TABLE declaration, at most 16384 UTF-8 bytes",
+                        ),
+                        operationId: z.string().min(1).max(200).refine(value => value.trim().length > 0),
+                        dryRun: z.boolean().optional(),
+                    },
+                    args => {
+                        requireWrite();
+                        return tableCreation.create(uid, args);
+                    },
+                    {
+                        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                        mutating: true,
+                        strict: true,
+                    },
+                );
+            }
             tool(
                 "update_grid_query",
                 "Validate and safely update a Grid's saved read-only SELECT query.",
@@ -721,16 +785,22 @@ export function createMcpRouter(
                         insufficientScopeMeta(message, "outliner.write"),
                     );
                 }
-                const parsed = z.object(entry.shape).safeParse(typedArgs);
+                const parsed = entry.inputSchema.safeParse(typedArgs);
                 if (!parsed.success) {
-                    if (name === "create_grid") {
+                    if (name === "create_grid" || name === "create_table") {
                         recordMcpAudit({
                             ...buildAuditBase(name, typedArgs),
                             outcome: "invalid_argument",
                             applied: false,
                             replayed: false,
                         });
-                        return errorResponse("Invalid create_grid arguments", "invalid_argument", { requestId });
+                        return errorResponse(`Invalid ${name} arguments`, "invalid_argument", {
+                            requestId,
+                            // Field paths only; never the rejected values.
+                            ...(name === "create_table"
+                                ? { fields: [...new Set(parsed.error.issues.flatMap(issueFields))] }
+                                : {}),
+                        });
                     }
                     return {
                         content: [{

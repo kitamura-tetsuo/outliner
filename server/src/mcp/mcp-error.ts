@@ -51,3 +51,34 @@ export class McpReadError extends Error {
         super(message);
     }
 }
+
+/**
+ * What an MCP mutation attempt is known to have done, for the audit record of
+ * a request that nevertheless ends in an error. `applied: null` means the
+ * effect is unknown (publication was attempted but its durable result could
+ * not be established); it is neither success nor a claim that nothing changed.
+ */
+export interface McpEffect {
+    applied: boolean | null;
+    replayed: boolean;
+    creationOutcome?: "created" | "unknown" | "not_created";
+    entity?: string;
+    newRevision?: string;
+}
+
+/**
+ * An error response whose request still has a known (or explicitly unknown)
+ * effect, e.g. a Table was created but its result is withheld from a caller
+ * whose access was revoked. `debug` is the complete, already-sanitized client
+ * payload; `effect` goes only to the internal audit record.
+ */
+export class McpEffectError extends McpReadError {
+    constructor(
+        code: McpErrorCode,
+        message: string,
+        debug: Record<string, unknown>,
+        public readonly effect: McpEffect,
+    ) {
+        super(code, message, debug);
+    }
+}
