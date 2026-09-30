@@ -4,20 +4,20 @@ description: 'After scripts/publish-playwright-sync.mjs confirms that the Docker
 category: environment
 status: implemented
 components:
-- .github/workflows/ci.yml
-- .github/workflows/ci-pr-guards.yml
-- .github/workflows/ci-playwright-version.yml
-- .github/workflows/ci-lint-diff-lines.yml
 - .github/workflows/ci-corrected-head-handoff.yml
+- .github/workflows/ci-lint-diff-lines.yml
+- .github/workflows/ci-playwright-version.yml
+- .github/workflows/ci-pr-guards.yml
+- .github/workflows/ci.yml
 - scripts/ci/github-rest.mjs
-- scripts/ci/resolve-pr-context.mjs
 - scripts/ci/request-corrected-head-ci.mjs
+- scripts/ci/resolve-pr-context.mjs
 tests:
-- scripts/tests/env-ci-corrected-head-full-ci-publish-handoff-3d7a9c51.spec.ts
-- scripts/tests/env-ci-corrected-head-full-ci-no-false-success-3d7a9c51.spec.ts
-- scripts/tests/env-ci-corrected-head-full-ci-recovery-3d7a9c51.spec.ts
-- scripts/tests/env-ci-corrected-head-full-ci-stale-authority-3d7a9c51.spec.ts
-- scripts/tests/env-ci-corrected-head-full-ci-lagging-pr-record-3d7a9c51.spec.ts
 - scripts/tests/env-ci-corrected-head-full-ci-guard-parity-3d7a9c51.spec.ts
 - scripts/tests/env-ci-corrected-head-full-ci-input-isolation-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-lagging-pr-record-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-no-false-success-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-publish-handoff-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-recovery-3d7a9c51.spec.ts
+- scripts/tests/env-ci-corrected-head-full-ci-stale-authority-3d7a9c51.spec.ts
 title-ja: 公開された Playwright 修正コミットに対して修正後ヘッドでフル CI を実行する

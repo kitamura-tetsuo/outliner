@@ -31,6 +31,33 @@ function shiftRightPress(target: Element): boolean {
 }
 
 describe("application-menu backdrops yield to Shift+right-click (#5407)", () => {
+    it("dismisses from contextmenu on every menu panel without invoking an action", () => {
+        const cases = [
+            (onClose: () => void, onAction: () => void) =>
+                render(OutlinerItemContextMenu, {
+                    x: 10,
+                    y: 10,
+                    voted: false,
+                    isCommentsVisible: false,
+                    kind: "text",
+                    onClose,
+                    onAction,
+                }),
+            (onClose: () => void, onAction: () => void) =>
+                render(LayoutContextMenu, { x: 10, y: 10, onInsertExistingDiagram: () => {}, onClose, onAction }),
+            (onClose: () => void, onAction: () => void) =>
+                render(CalendarEntryContextMenu, { x: 10, y: 10, entryTitle: "Standup", onClose, onDelete: onAction }),
+        ];
+        for (const renderMenu of cases) {
+            const onClose = vi.fn();
+            const onAction = vi.fn();
+            const { container, unmount } = renderMenu(onClose, onAction);
+            expect(shiftRightContextMenu(container.querySelector('[role="menu"]')!)).toBe(true);
+            expect(onClose).toHaveBeenCalledTimes(1);
+            expect(onAction).not.toHaveBeenCalled();
+            unmount();
+        }
+    });
     it("item menu: native gesture closes without cancelling; ordinary still cancels", async () => {
         const onClose = vi.fn();
         const { container, unmount } = render(OutlinerItemContextMenu, {

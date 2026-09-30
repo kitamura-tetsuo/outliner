@@ -107,7 +107,9 @@
     class="context-menu"
     style="left: {adjustedX}px; top: {adjustedY}px;"
     role="menu"
+    tabindex="-1"
     aria-label="Layout Actions"
+    oncontextmenu={handleWindowMouseDown}
     data-testid="layout-context-menu"
 >
     <button type="button" role="menuitem" tabindex={activeIndex === 0 ? 0 : -1} onclick={() => { onAction(GRID_COMPONENT_TYPE); handleClose(); }}>

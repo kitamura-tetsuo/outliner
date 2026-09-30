@@ -18,34 +18,33 @@ test.describe("Shift+right-click yields to the browser native menu (#5407)", () 
         expect(firstItemId).not.toBeNull();
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
-        // Observe the real event after the full application dispatch: a
-        // window bubble listener runs after every element handler.
-        await page.evaluate(() => {
-            (window as unknown as { nativeMenuProbe: Array<{ shiftKey: boolean; prevented: boolean }> })
-                .nativeMenuProbe = [];
-            window.addEventListener("contextmenu", (event: Event) => {
+        // Capture observes handlers that stop propagation. Read cancellation
+        // in a later task after dispatch, and wait for that exact observation.
+        await firstItem.evaluate(element => {
+            element.addEventListener("contextmenu", (event: Event) => {
                 const e = event as MouseEvent;
-                (window as unknown as { nativeMenuProbe: Array<{ shiftKey: boolean; prevented: boolean }> })
-                    .nativeMenuProbe.push({ shiftKey: e.shiftKey, prevented: e.defaultPrevented });
-            });
+                setTimeout(() => {
+                    element.setAttribute(
+                        "data-native-menu-probe",
+                        JSON.stringify({ shiftKey: e.shiftKey, prevented: e.defaultPrevented }),
+                    );
+                }, 0);
+            }, { capture: true });
         });
 
         await firstItem.click({ button: "right", modifiers: ["Shift"] });
         await expect(page.locator(".context-menu")).toHaveCount(0);
-        const nativeProbe = await page.evaluate(
-            () => (window as unknown as { nativeMenuProbe: Array<{ shiftKey: boolean; prevented: boolean }> }).nativeMenuProbe,
+        await expect.poll(() => firstItem.getAttribute("data-native-menu-probe")).toBe(
+            JSON.stringify({ shiftKey: true, prevented: false }),
         );
-        expect(nativeProbe.length).toBeGreaterThan(0);
-        expect(nativeProbe[nativeProbe.length - 1]).toEqual({ shiftKey: true, prevented: false });
 
         // Positive control: an unmodified right-click still opens the item menu...
         await firstItem.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
         await expect(contextMenu).toBeVisible();
-        const ordinaryProbe = await page.evaluate(
-            () => (window as unknown as { nativeMenuProbe: Array<{ shiftKey: boolean; prevented: boolean }> }).nativeMenuProbe,
+        await expect.poll(() => firstItem.getAttribute("data-native-menu-probe")).toBe(
+            JSON.stringify({ shiftKey: false, prevented: true }),
         );
-        expect(ordinaryProbe[ordinaryProbe.length - 1]).toEqual({ shiftKey: false, prevented: true });
         await page.keyboard.press("Escape");
         await expect(contextMenu).toHaveCount(0);
 

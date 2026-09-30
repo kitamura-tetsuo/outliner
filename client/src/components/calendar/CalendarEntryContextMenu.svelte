@@ -33,7 +33,7 @@ onMount(() => {
 </script>
 <svelte:window onkeydown={onKeydown} onmousedown={handleWindowMouseDown} />
 <div class="overlay" role="presentation" onclick={close} oncontextmenu={handleOverlayContextMenu}></div>
-<div bind:this={menu} class="calendar-entry-context-menu" data-testid="calendar-entry-context-menu" style={`left: ${x}px; top: ${y}px`} role="menu" aria-label={`Actions for ${entryTitle}`}>
+<div bind:this={menu} class="calendar-entry-context-menu" data-testid="calendar-entry-context-menu" style={`left: ${x}px; top: ${y}px`} role="menu" tabindex="-1" aria-label={`Actions for ${entryTitle}`} oncontextmenu={handleWindowMouseDown}>
     <button type="button" role="menuitem" data-testid="calendar-entry-context-delete" onclick={chooseDelete}>Delete</button>
 </div>
 <style>
