@@ -26,7 +26,7 @@ An overview of the basic interface and navigation.
 
 ### Creating and Browsing Pages
 
-You can create and browse pages using the left sidebar or the Search input in the top navigation bar.
+You can create and browse pages using the left sidebar or the Search input in the top navigation bar, alongside quick actions like Add Database, Undo, and Redo.
 
 To browse your pages, click the sidebar toggle button in the top-left corner and expand the **Pages** section. This section lists all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
@@ -141,7 +141,6 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - You can also link to a page in another project with `[/project/page]` syntax.
 - **Link Previews:** Hovering over an internal link displays a preview of the page content.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. You can access it via the purple **Graph View** button at the top right of the project page.
 
 ### External Links
 
