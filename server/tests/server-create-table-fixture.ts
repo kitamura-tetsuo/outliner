@@ -68,7 +68,14 @@ export function dbFile(dir: string): string {
     return path.join(dir, "database.sqlite");
 }
 
+const ENV_KEYS = ["ALLOW_TEST_ACCESS", "DISABLE_JOB_SCHEDULER", "DISABLE_PERSISTENCE"] as const;
+let savedEnv: Partial<Record<(typeof ENV_KEYS)[number], string>> | undefined;
+let runningServers = 0;
+
 export async function startTestServer(dir: string, acl: AclStore) {
+    // Restored once the last fixture server stops, so later suites in the
+    // same mocha process (e.g. the job scheduler) see their own environment.
+    if (runningServers++ === 0) savedEnv = Object.fromEntries(ENV_KEYS.map(key => [key, process.env[key]]));
     process.env.ALLOW_TEST_ACCESS = "false";
     process.env.DISABLE_JOB_SCHEDULER = "true";
     delete process.env.DISABLE_PERSISTENCE;
@@ -84,8 +91,17 @@ export async function startTestServer(dir: string, acl: AclStore) {
 
 export async function stopTestServer(server: TestServer | undefined) {
     if (!server) return;
-    await server.shutdown();
-    server.persistence?.db?.close();
+    try {
+        await server.shutdown();
+        server.persistence?.db?.close();
+    } finally {
+        if (--runningServers === 0 && savedEnv) {
+            for (const key of ENV_KEYS) {
+                if (savedEnv[key] === undefined) delete process.env[key];
+                else process.env[key] = savedEnv[key];
+            }
+        }
+    }
 }
 
 /**
