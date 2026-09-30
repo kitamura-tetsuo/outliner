@@ -5,6 +5,7 @@
         CALENDAR_COMPONENT_TYPE,
         DIAGRAM_COMPONENT_TYPE,
     } from "../../services/layout/layoutModel";
+    import { shouldYieldToNativeContextMenu } from "../../lib/nativeContextMenu";
 
     interface Props {
         x: number;
@@ -50,6 +51,25 @@
         onClose();
     }
 
+    function handleOverlayContextMenu(event: MouseEvent) {
+        // Shift+right-click yields to the browser's native menu (#5407): close
+        // this menu but leave the event itself uncancelled.
+        if (shouldYieldToNativeContextMenu(event)) {
+            handleClose();
+            return;
+        }
+        event.preventDefault();
+        handleClose();
+    }
+
+    function handleWindowMouseDown(event: MouseEvent) {
+        // Some browsers show the native menu for Shift+right-click without
+        // dispatching a DOM `contextmenu` event at all (#5407). The press that
+        // starts that gesture still fires, so dismiss from it — without
+        // cancelling anything, so the browser action proceeds untouched.
+        if (shouldYieldToNativeContextMenu(event)) handleClose();
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             handleClose();
@@ -78,9 +98,9 @@
     }
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
+<svelte:window onkeydown={handleKeyDown} onmousedown={handleWindowMouseDown} />
 
-<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={(e) => { e.preventDefault(); handleClose(); }}></div>
+<div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={handleOverlayContextMenu}></div>
 
 <div
     bind:this={menuRef}

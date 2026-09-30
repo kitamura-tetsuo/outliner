@@ -1,0 +1,32 @@
+id: FTR-9e2b4d7a
+title: Shift+right-click yields to the browser native context menu
+title-ja: Shift+右クリックでブラウザ標準のコンテキストメニューを表示
+description: 'Shift+right-click always yields to the browser''s native context menu
+  throughout Outliner instead of opening an application menu. No Outliner handler
+  cancels the gesture''s contextmenu event, and an already-open application menu
+  (item, Layout insertion, or Calendar entry) is dismissed from the same gesture
+  — including from the press alone on browsers that show the native menu without
+  dispatching a DOM contextmenu event. Ordinary right-clicks and keyboard
+  activation (Shift+F10, ContextMenu key) keep opening application menus, and
+  Shift+primary-button selection and touch long-press are unaffected.'
+category: interaction
+status: implemented
+components:
+- client/src/lib/nativeContextMenu.ts
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerItemContextMenu.svelte
+- client/src/components/layout/LayoutBlock.svelte
+- client/src/components/layout/LayoutContextMenu.svelte
+- client/src/components/calendar/CalendarView.svelte
+- client/src/components/calendar/CalendarEntryContextMenu.svelte
+tests:
+- client/src/lib/nativeContextMenu.test.ts
+- client/src/components/contextMenuNativeBypass.test.ts
+- client/src/components/layout/LayoutBlock.nativeContextMenu.test.ts
+- client/src/components/calendar/CalendarView.test.ts
+- client/e2e/core/ctx-shift-right-click-native-menu-9e2b4d7a.spec.ts
+acceptance:
+- Shift+right-click on an outline row, Layout surface, Grid cell, or Calendar entry opens no application menu and leaves the contextmenu event uncancelled
+- Shift+right-click on an open application menu or its backdrop dismisses it without running a command, with no reopen after the native menu is dismissed
+- Unmodified right-click still opens the item menu on an outline row, the insertion menu on a Layout background, and the entry menu on an addressable Calendar entry
+- Shift+F10 and the ContextMenu key still open application menus and move focus into them
