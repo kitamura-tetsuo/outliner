@@ -28,7 +28,9 @@ import { acquireDb, tableContentRevision } from "./relation-service.js";
  * The typed outcome separates confirmed creation, a dry-run preview, and an
  * unknown outcome (publication happened in memory but its durable result
  * could not be established). Every thrown McpReadError is a confirmed
- * non-publication: no registry entry was added by this attempt. A prepared
+ * non-publication (no registry entry was added by this attempt), except a
+ * `forbidden` whose debug outcome is `published_undisclosed`: access was
+ * revoked after an authorized publication, so its result is withheld. A prepared
  * but unpublished Table room may physically remain; it is not a Table.
  */
 
@@ -198,11 +200,19 @@ export class OutlinerTableCreationService {
                     ...(publicationError !== undefined ? { cause: String(publicationError) } : {}),
                 });
             }
+            let outcome: CreateTableOutcome;
             try {
                 if (publicationError !== undefined) throw publicationError;
                 await this.storeDocument?.(projectRoom, project);
+                outcome = {
+                    status: "created",
+                    applied: true,
+                    tableId,
+                    ...candidate,
+                    revision: tableContentRevision(tableId, name, sqlName, table),
+                };
             } catch (error) {
-                return {
+                outcome = {
                     status: "unknown",
                     applied: false,
                     tableId,
@@ -210,13 +220,11 @@ export class OutlinerTableCreationService {
                     reason: error instanceof Error ? error.message : String(error),
                 };
             }
-            return {
-                status: "created",
-                applied: true,
-                tableId,
-                ...candidate,
-                revision: tableContentRevision(tableId, name, sqlName, table),
-            };
+            // A grant revoked while publication was being stored does not
+            // authorize disclosing its result. The publication itself stays:
+            // it was authorized, and is never rolled back destructively.
+            await this.authorize(uid, projectId, "published_undisclosed");
+            return outcome;
         } finally {
             if (tableConnection) await this.close(tableConnection);
             await this.close(projectConnection);
@@ -281,8 +289,16 @@ export class OutlinerTableCreationService {
         return this.hocuspocus.documents.get(room) === (doc as unknown);
     }
 
-    /** An unavailable or erroring ACL lookup is a denial. */
-    private async authorize(uid: string, projectId: string): Promise<void> {
+    /**
+     * An unavailable or erroring ACL lookup is a denial. `outcome` records
+     * what a denial means for this attempt: nothing was published yet, or a
+     * publication happened but its result is withheld from the caller.
+     */
+    private async authorize(
+        uid: string,
+        projectId: string,
+        outcome: "not_published" | "published_undisclosed" = "not_published",
+    ): Promise<void> {
         let allowed = false;
         try {
             allowed = await this.canAccess(uid, projectId);
@@ -290,7 +306,7 @@ export class OutlinerTableCreationService {
             allowed = false;
         }
         if (allowed !== true) {
-            throw new McpReadError("forbidden", "Project is inaccessible", { outcome: "not_published" });
+            throw new McpReadError("forbidden", "Project is inaccessible", { outcome });
         }
     }
 
