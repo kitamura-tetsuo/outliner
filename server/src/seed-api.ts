@@ -130,7 +130,12 @@ export function createSeedRouter(
                     res.status(status).json({ error: authError.message });
                     return;
                 }
-                logger.error({ error: authError as Error, event: "seed_auth_check_error" }, "seed_auth_check_error");
+                logger.error({
+                    error: authError instanceof Error
+                        ? { message: authError.message, name: authError.name, stack: authError.stack }
+                        : authError,
+                    event: "seed_auth_check_error",
+                }, "seed_auth_check_error");
                 res.status(500).json({ error: "Internal Server Error during authorization check" });
                 return;
             }

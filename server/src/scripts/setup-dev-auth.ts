@@ -112,7 +112,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
             process.exit(0);
         })
         .catch(error => {
-            logger.error({ error }, "Failed to setup test user");
+            logger.error({
+                error: error instanceof Error
+                    ? { message: error.message, name: error.name, stack: error.stack }
+                    : error,
+            }, "Failed to setup test user");
             process.exit(1);
         });
 }
