@@ -56,13 +56,19 @@
     let triggerElement: HTMLElement | null = null;
 
     $effect(() => {
-        if (showA11yHelp && a11yDialog && !a11yDialog.open) {
-            a11yDialog.showModal();
-        } else if (!showA11yHelp && a11yDialog && a11yDialog.open) {
-            a11yDialog.close();
-            if (triggerElement) {
-                triggerElement.focus();
-                triggerElement = null;
+        if (a11yDialog) {
+            if (showA11yHelp) {
+                if (!a11yDialog.open && typeof a11yDialog.showModal === 'function') {
+                    a11yDialog.showModal();
+                }
+            } else {
+                if (a11yDialog.open && typeof a11yDialog.close === 'function') {
+                    a11yDialog.close();
+                    if (triggerElement) {
+                        triggerElement.focus();
+                        triggerElement = null;
+                    }
+                }
             }
         }
     });
