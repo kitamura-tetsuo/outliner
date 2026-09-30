@@ -45,17 +45,30 @@ async function run(action: () => Promise<void> | void) {
     }
 }
 
-function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-        e.preventDefault();
+let dialogEl: HTMLDialogElement | undefined = $state();
+
+$effect(() => {
+    if (dialogEl && !dialogEl.open && typeof dialogEl.showModal === "function") {
+        dialogEl.showModal();
+    }
+});
+
+function handleBackdropClick(event: MouseEvent) {
+    if (event.target === dialogEl) {
         onCancel();
     }
 }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-<div class="dialog-backdrop" role="presentation">
-    <div class="dialog" role="alertdialog" tabindex="-1" aria-modal="true" aria-label="Delete calendar entry" data-testid="calendar-delete-dialog">
+<dialog
+    class="dialog"
+    role="alertdialog"
+    aria-label="Delete calendar entry"
+    data-testid="calendar-delete-dialog"
+    bind:this={dialogEl}
+    oncancel={onCancel}
+    onclick={handleBackdropClick}
+>
         <h3>Delete "{entry.title || "this entry"}"?</h3>
 
         {#if isOccurrence}
@@ -99,18 +112,11 @@ function onKeydown(e: KeyboardEvent) {
         {#if error}
             <p class="error" data-testid="calendar-delete-error">{error}</p>
         {/if}
-    </div>
-</div>
+</dialog>
 
 <style>
-.dialog-backdrop {
-    position: fixed;
-    inset: 0;
+dialog::backdrop {
     background: rgba(17, 24, 39, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
 }
 
 .dialog {
@@ -120,6 +126,7 @@ function onKeydown(e: KeyboardEvent) {
     width: 340px;
     max-width: 90vw;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    border: none;
 }
 
 .dialog h3 {
