@@ -381,7 +381,10 @@ export function initializeFirebase(): Promise<void> {
     firebaseReadyPromise.then(() => {
         firebaseState = "ready";
     }).catch((err) => {
-        logger.error({ error: err }, "Firebase initialization failed in promise chain");
+        logger.error(
+            { error: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err },
+            "Firebase initialization failed in promise chain",
+        );
         firebaseState = "failed";
     });
     return firebaseReadyPromise;

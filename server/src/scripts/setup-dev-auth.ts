@@ -30,7 +30,9 @@ export async function initializeFirebase(): Promise<any> {
 
         return { auth: getAuth };
     } catch (error) {
-        logger.error({ error: error }, "Firebase initialization error");
+        logger.error({
+            error: error instanceof Error ? { message: error.message, name: error.name, stack: error.stack } : error,
+        }, "Firebase initialization error");
         throw error;
     }
 }
@@ -87,7 +89,9 @@ export async function setupTestUser(): Promise<UserRecord> {
             logger.warn("Skipping test user setup: invalid credentials (expected in tests without real secrets)");
             return {} as UserRecord;
         }
-        logger.error({ error: error }, "Error setting up test user");
+        logger.error({
+            error: error instanceof Error ? { message: error.message, name: error.name, stack: error.stack } : error,
+        }, "Error setting up test user");
         throw error;
     }
 }

@@ -85,7 +85,10 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
         if (e instanceof Error && e.message && e.message.includes("alg:none tokens are not allowed")) {
             throw e;
         }
-        logger.warn({ error: e }, "[Auth] Test mode: failed to parse alg:none token");
+        logger.warn(
+            { error: e instanceof Error ? { message: e.message, name: e.name, stack: e.stack } : e },
+            "[Auth] Test mode: failed to parse alg:none token",
+        );
     }
 
     try {
@@ -120,16 +123,22 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
                 const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
                 const nowSec = Math.floor(Date.now() / 1000);
                 logger.error(
-                    { error: e },
+                    { error: e instanceof Error ? { message: e.message, name: e.name, stack: e.stack } : e },
                     `[Auth] Verification failed. Token debug: exp=${payload.exp}, iat=${payload.iat}, now=${nowSec}, diff=${
                         payload.exp - nowSec
                     }, uid=${payload.uid || payload.user_id}`,
                 );
             }
         } catch (parseErr) {
-            logger.error({ error: e }, "[Auth] Failed to parse failed token for debug");
+            logger.error(
+                { error: e instanceof Error ? { message: e.message, name: e.name, stack: e.stack } : e },
+                "[Auth] Failed to parse failed token for debug",
+            );
         }
-        logger.error({ error: e }, `[Auth] Token verification failed: ${e instanceof Error ? e.message : String(e)}`);
+        logger.error(
+            { error: e instanceof Error ? { message: e.message, name: e.name, stack: e.stack } : e },
+            `[Auth] Token verification failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
         throw e;
     }
 }

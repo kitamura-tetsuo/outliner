@@ -69,7 +69,10 @@ async function resetSession(db: PGlite) {
             CREATE SCHEMA IF NOT EXISTS public;
         `);
     } catch (err) {
-        logger.warn({ err }, "PGlite session reset failed; recycling the instance");
+        logger.warn(
+            { err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err },
+            "PGlite session reset failed; recycling the instance",
+        );
         dbPromise = undefined;
         try {
             await db.close();
