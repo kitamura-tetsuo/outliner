@@ -53,7 +53,9 @@ The toolbar at the top of each page provides quick access to page-specific actio
 - **Add Item:** Adds a new item to the bottom of the page.
 - **Search:** Opens a search panel to quickly search across the whole project.
 - **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
+- **History / Diff:** Opens the history panel to view past edits and differences.
 - **Keyboard Shortcuts:** Opens a list of available keyboard shortcuts.
+- **Graph View:** (Located at the top right) Opens a visual graph representation of page links.
 
 ### User Authentication
 

@@ -109,7 +109,7 @@ export function projectDiagrams(page: Page): Promise<Record<string, string>> {
 }
 
 export async function rowByText(page: Page, text: string): Promise<Locator> {
-    const row = page.locator(".outliner-item", { hasText: text }).last();
+    const row = page.locator(".outliner-item:not(.page-title)", { hasText: text }).last();
     await expect(row).toBeVisible();
     return row;
 }
