@@ -14,3 +14,4 @@ tests:
 - server/tests/mcp-create-table-contention.test.ts
 - server/tests/mcp-create-table-delivery.test.ts
 - server/tests/mcp-create-table-audit.test.ts
+- server/tests/mcp-create-table-in-flight.test.ts

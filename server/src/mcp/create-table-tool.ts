@@ -75,7 +75,7 @@ export class CreateTableTool {
             try {
                 preview = await this.domain.createTable(uid, projectId, { ...request, dryRun: true });
             } catch (error) {
-                throw refusal(error, true);
+                throw await this.refuse(uid, projectId, error, true);
             }
             await this.authorize(uid, projectId);
             return this.deliver({
@@ -97,7 +97,7 @@ export class CreateTableTool {
             ));
         } catch (error) {
             // Only confirmed non-publications reject; the cache has evicted them.
-            throw refusal(error);
+            throw await this.refuse(uid, projectId, error);
         }
 
         const effect = {
@@ -163,6 +163,25 @@ export class CreateTableTool {
             ? { creationOutcome: effect.creationOutcome, applied: effect.applied, replayed: effect.replayed }
             : {};
         throw new McpEffectError("internal_failure", "The Table creation result could not be delivered", known, effect);
+    }
+
+    /**
+     * An awaited refusal is a disclosure too (it can name a conflicting Table
+     * or confirm a SQL-name claim): a caller revoked while it waited gets a
+     * bare forbidden instead.
+     */
+    private async refuse(uid: string, projectId: string, error: unknown, dryRun = false): Promise<McpReadError> {
+        const mapped = refusal(error, dryRun);
+        if (mapped.code === "forbidden") return mapped;
+        try {
+            await this.authorize(uid, projectId);
+        } catch {
+            const effect = mapped instanceof McpEffectError ? mapped.effect : undefined;
+            return effect
+                ? new McpEffectError("forbidden", "Project is inaccessible", {}, effect)
+                : new McpReadError("forbidden", "Project is inaccessible");
+        }
+        return mapped;
     }
 
     private async authorize(uid: string, projectId: string): Promise<void> {

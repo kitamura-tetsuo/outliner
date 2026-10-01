@@ -197,6 +197,11 @@ export class OutlinerTableCreationService {
             if (registry.has(tableId)) {
                 throw new McpReadError("internal_failure", "Table ID collision", { outcome: "not_published" });
             }
+            // The creation revision describes the exact state being published
+            // (verified empty above, with no await since). Taken now, because
+            // peers may edit the Table as soon as the entry is visible, before
+            // storage below confirms the publication.
+            const revision = tableContentRevision(tableId, name, sqlName, table);
             let publicationError: unknown;
             try {
                 project.transact(() => {
@@ -228,7 +233,7 @@ export class OutlinerTableCreationService {
                     applied: true,
                     tableId,
                     ...candidate,
-                    revision: tableContentRevision(tableId, name, sqlName, table),
+                    revision,
                 };
             } catch (error) {
                 outcome = {
