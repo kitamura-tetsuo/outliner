@@ -17,17 +17,17 @@
         "seed": "ts-node test-data-seeder.ts"
     },
     "dependencies": {
-        "firebase-admin": "^14.4.0",
+        "firebase-admin": "^14.5.0",
         "uuid": "^14.0.2",
-        "ws": "^8.21.3",
+        "ws": "^8.22.0",
         "y-websocket": "^3.1.0",
-        "yjs": "^13.6.32"
+        "yjs": "^13.6.33"
     },
     "devDependencies": {
-        "@types/node": "^26.6.2",
+        "@types/node": "^26.6.3",
         "@types/uuid": "^11.0.0",
         "@types/ws": "^8.18.1",
         "ts-node": "^10.9.2",
-        "vitest": "^5.0.1"
+        "vitest": "^5.0.2"
     }
 }
