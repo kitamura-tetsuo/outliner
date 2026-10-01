@@ -28,13 +28,13 @@ async function createDemoPage(page: Page, demoProject: string, title: string): P
     await expect(page.getByText(NOT_FOUND)).toBeVisible({ timeout: 30000 });
     await page.getByRole("button", { name: "Create Page" }).click();
 
-    await expect(page.locator(".outliner-item.page-title")).toContainText(title, { timeout: 30000 });
+    await expect(page.locator(".page-title")).toContainText(title, { timeout: 30000 });
     await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
 }
 
 /** Put the cursor at the end of the page title, ready to type. */
 async function focusTitleEnd(page: Page): Promise<void> {
-    await page.locator(".outliner-item.page-title[data-item-id] .item-content").click({ force: true });
+    await page.locator(".page-title[data-item-id] .item-content").click({ force: true });
     await TestHelpers.waitForCursorVisible(page);
     await page.waitForSelector("textarea.global-textarea:focus");
     await page.keyboard.press("End");
@@ -59,7 +59,7 @@ test.describe("FTR-6f2ad91c: renaming the open demo page", () => {
 
         const renamed = `${original} Renamed`;
         await expectRouteFor(page, "demo", renamed);
-        await expect(page.locator(".outliner-item.page-title")).toContainText(renamed);
+        await expect(page.locator(".page-title")).toContainText(renamed);
         await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
 
         // The page was never torn down: the caret survived the route change, so
@@ -67,12 +67,12 @@ test.describe("FTR-6f2ad91c: renaming the open demo page", () => {
         await page.keyboard.type("!");
         const renamedAgain = `${renamed}!`;
         await expectRouteFor(page, "demo", renamedAgain);
-        await expect(page.locator(".outliner-item.page-title")).toContainText(renamedAgain);
+        await expect(page.locator(".page-title")).toContainText(renamedAgain);
         await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
 
         // The renamed URL is a real address: it resolves on a fresh load too.
         await page.reload();
-        await expect(page.locator(".outliner-item.page-title")).toContainText(renamedAgain, { timeout: 30000 });
+        await expect(page.locator(".page-title")).toContainText(renamedAgain, { timeout: 30000 });
         // Additional reload wait logic could go here, but usually playwright auto-waits.
         await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
     });
@@ -86,11 +86,11 @@ test.describe("FTR-6f2ad91c: renaming the open demo page", () => {
 
         const renamed = `${original}・更新`;
         await expectRouteFor(page, "demo-ja", renamed);
-        await expect(page.locator(".outliner-item.page-title")).toContainText(renamed);
+        await expect(page.locator(".page-title")).toContainText(renamed);
         await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
 
         await page.reload();
-        await expect(page.locator(".outliner-item.page-title")).toContainText(renamed, { timeout: 30000 });
+        await expect(page.locator(".page-title")).toContainText(renamed, { timeout: 30000 });
         await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
     });
 
