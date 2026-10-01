@@ -22,8 +22,18 @@ export interface McpAuditEntry {
     outcome: "success" | McpErrorCode;
     priorRevision?: string;
     newRevision?: string;
-    /** Whether the mutation was actually persisted (false for dry runs). */
-    applied: boolean;
+    /**
+     * Whether the mutation was actually persisted (false for dry runs).
+     * null only when the effect is unknown: publication was attempted but its
+     * durable result could not be established (create_table).
+     */
+    applied: boolean | null;
+    /**
+     * create_table only: the domain outcome, recorded even when the caller is
+     * shown an error (an unknown publication, or a result withheld from a
+     * caller whose access was revoked after an authorized creation).
+     */
+    creationOutcome?: "created" | "unknown" | "not_created";
     /**
      * True when this attempt was an operationId replay: the mutation
      * itself ran on an earlier request, and this one only observed the
@@ -51,6 +61,7 @@ export function recordMcpAudit(entry: McpAuditEntry): void {
         priorRevision,
         newRevision,
         applied,
+        creationOutcome,
         replayed,
     } = entry;
     logger.info({
@@ -66,6 +77,7 @@ export function recordMcpAudit(entry: McpAuditEntry): void {
         priorRevision,
         newRevision,
         applied,
+        creationOutcome,
         replayed,
         timestamp: new Date().toISOString(),
     }, "mcp_audit");

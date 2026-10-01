@@ -16,6 +16,7 @@ import { createDemoRouter } from "./demo-api.js";
 import { isDemoProjectSlug } from "./demo-projects.js";
 import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
+import { CreateTableTool } from "./mcp/create-table-tool.js";
 import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
 import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
@@ -494,6 +495,8 @@ export async function startServer(
                 }
             },
         }),
+        // One long-lived instance: its replay window spans MCP requests.
+        new CreateTableTool(tableCreation, checkContainerAccess),
     ));
 
     // Log rotation endpoint
