@@ -81,7 +81,9 @@ test.describe("FTR-9e4b5314: Cut stages a move that Paste commits once", () => {
 
         // Navigate within the project, then Paste without another Cut.
         await page.locator("a.internal-link").first().click();
-        await expect(page.locator(".outliner-item:not(.page-title)", { hasText: "landing" })).toBeVisible({ timeout: 15000 });
+        await expect(page.locator(".outliner-item:not(.page-title)", { hasText: "landing" })).toBeVisible({
+            timeout: 15000,
+        });
         await pasteAfterRow(page, await rowByText(page, "landing"));
         expect(await lastClipboardResult(page, 3)).toMatchObject({ ok: true, itemIds: [occurrenceId] });
         expect(await pageOf(page, occurrenceId)).toBe(otherPage);
