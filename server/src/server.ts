@@ -17,6 +17,7 @@ import { isDemoProjectSlug } from "./demo-projects.js";
 import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { CreateTableTool } from "./mcp/create-table-tool.js";
+import { OutlinerGridPresentationService } from "./mcp/grid-presentation.js";
 import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
 import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
@@ -455,6 +456,13 @@ export async function startServer(
         checkContainerAccess,
         persistence ? createDocumentStore(persistence) : undefined,
     );
+    // Revision-checked Grid presentation updates (issue #5435) acknowledge an
+    // apply only once the resulting project room is stored.
+    const gridPresentation = new OutlinerGridPresentationService(
+        hocuspocus,
+        checkContainerAccess,
+        persistence ? createDocumentStore(persistence) : undefined,
+    );
     app.use(createMcpRouter(
         new OutlinerReadService(
             hocuspocus,
@@ -752,5 +760,5 @@ export async function startServer(
         });
     };
 
-    return { server, hocuspocus, persistence, tableCreation, mcpRelations, shutdown };
+    return { server, hocuspocus, persistence, tableCreation, gridPresentation, mcpRelations, shutdown };
 }

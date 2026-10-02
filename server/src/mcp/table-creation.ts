@@ -3,6 +3,7 @@ import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
 import type { DocumentStore } from "../persistence.js";
+import { closeLiveRoom, type DirectConnection, isLiveRoom, openLiveRoom, releaseWithoutStore } from "./live-room.js";
 import { McpReadError } from "./mcp-error.js";
 import { acquireDb, tableContentRevision } from "./relation-service.js";
 
@@ -95,8 +96,6 @@ export class TableCreationUndisclosedError extends McpReadError {
         super("forbidden", "Project is inaccessible", { outcome: "published_undisclosed" });
     }
 }
-
-type DirectConnection = Awaited<ReturnType<Hocuspocus["openDirectConnection"]>>;
 
 export class OutlinerTableCreationService {
     constructor(
@@ -301,32 +300,16 @@ export class OutlinerTableCreationService {
         return { name, schemaSql, dryRun: dryRun ?? false };
     }
 
-    /**
-     * Open a direct connection whose Document is the room's live one.
-     * Hocuspocus can hand an open that races a room unload the Document being
-     * destroyed; the next open loads a fresh one. Claims read from, or an entry
-     * published to, that orphan would not be the live state, and its normal
-     * disconnect would store its stale state over the live room's. Such a
-     * handle is therefore released without storing, and the room reopened.
-     */
-    private async openLiveRoom(room: string, uid: string): Promise<DirectConnection> {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            const connection = await this.hocuspocus.openDirectConnection(room, { context: { uid } });
-            if (this.isLive(room, connection.document as unknown as Y.Doc)) return connection;
-            releaseWithoutStore(connection);
-        }
-        throw new McpReadError("internal_failure", "Room could not be opened", { outcome: "not_published" });
+    private openLiveRoom(room: string, uid: string): Promise<DirectConnection> {
+        return openLiveRoom(this.hocuspocus, room, uid, { outcome: "not_published" });
     }
 
-    /** Disconnect normally, unless the handle was orphaned and would store stale state. */
-    private async close(connection: DirectConnection): Promise<void> {
-        const doc = connection.document;
-        if (doc && !this.isLive(doc.name, doc as unknown as Y.Doc)) releaseWithoutStore(connection);
-        else await connection.disconnect();
+    private close(connection: DirectConnection): Promise<void> {
+        return closeLiveRoom(this.hocuspocus, connection);
     }
 
     private isLive(room: string, doc: Y.Doc): boolean {
-        return this.hocuspocus.documents.get(room) === (doc as unknown);
+        return isLiveRoom(this.hocuspocus, room, doc);
     }
 
     /**
@@ -440,12 +423,6 @@ export class OutlinerTableCreationService {
             outcome: "not_published",
         });
     }
-}
-
-/** Drop an orphaned Document handle without Hocuspocus storing its stale state. */
-function releaseWithoutStore(connection: DirectConnection): void {
-    connection.document?.removeDirectConnection();
-    connection.document = null;
 }
 
 interface UserRelation {
