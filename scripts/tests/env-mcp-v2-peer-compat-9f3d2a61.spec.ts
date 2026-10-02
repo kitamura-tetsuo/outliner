@@ -14,7 +14,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
 
-function fixture({ node = "2.1.0", server = "2.1.0", peer = "2.1.0", rootNode = node, rootServer = server } = {}) {
+interface FixtureOptions {
+    node?: string;
+    server?: string;
+    peer?: string | null;
+    rootNode?: string;
+    rootServer?: string;
+}
+
+function fixture({
+    node = "2.1.0",
+    server = "2.1.0",
+    peer = "2.1.0",
+    rootNode = node,
+    rootServer = server,
+}: FixtureOptions = {}) {
     const manifest = {
         dependencies: {
             [MCP_NODE]: node,
@@ -31,7 +45,7 @@ function fixture({ node = "2.1.0", server = "2.1.0", peer = "2.1.0", rootNode = 
             },
             [`node_modules/${MCP_NODE}`]: {
                 version: node,
-                peerDependencies: peer === undefined ? {} : { [MCP_SERVER]: peer },
+                peerDependencies: peer === null ? {} : { [MCP_SERVER]: peer },
             },
             [`node_modules/${MCP_SERVER}`]: {
                 version: server,
@@ -78,7 +92,7 @@ test("a stale lockfile root declaration is rejected even when resolved versions 
 
 test("loss of the middleware peer contract fails closed for explicit review", () => {
     const result = checkMcpDependencyCompatibility(...fixture({
-        peer: undefined,
+        peer: null,
     }));
     expect(result.ok).toBe(false);
     expect(result.problems.join("\n")).toMatch(/does not publish a @modelcontextprotocol\/server peer dependency/);
