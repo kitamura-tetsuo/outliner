@@ -59,10 +59,12 @@ export function checkMcpDependencyCompatibility(manifestText, lockText) {
     const lockedServer = lockedDependency(lock, MCP_SERVER, problems);
     const lockRootDependencies = lock?.packages?.[""]?.dependencies;
 
-    for (const [pkg, declared, locked] of [
-        [MCP_NODE, declaredNode, lockedNode],
-        [MCP_SERVER, declaredServer, lockedServer],
-    ]) {
+    for (
+        const [pkg, declared, locked] of [
+            [MCP_NODE, declaredNode, lockedNode],
+            [MCP_SERVER, declaredServer, lockedServer],
+        ]
+    ) {
         if (declared !== undefined) {
             const lockDeclaration = lockRootDependencies?.[pkg];
             if (lockDeclaration !== declared) {

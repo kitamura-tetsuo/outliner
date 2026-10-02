@@ -33,6 +33,8 @@ try {
             + `accepts @modelcontextprotocol/server ${result.serverPeerRange}; locked server is ${result.serverVersion}.`,
     );
 } catch (error) {
-    console.error(`MCP v2 dependency compatibility check could not run: ${error instanceof Error ? error.message : error}`);
+    console.error(
+        `MCP v2 dependency compatibility check could not run: ${error instanceof Error ? error.message : error}`,
+    );
     process.exit(1);
 }

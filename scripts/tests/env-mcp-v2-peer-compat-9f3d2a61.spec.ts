@@ -1,13 +1,9 @@
+import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { execFileSync } from "child_process";
 import { fileURLToPath } from "url";
 import { expect, test } from "vitest";
-import {
-    MCP_NODE,
-    MCP_SERVER,
-    checkMcpDependencyCompatibility,
-} from "../mcp-dependency-compat-lib.mjs";
+import { checkMcpDependencyCompatibility, MCP_NODE, MCP_SERVER } from "../mcp-dependency-compat-lib.mjs";
 
 /** @feature ENV-9f3d2a61
  *  Title   : MCP v2 dependencies stay peer-compatible before CI fan-out
