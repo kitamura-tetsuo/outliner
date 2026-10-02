@@ -206,6 +206,71 @@ export const compositionOutcome = (page: Page) =>
 
 export const undoDepth = (page: Page) => page.evaluate(() => (globalThis as any).globalUndoRouter?.undoDepth ?? -1);
 
+export interface MermaidLeakSnapshot {
+    /** Text nodes with the library error marker outside any Diagram block. */
+    outsideSyntaxError: number;
+    /** Text nodes with the library version marker outside any Diagram block. */
+    outsideVersion: number;
+    /** Staging elements left behind by unsettled render attempts. */
+    stagingLeftovers: number;
+    /** Page-footer insertions seen at the DOM-mutation boundary since arming. */
+    mutationHits: string[];
+}
+
+/**
+ * Arm the transient leak observer before a render begins. It records every
+ * subsequently inserted element carrying the library error marker outside a
+ * Diagram block, so a fallback that appears and is later removed still fails.
+ * Legitimate page text seeded before arming is not recorded — only new
+ * insertions are — which keeps ordinary Text containing the same strings
+ * usable as non-interference witnesses (issue #5429 AS-004).
+ */
+export async function armMermaidLeakObserver(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        (globalThis as any).__mermaidLeakHits = [];
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of Array.from(mutation.addedNodes)) {
+                    if (
+                        node instanceof Element
+                        && (node.textContent ?? "").includes("Syntax error in text")
+                        && !node.closest(".diagram-block")
+                    ) {
+                        (globalThis as any).__mermaidLeakHits.push(node.outerHTML.slice(0, 200));
+                    }
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
+}
+
+/** Settled leak state: whole-document scan plus the transient observer log. */
+export async function mermaidLeakSnapshot(page: Page): Promise<MermaidLeakSnapshot> {
+    return await page.evaluate(() => {
+        const countOutside = (marker: string): number => {
+            let hits = 0;
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            let node: Node | null;
+            while ((node = walker.nextNode())) {
+                if (
+                    (node.textContent ?? "").includes(marker)
+                    && !(node.parentElement?.closest(".diagram-block"))
+                ) {
+                    hits++;
+                }
+            }
+            return hits;
+        };
+        return {
+            outsideSyntaxError: countOutside("Syntax error in text"),
+            outsideVersion: countOutside("mermaid version"),
+            stagingLeftovers: document.querySelectorAll("[data-mermaid-staging]").length,
+            mutationHits: (globalThis as any).__mermaidLeakHits as string[],
+        };
+    });
+}
+
 /**
  * Put the page into (or out of) the demo-reset state exactly as the server's
  * demo reset does — through the project document's `metadata` flags, which
