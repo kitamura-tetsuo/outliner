@@ -47,7 +47,7 @@ export function createPersistence(
  * @param timeoutMs - Maximum wait time in milliseconds
  * @returns Promise that resolves when synced or rejects on timeout/error
  */
-export function waitForSync(persistence: PersistenceLike, timeoutMs: number = 3000): Promise<void> {
+export function waitForSync(persistence: PersistenceLike, timeoutMs: number = 10000): Promise<void> {
     if (persistence.synced) {
         return Promise.resolve();
     }
