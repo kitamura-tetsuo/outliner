@@ -72,7 +72,6 @@ let parentKey = $state("");
 let error = $state<string | undefined>(undefined);
 let submitting = $state(false);
 let dialogEl: HTMLDialogElement | undefined = $state();
-let triggerElement: HTMLElement | null = null;
 
 // svelte-ignore state_referenced_locally
 const candidates = listDestinationCandidates(project);
@@ -85,16 +84,10 @@ onMount(() => {
 $effect(() => {
     if (dialogEl) {
         if (!dialogEl.open && typeof dialogEl.showModal === 'function') {
-            triggerElement = document.activeElement as HTMLElement;
             dialogEl.showModal();
             dialogEl.querySelector<HTMLElement>("input, select")?.focus();
         }
     }
-    return () => {
-        if (triggerElement && typeof triggerElement.focus === 'function') {
-            triggerElement.focus();
-        }
-    };
 });
 
 function toggleAllDay(next: boolean) {

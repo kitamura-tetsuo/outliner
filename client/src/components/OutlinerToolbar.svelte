@@ -53,7 +53,6 @@
     let fileInput: HTMLInputElement | null = $state(null);
     let showA11yHelp = $state(false);
     let a11yDialog: HTMLDialogElement | undefined = $state();
-    let triggerElement: HTMLElement | null = null;
 
     $effect(() => {
         if (a11yDialog) {
@@ -64,10 +63,6 @@
             } else {
                 if (a11yDialog.open && typeof a11yDialog.close === 'function') {
                     a11yDialog.close();
-                    if (triggerElement) {
-                        triggerElement.focus();
-                        triggerElement = null;
-                    }
                 }
             }
         }
@@ -149,7 +144,7 @@
                 style="display: none;"
             />
             <a href={resolvePath(`${projectPagePath(projectName, pageName)}/diff`)} class="button-style">History / Diff</a>
-            <button type="button" class="button-style" onclick={() => { triggerElement = document.activeElement as HTMLElement; showA11yHelp = true; }}>Keyboard Shortcuts</button>
+            <button type="button" class="button-style" onclick={() => { showA11yHelp = true; }}>Keyboard Shortcuts</button>
         </div>
                 <dialog class="a11y-dialog" bind:this={a11yDialog} onclose={() => showA11yHelp = false} onclick={handleDialogBackdropClick} aria-labelledby="a11y-dialog-title">
             <div class="dialog-content" role="document">
