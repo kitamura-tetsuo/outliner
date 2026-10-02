@@ -247,8 +247,14 @@ export function createMcpRouter(
                             outcome: "success",
                             priorRevision: typeof fields.priorRevision === "string"
                                 ? fields.priorRevision
+                                : typeof fields.priorPresentationRevision === "string"
+                                ? fields.priorPresentationRevision
                                 : undefined,
-                            newRevision: typeof fields.revision === "string" ? fields.revision : undefined,
+                            newRevision: typeof fields.revision === "string"
+                                ? fields.revision
+                                : typeof fields.presentationRevision === "string"
+                                ? fields.presentationRevision
+                                : undefined,
                             applied: fields.applied !== false,
                             replayed: fields.replayed === true,
                         });
