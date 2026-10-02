@@ -1,0 +1,19 @@
+id: ENV-9f3d2a61
+title: MCP v2 dependencies stay peer-compatible before CI fan-out
+title-ja: MCP v2 依存関係を CI 展開前に peer 互換に保つ
+description: The server's direct @modelcontextprotocol/node and @modelcontextprotocol/server dependencies are checked against the peer range published by the locked node middleware package before dependency-heavy CI jobs start. Dependabot puts those two MCP v2 packages in a dedicated minor/patch group so an incompatible upstream release is isolated from unrelated dependency updates. Compatibility follows the published peer range rather than requiring equal package version numbers, allowing a future node release to accept a broader server range without changing this policy. The legacy @modelcontextprotocol/sdk package remains outside this group because it follows the v1 release line.
+category: environment
+status: implemented
+components:
+- .github/dependabot.yml
+- .github/workflows/ci-mcp-dependency-compat.yml
+- .github/workflows/ci.yml
+- package.json
+- package-lock.json
+- scripts/check-mcp-dependency-compat.mjs
+- scripts/mcp-dependency-compat-lib.mjs
+tests:
+- scripts/tests/env-mcp-v2-peer-compat-9f3d2a61.spec.ts
+- scripts/tests/env-mcp-v2-dependabot-gate-9f3d2a61.spec.ts
+commands:
+- node scripts/check-mcp-dependency-compat.mjs

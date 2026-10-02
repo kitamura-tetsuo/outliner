@@ -40,6 +40,18 @@ updates:
       - 'dependencies'
       - 'npm'
     groups:
+      # MCP v2 middleware versions independently from the server package and
+      # declares its compatible server release through a peer dependency.
+      # Keep these updates isolated from the catch-all dependency batch so the
+      # dedicated CI guard can reject an incompatible pair without failing a
+      # large unrelated Dependabot pull request.
+      mcp-v2:
+        patterns:
+          - '@modelcontextprotocol/node'
+          - '@modelcontextprotocol/server'
+        update-types:
+          - 'minor'
+          - 'patch'
       # Keep the Playwright packages on one version. They share a browser
       # registry, so bumping one alone leaves the runner asking for a browser
       # revision nothing installed -- every E2E shard then dies at
