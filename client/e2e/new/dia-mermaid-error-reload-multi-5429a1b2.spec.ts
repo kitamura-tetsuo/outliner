@@ -54,6 +54,7 @@ test.describe("FTR-5429a1b2: failed Diagram renders stay inside their block", ()
             "witness Syntax error in text",
             "",
             "",
+            "",
             "witness mermaid version",
         ]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
