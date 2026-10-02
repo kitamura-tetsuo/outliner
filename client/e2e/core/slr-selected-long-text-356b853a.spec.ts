@@ -4,101 +4,146 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
+/** @feature SLR-0008
+ *  Title   : Selected Edge Case
+ *  Source  : docs/client-features/slr-selected-edge-case-e818d989.yaml
+ */
+
+const LONG_TEXT =
+    "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
+    + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
+const SECOND_TEXT = "Second item text";
+const SELECTION_LENGTH = 50;
+
 test.describe("SLR-356b853a: Long text selection range", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        const longText =
-            "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
-            + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
-
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [longText, "Second item text"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [LONG_TEXT, SECOND_TEXT]);
         await TestHelpers.waitForOutlinerItems(page, 3, 10000);
     });
 
     test("Can create selection range for item containing long text", async ({ page }) => {
         test.setTimeout(120000);
-        // Click and focus on the first item
-        const firstItem = page.locator(".outliner-item").nth(1);
-        await firstItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(LONG_TEXT.length).toBeGreaterThan(200);
+        const expectedSelectionText = LONG_TEXT.slice(0, SELECTION_LENGTH);
 
-        // Already seeded, just verify text
-        const firstItemText = await firstItem.locator(".item-text").textContent();
-        expect(firstItemText).toContain("This is a very long text");
-        expect(firstItemText).toContain("properly selected and copied");
-
-        // Verify text length
-        expect(firstItemText?.length || 0).toBeGreaterThan(200);
-
-        console.log("Long text input test completed successfully");
-
-        // The cursor might be placed at the point of click, or it might be at the end of the line
-        // To be sure we are selecting from the beginning, press Home first
-        await page.keyboard.press("Home");
-        await page.waitForTimeout(1000);
-
-        // Select part of the long text
-        await page.keyboard.down("Shift");
-        for (let i = 0; i < 50; i++) {
-            await page.keyboard.press("ArrowRight");
-        }
-        await page.keyboard.up("Shift");
-
-        // Confirm that the selection range is created
-        const selection = page.locator(".editor-overlay .selection").first();
-        await expect(selection).toBeVisible({ timeout: 1000 });
-
-        // Reliable copy via page.evaluate
-        const textToCopy = await page.evaluate(() => {
-            const editorOverlayStore = (globalThis as any).editorOverlayStore;
-            if (editorOverlayStore) {
-                const selections = Object.values(editorOverlayStore.selections);
-                if (selections.length > 0) {
-                    return editorOverlayStore.getTextFromSelection(selections[0]);
-                }
+        // Resolve the long-text item ID from the seeded model, not from a DOM ordinal.
+        const seededItems = await page.evaluate((): Array<{ id: string; text: string; }> => {
+            const gs = (globalThis as any).generalStore ?? (globalThis as any).appStore;
+            const items = gs?.currentPage?.items;
+            if (!items) return [];
+            const length = typeof items.length === "number" ? items.length : 0;
+            const result: Array<{ id: string; text: string; }> = [];
+            for (let i = 0; i < length; i++) {
+                const item = typeof items.at === "function" ? items.at(i) : items[i];
+                if (item?.id !== undefined) result.push({ id: String(item.id), text: String(item?.text ?? "") });
             }
-            return null;
+            return result;
+        });
+        const longTextEntry = seededItems.find(entry => entry.text === LONG_TEXT);
+        expect(longTextEntry, "expected the seeded long-text item in the page model").toBeDefined();
+        const itemId = longTextEntry!.id;
+
+        // The model text and the rendered text must both equal the fixture before selecting.
+        await expect.poll(async () => {
+            return await page.evaluate((id: string): string | null => {
+                const gs = (globalThis as any).generalStore ?? (globalThis as any).appStore;
+                const items = gs?.currentPage?.items;
+                if (!items) return null;
+                const length = typeof items.length === "number" ? items.length : 0;
+                for (let i = 0; i < length; i++) {
+                    const item = typeof items.at === "function" ? items.at(i) : items[i];
+                    if (item && String(item.id) === id) return String(item?.text ?? "");
+                }
+                return null;
+            }, itemId);
+        }, { timeout: 10000 }).toBe(LONG_TEXT);
+        const renderedText = page.locator(`.outliner-item[data-item-id="${itemId}"] .item-text`);
+        await expect.poll(async () => await renderedText.textContent(), { timeout: 10000 }).toBe(LONG_TEXT);
+
+        // Reach the selection through real browser interaction.
+        await page.locator(`.outliner-item[data-item-id="${itemId}"] .item-content`).click();
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
+        await TestHelpers.ensureCursorReady(page);
+
+        // Production local ownership is the literal userId "local".
+        const localUserId = "local";
+
+        await page.keyboard.press("Home");
+
+        // The active local cursor must be at the start of the long-text item with no local selection.
+        await expect.poll(async () => {
+            return await page.evaluate((user: string) => {
+                const store = (globalThis as any).editorOverlayStore;
+                if (!store) return null;
+                const cursors = Object.values(store.cursors ?? {}) as Array<any>;
+                const local = cursors.find((cursor: any) =>
+                    (cursor?.userId ?? "local") === user && cursor?.isActive === true
+                );
+                if (!local) return null;
+                const localSelections = (Object.values(store.selections ?? {}) as Array<any>)
+                    .filter((selection: any) => (selection?.userId ?? "local") === user).length;
+                return {
+                    userId: local.userId ?? "local",
+                    itemId: local.itemId,
+                    offset: local.offset,
+                    isActive: local.isActive,
+                    localSelections,
+                };
+            }, localUserId);
+        }, { timeout: 10000 }).toEqual({ userId: localUserId, itemId, offset: 0, isActive: true, localSelections: 0 });
+
+        await page.keyboard.down("Shift");
+        try {
+            for (let i = 0; i < SELECTION_LENGTH; i++) {
+                await page.keyboard.press("ArrowRight");
+            }
+        } finally {
+            await page.keyboard.up("Shift");
+        }
+
+        // Observe the endpoints and the extracted text from the same selection state.
+        await expect.poll(async () => {
+            return await page.evaluate((user: string) => {
+                const store = (globalThis as any).editorOverlayStore;
+                if (!store) return null;
+                const local = (Object.values(store.selections ?? {}) as Array<any>)
+                    .filter((selection: any) => (selection?.userId ?? "local") === user);
+                if (local.length !== 1) return { localCount: local.length };
+                const selection = local[0];
+                return {
+                    localCount: 1,
+                    start: selection.start,
+                    end: selection.end,
+                    isReversed: selection.isReversed,
+                    text: store.getTextFromSelection(selection),
+                };
+            }, localUserId);
+        }, { timeout: 15000 }).toEqual({
+            localCount: 1,
+            start: { kind: "text", itemId, offset: 0 },
+            end: { kind: "text", itemId, offset: SELECTION_LENGTH },
+            isReversed: false,
+            text: expectedSelectionText,
         });
 
-        expect(textToCopy).toBeTruthy();
-        expect(textToCopy).toContain("This is a very long text");
+        // A visible rendered selection bound to the checked long-text item is required.
+        // A logical selection may render as several fragments, so only require one visible fragment.
+        await expect(page.locator(`.editor-overlay .selection[data-selection-item-id="${itemId}"]`).first())
+            .toBeVisible();
 
-        // Move to the second item explicitly via locator to avoid keyboard navigation flakiness
-        // with wrapped long text lines
-        const secondItem = page.locator(".outliner-item").nth(2);
-        try {
-            await secondItem.locator(".item-content").click({ force: true, timeout: 5000 });
-        } catch {
-            // Fallback to keyboard navigation if click fails
-            await page.keyboard.press("ArrowDown");
-            await page.keyboard.press("ArrowDown");
-            await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(500);
-        }
-        await TestHelpers.waitForCursorVisible(page);
-
-        await page.keyboard.press("End", { delay: 100 });
-        await page.waitForTimeout(500);
-        await page.keyboard.press("End", { delay: 100 });
-        await page.waitForTimeout(1000);
-
-        // Wait for cursor position update
-        await page.waitForTimeout(1000);
-
-        await page.evaluate((textToPaste) => {
-            const editorOverlayStore = (globalThis as any).editorOverlayStore;
-            if (editorOverlayStore && textToPaste) {
-                const cursorInstances = editorOverlayStore.getCursorInstances();
-                cursorInstances.forEach((cursor: any) => cursor.insertText(textToPaste));
-                editorOverlayStore.triggerOnEdit?.();
+        // Selecting must not mutate the source text, in the model or in the render.
+        const modelTextAfter = await page.evaluate((id: string): string | null => {
+            const gs = (globalThis as any).generalStore ?? (globalThis as any).appStore;
+            const items = gs?.currentPage?.items;
+            if (!items) return null;
+            const length = typeof items.length === "number" ? items.length : 0;
+            for (let i = 0; i < length; i++) {
+                const item = typeof items.at === "function" ? items.at(i) : items[i];
+                if (item && String(item.id) === id) return String(item?.text ?? "");
             }
-        }, textToCopy);
-
-        // Wait for store changes to reflect
-        await page.waitForTimeout(1000);
-
-        // Check the pasted text
-        const secondItemText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
-        expect(secondItemText).toContain("Second item text");
-        expect(secondItemText).toContain("This is a very long text");
+            return null;
+        }, itemId);
+        expect(modelTextAfter).toBe(LONG_TEXT);
+        await expect.poll(async () => await renderedText.textContent(), { timeout: 10000 }).toBe(LONG_TEXT);
     });
 });
