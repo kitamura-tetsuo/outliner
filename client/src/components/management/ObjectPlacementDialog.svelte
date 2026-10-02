@@ -15,6 +15,7 @@ interface Props {
 let { project, objectType, objectId, objectName, onclose }: Props = $props();
 let pageId = $state("");
 let pages = $state<{ id: string; title: string; }[]>([]);
+let dialogEl: HTMLDialogElement | undefined = $state();
 
 function syncPages() {
     pages = [...project.items].map(page => ({ id: page.id, title: page.text || "Untitled Page" }));
@@ -22,6 +23,9 @@ function syncPages() {
 }
 
 onMount(() => {
+    if (dialogEl && !dialogEl.open && typeof dialogEl.showModal === 'function') {
+        dialogEl.showModal();
+    }
     const tree = project.ydoc.getMap("orderedTree");
     syncPages();
     tree.observeDeep(syncPages);
@@ -36,8 +40,7 @@ function place() {
 }
 </script>
 
-<div class="backdrop" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) onclose(); }}>
-    <div class="dialog" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="placement-title">
+<dialog class="dialog" aria-modal="true" aria-labelledby="placement-title" bind:this={dialogEl} oncancel={onclose} onclick={(e) => { if (e.target === dialogEl) onclose(); }}>
         <h2 id="placement-title">Place “{objectName}” on a Page</h2>
         <label>Page
             <select bind:value={pageId} data-testid="object-placement-page-picker">
@@ -50,11 +53,10 @@ function place() {
             <button type="button" onclick={onclose}>Cancel</button>
             <button type="button" class="primary" disabled={pages.length === 0} onclick={place} data-testid="object-placement-confirm">Place</button>
         </div>
-    </div>
-</div>
+    </dialog>
 
 <style>
-.backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgb(0 0 0 / 45%); }
+dialog::backdrop { background: rgb(0 0 0 / 45%); }
 .dialog { width: min(26rem, calc(100vw - 2rem)); padding: 1.25rem; border-radius: .5rem; background: white; box-shadow: 0 10px 30px rgb(0 0 0 / 25%); }
 h2 { margin: 0 0 1rem; font-size: 1.15rem; }
 label { display: grid; gap: .4rem; }

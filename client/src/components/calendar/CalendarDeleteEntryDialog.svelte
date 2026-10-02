@@ -14,6 +14,7 @@
 import type { Project } from "$shared/app-schema";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import { deleteCalendarEntry, deleteCalendarRecurrenceOccurrence, isRecurrenceOverrideEntry } from "../../services/calendar/calendarEntryDelete";
+import { onMount } from "svelte";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
 
 interface Props {
@@ -28,6 +29,13 @@ let { project, resolver, entry, onDeleted, onCancel }: Props = $props();
 
 let error = $state<string | undefined>(undefined);
 let busy = $state(false);
+let dialogEl: HTMLDialogElement | undefined = $state();
+
+onMount(() => {
+    if (dialogEl && !dialogEl.open && typeof dialogEl.showModal === 'function') {
+        dialogEl.showModal();
+    }
+});
 
 // svelte-ignore state_referenced_locally
 const isOccurrence = isRecurrenceOverrideEntry(entry);
@@ -45,17 +53,8 @@ async function run(action: () => Promise<void> | void) {
     }
 }
 
-function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-    }
-}
 </script>
-
-<svelte:window onkeydown={onKeydown} />
-<div class="dialog-backdrop" role="presentation">
-    <div class="dialog" role="alertdialog" tabindex="-1" aria-modal="true" aria-label="Delete calendar entry" data-testid="calendar-delete-dialog">
+<dialog class="dialog" role="alertdialog" aria-modal="true" aria-label="Delete calendar entry" data-testid="calendar-delete-dialog" bind:this={dialogEl} oncancel={onCancel} onclick={(e) => { if (e.target === dialogEl) onCancel(); }}>
         <h3>Delete "{entry.title || "this entry"}"?</h3>
 
         {#if isOccurrence}
@@ -99,18 +98,11 @@ function onKeydown(e: KeyboardEvent) {
         {#if error}
             <p class="error" data-testid="calendar-delete-error">{error}</p>
         {/if}
-    </div>
-</div>
+    </dialog>
 
 <style>
-.dialog-backdrop {
-    position: fixed;
-    inset: 0;
+dialog::backdrop {
     background: rgba(17, 24, 39, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
 }
 
 .dialog {
