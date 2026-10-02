@@ -25,3 +25,13 @@ jobs:
 
       - name: Check MCP v2 peer compatibility
         run: node scripts/check-mcp-dependency-compat.mjs
+
+      - name: Install MCP regression-test dependencies
+        run: npm ci --prefix scripts/tests --ignore-scripts --no-audit --no-fund
+
+      - name: Run MCP dependency regression tests
+        run: |
+          cd scripts/tests
+          npx vitest run \
+            env-mcp-v2-peer-compat-9f3d2a61.spec.ts \
+            env-mcp-v2-dependabot-gate-9f3d2a61.spec.ts

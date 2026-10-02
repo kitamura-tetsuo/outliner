@@ -36,6 +36,12 @@ test("a dedicated workflow runs the production compatibility checker", () => {
 
     expect(runs).toContain("npm ci --ignore-scripts --no-audit --no-fund");
     expect(runs).toContain("node scripts/check-mcp-dependency-compat.mjs");
+    expect(runs).toContain("npm ci --prefix scripts/tests --ignore-scripts --no-audit --no-fund");
+
+    const allRuns = runs.join("\n");
+    expect(allRuns).toMatch(/npx vitest run/);
+    expect(allRuns).toMatch(/env-mcp-v2-peer-compat-9f3d2a61\.spec\.ts/);
+    expect(allRuns).toMatch(/env-mcp-v2-dependabot-gate-9f3d2a61\.spec\.ts/);
 });
 
 test("dependency-heavy CI jobs cannot start before the MCP compatibility gate passes", () => {
