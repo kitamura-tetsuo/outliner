@@ -53,7 +53,6 @@
     let fileInput: HTMLInputElement | null = $state(null);
     let showA11yHelp = $state(false);
     let a11yDialog: HTMLDialogElement | undefined = $state();
-    let triggerElement: HTMLElement | null = null;
 
     $effect(() => {
         if (a11yDialog) {
@@ -64,10 +63,6 @@
             } else {
                 if (a11yDialog.open && typeof a11yDialog.close === 'function') {
                     a11yDialog.close();
-                    if (triggerElement) {
-                        triggerElement.focus();
-                        triggerElement = null;
-                    }
                 }
             }
         }

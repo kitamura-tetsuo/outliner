@@ -29,20 +29,13 @@ let { project, resolver, entry, onDeleted, onCancel }: Props = $props();
 let error = $state<string | undefined>(undefined);
 let busy = $state(false);
 let dialogEl: HTMLDialogElement | undefined = $state();
-let triggerElement: HTMLElement | null = null;
 
 $effect(() => {
     if (dialogEl) {
         if (!dialogEl.open && typeof dialogEl.showModal === 'function') {
-            triggerElement = document.activeElement as HTMLElement;
             dialogEl.showModal();
         }
     }
-    return () => {
-        if (triggerElement && typeof triggerElement.focus === 'function') {
-            triggerElement.focus();
-        }
-    };
 });
 
 // svelte-ignore state_referenced_locally
