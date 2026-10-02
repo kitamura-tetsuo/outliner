@@ -71,7 +71,7 @@ let dueValue = $state("");
 let parentKey = $state("");
 let error = $state<string | undefined>(undefined);
 let submitting = $state(false);
-let dialogEl: HTMLDivElement | undefined = $state();
+let dialogEl: HTMLDialogElement | undefined = $state();
 
 // svelte-ignore state_referenced_locally
 const candidates = listDestinationCandidates(project);
@@ -128,27 +128,27 @@ async function submit(e: Event) {
     }
 }
 
-function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-        e.preventDefault();
+$effect(() => {
+    if (dialogEl && !dialogEl.open && typeof dialogEl.showModal === "function") {
+        dialogEl.showModal();
+    }
+});
+
+function handleBackdropClick(event: MouseEvent) {
+    if (event.target === dialogEl) {
         onCancel();
     }
 }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-<div
-    class="dialog-backdrop"
-    role="presentation"
+<dialog
+    class="dialog"
+    aria-label="New calendar entry"
+    data-testid="calendar-create-dialog"
+    bind:this={dialogEl}
+    oncancel={onCancel}
+    onclick={handleBackdropClick}
 >
-    <div
-        class="dialog"
-        role="dialog" tabindex="-1"
-        aria-modal="true"
-        aria-label="New calendar entry"
-        data-testid="calendar-create-dialog"
-        bind:this={dialogEl}
-    >
         <h3>New entry</h3>
         <form onsubmit={submit}>
             <label class="field">
@@ -234,18 +234,11 @@ function onKeydown(e: KeyboardEvent) {
                 </button>
             </div>
         </form>
-    </div>
-</div>
+</dialog>
 
 <style>
-.dialog-backdrop {
-    position: fixed;
-    inset: 0;
+dialog::backdrop {
     background: rgba(17, 24, 39, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
 }
 
 .dialog {
@@ -255,6 +248,7 @@ function onKeydown(e: KeyboardEvent) {
     width: 320px;
     max-width: 90vw;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    border: none;
 }
 
 .dialog h3 {
