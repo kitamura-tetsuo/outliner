@@ -45,17 +45,33 @@ async function run(action: () => Promise<void> | void) {
     }
 }
 
-function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
+let dialogElement: HTMLDialogElement | undefined = $state();
+
+$effect(() => {
+    if (dialogElement) {
+        if (!dialogElement.open && typeof dialogElement.showModal === "function") {
+            dialogElement.showModal();
+        }
     }
-}
+    return () => {
+        if (dialogElement && dialogElement.open && typeof dialogElement.close === "function") {
+            dialogElement.close();
+        }
+    };
+});
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-<div class="dialog-backdrop" role="presentation">
-    <div class="dialog" role="alertdialog" tabindex="-1" aria-modal="true" aria-label="Delete calendar entry" data-testid="calendar-delete-dialog">
+<dialog
+    bind:this={dialogElement}
+    class="calendar-delete-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-label="Delete calendar entry"
+    data-testid="calendar-delete-dialog"
+    oncancel={(e) => { e.preventDefault(); onCancel(); }}
+    onclick={(e) => { if (e.target === dialogElement) onCancel(); }}
+>
+    <div class="dialog-content" role="document">
         <h3>Delete "{entry.title || "this entry"}"?</h3>
 
         {#if isOccurrence}
@@ -100,34 +116,29 @@ function onKeydown(e: KeyboardEvent) {
             <p class="error" data-testid="calendar-delete-error">{error}</p>
         {/if}
     </div>
-</div>
+</dialog>
 
 <style>
-.dialog-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(17, 24, 39, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-}
-
-.dialog {
+.calendar-delete-dialog {
     background: white;
     border-radius: 8px;
+    border: none;
     padding: 16px 20px;
     width: 340px;
     max-width: 90vw;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-.dialog h3 {
+.calendar-delete-dialog::backdrop {
+    background: rgba(17, 24, 39, 0.4);
+}
+
+.calendar-delete-dialog h3 {
     margin: 0 0 8px;
     font-size: 1rem;
 }
 
-.dialog p {
+.calendar-delete-dialog p {
     margin: 0 0 12px;
     font-size: 0.85rem;
     color: #374151;

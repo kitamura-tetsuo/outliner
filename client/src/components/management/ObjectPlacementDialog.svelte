@@ -28,6 +28,21 @@ onMount(() => {
     return () => tree.unobserveDeep(syncPages);
 });
 
+let dialogElement: HTMLDialogElement | undefined = $state();
+
+$effect(() => {
+    if (dialogElement) {
+        if (!dialogElement.open && typeof dialogElement.showModal === "function") {
+            dialogElement.showModal();
+        }
+    }
+    return () => {
+        if (dialogElement && dialogElement.open && typeof dialogElement.close === "function") {
+            dialogElement.close();
+        }
+    };
+});
+
 function place() {
     const destinationPageId = pageId || pages[0]?.id;
     if (!destinationPageId) return;
@@ -36,9 +51,15 @@ function place() {
 }
 </script>
 
-<div class="backdrop" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) onclose(); }}>
-    <div class="dialog" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="placement-title">
-        <h2 id="placement-title">Place “{objectName}” on a Page</h2>
+<dialog
+    bind:this={dialogElement}
+    class="object-placement-dialog"
+    aria-modal="true"
+    aria-labelledby="placement-title"
+    oncancel={(e) => { e.preventDefault(); onclose(); }}
+    onclick={(e) => { if (e.target === dialogElement) onclose(); }}
+>
+    <h2 id="placement-title">Place “{objectName}” on a Page</h2>
         <label>Page
             <select bind:value={pageId} data-testid="object-placement-page-picker">
                 {#each pages as page (page.id)}
@@ -50,12 +71,20 @@ function place() {
             <button type="button" onclick={onclose}>Cancel</button>
             <button type="button" class="primary" disabled={pages.length === 0} onclick={place} data-testid="object-placement-confirm">Place</button>
         </div>
-    </div>
-</div>
+</dialog>
 
 <style>
-.backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgb(0 0 0 / 45%); }
-.dialog { width: min(26rem, calc(100vw - 2rem)); padding: 1.25rem; border-radius: .5rem; background: white; box-shadow: 0 10px 30px rgb(0 0 0 / 25%); }
+.object-placement-dialog {
+    width: min(26rem, calc(100vw - 2rem));
+    padding: 1.25rem;
+    border-radius: .5rem;
+    border: none;
+    background: white;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 25%);
+}
+.object-placement-dialog::backdrop {
+    background: rgb(0 0 0 / 45%);
+}
 h2 { margin: 0 0 1rem; font-size: 1.15rem; }
 label { display: grid; gap: .4rem; }
 select { padding: .5rem; }
