@@ -451,7 +451,7 @@ describe("MCP mutation safety contract", () => {
         for (let i = 0; i < 50 && !auditLine; i++) {
             if (fs.existsSync(mcpLogPath)) {
                 const lines = fs.readFileSync(mcpLogPath, "utf-8").split("\n").filter(Boolean);
-                auditLine = lines.map(line => JSON.parse(line)).find(entry => entry.event === "mcp_audit");
+                auditLine = lines.map(line => JSON.parse(line)).find(entry => entry.event === "mcp_audit" && entry.operationId === "audit-op-1");
             }
             if (!auditLine) await new Promise(r => setTimeout(r, 100));
         }
@@ -490,7 +490,7 @@ describe("MCP mutation safety contract", () => {
         for (let i = 0; i < 50 && auditLines.length < 2; i++) {
             if (fs.existsSync(mcpLogPath)) {
                 const lines = fs.readFileSync(mcpLogPath, "utf-8").split("\n").filter(Boolean);
-                auditLines = lines.map(line => JSON.parse(line)).filter(entry => entry.event === "mcp_audit");
+                auditLines = lines.map(line => JSON.parse(line)).filter(entry => entry.event === "mcp_audit" && entry.operationId === "audit-replay-1");
             }
             if (auditLines.length < 2) await new Promise(r => setTimeout(r, 100));
         }
@@ -618,7 +618,7 @@ describe("MCP mutation safety contract", () => {
         for (let i = 0; i < 50 && audits.length < 2; i++) {
             if (fs.existsSync(mcpLogPath)) {
                 const lines = fs.readFileSync(mcpLogPath, "utf-8").split("\n").filter(Boolean);
-                audits = lines.map(line => JSON.parse(line)).filter(entry => entry.event === "mcp_audit");
+                audits = lines.map(line => JSON.parse(line)).filter(entry => entry.event === "mcp_audit" && (entry.operationId === "table-schema-op-1" || entry.operationId === "table-records-op-1"));
             }
             if (audits.length < 2) await new Promise(r => setTimeout(r, 100));
         }
