@@ -26,7 +26,7 @@
     "devDependencies": {
         "@types/node": "^26.6.3",
         "@types/uuid": "^11.0.0",
-        "@types/ws": "^8.18.1",
+        "@types/ws": "^8.18.2",
         "ts-node": "^10.9.2",
         "vitest": "^5.0.2"
     }
