@@ -446,6 +446,17 @@ function normalizedLabel(label: string | null): string | null {
 
 const DEFAULT_COMPONENT: GridComponentPresentation = { label: null, type: null, shown: true };
 
+/**
+ * The represented settings of an exact result name. Only own entries count:
+ * a name such as "constructor" or "__proto__" must never resolve to an
+ * inherited Object.prototype member.
+ */
+function componentIn(presentation: GridPresentation, column: string): GridComponentPresentation {
+    return Object.prototype.hasOwnProperty.call(presentation.components, column)
+        ? presentation.components[column]
+        : DEFAULT_COMPONENT;
+}
+
 function isDefaultComponent(component: GridComponentPresentation): boolean {
     return component.label === null && component.type === null && component.shown;
 }
@@ -465,11 +476,11 @@ function candidatePresentation(
     const container = entry.get("components");
     const saved = new Map<string, GridComponentPresentation>(
         container instanceof Y.Map
-            ? [...container.keys()].map(column => [column, { ...(current.components[column] ?? DEFAULT_COMPONENT) }])
+            ? [...container.keys()].map(column => [column, { ...componentIn(current, column) }])
             : [],
     );
     for (const [column, change] of changes.components ?? []) {
-        const next = { ...(saved.get(column) ?? current.components[column] ?? DEFAULT_COMPONENT) };
+        const next = { ...(saved.get(column) ?? componentIn(current, column)) };
         if (change.label !== undefined) next.label = normalizedLabel(change.label);
         if (change.type !== undefined) next.type = change.type;
         if (change.shown !== undefined) next.shown = change.shown;
@@ -557,7 +568,7 @@ function planLeafOps(
     // Component maps created by this update (absent column, or absent container).
     const fresh = new Map<string, Y.Map<unknown>>();
     for (const [column, change] of changes.components ?? []) {
-        const now = current.components[column] ?? DEFAULT_COMPONENT;
+        const now = componentIn(current, column);
         const writes: [string, unknown][] = [];
         if (change.label !== undefined) {
             const label = normalizedLabel(change.label);
@@ -649,6 +660,7 @@ export class OutlinerGridPresentationService {
         await this.authorize(uid, projectId);
         const room = `projects/${projectId}`;
         let connection = await openLiveRoom(this.hocuspocus, room, uid, { effect: "none" });
+        let outcome: { result: GridPresentationUpdateResult; } | { receipt: GridPresentationReceipt; };
         try {
             await options.beforeMutation?.();
             // Re-authorize after every asynchronous step, then resolve the
@@ -678,30 +690,34 @@ export class OutlinerGridPresentationService {
             }
             const ops = planLeafOps(entry, prior.presentation, changes);
             if (dryRun) {
-                return {
-                    dryRun: true,
-                    applied: false,
-                    projectId,
-                    gridId,
-                    presentation: prior.presentation,
-                    presentationRevision: prior.presentationRevision,
-                    priorPresentationRevision: prior.presentationRevision,
-                    candidatePresentation: candidatePresentation(entry, prior.presentation, changes),
-                    wouldChange: ops.length > 0,
+                outcome = {
+                    result: {
+                        dryRun: true,
+                        applied: false,
+                        projectId,
+                        gridId,
+                        presentation: prior.presentation,
+                        presentationRevision: prior.presentationRevision,
+                        priorPresentationRevision: prior.presentationRevision,
+                        candidatePresentation: candidatePresentation(entry, prior.presentation, changes),
+                        wouldChange: ops.length > 0,
+                    },
                 };
-            }
-            if (ops.length === 0) {
-                return {
-                    dryRun: false,
-                    applied: false,
-                    projectId,
-                    gridId,
-                    priorPresentationRevision: prior.presentationRevision,
-                    presentationRevision: prior.presentationRevision,
-                    presentation: prior.presentation,
+            } else if (ops.length === 0) {
+                outcome = {
+                    result: {
+                        dryRun: false,
+                        applied: false,
+                        projectId,
+                        gridId,
+                        priorPresentationRevision: prior.presentationRevision,
+                        presentationRevision: prior.presentationRevision,
+                        presentation: prior.presentation,
+                    },
                 };
+            } else {
+                outcome = { receipt: await this.apply(room, doc, entry, prior, ops) };
             }
-            return await this.apply(uid, room, doc, entry, prior, ops);
         } catch (error) {
             if (error instanceof McpReadError) throw error;
             // Only steps before the mutation reach here (apply() converts
@@ -714,17 +730,44 @@ export class OutlinerGridPresentationService {
             // Releasing a connection never changes an established outcome.
             await closeLiveRoom(this.hocuspocus, connection).catch(() => {});
         }
+        return await this.disclose(uid, projectId, outcome);
+    }
+
+    /**
+     * Recheck authority after every awaited step (storage, connection release)
+     * and immediately before delivering a presentation-bearing result. A grant
+     * revoked meanwhile withholds the result; an effect that already happened
+     * stays (it was authorized, and is never compensated by restoring an
+     * earlier state) and its receipt travels only on the error.
+     */
+    private async disclose(
+        uid: string,
+        projectId: string,
+        outcome: { result: GridPresentationUpdateResult; } | { receipt: GridPresentationReceipt; },
+    ): Promise<GridPresentationUpdateResult> {
+        try {
+            await this.authorize(uid, projectId);
+        } catch (error) {
+            if ("receipt" in outcome) throw new GridPresentationUndisclosedError(outcome.receipt);
+            throw error;
+        }
+        if ("result" in outcome) return outcome.result;
+        const { receipt } = outcome;
+        if (receipt.status === "unknown") {
+            throw new GridPresentationEffectError(receipt, "The Grid presentation update outcome is unknown");
+        }
+        const { status: _status, ...applied } = receipt;
+        return applied;
     }
 
     /** Apply the planned leaf writes in one transaction and establish what happened. */
     private async apply(
-        uid: string,
         room: string,
         doc: Y.Doc,
         entry: Y.Map<unknown>,
         prior: GridPresentationRead,
         ops: LeafOp[],
-    ): Promise<GridPresentationApplied> {
+    ): Promise<GridPresentationReceipt> {
         const { projectId, gridId } = prior;
         let mutationError: unknown;
         try {
@@ -781,19 +824,7 @@ export class OutlinerGridPresentationService {
                 );
             }
         }
-        // A grant revoked meanwhile does not authorize disclosing the
-        // result. The effect itself stays: it was authorized, and is never
-        // compensated by restoring an earlier state.
-        try {
-            await this.authorize(uid, projectId);
-        } catch {
-            throw new GridPresentationUndisclosedError(receipt);
-        }
-        if (receipt.status === "unknown") {
-            throw new GridPresentationEffectError(receipt, "The Grid presentation update outcome is unknown");
-        }
-        const { status: _status, ...applied } = receipt;
-        return applied;
+        return receipt;
     }
 
     private liveEntry(connection: DirectConnection, room: string, gridId: string): Y.Map<unknown> {

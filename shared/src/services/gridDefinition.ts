@@ -160,9 +160,12 @@ export function readGridComponents(target: Pick<GridDefinitionTarget, "component
     labels: Record<string, string | undefined>;
     hidden: Record<string, boolean>;
 } {
-    const types: Record<string, string | undefined> = {};
-    const labels: Record<string, string | undefined> = {};
-    const hidden: Record<string, boolean> = {};
+    // Keyed by exact result-column name, so the records have no prototype: a
+    // column named "__proto__" or "constructor" is an ordinary own key, and an
+    // unconfigured one never resolves to an inherited Object.prototype member.
+    const types: Record<string, string | undefined> = Object.create(null);
+    const labels: Record<string, string | undefined> = Object.create(null);
+    const hidden: Record<string, boolean> = Object.create(null);
     target.components.forEach((cfg, column) => {
         if (!(cfg instanceof Y.Map)) return;
         const type = cfg.get("type");

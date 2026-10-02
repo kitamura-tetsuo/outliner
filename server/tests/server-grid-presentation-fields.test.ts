@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import fs from "fs-extra";
 import * as Y from "yjs";
-import { setGridComponentField } from "../../shared/src/services/gridDefinition.js";
+import { orderColumns, setGridComponentField } from "../../shared/src/services/gridDefinition.js";
 import type {
     GridPresentationApplied,
     GridPresentationChanges,
@@ -15,7 +15,14 @@ import {
     type TestServer,
     withRoom,
 } from "./server-create-table-fixture.js";
-import { Peer, PROJECT, readGridAsClient, recordUpdates, seedGridProject } from "./server-grid-presentation-fixture.js";
+import {
+    Peer,
+    PROJECT,
+    readGridAsClient,
+    readStoredGridAsClient,
+    recordUpdates,
+    seedGridProject,
+} from "./server-grid-presentation-fixture.js";
 
 const UID = "user-1";
 
@@ -145,16 +152,40 @@ describe("Grid presentation update: fields, resets and no-ops (#5435 AS-002)", f
             type: null,
             shown: false,
         });
-        // The client's plain-record mirror cannot hold a "__proto__" key, so
-        // that one name is checked through the domain read and the raw keys.
-        const ordinary = keys.filter(key => key !== "__proto__");
+        // The client's normal reader keeps every exact name as an own key,
+        // including "__proto__", and never resolves an unconfigured name to an
+        // inherited Object.prototype member.
         const read = await client();
-        expect(read.labels).to.deep.equal(Object.fromEntries([
+        expect(Object.keys(read.labels).sort()).to.deep.equal([...keys, "title", "due_date"].sort());
+        expect({ ...read.labels }).to.deep.equal(Object.fromEntries([
             ["title", "Name"],
             ["due_date", "Name"],
-            ...ordinary.map(key => [key, `label ${key}`]),
+            ...keys.map(key => [key, `label ${key}`]),
         ]));
-        expect(Object.keys(read.hidden).sort()).to.deep.equal([...ordinary].sort());
+        expect(Object.keys(read.hidden).sort()).to.deep.equal([...keys].sort());
+        for (const key of keys) expect(read.hidden[key]).to.equal(true);
+        expect(read.labels["valueOf"]).to.equal(undefined);
+        expect(read.types["hasOwnProperty"]).to.equal(undefined);
+        // Rendering: the hidden special names are filtered out of the display.
+        const resultColumns = ["id", ...keys, "title"];
+        expect(orderColumns(resultColumns, read.columnOrder).filter(c => read.hidden[c] !== true)).to.deep.equal([
+            "id",
+            "title",
+        ]);
+
+        // Restored, "__proto__" renders with its saved header and type.
+        await apply({ components: { ["__proto__"]: { shown: true, type: "number" } } as never });
+        const restored = await client();
+        expect(restored.hidden["__proto__"]).to.equal(undefined);
+        expect(restored.labels["__proto__"]).to.equal("label __proto__");
+        expect(restored.types["__proto__"]).to.equal("number");
+        expect(orderColumns(resultColumns, restored.columnOrder).filter(c => restored.hidden[c] !== true))
+            .to.deep.equal(["id", "__proto__", "title"]);
+        // The same holds for a fresh client reading acknowledged storage.
+        const stored = (await readStoredGridAsClient(dir, "grid-tasks"))!;
+        expect(stored.labels["__proto__"]).to.equal("label __proto__");
+        expect(stored.types["__proto__"]).to.equal("number");
+        expect(stored.hidden["__proto__"]).to.equal(undefined);
         // Nothing was interpreted as a nested object path.
         const components = await withRoom(
             server.hocuspocus,

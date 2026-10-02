@@ -135,6 +135,57 @@ describe("Grid presentation update: preview, revalidation and leaf merging (#543
         expect(preview.candidatePresentation).to.deep.equal(before.presentation);
     });
 
+    it("previews complete settings for names matching Object.prototype members, equal to the apply", async () => {
+        const patches: Record<string, { label?: string | null; type?: "number" | null; shown?: boolean; }>[] = [];
+        for (const key of ["constructor", "toString", "__proto__"]) {
+            // Computed keys define literal own properties, "__proto__" included.
+            patches.push({ [key]: { label: "Header" } }, { [key]: { type: "number" } }, {
+                [key]: { label: null, type: null, shown: true },
+            });
+        }
+        for (const components of patches) {
+            const [key] = Object.keys(components);
+            const before = await service.readPresentation(UID, PROJECT, "grid-tasks");
+            const request = {
+                projectId: PROJECT,
+                gridId: "grid-tasks",
+                expectedPresentationRevision: before.presentationRevision,
+                changes: { components },
+            };
+            const recorder = await recordUpdates(server.hocuspocus);
+            let preview: GridPresentationPreview;
+            try {
+                preview = await service.updatePresentation(UID, {
+                    ...request,
+                    dryRun: true,
+                }) as GridPresentationPreview;
+                expect(recorder.updates).to.have.length(0);
+            } finally {
+                await recorder.stop();
+            }
+            const isReset = components[key].shown === true;
+            expect(preview.wouldChange, key).to.equal(!isReset);
+            if (isReset) {
+                expect(Object.prototype.hasOwnProperty.call(preview.candidatePresentation.components, key)).to.equal(
+                    false,
+                );
+            } else {
+                expect(preview.candidatePresentation.components[key], key).to.deep.equal({
+                    label: components[key].label ?? null,
+                    type: components[key].type ?? null,
+                    shown: true,
+                });
+            }
+            const applied = await service.updatePresentation(UID, request);
+            expect(applied.presentation, key).to.deep.equal(preview.candidatePresentation);
+            // Clear the override for the next patch through the normal writer,
+            // which drops the emptied per-column map.
+            setGridComponentField(peer.grid("grid-tasks"), key, "label", undefined);
+            setGridComponentField(peer.grid("grid-tasks"), key, "type", undefined);
+            expect(peer.grid("grid-tasks").components.has(key)).to.equal(false);
+        }
+    });
+
     it("rejects the previewed revision after a peer edit, and never recreates a deleted Grid", async () => {
         const before = await service.readPresentation(UID, PROJECT, "grid-tasks");
         const request = {
