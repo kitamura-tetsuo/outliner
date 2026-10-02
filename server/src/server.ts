@@ -24,6 +24,7 @@ import { OutlinerReadService } from "./mcp/outliner-read-service.js";
 import { OutlinerRelationService } from "./mcp/relation-service.js";
 import { OutlinerScheduleService } from "./mcp/schedule-service.js";
 import { OutlinerTableCreationService } from "./mcp/table-creation.js";
+import { UpdateGridPresentationTool } from "./mcp/update-grid-presentation-tool.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { getOAuthFirebaseWebConfig } from "./oauth/authorize-page.js";
 import { createOAuthRouter } from "./oauth/oauth-api.js";
@@ -505,6 +506,8 @@ export async function startServer(
         }),
         // One long-lived instance: its replay window spans MCP requests.
         new CreateTableTool(tableCreation, checkContainerAccess),
+        // One long-lived instance: its replay window spans MCP requests.
+        new UpdateGridPresentationTool(gridPresentation, checkContainerAccess),
     ));
 
     // Log rotation endpoint

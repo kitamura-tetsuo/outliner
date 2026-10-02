@@ -3,6 +3,18 @@ import * as z from "zod/v4";
 const jsonObject = z.looseObject({});
 const gridColumn = z.looseObject({ name: z.string(), shown: z.boolean() });
 const gridComponent = z.looseObject({ shown: z.boolean() });
+const gridPresentationComponent = z.strictObject({
+    label: z.string().nullable(),
+    type: z.string().nullable(),
+    shown: z.boolean(),
+});
+const gridPresentation = z.strictObject({
+    name: z.string(),
+    columnOrder: z.array(z.string()),
+    components: z.record(z.string(), gridPresentationComponent),
+    showAddRowButton: z.boolean(),
+    confirmRowDelete: z.boolean(),
+});
 const revision = z.string();
 const outlineNode: z.ZodType = z.lazy(() =>
     z.looseObject({
@@ -64,6 +76,8 @@ export const toolOutputSchemas = {
         columns: z.array(gridColumn),
         components: z.record(z.string(), gridComponent),
         revision,
+        presentation: gridPresentation,
+        presentationRevision: z.string(),
     }),
     get_calendar: z.looseObject({
         id: z.string(),
@@ -153,6 +167,26 @@ export const toolOutputSchemas = {
             : result.tableId === undefined && result.revision === undefined && !result.replayed
     ),
     update_grid_query: mutation,
+    // A dry run carries a detached candidate plus wouldChange and has no
+    // persisted revision beyond the unchanged current one. A normal apply
+    // carries no candidate fields. Unknown effects are errors, never success.
+    update_grid_presentation: z.strictObject({
+        projectId: z.string(),
+        gridId: z.string(),
+        dryRun: z.boolean(),
+        applied: z.boolean(),
+        replayed: z.boolean(),
+        priorPresentationRevision: z.string(),
+        presentationRevision: z.string(),
+        presentation: gridPresentation,
+        candidatePresentation: gridPresentation.optional(),
+        wouldChange: z.boolean().optional(),
+    }).refine(result =>
+        result.dryRun
+            ? result.applied === false && result.replayed === false
+                && result.candidatePresentation !== undefined && result.wouldChange !== undefined
+            : result.candidatePresentation === undefined && result.wouldChange === undefined
+    ),
     set_view_query: mutation,
     update_table_schema: mutation,
     update_table_records: mutation.extend({ records: z.array(jsonObject) }),

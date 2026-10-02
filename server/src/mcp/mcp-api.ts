@@ -13,6 +13,7 @@ import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner
 import { OutlinerRelationService } from "./relation-service.js";
 import { OutlinerScheduleService } from "./schedule-service.js";
 import { type OutlinerToolName, toolOutputSchemas } from "./tool-output-schemas.js";
+import type { UpdateGridPresentationTool } from "./update-grid-presentation-tool.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 
@@ -94,6 +95,7 @@ export function createMcpRouter(
     relationService?: OutlinerRelationService,
     scheduleService?: OutlinerScheduleService,
     tableCreation?: CreateTableTool,
+    gridPresentationTool?: UpdateGridPresentationTool,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -735,6 +737,45 @@ export function createMcpRouter(
                 },
             );
         }
+        if (gridPresentationTool) {
+            tool(
+                "update_grid_presentation",
+                "Update a Grid's saved presentation (display name, stored column order, per-column label/type/visibility "
+                    + "keyed by exact SQL result name, add-row button, delete confirmation) without touching its Table, "
+                    + "data, SQL query, source Table or placements. Read the current presentationRevision from get_grid "
+                    + "and pass it as expectedPresentationRevision. Retry a lost or failed response with the same "
+                    + "operationId; use a new operationId for different input. Results are retained for replay for five "
+                    + "minutes after the update settles, in this server process only: there is no guarantee across a "
+                    + "restart or after expiry, so this is not unlimited exactly-once execution. A replay returns the "
+                    + "original outcome, not current Grid state. dryRun: true previews without persisting, reserving, "
+                    + "or consuming the operationId. An internal_failure with applied null means the update may have "
+                    + "happened: re-read with get_grid instead of retrying with a new operationId.",
+                {
+                    projectId: z.string(),
+                    gridId: z.string(),
+                    expectedPresentationRevision: z.string(),
+                    changes: z.looseObject({}),
+                    operationId: z.string().min(1).max(200).refine(value => value.trim().length > 0),
+                    dryRun: z.boolean().optional(),
+                },
+                args => {
+                    requireWrite();
+                    return gridPresentationTool.update(uid, {
+                        projectId: args.projectId,
+                        gridId: args.gridId,
+                        expectedPresentationRevision: args.expectedPresentationRevision,
+                        changes: args.changes,
+                        operationId: args.operationId,
+                        dryRun: args.dryRun,
+                    });
+                },
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
+                },
+            );
+        }
 
         // Replace the MCP SDK's own `tools/call` dispatch (installed by
         // `mcp.registerTool()` via `McpServer.setToolRequestHandlers()`)
@@ -787,7 +828,7 @@ export function createMcpRouter(
                 }
                 const parsed = entry.inputSchema.safeParse(typedArgs);
                 if (!parsed.success) {
-                    if (name === "create_grid" || name === "create_table") {
+                    if (name === "create_grid" || name === "create_table" || name === "update_grid_presentation") {
                         recordMcpAudit({
                             ...buildAuditBase(name, typedArgs),
                             outcome: "invalid_argument",
@@ -797,7 +838,7 @@ export function createMcpRouter(
                         return errorResponse(`Invalid ${name} arguments`, "invalid_argument", {
                             requestId,
                             // Field paths only; never the rejected values.
-                            ...(name === "create_table"
+                            ...(name === "create_table" || name === "update_grid_presentation"
                                 ? { fields: [...new Set(parsed.error.issues.flatMap(issueFields))] }
                                 : {}),
                         });
