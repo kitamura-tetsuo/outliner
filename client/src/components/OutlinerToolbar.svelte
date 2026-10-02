@@ -144,7 +144,7 @@
                 style="display: none;"
             />
             <a href={resolvePath(`${projectPagePath(projectName, pageName)}/diff`)} class="button-style">History / Diff</a>
-            <button type="button" class="button-style" onclick={() => { triggerElement = document.activeElement as HTMLElement; showA11yHelp = true; }}>Keyboard Shortcuts</button>
+            <button type="button" class="button-style" onclick={() => { showA11yHelp = true; }}>Keyboard Shortcuts</button>
         </div>
                 <dialog class="a11y-dialog" bind:this={a11yDialog} onclose={() => showA11yHelp = false} onclick={handleDialogBackdropClick} aria-labelledby="a11y-dialog-title">
             <div class="dialog-content" role="document">
