@@ -20,6 +20,7 @@
         "patch-package": "^8.0.1",
         "playwright": "^1.63.0",
         "pm2": "^7.0.4",
+        "semver": "7.8.5",
         "vitepress": "^1.6.4"
     }
 }

@@ -60,39 +60,46 @@ jobs:
     uses: ./.github/workflows/ci-format.yml
     secrets: inherit
 
-  checks:
+  mcp-dependency-compat:
+    name: MCP Dependency Compatibility
     needs: [pr-guards, format]
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-mcp-dependency-compat.yml
+    secrets: inherit
+
+  checks:
+    needs: [pr-guards, format, mcp-dependency-compat]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-checks.yml
     secrets: inherit
 
   unit-test:
-    needs: [pr-guards, format, eslint-client]
+    needs: [pr-guards, format, eslint-client, mcp-dependency-compat]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-unit.yml
     secrets: inherit
 
   integration-test:
-    needs: [pr-guards, format, eslint-client]
+    needs: [pr-guards, format, eslint-client, mcp-dependency-compat]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-integration.yml
     secrets: inherit
 
   server-test:
-    needs: [pr-guards, format, eslint-client]
+    needs: [pr-guards, format, eslint-client, mcp-dependency-compat]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-server.yml
     secrets: inherit
 
   e2e-test:
-    needs: [pr-guards, format, eslint-client]
+    needs: [pr-guards, format, eslint-client, mcp-dependency-compat]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-e2e.yml
     secrets: inherit
 
   docker-build:
     name: Docker Build
-    needs: [pr-guards, format]
+    needs: [pr-guards, format, mcp-dependency-compat]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-docker-build.yml
     secrets: inherit
