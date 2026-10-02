@@ -65,29 +65,32 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
         await TestHelpers.ensureCursorReady(page);
 
-        const localUserId = await page.evaluate((): string => {
-            const store = (globalThis as any).editorOverlayStore;
-            const cursors = Object.values((store?.cursors ?? {}) as Record<string, any>);
-            const active = cursors.find((cursor: any) => cursor?.isActive) ?? cursors[0];
-            return (active?.userId ?? "local") as string;
-        });
+        // Production local ownership is the literal userId "local".
+        const localUserId = "local";
 
         await page.keyboard.press("Home");
 
-        // The local cursor must be at the start of the long-text item with no local selection.
+        // The active local cursor must be at the start of the long-text item with no local selection.
         await expect.poll(async () => {
             return await page.evaluate((user: string) => {
                 const store = (globalThis as any).editorOverlayStore;
                 if (!store) return null;
                 const cursors = Object.values(store.cursors ?? {}) as Array<any>;
-                const local = cursors.find((cursor: any) => (cursor?.userId ?? "local") === user && cursor?.isActive)
-                    ?? cursors.find((cursor: any) => (cursor?.userId ?? "local") === user);
+                const local = cursors.find((cursor: any) =>
+                    (cursor?.userId ?? "local") === user && cursor?.isActive === true
+                );
                 if (!local) return null;
                 const localSelections = (Object.values(store.selections ?? {}) as Array<any>)
                     .filter((selection: any) => (selection?.userId ?? "local") === user).length;
-                return { itemId: local.itemId, offset: local.offset, localSelections };
+                return {
+                    userId: local.userId ?? "local",
+                    itemId: local.itemId,
+                    offset: local.offset,
+                    isActive: local.isActive,
+                    localSelections,
+                };
             }, localUserId);
-        }, { timeout: 10000 }).toEqual({ itemId, offset: 0, localSelections: 0 });
+        }, { timeout: 10000 }).toEqual({ userId: localUserId, itemId, offset: 0, isActive: true, localSelections: 0 });
 
         await page.keyboard.down("Shift");
         try {
@@ -123,8 +126,10 @@ test.describe("SLR-356b853a: Long text selection range", () => {
             text: expectedSelectionText,
         });
 
-        // A visible rendered selection is required in addition to the store state.
-        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
+        // A visible rendered selection bound to the checked long-text item is required.
+        // A logical selection may render as several fragments, so only require one visible fragment.
+        await expect(page.locator(`.editor-overlay .selection[data-selection-item-id="${itemId}"]`).first())
+            .toBeVisible();
 
         // Selecting must not mutate the source text, in the model or in the render.
         const modelTextAfter = await page.evaluate((id: string): string | null => {
