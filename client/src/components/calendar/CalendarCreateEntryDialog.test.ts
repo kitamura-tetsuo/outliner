@@ -1,7 +1,7 @@
 import type { Item } from "$shared/app-schema";
 import { Items, Project } from "$shared/app-schema";
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDestinationHistory } from "../../services/calendar/calendarDestinationHistory";
 import { ITEMS_RELATION_NAME } from "../../services/yjstable/itemsRelation";
 import type { RelationProvider, RelationWrite } from "../../services/yjstable/relationProvider";
@@ -31,6 +31,8 @@ describe("CalendarCreateEntryDialog", () => {
     let pageB: Item;
 
     beforeEach(() => {
+        HTMLDialogElement.prototype.showModal = vi.fn();
+        HTMLDialogElement.prototype.close = vi.fn();
         localStorage.clear();
         project = Project.createInstance("Test Project");
         pageA = new Items(project.ydoc, project.tree, "root").addNode("tester");

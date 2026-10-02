@@ -3,7 +3,7 @@
 // since it never goes through a table subdoc connector.
 
 import { configure, fireEvent, render, waitFor } from "@testing-library/svelte";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
@@ -41,6 +41,10 @@ afterAll(async () => {
 });
 
 describe("CalendarView", { timeout: 30000 }, () => {
+    beforeEach(() => {
+        HTMLDialogElement.prototype.showModal = vi.fn();
+        HTMLDialogElement.prototype.close = vi.fn();
+    });
     it("keeps an unchanged pre-policy implicit alias executable but rejects it for a governed Calendar", async () => {
         const projectId = "proj-calendar-legacy-alias";
         const { projectDoc, project } = seedProject(projectId);
