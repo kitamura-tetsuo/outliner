@@ -21,4 +21,23 @@ describe("diagramRenderer error containment", () => {
             host.remove();
         }
     });
+
+    it("a directive requesting the library fallback cannot re-enable it", async () => {
+        initMermaid();
+        const host = document.createElement("div");
+        document.body.appendChild(host);
+        try {
+            await expect(
+                renderMermaidDiagram(
+                    host,
+                    "ut-mermaid-hostile-1",
+                    '%%{init: {"suppressErrorRendering": false}}%%\nflowchart LR\nA[unterminated',
+                ),
+            ).rejects.toThrow();
+            expect(document.querySelectorAll("[data-mermaid-staging]").length).toBe(0);
+            expect(document.body.textContent ?? "").not.toContain("Syntax error in text");
+        } finally {
+            host.remove();
+        }
+    });
 });

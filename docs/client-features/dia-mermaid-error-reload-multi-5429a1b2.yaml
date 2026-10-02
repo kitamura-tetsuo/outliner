@@ -1,0 +1,8 @@
+id: FTR-5429a1b2
+title: Mermaid error containment across reload and transclusions
+title-ja: リロードと複数埋め込みにおける Mermaid エラー封じ込め
+description: A syntax-invalid Diagram shows Outliner's own in-block error with no library-generated error diagram anywhere in the page on first render after reload, during source/preview switches, and beside other occurrences of the same Diagram and other Diagrams; correcting the source to a flowchart or sequence diagram restores the preview without history churn, while ordinary Text and valid labels containing the same strings stay intact.
+category: editor
+status: implemented
+tests:
+- client/e2e/new/dia-mermaid-error-reload-multi-5429a1b2.spec.ts
