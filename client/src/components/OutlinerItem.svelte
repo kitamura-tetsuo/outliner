@@ -2333,6 +2333,7 @@ export function setSelectionPosition(start: number, end: number = start) {
      the only thing heading navigation can find the page by. It is rendered
      outside the tree role (see OutlinerTree), so it breaks no
      aria-required-children rule. -->
+
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="outliner-item"
