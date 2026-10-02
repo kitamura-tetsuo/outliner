@@ -19,15 +19,34 @@
 
 import type { Project } from "$shared/app-schema";
 import {
-    EXPLICIT_SELECT_ALIAS_POLICY_VERSION,
-    validateExplicitSelectAliases,
-} from "$shared/services/explicitSelectAlias";
+    createGridEntry,
+    getGridRegistry,
+    type GridDefinitionSeed,
+    type GridDefinitionTarget,
+} from "$shared/services/gridDefinition";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { findGridPlacements } from "../objectManager/objectPlacements";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 
-export const GRID_REGISTRY_KEY = "yjsGrids";
+// The Grid writers/readers are framework-neutral and shared with the server
+// (shared/src/services/gridDefinition.ts), so server-side regressions run the
+// browser's exact creation/editing functions.
+export {
+    getGridColumnOrder,
+    getGridConfirmRowDelete,
+    getGridQuery,
+    getGridRegistry,
+    getGridShowAddRowButton,
+    GRID_REGISTRY_KEY,
+    readGridComponents,
+    renameGrid,
+    setGridColumnOrder,
+    setGridComponentField,
+    setGridConfirmRowDelete,
+    setGridQuery,
+    setGridShowAddRowButton,
+} from "$shared/services/gridDefinition";
 
 /** Fields carried on a Grid registry entry. */
 export interface GridRegistryEntry {
@@ -43,17 +62,10 @@ export interface GridRegistryEntry {
 }
 
 /** Structural handles for one Grid definition. */
-export interface GridHandles {
+export interface GridHandles extends GridDefinitionTarget {
     gridId: string;
-    /** The registry Y.Map entry — the same object listing yields. */
-    entry: Y.Map<unknown>;
-    /** SELECT/query text container (Y.Map key, updated via `setGridQuery`). */
-    /** The nested map of per-column UI settings (Y.Map<column, Y.Map<{type,label,hidden}>>). */
-    components: Y.Map<Y.Map<unknown>>;
     /** Undo scope covering only this Grid's authoritative state. */
     undo: Y.UndoManager;
-    /** The project doc this Grid belongs to. */
-    projectDoc: Y.Doc;
 }
 
 // A single UndoManager is shared by every view of a Grid, so it is
@@ -66,10 +78,6 @@ interface GridUndoEntry {
     refs: number;
 }
 const gridUndoManagers = new WeakMap<Y.Map<unknown>, GridUndoEntry>();
-
-export function getGridRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> {
-    return projectDoc.getMap<Y.Map<unknown>>(GRID_REGISTRY_KEY);
-}
 
 export function listGrids(projectDoc: Y.Doc): GridRegistryEntry[] {
     const registry = getGridRegistry(projectDoc);
@@ -95,18 +103,9 @@ function ensureComponents(entry: Y.Map<unknown>): Y.Map<Y.Map<unknown>> {
     return components as Y.Map<Y.Map<unknown>>;
 }
 
-export interface CreateGridOptions {
-    name?: string;
-    query?: string;
-    columnOrder?: string[];
-    /** Optional seed per column (label/type/hidden). */
-    components?: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
+export interface CreateGridOptions extends GridDefinitionSeed {
     /** Deterministic id (for tests or duplication). */
     gridId?: string;
-    /** Defaults to true. Setting to false explicitly disables the Add row button. */
-    showAddRowButton?: boolean;
-    /** Defaults to false. Setting to true requires confirmation to delete a row. */
-    confirmRowDelete?: boolean;
 }
 
 /**
@@ -120,35 +119,7 @@ export function createGrid(
     options: CreateGridOptions = {},
 ): string {
     const gridId = options.gridId ?? uuidv4();
-    if (options.query?.trim()) validateExplicitSelectAliases(options.query);
-    projectDoc.transact(() => {
-        const entry = new Y.Map<unknown>();
-        entry.set("sourceTableId", sourceTableId);
-        entry.set("name", options.name ?? "Grid");
-        if (options.query !== undefined) {
-            entry.set("query", options.query);
-            if (options.query.trim()) entry.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
-        }
-        if (options.columnOrder && options.columnOrder.length > 0) {
-            entry.set("columnOrder", [...options.columnOrder]);
-        }
-        if (options.showAddRowButton === false) {
-            entry.set("showAddRowButton", false);
-        }
-        if (options.confirmRowDelete === true) {
-            entry.set("confirmRowDelete", true);
-        }
-        const components = new Y.Map<Y.Map<unknown>>();
-        for (const [column, cfg] of Object.entries(options.components ?? {})) {
-            const componentEntry = new Y.Map<unknown>();
-            if (cfg.type !== undefined) componentEntry.set("type", cfg.type);
-            if (cfg.label !== undefined) componentEntry.set("label", cfg.label);
-            if (cfg.hidden !== undefined) componentEntry.set("hidden", cfg.hidden);
-            components.set(column, componentEntry);
-        }
-        entry.set("components", components);
-        getGridRegistry(projectDoc).set(gridId, entry);
-    });
+    createGridEntry(projectDoc, gridId, sourceTableId, options);
     return gridId;
 }
 
@@ -211,10 +182,6 @@ export function destroyGridUndoManager(entry: Y.Map<unknown>): void {
     gridUndoManagers.delete(entry);
 }
 
-export function renameGrid(projectDoc: Y.Doc, gridId: string, name: string): void {
-    getGridRegistry(projectDoc).get(gridId)?.set("name", name);
-}
-
 export function getGridName(projectDoc: Y.Doc, gridId: string): string | undefined {
     const entry = getGridRegistry(projectDoc).get(gridId);
     return entry ? String(entry.get("name") ?? "") : undefined;
@@ -223,100 +190,6 @@ export function getGridName(projectDoc: Y.Doc, gridId: string): string | undefin
 export function getGridSourceTableId(projectDoc: Y.Doc, gridId: string): string | undefined {
     const value = getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId");
     return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-export function getGridQuery(handles: GridHandles): string {
-    return String(handles.entry.get("query") ?? "");
-}
-
-/** Replace the SELECT query text. */
-export function setGridQuery(handles: GridHandles, query: string): void {
-    if (query === getGridQuery(handles)) return;
-    validateExplicitSelectAliases(query);
-    handles.projectDoc.transact(() => {
-        handles.entry.set("query", query);
-        handles.entry.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
-    });
-}
-
-export function getGridColumnOrder(handles: GridHandles): string[] {
-    const order = handles.entry.get("columnOrder");
-    if (Array.isArray(order)) return order as string[];
-    if (order instanceof Y.Array) return order.toArray() as string[];
-    return [];
-}
-
-export function setGridColumnOrder(handles: GridHandles, order: string[]): void {
-    handles.projectDoc.transact(() => {
-        handles.entry.set("columnOrder", [...order]);
-    });
-}
-
-export function getGridShowAddRowButton(handles: GridHandles): boolean {
-    return handles.entry.get("showAddRowButton") !== false;
-}
-
-export function setGridShowAddRowButton(handles: GridHandles, show: boolean): void {
-    const current = getGridShowAddRowButton(handles);
-    if (show === current) return;
-    handles.projectDoc.transact(() => {
-        if (show) handles.entry.delete("showAddRowButton");
-        else handles.entry.set("showAddRowButton", false);
-    });
-}
-
-export function getGridConfirmRowDelete(handles: GridHandles): boolean {
-    return handles.entry.get("confirmRowDelete") === true;
-}
-
-export function setGridConfirmRowDelete(handles: GridHandles, confirm: boolean): void {
-    const current = getGridConfirmRowDelete(handles);
-    if (confirm === current) return;
-    handles.projectDoc.transact(() => {
-        if (confirm) handles.entry.set("confirmRowDelete", true);
-        else handles.entry.delete("confirmRowDelete");
-    });
-}
-
-/** Snapshot the per-column UI settings into a plain record for the UI mirror. */
-export function readGridComponents(handles: GridHandles): {
-    types: Record<string, string | undefined>;
-    labels: Record<string, string | undefined>;
-    hidden: Record<string, boolean>;
-} {
-    const types: Record<string, string | undefined> = {};
-    const labels: Record<string, string | undefined> = {};
-    const hidden: Record<string, boolean> = {};
-    handles.components.forEach((cfg, column) => {
-        if (!(cfg instanceof Y.Map)) return;
-        const type = cfg.get("type");
-        if (type !== undefined) types[column] = String(type);
-        const label = cfg.get("label");
-        if (label !== undefined) labels[column] = String(label);
-        if (cfg.get("hidden") === true) hidden[column] = true;
-    });
-    return { types, labels, hidden };
-}
-
-/** Set (or clear) a per-column config field. */
-export function setGridComponentField(
-    handles: GridHandles,
-    column: string,
-    field: "type" | "label" | "hidden",
-    value: string | boolean | undefined,
-): void {
-    handles.projectDoc.transact(() => {
-        const existing = handles.components.get(column);
-        const cfg = existing instanceof Y.Map ? existing : new Y.Map<unknown>();
-        if (!(existing instanceof Y.Map)) handles.components.set(column, cfg);
-
-        if (value === undefined || value === "") {
-            cfg.delete(field);
-            if (Array.from(cfg.keys()).length === 0) handles.components.delete(column);
-            return;
-        }
-        cfg.set(field, value);
-    });
 }
 
 /** Plain-JS copy of a Grid registry entry's fields, detached from the Y.Doc. */

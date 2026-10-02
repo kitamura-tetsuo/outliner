@@ -8,30 +8,8 @@ import { type GridHandles, setGridColumnOrder } from "./gridDocs";
  */
 export const COLUMN_DRAG_TYPE = "application/x-yjstable-column";
 
-/** Stored order, reconciled against the columns the query actually returned. */
-export function orderColumns(resultColumns: string[], storedOrder: string[]): string[] {
-    const resultColSet = new Set(resultColumns);
-    const ordered: string[] = [];
-    const orderedSet = new Set<string>();
-
-    // 1. Keep stored columns that exist in the result.
-    for (const col of storedOrder) {
-        if (resultColSet.has(col) && !orderedSet.has(col)) {
-            ordered.push(col);
-            orderedSet.add(col);
-        }
-    }
-
-    // 2. Append result columns that are not in the stored order (newly added or not yet saved).
-    for (const col of resultColumns) {
-        if (!orderedSet.has(col)) {
-            ordered.push(col);
-            orderedSet.add(col);
-        }
-    }
-
-    return ordered;
-}
+/** Stored order, reconciled against the columns the query actually returned (shared with the server). */
+export { orderColumns } from "$shared/services/gridDefinition";
 
 /** Move `column` to `targetIndex` within the current effective order. */
 export function moveColumn(effectiveOrder: string[], column: string, targetIndex: number): string[] {
