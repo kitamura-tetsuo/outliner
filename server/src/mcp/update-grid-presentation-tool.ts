@@ -4,6 +4,7 @@ import {
     type GridPresentationReceipt,
     GridPresentationUndisclosedError,
     type GridPresentationUpdateOptions,
+    GridPresentationWithheldNoOpError,
     type OutlinerGridPresentationService,
     type UpdateGridPresentationRequest,
     validateGridPresentationRequest,
@@ -184,6 +185,7 @@ export class UpdateGridPresentationTool {
             // mutation: the receipt is still this operation's remembered
             // outcome, so a same-identity retry must not invoke the writer again.
             if (error instanceof GridPresentationUndisclosedError) return error.receipt;
+            if (error instanceof GridPresentationWithheldNoOpError) return error.receipt;
             if (error instanceof GridPresentationEffectError) return error.receipt;
             throw error;
         }
