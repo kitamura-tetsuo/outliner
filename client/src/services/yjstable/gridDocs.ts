@@ -15,7 +15,7 @@
 //   sourceTableId  string    - the primary Table (write target).
 //   query          string    - SELECT text.
 //   columnOrder    string[]  - display column order (subset/superset of query result).
-//   components     Y.Map     - nested Y.Map per column with {type,label,hidden}.
+//   components     Y.Map     - nested Y.Map per column with {type,label,hidden,widthPx}.
 
 import type { Project } from "$shared/app-schema";
 import {
@@ -23,6 +23,7 @@ import {
     getGridRegistry,
     type GridDefinitionSeed,
     type GridDefinitionTarget,
+    isValidGridColumnWidth,
 } from "$shared/services/gridDefinition";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
@@ -34,14 +35,19 @@ import { globalUndoRouter } from "../undo/undoRouter.svelte";
 // browser's exact creation/editing functions.
 export {
     getGridColumnOrder,
+    getGridColumnWidth,
     getGridConfirmRowDelete,
     getGridQuery,
     getGridRegistry,
     getGridShowAddRowButton,
+    GRID_COLUMN_WIDTH_MAX,
+    GRID_COLUMN_WIDTH_MIN,
     GRID_REGISTRY_KEY,
+    isValidGridColumnWidth,
     readGridComponents,
     renameGrid,
     setGridColumnOrder,
+    setGridColumnWidth,
     setGridComponentField,
     setGridConfirmRowDelete,
     setGridQuery,
@@ -198,24 +204,30 @@ interface GridEntrySnapshot {
     sourceTableId: string;
     query: string;
     columnOrder: string[];
-    components: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
+    components: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }>;
     showAddRowButton?: boolean;
     confirmRowDelete?: boolean;
 }
 
 /** Read a Grid registry entry into a plain snapshot — shared by `duplicateGrid` and delete/undo. */
 function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
-    const components: GridEntrySnapshot["components"] = {};
+    // Null-prototype so an exact result-column name such as "__proto__" is
+    // an ordinary own key rather than a prototype assignment.
+    const components: GridEntrySnapshot["components"] = Object.create(null);
     const sourceComponents = entry.get("components");
     if (sourceComponents instanceof Y.Map) {
         sourceComponents.forEach((cfg, column) => {
             if (!(cfg instanceof Y.Map)) return;
-            const dto: { type?: string; label?: string; hidden?: boolean; } = {};
+            const dto: { type?: string; label?: string; hidden?: boolean; widthPx?: number; } = {};
             const type = cfg.get("type");
             if (type !== undefined) dto.type = String(type);
             const label = cfg.get("label");
             if (label !== undefined) dto.label = String(label);
             if (cfg.get("hidden") === true) dto.hidden = true;
+            // Saved width overrides travel with the definition, including
+            // dormant ones; malformed values read as automatic sizing.
+            const widthPx = cfg.get("widthPx");
+            if (isValidGridColumnWidth(widthPx)) dto.widthPx = widthPx;
             components[column] = dto;
         });
     }

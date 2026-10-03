@@ -23,7 +23,7 @@ export interface GridDefinitionTarget {
     projectDoc: Y.Doc;
     /** The registry Y.Map entry. */
     entry: Y.Map<unknown>;
-    /** The nested map of per-column UI settings (Y.Map<column, Y.Map<{type,label,hidden}>>). */
+    /** The nested map of per-column UI settings (Y.Map<column, Y.Map<{type,label,hidden,widthPx}>>). */
     components: Y.Map<Y.Map<unknown>>;
 }
 
@@ -31,12 +31,27 @@ export interface GridDefinitionSeed {
     name?: string;
     query?: string;
     columnOrder?: string[];
-    /** Optional seed per column (label/type/hidden). */
-    components?: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
+    /** Optional seed per column (label/type/hidden/widthPx). */
+    components?: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }>;
     /** Defaults to true. Setting to false explicitly disables the Add row button. */
     showAddRowButton?: boolean;
     /** Defaults to false. Setting to true requires confirmation to delete a row. */
     confirmRowDelete?: boolean;
+}
+
+/**
+ * Saved per-column width overrides are whole column border-box widths in CSS
+ * px. Valid widths are finite integers in the inclusive range 32..4096; the
+ * absence of an override means automatic sizing, never zero or a saved
+ * default.
+ */
+export const GRID_COLUMN_WIDTH_MIN = 32;
+export const GRID_COLUMN_WIDTH_MAX = 4096;
+
+/** Whether `value` is a storable per-column width override. */
+export function isValidGridColumnWidth(value: unknown): value is number {
+    return typeof value === "number" && Number.isInteger(value) && Number.isFinite(value)
+        && value >= GRID_COLUMN_WIDTH_MIN && value <= GRID_COLUMN_WIDTH_MAX;
 }
 
 export function getGridRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> {
@@ -55,6 +70,17 @@ export function createGridEntry(
     options: GridDefinitionSeed = {},
 ): void {
     if (options.query?.trim()) validateExplicitSelectAliases(options.query);
+    // Every supplied width is validated before the operation has any effect:
+    // an invalid seed rejects the whole creation rather than coercing,
+    // truncating, or partially seeding the Grid.
+    for (const [column, cfg] of Object.entries(options.components ?? {})) {
+        if (cfg.widthPx !== undefined && !isValidGridColumnWidth(cfg.widthPx)) {
+            throw new Error(
+                `Invalid widthPx for column "${column}": expected a finite integer in `
+                    + `the range ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}`,
+            );
+        }
+    }
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
         entry.set("sourceTableId", sourceTableId);
@@ -78,6 +104,7 @@ export function createGridEntry(
             if (cfg.type !== undefined) componentEntry.set("type", cfg.type);
             if (cfg.label !== undefined) componentEntry.set("label", cfg.label);
             if (cfg.hidden !== undefined) componentEntry.set("hidden", cfg.hidden);
+            if (cfg.widthPx !== undefined) componentEntry.set("widthPx", cfg.widthPx);
             components.set(column, componentEntry);
         }
         entry.set("components", components);
@@ -159,13 +186,17 @@ export function readGridComponents(target: Pick<GridDefinitionTarget, "component
     types: Record<string, string | undefined>;
     labels: Record<string, string | undefined>;
     hidden: Record<string, boolean>;
+    widths: Record<string, number>;
 } {
     // Keyed by exact result-column name, so the records have no prototype: a
     // column named "__proto__" or "constructor" is an ordinary own key, and an
     // unconfigured one never resolves to an inherited Object.prototype member.
+    // Malformed stored widths read as automatic sizing (absent) without
+    // modifying the stored document.
     const types: Record<string, string | undefined> = Object.create(null);
     const labels: Record<string, string | undefined> = Object.create(null);
     const hidden: Record<string, boolean> = Object.create(null);
+    const widths: Record<string, number> = Object.create(null);
     target.components.forEach((cfg, column) => {
         if (!(cfg instanceof Y.Map)) return;
         const type = cfg.get("type");
@@ -173,17 +204,91 @@ export function readGridComponents(target: Pick<GridDefinitionTarget, "component
         const label = cfg.get("label");
         if (label !== undefined) labels[column] = String(label);
         if (cfg.get("hidden") === true) hidden[column] = true;
+        const widthPx = cfg.get("widthPx");
+        if (isValidGridColumnWidth(widthPx)) widths[column] = widthPx;
     });
-    return { types, labels, hidden };
+    return { types, labels, hidden, widths };
+}
+
+/**
+ * Read one column's saved width override: a valid number, or undefined for
+ * automatic sizing. Malformed stored widths read as absent without modifying
+ * the stored document.
+ */
+export function getGridColumnWidth(
+    target: Pick<GridDefinitionTarget, "components">,
+    column: string,
+): number | undefined {
+    const cfg = target.components.get(column);
+    if (!(cfg instanceof Y.Map)) return undefined;
+    const widthPx = cfg.get("widthPx");
+    return isValidGridColumnWidth(widthPx) ? widthPx : undefined;
+}
+
+/**
+ * Set (or, with `undefined`, reset) one column's saved width override.
+ *
+ * The width is validated before the operation has any effect: invalid values
+ * are rejected rather than coerced, truncated, or clamped. A set touches only
+ * the addressed `widthPx` leaf (creating only previously absent containers);
+ * a reset removes only the override and preserves every other component
+ * field. Assigning the current valid value, or resetting an already-absent
+ * override, performs no Yjs update at all — not even an empty-map creation.
+ */
+export function setGridColumnWidth(
+    target: GridDefinitionTarget,
+    column: string,
+    widthPx: number | undefined,
+): void {
+    if (widthPx !== undefined && !isValidGridColumnWidth(widthPx)) {
+        throw new Error(
+            `Invalid widthPx for column "${column}": expected a finite integer in `
+                + `the range ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}`,
+        );
+    }
+    const existing = target.components.get(column);
+    if (widthPx === undefined) {
+        if (!(existing instanceof Y.Map) || !existing.has("widthPx")) return;
+        target.projectDoc.transact(() => {
+            const cfg = target.components.get(column);
+            if (!(cfg instanceof Y.Map)) return;
+            cfg.delete("widthPx");
+            if (Array.from(cfg.keys()).length === 0) target.components.delete(column);
+        });
+        return;
+    }
+    if (existing instanceof Y.Map && existing.get("widthPx") === widthPx) return;
+    target.projectDoc.transact(() => {
+        const current = target.components.get(column);
+        const cfg = current instanceof Y.Map ? current : new Y.Map<unknown>();
+        if (!(current instanceof Y.Map)) target.components.set(column, cfg);
+        cfg.set("widthPx", widthPx);
+    });
 }
 
 /** Set (or clear) a per-column config field. */
 export function setGridComponentField(
     target: GridDefinitionTarget,
     column: string,
-    field: "type" | "label" | "hidden",
-    value: string | boolean | undefined,
+    field: "type" | "label" | "hidden" | "widthPx",
+    value: string | boolean | number | undefined,
 ): void {
+    // Width overrides validate like the dedicated writer and share its
+    // leaf-scoped, no-op-free semantics.
+    if (field === "widthPx") {
+        if (value === "") {
+            setGridColumnWidth(target, column, undefined);
+            return;
+        }
+        if (value !== undefined && !isValidGridColumnWidth(value)) {
+            throw new Error(
+                `Invalid widthPx for column "${column}": expected a finite integer in `
+                    + `the range ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}`,
+            );
+        }
+        setGridColumnWidth(target, column, value);
+        return;
+    }
     target.projectDoc.transact(() => {
         const existing = target.components.get(column);
         const cfg = existing instanceof Y.Map ? existing : new Y.Map<unknown>();

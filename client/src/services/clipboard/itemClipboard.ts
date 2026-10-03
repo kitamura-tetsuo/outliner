@@ -1,3 +1,4 @@
+import { isValidGridColumnWidth } from "$shared/services/gridDefinition";
 import type { CalendarSettings } from "../calendar/calendarService";
 import {
     canAcceptChild,
@@ -50,6 +51,12 @@ export interface GridUiComponentDto {
     type?: "text" | "number" | "checkbox" | "select" | "date";
     label?: string;
     hidden?: boolean;
+    /**
+     * Saved per-column width override in CSS px (whole column border-box
+     * width). Absent means automatic sizing. Older DTOs without it stay
+     * valid and read as auto.
+     */
+    widthPx?: number;
 }
 
 /** Portable form of the Grid UI Definition currently persisted in Yjs. */
@@ -211,7 +218,7 @@ const ITEM_KEYS = new Set([
 ]);
 const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
 const UI_KEYS = new Set(["query", "components", "columnOrder", "showAddRowButton"]);
-const COMPONENT_KEYS = new Set(["type", "label", "hidden"]);
+const COMPONENT_KEYS = new Set(["type", "label", "hidden", "widthPx"]);
 const CELL_COMPONENT_TYPES = new Set(["text", "number", "checkbox", "select", "date"]);
 
 function nodeValue(item: ItemLike): { get?: (key: string) => unknown; } | undefined {
@@ -300,6 +307,9 @@ function isGridUiComponentDto(value: unknown): value is GridUiComponentDto {
     }
     if (value.label !== undefined && typeof value.label !== "string") return false;
     if (value.hidden !== undefined && typeof value.hidden !== "boolean") return false;
+    // A supplied width must be a storable override; anything else rejects
+    // the DTO before it can take effect anywhere.
+    if (value.widthPx !== undefined && !isValidGridColumnWidth(value.widthPx)) return false;
     return true;
 }
 
