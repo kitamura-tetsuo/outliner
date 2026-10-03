@@ -4,6 +4,7 @@ import {
     type GridMcpFixture,
     settleMicrotasks,
     startGridMcpFixture,
+    UID,
     updateArgs,
 } from "./mcp-grid-presentation-mcp-fixture.js";
 import { waitFor } from "./server-create-table-fixture.js";
@@ -209,6 +210,63 @@ describe("MCP update_grid_presentation replay (#5436 REQ-006)", function() {
             }),
         )).payload;
         expect(repeatedPreview).to.include({ applied: false, replayed: false, wouldChange: false });
+    });
+
+    it("retains a no-op withheld at disclosure and replays it after a peer edit", async () => {
+        const expectedPresentationRevision = await revision();
+        const args = updateArgs({
+            expectedPresentationRevision,
+            changes: { name: "Tasks" },
+            operationId: "noop-withheld",
+        });
+        // Revoke exactly at the domain disclosure authorization (the fourth
+        // project check of this apply: tool pre-replay, domain open, domain
+        // final, then domain disclose). The established no-op must be
+        // withheld without target metadata while staying retained.
+        t.seams.gate = (requestId, check) => {
+            if (requestId === "withheld-noop" && check === 4) t.acl.revokeAll(PROJECT);
+        };
+        const denied = await t.mcp.call("update_grid_presentation", args, { requestId: "withheld-noop" });
+        expect(denied.result.isError).to.equal(true);
+        expect(denied.payload.code).to.equal("forbidden");
+        expect(denied.payload.requestId).to.be.a("string");
+        expect(denied.payload).not.to.have.property("currentPresentationRevision");
+        expect(JSON.stringify(denied.payload)).not.to.contain("grid-presentation-v1");
+        expect(t.domainCalls, "the denied call must not invoke a second writer").to.equal(1);
+        t.seams.gate = undefined;
+
+        // A peer moves the live revision while access is restored.
+        t.acl.grant("projectUsers", PROJECT, UID);
+        const peer = updateArgs({
+            expectedPresentationRevision,
+            changes: { components: { title: { label: "Peer" } } },
+            operationId: "noop-withheld-peer",
+        });
+        expect((await t.mcp.call("update_grid_presentation", peer)).payload).to.include({ applied: true });
+
+        // The original no-op replays its established outcome instead of
+        // re-executing against the moved revision: no fresh domain attempt, so
+        // the peer edit is neither overwritten nor reported.
+        const retry = await t.mcp.call("update_grid_presentation", args);
+        expect(retry.payload).to.include({
+            dryRun: false,
+            applied: false,
+            replayed: true,
+            priorPresentationRevision: expectedPresentationRevision,
+            presentationRevision: expectedPresentationRevision,
+        });
+        expect(t.domainCalls).to.equal(2);
+
+        // The retained fingerprint still guards the identity: different input
+        // under the same operation ID is refused without executing.
+        const different = await t.mcp.call("update_grid_presentation", {
+            ...args,
+            changes: { name: "Changed" },
+        });
+        expect(different.result.isError).to.equal(true);
+        expect(different.payload.code).to.equal("invalid_argument");
+        expect(different.payload.reason).to.equal("operation_id_reused");
+        expect(t.domainCalls).to.equal(2);
     });
 
     it("replays an accepted no-op instead of re-reading current state", async () => {

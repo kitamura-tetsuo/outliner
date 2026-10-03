@@ -749,6 +749,13 @@ export class OutlinerGridPresentationService {
             await this.authorize(uid, projectId);
         } catch (error) {
             if ("receipt" in outcome) throw new GridPresentationUndisclosedError(outcome.receipt);
+            // An accepted apply that changed nothing is still an established
+            // outcome: withhold it behind a receipt-bearing refusal so the
+            // MCP replay cache retains it (issue #5436 REQ-006). A dry-run
+            // preview bypasses replay and stays a bare refusal.
+            if (outcome.result.dryRun === false) {
+                throw new GridPresentationUndisclosedError({ status: "applied", ...outcome.result });
+            }
             throw error;
         }
         if ("result" in outcome) return outcome.result;
