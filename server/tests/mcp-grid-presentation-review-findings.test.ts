@@ -3,18 +3,23 @@ import fs from "node:fs";
 import path from "node:path";
 import * as Y from "yjs";
 import { orderColumns } from "../../shared/src/services/gridDefinition.js";
-import { OutlinerGridPresentationService } from "../src/mcp/grid-presentation.js";
-import { UpdateGridPresentationTool } from "../src/mcp/update-grid-presentation-tool.js";
-import { createDocumentStore } from "../src/persistence.js";
 import { mcpLogger, mcpLogPath } from "../src/utils/log-manager.js";
-import { type GridMcpFixture, startGridMcpFixture, UID, updateArgs } from "./mcp-grid-presentation-mcp-fixture.js";
+import {
+    type GridMcpFixture,
+    rpcClient,
+    startGridMcpFixture,
+    UID,
+    updateArgs,
+} from "./mcp-grid-presentation-mcp-fixture.js";
 import { AclStore, restartFromStorage, stopTestServer, withRoom } from "./server-create-table-fixture.js";
 import {
     Peer,
     PROJECT,
     readGridAsClient,
     readStoredGridAsClient,
+    TABLE_ID,
     tableState,
+    untouchedState,
 } from "./server-grid-presentation-fixture.js";
 
 // Issue #5436 review findings: operator-guide coverage (REQ-009), audit
@@ -159,6 +164,135 @@ describe("MCP grid presentation review findings (#5436)", function() {
         }
     });
 
+    it("keeps stable record write targets after relabel, reload and a boolean cell write", async () => {
+        // Normal browser Table authoring: two records with distinct stable
+        // IDs and opposite done values.
+        await withRoom(t.server.hocuspocus, `projects/${PROJECT}/tables/${TABLE_ID}`, doc => {
+            const data = doc.getMap("data");
+            if (!data.has("r2")) {
+                const record = new Y.Map<unknown>();
+                record.set("id", "r2");
+                record.set("title", "Pay bills");
+                record.set("due_date", "2026-11-30");
+                record.set("done", true);
+                data.set("r2", record);
+            }
+        });
+        const tableBefore = await tableState(t.server.hocuspocus);
+        expect(tableBefore.data["r1"]).to.exist;
+        expect(tableBefore.data["r2"]).to.exist;
+        const separateBefore = readGridAsClient(await liveState(), "grid-separate");
+        const untouchedBefore = await withRoom(
+            t.server.hocuspocus,
+            `projects/${PROJECT}`,
+            doc => untouchedState(doc, "grid-tasks"),
+        );
+        // Both placements of the same Grid exist before the MCP edit.
+        expect(untouchedBefore.placements.filter(placement => placement.gridId === "grid-tasks")).to.have.length(2);
+        const queryBefore =
+            (await t.production.call("get_grid", { projectId: PROJECT, gridId: "grid-tasks" })).payload.query;
+
+        const grid = (await t.production.call("get_grid", { projectId: PROJECT, gridId: "grid-tasks" })).payload;
+        const { payload } = await t.production.call(
+            "update_grid_presentation",
+            updateArgs({
+                expectedPresentationRevision: grid.presentationRevision,
+                changes: {
+                    components: {
+                        due_date: { label: "期限" },
+                        done: { label: "完了", type: "checkbox" },
+                        id: { shown: false },
+                    },
+                    columnOrder: ["done", "due_date"],
+                },
+                operationId: `write-target-${Date.now()}`,
+            }),
+        );
+        expect(payload).to.include({ applied: true, replayed: false });
+
+        // Both ordinary peers observe the same relabeled definition, and both
+        // placements of the Grid share it while the separate Grid is unchanged.
+        const synced = await liveState();
+        const peerA = await Peer.connect(t.server.hocuspocus);
+        const peerB = await Peer.connect(t.server.hocuspocus);
+        try {
+            Y.applyUpdate(peerA.doc, synced);
+            Y.applyUpdate(peerB.doc, synced);
+            const seenA = readGridAsClient(Y.encodeStateAsUpdate(peerA.doc), "grid-tasks")!;
+            const seenB = readGridAsClient(Y.encodeStateAsUpdate(peerB.doc), "grid-tasks")!;
+            expect(seenA).to.deep.equal(seenB);
+            const headerOf = (name: string) => (seenA.labels[name]?.length ?? 0) > 0 ? seenA.labels[name] : name;
+            expect(headerOf("due_date")).to.equal("期限");
+            expect(headerOf("done")).to.equal("完了");
+            // DOM column identity stays bound to the unchanged result names.
+            expect(Object.keys(seenA.labels)).to.include("due_date");
+            expect(Object.keys(seenA.labels)).to.not.include("期限");
+            const resultColumns = ["id", "title", "due_date", "done"];
+            const visible = orderColumns(resultColumns, seenA.columnOrder)
+                .filter(name => seenA.hidden[name] !== true);
+            expect(visible[0]).to.equal("done");
+            expect(visible).to.include("due_date");
+            expect(visible).to.not.include("id");
+            const placementsAfter = await withRoom(
+                t.server.hocuspocus,
+                `projects/${PROJECT}`,
+                doc => untouchedState(doc, "grid-tasks"),
+            );
+            expect(placementsAfter.placements.filter(placement => placement.gridId === "grid-tasks")).to.have.length(
+                2,
+            );
+        } finally {
+            await peerA.disconnect();
+            await peerB.disconnect();
+        }
+
+        // Reload from acknowledged production storage without reseeding: the
+        // saved presentation persists.
+        const reloaded = await readStoredGridAsClient(t.dir, "grid-tasks");
+        expect(reloaded.labels["due_date"]).to.equal("期限");
+        expect(reloaded.labels["done"]).to.equal("完了");
+
+        // Toggle 完了 for one identified record through the real record write
+        // path, addressed by stable record ID rather than displayed row index.
+        const table = (await t.production.call(
+            "get_table",
+            { projectId: PROJECT, tableId: TABLE_ID, includeRecords: true, recordLimit: 25 },
+        )).payload;
+        const before = table.records.find((record: { recordId: string; }) => record.recordId === "r1");
+        expect(before.values.done).to.equal(false);
+        const written = await t.production.call("update_table_records", {
+            projectId: PROJECT,
+            tableId: TABLE_ID,
+            expectedRevision: table.revision,
+            changes: [{ recordId: "r1", values: { done: true } }],
+        });
+        expect(written.payload.records).to.have.length(1);
+
+        // Independently read the Table: only that original record's physical
+        // done field changed — not a Japanese-named field, another row, or
+        // another Table — with query/schema/identities and the separate Grid
+        // unchanged.
+        const after = (await t.production.call(
+            "get_table",
+            { projectId: PROJECT, tableId: TABLE_ID, includeRecords: true, recordLimit: 25 },
+        )).payload;
+        const r1 = after.records.find((record: { recordId: string; }) => record.recordId === "r1");
+        const r2 = after.records.find((record: { recordId: string; }) => record.recordId === "r2");
+        expect(r1.values.done).to.equal(true);
+        expect(r1.values.title).to.equal(tableBefore.data["r1"].title);
+        expect(r1.values).to.not.have.property("完了");
+        // The other record is untouched: its opposite done value and every
+        // other physical field survive the relabeled write.
+        expect(r2.values.done).to.equal(true);
+        expect(r2.values.title).to.equal(tableBefore.data["r2"].title);
+        expect(r2.values.due_date).to.equal(tableBefore.data["r2"].due_date);
+        expect(after.schema).to.deep.equal(table.schema);
+        const reread = (await t.production.call("get_grid", { projectId: PROJECT, gridId: "grid-tasks" })).payload;
+        expect(reread.query).to.equal(queryBefore);
+        expect(reread.presentationRevision).to.equal(payload.presentationRevision);
+        expect(readGridAsClient(await liveState(), "grid-separate")).to.deep.equal(separateBefore);
+    });
+
     it("persists presentation across restart without restart-durable replay", async () => {
         const operationId = `restart-${Date.now()}`;
         const grid = (await t.production.call("get_grid", { projectId: PROJECT, gridId: "grid-tasks" })).payload;
@@ -178,26 +312,32 @@ describe("MCP grid presentation review findings (#5436)", function() {
         const restarted = await restartFromStorage(t.dir, acl);
         try {
             acl.grant("projectUsers", PROJECT, UID);
-            const reread = await readStoredGridAsClient(restarted.dir, "grid-tasks");
-            expect(reread.labels["title"]).to.equal("件名");
-            // A fresh process has no retained outcome: the same identity is
-            // a fresh stale attempt (the revision moved), never a replay.
-            const store = createDocumentStore(restarted.server.persistence!);
-            const access = (uid: string, projectId: string) => acl.checkAccess(uid, projectId);
-            const fresh = new UpdateGridPresentationTool(
-                new OutlinerGridPresentationService(restarted.server.hocuspocus, access, store),
-                access,
+            // The restarted production MCP endpoint serves the saved
+            // configuration, and two fresh normal readers observe the same
+            // definition from storage alone.
+            const fresh = rpcClient(restarted.server.server);
+            const reread = (await fresh.call("get_grid", { projectId: PROJECT, gridId: "grid-tasks" })).payload;
+            expect(reread.presentation.components.title.label).to.equal("件名");
+            expect(reread.presentationRevision).to.equal(applied.payload.presentationRevision);
+            const readerA = await readStoredGridAsClient(restarted.dir, "grid-tasks");
+            const readerB = await readStoredGridAsClient(restarted.dir, "grid-tasks");
+            expect(readerA.labels["title"]).to.equal("件名");
+            expect(readerB).to.deep.equal(readerA);
+            // A fresh process has no retained outcome: retrying the same
+            // operation identity through MCP is a fresh stale attempt (the
+            // revision moved), never a restart-durable replayed success.
+            const retry = await fresh.call(
+                "update_grid_presentation",
+                updateArgs({
+                    expectedPresentationRevision: grid.presentationRevision,
+                    changes: { components: { title: { label: "件名" } } },
+                    operationId,
+                }),
             );
-            await fresh.update(UID, {
-                projectId: PROJECT,
-                gridId: "grid-tasks",
-                expectedPresentationRevision: grid.presentationRevision,
-                changes: { components: { title: { label: "件名" } } },
-                operationId,
-            }).then(
-                () => expect.fail("expected a stale conflict, not a replayed success"),
-                error => expect(error.code).to.equal("stale_revision"),
-            );
+            expect(retry.result.isError).to.equal(true);
+            expect(retry.payload.code).to.equal("stale_revision");
+            expect(retry.payload.currentPresentationRevision).to.equal(applied.payload.presentationRevision);
+            expect(retry.payload).to.not.have.property("replayed");
         } finally {
             await stopTestServer(restarted.server);
             await fs.promises.rm(restarted.dir, { recursive: true, force: true });
