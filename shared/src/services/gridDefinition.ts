@@ -252,8 +252,11 @@ export function setGridColumnWidth(
         target.projectDoc.transact(() => {
             const cfg = target.components.get(column);
             if (!(cfg instanceof Y.Map)) return;
+            // Remove only the width leaf. The (possibly now empty) component
+            // map itself is retained: deleting it would drop a collaborator's
+            // concurrent edit to another leaf of the same component, so the
+            // reset stays field-scoped and merges with disjoint peer updates.
             cfg.delete("widthPx");
-            if (Array.from(cfg.keys()).length === 0) target.components.delete(column);
         });
         return;
     }
@@ -274,12 +277,10 @@ export function setGridComponentField(
     value: string | boolean | number | undefined,
 ): void {
     // Width overrides validate like the dedicated writer and share its
-    // leaf-scoped, no-op-free semantics.
+    // leaf-scoped, no-op-free semantics. Unlike the other component fields
+    // (where "" clears the field), an empty string is not a valid width and
+    // must be rejected before it can reset a saved override.
     if (field === "widthPx") {
-        if (value === "") {
-            setGridColumnWidth(target, column, undefined);
-            return;
-        }
         if (value !== undefined && !isValidGridColumnWidth(value)) {
             throw new Error(
                 `Invalid widthPx for column "${column}": expected a finite integer in `

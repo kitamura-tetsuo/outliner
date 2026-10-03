@@ -30,7 +30,7 @@ import { resetPgliteForTests } from "./pgliteService";
 import { exportTableStructure, importTableStructures } from "./tableClone";
 import { createTable, getTableHandles, listTables, setSchemaText } from "./tableDocs";
 
-const INVALID_WIDTHS = [31, 4097, 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "180", true, null];
+const INVALID_WIDTHS = [31, 4097, 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "180", "", true, null];
 
 function basicProject(): { doc: Y.Doc; tableId: string; gridA: string; gridB: string; } {
     const doc = new Y.Doc();
@@ -118,6 +118,24 @@ describe("Grid column width overrides", () => {
         expect(read.widths).toEqual({});
         expect(read.labels.title).toBe("Subject");
         expect(read.hidden.title).toBe(true);
+    });
+
+    it("rejects an empty-string width without touching the document or history", () => {
+        const { doc, gridA } = basicProject();
+        const handles = getGridHandles(doc, gridA)!;
+        let updates = 0;
+        doc.on("update", () => updates++);
+        const stackBefore = handles.undo.undoStack.length;
+        const routerBefore = globalUndoRouter.undoDepth;
+
+        // The generic writer accepts strings, but "" is not a valid width:
+        // it must be rejected before any effect, never treated as a reset.
+        expect(() => setGridComponentField(handles, "title", "widthPx", "")).toThrow(/Invalid widthPx/);
+        expect(getGridColumnWidth(handles, "title")).toBe(180);
+        expect(readGridComponents(handles).widths).toEqual({ title: 180 });
+        expect(updates).toBe(0);
+        expect(handles.undo.undoStack.length).toBe(stackBefore);
+        expect(globalUndoRouter.undoDepth).toBe(routerBefore);
     });
 
     it("keys widths by exact result-column name and retains dormant preferences", () => {
@@ -323,6 +341,68 @@ describe("Grid width collaboration", () => {
         const convergedB = getGridColumnWidth(getGridHandles(docB, gridId)!, "title");
         expect(convergedA).toBe(convergedB);
         expect(convergedA === 100 || convergedA === 200).toBe(true);
+    });
+
+    it("merges a width reset with a concurrent label edit on a width-only component", () => {
+        // A width-only component map is already shared when one peer resets
+        // the width while another sets the label. The reset removes only the
+        // leaf (never the parent map), so both peers converge to auto width
+        // with the label retained.
+        const docA = new Y.Doc();
+        const tableId = createTable(docA, "Tasks", "tasks");
+        const gridId = createGrid(docA, tableId, {
+            name: "A",
+            query: "SELECT id, title FROM tasks",
+            components: { title: { widthPx: 180 } },
+        });
+        const docB = new Y.Doc();
+        Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
+
+        // Buffer each side's own updates while "disconnected".
+        const pendingA: Uint8Array[] = [];
+        const pendingB: Uint8Array[] = [];
+        docA.on("update", update => pendingA.push(update));
+        docB.on("update", update => pendingB.push(update));
+
+        setGridColumnWidth(getGridHandles(docA, gridId)!, "title", undefined);
+        setGridComponentField(getGridHandles(docB, gridId)!, "title", "label", "Subject");
+        for (const update of pendingA) Y.applyUpdate(docB, update);
+        for (const update of pendingB) Y.applyUpdate(docA, update);
+
+        for (const doc of [docA, docB]) {
+            expect(getGridColumnWidth(getGridHandles(doc, gridId)!, "title")).toBeUndefined();
+            expect(readGridComponents(getGridHandles(doc, gridId)!).labels["title"]).toBe("Subject");
+        }
+    });
+
+    it("isolates a completed width operation as one global Undo/Redo step", () => {
+        const { doc, gridA } = basicProject();
+        const handles = getGridHandles(doc, gridA)!;
+        globalUndoRouter.clear();
+
+        // No test-managed capture boundaries: the production writers isolate.
+        setGridComponentField(handles, "title", "label", "Subject");
+        setGridColumnWidth(handles, "title", 250);
+        expect(getGridColumnWidth(handles, "title")).toBe(250);
+
+        // One Undo restores only the width; the observed label edit stands.
+        globalUndoRouter.undo();
+        expect(getGridColumnWidth(handles, "title")).toBe(180);
+        expect(readGridComponents(handles).labels["title"]).toBe("Subject");
+
+        globalUndoRouter.redo();
+        expect(getGridColumnWidth(handles, "title")).toBe(250);
+        expect(readGridComponents(handles).labels["title"]).toBe("Subject");
+
+        // Two rapid committed width operations are two steps, not one merged item.
+        setGridColumnWidth(handles, "title", 260);
+        setGridColumnWidth(handles, "title", 270);
+        expect(getGridColumnWidth(handles, "title")).toBe(270);
+        globalUndoRouter.undo();
+        expect(getGridColumnWidth(handles, "title")).toBe(260);
+        globalUndoRouter.undo();
+        expect(getGridColumnWidth(handles, "title")).toBe(250);
+        expect(readGridComponents(handles).labels["title"]).toBe("Subject");
     });
 
     it("isolates width Undo/Redo and restores widths from a restarted document", () => {
