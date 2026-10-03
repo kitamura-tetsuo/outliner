@@ -98,7 +98,7 @@
     }
 </script>
 
-<svelte:window on:keydown={handleKeyDown} onmousedown={handleWindowMouseDown} />
+<svelte:window onkeydown={handleKeyDown} onmousedown={handleWindowMouseDown} />
 
 <div class="context-menu-overlay" role="presentation" onclick={handleClose} oncontextmenu={handleOverlayContextMenu}></div>
 
