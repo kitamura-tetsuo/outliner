@@ -15,7 +15,7 @@
 //   sourceTableId  string    - the primary Table (write target).
 //   query          string    - SELECT text.
 //   columnOrder    string[]  - display column order (subset/superset of query result).
-//   components     Y.Map     - nested Y.Map per column with {type,label,hidden}.
+//   components     Y.Map     - nested Y.Map per column with {type,label,hidden,widthPx}.
 
 import type { Project } from "$shared/app-schema";
 import {
@@ -23,6 +23,9 @@ import {
     getGridRegistry,
     type GridDefinitionSeed,
     type GridDefinitionTarget,
+    isValidGridColumnWidth,
+    setGridColumnWidth as setGridColumnWidthLeaf,
+    setGridComponentField as setGridComponentFieldLeaf,
 } from "$shared/services/gridDefinition";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
@@ -34,15 +37,18 @@ import { globalUndoRouter } from "../undo/undoRouter.svelte";
 // browser's exact creation/editing functions.
 export {
     getGridColumnOrder,
+    getGridColumnWidth,
     getGridConfirmRowDelete,
     getGridQuery,
     getGridRegistry,
     getGridShowAddRowButton,
+    GRID_COLUMN_WIDTH_MAX,
+    GRID_COLUMN_WIDTH_MIN,
     GRID_REGISTRY_KEY,
+    isValidGridColumnWidth,
     readGridComponents,
     renameGrid,
     setGridColumnOrder,
-    setGridComponentField,
     setGridConfirmRowDelete,
     setGridQuery,
     setGridShowAddRowButton,
@@ -182,6 +188,75 @@ export function destroyGridUndoManager(entry: Y.Map<unknown>): void {
     gridUndoManagers.delete(entry);
 }
 
+/**
+ * Whether a width write would change the document. Mirrors the shared leaf
+ * writer's no-op contract (assigning the current value, or resetting an
+ * already-absent override, performs no update), so canonical no-ops stay
+ * completely effect-free — not even a capture-boundary split.
+ */
+function willChangeWidth(
+    target: GridDefinitionTarget,
+    column: string,
+    widthPx: number | undefined,
+): boolean {
+    const existing = target.components.get(column);
+    if (widthPx === undefined) return existing instanceof Y.Map && existing.has("widthPx");
+    return !(existing instanceof Y.Map && existing.get("widthPx") === widthPx);
+}
+
+/** Close this Grid's UndoManager capture window when one is registered. */
+function isolateWidthHistory(target: GridDefinitionTarget): void {
+    gridUndoManagers.get(target.entry)?.undo.stopCapturing();
+}
+
+/**
+ * Set (or, with `undefined`, reset) one column's saved width override
+ * through the shared framework-neutral leaf writer.
+ *
+ * The capture window is closed on both sides of an effectful write so one
+ * completed width operation records exactly one history step: it neither
+ * merges into a preceding Grid edit nor absorbs the next one (issue #5455
+ * REQ-007). The shared leaf keeps sole authority over validation, reads,
+ * and the Yjs writes themselves, so the server runs the exact same code.
+ */
+export function setGridColumnWidth(
+    target: GridDefinitionTarget,
+    column: string,
+    widthPx: number | undefined,
+): void {
+    const isolated = willChangeWidth(target, column, widthPx);
+    if (isolated) isolateWidthHistory(target);
+    try {
+        setGridColumnWidthLeaf(target, column, widthPx);
+    } finally {
+        if (isolated) isolateWidthHistory(target);
+    }
+}
+
+/**
+ * Set (or clear) a per-column config field through the shared leaf writer.
+ * Width fields get the same one-operation-one-step history isolation as the
+ * dedicated width writer; every other field delegates unchanged.
+ */
+export function setGridComponentField(
+    target: GridDefinitionTarget,
+    column: string,
+    field: "type" | "label" | "hidden" | "widthPx",
+    value: string | boolean | number | undefined,
+): void {
+    if (field !== "widthPx" || (value !== undefined && !isValidGridColumnWidth(value))) {
+        setGridComponentFieldLeaf(target, column, field, value);
+        return;
+    }
+    const isolated = willChangeWidth(target, column, value);
+    if (isolated) isolateWidthHistory(target);
+    try {
+        setGridComponentFieldLeaf(target, column, field, value);
+    } finally {
+        if (isolated) isolateWidthHistory(target);
+    }
+}
+
 export function getGridName(projectDoc: Y.Doc, gridId: string): string | undefined {
     const entry = getGridRegistry(projectDoc).get(gridId);
     return entry ? String(entry.get("name") ?? "") : undefined;
@@ -198,24 +273,30 @@ interface GridEntrySnapshot {
     sourceTableId: string;
     query: string;
     columnOrder: string[];
-    components: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
+    components: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }>;
     showAddRowButton?: boolean;
     confirmRowDelete?: boolean;
 }
 
 /** Read a Grid registry entry into a plain snapshot — shared by `duplicateGrid` and delete/undo. */
 function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
-    const components: GridEntrySnapshot["components"] = {};
+    // Null-prototype so an exact result-column name such as "__proto__" is
+    // an ordinary own key rather than a prototype assignment.
+    const components: GridEntrySnapshot["components"] = Object.create(null);
     const sourceComponents = entry.get("components");
     if (sourceComponents instanceof Y.Map) {
         sourceComponents.forEach((cfg, column) => {
             if (!(cfg instanceof Y.Map)) return;
-            const dto: { type?: string; label?: string; hidden?: boolean; } = {};
+            const dto: { type?: string; label?: string; hidden?: boolean; widthPx?: number; } = {};
             const type = cfg.get("type");
             if (type !== undefined) dto.type = String(type);
             const label = cfg.get("label");
             if (label !== undefined) dto.label = String(label);
             if (cfg.get("hidden") === true) dto.hidden = true;
+            // Saved width overrides travel with the definition, including
+            // dormant ones; malformed values read as automatic sizing.
+            const widthPx = cfg.get("widthPx");
+            if (isValidGridColumnWidth(widthPx)) dto.widthPx = widthPx;
             components[column] = dto;
         });
     }

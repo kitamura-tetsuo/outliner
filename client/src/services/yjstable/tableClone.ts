@@ -1,3 +1,4 @@
+import { isValidGridColumnWidth } from "$shared/services/gridDefinition";
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
 import { type GridTableSnapshot, type GridUiComponentDto, isGridTableSnapshot } from "../clipboard/itemClipboard";
@@ -97,7 +98,7 @@ interface PlannedTable {
 // Grid-level keys are no longer validated here: a Grid entry is built by
 // `createGrid`, which is the only writer of its shape. Per-column component
 // settings still travel as free-form maps, so those keys stay checked.
-const COMPONENT_KEYS = new Set(["type", "label", "hidden"]);
+const COMPONENT_KEYS = new Set(["type", "label", "hidden", "widthPx"]);
 let scratchCounter = 0;
 
 function cloneErrorMessage(err: unknown): string {
@@ -123,17 +124,23 @@ function exportGridSlice(projectDoc: Y.Doc, tableId: string, preferGridId?: stri
     if (!handles) return { query: "", components: {}, columnOrder: [] };
 
     const query = String(handles.entry.get("query") ?? "");
-    const components: Record<string, GridUiComponentDto> = {};
+    // Null-prototype so an exact result-column name such as "__proto__" is
+    // an ordinary own key rather than a prototype assignment.
+    const components: Record<string, GridUiComponentDto> = Object.create(null);
     handles.components.forEach((cfg, column) => {
         if (!(cfg instanceof Y.Map)) return;
         assertOnlyKeys(cfg.keys(), COMPONENT_KEYS, `Grid UI component "${column}"`);
         const type = cfg.get("type");
         const label = cfg.get("label");
         const hidden = cfg.get("hidden");
+        const widthPx = cfg.get("widthPx");
         const dto: GridUiComponentDto = {};
         if (type !== undefined) dto.type = type as GridUiComponentDto["type"];
         if (label !== undefined) dto.label = label as string;
         if (hidden !== undefined) dto.hidden = hidden as boolean;
+        // A valid saved width travels with the definition; a malformed
+        // stored width reads as automatic sizing and never fails the copy.
+        if (isValidGridColumnWidth(widthPx)) dto.widthPx = widthPx;
         components[column] = dto;
     });
     const columnOrderValue = handles.entry.get("columnOrder");

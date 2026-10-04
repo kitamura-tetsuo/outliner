@@ -16,6 +16,7 @@ import {
     getGridHandles,
     getGridRegistry,
     getGridShowAddRowButton,
+    isValidGridColumnWidth,
     listGrids,
 } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
@@ -270,12 +271,20 @@ export async function materializeDuplicationPlan(
             const copiedTableId = idMap.get(key({ type: "table", id: sourceGrid.sourceTableId }));
             const targetTableId = copiedTableId ?? (sameProject ? sourceGrid.sourceTableId : "");
             if (!targetTableId && sourceGrid.sourceTableId) removedReferenceCount++;
-            const components: Record<string, { type?: string; label?: string; hidden?: boolean; }> = {};
+            // Null-prototype so an exact result-column name such as
+            // "__proto__" is an ordinary own key, not a prototype assignment.
+            const components: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }> =
+                Object.create(null);
             handles.components.forEach((component, column) => {
+                // Saved width overrides duplicate with the definition;
+                // malformed values read as automatic sizing and never fail
+                // the duplication.
+                const widthPx = component.get("widthPx");
                 components[column] = {
                     type: component.get("type") as string | undefined,
                     label: component.get("label") as string | undefined,
                     hidden: component.get("hidden") as boolean | undefined,
+                    ...(isValidGridColumnWidth(widthPx) ? { widthPx } : {}),
                 };
             });
             const destinationId = idMap.get(key(object))!;
