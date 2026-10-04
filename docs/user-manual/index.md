@@ -26,7 +26,7 @@ An overview of the basic interface and navigation.
 
 ### Creating and Browsing Pages
 
-You can create and browse pages using the left sidebar or the Search input in the top navigation bar, alongside quick actions like Add Database, Undo, and Redo.
+You can create and browse pages using the left sidebar or the Search input in the top navigation bar, alongside quick actions like Add Database, Undo, Redo, and Databases (which opens a right sidebar to browse and manage database tables).
 
 To browse your pages, click the sidebar toggle button in the top-left corner and expand the **Pages** section. This section lists all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
@@ -75,9 +75,7 @@ Click the sidebar toggle button in the top-left corner to access the main sideba
 - **Tables:** View and manage database tables.
 - **Object Manager:** Manage Grids, Tables, and Schedules centrally.
 - **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **+** (Add scheduled SQL) button in the section header.
-- **Settings:** Access project configurations.
-- **Docs:** Quick link to the documentation.
-- **GitHub:** Quick link to the source code.
+- **Settings:** Access project configurations. This section also includes quick links to the documentation (**Docs**) and source code (**GitHub**).
 
 ---
 
