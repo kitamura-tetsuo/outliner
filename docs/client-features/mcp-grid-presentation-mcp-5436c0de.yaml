@@ -1,0 +1,15 @@
+id: FTR-5436c0de
+title: MCP Grid presentation editing with browser round trip
+title-ja: MCP からの Grid 表示設定編集とブラウザ往復検証
+status: implemented
+description: The update_grid_presentation MCP tool exposes the revision-checked Grid presentation boundary through the
+  production MCP endpoint with outliner.read and outliner.write scopes, write enforcement before argument validation,
+  and fail-closed success delivery. get_grid additionally reports the saved presentation snapshot and its
+  grid-presentation-v1 content revision while preserving the query-only revision. Retries with the same operationId
+  replay the original outcome for five minutes after settlement and never re-execute or overwrite a later edit;
+  dry runs preview without consuming the identity. Saved MCP edits are observed through the normal client Grid
+  readers without changing Table data, queries, placements or row identities.
+tests:
+- server/tests/mcp-grid-presentation-contract.test.ts
+- server/tests/mcp-grid-presentation-replay.test.ts
+- server/tests/mcp-grid-presentation-errors.test.ts

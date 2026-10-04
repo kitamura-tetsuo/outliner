@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     addItem,
     applyAutoReset,
@@ -53,5 +53,28 @@ describe("checklistService", () => {
         const after = checklistService.lists;
 
         expect(before).toStrictEqual(after);
+    });
+
+    it("anchors recurrence boundaries to last reset, not rule parse time", () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date("2026-01-05T09:00:00.500Z"));
+            const id = createChecklist("anchored", "custom", "FREQ=DAILY");
+            const list = () => checklistService.lists.find(l => l.id === id)!;
+            const created = list().lastReset!;
+
+            // Cross a second boundary before the first boundary check, then
+            // check 700ms after creation: the daily boundary is far away.
+            vi.setSystemTime(new Date("2026-01-05T09:00:01.200Z"));
+            applyAutoReset(id, Date.now());
+            expect(list().lastReset).toBe(created);
+
+            // A repeated check at the same instant is a strict no-op.
+            const before = checklistService.lists;
+            applyAutoReset(id, Date.now());
+            expect(checklistService.lists).toBe(before);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

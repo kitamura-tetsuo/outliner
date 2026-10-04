@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { nodeKindOf, type OutlineNodeKind } from "../../../shared/src/services/outlineNodeKind.js";
 import { type ProjectDescriptor, ProjectDirectoryError } from "../project-directory.js";
 import { type Item, type Items, Project } from "../schema/app-schema.js";
+import { readGridPresentation } from "./grid-presentation.js";
 import { gridColumnsWithVisibility, mcpGridComponents } from "./grid-visibility.js";
 import { type McpErrorCode, McpReadError } from "./mcp-error.js";
 import { outlineItemRevision, revisionOf } from "./mutation-contract.js";
@@ -352,6 +353,12 @@ export class OutlinerReadService {
                 ? columnOrder.filter((value): value is string => typeof value === "string")
                 : [];
             const components = grid.get("components");
+            // Saved presentation configuration from the production domain
+            // reader (issue #5436): a detached snapshot plus its content
+            // revision. This is configuration evidence only — dormant settings
+            // for result names absent from the current query are kept, and
+            // nothing here claims a column currently renders.
+            const { presentation, presentationRevision } = readGridPresentation(projectId, gridId, grid);
             return {
                 id: gridId,
                 name: String(grid.get("name") ?? ""),
@@ -364,6 +371,8 @@ export class OutlinerReadService {
                 // revisionOf(query) formula exactly, so this can be passed
                 // straight back as set_view_query's expectedRevision.
                 revision: revisionOf(query),
+                presentation,
+                presentationRevision,
             };
         });
     }
