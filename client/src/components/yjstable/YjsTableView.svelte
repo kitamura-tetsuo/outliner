@@ -90,6 +90,7 @@ let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
 let hiddenColumns = $state<Record<string, boolean>>({});
+let columnWidths = $state<Record<string, number>>({});
 let showAddRowButton = $state(true);
 let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
@@ -123,6 +124,10 @@ function refreshGridMirror() {
     componentTypes = settings.types;
     columnLabels = settings.labels;
     hiddenColumns = settings.hidden;
+    // Saved fixed widths travel through the same mirror: every placement of
+    // this Grid re-renders from the committed definition, while a separate
+    // Grid over the same Table mirrors only its own entry (issue #5457).
+    columnWidths = settings.widths;
     showAddRowButton = getGridShowAddRowButton(grid);
     confirmRowDelete = getGridConfirmRowDelete(grid);
 }
@@ -386,6 +391,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {columnOrder}
                     {columnLabels}
                     {hiddenColumns}
+                    {columnWidths}
                     {showAddRowButton}
                     {confirmRowDelete}
                     loading={schema === undefined && !isInitialSyncDone}

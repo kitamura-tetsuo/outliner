@@ -19,6 +19,7 @@ import {
     type TableRecordValue,
 } from "../../services/yjstable/tableDocs";
 import type { GridHandles } from "../../services/yjstable/gridDocs";
+import { isValidGridColumnWidth } from "../../services/yjstable/gridDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
@@ -70,6 +71,14 @@ interface Props {
     columnLabels: Record<string, string | undefined>;
     /** Columns hidden by the Grid Definition. */
     hiddenColumns: Record<string, boolean>;
+    /**
+     * Saved per-column width overrides from the Grid Definition mirror, keyed
+     * by exact result-column name. A finite integer 32..4096 is a fixed
+     * CSS-pixel border-box column width; anything absent or malformed renders
+     * as automatic sizing without repairing the stored document (issue #5457).
+     * The raw Table browser passes nothing and stays fully automatic.
+     */
+    columnWidths?: Record<string, number | undefined>;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
     /**
@@ -101,6 +110,7 @@ let {
     columnOrder,
     columnLabels,
     hiddenColumns,
+    columnWidths = {},
     showAddRowButton = true,
     rowCreationMode = "query",
     loading = false,
@@ -153,6 +163,29 @@ const editability = $derived(analyzeQueryEditability(query, schema, result.colum
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
 const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
+
+/**
+ * Fixed border-box width for a visible data column, resolved by exact
+ * result-column name. Malformed stored values render as automatic sizing and
+ * never write back (issue #5457 REQ-001/REQ-004).
+ */
+function fixedWidthOf(column: string): number | undefined {
+    const width = columnWidths[column];
+    return isValidGridColumnWidth(width) ? width : undefined;
+}
+
+/** Inline border-box pin for a fixed column's header and body cells. */
+function fixedColumnStyle(column: string): string | undefined {
+    const width = fixedWidthOf(column);
+    return width === undefined ? undefined : `width:${width}px;min-width:${width}px;max-width:${width}px;`;
+}
+
+/** Whether any visible data column pins a fixed width. */
+const hasFixedColumns = $derived(displayColumns.some(column => fixedWidthOf(column) !== undefined));
+/** Whether any visible data column sizes automatically. */
+const hasAutoColumns = $derived(displayColumns.some(column => fixedWidthOf(column) === undefined));
+/** All visible data columns fixed: surplus container space stays outside the tracks. */
+const allColumnsFixed = $derived(displayColumns.length > 0 && !hasAutoColumns);
 
 /** One row target per query result row, for the selection command layer (`gridSelectionCommands.ts`). */
 const rowTargetEntries = $derived(
@@ -962,7 +995,28 @@ function handleCancelDelete() {
         {#if pasteStatus}
             <p class="grid-paste-status" data-testid="grid-paste-status" role="status">{pasteStatus}</p>
         {/if}
-        <table role="grid" onkeydown={handleGridKeyDown}>
+        <table
+            role="grid"
+            onkeydown={handleGridKeyDown}
+            class:grid-fixed-layout={hasFixedColumns}
+            class:grid-all-fixed={allColumnsFixed}
+        >
+            {#if hasFixedColumns}
+                <colgroup>
+                    <col class="utility-col" style="width:2.5rem;min-width:2.5rem;max-width:2.5rem;" />
+                    {#each displayColumns as column (column)}
+                        {@const fixedWidth = fixedWidthOf(column)}
+                        {#if fixedWidth !== undefined}
+                            <col data-col={column} style={`width:${fixedWidth}px;min-width:${fixedWidth}px;max-width:${fixedWidth}px;`} />
+                        {:else}
+                            <col data-col={column} />
+                        {/if}
+                    {/each}
+                    {#if editability.editable && editability.rowIdentity === "id"}
+                        <col class="utility-col" style="width:2rem;min-width:2rem;max-width:2rem;" />
+                    {/if}
+                </colgroup>
+            {/if}
             <thead>
                 <tr>
                     <th
@@ -984,6 +1038,8 @@ function handleCancelDelete() {
                             data-col={column}
                             aria-selected={columnSelected(column)}
                             class:header-selected={columnSelected(column)}
+                            class:col-fixed={fixedWidthOf(column) !== undefined}
+                            style={fixedColumnStyle(column)}
                             onclick={(event) => {
                                 if (!(event.target as HTMLElement).closest(".column-drag-handle")) {
                                     selectColumnHeader(event, column);
@@ -1108,6 +1164,8 @@ function handleCancelDelete() {
                                 data-record-id={recordId}
                                 data-row-id={navigationRowId}
                                 data-col={column}
+                                class:col-fixed={fixedWidthOf(column) !== undefined}
+                                style={fixedColumnStyle(column)}
                                 class:grid-selected={logicalCell !== undefined && cellSelected(logicalCell)}
                                 class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
                                 class:grid-find-match={findMatch?.rowId === navigationRowId
@@ -1266,6 +1324,7 @@ function handleCancelDelete() {
     }
 .yjs-table-grid {
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-x: contain;
 }
@@ -1276,12 +1335,62 @@ table {
     border: 1px solid #d1d5db;
 }
 
+/*
+ * Fixed column widths (issue #5457). With at least one fixed column the
+ * table uses fixed layout so content, padding and editors can never move a
+ * pinned column: fixed tracks keep their exact border-box width while only
+ * automatic data columns absorb spare container space. With every data
+ * column fixed the table shrinks to its tracks (`max-content`) so surplus
+ * stays outside instead of stretching fixed or utility columns. Narrower
+ * containers scroll locally inside `.yjs-table-grid` without widening the
+ * page or the surrounding Layout.
+ */
+table.grid-fixed-layout {
+    table-layout: fixed;
+}
+
+table.grid-all-fixed {
+    width: max-content;
+    max-width: none;
+}
+
 th,
 td {
     border: 1px solid #d1d5db;
     padding: 2px 4px;
     text-align: left;
     font-size: 0.875rem;
+    box-sizing: border-box;
+}
+
+th.col-fixed,
+td.col-fixed {
+    overflow: hidden;
+}
+
+th.col-fixed .th-content {
+    min-width: 0;
+    overflow: hidden;
+}
+
+th.col-fixed .th-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+td.col-fixed > :global(.cell-value) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+td.col-fixed > :global(.cell-input),
+td.col-fixed > :global(.cell-select),
+td.col-fixed > :global(.cell-date) {
+    max-width: 100%;
 }
 
 td.grid-selected {
