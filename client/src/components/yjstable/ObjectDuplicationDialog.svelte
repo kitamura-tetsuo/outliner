@@ -54,6 +54,15 @@
     let isDuplicating = $state(false);
     let actionError = $state<string | undefined>(undefined);
     let preview = $derived<DuplicationPreview>(previewObjectDuplication(sourceDoc, object, scope));
+    let dialogElement: HTMLDialogElement | undefined = $state();
+
+    $effect(() => {
+        if (dialogElement) {
+            if (!dialogElement.open && typeof dialogElement.showModal === 'function') {
+                dialogElement.showModal();
+            }
+        }
+    });
 
     async function executeDuplication() {
         const destinationTitle = destinationProject.trim();
@@ -121,14 +130,15 @@
     }
 </script>
 
-<div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    role="dialog" tabindex="-1"
-    aria-modal="true"
+<dialog
+    class="dialog"
+    bind:this={dialogElement}
+    oncancel={(e) => { e.preventDefault(); onclose(); }}
+    onclick={(e) => { if (e.target === dialogElement) onclose(); }}
     aria-labelledby="duplicate-dialog-title"
     data-testid="object-duplication-dialog"
 >
-    <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
+    <div class="dialog-content w-full max-w-lg rounded-lg bg-white shadow-xl" role="document">
         <div class="border-b border-gray-200 px-6 py-4">
             <h2 id="duplicate-dialog-title" class="text-lg font-bold text-gray-900">
                 Duplicate {
@@ -214,4 +224,18 @@
             </button>
         </div>
     </div>
-</div>
+</dialog>
+
+<style>
+.dialog {
+    padding: 0;
+    border: none;
+    border-radius: 0.5rem;
+    background: transparent;
+    max-width: 100vw;
+    max-height: 100vh;
+}
+.dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
+</style>
