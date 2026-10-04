@@ -180,6 +180,19 @@ export class GridPresentationUndisclosedError extends McpReadError {
     }
 }
 
+/**
+ * An accepted no-op whose result is withheld from a caller whose access was
+ * revoked before disclosure: client-visible as the same bare `forbidden`
+ * refusal as a pre-effect denial (`effect: "none"`), but the established
+ * no-op receipt is kept on the error for internal bookkeeping such as
+ * replay retention. Never serialize `receipt` into a response.
+ */
+export class GridPresentationWithheldNoOpError extends McpReadError {
+    constructor(public readonly receipt: GridPresentationReceipt) {
+        super("forbidden", "Project is inaccessible", { effect: "none" });
+    }
+}
+
 export interface GridPresentationUpdateOptions {
     /**
      * Awaited after the request is validated, authorized and the live room is
@@ -765,6 +778,14 @@ export class OutlinerGridPresentationService {
             await this.authorize(uid, projectId);
         } catch (error) {
             if ("receipt" in outcome) throw new GridPresentationUndisclosedError(outcome.receipt);
+            // An accepted no-op is still an established outcome: withhold it
+            // as the same bare refusal as a pre-effect denial (effect
+            // "none"), while the receipt stays on the error so the MCP replay
+            // cache retains it (issue #5436 REQ-006). A dry-run preview
+            // bypasses replay and stays a bare refusal.
+            if (outcome.result.dryRun === false) {
+                throw new GridPresentationWithheldNoOpError({ status: "applied", ...outcome.result });
+            }
             throw error;
         }
         if ("result" in outcome) return outcome.result;
