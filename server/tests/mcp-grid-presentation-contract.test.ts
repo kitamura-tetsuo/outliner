@@ -123,9 +123,9 @@ describe("MCP grid presentation contract (#5436)", function() {
             name: "タスク",
             columnOrder: ["title", "due_date"],
             components: {
-                done: { label: null, type: null, shown: false },
-                due_date: { label: null, type: null, shown: true },
-                title: { label: "件名", type: "text", shown: true },
+                done: { label: null, type: null, shown: false, widthPx: null },
+                due_date: { label: null, type: null, shown: true, widthPx: null },
+                title: { label: "件名", type: "text", shown: true, widthPx: null },
             },
             showAddRowButton: false,
             confirmRowDelete: true,
@@ -182,6 +182,7 @@ describe("MCP grid presentation contract (#5436)", function() {
             label: "件名",
             type: null,
             shown: true,
+            widthPx: null,
         });
         expect(await liveState()).to.deep.equal(before);
 

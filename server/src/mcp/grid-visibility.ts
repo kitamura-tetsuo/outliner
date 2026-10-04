@@ -1,3 +1,5 @@
+import { isValidGridColumnWidth } from "../../../shared/src/services/gridDefinition.js";
+
 /** Positive, MCP-facing projection of a Grid result/configuration column. */
 export interface McpGridColumn {
     name: string;
@@ -35,7 +37,11 @@ export function gridColumnsWithVisibility(components: unknown, names: readonly s
     return orderedNames.map(name => ({ name, shown: !isHidden(componentByName.get(name)) }));
 }
 
-/** Return component settings without leaking the persistence-only `hidden`. */
+/**
+ * Return component settings without leaking the persistence-only `hidden`.
+ * A valid saved `widthPx` is exposed by exact name; absent or malformed
+ * storage reads as automatic sizing (absent) without repair.
+ */
 export function mcpGridComponents(components: unknown): Record<string, Record<string, unknown>> {
     return Object.fromEntries(
         componentEntries(components).map(([name, component]) => {
@@ -46,8 +52,10 @@ export function mcpGridComponents(components: unknown): Record<string, Record<st
                 : component === undefined
                 ? {}
                 : { type: component };
-            const { hidden: _hidden, ...settings } = plain;
-            return [name, { ...settings, shown: !isHidden(component) }];
+            const { hidden: _hidden, widthPx: rawWidth, ...settings } = plain;
+            const out: Record<string, unknown> = { ...settings, shown: !isHidden(component) };
+            if (isValidGridColumnWidth(rawWidth)) out.widthPx = rawWidth;
+            return [name, out];
         }),
     );
 }
