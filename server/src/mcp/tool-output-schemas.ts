@@ -7,6 +7,9 @@ const gridPresentationComponent = z.strictObject({
     label: z.string().nullable(),
     type: z.string().nullable(),
     shown: z.boolean(),
+    // Saved border-box width in CSS px, or null for automatic sizing (issue
+    // #5456): the presentation snapshot always carries this key.
+    widthPx: z.number().nullable(),
 });
 const gridPresentation = z.strictObject({
     name: z.string(),

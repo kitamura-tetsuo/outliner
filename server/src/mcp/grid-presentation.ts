@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import * as Y from "yjs";
+import { isValidGridColumnWidth } from "../../../shared/src/services/gridDefinition.js";
 import type { DocumentStore } from "../persistence.js";
 import { closeLiveRoom, type DirectConnection, isLiveRoom, type LiveRoomHost, openLiveRoom } from "./live-room.js";
 import { McpReadError } from "./mcp-error.js";
@@ -10,8 +11,9 @@ import { McpReadError } from "./mcp-error.js";
  *
  * A Grid is an entry of the project room's `yjsGrids` registry. Its
  * presentation is the Grid name, the stored column-order preference, the
- * per-column component settings (label, type, sparse `hidden`) keyed by SQL
- * result-column name, and the add-row / delete-confirmation flags. Every
+ * per-column component settings (label, type, sparse `hidden`, saved
+ * `widthPx`) keyed by SQL result-column name, and the add-row /
+ * delete-confirmation flags. Every
  * placement of the Grid renders this one definition; another Grid over the
  * same Table has its own.
  *
@@ -65,6 +67,12 @@ export interface GridComponentPresentation {
     label: string | null;
     type: string | null;
     shown: boolean;
+    /**
+     * Saved border-box width in CSS px, or null for automatic sizing.
+     * A finite integer from 32 through 4096 is fixed; absent or malformed
+     * storage projects as null without repair.
+     */
+    widthPx: number | null;
 }
 
 export interface GridPresentation {
@@ -214,11 +222,13 @@ function storedOrder(entry: Y.Map<unknown>): string[] {
 }
 
 function componentOf(value: unknown): GridComponentPresentation {
-    if (!(value instanceof Y.Map)) return { label: null, type: null, shown: true };
+    if (!(value instanceof Y.Map)) return { label: null, type: null, shown: true, widthPx: null };
+    const rawWidth = value.get("widthPx");
     return {
         label: optionalText(value.get("label")),
         type: optionalText(value.get("type")),
         shown: value.get("hidden") !== true,
+        widthPx: isValidGridColumnWidth(rawWidth) ? rawWidth : null,
     };
 }
 
@@ -262,7 +272,13 @@ export function gridPresentationRevision(descriptor: Omit<GridPresentationRead, 
         [...presentation.columnOrder],
         Object.entries(presentation.components)
             .sort(([a], [b]) => compareCodeUnits(a, b))
-            .map(([column, component]) => [column, component.label, component.type, component.shown]),
+            .map(([column, component]) => [
+                column,
+                component.label,
+                component.type,
+                component.shown,
+                component.widthPx,
+            ]),
         presentation.showAddRowButton,
         presentation.confirmRowDelete,
     ];
@@ -457,7 +473,7 @@ function normalizedLabel(label: string | null): string | null {
     return trimmed === "" ? null : trimmed;
 }
 
-const DEFAULT_COMPONENT: GridComponentPresentation = { label: null, type: null, shown: true };
+const DEFAULT_COMPONENT: GridComponentPresentation = { label: null, type: null, shown: true, widthPx: null };
 
 /**
  * The represented settings of an exact result name. Only own entries count:
@@ -471,7 +487,7 @@ function componentIn(presentation: GridPresentation, column: string): GridCompon
 }
 
 function isDefaultComponent(component: GridComponentPresentation): boolean {
-    return component.label === null && component.type === null && component.shown;
+    return component.label === null && component.type === null && component.shown && component.widthPx === null;
 }
 
 /**

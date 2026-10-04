@@ -134,7 +134,9 @@ describe("Grid presentation update: dormant preferences (#5435 AS-003)", functio
         const read = await server.gridPresentation.readPresentation(UID, PROJECT, "grid-tasks");
         expect(read.query).to.equal("SELEC broken FROM nowhere");
         expect(read.sourceTableId).to.equal("table-tasks");
-        expect(read.presentation.components.ghost_alias).to.deep.equal({ label: "幽霊", type: null, shown: true });
+        expect(read.presentation.components.ghost_alias).to.deep.equal(
+            { label: "幽霊", type: null, shown: true, widthPx: null },
+        );
         // Nothing repaired the source or touched the Table room.
         expect(await withRoom(server.hocuspocus, ROOM, doc => doc.getMap("yjsTables").has("table-tasks"))).to.equal(
             false,
