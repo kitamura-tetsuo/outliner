@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "../fixtures/grid-render-trace";
 import { addSourceRecord, configureGrid, createBlankGrid } from "../utils/crossProjectGridHelpers";
+import { commitWidthsProduction, singleGridId } from "../utils/gridWidthHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
@@ -13,45 +14,12 @@ const SCHEMA = "CREATE TABLE orders (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT 
 const QUERY = "SELECT id, title, quantity, done FROM orders";
 const ALIASED = "SELECT id, title AS subject, quantity, done FROM orders";
 
-// Same production-leaf width commit as the geometry spec: the committed
-// `components.<column>.widthPx` leaf is what `setGridColumnWidth` owns
-// (writer contract in `gridColumnWidth.test.ts`); everything from Yjs
-// observation to pixels is the production path.
-async function commitWidths(page: Page, widths: Record<string, number>) {
-    await page.evaluate((w: Record<string, number>) => {
-        const store = (globalThis as unknown as { __YJS_STORE__?: unknown; }).__YJS_STORE__ as
-            | { yjsClient?: { getProject: () => unknown; }; }
-            | undefined;
-        const project = store?.yjsClient?.getProject() as {
-            ydoc: {
-                transact: (fn: () => void) => void;
-                getMap: (key: string) => {
-                    forEach: (
-                        fn: (entry: {
-                            get: (
-                                key: string,
-                            ) => { get: (c: string) => unknown; set: (k: string, v: unknown) => void; } | undefined;
-                        }) => void,
-                    ) => void;
-                };
-            };
-        };
-        const grids = project.ydoc.getMap("yjsGrids");
-        let components: { get: (c: string) => { set: (k: string, v: unknown) => void; } | undefined; } | undefined;
-        grids.forEach((entry) => {
-            components = entry.get("components") as typeof components;
-        });
-        if (!components) throw new Error("no grid components map");
-        const configs = components;
-        project.ydoc.transact(() => {
-            for (const [column, px] of Object.entries(w)) {
-                const cfg = configs.get(column);
-                if (!cfg) throw new Error(`no component entry for ${column}`);
-                cfg.set("widthPx", px);
-            }
-        });
-    }, widths);
-}
+// Same production-writer width commit as the geometry spec: widths go through
+// `setGridColumnWidth` on the owning Grid's handles (writer contract in
+// `gridColumnWidth.test.ts`); everything from Yjs observation to pixels is the
+// production path.
+const commitWidths = (page: Page, widths: Record<string, number>): Promise<void> =>
+    singleGridId(page).then((gridId) => commitWidthsProduction(page, gridId, widths));
 
 async function setQuery(page: Page, query: string) {
     const view = page.getByTestId("yjs-table-view").first();
