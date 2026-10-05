@@ -54,6 +54,10 @@ cleanup_e2e_coverage() {
 
 cd "$PROJECT_ROOT"
 
+# Prepare the client before linting, including in private implementation clones.
+# Root dprint setup does not install the client's lint devDependencies.
+bash "${SCRIPT_DIR}/ensure-client-lint-dependencies.sh"
+
 # dprint's formatting plugins are root devDependencies referenced out of
 # node_modules/; ensure-dprint-plugins.sh installs them if they are missing. A
 # formatting failure stays a warning instead of blocking the test run. Set

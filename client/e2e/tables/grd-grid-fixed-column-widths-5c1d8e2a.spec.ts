@@ -106,8 +106,13 @@ test.describe("Grid fixed column widths render at exact pixel widths", () => {
             expect(w).toBeLessThanOrEqual(49);
         }
 
+        // The project page centers content in a `max-w-7xl` shell, so viewports
+        // at or above 1280px no longer widen the Grid's container. Resize
+        // within the responsive range instead, where spare container space
+        // genuinely grows.
+        await page.setViewportSize({ width: 1000, height: 800 });
         const autoBefore = await grid.locator('th[data-col="quantity"]').boundingBox();
-        await page.setViewportSize({ width: 1600, height: 900 });
+        await page.setViewportSize({ width: 1280, height: 800 });
         for (const w of await columnWidths(page, "title")) {
             expect(w).toBeGreaterThanOrEqual(179);
             expect(w).toBeLessThanOrEqual(181);
