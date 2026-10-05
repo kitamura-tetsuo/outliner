@@ -26,7 +26,7 @@ describe("ALS alias keyboard navigation", () => {
         render(AliasPicker);
 
         aliasPickerStore.show(aliasItem.id);
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise(resolve => setTimeout(resolve, 50));
         const p = document.querySelector(".alias-picker");
         if (p) p.focus();
         const user = userEvent.setup();
