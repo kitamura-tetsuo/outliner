@@ -9,18 +9,18 @@
     },
     "devDependencies": {
         "@dprint/dockerfile": "0.6.0",
-        "@dprint/json": "0.25.0",
+        "@dprint/json": "0.25.1",
         "@dprint/markdown": "0.24.0",
         "@dprint/toml": "0.8.0",
         "@dprint/typescript": "0.96.1",
-        "dprint": "0.57.4",
+        "dprint": "0.58.0",
         "dprint-plugin-malva": "0.16.0",
         "dprint-plugin-markup": "0.27.5",
         "dprint-plugin-yaml": "0.6.0",
         "patch-package": "^8.0.1",
         "playwright": "^1.63.0",
         "pm2": "^7.0.4",
-        "semver": "7.7.2",
+        "semver": "7.8.5",
         "vitepress": "^1.6.4"
     }
 }
