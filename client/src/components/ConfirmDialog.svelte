@@ -66,7 +66,7 @@ function focusNode(node: HTMLElement) {
             handleCancel();
         }
     }}
-    class="backdrop:bg-black backdrop:bg-opacity-50 p-0 rounded-lg shadow-xl border border-gray-200"
+    class="backdrop:bg-black backdrop:bg-opacity-50 m-auto p-0 rounded-lg shadow-xl border border-gray-200"
     role="alertdialog" tabindex="-1"
     aria-modal="true"
     aria-labelledby={`confirm-dialog-title-${dialogId}`}

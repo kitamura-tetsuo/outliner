@@ -237,6 +237,7 @@ async function submit(e: Event) {
 
 <style>
 .dialog {
+    margin: auto;
     padding: 0;
     border: none;
     border-radius: 8px;

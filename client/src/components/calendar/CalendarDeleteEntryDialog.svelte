@@ -114,6 +114,7 @@ async function run(action: () => Promise<void> | void) {
 
 <style>
 .dialog {
+    margin: auto;
     padding: 0;
     border: none;
     border-radius: 8px;

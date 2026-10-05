@@ -353,6 +353,7 @@
     }
 
     .a11y-dialog {
+        margin: auto;
         width: min(32rem, calc(100vw - 2rem));
         padding: 0;
         border: none;
