@@ -259,6 +259,7 @@
 
 <style>
 .dialog {
+    margin: auto;
     padding: 0;
     border: none;
     border-radius: 0.5rem;
