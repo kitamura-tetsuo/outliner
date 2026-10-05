@@ -1,0 +1,314 @@
+[
+  {
+    "text": "Add Database",
+    "title": "Add Database",
+    "aria": "Add Database",
+    "class": "add-database-btn svelte-1b5lykn"
+  },
+  {
+    "text": "Undo",
+    "title": "Undo (Ctrl+Z)",
+    "aria": "Undo",
+    "class": "history-btn svelte-1b5lykn"
+  },
+  {
+    "text": "Redo",
+    "title": "Redo (Ctrl+Shift+Z)",
+    "aria": "Redo",
+    "class": "history-btn svelte-1b5lykn"
+  },
+  {
+    "text": "Databases",
+    "title": "",
+    "aria": "Toggle Databases Sidebar",
+    "class": "databases-btn svelte-1b5lykn"
+  },
+  {
+    "text": "",
+    "title": "Show sidebar",
+    "aria": "Show sidebar",
+    "class": "sidebar-toggle svelte-12qhfyh"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Toggle projects section",
+    "class": "section-header svelte-181dlmc"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Toggle pages section",
+    "class": "pages-toggle-btn svelte-181dlmc"
+  },
+  {
+    "text": "",
+    "title": "Add new page",
+    "aria": "Add new page",
+    "class": "add-page-btn svelte-181dlmc"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Toggle tables section",
+    "class": "section-header svelte-181dlmc"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Toggle scheduled SQL section",
+    "class": "pages-toggle-btn svelte-181dlmc"
+  },
+  {
+    "text": "",
+    "title": "Add new scheduled SQL",
+    "aria": "Add new scheduled SQL",
+    "class": "add-page-btn svelte-181dlmc"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Close Database Sidebar",
+    "class": "close-btn svelte-1b8s58n"
+  },
+  {
+    "text": "Search",
+    "title": "",
+    "aria": "Toggle Search Panel",
+    "class": "search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+  },
+  {
+    "text": "Add Item",
+    "title": "",
+    "aria": "Add Item",
+    "class": "svelte-3zi9qj"
+  },
+  {
+    "text": "Add Image",
+    "title": "Add Image",
+    "aria": "Add Image",
+    "class": "svelte-3zi9qj"
+  },
+  {
+    "text": "Keyboard Shortcuts",
+    "title": "",
+    "aria": null,
+    "class": "button-style svelte-3zi9qj"
+  },
+  {
+    "text": "Close",
+    "title": "",
+    "aria": null,
+    "class": "button-style"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "Collapse",
+    "aria": "Collapse item",
+    "class": "collapse-btn drag-handle svelte-1a1hbod"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "",
+    "title": "",
+    "aria": "Open comments (0)",
+    "class": "comment-button svelte-1r7paiw"
+  },
+  {
+    "text": "Undo",
+    "title": "Undo",
+    "aria": "Undo",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Redo",
+    "title": "Redo",
+    "aria": "Redo",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Indent",
+    "title": "Indent",
+    "aria": "Indent",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Outdent",
+    "title": "Outdent",
+    "aria": "Outdent",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Add Above",
+    "title": "Insert Above",
+    "aria": "Insert Above",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Add Below",
+    "title": "Insert Below",
+    "aria": "Insert Below",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Add Child",
+    "title": "New Child",
+    "aria": "New Child",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Add Sibling",
+    "title": "Insert Sibling Below",
+    "aria": "Insert Sibling Below",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Vote",
+    "title": "Vote",
+    "aria": "Vote",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "Delete",
+    "title": "Delete",
+    "aria": "Delete",
+    "class": "mobile-toolbar-btn svelte-3zi9qj"
+  },
+  {
+    "text": "0\nBacklinks\n▶",
+    "title": "",
+    "aria": "Toggle Backlinks",
+    "class": "backlink-toggle-button svelte-17hv2vb"
+  }
+]
