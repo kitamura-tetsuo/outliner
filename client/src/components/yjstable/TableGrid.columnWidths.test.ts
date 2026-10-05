@@ -147,6 +147,7 @@ describe("TableGrid fixed column widths", () => {
         // Only the corner header carries the utility-track hook, so a
         // track-width probe never resolves row headers with it.
         expect(container.querySelectorAll("th.selection-header")).toHaveLength(1);
+        expect(container.querySelectorAll("th.corner-header")).toHaveLength(1);
         const rowHeaders = container.querySelectorAll("th.row-header");
         expect(rowHeaders).toHaveLength(2);
         for (const header of rowHeaders) {
