@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
