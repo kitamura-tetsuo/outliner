@@ -8,8 +8,9 @@
 // hand-built snapshot. (Writer validation itself lives in
 // `gridColumnWidth.test.ts`.) Geometry in real CSS pixels is measured in the
 // `grd-grid-fixed-column-widths` E2E spec; jsdom has no layout engine, so here
-// the contract is pinned at the render boundary: colgroup tracks, header and
-// body-cell pins, table layout mode, and selection/edit identity preservation.
+// the contract is pinned at the render boundary: colgroup tracks, fixed
+// marker classes without inline cell styles, table layout mode, and
+// selection/edit identity preservation.
 
 import { fireEvent, render } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
@@ -62,7 +63,7 @@ function baseProps(handles: NonNullable<ReturnType<typeof getTableHandles>>) {
 }
 
 describe("TableGrid fixed column widths", () => {
-    it("pins fixed headers, body cells and colgroup tracks while auto columns stay unstyled", async () => {
+    it("marks fixed headers, body cells and colgroup tracks while auto columns stay unstyled", async () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
@@ -97,17 +98,18 @@ describe("TableGrid fixed column widths", () => {
         expect(autoCol).not.toBeNull();
         expect(autoCol?.getAttribute("style") ?? "").not.toContain("width");
 
+        // Fixed tracks are pinned once on their `<col>` elements; headers
+        // and body cells carry the marker class for overflow styling but no
+        // inline width of their own.
         const titleHeader = container.querySelector("th[data-col='title']")!;
         expect(titleHeader.classList.contains("col-fixed")).toBe(true);
-        expect(titleHeader.getAttribute("style")).toContain("width: 180px");
-        expect(titleHeader.getAttribute("style")).toContain("min-width: 180px");
-        expect(titleHeader.getAttribute("style")).toContain("max-width: 180px");
+        expect(titleHeader.getAttribute("style")).toBeNull();
 
         const titleCells = Array.from(container.querySelectorAll("td[data-col='title']"));
         expect(titleCells).toHaveLength(2);
         for (const cell of titleCells) {
             expect(cell.classList.contains("col-fixed")).toBe(true);
-            expect(cell.getAttribute("style")).toContain("width: 180px");
+            expect(cell.getAttribute("style")).toBeNull();
         }
 
         const autoHeader = container.querySelector("th[data-col='due_date']")!;
@@ -124,6 +126,32 @@ describe("TableGrid fixed column widths", () => {
 
         // Rendering never writes presentation state back.
         expect(updates).toBe(0);
+    });
+
+    it("exposes a single selection header for the utility track", async () => {
+        const { Doc } = await import("yjs");
+        const doc = new Doc();
+        const tableId = createTable(doc, "Tasks", "tasks");
+        const gridId = createGrid(doc, tableId, {
+            name: "G",
+            query: QUERY,
+            components: { title: { widthPx: 180 } },
+        });
+        const grid = getGridHandles(doc, gridId)!;
+        const { widths } = readGridComponents(grid);
+
+        const { container } = render(TableGrid, {
+            props: { ...baseProps(getTableHandles(doc, tableId)!), grid, columnWidths: widths },
+        });
+
+        // Only the corner header carries the utility-track hook, so a
+        // track-width probe never resolves row headers with it.
+        expect(container.querySelectorAll("th.selection-header")).toHaveLength(1);
+        const rowHeaders = container.querySelectorAll("th.row-header");
+        expect(rowHeaders).toHaveLength(2);
+        for (const header of rowHeaders) {
+            expect(header.getAttribute("role")).toBe("rowheader");
+        }
     });
 
     it("collapses to track width when every data column is fixed", async () => {
@@ -210,7 +238,9 @@ describe("TableGrid fixed column widths", () => {
 
         const doneHeader = container.querySelector("th[data-col='done']")!;
         expect(doneHeader.classList.contains("col-fixed")).toBe(true);
-        expect(doneHeader.getAttribute("style")).toContain("width: 48px");
+        expect(doneHeader.getAttribute("style")).toBeNull();
+        expect(container.querySelector("colgroup col[data-col='done']")?.getAttribute("style"))
+            .toContain("width: 48px");
     });
 
     it("keeps a fixed-width computed result read-only without changing its component", async () => {
@@ -245,7 +275,9 @@ describe("TableGrid fixed column widths", () => {
         // SQL-derived editable set even while pinned to its fixed width.
         const shoutHeader = container.querySelector("th[data-col='shout']")!;
         expect(shoutHeader.classList.contains("col-fixed")).toBe(true);
-        expect(shoutHeader.getAttribute("style")).toContain("width: 120px");
+        expect(shoutHeader.getAttribute("style")).toBeNull();
+        expect(container.querySelector("colgroup col[data-col='shout']")?.getAttribute("style"))
+            .toContain("width: 120px");
         const shoutButton = container.querySelector("td[data-col='shout'] button.cell-value")!;
         expect(shoutButton.getAttribute("aria-disabled")).toBe("true");
         await fireEvent.click(shoutButton);
@@ -309,5 +341,47 @@ describe("TableGrid fixed column widths", () => {
         // The same cells still address the same record and source column.
         expect(container.querySelector("td[data-row-id][data-col='title']")).not.toBeNull();
         expect(container.querySelector("td[data-col='title'] button.cell-value")).not.toBeNull();
+    });
+
+    it("removes inline pins in place when a fixed width is cleared on a live grid", async () => {
+        const { Doc } = await import("yjs");
+        const doc = new Doc();
+        const tableId = createTable(doc, "Tasks", "tasks");
+        const gridId = createGrid(doc, tableId, {
+            name: "G",
+            query: QUERY,
+            components: { title: { widthPx: 180 } },
+        });
+        const grid = getGridHandles(doc, gridId)!;
+        const handles = getTableHandles(doc, tableId)!;
+
+        const { container, rerender } = render(TableGrid, {
+            props: {
+                ...baseProps(handles),
+                grid,
+                columnWidths: readGridComponents(grid).widths,
+            },
+        });
+        const pinned = container.querySelector("th[data-col='title']")!;
+        expect(pinned.classList.contains("col-fixed")).toBe(true);
+        expect(container.querySelector("colgroup col[data-col='title']")?.getAttribute("style"))
+            .toContain("width: 180px");
+
+        // Clearing the override updates the same mounted grid: the pin class
+        // disappears and headers and cells carry no style residue.
+        setGridColumnWidth(grid, "title", undefined);
+        await rerender({
+            ...baseProps(handles),
+            grid,
+            columnWidths: readGridComponents(grid).widths,
+        });
+        const header = container.querySelector("th[data-col='title']")!;
+        expect(header.classList.contains("col-fixed")).toBe(false);
+        expect(header.getAttribute("style")).toBeNull();
+        for (const cell of container.querySelectorAll("td[data-col='title']")) {
+            expect(cell.classList.contains("col-fixed")).toBe(false);
+            expect(cell.getAttribute("style")).toBeNull();
+        }
+        expect(container.querySelector("colgroup")).toBeNull();
     });
 });

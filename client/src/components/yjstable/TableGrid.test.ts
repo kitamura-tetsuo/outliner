@@ -178,4 +178,54 @@ describe("TableGrid", () => {
             expect(container.textContent).toContain("No schema applied. Apply a schema to see rows.");
         });
     });
+
+    it("seeds a nullable boolean as false on '+ Add row' so edits route against a definite value", async () => {
+        const doc = new (await import("yjs")).Doc();
+        const tableId = createTable(doc, "orders", "orders");
+        const handles = getTableHandles(doc, tableId)!;
+        const schema: ParsedTableSchema = {
+            tableName: "orders",
+            createSql: "CREATE TABLE orders (id text, title text, done boolean);",
+            columns: [
+                { name: "id", dataType: "text", isNullable: false, isPrimaryKey: true, kind: "text", checkOptions: [] },
+                {
+                    name: "title",
+                    dataType: "text",
+                    isNullable: false,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
+                {
+                    name: "done",
+                    dataType: "boolean",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "boolean",
+                    checkOptions: [],
+                },
+            ],
+        };
+        const query = "SELECT id, title, done FROM orders";
+        const { getByTestId } = render(TableGrid, {
+            props: {
+                handles,
+                schema,
+                query,
+                result: { columns: ["id", "title", "done"], rows: [] },
+                componentTypes: {},
+                columnLabels: {},
+                hiddenColumns: {},
+                columnOrder: [],
+                session: mockSession,
+            },
+        });
+
+        await fireEvent.click(getByTestId("yjs-table-add-row"));
+        const records = Object.values(handles.data.toJSON() as Record<string, Record<string, unknown>>);
+        expect(records).toHaveLength(1);
+        expect(records[0]["title"]).toBe("");
+        expect("done" in records[0]).toBe(true);
+        expect(records[0]["done"]).toBe(false);
+    });
 });

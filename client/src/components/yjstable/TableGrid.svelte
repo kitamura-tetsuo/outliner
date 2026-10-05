@@ -174,12 +174,6 @@ function fixedWidthOf(column: string): number | undefined {
     return isValidGridColumnWidth(width) ? width : undefined;
 }
 
-/** Inline border-box pin for a fixed column's header and body cells. */
-function fixedColumnStyle(column: string): string | undefined {
-    const width = fixedWidthOf(column);
-    return width === undefined ? undefined : `width:${width}px;min-width:${width}px;max-width:${width}px;`;
-}
-
 /** Whether any visible data column pins a fixed width. */
 const hasFixedColumns = $derived(displayColumns.some(column => fixedWidthOf(column) !== undefined));
 /** Whether any visible data column sizes automatically. */
@@ -890,7 +884,10 @@ function newRecordDefaults(): Record<string, TableRecordValue> {
             defaults[column.name] = column.checkOptions[0];
         } else if (!column.isNullable && column.kind === "text") {
             defaults[column.name] = "";
-        } else if (!column.isNullable && column.kind === "boolean") {
+        } else if (column.kind === "boolean") {
+            // A fresh row's checkbox starts unchecked whether or not the
+            // column is nullable, so edits always route against a definite
+            // stored value instead of an absent one (issue #5457).
             defaults[column.name] = false;
         }
     }
@@ -1039,7 +1036,6 @@ function handleCancelDelete() {
                             aria-selected={columnSelected(column)}
                             class:header-selected={columnSelected(column)}
                             class:col-fixed={fixedWidthOf(column) !== undefined}
-                            style={fixedColumnStyle(column)}
                             onclick={(event) => {
                                 if (!(event.target as HTMLElement).closest(".column-drag-handle")) {
                                     selectColumnHeader(event, column);
@@ -1144,7 +1140,7 @@ function handleCancelDelete() {
                     {@const navigationRowId = searchRowId(row, rowIndex)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         <th
-                            class="selection-header row-header"
+                            class="row-header"
                             class:header-selected={logicalRowId !== undefined && rowSelected(logicalRowId)}
                             scope="row"
                             role="rowheader"
@@ -1165,7 +1161,6 @@ function handleCancelDelete() {
                                 data-row-id={navigationRowId}
                                 data-col={column}
                                 class:col-fixed={fixedWidthOf(column) !== undefined}
-                                style={fixedColumnStyle(column)}
                                 class:grid-selected={logicalCell !== undefined && cellSelected(logicalCell)}
                                 class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
                                 class:grid-find-match={findMatch?.rowId === navigationRowId
@@ -1338,12 +1333,14 @@ table {
 /*
  * Fixed column widths (issue #5457). With at least one fixed column the
  * table uses fixed layout so content, padding and editors can never move a
- * pinned column: fixed tracks keep their exact border-box width while only
- * automatic data columns absorb spare container space. With every data
- * column fixed the table shrinks to its tracks (`max-content`) so surplus
- * stays outside instead of stretching fixed or utility columns. Narrower
- * containers scroll locally inside `.yjs-table-grid` without widening the
- * page or the surrounding Layout.
+ * pinned column: each fixed track is pinned once on its `<col>` element and
+ * keeps its exact border-box width while only automatic data columns absorb
+ * spare container space. Headers and body cells carry no inline width of
+ * their own, so clearing an override returns the column to automatic sizing
+ * with no style residue. With every data column fixed the table shrinks to
+ * its tracks (`max-content`) so surplus stays outside instead of stretching
+ * fixed or utility columns. Narrower containers scroll locally inside
+ * `.yjs-table-grid` without widening the page or the surrounding Layout.
  */
 table.grid-fixed-layout {
     table-layout: fixed;
@@ -1402,7 +1399,8 @@ td.grid-selected:not(.grid-active) {
     box-shadow: inset 0 0 0 1px rgb(37 99 235 / 35%);
 }
 
-.selection-header {
+.selection-header,
+.row-header {
     width: 2.5rem;
     min-width: 2.5rem;
     text-align: center;
