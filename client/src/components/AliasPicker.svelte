@@ -14,7 +14,7 @@ interface AliasPickerVisibilityEvent {
 }
 
 let selectedIndex = $state(0);
-let pickerElement = $state<HTMLDivElement>();
+let pickerElement = $state<HTMLDialogElement>();
 let inputElement = $state<HTMLInputElement>();
 // Avoid two-way binding to store to prevent effect cycles
 let query = $state(aliasPickerStore.query || "");
@@ -94,6 +94,13 @@ function handleKeydown(event: KeyboardEvent) {
 
 // Focus immediately when visible (both initial and re-display)
 $effect(() => {
+    if (pickerElement) {
+        if (aliasPickerStore.isVisible && !pickerElement.open && typeof pickerElement.showModal === 'function') {
+            pickerElement.showModal();
+        } else if (!aliasPickerStore.isVisible && pickerElement.open && typeof pickerElement.close === 'function') {
+            pickerElement.close();
+        }
+    }
     if (aliasPickerStore.isVisible) {
         try {
             // First, the picker body
@@ -109,15 +116,15 @@ $effect(() => {
 });
 </script>
 {#if visible}
-    <div
+    <dialog
         class="alias-picker"
-        onkeydown={handleKeydown}
-        tabindex="-1"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Select alias"
         bind:this={pickerElement}
+        aria-label="Select alias"
+        oncancel={(e) => { e.preventDefault(); aliasPickerStore.hide(); }}
+        onclick={(e) => { if (e.target === pickerElement) aliasPickerStore.hide(); }}
+        onkeydown={handleKeydown}
     >
+        <div class="alias-picker-content">
         <input
             type="text"
             bind:value={query}
@@ -150,33 +157,39 @@ $effect(() => {
                 </li>
             {/each}
         </ul>
-    </div>
+        </div>
+    </dialog>
 {/if}
 <style>
 .alias-picker {
-    position: fixed;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
+    margin: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+.alias-picker::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+}
+.alias-picker-content {
     background: white;
     border: 1px solid #ccc;
     padding: 8px;
-    z-index: 1000;
     max-height: 300px;
     overflow: auto;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
-.alias-picker ul {
+.alias-picker-content ul {
     list-style: none;
     margin: 0;
     padding: 0;
     max-height: 200px;
     overflow: auto;
 }
-.alias-picker li {
+.alias-picker-content li {
     display: block;
     width: 100%;
 }
-.alias-picker li button {
+.alias-picker-content li button {
     display: block;
     width: 100%;
     text-align: left;
@@ -185,11 +198,11 @@ $effect(() => {
     background: none;
     cursor: pointer;
 }
-.alias-picker li.selected button {
+.alias-picker-content li.selected button {
     background-color: #e6f3ff;
     color: #0066cc;
 }
-.alias-picker li button:hover {
+.alias-picker-content li button:hover {
     background-color: #f0f0f8;
 }
 </style>

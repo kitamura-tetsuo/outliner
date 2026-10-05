@@ -9,6 +9,16 @@ import { diagramChooserStore } from "../../stores/DiagramChooserStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 
 let selectedId = $state<string | undefined>(undefined);
+let dialogElement: HTMLDialogElement | undefined = $state();
+$effect(() => {
+    if (dialogElement) {
+        if (diagramChooserStore.isVisible && !dialogElement.open && typeof dialogElement.showModal === 'function') {
+            dialogElement.showModal();
+        } else if (!diagramChooserStore.isVisible && dialogElement.open && typeof dialogElement.close === 'function') {
+            dialogElement.close();
+        }
+    }
+});
 
 const EXCERPT_LENGTH = 48;
 
@@ -41,15 +51,16 @@ function handleKeydown(event: KeyboardEvent) {
 </script>
 
 {#if diagramChooserStore.isVisible}
-    <div
+    <dialog
+        bind:this={dialogElement}
         class="diagram-chooser"
-        role="dialog"
-        aria-modal="true"
         aria-label="Insert transclusion"
         data-testid="diagram-chooser"
+        oncancel={(e) => { e.preventDefault(); diagramChooserStore.hide(); }}
+        onclick={(e) => { if (e.target === dialogElement) diagramChooserStore.hide(); }}
         onkeydown={handleKeydown}
-        tabindex="-1"
     >
+        <div class="dialog-content">
         <h2>Insert transclusion</h2>
         {#if diagrams.length === 0}
             <p class="diagram-chooser-empty" data-testid="diagram-chooser-empty">No Mermaid diagrams in this project yet.</p>
@@ -82,32 +93,37 @@ function handleKeydown(event: KeyboardEvent) {
                 Insert
             </button>
         </div>
-    </div>
+        </div>
+    </dialog>
 {/if}
 
 <style>
 .diagram-chooser {
-    position: fixed;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
+    margin: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+.diagram-chooser::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+}
+.dialog-content {
     background: white;
     border: 1px solid #ccc;
     border-radius: 6px;
     padding: 12px;
-    z-index: 1000;
     max-height: 320px;
     width: 340px;
     overflow: auto;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.diagram-chooser h2 {
+.dialog-content h2 {
     margin: 0 0 8px;
     font-size: 0.95rem;
 }
 
-.diagram-chooser ul {
+.dialog-content ul {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -115,7 +131,7 @@ function handleKeydown(event: KeyboardEvent) {
     overflow: auto;
 }
 
-.diagram-chooser li button {
+.dialog-content li button {
     display: flex;
     justify-content: space-between;
     gap: 8px;
@@ -128,7 +144,7 @@ function handleKeydown(event: KeyboardEvent) {
     font-size: 0.85rem;
 }
 
-.diagram-chooser li.selected button {
+.dialog-content li.selected button {
     background-color: #e6f3ff;
 }
 

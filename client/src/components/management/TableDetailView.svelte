@@ -46,6 +46,17 @@
     let deleteActionError = $state<string | undefined>(undefined);
     let isDeleting = $state(false);
 
+    let deleteDialog: HTMLDialogElement | undefined = $state();
+    $effect(() => {
+        if (deleteDialog) {
+            if (showDeleteDialog && !deleteDialog.open && typeof deleteDialog.showModal === 'function') {
+                deleteDialog.showModal();
+            } else if (!showDeleteDialog && deleteDialog.open && typeof deleteDialog.close === 'function') {
+                deleteDialog.close();
+            }
+        }
+    });
+
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
     // callbacks below from clobbering it once Firebase resolves to no user.
@@ -349,7 +360,7 @@
 </main>
 
 {#if showDeleteDialog && dependencies}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="delete-dialog-title">
+    <dialog bind:this={deleteDialog} class="delete-dialog" oncancel={(e) => { e.preventDefault(); showDeleteDialog = false; }} onclick={(e) => { if (e.target === deleteDialog) showDeleteDialog = false; }} aria-labelledby="delete-dialog-title">
         <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 id="delete-dialog-title" class="text-lg font-bold text-gray-900">Delete table "{tableName}"</h2>
@@ -460,5 +471,17 @@
                 </button>
             </div>
         </div>
-    </div>
+    </dialog>
 {/if}
+
+<style>
+.delete-dialog {
+    margin: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+.delete-dialog::backdrop {
+    background: rgb(0 0 0 / 50%);
+}
+</style>
