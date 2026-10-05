@@ -26,7 +26,8 @@ describe("ALS alias node", () => {
         render(AliasPicker);
 
         const user = userEvent.setup();
-        aliasPickerStore.show(aliasItem.id); await new Promise(resolve => setTimeout(resolve, 0));
+        aliasPickerStore.show(aliasItem.id);
+        await new Promise(resolve => setTimeout(resolve, 0));
         const option = Array.from(document.querySelectorAll(".alias-picker button")).find(b =>
             b.textContent.trim() === "root/second"
         );

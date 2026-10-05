@@ -27,7 +27,8 @@ describe("ALS alias path navigation", () => {
         generalStore.currentPage = rootPage;
         render(AliasPicker);
 
-        aliasPickerStore.show(aliasItem.id); await new Promise(resolve => setTimeout(resolve, 0));
+        aliasPickerStore.show(aliasItem.id);
+        await new Promise(resolve => setTimeout(resolve, 0));
         const options = Array.from(document.querySelectorAll(".alias-picker button"));
         const paths = options.map(o => o.textContent);
         expect(paths).toContain("root/parent");
