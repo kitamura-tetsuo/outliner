@@ -110,7 +110,10 @@ export const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
  * in-flight promise is cached synchronously before it is ever awaited.
  */
 export class IdempotencyCache {
-    private readonly entries = new Map<string, { expiresAt?: number; result: Promise<unknown>; }>();
+    private readonly entries = new Map<
+        string,
+        { expiresAt?: number; fingerprint?: string; result: Promise<unknown>; }
+    >();
 
     /** `now` is the retention clock; injectable so retention can be observed deterministically. */
     constructor(private readonly now: () => number = Date.now) {}
@@ -120,6 +123,22 @@ export class IdempotencyCache {
     }
 
     async run<T>(key: string | undefined, run: () => Promise<T> | T): Promise<{ result: T; replayed: boolean; }> {
+        return this.runChecked<T>(key, undefined, run);
+    }
+
+    /**
+     * Replay with an input fingerprint (issue #5436): the same identity used
+     * with different input is rejected as `invalid_argument`
+     * (`operation_id_reused`) without executing or disturbing the retained
+     * entry. A caller that passes `undefined` gets the plain `run` behavior
+     * above. Rejections are never retained, so a confirmed pre-effect refusal
+     * may be retried with the same identity.
+     */
+    async runChecked<T>(
+        key: string | undefined,
+        fingerprint: string | undefined,
+        run: () => Promise<T> | T,
+    ): Promise<{ result: T; replayed: boolean; }> {
         if (!key) return { result: await run(), replayed: false };
         const now = this.now();
         for (const [existingKey, entry] of this.entries) {
@@ -129,13 +148,27 @@ export class IdempotencyCache {
             if (entry.expiresAt !== undefined && entry.expiresAt <= now) this.entries.delete(existingKey);
         }
         const cached = this.entries.get(key);
-        if (cached) return { result: await cached.result as T, replayed: true };
+        if (cached) {
+            if (
+                fingerprint !== undefined && cached.fingerprint !== undefined && cached.fingerprint !== fingerprint
+            ) {
+                throw new McpReadError(
+                    "invalid_argument",
+                    "This operationId was already used with different input; retry with a new operationId",
+                    { reason: "operation_id_reused" },
+                );
+            }
+            return { result: await cached.result as T, replayed: true };
+        }
         // Populate the cache with the in-flight promise synchronously —
         // nothing here awaits before this.entries.set() runs, so a second
         // concurrent call with the same key can never slip past the
         // `cached` check above and race this attempt.
         const promise = (async () => run())();
-        const entry: { expiresAt?: number; result: Promise<unknown>; } = { result: promise };
+        const entry: { expiresAt?: number; fingerprint?: string; result: Promise<unknown>; } = {
+            fingerprint,
+            result: promise,
+        };
         this.entries.set(key, entry);
         void promise.then(
             () => {

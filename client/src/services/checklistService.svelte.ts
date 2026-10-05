@@ -23,6 +23,17 @@ export interface Checklist {
     items: ChecklistItem[];
 }
 
+function parseChecklistRule(rruleStr: string, lastReset?: number): RRule {
+    // Anchor the recurrence lattice to the last reset. RRule.fromString pins
+    // dtstart to the parse time, so the first boundary would depend on when
+    // the rule was parsed rather than when the checklist was last reset.
+    const options = RRule.parseString(rruleStr);
+    if (!options.dtstart) {
+        options.dtstart = new Date(lastReset ?? 0);
+    }
+    return new RRule(options);
+}
+
 function areListsEqual(a: Checklist[], b: Checklist[]): boolean {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
@@ -293,8 +304,8 @@ class ChecklistService {
                     const rruleStr = ylist.get("rrule");
                     if (!rruleStr) return;
 
-                    const rule = RRule.fromString(rruleStr as string);
                     const lastReset = ylist.get("lastReset") as number || 0;
+                    const rule = parseChecklistRule(rruleStr as string, lastReset);
                     const next = rule.after(new Date(lastReset));
 
                     if (next && next.getTime() <= now) {
@@ -320,7 +331,7 @@ class ChecklistService {
                 if (l.id !== listId || !l.rrule) return l;
                 if (!l._parsedRule) {
                     cacheChanged = true;
-                    return { ...l, _parsedRule: RRule.fromString(l.rrule) };
+                    return { ...l, _parsedRule: parseChecklistRule(l.rrule, l.lastReset) };
                 }
                 return l;
             });
@@ -331,7 +342,7 @@ class ChecklistService {
                 if (l.id !== listId || !l.rrule) return l;
                 let rule = l._parsedRule;
                 if (!rule) {
-                    rule = RRule.fromString(l.rrule);
+                    rule = parseChecklistRule(l.rrule, l.lastReset);
                 }
                 const next = rule.after(new Date(l.lastReset ?? 0));
                 if (next && next.getTime() <= now) {
@@ -358,7 +369,7 @@ class ChecklistService {
         if (!l || !l.rrule) return null;
         let rule = l._parsedRule;
         if (!rule) {
-            rule = RRule.fromString(l.rrule);
+            rule = parseChecklistRule(l.rrule, l.lastReset);
         }
         const next = rule.after(new Date(l.lastReset ?? 0));
         if (!next) return null;

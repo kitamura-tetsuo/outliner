@@ -627,6 +627,9 @@ start_and_wait_for_services() {
   local MAX_WAIT_SECONDS=600
   local START_TIME
   START_TIME=$(date +%s)
+  # Stall tracking for the Firebase Hosting emulator retry below (issue #5453).
+  local HOSTING_STALL_START=0
+  local HOSTING_RESTART_DONE=0
 
   _check_pm2_status() {
     # Check if key PM2 processes are running
@@ -650,6 +653,25 @@ start_and_wait_for_services() {
         // But if pm2 command failed, likely something is wrong.
       }
     '
+  }
+
+  # True when every required port except the Firebase Hosting emulator port
+  # is already open. Matches the observed CI failure mode (issue #5453): the
+  # firebase-emulators process stays online serving auth/firestore/functions/
+  # storage while hosting alone never binds its port, so no test can run.
+  _only_hosting_missing() {
+    if port_is_open "${FIREBASE_HOSTING_PORT}"; then
+      return 1
+    fi
+    local port
+    for port in "${REQUIRED_PORTS[@]}"; do
+      if [ -n "$port" ] && [ "$port" != "${FIREBASE_HOSTING_PORT}" ]; then
+        if ! port_is_open "$port"; then
+          return 1
+        fi
+      fi
+    done
+    return 0
   }
 
   _is_service_ready() {
@@ -717,6 +739,13 @@ start_and_wait_for_services() {
       pm2 list
       echo "--- PM2 Logs (tail) ---"
       pm2 logs --lines 50 --nostream
+      # The tail above is usually drowned by Functions health checks; the
+      # emulator startup section (versions, emulator list, bind errors) is
+      # what diagnoses a missing emulator (issue #5453).
+      if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
+        echo "--- logs/firebase-emulators.log (head: emulator startup) ---"
+        head -n 80 "${ROOT_DIR}/logs/firebase-emulators.log" || true
+      fi
       exit 1
     fi
 
@@ -748,6 +777,27 @@ start_and_wait_for_services() {
     if _is_service_ready "$log_status"; then
       echo "=== All test services are ready! ==="
       break
+    fi
+
+    # Self-heal a selectively stalled Hosting emulator (issue #5453): when
+    # every other required port has been open for a sustained period while
+    # hosting alone never binds, the emulator process is wedged — restart it
+    # once and keep waiting within the same overall deadline. Restarting is
+    # safe before any test runs: the auth emulator holds no test state yet
+    # (TestHelpers.getTestAuthToken self-provisions the test user on demand
+    # and init-firebase-emulator.js runs after this gate), and yjs/vite are
+    # untouched by the emulator restart.
+    if _only_hosting_missing; then
+      if [ "$HOSTING_STALL_START" -eq 0 ]; then
+        HOSTING_STALL_START=$ELAPSED
+      elif [ "$HOSTING_RESTART_DONE" -eq 0 ] && [ $((ELAPSED - HOSTING_STALL_START)) -ge 120 ]; then
+        echo "Firebase Hosting emulator (port ${FIREBASE_HOSTING_PORT}) has not started after $((ELAPSED - HOSTING_STALL_START))s while all other services are ready. Restarting firebase-emulators once..."
+        pm2 restart firebase-emulators || echo "Warning: pm2 restart firebase-emulators failed"
+        HOSTING_RESTART_DONE=1
+        HOSTING_STALL_START=0
+      fi
+    else
+      HOSTING_STALL_START=0
     fi
 
     sleep 2
