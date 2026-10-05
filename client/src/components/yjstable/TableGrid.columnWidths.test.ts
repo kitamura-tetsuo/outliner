@@ -207,6 +207,57 @@ describe("TableGrid fixed column widths", () => {
         expect(container.querySelector("th[data-col='title']")!.getAttribute("style")).toBeNull();
     });
 
+    it("returns every track to automatic sizing when all overrides are cleared", async () => {
+        const { Doc } = await import("yjs");
+        const doc = new Doc();
+        const tableId = createTable(doc, "Tasks", "tasks");
+        const gridId = createGrid(doc, tableId, {
+            name: "G",
+            query: QUERY,
+            components: {
+                id: { widthPx: 64 },
+                title: { widthPx: 180 },
+                done: { widthPx: 48 },
+                due_date: { widthPx: 120 },
+            },
+        });
+        const grid = getGridHandles(doc, gridId)!;
+        const handles = getTableHandles(doc, tableId)!;
+        expect(readGridComponents(grid).widths).toEqual({ id: 64, title: 180, done: 48, due_date: 120 });
+
+        // Clearing goes through the production writer, read back through the
+        // same mirror `YjsTableView` uses — the E2E `expectAutoColumn` path.
+        for (const column of ["id", "title", "done", "due_date"]) setGridColumnWidth(grid, column, undefined);
+        const { widths } = readGridComponents(grid);
+        expect(widths).toEqual({});
+
+        const { container, rerender } = render(TableGrid, {
+            props: {
+                ...baseProps(handles),
+                grid,
+                columnWidths: { id: 64, title: 180, done: 48, due_date: 120 },
+            },
+        });
+        expect(container.querySelector("colgroup")).not.toBeNull();
+        await rerender({ ...baseProps(handles), grid, columnWidths: widths });
+
+        // No colgroup, no fixed layout, and no class or style residue on any
+        // header or body cell: the column is fully automatic again.
+        expect(container.querySelector("colgroup")).toBeNull();
+        expect(container.querySelector("table")!.classList.contains("grid-fixed-layout")).toBe(false);
+        for (const column of ["id", "title", "done", "due_date"]) {
+            const header = container.querySelector(`th[data-col='${column}']`)!;
+            expect(header.classList.contains("col-fixed")).toBe(false);
+            expect(header.getAttribute("style")).toBeNull();
+            const cells = container.querySelectorAll(`td[data-col='${column}']`);
+            expect(cells.length).toBeGreaterThan(0);
+            for (const cell of cells) {
+                expect(cell.classList.contains("col-fixed")).toBe(false);
+                expect(cell.getAttribute("style")).toBeNull();
+            }
+        }
+    });
+
     it("keeps header pins with zero rows and keeps hidden widths dormant", async () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();

@@ -134,4 +134,11 @@ export async function expectAutoColumn(page: Page, placement: number, column: st
     await expect(header).toBeVisible({ timeout: 15000 });
     expect(await header.getAttribute("class")).not.toContain("col-fixed");
     expect(await header.getAttribute("style")).toBeNull();
+    // Cleared overrides must leave no residue on body cells either: fixed
+    // widths were once pinned inline on headers and cells alike (issue #5457).
+    const cells = grid.locator(`td[data-col="${column}"]`);
+    for (let i = 0; i < await cells.count(); i++) {
+        expect(await cells.nth(i).getAttribute("class")).not.toContain("col-fixed");
+        expect(await cells.nth(i).getAttribute("style")).toBeNull();
+    }
 }
