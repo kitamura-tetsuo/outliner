@@ -31,6 +31,7 @@ const forbiddenGlobals = [
     "__FIRESTORE_STORE__",
     "KeyEventHandler",
     "__selectionList",
+    "__GRID_WIDTH_WRITER__",
     "__GRAPH_CHART__",
     "__pollingMonitor",
     "__outlinerGridRenderTraces",

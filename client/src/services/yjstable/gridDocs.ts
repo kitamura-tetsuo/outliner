@@ -423,3 +423,19 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
 export function findGridsBySourceTable(projectDoc: Y.Doc, sourceTableId: string): GridRegistryEntry[] {
     return listGrids(projectDoc).filter(g => g.sourceTableId === sourceTableId);
 }
+
+// Test-only bridge so width E2E specs commit through the supported production
+// writer (`setGridColumnWidth` on the owning Grid's handles) instead of
+// writing the `widthPx` leaf directly. There is no numeric width UI until
+// #5458, so browser tests have no other production path for width edits.
+// The literal MODE comparison lets Rollup drop this from the production
+// bundle (see ENV-production-build-leak.test.ts); it exposes no reads or
+// writes beyond what the mounted UI already performs.
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    (window as unknown as {
+        __GRID_WIDTH_WRITER__?: {
+            getGridHandles: typeof getGridHandles;
+            setGridColumnWidth: typeof setGridColumnWidth;
+        };
+    }).__GRID_WIDTH_WRITER__ = { getGridHandles, setGridColumnWidth };
+}
