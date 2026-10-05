@@ -16,8 +16,12 @@ const diagrams = $derived.by(() => {
     const project = generalStore.project;
     if (!project) return [];
     const auth = { capabilities: getProjectCapabilities(project), surfaceWritable: true };
-    const result = readListDiagrams(project, auth);
-    return result.ok ? result.data : [];
+    try {
+        const result = readListDiagrams(project, auth);
+        return (result && result.ok && Array.isArray(result.data)) ? result.data : [];
+    } catch {
+        return [];
+    }
 });
 
 function excerptOf(source: string): string {
@@ -31,6 +35,22 @@ function confirm(diagramId: string) {
     diagramChooserStore.confirm(diagramId);
 }
 
+let dialogEl: HTMLDialogElement | undefined = $state();
+
+$effect(() => {
+    if (dialogEl) {
+        if (diagramChooserStore.isVisible) {
+            if (!dialogEl.open && typeof dialogEl.showModal === 'function') {
+                dialogEl.showModal();
+            }
+        } else {
+            if (dialogEl.open && typeof dialogEl.close === 'function') {
+                dialogEl.close();
+            }
+        }
+    }
+});
+
 function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
         event.preventDefault();
@@ -40,16 +60,16 @@ function handleKeydown(event: KeyboardEvent) {
 }
 </script>
 
-{#if diagramChooserStore.isVisible}
-    <div
-        class="diagram-chooser"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Insert transclusion"
-        data-testid="diagram-chooser"
-        onkeydown={handleKeydown}
-        tabindex="-1"
-    >
+<dialog
+    class="diagram-chooser"
+    bind:this={dialogEl}
+    aria-label="Insert transclusion"
+    data-testid="diagram-chooser"
+    onkeydown={handleKeydown}
+    oncancel={(e) => { e.preventDefault(); diagramChooserStore.hide(); }}
+    onclick={(e) => { if (e.target === dialogEl) diagramChooserStore.hide(); }}
+>
+    <div class="dialog-content" role="document">
         <h2>Insert transclusion</h2>
         {#if diagrams.length === 0}
             <p class="diagram-chooser-empty" data-testid="diagram-chooser-empty">No Mermaid diagrams in this project yet.</p>
@@ -83,23 +103,31 @@ function handleKeydown(event: KeyboardEvent) {
             </button>
         </div>
     </div>
-{/if}
+</dialog>
 
 <style>
 .diagram-chooser {
-    position: fixed;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    border: 1px solid #ccc;
+    margin: auto;
+    padding: 0;
+    border: none;
     border-radius: 6px;
-    padding: 12px;
-    z-index: 1000;
+    background: transparent;
     max-height: 320px;
     width: 340px;
-    overflow: auto;
+}
+
+.diagram-chooser::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.dialog-content {
+    background: white;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    max-height: inherit;
+    overflow: auto;
 }
 
 .diagram-chooser h2 {
