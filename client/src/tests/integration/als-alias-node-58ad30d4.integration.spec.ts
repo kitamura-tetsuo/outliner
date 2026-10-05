@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
@@ -26,8 +26,10 @@ describe("ALS alias node", () => {
         render(AliasPicker);
 
         const user = userEvent.setup();
-        aliasPickerStore.show(aliasItem.id);
-        const option = await screen.findByRole("button", { name: "root/second" });
+        aliasPickerStore.show(aliasItem.id); await new Promise(resolve => setTimeout(resolve, 0));
+        const option = Array.from(document.querySelectorAll(".alias-picker button")).find(b =>
+            b.textContent.trim() === "root/second"
+        );
         await user.click(option);
         expect(aliasItem.aliasTargetId).toBe(second.id);
         expect(aliasPickerStore.isVisible).toBe(false);

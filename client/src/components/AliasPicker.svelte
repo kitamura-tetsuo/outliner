@@ -101,7 +101,8 @@ $effect(() => {
             pickerElement.close();
         }
     }
-    if (aliasPickerStore.isVisible) {
+    // We only need to focus when visible, not continuously
+    if (visible && pickerElement && (pickerElement.open || typeof pickerElement.showModal !== 'function')) {
         try {
             // First, the picker body
             pickerElement?.focus();

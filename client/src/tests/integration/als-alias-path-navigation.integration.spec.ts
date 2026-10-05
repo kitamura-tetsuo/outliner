@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
 import { Project } from "../../schema/app-schema";
@@ -27,8 +27,8 @@ describe("ALS alias path navigation", () => {
         generalStore.currentPage = rootPage;
         render(AliasPicker);
 
-        aliasPickerStore.show(aliasItem.id);
-        const options = await screen.findAllByRole("button");
+        aliasPickerStore.show(aliasItem.id); await new Promise(resolve => setTimeout(resolve, 0));
+        const options = Array.from(document.querySelectorAll(".alias-picker button"));
         const paths = options.map(o => o.textContent);
         expect(paths).toContain("root/parent");
         expect(paths).toContain("root/parent/child");

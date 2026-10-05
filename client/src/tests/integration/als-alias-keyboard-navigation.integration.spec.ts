@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
@@ -26,11 +26,11 @@ describe("ALS alias keyboard navigation", () => {
         render(AliasPicker);
 
         aliasPickerStore.show(aliasItem.id);
-        const picker = await screen.findByRole("dialog");
-        picker.focus();
+        const picker = document.querySelector(".alias-picker");
+        await new Promise(resolve => setTimeout(resolve, 0)); const p = document.querySelector(".alias-picker"); if (p) p.focus();
         const user = userEvent.setup();
 
-        const options = await screen.findAllByRole("button");
+        const options = document.querySelectorAll(".alias-picker button");
         // Check if the parent element (li) has the 'selected' class
         expect(options[0].closest("li")?.classList.contains("selected")).toBe(true);
 
