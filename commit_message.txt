@@ -1,5 +1,0 @@
-refactor: Remove unnecessary DOM polling in AliasPickerStore
-
-- Removed 0ms setTimeout DOM presence check for ".alias-picker" from `AliasPickerStore.svelte.ts`
-- Polling was marked as E2E debug timing helper and no longer necessary
-- Improves client code health and performance
