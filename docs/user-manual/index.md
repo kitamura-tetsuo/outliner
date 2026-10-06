@@ -64,7 +64,7 @@ The editor toolbar (located at the top of the outline editor) provides:
 
 ### User Authentication
 
-The login status indicator located in the top right area of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
+The login status indicator located in the top right area of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in". You can also find a "Sign in to see your projects" prompt in the Projects section of the main sidebar.
 
 ### Sidebar Navigation
 
