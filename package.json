@@ -10,10 +10,10 @@
     "devDependencies": {
         "@dprint/dockerfile": "0.6.0",
         "@dprint/json": "0.25.1",
-        "@dprint/markdown": "0.24.0",
+        "@dprint/markdown": "0.25.0",
         "@dprint/toml": "0.8.0",
         "@dprint/typescript": "0.96.1",
-        "dprint": "0.58.0",
+        "dprint": "0.59.0",
         "dprint-plugin-malva": "0.16.0",
         "dprint-plugin-markup": "0.27.5",
         "dprint-plugin-yaml": "0.6.0",
