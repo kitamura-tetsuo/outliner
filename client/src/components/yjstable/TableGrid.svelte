@@ -180,6 +180,13 @@ const hasFixedColumns = $derived(displayColumns.some(column => fixedWidthOf(colu
 const hasAutoColumns = $derived(displayColumns.some(column => fixedWidthOf(column) === undefined));
 /** All visible data columns fixed: surplus container space stays outside the tracks. */
 const allColumnsFixed = $derived(displayColumns.length > 0 && !hasAutoColumns);
+// An intrinsic table width disables fixed layout in browsers. Give all-fixed
+// tables a definite width, including both utility tracks and the collapsed border.
+const fixedTableWidth = $derived(
+    `calc(${displayColumns.reduce((sum, column) => sum + (fixedWidthOf(column) ?? 0), 0) + 1}px + ${
+        editability.editable && editability.rowIdentity === "id" ? 4.5 : 2.5
+    }rem)`,
+);
 
 /** One row target per query result row, for the selection command layer (`gridSelectionCommands.ts`). */
 const rowTargetEntries = $derived(
@@ -997,6 +1004,7 @@ function handleCancelDelete() {
             onkeydown={handleGridKeyDown}
             class:grid-fixed-layout={hasFixedColumns}
             class:grid-all-fixed={allColumnsFixed}
+            style:width={allColumnsFixed ? fixedTableWidth : undefined}
         >
             {#if hasFixedColumns}
                 <colgroup>
@@ -1338,7 +1346,7 @@ table {
  * spare container space. Headers and body cells carry no inline width of
  * their own, so clearing an override returns the column to automatic sizing
  * with no style residue. With every data column fixed the table shrinks to
- * its tracks (`max-content`) so surplus stays outside instead of stretching
+ * a definite sum of its tracks so surplus stays outside instead of stretching
  * fixed or utility columns. Narrower containers scroll locally inside
  * `.yjs-table-grid` without widening the page or the surrounding Layout.
  */
@@ -1347,7 +1355,6 @@ table.grid-fixed-layout {
 }
 
 table.grid-all-fixed {
-    width: max-content;
     max-width: none;
 }
 

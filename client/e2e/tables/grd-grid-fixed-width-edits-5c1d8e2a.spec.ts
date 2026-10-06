@@ -79,16 +79,22 @@ test.describe("Grid fixed widths preserve cell components and write targets", ()
         await expectFixedWidth(page, 0, "title", 180);
         await expectFixedWidth(page, 0, "done", 64);
         const after = (await readGridProjectState(page)).tables[0].data;
-        expect(after[firstId]).toMatchObject({ done: true, title: before[firstId]["title"] });
-        expect(after[firstId]["quantity"]).toEqual(before[firstId]["quantity"]);
-        expect(after[secondId]).toMatchObject({ title: "Edited title", done: before[secondId]["done"] });
-        expect(after[secondId]["quantity"]).toEqual(before[secondId]["quantity"]);
+        expect(after).toEqual({
+            ...before,
+            [firstId]: { ...before[firstId], done: true },
+            [secondId]: { ...before[secondId], title: "Edited title" },
+        });
     });
 
     test("fixed-width read-only aliases keep their components and reject writes", async ({ page }) => {
         await setQuery(page, READONLY_QUERY);
         const grid = page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-grid");
         await expect(grid.locator('th[data-col="subject"]')).toBeVisible({ timeout: 30000 });
+        // Aliases have no schema-derived default component. Choose the
+        // checkbox through the normal UI before checking width preservation.
+        await page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-component-flag")
+            .selectOption("checkbox");
+        await expect(grid.locator('td[data-col="flag"] input[type="checkbox"]').first()).toBeDisabled();
         await commitWidthsProduction(page, await singleGridId(page), { subject: 180, flag: 64 });
         await expectFixedWidth(page, 0, "subject", 180);
         await expectFixedWidth(page, 0, "flag", 64);
@@ -103,7 +109,9 @@ test.describe("Grid fixed widths preserve cell components and write targets", ()
 
         // Attempted edits change nothing: no editor opens and source data is
         // byte-identical, while fixed geometry holds throughout.
-        await subjectCell.locator("button.cell-value").click();
+        // Send the attempted click despite aria-disabled; ordinary click()
+        // waits for an enabled control instead of exercising its read-only guard.
+        await subjectCell.locator("button.cell-value").click({ force: true });
         expect(await subjectCell.locator("input.cell-input").count()).toBe(0);
         await flagBox.click({ force: true });
         await expectFixedWidth(page, 0, "subject", 180);

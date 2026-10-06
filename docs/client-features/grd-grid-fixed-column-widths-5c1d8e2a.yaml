@@ -17,5 +17,9 @@ acceptance:
 tests:
 - client/e2e/tables/grd-grid-fixed-column-widths-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-fixed-width-identity-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-all-fixed-surplus-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-fixed-width-edits-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-shared-width-render-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-peer-sync-5c1d8e2a.spec.ts
 - client/src/components/yjstable/TableGrid.columnWidths.test.ts
 - client/src/services/yjstable/gridColumnWidth.test.ts

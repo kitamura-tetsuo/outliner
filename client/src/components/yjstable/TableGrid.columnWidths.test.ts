@@ -172,13 +172,25 @@ describe("TableGrid fixed column widths", () => {
         const grid = getGridHandles(doc, gridId)!;
         const { widths } = readGridComponents(grid);
 
-        const { container } = render(TableGrid, {
-            props: { ...baseProps(getTableHandles(doc, tableId)!), grid, columnWidths: widths },
-        });
+        const props = { ...baseProps(getTableHandles(doc, tableId)!), grid, columnWidths: widths };
+        const { container, rerender } = render(TableGrid, { props });
 
         const table = container.querySelector("table")!;
         expect(table.classList.contains("grid-fixed-layout")).toBe(true);
         expect(table.classList.contains("grid-all-fixed")).toBe(true);
+        expect(table.style.width).toBe("calc(413px + 4.5rem)");
+
+        await rerender({ ...props, hiddenColumns: { done: true } });
+        expect(table.style.width).toBe("calc(365px + 4.5rem)");
+        expect(readGridComponents(grid).widths).toEqual(widths);
+
+        await rerender({ ...props, query: "SELECT DISTINCT id, title, done, due_date FROM tasks" });
+        expect(container.querySelector("th.actions-col")).toBeNull();
+        expect(table.style.width).toBe("calc(413px + 2.5rem)");
+
+        await rerender({ ...props, columnWidths: {} });
+        expect(table.classList.contains("grid-all-fixed")).toBe(false);
+        expect(table.style.width).toBe("");
     });
 
     it("stays fully automatic without widths, and treats malformed widths as auto", async () => {
