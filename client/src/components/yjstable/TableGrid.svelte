@@ -891,10 +891,7 @@ function newRecordDefaults(): Record<string, TableRecordValue> {
             defaults[column.name] = column.checkOptions[0];
         } else if (!column.isNullable && column.kind === "text") {
             defaults[column.name] = "";
-        } else if (column.kind === "boolean") {
-            // A fresh row's checkbox starts unchecked whether or not the
-            // column is nullable, so edits always route against a definite
-            // stored value instead of an absent one (issue #5457).
+        } else if (!column.isNullable && column.kind === "boolean") {
             defaults[column.name] = false;
         }
     }
