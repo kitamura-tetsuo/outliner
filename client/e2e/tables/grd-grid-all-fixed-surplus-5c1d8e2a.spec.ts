@@ -32,7 +32,10 @@ async function trackWidths(page: Page, placement: number): Promise<{
     const grid = page.getByTestId("yjs-table-view").nth(placement).getByTestId("yjs-table-grid");
     const fixed: Record<string, number[]> = {};
     for (const column of Object.keys(FIXED)) fixed[column] = await placementColumnWidths(page, placement, column);
-    const utilityBox = await grid.locator("th.corner-header").boundingBox();
+    // Scoped to the single thead corner cell so the lookup stays
+    // strict-mode-unambiguous even though body rows also render `<th>`
+    // selection headers (issue #5457).
+    const utilityBox = await grid.locator("thead th.corner-header").first().boundingBox();
     const tableBox = await grid.locator("table").boundingBox();
     return { fixed, utility: utilityBox!.width, table: tableBox!.width };
 }
