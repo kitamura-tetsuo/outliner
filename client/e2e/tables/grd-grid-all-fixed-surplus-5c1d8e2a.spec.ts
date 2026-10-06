@@ -140,6 +140,10 @@ test.describe("Grid all-fixed surplus stays outside the tracks", () => {
                 }
             }
             measured[width] = { table: tableBox!.width, columns };
+            // No hard-coded track may force overflow: the automatic table
+            // fits its Grid container at both sizes, so pins summing wider
+            // than a narrow container fail here even when they still grow.
+            expect(await grid.evaluate((el: HTMLElement) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
         }
 
         // The table fills its container, so it is substantially wider in the
