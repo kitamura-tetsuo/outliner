@@ -113,6 +113,12 @@ test.describe("Grid all-fixed surplus stays outside the tracks", () => {
         expect((await readWidthGridRegistry(page)).find((g) => g.gridId === gridId)?.components["title"]?.["widthPx"])
             .toBeUndefined();
 
+        // Actual browser geometry in both container sizes: the automatic
+        // layout must respond to available space. A regression pinning
+        // hard-coded widths through another CSS rule would keep every track
+        // constant across sizes and fail the growth assertions below; no
+        // particular allocation among the auto columns is asserted.
+        const measured: Record<number, { table: number; columns: Record<string, number[]>; }> = {};
         for (const width of [480, 1280]) {
             await page.setViewportSize({ width, height: 800 });
             const grid = page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-grid");
@@ -120,6 +126,32 @@ test.describe("Grid all-fixed surplus stays outside the tracks", () => {
             expect(await grid.locator("table").getAttribute("class")).not.toContain("grid-fixed-layout");
             expect(await grid.locator("colgroup").count()).toBe(0);
             for (const column of ["id", "title", "done", "quantity"]) await expectAutoColumn(page, 0, column);
+            const tableBox = await grid.locator("table").boundingBox();
+            expect(tableBox).not.toBeNull();
+            const columns: Record<string, number[]> = {};
+            for (const column of ["id", "title", "done", "quantity"]) {
+                columns[column] = await placementColumnWidths(page, 0, column);
+                // Header plus one body cell: every measured outer box exists.
+                expect(columns[column].length).toBeGreaterThanOrEqual(2);
+                // Header and body cells of one column share a track and stay
+                // aligned in the automatic layout as well.
+                for (const w of columns[column]) {
+                    expect(Math.abs(w - columns[column][0])).toBeLessThanOrEqual(2);
+                }
+            }
+            measured[width] = { table: tableBox!.width, columns };
+            // No hard-coded track may force overflow: the automatic table
+            // fits its Grid container at both sizes, so pins summing wider
+            // than a narrow container fail here even when they still grow.
+            expect(await grid.evaluate((el: HTMLElement) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
         }
+
+        // The table fills its container, so it is substantially wider in the
+        // wide container than in the narrow one.
+        expect(measured[1280].table).toBeGreaterThan(measured[480].table + 100);
+        // At least one automatic column absorbs the extra room.
+        const headerDeltas = ["id", "title", "done", "quantity"]
+            .map((column) => Math.abs(measured[1280].columns[column][0] - measured[480].columns[column][0]));
+        expect(Math.max(...headerDeltas)).toBeGreaterThan(10);
     });
 });

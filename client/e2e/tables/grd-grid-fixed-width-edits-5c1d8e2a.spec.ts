@@ -15,8 +15,14 @@ import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
+/*
+ * The checkbox edit below needs a definite starting value. `done` is declared
+ * NOT NULL so fresh rows seed `false` through the preserved non-nullable
+ * production default; nullable-column seeding must stay untouched (PR #5467
+ * review on issue #5457).
+ */
 const SCHEMA = "CREATE TABLE orders (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n"
-    + "  quantity INTEGER,\n  done BOOLEAN\n)";
+    + "  quantity INTEGER,\n  done BOOLEAN NOT NULL\n)";
 const QUERY = "SELECT id, title, quantity, done FROM orders";
 const READONLY_QUERY = "SELECT id, title AS subject, done AS flag FROM orders";
 
