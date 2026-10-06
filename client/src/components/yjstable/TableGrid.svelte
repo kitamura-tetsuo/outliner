@@ -1398,8 +1398,8 @@ td.col-fixed > :global(.cell-date) {
  * Automatic sizing (issue #5457). With no fixed width pinned, a column must
  * still shrink to its Grid container in narrow viewports instead of forcing
  * local overflow: headers clip with an ellipsis and long unbreakable values
- * may break anywhere, so the automatic table always fits and only a table
- * wider than its tracks (fixed pins) scrolls inside `.yjs-table-grid`.
+ * may break anywhere. Intrinsic minimum widths can still exceed the available
+ * space; that overflow scrolls locally inside `.yjs-table-grid`.
  */
 th .th-content {
     min-width: 0;

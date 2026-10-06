@@ -8,6 +8,7 @@ acceptance:
 - A saved finite integer width renders its header and every body cell at that CSS-pixel border-box width within layout-rounding tolerance
 - A table wider than its Grid container scrolls horizontally inside the Grid without widening the page or surrounding Layout spans
 - Clearing an override returns the column to automatic sizing without storing a replacement pixel value
+- Automatic columns follow content and available space; intrinsic minimum widths may scroll inside the Grid in narrow containers without widening the page
 - Fixed columns never grow into spare container space nor shrink in narrow containers; only automatic data columns absorb surplus
 - Fixed-width rendering preserves each column's cell component and its SQL-derived write eligibility
 - Long unbreakable labels and values, padding, controls and focused inline editors never widen a fixed column nor paint over neighboring contents
