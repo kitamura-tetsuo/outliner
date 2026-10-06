@@ -16,6 +16,8 @@ acceptance:
 - With every data column fixed, surplus space stays outside the tracks instead of stretching fixed or utility columns
 tests:
 - client/e2e/tables/grd-grid-fixed-column-widths-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-fixed-content-containment-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-fixed-width-layout-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-fixed-width-identity-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-all-fixed-surplus-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-fixed-width-edits-5c1d8e2a.spec.ts
