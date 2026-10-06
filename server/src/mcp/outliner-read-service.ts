@@ -141,19 +141,43 @@ export class OutlinerReadService {
         private readonly accessibleProjects: (uid: string) => Promise<ProjectDescriptor[]>,
     ) {}
 
+    /**
+     * Resource-side project authorization using the authenticated UID's
+     * membership. Missing, denied, or erroring evidence is forbidden.
+     */
+    private async authorize(uid: string, projectId: string): Promise<void> {
+        let allowed = false;
+        try {
+            allowed = await this.canAccess(uid, projectId);
+        } catch {
+            allowed = false;
+        }
+        if (allowed !== true) throw new McpReadError("forbidden", "Project is inaccessible");
+    }
+
     private async withProject<T>(
         uid: string,
         projectId: string,
         read: (project: Project) => T | Promise<T>,
     ): Promise<T> {
         assertId(projectId, "project ID");
-        if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
+        await this.authorize(uid, projectId);
         const connection = await this.hocuspocus.openDirectConnection(`projects/${projectId}`, { context: { uid } });
+        let result: T;
         try {
-            return await read(Project.fromDoc(connection.document as unknown as Parameters<typeof Project.fromDoc>[0]));
+            // Recheck after the asynchronous room opening: a grant revoked
+            // while the open was pending must not reach the read.
+            await this.authorize(uid, projectId);
+            result = await read(
+                Project.fromDoc(connection.document as unknown as Parameters<typeof Project.fromDoc>[0]),
+            );
         } finally {
             await connection.disconnect();
         }
+        // Recheck after the read and connection release, before disclosing
+        // the captured result: a grant revoked meanwhile withholds it.
+        await this.authorize(uid, projectId);
+        return result;
     }
 
     async resolveUrl(

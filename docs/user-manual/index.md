@@ -55,7 +55,7 @@ The top-right toolbar (above the page content) provides:
 - **Search:** Opens the "Search and Replace" (Unified Find) panel to search and replace text and grid cells within the current page.
 - **Graph View:** Opens a visual graph representation of page links.
 
-The lower toolbar (part of the outline editor) provides:
+The editor toolbar (located at the top of the outline editor) provides:
 
 - **Add Item:** Adds a new item to the bottom of the page.
 - **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
@@ -64,7 +64,7 @@ The lower toolbar (part of the outline editor) provides:
 
 ### User Authentication
 
-The login status indicator located in the top right area of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in".
+The login status indicator located in the top right area of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in". You can also find a "Sign in to see your projects" prompt in the Projects section of the main sidebar.
 
 ### Sidebar Navigation
 

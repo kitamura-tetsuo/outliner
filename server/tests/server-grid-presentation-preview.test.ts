@@ -90,9 +90,9 @@ describe("Grid presentation update: preview, revalidation and leaf merging (#543
                 name: "Tasks",
                 columnOrder: ["done", "due_date", "dormant"],
                 components: {
-                    done: { label: null, type: null, shown: false },
-                    dormant: { label: null, type: null, shown: true },
-                    due_date: { label: "期限", type: null, shown: true },
+                    done: { label: null, type: null, shown: false, widthPx: null },
+                    dormant: { label: null, type: null, shown: true, widthPx: null },
+                    due_date: { label: "期限", type: null, shown: true, widthPx: null },
                 },
                 showAddRowButton: false,
                 confirmRowDelete: false,
@@ -117,7 +117,7 @@ describe("Grid presentation update: preview, revalidation and leaf merging (#543
             ...preview.candidatePresentation,
             components: {
                 ...preview.candidatePresentation.components,
-                done: { label: null, type: null, shown: false },
+                done: { label: null, type: null, shown: false, widthPx: null },
             },
         });
     });
@@ -174,6 +174,7 @@ describe("Grid presentation update: preview, revalidation and leaf merging (#543
                     label: components[key].label ?? null,
                     type: components[key].type ?? null,
                     shown: true,
+                    widthPx: null,
                 });
             }
             const applied = await service.updatePresentation(UID, request);

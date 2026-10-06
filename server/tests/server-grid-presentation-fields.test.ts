@@ -77,7 +77,12 @@ describe("Grid presentation update: fields, resets and no-ops (#5435 AS-002)", f
     it("sets each component type and clears the override with null", async () => {
         for (const type of ["text", "number", "checkbox", "select", "date"] as const) {
             const result = await apply({ components: { title: { type } } });
-            expect(result.presentation.components.title).to.deep.equal({ label: null, type, shown: true });
+            expect(result.presentation.components.title).to.deep.equal({
+                label: null,
+                type,
+                shown: true,
+                widthPx: null,
+            });
             expect((await client()).types).to.deep.equal({ title: type });
         }
         const reset = await apply({ components: { title: { type: null } } });
@@ -151,6 +156,7 @@ describe("Grid presentation update: fields, resets and no-ops (#5435 AS-002)", f
             label: "label __proto__",
             type: null,
             shown: false,
+            widthPx: null,
         });
         // The client's normal reader keeps every exact name as an own key,
         // including "__proto__", and never resolves an unconfigured name to an
@@ -206,7 +212,9 @@ describe("Grid presentation update: fields, resets and no-ops (#5435 AS-002)", f
 
         await apply({ components: { due_date: { label: "期限", shown: false } } });
         const cleared = await apply({ components: { due_date: { label: null, shown: true } } });
-        expect(cleared.presentation.components.due_date).to.deep.equal({ label: null, type: "date", shown: true });
+        expect(cleared.presentation.components.due_date).to.deep.equal(
+            { label: null, type: "date", shown: true, widthPx: null },
+        );
         const stored = await withRoom(
             server.hocuspocus,
             `projects/${PROJECT}`,

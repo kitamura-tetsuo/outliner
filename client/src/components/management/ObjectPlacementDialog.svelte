@@ -64,7 +64,7 @@ function place() {
 </dialog>
 
 <style>
-dialog { width: min(26rem, calc(100vw - 2rem)); padding: 0; border: none; border-radius: .5rem; background: white; box-shadow: 0 10px 30px rgb(0 0 0 / 25%); }
+dialog { margin: auto; width: min(26rem, calc(100vw - 2rem)); padding: 0; border: none; border-radius: .5rem; background: white; box-shadow: 0 10px 30px rgb(0 0 0 / 25%); }
 dialog::backdrop { background: rgb(0 0 0 / 45%); }
 .dialog-content { padding: 1.25rem; }
 h2 { margin: 0 0 1rem; font-size: 1.15rem; }

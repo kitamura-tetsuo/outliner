@@ -73,7 +73,7 @@ describe("Grid presentation update: labels are presentation-only (#5435 AS-001)"
             query: "SELECT id, title, due_date, done FROM tasks",
         });
         expect(read.presentation.components).to.deep.equal({
-            title: { label: "件名", type: null, shown: true },
+            title: { label: "件名", type: null, shown: true, widthPx: null },
         });
 
         // Capture storage at the acknowledgement point, before any debounced
@@ -99,9 +99,9 @@ describe("Grid presentation update: labels are presentation-only (#5435 AS-001)"
         );
         expect(result).not.to.have.property("candidatePresentation");
         expect(result.presentation.components).to.deep.equal({
-            done: { label: "完了", type: null, shown: true },
-            due_date: { label: "期限", type: null, shown: true },
-            title: { label: "件名", type: null, shown: true },
+            done: { label: "完了", type: null, shown: true, widthPx: null },
+            due_date: { label: "期限", type: null, shown: true, widthPx: null },
+            title: { label: "件名", type: null, shown: true, widthPx: null },
         });
 
         // A fresh normal client reader of the live room: labels changed, keys did not.
