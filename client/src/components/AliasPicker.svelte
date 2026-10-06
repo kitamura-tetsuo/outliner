@@ -52,14 +52,11 @@ function confirm(id: string) {
     }
 }
 
+// handleKeydown removed as native dialog handles Escape, and arrow keys
+// or enter are best handled by inputs, though we still need to capture
+// them at the input level. Actually, since we're binding to the dialog,
+// we should put handleKeydown back on the dialog or input. Let's add it to the input.
 function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        aliasPickerStore.hide();
-        return;
-    }
-
     if (event.key === "ArrowDown") {
         event.preventDefault();
         event.stopPropagation();
@@ -92,6 +89,14 @@ function handleKeydown(event: KeyboardEvent) {
 // Initialize localOptions from store via event to avoid tight coupling
 
 
+function initDialog(node: HTMLDialogElement) {
+    if (!node.open && typeof node.showModal === 'function') {
+        node.showModal();
+    }
+    pickerElement = node as unknown as HTMLDivElement;
+    return {};
+}
+
 // Focus immediately when visible (both initial and re-display)
 $effect(() => {
     if (aliasPickerStore.isVisible) {
@@ -109,17 +114,17 @@ $effect(() => {
 });
 </script>
 {#if visible}
-    <div
+    <dialog
         class="alias-picker"
-        onkeydown={handleKeydown}
-        tabindex="-1"
-        role="dialog"
-        aria-modal="true"
         aria-label="Select alias"
-        bind:this={pickerElement}
+        oncancel={(e) => { e.preventDefault(); aliasPickerStore.hide(); }}
+        onclick={(e) => { if (e.target === e.currentTarget) aliasPickerStore.hide(); }}
+        use:initDialog
     >
+        <div class="dialog-content" role="document">
         <input
             type="text"
+            onkeydown={handleKeydown}
             bind:value={query}
             placeholder="Select item"
             oninput={handleInput}
@@ -150,19 +155,24 @@ $effect(() => {
                 </li>
             {/each}
         </ul>
-    </div>
+        </div>
+    </dialog>
 {/if}
 <style>
 .alias-picker {
-    position: fixed;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
+    margin: auto;
     background: white;
     border: 1px solid #ccc;
-    padding: 8px;
+    padding: 0;
     z-index: 1000;
     max-height: 300px;
+}
+.alias-picker::backdrop {
+    background: rgb(0 0 0 / 35%);
+}
+.dialog-content {
+    padding: 8px;
+    max-height: 100%;
     overflow: auto;
 }
 .alias-picker ul {

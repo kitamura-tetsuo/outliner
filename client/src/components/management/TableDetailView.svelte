@@ -186,6 +186,13 @@
         }
     });
 
+    function initDialog(node: HTMLDialogElement) {
+        if (!node.open && typeof node.showModal === 'function') {
+            node.showModal();
+        }
+        return {};
+    }
+
     onMount(() => {
         isAuthenticated = userManager.getCurrentUser() !== null;
 
@@ -349,8 +356,14 @@
 </main>
 
 {#if showDeleteDialog && dependencies}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="delete-dialog-title">
-        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+    <dialog
+        class="fixed inset-0 z-50 p-0 bg-transparent border-none m-auto"
+        aria-labelledby="delete-dialog-title"
+        oncancel={(e) => { e.preventDefault(); showDeleteDialog = false; }}
+        onclick={(e) => { if (e.target === e.currentTarget) showDeleteDialog = false; }}
+        use:initDialog
+    >
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col dialog-content" role="document">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 id="delete-dialog-title" class="text-lg font-bold text-gray-900">Delete table "{tableName}"</h2>
             </div>
@@ -460,5 +473,11 @@
                 </button>
             </div>
         </div>
-    </div>
+    </dialog>
 {/if}
+
+<style>
+    dialog::backdrop {
+        background: rgb(0 0 0 / 50%);
+    }
+</style>

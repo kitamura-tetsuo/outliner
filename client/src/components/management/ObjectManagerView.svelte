@@ -458,6 +458,13 @@ function focusNode(node: HTMLElement) {
     node.focus();
 }
 
+function initDialog(node: HTMLDialogElement) {
+    if (!node.open && typeof node.showModal === 'function') {
+        node.showModal();
+    }
+    return {};
+}
+
 </script>
 
 <svelte:head>
@@ -596,17 +603,15 @@ function focusNode(node: HTMLElement) {
     </div>
 
     {#if previewOpen && bulkPreview.length > 0}
-        <div class="preview-overlay" role="button" tabindex="0" onclick={() => { previewOpen = false; }} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { previewOpen = false; e.preventDefault(); } }}>
-
-            <div
-                class="bulk-preview"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Bulk rename preview"
-                tabindex="-1"
-                data-testid="object-manager-bulk-preview"
-                onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === "Escape") { previewOpen = false; e.stopPropagation(); } }}
-            >
+        <dialog
+            class="bulk-preview m-auto bg-transparent border-none p-0"
+            aria-label="Bulk rename preview"
+            data-testid="object-manager-bulk-preview"
+            oncancel={(e) => { e.preventDefault(); previewOpen = false; }}
+            onclick={(e) => { if (e.target === e.currentTarget) previewOpen = false; }}
+            use:initDialog
+        >
+            <div class="dialog-content bg-white" role="document">
                 <h4>Preview Changes ({bulkPreview.length})</h4>
                 <ul>
                     {#each bulkPreview as preview (preview.id)}
@@ -632,7 +637,7 @@ function focusNode(node: HTMLElement) {
                     </button>
                 </div>
             </div>
-        </div>
+        </dialog>
     {/if}
 
     <table class="objects-table">
@@ -992,19 +997,13 @@ function focusNode(node: HTMLElement) {
     /* Fixed-position popover (issue #5135 §1): the preview never expands
        inline below the toolbar, so opening/closing it can never reflow the
        object table underneath. */
-    .preview-overlay {
-        position: fixed;
-        inset: 0;
+    .bulk-preview::backdrop {
         /* Above the app's own fixed toolbar (z-index: 10000, Toolbar.svelte). */
         z-index: 10060;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         background: rgba(17, 24, 39, 0.4);
-        padding: 1rem;
     }
 
-    .bulk-preview {
+    .bulk-preview .dialog-content {
         width: 100%;
         max-width: 32rem;
         max-height: 80vh;
@@ -1254,7 +1253,7 @@ function focusNode(node: HTMLElement) {
         background: #374151;
     }
 
-    :global(html.dark) .bulk-preview {
+    :global(html.dark) .bulk-preview .dialog-content {
         background: #1f2937;
     }
 

@@ -31,25 +31,24 @@ function confirm(diagramId: string) {
     diagramChooserStore.confirm(diagramId);
 }
 
-function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        diagramChooserStore.hide();
+function initDialog(node: HTMLDialogElement) {
+    if (!node.open && typeof node.showModal === 'function') {
+        node.showModal();
     }
+    return {};
 }
 </script>
 
 {#if diagramChooserStore.isVisible}
-    <div
+    <dialog
         class="diagram-chooser"
-        role="dialog"
-        aria-modal="true"
         aria-label="Insert transclusion"
         data-testid="diagram-chooser"
-        onkeydown={handleKeydown}
-        tabindex="-1"
+        oncancel={(e) => { e.preventDefault(); diagramChooserStore.hide(); }}
+        onclick={(e) => { if (e.target === e.currentTarget) diagramChooserStore.hide(); }}
+        use:initDialog
     >
+        <div class="dialog-content" role="document">
         <h2>Insert transclusion</h2>
         {#if diagrams.length === 0}
             <p class="diagram-chooser-empty" data-testid="diagram-chooser-empty">No Mermaid diagrams in this project yet.</p>
@@ -82,24 +81,31 @@ function handleKeydown(event: KeyboardEvent) {
                 Insert
             </button>
         </div>
-    </div>
+        </div>
+    </dialog>
 {/if}
 
 <style>
 .diagram-chooser {
-    position: fixed;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
+    margin: auto;
     background: white;
     border: 1px solid #ccc;
     border-radius: 6px;
-    padding: 12px;
+    padding: 0;
     z-index: 1000;
     max-height: 320px;
     width: 340px;
-    overflow: auto;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.diagram-chooser::backdrop {
+    background: rgb(0 0 0 / 35%);
+}
+
+.dialog-content {
+    padding: 12px;
+    max-height: 100%;
+    overflow: auto;
 }
 
 .diagram-chooser h2 {
