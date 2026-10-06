@@ -261,12 +261,22 @@ describe("TableGrid fixed column widths", () => {
             const header = container.querySelector(`th[data-col='${column}']`)!;
             expect(header.classList.contains("col-fixed")).toBe(false);
             expect(header.getAttribute("style")).toBeNull();
+            // The automatic shrink hooks stay mounted: headers keep their
+            // `.th-content > .th-label` clip hook so narrow containers clip
+            // the label instead of forcing the grid to scroll (issue #5457).
+            const label = header.querySelector(":scope > .th-content > .th-label");
+            expect(label).not.toBeNull();
             const cells = container.querySelectorAll(`td[data-col='${column}']`);
             expect(cells.length).toBeGreaterThan(0);
             for (const cell of cells) {
                 expect(cell.classList.contains("col-fixed")).toBe(false);
                 expect(cell.getAttribute("style")).toBeNull();
             }
+        }
+        // Long unbreakable values keep the break hook the automatic
+        // containment targets, so they wrap instead of widening the table.
+        for (const cell of container.querySelectorAll("td[data-col='title']")) {
+            expect(cell.querySelector(":scope > button.cell-value")).not.toBeNull();
         }
     });
 
