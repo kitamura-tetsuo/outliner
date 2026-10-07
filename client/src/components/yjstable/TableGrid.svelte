@@ -194,7 +194,10 @@ function fixedWidthOf(column: string): number | undefined {
 
 // --- Header resize (issue #5459) -------------------------------------------
 
-/** The active header-resize gesture, if any (owns its own listeners). */
+/**
+ * The latest header-resize gesture. Kept after it ends so a new gesture or
+ * unmount can dispose any residual release/click guard it still owns.
+ */
 let resizeGesture: ColumnResizeGesture | undefined;
 /** Column whose resize handle currently owns the pointer. */
 let resizingColumn = $state<string | undefined>();
@@ -221,7 +224,7 @@ function startColumnResize(event: PointerEvent, column: string): void {
     // drag, compatibility mouse events or host outline gesture.
     event.preventDefault();
     event.stopPropagation();
-    resizeGesture?.cancel();
+    resizeGesture?.dispose();
     const scroller = gridContainer;
     const overflowing = scroller.scrollWidth > scroller.clientWidth;
     resizingColumn = column;
@@ -238,7 +241,6 @@ function startColumnResize(event: PointerEvent, column: string): void {
             onColumnWidthPreview?.(resizePreview);
         },
         onEnd: () => {
-            if (resizeGesture === gesture) resizeGesture = undefined;
             resizingColumn = undefined;
             resizeScrollExtent = undefined;
         },

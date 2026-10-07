@@ -11,6 +11,7 @@ import { fireEvent, render } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { resizeCandidate } from "../../services/yjstable/columnResize";
 import {
     createGrid,
     getGridHandles,
@@ -358,5 +359,88 @@ describe("TableGrid header resize", () => {
         await fireEvent.click(header);
         await tick();
         expect(header.classList.contains("header-selected")).toBe(true);
+    });
+    it("a cancelled gesture's release guard never consumes a later, unrelated interaction", async () => {
+        const f = fixture({ title: { widthPx: 150 } });
+        const { container, unmount } = mount(f);
+        const header = container.querySelector('th[data-col="title"]')!;
+        const handle = handleOf(container, "title");
+        await pointer(handle, "pointerdown", { clientX: 100 });
+        await pointer(handle, "pointermove", { clientX: 160 });
+        // Blur cancels; the original release happens outside the window,
+        // so this document never sees its pointerup.
+        await fireEvent.blur(window);
+        await tick();
+        // A fresh pointer sequence (same mouse pointer id) on the header:
+        // its release and click must reach the header normally.
+        await pointer(header, "pointerdown", { clientX: 20 });
+        await pointer(header, "pointerup", { clientX: 20 });
+        await fireEvent.click(header);
+        await tick();
+        expect(header.classList.contains("header-selected")).toBe(true);
+        expect(f.updates()).toBe(0);
+
+        // Unmount after a cancel leaves no window listener behind.
+        const again = handleOf(container, "title");
+        await pointer(again, "pointerdown", { clientX: 100 });
+        await pointer(again, "pointermove", { clientX: 160 });
+        await fireEvent.blur(window);
+        unmount();
+        const clicks = vi.fn();
+        document.body.addEventListener("click", clicks);
+        await pointer(document.body, "pointerup", { clientX: 160 });
+        await fireEvent.click(document.body);
+        document.body.removeEventListener("click", clicks);
+        expect(clicks).toHaveBeenCalledTimes(1);
+        expect(f.updates()).toBe(0);
+    });
+
+    it("an observed source-Table rebinding invalidates the gesture for good", async () => {
+        const f = fixture({ title: { widthPx: 150 } });
+        const { container } = mount(f);
+        const original = f.grid.entry.get("sourceTableId");
+        const otherTable = createTable(f.doc, "Other", "other");
+        const handle = handleOf(container, "title");
+        await pointer(handle, "pointerdown", { clientX: 100 });
+        await pointer(handle, "pointermove", { clientX: 180 });
+        await tick();
+        // jsdom measures 0px: the candidate is the 80px displacement.
+        expect(colStyle(container, "title")).toContain("width: 80px");
+        // A -> B -> A on the same live entry: the old binding returning does
+        // not revive the gesture.
+        f.grid.entry.set("sourceTableId", otherTable);
+        await tick();
+        expect(colStyle(container, "title")).toContain("width: 150px");
+        f.grid.entry.set("sourceTableId", original);
+        const before = f.updates();
+        const history = f.grid.undo.undoStack.length;
+        await pointer(document.body, "pointerup", { clientX: 180 });
+        expect(f.updates()).toBe(before);
+        expect(savedWidth(f, "title")).toBe(150);
+        expect(f.grid.undo.undoStack.length).toBe(history);
+    });
+
+    it("a subpixel move that keeps the rounded measured width is a no-op on an auto column", async () => {
+        expect(resizeCandidate(100.625, 0.625)).toBeUndefined();
+        expect(resizeCandidate(100.625, -0.1)).toBeUndefined();
+        expect(resizeCandidate(100.625, 1)).toBe(102);
+        expect(resizeCandidate(100.4, 0.05)).toBeUndefined();
+        expect(resizeCandidate(100.4, 0.2)).toBe(101);
+
+        const f = fixture();
+        const { container } = mount(f);
+        const header = container.querySelector<HTMLElement>('th[data-col="title"]')!;
+        // jsdom has no layout: give the header the fractional border-box
+        // width a browser would measure for an auto column.
+        header.getBoundingClientRect = () => ({ width: 100.625 }) as DOMRect;
+        const handle = handleOf(container, "title");
+        await pointer(handle, "pointerdown", { pointerType: "pen", clientX: 100 });
+        await pointer(handle, "pointermove", { pointerType: "pen", clientX: 100.625 });
+        await pointer(document.body, "pointerup", { pointerType: "pen", clientX: 100.625 });
+        await tick();
+        expect(f.updates()).toBe(0);
+        expect(f.grid.undo.undoStack.length).toBe(0);
+        expect(savedWidth(f, "title")).toBeUndefined();
+        expect(header.classList.contains("col-fixed")).toBe(false);
     });
 });

@@ -63,9 +63,9 @@ export async function expectColumnGeometry(page: Page, placement: number, column
             return widths.every((w) => Math.abs(w - px) <= 1);
         }, { timeout: 15000 }).toBe(true);
     } catch (error) {
-        throw new Error(`column ${column} should measure ${px}px; measured ${JSON.stringify(widths)}`, {
-            cause: error,
-        });
+        throw new Error(
+            `column ${column} should measure ${px}px; measured ${JSON.stringify(widths)}: ${String(error)}`,
+        );
     }
 }
 

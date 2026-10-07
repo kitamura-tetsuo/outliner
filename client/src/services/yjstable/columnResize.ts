@@ -32,8 +32,11 @@ export function clampColumnWidth(px: number): number {
  * convert an automatic column to a fixed one.
  */
 export function resizeCandidate(startWidth: number, displacement: number): number | undefined {
-    if (Math.round(displacement) === 0) return undefined;
-    return clampColumnWidth(Math.round(startWidth + displacement));
+    // Compare rounded geometry, not rounded displacement: a subpixel move
+    // that leaves the rounded width unchanged is still a no-op.
+    const next = Math.round(startWidth + displacement);
+    if (next === Math.round(startWidth)) return undefined;
+    return clampColumnWidth(next);
 }
 
 /** The raw stored `widthPx` leaf of one column (no validation). */
@@ -86,6 +89,8 @@ export class ColumnResizeGesture {
     private readonly registry: Y.Map<Y.Map<unknown>>;
     private readonly pointerId: number;
     private readonly startSaved: unknown;
+    /** The Grid's source Table binding at start; a rebinding invalidates. */
+    private readonly startSource: unknown;
     private readonly startContentX: number;
     private lastClientX: number;
     private candidate: number | undefined;
@@ -102,6 +107,7 @@ export class ColumnResizeGesture {
         this.registry = getGridRegistry(options.grid.projectDoc);
         this.pointerId = event.pointerId;
         this.startSaved = rawSavedWidth(this.entry, this.column);
+        this.startSource = this.entry.get("sourceTableId");
         this.lastClientX = event.clientX;
         this.startContentX = this.contentX(event.clientX);
 
@@ -157,6 +163,7 @@ export class ColumnResizeGesture {
         if (grid.entry !== this.entry) return false;
         if (this.registry.get(grid.gridId) !== this.entry) return false;
         if (!Object.is(rawSavedWidth(this.entry, this.column), this.startSaved)) return false;
+        if (!Object.is(this.entry.get("sourceTableId"), this.startSource)) return false;
         if (isColumnHidden(this.entry, this.column)) return false;
         return canContinue();
     }
@@ -240,9 +247,20 @@ export class ColumnResizeGesture {
         this.clickGuardTimer = undefined;
     }
 
+    /**
+     * After a cancel the original button may still be down: swallow its
+     * release and the click it synthesizes. The guard belongs to that one
+     * pointer sequence only: any new pointerdown (the original release may
+     * have happened outside the window) drops it, so it can never consume
+     * an unrelated later interaction.
+     */
     private guardRelease(): void {
         this.dropReleaseGuard();
         const guard = (event: PointerEvent) => {
+            if (event.type === "pointerdown") {
+                this.dropReleaseGuard();
+                return;
+            }
             if (event.pointerId !== this.pointerId) return;
             this.dropReleaseGuard();
             if (event.type === "pointerup") {
@@ -251,12 +269,14 @@ export class ColumnResizeGesture {
             }
         };
         this.releaseGuard = guard;
+        window.addEventListener("pointerdown", guard, true);
         window.addEventListener("pointerup", guard, true);
         window.addEventListener("pointercancel", guard, true);
     }
 
     private dropReleaseGuard(): void {
         if (!this.releaseGuard) return;
+        window.removeEventListener("pointerdown", this.releaseGuard, true);
         window.removeEventListener("pointerup", this.releaseGuard, true);
         window.removeEventListener("pointercancel", this.releaseGuard, true);
         this.releaseGuard = undefined;

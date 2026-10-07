@@ -35,6 +35,7 @@ tests:
 - client/e2e/tables/grd-grid-width-drag-cancel-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-drag-commit-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-drag-gestures-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-drag-invalidation-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-drag-peer-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-numeric-editor-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-numeric-peer-draft-5c1d8e2a.spec.ts
