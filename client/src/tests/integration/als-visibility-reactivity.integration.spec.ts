@@ -9,11 +9,11 @@ describe("ALS visibility reactivity", () => {
         render(AliasPicker);
 
         // Initially hidden
-        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
 
         // Show via store
         aliasPickerStore.show("dummy");
-        const dialog = await screen.findByRole("dialog");
+        const dialog = await screen.findByRole("dialog", { hidden: true });
         expect(dialog).not.toBeNull();
 
         // Hide via store

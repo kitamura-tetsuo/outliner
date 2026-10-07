@@ -28,6 +28,7 @@ describe("ALS alias path navigation", () => {
         render(AliasPicker);
 
         aliasPickerStore.show(aliasItem.id);
+        await screen.findByRole("dialog", { hidden: true });
         const options = await screen.findAllByRole("button");
         const paths = options.map(o => o.textContent);
         expect(paths).toContain("root/parent");

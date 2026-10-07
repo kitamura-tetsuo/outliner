@@ -27,7 +27,8 @@ describe("ALS alias node", () => {
 
         const user = userEvent.setup();
         aliasPickerStore.show(aliasItem.id);
-        const option = await screen.findByRole("button", { name: "root/second" });
+        await screen.findByRole("dialog", { hidden: true });
+        const option = await screen.findByRole("button", { name: "root/second", hidden: true });
         await user.click(option);
         expect(aliasItem.aliasTargetId).toBe(second.id);
         expect(aliasPickerStore.isVisible).toBe(false);

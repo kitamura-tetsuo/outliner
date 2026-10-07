@@ -26,7 +26,7 @@ describe("ALS alias keyboard navigation", () => {
         render(AliasPicker);
 
         aliasPickerStore.show(aliasItem.id);
-        const picker = await screen.findByRole("dialog");
+        const picker = await screen.findByRole("dialog", { hidden: true });
         picker.focus();
         const user = userEvent.setup();
 

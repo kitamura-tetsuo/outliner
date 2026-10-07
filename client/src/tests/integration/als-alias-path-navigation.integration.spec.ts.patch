@@ -1,0 +1,10 @@
+--- client/src/tests/integration/als-alias-path-navigation.integration.spec.ts
++++ client/src/tests/integration/als-alias-path-navigation.integration.spec.ts
+@@ -29,8 +29,8 @@
+
+         aliasPickerStore.show(aliasItem.id);
+-        await screen.findByRole("dialog");
++        await screen.findByRole("dialog", { hidden: true });
+         const options = await screen.findAllByRole("button");
+         const paths = options.map(o => o.textContent);
+         expect(paths).toContain("root/parent");

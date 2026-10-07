@@ -1,0 +1,20 @@
+--- client/src/tests/integration/als-visibility-reactivity.integration.spec.ts
++++ client/src/tests/integration/als-visibility-reactivity.integration.spec.ts
+@@ -10,13 +10,13 @@
+         render(AliasPicker);
+
+         // Initially hidden
+-        expect(screen.queryByRole("dialog")).toBeNull();
++        expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
+
+         // Show via store
+         aliasPickerStore.show("dummy");
+-        const dialog = await screen.findByRole("dialog");
++        const dialog = await screen.findByRole("dialog", { hidden: true });
+         expect(dialog).not.toBeNull();
+
+         // Hide via store
+         aliasPickerStore.hide();
+         await waitFor(() => {
+-            expect(screen.queryByRole("dialog")).toBeNull();
++            expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();

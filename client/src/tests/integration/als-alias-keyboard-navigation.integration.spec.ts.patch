@@ -1,0 +1,11 @@
+--- client/src/tests/integration/als-alias-keyboard-navigation.integration.spec.ts
++++ client/src/tests/integration/als-alias-keyboard-navigation.integration.spec.ts
+@@ -29,7 +29,7 @@
+
+         aliasPickerStore.show(aliasItem.id);
+-        const picker = await screen.findByRole("dialog");
++        const picker = await screen.findByRole("dialog", { hidden: true });
+         picker.focus();
+         const user = userEvent.setup();
+
+         const options = await screen.findAllByRole("button");

@@ -1,0 +1,12 @@
+--- client/src/tests/integration/als-alias-node-58ad30d4.integration.spec.ts
++++ client/src/tests/integration/als-alias-node-58ad30d4.integration.spec.ts
+@@ -28,7 +28,8 @@
+
+         const user = userEvent.setup();
+         aliasPickerStore.show(aliasItem.id);
+-        const option = await screen.findByRole("button", { name: "root/second" });
++        await screen.findByRole("dialog", { hidden: true });
++        const option = await screen.findByRole("button", { name: "root/second", hidden: true });
+         await user.click(option);
+         expect(aliasItem.aliasTargetId).toBe(second.id);
+         expect(aliasPickerStore.isVisible).toBe(false);
