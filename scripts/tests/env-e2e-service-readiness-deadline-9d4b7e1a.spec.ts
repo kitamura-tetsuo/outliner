@@ -42,7 +42,7 @@ interface GateResult {
 async function runGate(
     mode: string,
     budget: number,
-    opts: { slowDelay?: number; stall?: number; pm2?: string } = {},
+    opts: { slowDelay?: number; stall?: number; pm2?: string; } = {},
 ): Promise<GateResult> {
     const [yjs, api, vite, fn, auth, fstore, host, store] = await Promise.all(
         Array.from({ length: 8 }, () => freePort()),
