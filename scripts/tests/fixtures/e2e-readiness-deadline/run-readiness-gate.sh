@@ -42,6 +42,9 @@
 #
 # - late-hang-restart: jlist first reports Yjs errored with one second left;
 #   restart ignores TERM, so forced termination must fit that final second.
+# - late-hang-observation: Firebase restarts successfully, but Hosting stays
+#   closed; nc/curl fail with one second left and lsof ignores TERM.
+# - crash-log-recover: only log-service is errored; its restart opens its port.
 # - crash-yjs-flap: restart succeeds and marks Yjs online, but exposes only
 #   one TCP connection, consumed by the initial port sweep.
 #
@@ -92,6 +95,12 @@ done
 if [[ "${GATE_MODE:-instant}" = crash-yjs-* ]]; then
   printf 'errored' > "$STATUS_DIR/yjs-server"
 fi
+if [ "${GATE_MODE:-instant}" = "crash-log-recover" ]; then
+  printf 'errored' > "$STATUS_DIR/log-service"
+fi
+if [ "${GATE_MODE:-instant}" = "late-hang-observation" ]; then
+  printf 'errored' > "$STATUS_DIR/firebase-emulators"
+fi
 
 # Fake pm2: every managed service stays online unless its status file says
 # otherwise, diagnostics print nothing. In hang-restart mode `restart`
@@ -115,13 +124,16 @@ P_HOST_F="$P_HOST"
 EXTRA_PIDS="$TMP_ROOT/extra-stub-pids"
 START_FILE="$TMP_ROOT/gate-start"
 RESTART_PID_FILE="$TMP_ROOT/restart-pid"
-if [ "\${1:-}" = "start" ] && [ "\$MODE" = "late-hang-restart" ]; then
+if [ "\${1:-}" = "start" ] && [[ "\$MODE" = late-hang-* ]]; then
   date +%s > "\$START_FILE"
 fi
 if [ "\${1:-}" = "jlist" ]; then
   if [ "\$MODE" = "late-hang-restart" ]; then
     python3 -c 'import sys,time; time.sleep(max(0, int(sys.argv[1])+int(sys.argv[2])-1-time.time()))' "\$(cat "\$START_FILE")" "\$BUDGET"
     printf 'errored' > "\$STATUS_DIR/yjs-server"
+  fi
+  if [ "\$MODE" = "late-hang-observation" ] && [ "\$(cat "\$STATUS_DIR/firebase-emulators")" = "online" ]; then
+    python3 -c 'import sys,time; time.sleep(max(0, int(sys.argv[1])+int(sys.argv[2])-1-time.time()))' "\$(cat "\$START_FILE")" "\$BUDGET"
   fi
   case "\$PM2_BEHAVIOR" in
     jlist-fail)
@@ -170,11 +182,15 @@ if [ "\${1:-}" = "restart" ]; then
       echo \$! >> "\$EXTRA_PIDS"
       while [ ! -f "$TMP_ROOT/yjs-ready" ]; do sleep 0.01; done
       ;;
-    log-service:stall-log-recover)
+    log-service:stall-log-recover|log-service:crash-log-recover)
+      printf 'online' > "\$STATUS_DIR/log-service"
       _serve "\$P_API_F"
       ;;
     vite-server:stall-vite-only)
       _serve "\$P_VITE_F"
+      ;;
+    firebase-emulators:late-hang-observation)
+      printf 'online' > "\$STATUS_DIR/firebase-emulators"
       ;;
     firebase-emulators:stall-hosting-recover)
       _serve "\$P_HOST_F"
@@ -235,7 +251,7 @@ case "$GATE_MODE" in
     WITHHELD="$P_FN"
     FLAP_FN=1
     ;;
-  hang-restart|stall-hosting-recover)
+  hang-restart|stall-hosting-recover|late-hang-observation)
     # Hosting never binds initially: serve every port except hosting.
     STUB_MODE="instant"
     WITHHELD="$P_HOST"
@@ -243,7 +259,7 @@ case "$GATE_MODE" in
   crash-yjs-*)
     WITHHELD="$P_YJS"
     ;;
-  stall-log-recover|stall-log-broken)
+  stall-log-recover|stall-log-broken|crash-log-recover)
     WITHHELD="$P_API"
     ;;
   stall-vite-only)
@@ -319,13 +335,43 @@ for port in "${WAIT_PORTS[@]}"; do
   done
 done
 
-if [ "$GATE_MODE" = "late-hang-restart" ]; then
+if [ "$GATE_MODE" = "late-hang-observation" ]; then
+  # Only Hosting is closed; other probes use the real tools. The post-
+  # recovery jlist returns with one second left; nc/curl then fail promptly.
+  REAL_NC=$(command -v nc || true)
+  REAL_CURL=$(command -v curl)
+  cat > "$TMP_ROOT/bin/nc" <<EOF
+#!/bin/bash
+if [ "\${!#}" = "$P_HOST" ]; then
+  echo "NC_REMAINING=\$((\$(cat "$TMP_ROOT/gate-start") + $GATE_BUDGET - \$(date +%s)))" >> "$TMP_ROOT/observations"
+  exit 1
+fi
+[ -n "$REAL_NC" ] || exit 1
+exec "$REAL_NC" "\$@"
+EOF
+  cat > "$TMP_ROOT/bin/curl" <<EOF
+#!/bin/bash
+if [[ "\${!#}" = *":$P_HOST/" ]]; then
+  echo "CURL_FAILED" >> "$TMP_ROOT/observations"
+  exit 1
+fi
+exec "$REAL_CURL" "\$@"
+EOF
+  cat > "$TMP_ROOT/bin/lsof" <<EOF
+#!/bin/bash
+exec python3 -c 'import os,signal,sys,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); open(sys.argv[1], "w").write(str(os.getpid())); open(sys.argv[2], "a").write("LSOF_REMAINING="+str(int(sys.argv[3])+int(sys.argv[4])-int(time.time()))+"\n"); time.sleep(300)' "$TMP_ROOT/restart-pid" "$TMP_ROOT/observations" "\$(cat "$TMP_ROOT/gate-start")" "$GATE_BUDGET"
+EOF
+  chmod +x "$TMP_ROOT/bin/nc" "$TMP_ROOT/bin/curl" "$TMP_ROOT/bin/lsof"
+fi
+
+if [[ "$GATE_MODE" = late-hang-* ]]; then
   # Inspect termination after the production supervisor's failure exit.
   set +e
   ( start_and_wait_for_services )
   GATE_RC=$?
   set -e
   echo "GATE_FINISH_NS=$(date +%s%N)"
+  if [ -f "$TMP_ROOT/observations" ]; then cat "$TMP_ROOT/observations"; fi
   echo "GATE_DEADLINE=$(($(cat "$TMP_ROOT/gate-start") + GATE_BUDGET))"
   if [ -f "$TMP_ROOT/restart-pid" ]; then
     RESTART_PID=$(cat "$TMP_ROOT/restart-pid")

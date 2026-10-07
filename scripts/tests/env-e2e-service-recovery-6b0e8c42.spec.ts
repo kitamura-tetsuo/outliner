@@ -28,6 +28,19 @@ describe("Bounded startup recovery (issue #5487)", () => {
         expect(result.elapsedSec).toBeLessThan(25 + TOL);
     }, 60000);
 
+    it("immediately recovers a terminal log-service through the production PM2 snapshot", async () => {
+        // Complete jlist: only log-service is errored and its port stays
+        // closed until restart. No stall override; the budget is shorter
+        // than 60s, so omitting log-service from the PM2 snapshot fails.
+        const budget = 15;
+        const result = await runGate("crash-log-recover", budget);
+        expect(result.status, result.stdout).toBe(0);
+        expect(result.stdout).toContain("PM2 service log-service is in state 'errored' before readiness.");
+        expect(restarts(result.stdout)).toEqual(["log-service"]);
+        expect(result.stdout).toContain("All test services are ready!");
+        expect(result.elapsedSec).toBeLessThan(budget + TOL);
+    }, 30000);
+
     it("fails without another restart when a crashed service stays broken", async () => {
         const result = await runGate("crash-yjs-broken", 15);
         expect(result.status, result.stdout).toBe(1);

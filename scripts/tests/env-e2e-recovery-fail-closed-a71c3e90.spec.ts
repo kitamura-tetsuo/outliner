@@ -31,6 +31,35 @@ describe("Startup recovery fails closed within its deadline (issue #5487 REQ-005
         expect(Number(finish?.[1]) / 1e9 - Number(deadline?.[1])).toBeLessThan(0.75);
     }, 30000);
 
+    it.each([false, true])(
+        "kills a late TERM-ignoring readiness fallback after recovery (watchdog=%s)",
+        async (noTimeout) => {
+            // Exercise the shared production gate after a successful Firebase
+            // restart. Hosting stays closed: nc/curl fail with one second left,
+            // then lsof ignores TERM. Forced termination must fit that second.
+            const budget = 6;
+            const result = await runGate("late-hang-observation", budget, { noTimeout });
+            expect(result.status, result.stdout).toBe(1);
+            expect(restarts(result.stdout)).toEqual(["firebase-emulators"]);
+            expect(result.stdout).toContain("Restarted firebase-emulators (automatic recovery)");
+            expect(result.stdout).toContain("NC_REMAINING=1");
+            expect(result.stdout).toContain("CURL_FAILED");
+            expect(result.stdout).toContain("LSOF_REMAINING=1");
+            expect(result.stdout).toContain("RESTART_PROCESS_TERMINATED");
+            expect(result.stdout).not.toContain("RESTART_PROCESS_SURVIVED");
+            expect(result.stdout).toContain("Affected owning service(s): firebase-emulators");
+            expect(result.stdout).toContain("Automatic restarts attempted: firebase-emulators");
+            expect(result.stdout).not.toContain("All test services are ready!");
+            expect(gateElapsed(result.stdout)).toBe(budget);
+            const finish = /^GATE_FINISH_NS=(\d+)$/m.exec(result.stdout);
+            const deadline = /^GATE_DEADLINE=(\d+)$/m.exec(result.stdout);
+            expect(finish).not.toBeNull();
+            expect(deadline).not.toBeNull();
+            expect(Number(finish?.[1]) / 1e9 - Number(deadline?.[1])).toBeLessThan(0.75);
+        },
+        30000,
+    );
+
     it("keeps Yjs unsatisfied when its restarted listener disappears after the port sweep", async () => {
         const budget = 12;
         const result = await runGate("crash-yjs-flap", budget);

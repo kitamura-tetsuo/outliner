@@ -178,8 +178,9 @@ _deadline_expired() {
 # bound is enforced with a watchdog that escalates TERM to KILL, so no
 # observation can hold the gate indefinitely. E2E_FORCE_NO_TIMEOUT=1 forces
 # the watchdog path (test hook for images without timeout support).
-# E2E_BOUND_WITHOUT_GRACE=1 uses KILL at the limit for recovery commands:
-# their forced termination must fit inside the remaining startup budget.
+# E2E_BOUND_WITHOUT_GRACE=1 uses KILL at the limit for recovery commands
+# and deadline-bound port observations: forced termination must fit inside
+# the remaining startup budget.
 _run_bounded() {
   local limit="$1"
   shift
@@ -212,25 +213,11 @@ _run_bounded() {
   return "$_rc"
 }
 
-# Per-fallback probe limit for a deadline-bound port_is_open sequence
-# (issue #5487, REQ-005). Like _probe_timeout, but additionally reserves
-# the 2s forced-termination grace used by _run_bounded, so even a probe
-# that ignores SIGTERM is reaped within the remaining budget instead of
-# carrying the gate past it. Floored at 1s so a nearly-expired deadline
-# still fails fast instead of skipping the probe; callers re-check expiry
-# before every fallback, so once the deadline passes no fallback starts.
+# Recompute each fallback's limit from the remaining startup budget.
+# Deadline-bound port observations use KILL at the limit, with no extra
+# termination grace, including when only one second remains (REQ-005).
 _fallback_probe_limit() {
-  local deadline="$1"
-  local remaining
-  remaining=$(_readiness_remaining "$deadline")
-  local limit=$((remaining - 2))
-  if [ "$limit" -gt "${E2E_PROBE_TIMEOUT_SECONDS:-5}" ]; then
-    limit="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
-  fi
-  if [ "$limit" -lt 1 ]; then
-    limit=1
-  fi
-  echo "$limit"
+  _probe_timeout "$1"
 }
 
 # Quick check: is a port open without waiting (no dependency on nc).
@@ -243,7 +230,9 @@ port_is_open() {
   local port="$1"
   local deadline="${2:-0}"
   local probe_timeout="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+  local E2E_BOUND_WITHOUT_GRACE="${E2E_BOUND_WITHOUT_GRACE:-0}"
   if [ "$deadline" -gt 0 ]; then
+    E2E_BOUND_WITHOUT_GRACE=1
     # Already past the deadline: report unready at once instead of spending
     # another probe interval (which would carry the gate past its budget).
     if _deadline_expired "$deadline"; then
