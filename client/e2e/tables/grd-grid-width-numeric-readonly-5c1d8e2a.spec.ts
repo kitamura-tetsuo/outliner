@@ -119,10 +119,14 @@ test.describe("Grid numeric widths follow the production read-only origin", () =
 
         // Seed saved widths through the production writer, top-level last so
         // it owns the most recent history step for the Undo assertion below.
-        await commitWidthsProduction(page, await gridIdForSqlName(page, "width_layout_orders"), {
+        // Look up by the applied schema's relation name: applying a schema
+        // migrates the registry SQL name (`orders`, `nested_orders`), so the
+        // creation-time names (`width_orders`, `width_layout_orders`) no
+        // longer resolve.
+        await commitWidthsProduction(page, await gridIdForSqlName(page, "nested_orders"), {
             title: 200,
         });
-        await commitWidthsProduction(page, await gridIdForSqlName(page, "width_orders"), {
+        await commitWidthsProduction(page, await gridIdForSqlName(page, "orders"), {
             title: 180,
         });
     });
