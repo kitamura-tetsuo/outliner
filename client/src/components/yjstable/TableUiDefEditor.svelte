@@ -45,6 +45,12 @@ interface Props {
      */
     columnWidths?: Record<string, number>;
     /**
+     * This placement's in-progress header-resize preview (issue #5459). The
+     * matching width control shows the candidate as an explicitly unsaved,
+     * read-only preview; it never creates a draft or writes anything.
+     */
+    widthPreview?: { column: string; width: number; };
+    /**
      * Host surface restriction (outline read-only state). Presentation-width
      * editing is a surface operation, so a read-only host disables the width
      * controls and discards pending drafts. This is not project authorization:
@@ -53,7 +59,7 @@ interface Props {
     isReadOnly?: boolean;
 }
 
-let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder, showAddRowButton = true, confirmRowDelete = false, columnWidths = {}, isReadOnly = false }: Props = $props();
+let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder, showAddRowButton = true, confirmRowDelete = false, columnWidths = {}, widthPreview, isReadOnly = false }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
@@ -290,6 +296,7 @@ function discardWidthDraft(column: string, input?: HTMLInputElement) {
         <p class="editor-label">Cell components</p>
         <div class="component-rows" role="list">
             {#each displayColumns as column, index (column.name)}
+                {@const preview = widthPreview?.column === column.name ? widthPreview.width : undefined}
                 <div
                     class="component-row" role="listitem"
                     data-col={column.name}
@@ -395,10 +402,18 @@ function discardWidthDraft(column: string, input?: HTMLInputElement) {
                             aria-label={`Width (px) for ${column.name}`}
                             aria-invalid={widthDrafts[column.name]?.error !== undefined}
                             data-testid={`yjs-table-width-${column.name}`}
-                            value={widthDrafts[column.name]?.text ?? sharedWidthText(column.name)}
+                            value={preview !== undefined
+                            ? String(preview)
+                            : widthDrafts[column.name]?.text ?? sharedWidthText(column.name)}
+                            readonly={preview !== undefined}
+                            data-width-preview={preview !== undefined ? "unsaved" : undefined}
                             disabled={isReadOnly}
                             oninput={(e) => {
                                 const input = e.currentTarget as HTMLInputElement;
+                                if (preview !== undefined) {
+                                    input.value = String(preview);
+                                    return;
+                                }
                                 if (isReadOnly) {
                                     input.value = sharedWidthText(column.name);
                                     return;
@@ -410,6 +425,8 @@ function discardWidthDraft(column: string, input?: HTMLInputElement) {
                                 };
                             }}
                             onkeydown={(e) => {
+                                // A resize preview is display-only: it never commits here.
+                                if (preview !== undefined) return;
                                 if (e.key === "Enter") {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -421,7 +438,7 @@ function discardWidthDraft(column: string, input?: HTMLInputElement) {
                                 }
                             }}
                             onfocusout={(e) => {
-                                if (widthDrafts[column.name] !== undefined) {
+                                if (preview === undefined && widthDrafts[column.name] !== undefined) {
                                     commitWidth(column.name, e.currentTarget as HTMLInputElement);
                                 }
                             }}
@@ -431,7 +448,11 @@ function discardWidthDraft(column: string, input?: HTMLInputElement) {
                             }}
                         />
                     </label>
-                    {#if (widthDrafts[column.name]?.text ?? sharedWidthText(column.name)) === ""}
+                    {#if preview !== undefined}
+                        <span class="width-preview" role="status" data-testid={`yjs-table-width-preview-${column.name}`}>
+                            Unsaved preview
+                        </span>
+                    {:else if (widthDrafts[column.name]?.text ?? sharedWidthText(column.name)) === ""}
                         <span class="width-auto" aria-hidden="true">auto</span>
                     {/if}
                     {#if widthDrafts[column.name]?.error}
@@ -553,6 +574,18 @@ select {
 .width-auto {
     font-size: 0.75rem;
     color: #6b7280;
+}
+
+.column-width[data-width-preview="unsaved"] {
+    border-style: dashed;
+    border-color: #2563eb;
+    color: #1d4ed8;
+}
+
+.width-preview {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #1d4ed8;
 }
 
 .width-error {

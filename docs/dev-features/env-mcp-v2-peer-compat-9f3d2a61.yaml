@@ -8,12 +8,12 @@ components:
 - .github/dependabot.yml
 - .github/workflows/ci-mcp-dependency-compat.yml
 - .github/workflows/ci.yml
-- package.json
 - package-lock.json
+- package.json
 - scripts/check-mcp-dependency-compat.mjs
 - scripts/mcp-dependency-compat-lib.mjs
 tests:
-- scripts/tests/env-mcp-v2-peer-compat-9f3d2a61.spec.ts
 - scripts/tests/env-mcp-v2-dependabot-gate-9f3d2a61.spec.ts
+- scripts/tests/env-mcp-v2-peer-compat-9f3d2a61.spec.ts
 commands:
 - node scripts/check-mcp-dependency-compat.mjs
