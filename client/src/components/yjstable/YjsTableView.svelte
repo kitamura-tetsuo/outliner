@@ -75,9 +75,15 @@ interface Props {
      * owns. Undefined when the host cannot resolve a project route.
      */
     sourceTableHref?: string;
+    /**
+     * Host surface restriction (outline read-only state). Forwarded to the
+     * UI Definition editor's width controls; it is not project authorization
+     * and never gates cell writes, which keep their SQL-derived eligibility.
+     */
+    isReadOnly?: boolean;
 }
 
-let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref }: Props = $props();
+let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref, isReadOnly = false }: Props = $props();
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
@@ -353,6 +359,8 @@ function stateVectorRevision(doc: Y.Doc): string {
                 {columnOrder}
                 {showAddRowButton}
                 {confirmRowDelete}
+                {columnWidths}
+                {isReadOnly}
             />
         </section>
     {/if}

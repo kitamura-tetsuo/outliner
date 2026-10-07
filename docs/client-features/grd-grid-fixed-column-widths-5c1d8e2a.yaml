@@ -28,5 +28,11 @@ tests:
 - client/e2e/tables/grd-grid-fixed-width-edits-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-shared-width-render-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-peer-sync-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-numeric-editor-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-numeric-spellings-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-numeric-readonly-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-numeric-peer-draft-5c1d8e2a.spec.ts
 - client/src/components/yjstable/TableGrid.columnWidths.test.ts
+- client/src/components/yjstable/YjsTableBlock.width.test.ts
+- client/src/components/yjstable/TableUiDefEditor.width.test.ts
 - client/src/services/yjstable/gridColumnWidth.test.ts

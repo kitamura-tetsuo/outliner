@@ -1,11 +1,27 @@
+<script module lang="ts">
+// Identity tokens for Grid registry entries: replacing an entry under the
+// same Grid ID (same Table doc) must remount the view, discarding editor
+// drafts captured against the replaced object.
+const gridEntryTokens = new WeakMap<object, number>();
+let nextGridEntryToken = 1;
+
+function gridEntryTokenOf(entry: object): number {
+    const existing = gridEntryTokens.get(entry);
+    if (existing !== undefined) return existing;
+    const token = nextGridEntryToken++;
+    gridEntryTokens.set(entry, token);
+    return token;
+}
+</script>
+
 <script lang="ts">
 // Entry point of the consolidated Grid feature: an embedded block inside an
 // outliner item (componentType "yjstable"). The item stores a `gridId`; the
 // Grid itself is a project-level registry entry referencing one source Table.
 //
-// The rendered view is wrapped in {#key gridId + tableDoc.guid}: switching
-// either the Grid or the underlying Y.Doc remounts the whole view instead of
-// rebinding observers in place.
+// The rendered view is wrapped in {#key gridId + tableDoc.guid + entry}: switching
+// the Grid, replacing its registry entry, or the underlying Y.Doc remounts the
+// whole view instead of rebinding observers in place.
 
 import { onDestroy, onMount } from "svelte";
 import {
@@ -46,9 +62,15 @@ interface ItemLike {
 
 interface Props {
     item: ItemLike;
+    /**
+     * Host surface restriction (outline read-only state). Forwarded to the
+     * Grid view's width controls only; cell writes keep their SQL-derived
+     * eligibility.
+     */
+    isReadOnly?: boolean;
 }
 
-let { item }: Props = $props();
+let { item, isReadOnly = false }: Props = $props();
 
 let gridId = $state<string | undefined>();
 // Bumped by Yjs observers so the $derived lookups below re-evaluate.
@@ -90,6 +112,16 @@ function showExistingGrids() {
 const grid = $derived.by(() => {
     void registryVersion;
     return gridId ? getGridHandles(item.ydoc, gridId) : undefined;
+});
+
+// Token for the live Grid entry's object identity: a synchronized registry
+// replacement under the same Grid ID yields a fresh token, so the {#key}
+// below remounts the view (and its width drafts) instead of handing the
+// replacement handles to a mounted editor holding a stale draft.
+const gridEntryToken = $derived.by(() => {
+    void registryVersion;
+    const entry = grid?.entry;
+    return entry ? gridEntryTokenOf(entry) : 0;
 });
 
 const sourceTableId = $derived.by(() => {
@@ -204,7 +236,7 @@ function createFromPreset() {
     role="presentation"
 >
     {#if grid && handles}
-        {#key `${grid.gridId}::${handles.doc.guid}`}
+        {#key `${grid.gridId}::${handles.doc.guid}::${gridEntryToken}`}
             <YjsTableView
                 {grid}
                 {handles}
@@ -217,6 +249,7 @@ function createFromPreset() {
                 sqlName={tableSqlName}
                 sourceProjectId={tableSourceProjectId}
                 {sourceTableHref}
+                {isReadOnly}
             />
         {/key}
     {:else if grid && !handles}
