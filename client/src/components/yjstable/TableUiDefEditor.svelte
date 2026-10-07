@@ -191,12 +191,19 @@ function commitWidth(column: string, input: HTMLInputElement) {
     // under the same ID must never write into the replacement object.
     if (draft?.entry !== undefined && draft.entry !== grid.entry) {
         delete widthDrafts[column];
+        input.value = sharedWidthText(column);
         return;
     }
     const text = (draft?.text ?? input.value).trim();
     const badInput = input.validity?.badInput ?? false;
     if (isReadOnly || !isLiveGridEntry() || !resultColumns.includes(column)) {
         delete widthDrafts[column];
+        // The blocked keydown/blur sequence can run in the same synchronous
+        // tick as the draft-creating input event, so Svelte's batched update
+        // sees no net expression change and never rewrites the DOM. Reset the
+        // control directly so a programmatic write into the disabled input
+        // cannot linger as a phantom draft value.
+        input.value = sharedWidthText(column);
         return;
     }
     if (text === "" && !badInput) {
@@ -228,8 +235,11 @@ function commitWidth(column: string, input: HTMLInputElement) {
 }
 
 /** Discard one column's pending draft and restore the saved display. */
-function discardWidthDraft(column: string) {
+function discardWidthDraft(column: string, input?: HTMLInputElement) {
     delete widthDrafts[column];
+    // Same-tick batching hazard as the blocked commit path: restore the
+    // control directly so a discarded draft cannot linger visibly.
+    if (input) input.value = sharedWidthText(column);
 }
 </script>
 
@@ -389,6 +399,10 @@ function discardWidthDraft(column: string) {
                             disabled={isReadOnly}
                             oninput={(e) => {
                                 const input = e.currentTarget as HTMLInputElement;
+                                if (isReadOnly) {
+                                    input.value = sharedWidthText(column.name);
+                                    return;
+                                }
                                 widthDrafts[column.name] = {
                                     text: input.value,
                                     base: widthDrafts[column.name]?.base ?? sharedWidthText(column.name),
@@ -403,7 +417,7 @@ function discardWidthDraft(column: string) {
                                 } else if (e.key === "Escape") {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    discardWidthDraft(column.name);
+                                    discardWidthDraft(column.name, e.currentTarget as HTMLInputElement);
                                 }
                             }}
                             onfocusout={(e) => {
