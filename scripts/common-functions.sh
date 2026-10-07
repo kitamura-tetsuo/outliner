@@ -128,13 +128,63 @@ wait_for_port() {
   return 1  # Return error instead of exit to allow script to continue
 }
 
-# Quick check: is a port open without waiting (no dependency on nc)
+# Ceiling (seconds) for any single readiness observation inside
+# start_and_wait_for_services. Individual probes must never hold the gate
+# past its wall-clock deadline when an endpoint accepts a connection and
+# then never responds (issue #5486).
+E2E_PROBE_TIMEOUT_SECONDS=5
+
+# Remaining seconds before the readiness deadline timestamp $1.
+_readiness_remaining() {
+  local deadline="$1"
+  local now
+  now=$(date +%s)
+  echo $((deadline - now))
+}
+
+# Per-probe timeout clamped to the remaining budget: at least 1s so a
+# nearly-expired deadline still fails fast instead of skipping the probe,
+# at most E2E_PROBE_TIMEOUT_SECONDS so a hung endpoint cannot overrun it.
+_probe_timeout() {
+  local deadline="$1"
+  local remaining
+  remaining=$(_readiness_remaining "$deadline")
+  if [ "$remaining" -lt 1 ]; then
+    echo 1
+  elif [ "$remaining" -gt "${E2E_PROBE_TIMEOUT_SECONDS:-5}" ]; then
+    echo "${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+  else
+    echo "$remaining"
+  fi
+}
+
+# Run "$@" bounded by $1 seconds. Prefers GNU timeout; without it the
+# command runs directly (the curl --max-time flags still bound HTTP probes
+# on minimal images).
+_run_bounded() {
+  local limit="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$limit" "$@"
+  else
+    "$@"
+  fi
+}
+
+# Quick check: is a port open without waiting (no dependency on nc).
+# Pass the readiness deadline timestamp as $2 when called from the
+# startup gate so each probe stays within the remaining budget.
 port_is_open() {
   local port="$1"
-  if nc -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
+  local deadline="${2:-0}"
+  local probe_timeout="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+  if [ "$deadline" -gt 0 ]; then
+    probe_timeout=$(_probe_timeout "$deadline")
+  fi
+  if _run_bounded "$probe_timeout" nc -w 2 -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
     return 0
   fi
-  if curl -s --connect-timeout 2 "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
+  if _run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
     return 0
   fi
   if command -v lsof >/dev/null 2>&1 && lsof -i ":${port}" >/dev/null 2>&1; then
@@ -624,20 +674,31 @@ start_and_wait_for_services() {
 
   # Loop to check services and ports in parallel
   echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
-  local MAX_WAIT_SECONDS=600
+  # Single wall-clock budget for one startup attempt (issue #5486): 180s
+  # preserves the observed successful envelope (slowest success 151s on
+  # 2026-10-07, which recovered via the hosting-stall retry below) with
+  # margin. Overridable for tests via E2E_SERVICE_READINESS_TIMEOUT_SECONDS;
+  # nothing inside this phase may extend or reset it.
+  local MAX_WAIT_SECONDS="${E2E_SERVICE_READINESS_TIMEOUT_SECONDS:-180}"
   local START_TIME
   START_TIME=$(date +%s)
+  local DEADLINE=$((START_TIME + MAX_WAIT_SECONDS))
+  # Last unsatisfied-check summary, refreshed by every readiness evaluation
+  # so the deadline failure can identify them without re-probing past it.
+  LAST_READINESS_MISSING=""
   # Stall tracking for the Firebase Hosting emulator retry below (issue #5453).
   local HOSTING_STALL_START=0
   local HOSTING_RESTART_DONE=0
 
   _check_pm2_status() {
     # Check if key PM2 processes are running
-    # Returns 0 if all good, 1 if any failed
-    node -e '
+    # Returns 0 if all good, 1 if any failed.
+    # Bounded so a wedged pm2 daemon cannot hold the gate past DEADLINE;
+    # an unobservable daemon is not treated as ready (callers fail later).
+    _run_bounded "$(_probe_timeout "$DEADLINE")" node -e '
       try {
         const exec = require("child_process").execSync;
-        const list = JSON.parse(exec("pm2 jlist").toString());
+        const list = JSON.parse(exec("pm2 jlist", { timeout: 15000 }).toString());
         const apps = ["yjs-server", "vite-server", "firebase-emulators"];
         const failed = list.filter(p => apps.includes(p.name) &&
                                      p.pm2_env.status !== "online" &&
@@ -660,13 +721,13 @@ start_and_wait_for_services() {
   # firebase-emulators process stays online serving auth/firestore/functions/
   # storage while hosting alone never binds its port, so no test can run.
   _only_hosting_missing() {
-    if port_is_open "${FIREBASE_HOSTING_PORT}"; then
+    if port_is_open "${FIREBASE_HOSTING_PORT}" "$DEADLINE"; then
       return 1
     fi
     local port
     for port in "${REQUIRED_PORTS[@]}"; do
       if [ -n "$port" ] && [ "$port" != "${FIREBASE_HOSTING_PORT}" ]; then
-        if ! port_is_open "$port"; then
+        if ! port_is_open "$port" "$DEADLINE"; then
           return 1
         fi
       fi
@@ -676,12 +737,17 @@ start_and_wait_for_services() {
 
   _is_service_ready() {
     local verbose="${1:-false}"
+    local deadline="${2:-0}"
+    local probe_timeout="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+    if [ "$deadline" -gt 0 ]; then
+      probe_timeout=$(_probe_timeout "$deadline")
+    fi
     local all_ready=true
     local missing_services=()
 
     # Check all required ports
     for port in "${REQUIRED_PORTS[@]}"; do
-      if ! port_is_open "${port}"; then
+      if ! port_is_open "${port}" "$deadline"; then
         all_ready=false
         missing_services+=("Port ${port}")
       fi
@@ -690,20 +756,25 @@ start_and_wait_for_services() {
     # Check Firebase Functions API Health (Directly via Functions Emulator)
     # Checks http://127.0.0.1:57070/outliner-d57b0/us-central1/health
     # We use direct URL because Hosting Emulator rewrite sometimes duplicates paths causing 404
-    if port_is_open "${FIREBASE_FUNCTIONS_PORT}"; then
+    # Bounded: the health endpoint may accept the connection and then never
+    # respond, which previously wedged the whole gate inside this iteration.
+    if port_is_open "${FIREBASE_FUNCTIONS_PORT}" "$deadline"; then
        # Default project ID if not set
        local PROJECT_ID="${FIREBASE_PROJECT_ID:-outliner-d57b0}"
        local FUNC_URL="http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/health"
 
        local HTTP_CODE
-       HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null || echo "000")
+       HTTP_CODE=$(_run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null || true)
+       if [ -z "$HTTP_CODE" ]; then
+         HTTP_CODE="000"
+       fi
        if [ "$HTTP_CODE" != "200" ]; then
          all_ready=false
          local MSG="Firebase Function Health [Code: $HTTP_CODE] (URL: $FUNC_URL)"
          if [ "$verbose" = "true" ]; then
             # Capture start of body for debugging
             local BODY
-            BODY=$(curl -s "$FUNC_URL" | head -c 200)
+            BODY=$(_run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "$FUNC_URL" 2>/dev/null | head -c 200 || true)
             MSG="$MSG [Body: $BODY]"
          fi
          missing_services+=("$MSG")
@@ -711,11 +782,19 @@ start_and_wait_for_services() {
     fi
 
     # Check Yjs WebSocket (if port is open)
-    if port_is_open "${TEST_YJS_PORT}"; then
-       if ! curl -s --connect-timeout 2 --max-time 5 "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
+    if port_is_open "${TEST_YJS_PORT}" "$deadline"; then
+       if ! _run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! _run_bounded "$probe_timeout" nc -w 2 -z 127.0.0.1 "${TEST_YJS_PORT}" >/dev/null 2>&1; then
           all_ready=false
           missing_services+=("Yjs WebSocket")
        fi
+    fi
+
+    # A timeout, probe failure, or otherwise unobservable service is never
+    # ready: only positively observed checks satisfy the gate.
+    if [ ${#missing_services[@]} -gt 0 ]; then
+      LAST_READINESS_MISSING="${missing_services[*]}"
+    else
+      LAST_READINESS_MISSING=""
     fi
 
     if [ "$all_ready" = true ]; then
@@ -729,16 +808,18 @@ start_and_wait_for_services() {
   }
 
   while true; do
-    local CURRENT_TIME ELAPSED
+    local CURRENT_TIME ELAPSED REMAINING
     CURRENT_TIME=$(date +%s)
     ELAPSED=$((CURRENT_TIME - START_TIME))
+    REMAINING=$((DEADLINE - CURRENT_TIME))
 
-    if [ $ELAPSED -gt $MAX_WAIT_SECONDS ]; then
-      echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds."
+    if [ "$REMAINING" -le 0 ]; then
+      echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds (deadline exceeded at ${ELAPSED}s elapsed)."
+      echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-unknown (no readiness evaluation completed)}"
       echo "State of services:"
-      pm2 list
+      _run_bounded 10 pm2 list || true
       echo "--- PM2 Logs (tail) ---"
-      pm2 logs --lines 50 --nostream
+      _run_bounded 10 pm2 logs --lines 50 --nostream || true
       # The tail above is usually drowned by Functions health checks; the
       # emulator startup section (versions, emulator list, bind errors) is
       # what diagnoses a missing emulator (issue #5453).
@@ -752,7 +833,7 @@ start_and_wait_for_services() {
     # 1. Check PM2 status - Fail fast if crashed
     if ! _check_pm2_status; then
       echo "Detected crashed services via PM2. Exiting setup."
-      pm2 logs --lines 50 --nostream
+      _run_bounded 10 pm2 logs --lines 50 --nostream || true
       # Force log dumping specifically for server applications
       echo "[TAILING] Tailing last 50 lines for [all] processes (change the value with --lines option)"
       if [ -f "${ROOT_DIR}/server/logs/yjs-server.log" ]; then
@@ -774,7 +855,7 @@ start_and_wait_for_services() {
        log_status=true
     fi
 
-    if _is_service_ready "$log_status"; then
+    if _is_service_ready "$log_status" "$DEADLINE"; then
       echo "=== All test services are ready! ==="
       break
     fi
