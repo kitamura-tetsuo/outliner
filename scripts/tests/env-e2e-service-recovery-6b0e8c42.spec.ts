@@ -1,6 +1,14 @@
 /** @feature ENV-6b0e8c42 */
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import { runGate, TOL } from "./fixtures/e2e-readiness-deadline/gate-helper";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, "../..");
+const commonFunctions = path.join(repoRoot, "scripts", "common-functions.sh");
 
 function restarts(stdout: string): string[] {
     return [...stdout.matchAll(/^FAKE-PM2-RESTART (.+)$/gm)].map(match => match[1]);
@@ -59,5 +67,44 @@ describe("Bounded startup recovery (issue #5487)", () => {
         const result = await runGate("instant", 20, { stall: 1 });
         expect(result.status, result.stdout).toBe(0);
         expect(restarts(result.stdout)).toEqual([]);
+    }, 60000);
+
+    it("pins the production stall default to 60 seconds", async () => {
+        // Guards the REQ-002 stall policy itself: every behavioral test
+        // above overrides the threshold, so a default change (e.g. 60 to
+        // 120) would stay green without this pin plus the behavioral
+        // production-default run below.
+        const content = fs.readFileSync(commonFunctions, "utf-8");
+        expect(content).toContain("E2E_SERVICE_STALL_SECONDS:-60");
+    });
+
+    it("restarts a continuously unready service around 60s with no threshold override", async () => {
+        // Production-default behavioral run (issue #5487, REQ-002): no
+        // stall override, so the gate must apply the production 60s stall
+        // policy — restart once around 60s and succeed within the original
+        // deadline. With a regressed 120s default this budget expires with
+        // no restart; with a shortened default the elapsed lower bound fails.
+        const budget = 75;
+        const result = await runGate("stall-log-recover", budget);
+        expect(result.status, result.stdout).toBe(0);
+        expect(result.stdout).toContain("All test services are ready!");
+        expect(restarts(result.stdout)).toEqual(["log-service"]);
+        expect(result.stdout).toContain("Restarting log-service once");
+        expect(result.elapsedSec).toBeGreaterThanOrEqual(55);
+        expect(result.elapsedSec).toBeLessThan(budget + TOL);
+    }, 150000);
+
+    it("never succeeds when the Functions listener closes before its health probe", async () => {
+        // The Functions port passes the initial sweep (consuming the
+        // single-shot listener) and is gone by the pre-health probe in the
+        // same evaluation — the post-restart shape from issue #5487,
+        // REQ-005. The evaluation must stay unsatisfied until a later
+        // evaluation positively observes a healthy response.
+        const result = await runGate("flap-fn", 15);
+        expect(result.status, result.stdout).not.toBe(0);
+        expect(result.stdout).toContain("Firebase Function Health");
+        expect(result.stdout).not.toContain("All test services are ready!");
+        expect(restarts(result.stdout)).toEqual([]);
+        expect(result.elapsedSec).toBeLessThan(15 + TOL);
     }, 60000);
 });
