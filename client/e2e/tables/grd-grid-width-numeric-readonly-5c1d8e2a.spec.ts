@@ -23,6 +23,13 @@ registerCoverageHooks();
 const SCHEMA = "CREATE TABLE orders (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n"
     + "  quantity INTEGER,\n  done BOOLEAN NOT NULL\n)";
 const QUERY = "SELECT id, title, quantity, done FROM orders";
+// Every Table of a project is materialized into one shared Postgres schema
+// under its schema's relation name, so the Layout-nested Grid needs its own
+// relation: reusing `orders` would make its query read the top-level Grid's
+// records instead of its own fresh dataset.
+const NESTED_SCHEMA = "CREATE TABLE nested_orders (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n"
+    + "  quantity INTEGER,\n  done BOOLEAN NOT NULL\n)";
+const NESTED_QUERY = "SELECT id, title, quantity, done FROM nested_orders";
 
 async function seedLayoutWithGridSlot(page: Page): Promise<void> {
     await page.evaluate(() => {
@@ -100,7 +107,7 @@ test.describe("Grid numeric widths follow the production read-only origin", () =
         });
         expect(firstIsNested).toBe(true);
 
-        await configureGrid(page, 0, SCHEMA, QUERY, "Nested title");
+        await configureGrid(page, 0, NESTED_SCHEMA, NESTED_QUERY, "Nested title");
         await nestedView.getByTestId("yjs-table-add-row").click();
         await expect(nestedView.getByTestId("yjs-table-grid").locator("tbody tr")).toHaveCount(1, {
             timeout: 30000,
