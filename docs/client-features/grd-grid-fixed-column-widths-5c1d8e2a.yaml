@@ -1,0 +1,32 @@
+id: GRD-5c1d8e2a
+title: Grid fixed column widths with automatic remaining columns
+title-ja: Grid の固定列幅と自動残列幅
+description: Columns of a Grid with a saved width override render at their exact CSS-pixel border-box width while unconfigured columns size automatically and absorb spare container space. Widths resolve by exact result-column name after display order and visibility; rendering never writes presentation state.
+category: tables
+status: implemented
+acceptance:
+- A saved finite integer width renders its header and every body cell at that CSS-pixel border-box width within layout-rounding tolerance
+- A table wider than its Grid container scrolls horizontally inside the Grid without widening the page or surrounding Layout spans
+- Clearing an override returns the column to automatic sizing without storing a replacement pixel value
+- Automatic columns follow content and available space; intrinsic minimum widths may scroll inside the Grid in narrow containers without widening the page
+- Fixed columns never grow into spare container space nor shrink in narrow containers; only automatic data columns absorb surplus
+- Fixed-width rendering preserves each column's cell component and its SQL-derived write eligibility
+- Long unbreakable labels and values, padding, controls and focused inline editors never widen a fixed column nor paint over neighboring contents
+- Browser regressions measure overflowing text glyphs against effective ancestor clipping edges and verify neighboring contents remain exposed before and during editing
+- Rendering, reloading or resizing never writes presentation settings, mutates query/schema/records, creates a Grid, or adds persisted width state to a raw Table view
+- Widths follow exact result-column names across reorder, relabel, hide and restore; hidden or query-absent names occupy no track while their saved widths stay dormant and reapply on return
+- Setting or clearing a width preserves established row and reordered-column selections by exact record and result-column identity, without changing source data
+- With every data column fixed, surplus space stays outside the tracks instead of stretching fixed or utility columns
+tests:
+- client/e2e/tables/grd-grid-fixed-column-widths-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-fixed-content-containment-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-fixed-width-layout-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-fixed-width-identity-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-selection-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-all-fixed-surplus-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-auto-width-restoration-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-fixed-width-edits-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-shared-width-render-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-peer-sync-5c1d8e2a.spec.ts
+- client/src/components/yjstable/TableGrid.columnWidths.test.ts
+- client/src/services/yjstable/gridColumnWidth.test.ts

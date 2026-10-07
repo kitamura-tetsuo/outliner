@@ -1,0 +1,80 @@
+/** @feature GRD-5c1d8e2a */
+import type { Page } from "@playwright/test";
+import "../utils/registerAfterEachSnapshot";
+import { expect, test } from "../fixtures/grid-render-trace";
+import { addSourceRecord } from "../utils/crossProjectGridHelpers";
+import { ALL_FIXED_WIDTHS as FIXED, prepareAllFixedWidthGrid } from "../utils/gridAllFixedWidthFixture";
+import { expectFixedWidth, placementColumnWidths } from "../utils/gridWidthHelpers";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
+
+// Issue #5457 REQ-007 (AS-001): with every visible data column fixed, browser
+// geometry must prove fixed cells keep their saved widths in narrow AND wide
+// containers, utility tracks keep theirs, and surplus stays outside the
+// tracks. Commits go through the production writer on the owning Grid.
+async function trackWidths(page: Page, placement: number): Promise<{
+    fixed: Record<string, number[]>;
+    utility: number;
+    table: number;
+}> {
+    const grid = page.getByTestId("yjs-table-view").nth(placement).getByTestId("yjs-table-grid");
+    const fixed: Record<string, number[]> = {};
+    for (const column of Object.keys(FIXED)) fixed[column] = await placementColumnWidths(page, placement, column);
+    // Scoped to the single thead corner cell so the lookup stays
+    // strict-mode-unambiguous even though body rows also render `<th>`
+    // selection headers (issue #5457).
+    const utilityBox = await grid.locator("thead th.corner-header").first().boundingBox();
+    const tableBox = await grid.locator("table").boundingBox();
+    return { fixed, utility: utilityBox!.width, table: tableBox!.width };
+}
+
+test.describe("Grid all-fixed surplus stays outside the tracks", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await prepareAllFixedWidthGrid(page, testInfo);
+    });
+
+    test("zero rows pin headers, then narrow and wide containers keep every track", async ({ page }) => {
+        // Valid result with column metadata but zero rows: headers pin exactly.
+        for (const [column, px] of Object.entries(FIXED)) await expectFixedWidth(page, 0, column, px);
+
+        await addSourceRecord(page);
+        await addSourceRecord(page, 0, 2);
+
+        const grid = page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-grid");
+        await page.setViewportSize({ width: 480, height: 800 });
+        for (const [column, px] of Object.entries(FIXED)) await expectFixedWidth(page, 0, column, px);
+        const narrow = await trackWidths(page, 0);
+        for (const [column, px] of Object.entries(FIXED)) {
+            expect(narrow.fixed[column]).toHaveLength(3);
+            for (const w of narrow.fixed[column]) {
+                expect(w).toBeGreaterThanOrEqual(px - 1);
+                expect(w).toBeLessThanOrEqual(px + 1);
+            }
+        }
+        expect(
+            await grid.evaluate((el: HTMLElement) => el.scrollWidth > el.clientWidth + 1),
+        ).toBe(true);
+        expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= 481)).toBe(true);
+
+        // Widen well beyond the total track width: fixed and utility tracks
+        // must not move, and surplus must lie outside them.
+        await page.setViewportSize({ width: 1280, height: 800 });
+        for (const [column, px] of Object.entries(FIXED)) await expectFixedWidth(page, 0, column, px);
+        const wide = await trackWidths(page, 0);
+        for (const column of Object.keys(FIXED)) {
+            for (let i = 0; i < narrow.fixed[column].length; i++) {
+                expect(Math.abs(wide.fixed[column][i] - narrow.fixed[column][i])).toBeLessThanOrEqual(1);
+            }
+        }
+        expect(Math.abs(wide.utility - narrow.utility)).toBeLessThanOrEqual(1);
+        expect(Math.abs(wide.table - narrow.table)).toBeLessThanOrEqual(1);
+        const gridBox = await grid.boundingBox();
+        expect(gridBox!.width).toBeGreaterThan(wide.table + 1);
+        expect(
+            await grid.evaluate((el: HTMLElement) => el.scrollWidth <= el.clientWidth + 1),
+        ).toBe(true);
+        expect(
+            await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth + 1),
+        ).toBe(true);
+    });
+});

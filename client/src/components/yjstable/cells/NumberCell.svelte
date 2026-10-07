@@ -74,6 +74,8 @@ function focusNode(node: HTMLElement) {
 <style>
 .cell-input {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     border: none;
     padding: 2px 4px;
     outline: 2px solid #2563eb;
@@ -83,6 +85,8 @@ function focusNode(node: HTMLElement) {
 .cell-value {
     display: block;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     text-align: right;
     background: transparent;
     border: none;

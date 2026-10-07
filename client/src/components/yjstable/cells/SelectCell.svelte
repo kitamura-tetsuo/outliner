@@ -43,6 +43,8 @@ const current = $derived(value === null || value === undefined ? "" : String(val
 <style>
 .cell-select {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     border: none;
     background: transparent;
     padding: 2px 4px;
