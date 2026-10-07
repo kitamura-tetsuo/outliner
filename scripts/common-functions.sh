@@ -669,16 +669,13 @@ start_and_wait_for_services() {
     return 0
   fi
 
-  echo "Starting PM2-managed services (yjs-server, vite-server, firebase-emulators)..."
-  pm2 start "${ROOT_DIR}/ecosystem.config.cjs"
-
-  # Loop to check services and ports in parallel
-  echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
   # Single wall-clock budget for one startup attempt (issue #5486): 180s
   # preserves the observed successful envelope (slowest success 151s on
   # 2026-10-07, which recovered via the hosting-stall retry below) with
   # margin. Overridable for tests via E2E_SERVICE_READINESS_TIMEOUT_SECONDS;
-  # nothing inside this phase may extend or reset it.
+  # nothing inside this phase may extend or reset it. The clock starts before
+  # supervision (pm2 start) so a wedged daemon cannot hold the phase outside
+  # the budget.
   local MAX_WAIT_SECONDS="${E2E_SERVICE_READINESS_TIMEOUT_SECONDS:-180}"
   local START_TIME
   START_TIME=$(date +%s)
@@ -687,8 +684,29 @@ start_and_wait_for_services() {
   # so the deadline failure can identify them without re-probing past it.
   LAST_READINESS_MISSING=""
   # Stall tracking for the Firebase Hosting emulator retry below (issue #5453).
+  # Threshold overridable for tests via E2E_HOSTING_STALL_SECONDS (default
+  # 120s); it never extends DEADLINE — when the threshold exceeds the budget
+  # the restart simply never fires before the deadline failure.
+  local HOSTING_STALL_THRESHOLD="${E2E_HOSTING_STALL_SECONDS:-120}"
   local HOSTING_STALL_START=0
   local HOSTING_RESTART_DONE=0
+
+  echo "Starting PM2-managed services (yjs-server, vite-server, firebase-emulators)..."
+  # Bounded so a wedged pm2 daemon cannot hold supervision start past the
+  # deadline; a start that cannot be confirmed is a startup failure, never
+  # silent success.
+  if ! _run_bounded "$MAX_WAIT_SECONDS" pm2 start "${ROOT_DIR}/ecosystem.config.cjs"; then
+    echo "Failed to start PM2-managed services (pm2 start did not complete within ${MAX_WAIT_SECONDS}s)."
+    echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-PM2 supervision start (pm2 start unsuccessful)}"
+    echo "State of services:"
+    _run_bounded 10 pm2 list || true
+    echo "--- PM2 Logs (tail) ---"
+    _run_bounded 10 pm2 logs --lines 50 --nostream || true
+    exit 1
+  fi
+
+  # Loop to check services and ports in parallel
+  echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
 
   _check_pm2_status() {
     # Check if key PM2 processes are running
@@ -871,9 +889,11 @@ start_and_wait_for_services() {
     if _only_hosting_missing; then
       if [ "$HOSTING_STALL_START" -eq 0 ]; then
         HOSTING_STALL_START=$ELAPSED
-      elif [ "$HOSTING_RESTART_DONE" -eq 0 ] && [ $((ELAPSED - HOSTING_STALL_START)) -ge 120 ]; then
+      elif [ "$HOSTING_RESTART_DONE" -eq 0 ] && [ $((ELAPSED - HOSTING_STALL_START)) -ge "$HOSTING_STALL_THRESHOLD" ]; then
         echo "Firebase Hosting emulator (port ${FIREBASE_HOSTING_PORT}) has not started after $((ELAPSED - HOSTING_STALL_START))s while all other services are ready. Restarting firebase-emulators once..."
-        pm2 restart firebase-emulators || echo "Warning: pm2 restart firebase-emulators failed"
+        # Bounded by the remaining budget so a wedged pm2 daemon cannot hold
+        # the recovery past DEADLINE; the single budget is never extended.
+        _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 restart firebase-emulators || echo "Warning: pm2 restart firebase-emulators failed"
         HOSTING_RESTART_DONE=1
         HOSTING_STALL_START=0
       fi
@@ -881,7 +901,18 @@ start_and_wait_for_services() {
       HOSTING_STALL_START=0
     fi
 
-    sleep 2
+    # Cap the poll pause so the sleep itself cannot carry the gate past the
+    # deadline; the next iteration's deadline check then fails in budget.
+    local _sleep_for=2
+    local _sleep_remaining
+    _sleep_remaining=$(_readiness_remaining "$DEADLINE")
+    if [ "$_sleep_remaining" -le 0 ]; then
+      continue
+    fi
+    if [ "$_sleep_remaining" -lt "$_sleep_for" ]; then
+      _sleep_for="$_sleep_remaining"
+    fi
+    sleep "$_sleep_for"
   done
 
   # Initialize Firebase emulator (creates test users, etc.)

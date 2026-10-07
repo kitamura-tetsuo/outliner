@@ -26,7 +26,7 @@ async function freePort(): Promise<number> {
     });
 }
 
-async function runGate(mode: string, budget: number, slowDelay = 0) {
+async function runGate(mode: string, budget: number, slowDelay = 0, stall?: number) {
     const [yjs, api, vite, fn, auth, fstore, host, store] = await Promise.all(
         Array.from({ length: 8 }, () => freePort()),
     );
@@ -39,6 +39,7 @@ async function runGate(mode: string, budget: number, slowDelay = 0) {
             GATE_MODE: mode,
             GATE_BUDGET: String(budget),
             GATE_SLOW_DELAY: String(slowDelay),
+            GATE_STALL: stall === undefined ? "" : String(stall),
             P_YJS: String(yjs),
             P_API: String(api),
             P_VITE: String(vite),
@@ -90,4 +91,34 @@ describe("E2E startup wall-clock readiness bound (issue #5486)", () => {
         expect(status).toBe(0);
         expect(stdout).toContain("All test services are ready!");
     }, 54000);
+
+    it("fails within the budget when the hosting-stall recovery hangs", async () => {
+        // Exercises the exact shared start_and_wait_for_services recovery
+        // branch: every port except hosting is open, so after the scaled
+        // 3s stall threshold the gate runs `pm2 restart`, whose double
+        // sleeps past the 20s budget. The bounded restart must be killed
+        // and the gate must fail near the budget naming the hosting check,
+        // without extending the single wall-clock budget.
+        const { status, stdout, elapsedSec } = await runGate("hang-restart", 20, 0, 3);
+        expect(status).not.toBe(0);
+        expect(stdout).toContain("Restarting firebase-emulators once");
+        expect(stdout).toContain("Readiness checks still unsatisfied:");
+        expect(stdout).toMatch(/Port \d+/);
+        expect(elapsedSec).toBeGreaterThanOrEqual(15);
+        expect(elapsedSec).toBeLessThan(60);
+    }, 90000);
+
+    it("fails within the budget when supervision start hangs", async () => {
+        // Exercises the exact shared start_and_wait_for_services supervision
+        // start: the `pm2 start` double sleeps past the 15s budget. The
+        // clock starts before supervision, so the bounded start must be
+        // killed and the gate must fail near the budget instead of holding
+        // the phase outside it.
+        const { status, stdout, elapsedSec } = await runGate("hang-start", 15);
+        expect(status).not.toBe(0);
+        expect(stdout).toContain("Failed to start PM2-managed services");
+        expect(stdout).toContain("Readiness checks still unsatisfied:");
+        expect(elapsedSec).toBeGreaterThanOrEqual(12);
+        expect(elapsedSec).toBeLessThan(60);
+    }, 90000);
 });
