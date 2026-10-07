@@ -73,7 +73,7 @@ function focusNode(node: HTMLElement) {
     aria-describedby={`confirm-dialog-message-${dialogId}`}
 >
     {#if isOpen}
-    <div class="bg-white rounded-lg max-w-sm w-full confirm-dialog" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()} onpointerdown={(e) => e.stopPropagation()} onmouseup={(e) => e.stopPropagation()} role="presentation">
+    <div class="bg-white rounded-lg max-w-sm w-full confirm-dialog" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()} onpointerdown={(e) => e.stopPropagation()} onmouseup={(e) => e.stopPropagation()} role="document">
         <div class="p-4 sm:p-6">
             <h3 id={`confirm-dialog-title-${dialogId}`} class="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
             <p id={`confirm-dialog-message-${dialogId}`} class="text-sm text-gray-600 mb-6">{message}</p>
