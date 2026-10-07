@@ -55,9 +55,15 @@ const logger = getLogger("LayoutBlock");
 
 interface Props {
     item: Item;
+    /**
+     * Host surface restriction (outline read-only state). Forwarded to nested
+     * blocks through the normal component path, so a Layout-nested Grid's
+     * width controls disable exactly like a top-level Grid's (#5458 REQ-005).
+     */
+    isReadOnly?: boolean;
 }
 
-let { item }: Props = $props();
+let { item, isReadOnly = false }: Props = $props();
 
 // Bumped by the Yjs observer so the derived children/spans re-read the tree.
 // Structural moves and span writes both land in the "orderedTree" map, so one
@@ -520,6 +526,7 @@ function handleInsertExistingDiagram() {
                                     componentType={componentTypeOf(child)}
                                     item={child}
                                     outlineRow={false}
+                                    {isReadOnly}
                                 />
                             {/await}
                         {:else}

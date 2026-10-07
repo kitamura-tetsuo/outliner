@@ -67,7 +67,7 @@ const selectionSurfaceAttributes = $derived({ [VISUAL_NODE_SELECTION_SURFACE_ATT
     {#await import("./layout/LayoutBlock.svelte") then { default: LayoutBlock }}
         <div class="component-wrapper" class:outline-row={outlineRow} {...rootAttributes}>
             {@render selectionSurface()}
-            <LayoutBlock item={item} />
+            <LayoutBlock item={item} {isReadOnly} />
         </div>
     {/await}
 {:else if componentType === DIAGRAM_COMPONENT_TYPE}
