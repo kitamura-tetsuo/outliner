@@ -16,6 +16,12 @@ TMP_ROOT=$(mktemp -d)
 cleanup() { rm -rf "$TMP_ROOT"; }
 trap cleanup EXIT
 
+# Observation probes target loopback only; a forward proxy must never
+# intercept them (a proxy answering 502 with exit 0 would make curl-based
+# probes report a closed port as open).
+export no_proxy="127.0.0.1,localhost${no_proxy:+,$no_proxy}"
+export NO_PROXY="$no_proxy"
+
 mkdir -p "$TMP_ROOT/bin"
 # Hanging lsof that resists graceful termination.
 cat > "$TMP_ROOT/bin/lsof" <<'EOF'

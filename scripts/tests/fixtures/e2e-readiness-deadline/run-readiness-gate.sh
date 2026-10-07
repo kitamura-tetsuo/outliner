@@ -3,7 +3,7 @@
 # start_and_wait_for_services gate (scripts/common-functions.sh) with
 # controlled process/endpoint behavior.
 #
-# Required env: REPO_ROOT, GATE_MODE (instant|hang-fn|partial-fn|slow-fn|hang-restart|hang-start|crash-yjs-recover|crash-yjs-broken|stall-log-recover|stall-vite-only|stall-hosting-recover),
+# Required env: REPO_ROOT, GATE_MODE (instant|hang-fn|partial-fn|slow-fn|hang-restart|hang-start|crash-yjs-recover|crash-yjs-broken|stall-log-recover|stall-vite-only|stall-hosting-recover|flap-fn),
 # GATE_BUDGET (seconds), GATE_SLOW_DELAY (seconds, slow-fn only),
 # GATE_STALL (seconds, generic stall-threshold override; production default 60),
 # GATE_PM2_BEHAVIOR (ok|jlist-fail|jlist-malformed|jlist-missing|jlist-trap-term; default ok),
@@ -33,6 +33,12 @@
 # - stall-hosting-recover: every port except hosting answers 200 until
 #   `pm2 restart firebase-emulators` serves hosting (REQ-006: exactly one
 #   restart for the episode, no legacy second restart).
+# - flap-fn: every port answers 200, but the Functions port is a single-shot
+#   acceptor that handles exactly one TCP connection and then closes. The
+#   first readiness evaluation's initial port sweep consumes that connection
+#   and passes, while the pre-health port probe in the same evaluation finds
+#   the listener gone (issue #5487, REQ-005: the evaluation must not succeed
+#   without a positive Functions health response).
 #
 # Every `restart` invocation prints `FAKE-PM2-RESTART <service>` so specs
 # can assert the actual restart command count and target.
@@ -46,6 +52,12 @@
 # Exits with the gate's own status: 0 when every stub service becomes
 # ready within the budget, nonzero when the deadline expires.
 set -euo pipefail
+
+# Readiness probes target loopback only; a forward proxy must never
+# intercept them (a proxy answering 502 with exit 0 would make curl-based
+# probes report a closed port as open).
+export no_proxy="127.0.0.1,localhost${no_proxy:+,$no_proxy}"
+export NO_PROXY="$no_proxy"
 
 FIXTURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP_ROOT=$(mktemp -d)
@@ -190,7 +202,15 @@ STUB_MODE="$GATE_MODE"
 # The withheld port never binds until a restart serves it (recovery modes)
 # or never (hang-restart, crash-yjs-broken).
 WITHHELD=""
+FLAP_FN=0
 case "$GATE_MODE" in
+  flap-fn)
+    # Functions port is served by the single-shot acceptor below instead of
+    # the shared stub, so exclude it from the stub server port list.
+    STUB_MODE="instant"
+    WITHHELD="$P_FN"
+    FLAP_FN=1
+    ;;
   hang-restart|stall-hosting-recover)
     # Hosting never binds initially: serve every port except hosting.
     STUB_MODE="instant"
@@ -224,6 +244,46 @@ python3 "$FIXTURE_DIR/stub-servers.py" \
   "$STUB_MODE" "$P_FN" "$READY_AT" \
   "${STUB_PORTS[@]}" &
 SERVER_PID=$!
+
+if [ "$FLAP_FN" = "1" ]; then
+  # Single-shot Functions listener: accept exactly one TCP connection
+  # (consumed by the gate's initial port sweep, which therefore passes),
+  # answer it minimally, then close so the same evaluation's pre-health
+  # port probe finds the listener gone. Readiness is signalled with a file
+  # after bind so no probing connection consumes the single shot.
+  cat > "$TMP_ROOT/flap-fn.py" <<EOF
+import socket
+srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+srv.bind(("127.0.0.1", $P_FN))
+srv.listen(1)
+with open("$TMP_ROOT/flap-fn-ready", "w") as f:
+    f.write("ready")
+conn, _ = srv.accept()
+try:
+    conn.settimeout(5)
+    try:
+        conn.recv(4096)
+    except OSError:
+        pass
+    try:
+        conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+    except OSError:
+        pass
+finally:
+    try:
+        conn.close()
+    except OSError:
+        pass
+    srv.close()
+EOF
+  python3 "$TMP_ROOT/flap-fn.py" &
+  echo $! >> "$TMP_ROOT/extra-stub-pids"
+  for _ in $(seq 1 50); do
+    [ -f "$TMP_ROOT/flap-fn-ready" ] && break
+    sleep 0.2
+  done
+fi
 
 # Wait for the instantly-ready ports to listen before starting the gate.
 for port in "${WAIT_PORTS[@]}"; do

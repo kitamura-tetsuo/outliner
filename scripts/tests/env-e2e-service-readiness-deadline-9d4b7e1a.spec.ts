@@ -13,6 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
 const boundsRunner = path.join(__dirname, "fixtures", "e2e-readiness-deadline", "run-observation-bounds.sh");
+const fallbackRunner = path.join(__dirname, "fixtures", "e2e-readiness-deadline", "run-fallback-deadline.sh");
 const commonFunctions = path.join(repoRoot, "scripts", "common-functions.sh");
 
 describe("E2E startup wall-clock readiness bound (issue #5486)", () => {
@@ -151,6 +152,36 @@ describe("E2E startup wall-clock readiness bound (issue #5486)", () => {
         expect(stdout).not.toContain("All test services are ready!");
         expect(elapsedSec).toBeLessThan(5 + TOL);
     }, 60000);
+
+    it("never starts another fallback probe once the deadline expires", async () => {
+        // Sequential-fallback deadline enforcement (issue #5487, REQ-005):
+        // nc is unavailable, the port accepts HTTP connections without
+        // responding (hanging curl), and lsof hangs ignoring SIGTERM. The
+        // sequence begins near expiry with 4s of remaining budget: nc fails
+        // fast, curl consumes the rest, and the lsof fallback must not
+        // start afterwards — starting it with its own timeout plus kill
+        // grace is the reported overrun past the 180s startup deadline.
+        // Its forced termination must also fit inside the remaining budget.
+        const closed = await freePort();
+        const remaining = 4;
+        const start = Date.now();
+        const result = spawnSync("bash", [fallbackRunner], {
+            cwd: repoRoot,
+            env: {
+                ...process.env,
+                REPO_ROOT: repoRoot,
+                FALLBACK_BUDGET: String(remaining),
+                FALLBACK_PORT: String(closed),
+            },
+            timeout: 60000,
+            maxBuffer: 4 * 1024 * 1024,
+            encoding: "utf-8",
+        });
+        const elapsedSec = (Date.now() - start) / 1000;
+        expect(String(result.stdout)).toContain("FALLBACK DEADLINE HELD");
+        expect(result.status).toBe(0);
+        expect(elapsedSec).toBeLessThan(remaining + TOL);
+    }, 90000);
 
     it("bounds the lsof fallback and the no-timeout watchdog", async () => {
         // Direct observation probes: a hanging TERM-ignoring lsof must be

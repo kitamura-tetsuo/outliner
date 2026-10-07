@@ -199,9 +199,33 @@ _run_bounded() {
   return "$_rc"
 }
 
+# Per-fallback probe limit for a deadline-bound port_is_open sequence
+# (issue #5487, REQ-005). Like _probe_timeout, but additionally reserves
+# the 2s forced-termination grace used by _run_bounded, so even a probe
+# that ignores SIGTERM is reaped within the remaining budget instead of
+# carrying the gate past it. Floored at 1s so a nearly-expired deadline
+# still fails fast instead of skipping the probe; callers re-check expiry
+# before every fallback, so once the deadline passes no fallback starts.
+_fallback_probe_limit() {
+  local deadline="$1"
+  local remaining
+  remaining=$(_readiness_remaining "$deadline")
+  local limit=$((remaining - 2))
+  if [ "$limit" -gt "${E2E_PROBE_TIMEOUT_SECONDS:-5}" ]; then
+    limit="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+  fi
+  if [ "$limit" -lt 1 ]; then
+    limit=1
+  fi
+  echo "$limit"
+}
+
 # Quick check: is a port open without waiting (no dependency on nc).
 # Pass the readiness deadline timestamp as $2 when called from the
-# startup gate so each probe stays within the remaining budget.
+# startup gate so each probe stays within the remaining budget. The
+# deadline is re-checked before every fallback probe and each fallback
+# timeout is recomputed from the time still left, so once the deadline
+# expires no further fallback may start (issue #5487, REQ-005).
 port_is_open() {
   local port="$1"
   local deadline="${2:-0}"
@@ -212,16 +236,31 @@ port_is_open() {
     if _deadline_expired "$deadline"; then
       return 1
     fi
-    probe_timeout=$(_probe_timeout "$deadline")
+    probe_timeout=$(_fallback_probe_limit "$deadline")
   fi
   if _run_bounded "$probe_timeout" nc -w 2 -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
     return 0
   fi
+  # The curl fallback must not start past the deadline: the nc probe above
+  # may have consumed the rest of the budget.
+  if [ "$deadline" -gt 0 ]; then
+    if _deadline_expired "$deadline"; then
+      return 1
+    fi
+    probe_timeout=$(_fallback_probe_limit "$deadline")
+  fi
   if _run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
     return 0
   fi
-  # The lsof fallback is an observation like the others: it runs inside the
-  # same hard bound so a wedged lsof cannot hold the gate (issue #5486).
+  # The lsof fallback is an observation like the others: it runs inside a
+  # hard bound so a wedged lsof cannot hold the gate (issue #5486), and it
+  # never starts once the deadline has expired (issue #5487, REQ-005).
+  if [ "$deadline" -gt 0 ] && _deadline_expired "$deadline"; then
+    return 1
+  fi
+  if [ "$deadline" -gt 0 ]; then
+    probe_timeout=$(_fallback_probe_limit "$deadline")
+  fi
   if command -v lsof >/dev/null 2>&1 && _run_bounded "$probe_timeout" lsof -i ":${port}" >/dev/null 2>&1; then
     return 0
   fi
@@ -1035,6 +1074,16 @@ start_and_wait_for_services() {
            fi
            missing_services+=("$MSG")
          fi
+      else
+        # The pre-health port probe is a required observation: when the
+        # Functions listener is unavailable here, its health check has not
+        # positively succeeded, so readiness must stay unsatisfied until a
+        # later evaluation observes a completed healthy response
+        # (issue #5487, REQ-005). Without this branch the evaluation could
+        # return success without any positive Functions health response.
+        all_ready=false
+        _record_owner_missing "emu" "Firebase Function Health (Functions port ${FIREBASE_FUNCTIONS_PORT} unavailable)"
+        missing_services+=("Firebase Function Health (Functions port ${FIREBASE_FUNCTIONS_PORT} unavailable)")
       fi
     else
       all_ready=false
@@ -1046,10 +1095,21 @@ start_and_wait_for_services() {
       if port_is_open "${TEST_YJS_PORT}" "$deadline"; then
          local _yjs_probe
          _yjs_probe=$(_probe_timeout "$deadline")
-         if ! _run_bounded "$_yjs_probe" curl -s --connect-timeout 2 --max-time "$_yjs_probe" "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! _run_bounded "$(_probe_timeout "$deadline")" nc -w 2 -z 127.0.0.1 "${TEST_YJS_PORT}" >/dev/null 2>&1; then
-            all_ready=false
-            missing_services+=("Yjs WebSocket")
-            _record_owner_missing "yjs" "Yjs WebSocket"
+         if ! _run_bounded "$_yjs_probe" curl -s --connect-timeout 2 --max-time "$_yjs_probe" "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1; then
+            # The nc fallback must not start past the deadline: the curl
+            # probe above may have consumed the rest of the budget
+            # (issue #5487, REQ-005).
+            local _yjs_nc_ok=false
+            if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+              if _run_bounded "$(_probe_timeout "$deadline")" nc -w 2 -z 127.0.0.1 "${TEST_YJS_PORT}" >/dev/null 2>&1; then
+                _yjs_nc_ok=true
+              fi
+            fi
+            if [ "$_yjs_nc_ok" = false ]; then
+              all_ready=false
+              missing_services+=("Yjs WebSocket")
+              _record_owner_missing "yjs" "Yjs WebSocket"
+            fi
          fi
       fi
     else
