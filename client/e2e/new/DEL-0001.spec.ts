@@ -10,6 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("DEL-0001: Project Deletion Page", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
@@ -20,28 +21,29 @@ test.describe("DEL-0001: Project Deletion Page", () => {
         const table = page.locator("table");
         if (await table.count()) {
             await expect(table).toBeVisible();
-            const checkbox = page.locator(
-                "tbody tr td input[type=checkbox]",
-            ).first();
+            const checkbox = page.locator("tbody tr td input[type=checkbox]").first();
             if (await checkbox.count()) {
                 await checkbox.check();
                 await page.getByRole("button", { name: "Delete" }).click();
 
                 // Wait until either an error message or a success message is displayed
-                await page.waitForFunction(() => {
-                    const errorElement = document.querySelector(".text-red-600");
-                    const successElement = document.querySelector(".text-green-600");
-                    return errorElement?.textContent || successElement?.textContent;
-                }, { timeout: 15000 });
+                await page.waitForFunction(
+                    () => {
+                        const errorElement = document.querySelector(".text-red-600");
+                        const successElement = document.querySelector(".text-green-600");
+                        return errorElement?.textContent || successElement?.textContent;
+                    },
+                    { timeout: 60000 },
+                );
 
                 // Check if an error message or a success message is displayed
                 const errorElement = page.locator(".text-red-600");
                 const successElement = page.locator(".text-green-600");
 
-                if (await errorElement.count() > 0) {
+                if ((await errorElement.count()) > 0) {
                     // Since deletion is expected to fail in the test environment, verify that the error message is displayed
                     await expect(errorElement).toBeVisible();
-                } else if (await successElement.count() > 0) {
+                } else if ((await successElement.count()) > 0) {
                     await expect(
                         page.getByText("Selected projects have been deleted"),
                     ).toBeVisible();

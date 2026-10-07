@@ -330,6 +330,9 @@ Here is a complete list of shortcuts. You can also view this list by clicking th
 | Action                  | Windows/Linux                    | Mac                            |
 | ----------------------- | -------------------------------- | ------------------------------ |
 | Add new item            | `Enter`                          | `Enter`                        |
+| Indent item             | `Tab`                            | `Tab`                          |
+| Outdent item            | `Shift + Tab`                    | `Shift + Tab`                  |
+| Move cursor             | `↑` / `↓`                        | `↑` / `↓`                      |
 | Select entire line      | `Ctrl + L`                       | `Cmd + L`                      |
 | Select to start of line | `Shift + Home`                   | `Shift + Home`                 |
 | Select to end of line   | `Shift + End`                    | `Shift + End`                  |
