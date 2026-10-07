@@ -9,7 +9,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import { getGridColumnWidth, readGridComponents } from "../../services/yjstable/gridDocs";
-import { createGrid, getGridHandles, type GridHandles, setGridColumnWidth } from "../../services/yjstable/gridDocs";
+import {
+    createGrid,
+    getGridHandles,
+    getGridSourceTableId,
+    type GridHandles,
+    setGridColumnWidth,
+} from "../../services/yjstable/gridDocs";
 import { createTable } from "../../services/yjstable/tableDocs";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
@@ -162,6 +168,90 @@ describe("TableUiDefEditor width controls", () => {
 
         expect(updates).toBeGreaterThan(0);
         expect(grid.undo.undoStack.length).toBeGreaterThan(stackBefore);
+    });
+
+    it("accepts complete integral decimal and exponent spellings of a saved width", async () => {
+        const { grid } = makeGrid({ title: { widthPx: 180 } });
+        const { container, getByTestId } = render(TableUiDefEditor, { props: editorProps(grid) });
+
+        const id = getByTestId("yjs-table-width-id") as HTMLInputElement;
+        await fireEvent.input(id, { target: { value: "180.0" } });
+        await fireEvent.keyDown(id, { key: "Enter" });
+        expect(getGridColumnWidth(grid, "id")).toBe(180);
+        expect(container.querySelector('[data-testid="yjs-table-width-error-id"]')).toBeNull();
+
+        const done = getByTestId("yjs-table-width-done") as HTMLInputElement;
+        await fireEvent.input(done, { target: { value: "1.8e2" } });
+        await fireEvent.keyDown(done, { key: "Enter" });
+        expect(getGridColumnWidth(grid, "done")).toBe(180);
+        expect(container.querySelector('[data-testid="yjs-table-width-error-done"]')).toBeNull();
+
+        // A fractional-looking spelling with an integral numeric value commits.
+        await fireEvent.input(done, { target: { value: "1.5e2" } });
+        await fireEvent.keyDown(done, { key: "Enter" });
+        expect(getGridColumnWidth(grid, "done")).toBe(150);
+        expect(container.querySelector('[data-testid="yjs-table-width-error-done"]')).toBeNull();
+
+        // A genuinely fractional value still rejects without writing.
+        const title = getByTestId("yjs-table-width-title") as HTMLInputElement;
+        await fireEvent.input(title, { target: { value: "180.5" } });
+        await fireEvent.focusOut(title);
+        expect(container.querySelector('[data-testid="yjs-table-width-error-title"]')).not.toBeNull();
+        expect(getGridColumnWidth(grid, "title")).toBe(180);
+
+        // An incomplete exponent (typed "1e") leaves a real number control
+        // with an empty value in badInput state. jsdom sanitizes "1e" to a
+        // plain empty value instead, so the native state is shimmed exactly
+        // like the dedicated badInput test below.
+        await fireEvent.input(title, { target: { value: "" } });
+        setBadInput(title, true);
+        await fireEvent.focusOut(title);
+        expect(container.querySelector('[data-testid="yjs-table-width-error-title"]')).not.toBeNull();
+        expect(getGridColumnWidth(grid, "title")).toBe(180);
+    });
+
+    it("discards a pending draft when the Grid entry is replaced under the same ID", async () => {
+        const { doc, grid } = makeGrid({ title: { widthPx: 180 } });
+        const gridId = grid.gridId;
+        const rendered = render(TableUiDefEditor, { props: editorProps(grid) });
+        const input = rendered.getByTestId("yjs-table-width-title") as HTMLInputElement;
+
+        await fireEvent.input(input, { target: { value: "240" } });
+        expect(input.value).toBe("240");
+
+        // A synchronized transaction replaces the Grid entry under the same
+        // Grid ID, retaining the source Table, result names and even the same
+        // saved width. The mounted editor observes the replacement handles on
+        // rerender. Without entry-identity tracking the retained 240 draft
+        // would commit into the replacement object it never began editing.
+        const sourceTableId = getGridSourceTableId(doc, gridId)!;
+        createGrid(doc, sourceTableId, {
+            gridId,
+            name: "G",
+            query: QUERY,
+            components: { title: { widthPx: 180 } },
+        });
+        const replacement = getGridHandles(doc, gridId)!;
+        expect(replacement.entry).not.toBe(grid.entry);
+        await rendered.rerender({ ...editorProps(replacement) });
+
+        // The stale draft is discarded: the control shows the replacement's
+        // saved 180, with no error and no cancellation notice.
+        await waitFor(() => expect(input.value).toBe("180"));
+        expect(rendered.container.querySelector('[data-testid="yjs-table-width-error-title"]')).toBeNull();
+        expect(rendered.container.querySelector('[data-testid="yjs-table-width-notice-title"]')).toBeNull();
+
+        let updates = 0;
+        doc.on("update", () => updates++);
+        const stackBefore = replacement.undo.undoStack.length;
+        await fireEvent.keyDown(input, { key: "Enter" });
+        await fireEvent.focusOut(input);
+
+        // The stale draft wrote nowhere: the replacement keeps its own 180
+        // (not the pending 240) and the document emitted no update.
+        expect(getGridColumnWidth(replacement, "title")).toBe(180);
+        expect(updates).toBe(0);
+        expect(replacement.undo.undoStack.length).toBe(stackBefore);
     });
 
     it("shows validation failure for native badInput instead of resetting to auto", async () => {

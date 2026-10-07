@@ -4,6 +4,7 @@
 // Grid's Y.Map (nested Y.Map per column for component settings), so concurrent
 // edits to different fields merge cleanly.
 
+import type * as Y from "yjs";
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import {
@@ -98,6 +99,12 @@ function setColumnShown(column: string, shown: boolean) {
 interface WidthDraft {
     text: string;
     base: string;
+    /**
+     * The Grid registry entry the draft started against. A synchronized
+     * replacement of that entry (same Grid ID, fresh Y.Map) invalidates the
+     * draft so it can never commit into an object the user never edited.
+     */
+    entry: Y.Map<unknown> | undefined;
     error?: string;
     notice?: string;
 }
@@ -121,9 +128,15 @@ function isLiveGridEntry(): boolean {
 
 function widthErrorText(text: string, badInput: boolean): string | undefined {
     if (badInput) return `Enter a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}, or clear to use automatic width.`;
-    if (!/^\+?\d+$/.test(text)) return `Enter a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}, or clear to use automatic width.`;
+    // The native number control accepts complete decimal and exponent
+    // spellings of integral values (180.0, 1.8e2): validate the numeric value,
+    // not its textual syntax. Incomplete inputs (1e, "") are NaN and reject.
+    if (text === "") return `Enter a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}, or clear to use automatic width.`;
     const value = Number(text);
-    if (!Number.isSafeInteger(value) || value < GRID_COLUMN_WIDTH_MIN || value > GRID_COLUMN_WIDTH_MAX) {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) {
+        return `Enter a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}, or clear to use automatic width.`;
+    }
+    if (value < GRID_COLUMN_WIDTH_MIN || value > GRID_COLUMN_WIDTH_MAX) {
         return `Width must be a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}.`;
     }
     return undefined;
@@ -143,10 +156,18 @@ $effect(() => {
     const readOnly = isReadOnly;
     const liveColumns = new Set(resultColumns);
     const live = isLiveGridEntry();
+    const currentEntry = grid.entry;
     for (const column of Object.keys(widthDrafts)) {
         const draft = widthDrafts[column];
         if (!draft) continue;
         if (readOnly || !live || !liveColumns.has(column)) {
+            delete widthDrafts[column];
+            continue;
+        }
+        // The Grid entry was replaced under the same ID after this draft
+        // started: discard it so the pending text can never write into the
+        // replacement object the user never began editing.
+        if (draft.entry !== undefined && draft.entry !== currentEntry) {
             delete widthDrafts[column];
             continue;
         }
@@ -156,6 +177,7 @@ $effect(() => {
             widthDrafts[column] = {
                 text: current,
                 base: current,
+                entry: currentEntry,
                 notice: "Width changed elsewhere; your draft was discarded.",
             };
         }
@@ -165,6 +187,12 @@ $effect(() => {
 /** Commit one column's pending text (Enter or focus leaving the control). */
 function commitWidth(column: string, input: HTMLInputElement) {
     const draft = widthDrafts[column];
+    // A draft captured against a Grid entry that has since been replaced
+    // under the same ID must never write into the replacement object.
+    if (draft?.entry !== undefined && draft.entry !== grid.entry) {
+        delete widthDrafts[column];
+        return;
+    }
     const text = (draft?.text ?? input.value).trim();
     const badInput = input.validity?.badInput ?? false;
     if (isReadOnly || !isLiveGridEntry() || !resultColumns.includes(column)) {
@@ -177,7 +205,7 @@ function commitWidth(column: string, input: HTMLInputElement) {
             // no-op contract keeps an already-auto column effect-free.
             setGridColumnWidth(grid, column, undefined);
         } catch (error) {
-            widthDrafts[column] = { text: draft?.text ?? "", base: draft?.base ?? sharedWidthText(column), error: String(error) };
+            widthDrafts[column] = { text: draft?.text ?? "", base: draft?.base ?? sharedWidthText(column), entry: draft?.entry ?? grid.entry, error: String(error) };
             return;
         }
         delete widthDrafts[column];
@@ -185,7 +213,7 @@ function commitWidth(column: string, input: HTMLInputElement) {
     }
     const problem = widthErrorText(text, badInput);
     if (problem !== undefined) {
-        widthDrafts[column] = { text: draft?.text ?? input.value, base: draft?.base ?? sharedWidthText(column), error: problem };
+        widthDrafts[column] = { text: draft?.text ?? input.value, base: draft?.base ?? sharedWidthText(column), entry: draft?.entry ?? grid.entry, error: problem };
         return;
     }
     try {
@@ -193,7 +221,7 @@ function commitWidth(column: string, input: HTMLInputElement) {
         // canonical no-op with no Yjs update or history entry.
         setGridColumnWidth(grid, column, Number(text));
     } catch (error) {
-        widthDrafts[column] = { text: draft?.text ?? input.value, base: draft?.base ?? sharedWidthText(column), error: String(error) };
+        widthDrafts[column] = { text: draft?.text ?? input.value, base: draft?.base ?? sharedWidthText(column), entry: draft?.entry ?? grid.entry, error: String(error) };
         return;
     }
     delete widthDrafts[column];
@@ -364,6 +392,7 @@ function discardWidthDraft(column: string) {
                                 widthDrafts[column.name] = {
                                     text: input.value,
                                     base: widthDrafts[column.name]?.base ?? sharedWidthText(column.name),
+                                    entry: widthDrafts[column.name]?.entry ?? grid.entry,
                                 };
                             }}
                             onkeydown={(e) => {
