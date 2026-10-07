@@ -40,6 +40,11 @@
 #   the listener gone (issue #5487, REQ-005: the evaluation must not succeed
 #   without a positive Functions health response).
 #
+# - late-hang-restart: jlist first reports Yjs errored with one second left;
+#   restart ignores TERM, so forced termination must fit that final second.
+# - crash-yjs-flap: restart succeeds and marks Yjs online, but exposes only
+#   one TCP connection, consumed by the initial port sweep.
+#
 # Every `restart` invocation prints `FAKE-PM2-RESTART <service>` so specs
 # can assert the actual restart command count and target.
 #
@@ -108,7 +113,16 @@ P_VITE_F="$P_VITE"
 P_FN_F="$P_FN"
 P_HOST_F="$P_HOST"
 EXTRA_PIDS="$TMP_ROOT/extra-stub-pids"
+START_FILE="$TMP_ROOT/gate-start"
+RESTART_PID_FILE="$TMP_ROOT/restart-pid"
+if [ "\${1:-}" = "start" ] && [ "\$MODE" = "late-hang-restart" ]; then
+  date +%s > "\$START_FILE"
+fi
 if [ "\${1:-}" = "jlist" ]; then
+  if [ "\$MODE" = "late-hang-restart" ]; then
+    python3 -c 'import sys,time; time.sleep(max(0, int(sys.argv[1])+int(sys.argv[2])-1-time.time()))' "\$(cat "\$START_FILE")" "\$BUDGET"
+    printf 'errored' > "\$STATUS_DIR/yjs-server"
+  fi
   case "\$PM2_BEHAVIOR" in
     jlist-fail)
       echo "fake pm2: jlist unavailable" >&2
@@ -133,6 +147,10 @@ if [ "\${1:-}" = "jlist" ]; then
 fi
 if [ "\${1:-}" = "restart" ]; then
   echo "FAKE-PM2-RESTART \${2:-}"
+  if [ "\$MODE" = "late-hang-restart" ]; then
+    echo "RESTART_REMAINING=\$((\$(cat "\$START_FILE") + BUDGET - \$(date +%s)))"
+    exec python3 -c 'import os,signal,sys,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); open(sys.argv[1], "w").write(str(os.getpid())); time.sleep(300)' "\$RESTART_PID_FILE"
+  fi
   if [ "\$MODE" = "hang-restart" ]; then
     sleep \$((BUDGET + 60))
     exit 0
@@ -145,6 +163,12 @@ if [ "\${1:-}" = "restart" ]; then
     yjs-server:crash-yjs-recover|yjs-server:crash-yjs-restart-fail)
       printf 'online' > "\$STATUS_DIR/yjs-server"
       _serve "\$P_YJS_F"
+      ;;
+    yjs-server:crash-yjs-flap)
+      printf 'online' > "\$STATUS_DIR/yjs-server"
+      python3 "$FIXTURE_DIR/single-shot-listener.py" "\$P_YJS_F" "$TMP_ROOT/yjs-ready" &
+      echo \$! >> "\$EXTRA_PIDS"
+      while [ ! -f "$TMP_ROOT/yjs-ready" ]; do sleep 0.01; done
       ;;
     log-service:stall-log-recover)
       _serve "\$P_API_F"
@@ -295,4 +319,26 @@ for port in "${WAIT_PORTS[@]}"; do
   done
 done
 
+if [ "$GATE_MODE" = "late-hang-restart" ]; then
+  # Inspect termination after the production supervisor's failure exit.
+  set +e
+  ( start_and_wait_for_services )
+  GATE_RC=$?
+  set -e
+  echo "GATE_FINISH_NS=$(date +%s%N)"
+  echo "GATE_DEADLINE=$(($(cat "$TMP_ROOT/gate-start") + GATE_BUDGET))"
+  if [ -f "$TMP_ROOT/restart-pid" ]; then
+    RESTART_PID=$(cat "$TMP_ROOT/restart-pid")
+    # GNU timeout can kill its own process group, leaving the terminated
+    # child awaiting adoption/reaping. A zombie is terminated, not running.
+    RESTART_STATE=$(ps -o stat= -p "$RESTART_PID" || true)
+    if [ -n "$RESTART_STATE" ] && [[ "$RESTART_STATE" != *Z* ]]; then
+      echo "RESTART_PROCESS_SURVIVED"
+      kill -KILL "$RESTART_PID" 2>/dev/null || true
+    else
+      echo "RESTART_PROCESS_TERMINATED"
+    fi
+  fi
+  exit "$GATE_RC"
+fi
 start_and_wait_for_services

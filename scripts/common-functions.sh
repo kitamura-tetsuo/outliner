@@ -178,6 +178,8 @@ _deadline_expired() {
 # bound is enforced with a watchdog that escalates TERM to KILL, so no
 # observation can hold the gate indefinitely. E2E_FORCE_NO_TIMEOUT=1 forces
 # the watchdog path (test hook for images without timeout support).
+# E2E_BOUND_WITHOUT_GRACE=1 uses KILL at the limit for recovery commands:
+# their forced termination must fit inside the remaining startup budget.
 _run_bounded() {
   local limit="$1"
   shift
@@ -185,12 +187,23 @@ _run_bounded() {
     return 124
   fi
   if [ "${E2E_FORCE_NO_TIMEOUT:-0}" != "1" ] && command -v timeout >/dev/null 2>&1; then
-    timeout --kill-after=2 "$limit" "$@"
+    if [ "${E2E_BOUND_WITHOUT_GRACE:-0}" = "1" ]; then
+      timeout --signal=KILL "$limit" "$@"
+    else
+      timeout --kill-after=2 "$limit" "$@"
+    fi
     return
   fi
   "$@" &
   local _pid=$!
-  ( sleep "$limit"; kill -TERM "$_pid" 2>/dev/null || true; sleep 2; kill -KILL "$_pid" 2>/dev/null || true ) &
+  (
+    sleep "$limit"
+    if [ "${E2E_BOUND_WITHOUT_GRACE:-0}" != "1" ]; then
+      kill -TERM "$_pid" 2>/dev/null || true
+      sleep 2
+    fi
+    kill -KILL "$_pid" 2>/dev/null || true
+  ) &
   local _watch=$!
   wait "$_pid"
   local _rc=$?
@@ -943,7 +956,9 @@ start_and_wait_for_services() {
       _fail_deadline
     fi
     echo "${_reason} Restarting ${_svc} once..."
-    if _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 restart "$_svc"; then
+    # Recovery gets no extra termination grace: even with one second left,
+    # a TERM-ignoring PM2 command must be killed within that second.
+    if E2E_BOUND_WITHOUT_GRACE=1 _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 restart "$_svc"; then
       echo "Restarted ${_svc} (automatic recovery); continuing readiness evaluation within the same ${MAX_WAIT_SECONDS}s deadline."
     else
       echo "Warning: pm2 restart ${_svc} failed; startup cannot succeed in this attempt."
@@ -1090,7 +1105,7 @@ start_and_wait_for_services() {
       missing_services+=("Readiness deadline exceeded before Functions health check")
     fi
 
-    # Check Yjs WebSocket (if port is open)
+    # Check Yjs WebSocket; a listener lost since the port sweep is unready.
     if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
       if port_is_open "${TEST_YJS_PORT}" "$deadline"; then
          local _yjs_probe
@@ -1111,6 +1126,10 @@ start_and_wait_for_services() {
               _record_owner_missing "yjs" "Yjs WebSocket"
             fi
          fi
+      else
+        all_ready=false
+        missing_services+=("Yjs WebSocket (port ${TEST_YJS_PORT} unavailable)")
+        _record_owner_missing "yjs" "Yjs WebSocket (port ${TEST_YJS_PORT} unavailable)"
       fi
     else
       all_ready=false

@@ -7,5 +7,6 @@ status: implemented
 components:
 - scripts/common-functions.sh
 tests:
+- scripts/tests/env-e2e-recovery-fail-closed-a71c3e90.spec.ts
 - scripts/tests/env-e2e-service-readiness-deadline-9d4b7e1a.spec.ts
 - scripts/tests/env-e2e-service-recovery-6b0e8c42.spec.ts

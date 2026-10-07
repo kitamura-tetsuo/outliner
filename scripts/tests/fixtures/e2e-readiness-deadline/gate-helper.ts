@@ -32,7 +32,7 @@ interface GateResult {
 export async function runGate(
     mode: string,
     budget: number,
-    opts: { slowDelay?: number; stall?: number; pm2?: string; } = {},
+    opts: { slowDelay?: number; stall?: number; pm2?: string; noTimeout?: boolean; } = {},
 ): Promise<GateResult> {
     const [yjs, api, vite, fn, auth, fstore, host, store] = await Promise.all(
         Array.from({ length: 8 }, () => freePort()),
@@ -48,6 +48,7 @@ export async function runGate(
             GATE_SLOW_DELAY: String(opts.slowDelay ?? 0),
             GATE_STALL: opts.stall === undefined ? "" : String(opts.stall),
             GATE_PM2_BEHAVIOR: opts.pm2 ?? "ok",
+            E2E_FORCE_NO_TIMEOUT: opts.noTimeout ? "1" : "0",
             P_YJS: String(yjs),
             P_API: String(api),
             P_VITE: String(vite),
