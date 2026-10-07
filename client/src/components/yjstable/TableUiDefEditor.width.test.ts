@@ -441,4 +441,31 @@ describe("TableUiDefEditor width controls", () => {
         expect(getGridColumnWidth(grid, "title")).toBe(220);
         expect(readGridComponents(grid).labels["title"]).toBeUndefined();
     });
+    it("shows a header-resize preview as an explicitly unsaved, read-only value that never writes", async () => {
+        const { doc, grid } = makeGrid({ title: { widthPx: 180 } });
+        let updates = 0;
+        doc.on("update", () => updates++);
+        const { getByTestId, queryByTestId, rerender } = render(TableUiDefEditor, {
+            props: editorProps(grid, { widthPreview: { column: "title", width: 217 } }),
+        });
+        const input = getByTestId("yjs-table-width-title") as HTMLInputElement;
+        expect(input.value).toBe("217");
+        expect(input.readOnly).toBe(true);
+        expect(input.dataset.widthPreview).toBe("unsaved");
+        expect(getByTestId("yjs-table-width-preview-title").textContent).toContain("Unsaved preview");
+        // Other columns keep their committed display.
+        expect(queryByTestId("yjs-table-width-preview-id")).toBeNull();
+
+        // Enter/blur on the previewing control commit nothing.
+        await fireEvent.keyDown(input, { key: "Enter" });
+        await fireEvent.focusOut(input);
+        expect(updates).toBe(0);
+        expect(getGridColumnWidth(grid, "title")).toBe(180);
+
+        // Once the preview ends the control reflects committed shared state.
+        await rerender(editorProps(grid, { widthPreview: undefined }));
+        expect(input.value).toBe("180");
+        expect(input.readOnly).toBe(false);
+        expect(queryByTestId("yjs-table-width-preview-title")).toBeNull();
+    });
 });

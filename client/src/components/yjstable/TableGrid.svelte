@@ -20,6 +20,7 @@ import {
 } from "../../services/yjstable/tableDocs";
 import type { GridHandles } from "../../services/yjstable/gridDocs";
 import { isValidGridColumnWidth } from "../../services/yjstable/gridDocs";
+import { ColumnResizeGesture } from "../../services/yjstable/columnResize";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
@@ -92,6 +93,18 @@ interface Props {
     session: RelationResolver;
     /** Whether deleting a row requires confirmation (default false). */
     confirmRowDelete?: boolean;
+    /**
+     * Host surface restriction (outline read-only state). A read-only host
+     * offers no header resize handle; cell writes keep their SQL-derived
+     * eligibility either way.
+     */
+    isReadOnly?: boolean;
+    /**
+     * Receives this placement's transient header-resize preview (exact
+     * result-column name and candidate px), or undefined when no preview is
+     * shown. The preview is never saved state (issue #5459).
+     */
+    onColumnWidthPreview?: (preview: { column: string; width: number; } | undefined) => void;
 }
 
 let gridContainer: HTMLElement | undefined = $state();
@@ -116,6 +129,8 @@ let {
     loading = false,
     session,
     confirmRowDelete = false,
+    isReadOnly = false,
+    onColumnWidthPreview,
 }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
@@ -170,9 +185,79 @@ const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[
  * never write back (issue #5457 REQ-001/REQ-004).
  */
 function fixedWidthOf(column: string): number | undefined {
+    // An in-progress header resize previews its candidate on this placement
+    // only; it is local state, never written until release (issue #5459).
+    if (resizePreview?.column === column) return resizePreview.width;
     const width = columnWidths[column];
     return isValidGridColumnWidth(width) ? width : undefined;
 }
+
+// --- Header resize (issue #5459) -------------------------------------------
+
+/**
+ * The latest header-resize gesture. Kept after it ends so a new gesture or
+ * unmount can dispose any residual release/click guard it still owns.
+ */
+let resizeGesture: ColumnResizeGesture | undefined;
+/** Column whose resize handle currently owns the pointer. */
+let resizingColumn = $state<string | undefined>();
+/** Local, unsaved preview of the active gesture's candidate width. */
+let resizePreview = $state<{ column: string; width: number; } | undefined>();
+/**
+ * Scroll extent held while a gesture runs on an overflowing Grid. Without it,
+ * shrinking a column while scrolled to the end makes the browser clamp the
+ * scroll offset, which (in content coordinates) reads as further pointer
+ * movement and would shrink the column again.
+ */
+let resizeScrollExtent = $state<number | undefined>();
+
+/** Resizing needs a Grid to persist into and an editable host surface. */
+const canResizeColumns = $derived(grid !== undefined && !isReadOnly);
+
+function startColumnResize(event: PointerEvent, column: string): void {
+    if (!grid || !gridContainer || isReadOnly) return;
+    if (!event.isPrimary || event.button !== 0) return;
+    const handle = event.currentTarget as HTMLElement;
+    const header = handle.closest("th");
+    if (!header) return;
+    // The handle owns this pointer: no text selection, focus move, native
+    // drag, compatibility mouse events or host outline gesture.
+    event.preventDefault();
+    event.stopPropagation();
+    resizeGesture?.dispose();
+    const scroller = gridContainer;
+    const overflowing = scroller.scrollWidth > scroller.clientWidth;
+    resizingColumn = column;
+    resizeScrollExtent = overflowing ? scroller.scrollWidth : undefined;
+    const gesture = new ColumnResizeGesture({
+        grid,
+        column,
+        handle,
+        scroller,
+        startWidth: header.getBoundingClientRect().width,
+        canContinue: () => !isReadOnly && displayColumns.includes(column),
+        onPreview: (width) => {
+            resizePreview = width === undefined ? undefined : { column, width };
+            onColumnWidthPreview?.(resizePreview);
+        },
+        onEnd: () => {
+            resizingColumn = undefined;
+            resizeScrollExtent = undefined;
+        },
+    }, event);
+    resizeGesture = gesture;
+}
+
+// Prop-driven invalidation: the target stopping being rendered (hidden,
+// removed from the result) or the host turning read-only ends the gesture
+// without a write. Yjs-observed invalidations live in the gesture itself.
+$effect(() => {
+    void displayColumns;
+    void isReadOnly;
+    untrack(() => resizeGesture?.revalidate());
+});
+
+onDestroy(() => resizeGesture?.dispose());
 
 /** Whether any visible data column pins a fixed width. */
 const hasFixedColumns = $derived(displayColumns.some(column => fixedWidthOf(column) !== undefined));
@@ -983,6 +1068,7 @@ function handleCancelDelete() {
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
     data-foreign-editor="grid"
+    data-column-resizing={resizingColumn !== undefined ? "true" : undefined}
     bind:this={gridContainer}
 >
     {#if loading}
@@ -1042,7 +1128,7 @@ function handleCancelDelete() {
                             class:header-selected={columnSelected(column)}
                             class:col-fixed={fixedWidthOf(column) !== undefined}
                             onclick={(event) => {
-                                if (!(event.target as HTMLElement).closest(".column-drag-handle")) {
+                                if (!(event.target as HTMLElement).closest(".column-drag-handle, .column-resize-handle")) {
                                     selectColumnHeader(event, column);
                                 }
                             }}
@@ -1130,6 +1216,25 @@ function handleCancelDelete() {
                                     </svg>
                                 </div>
                             </div>
+                            {#if canResizeColumns}
+                                <!-- Dedicated resize boundary: separate gesture ownership from
+                                     the reorder handle; numeric settings are the keyboard
+                                     alternative (issue #5459). -->
+                                <div
+                                    class="column-resize-handle"
+                                    class:resizing={resizingColumn === column}
+                                    role="separator"
+                                    aria-orientation="vertical"
+                                    aria-label={`Resize ${column}`}
+                                    data-testid="yjs-table-column-resize-handle"
+                                    data-col={column}
+                                    onpointerdown={(event) => startColumnResize(event, column)}
+                                    ondragstart={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                    }}
+                                ></div>
+                            {/if}
                         </th>
                     {/each}
                     {#if editability.editable && editability.rowIdentity === "id"}
@@ -1248,6 +1353,9 @@ function handleCancelDelete() {
                 {/each}
             </tbody>
         </table>
+        {#if resizeScrollExtent !== undefined}
+            <div class="resize-scroll-extent" aria-hidden="true" style:width={`${resizeScrollExtent}px`}></div>
+        {/if}
         {#if touchSelectionMode}
             <div class="touch-selection-toolbar" role="toolbar" aria-label="Grid selection actions">
                 <button
@@ -1531,6 +1639,48 @@ th.drop-target-right {
 
 .th-label {
     flex-grow: 1;
+}
+
+th[role="columnheader"] {
+    position: relative;
+}
+
+/*
+ * Header resize boundary (issue #5459). It sits inside the header's right
+ * edge so fixed headers' overflow clipping keeps it reachable, and claims
+ * touch/pen pointers outright (`touch-action: none`) so a resize is never
+ * turned into a scroll; swipes elsewhere in the Grid keep scrolling.
+ */
+.column-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 7px;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+    z-index: 2;
+}
+
+.column-resize-handle:hover,
+.column-resize-handle.resizing {
+    background: rgb(37 99 235 / 45%);
+}
+
+@media (pointer: coarse) {
+    .column-resize-handle {
+        width: 14px;
+    }
+}
+
+.yjs-table-grid[data-column-resizing="true"] {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.resize-scroll-extent {
+    height: 0;
 }
 
 .column-drag-handle {

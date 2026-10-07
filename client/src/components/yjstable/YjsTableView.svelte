@@ -77,7 +77,8 @@ interface Props {
     sourceTableHref?: string;
     /**
      * Host surface restriction (outline read-only state). Forwarded to the
-     * UI Definition editor's width controls; it is not project authorization
+     * UI Definition editor's width controls and the Grid's header resize
+     * handles; it is not project authorization
      * and never gates cell writes, which keep their SQL-derived eligibility.
      */
     isReadOnly?: boolean;
@@ -97,6 +98,9 @@ let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
 let hiddenColumns = $state<Record<string, boolean>>({});
 let columnWidths = $state<Record<string, number>>({});
+// This placement's transient header-resize preview (issue #5459). Local to
+// this view: other placements and clients keep showing the committed width.
+let widthPreview = $state<{ column: string; width: number; } | undefined>(undefined);
 let showAddRowButton = $state(true);
 let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
@@ -360,6 +364,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                 {showAddRowButton}
                 {confirmRowDelete}
                 {columnWidths}
+                {widthPreview}
                 {isReadOnly}
             />
         </section>
@@ -404,6 +409,10 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {confirmRowDelete}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
+                    {isReadOnly}
+                    onColumnWidthPreview={(preview) => {
+                        widthPreview = preview;
+                    }}
                 />
             {:else}
                 <p class="loading">Loading table...</p>

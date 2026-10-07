@@ -1,19 +1,11 @@
 id: ENV-7f3a9c2e
 title: E2E startup retries a selectively stalled hosting emulator
-description: When every required E2E port except the Firebase Hosting emulator
-  port is open for a sustained period while the firebase-emulators process stays
-  online (the CI failure mode of PR #5453, where two shards burned the full
-  600s wait with zero specs executed), start_and_wait_for_services restarts the
-  firebase-emulators process once and keeps waiting within the same overall
-  deadline. The restart is safe before any test runs because the auth emulator
-  holds no test state yet. On timeout the script also prints the head of
-  logs/firebase-emulators.log so the emulator startup section is diagnosable
-  instead of being drowned by Functions health-check spam.
+description: 'When every required E2E port except the Firebase Hosting emulator port is open for a sustained period while the firebase-emulators process stays online (the CI failure mode of PR #5453, where two shards burned the full 600s wait with zero specs executed), start_and_wait_for_services restarts the firebase-emulators process once and keeps waiting within the same overall deadline. The restart is safe before any test runs because the auth emulator holds no test state yet. On timeout the script also prints the head of logs/firebase-emulators.log so the emulator startup section is diagnosable instead of being drowned by Functions health-check spam.'
 category: environment
 status: implemented
 components:
-- scripts/common-functions.sh
 - scripts/ci-e2e-start.sh
+- scripts/common-functions.sh
 tests:
 - scripts/tests/env-e2e-hosting-stall-restart-7f3a9c2e.spec.ts
 title-ja: E2E起動時に部分的に停滞したHostingエミュレータを再試行する
