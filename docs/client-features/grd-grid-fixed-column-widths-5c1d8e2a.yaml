@@ -5,14 +5,19 @@ description: Columns of a Grid with a saved width override render at their exact
 category: tables
 status: implemented
 acceptance:
+- A release commits at most one width through the shared width operation as one isolated Undo step; zero-net and equal-value gestures are no-ops and never convert an auto column to fixed
+- A resize gesture and its release click never select or reorder columns, change the Grid range selection or move the outline host
 - A saved finite integer width renders its header and every body cell at that CSS-pixel border-box width within layout-rounding tolerance
 - A table wider than its Grid container scrolls horizontally inside the Grid without widening the page or surrounding Layout spans
 - Automatic columns follow content and available space; intrinsic minimum widths may scroll inside the Grid in narrow containers without widening the page
 - Browser regressions measure overflowing text glyphs against effective ancestor clipping edges and verify neighboring contents remain exposed before and during editing
 - Clearing an override returns the column to automatic sizing without storing a replacement pixel value
+- Dragging a header boundary previews the candidate width (measured start width plus horizontal displacement in Grid content coordinates, rounded and clamped to 32..4096) on the initiating placement only, and the numeric control shows it as an unsaved preview; nothing is written until release
+- Escape, pointercancel, capture loss, window blur and unmount cancel without any saved-width update; an observed same-column width change, hiding/removal of the target, Grid replacement or a read-only host invalidate the gesture for good, while disjoint updates are preserved
 - Fixed columns never grow into spare container space nor shrink in narrow containers; only automatic data columns absorb surplus
 - Fixed-width rendering preserves each column's cell component and its SQL-derived write eligibility
 - Long unbreakable labels and values, padding, controls and focused inline editors never widen a fixed column nor paint over neighboring contents
+- On an editable Grid host every visible data-column header (including the final column and zero-row results) offers a right-edge resize handle for primary mouse, touch and pen pointers; utility columns, read-only hosts and raw Table views offer none
 - Rendering, reloading or resizing never writes presentation settings, mutates query/schema/records, creates a Grid, or adds persisted width state to a raw Table view
 - Setting or clearing a width preserves established row and reordered-column selections by exact record and result-column identity, without changing source data
 - Widths follow exact result-column names across reorder, relabel, hide and restore; hidden or query-absent names occupy no track while their saved widths stay dormant and reapply on return
@@ -26,12 +31,19 @@ tests:
 - client/e2e/tables/grd-grid-fixed-width-identity-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-fixed-width-layout-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-shared-width-render-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-drag-bounds-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-drag-cancel-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-drag-commit-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-drag-gestures-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-drag-invalidation-5c1d8e2a.spec.ts
+- client/e2e/tables/grd-grid-width-drag-peer-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-numeric-editor-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-numeric-peer-draft-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-numeric-readonly-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-numeric-spellings-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-peer-sync-5c1d8e2a.spec.ts
 - client/e2e/tables/grd-grid-width-selection-5c1d8e2a.spec.ts
+- client/src/components/yjstable/TableGrid.columnResize.test.ts
 - client/src/components/yjstable/TableGrid.columnWidths.test.ts
 - client/src/components/yjstable/TableUiDefEditor.width.test.ts
 - client/src/components/yjstable/YjsTableBlock.width.test.ts
