@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "../fixtures/grid-render-trace";
 import { addSourceRecord, createBlankGrid, readGridProjectState, setCellValue } from "../utils/crossProjectGridHelpers";
+import { expectNeighborUncovered, expectTextPaintClipped, expectWithin } from "../utils/gridPaintContainmentHelpers";
 import {
     commitWidthsProduction,
     expectFixedWidth,
@@ -29,15 +30,6 @@ const NARROW = [["title", 120], ["status", 80], ["due_date", 110]] as const;
 // stay inside a fixed column. This spec pins narrow widths over long labels,
 // values, select options and a date control, then asserts descendant positions
 // before and during editing, with stored data intact.
-async function expectWithin(inner: Locator, outer: Locator): Promise<void> {
-    const outerBox = await outer.boundingBox();
-    const innerBox = await inner.boundingBox();
-    expect(outerBox).not.toBeNull();
-    expect(innerBox).not.toBeNull();
-    expect(innerBox!.x).toBeGreaterThanOrEqual(outerBox!.x - 1);
-    expect(innerBox!.x + innerBox!.width).toBeLessThanOrEqual(outerBox!.x + outerBox!.width + 1);
-}
-
 function cellOf(page: Page, tag: string, column: string, row: number): Locator {
     return page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-grid")
         .locator(`${tag}[data-col="${column}"]`).nth(row);
@@ -99,6 +91,10 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
             el.scrollWidth > el.clientWidth + 1
         );
         expect(labelOverflow).toBe(true);
+        await expectTextPaintClipped(grid.locator('th[data-col="title"] .th-label'));
+        await expectTextPaintClipped(
+            grid.locator('td[data-col="title"] button.cell-value').filter({ hasText: LONG_WORD }),
+        );
         await expectWithin(
             grid.locator('th[data-col="title"] .th-label').first(),
             grid.locator('th[data-col="title"]').first(),
@@ -120,6 +116,7 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
         // Row order is unstable without ORDER BY, so assert the sentinel set.
         const noteTexts = await grid.locator('td[data-col="note"] button.cell-value').allTextContents();
         expect([...noteTexts].sort()).toEqual(["sentinel-one", "sentinel-two"]);
+        await expectNeighborUncovered(cellOf(page, "td", "note", 0));
 
         // Stored labels and values are unchanged by clipping.
         const state = await readGridProjectState(page);
@@ -143,6 +140,7 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
         const neighborBox = await grid.locator('td[data-col="status"]').first().boundingBox();
         const editorBox = await editor.boundingBox();
         expect(editorBox!.x + editorBox!.width).toBeLessThanOrEqual(neighborBox!.x + 1);
+        await expectNeighborUncovered(cellOf(page, "td", "status", 0));
         await page.keyboard.press("Escape");
         await expectFixedWidth(page, 0, "title", 120);
     });

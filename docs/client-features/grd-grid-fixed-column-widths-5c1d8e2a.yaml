@@ -12,6 +12,7 @@ acceptance:
 - Fixed columns never grow into spare container space nor shrink in narrow containers; only automatic data columns absorb surplus
 - Fixed-width rendering preserves each column's cell component and its SQL-derived write eligibility
 - Long unbreakable labels and values, padding, controls and focused inline editors never widen a fixed column nor paint over neighboring contents
+- Browser regressions measure overflowing text glyphs against effective ancestor clipping edges and verify neighboring contents remain exposed before and during editing
 - Rendering, reloading or resizing never writes presentation settings, mutates query/schema/records, creates a Grid, or adds persisted width state to a raw Table view
 - Widths follow exact result-column names across reorder, relabel, hide and restore; hidden or query-absent names occupy no track while their saved widths stay dormant and reapply on return
 - With every data column fixed, surplus space stays outside the tracks instead of stretching fixed or utility columns
