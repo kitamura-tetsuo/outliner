@@ -7,6 +7,11 @@
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import {
+    GRID_COLUMN_WIDTH_MAX,
+    GRID_COLUMN_WIDTH_MIN,
+    getGridRegistry,
+    isValidGridColumnWidth,
+    setGridColumnWidth,
     type GridHandles,
     setGridComponentField,
     setGridQuery,
@@ -32,9 +37,22 @@ interface Props {
     columnOrder: string[];
     showAddRowButton?: boolean;
     confirmRowDelete?: boolean;
+    /**
+     * Saved per-column width overrides from the Grid Definition mirror, keyed
+     * by exact result-column name. Only finite integers 32..4096 display as a
+     * number; anything absent or malformed displays as a blank auto control.
+     */
+    columnWidths?: Record<string, number>;
+    /**
+     * Host surface restriction (outline read-only state). Presentation-width
+     * editing is a surface operation, so a read-only host disables the width
+     * controls and discards pending drafts. This is not project authorization:
+     * an editable host's read-only SQL result still allows width editing.
+     */
+    isReadOnly?: boolean;
 }
 
-let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder, showAddRowButton = true, confirmRowDelete = false }: Props = $props();
+let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder, showAddRowButton = true, confirmRowDelete = false, columnWidths = {}, isReadOnly = false }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
@@ -70,6 +88,120 @@ function setComponentType(column: string, type: string) {
 
 function setColumnShown(column: string, shown: boolean) {
     setGridComponentField(grid, column, "hidden", shown ? undefined : true);
+}
+
+// --- Saved width overrides: local drafts with explicit commit ---------
+
+// A pending numeric draft for one exact result-column name. `base` is the
+// shared display the draft started from, so an observed shared change of
+// this same column can discard the stale draft instead of overwriting it.
+interface WidthDraft {
+    text: string;
+    base: string;
+    error?: string;
+    notice?: string;
+}
+
+let widthDrafts = $state<Record<string, WidthDraft>>({});
+
+/** Committed display for a column: the valid saved width, else blank (auto). */
+function sharedWidthText(column: string): string {
+    const saved = columnWidths[column];
+    return isValidGridColumnWidth(saved) ? String(saved) : "";
+}
+
+/** Whether the captured Grid entry is still the registry's live entry. */
+function isLiveGridEntry(): boolean {
+    try {
+        return getGridRegistry(grid.projectDoc).get(grid.gridId) === grid.entry;
+    } catch {
+        return false;
+    }
+}
+
+function widthErrorText(text: string, badInput: boolean): string | undefined {
+    if (badInput) return `Enter a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}, or clear to use automatic width.`;
+    if (!/^\+?\d+$/.test(text)) return `Enter a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}, or clear to use automatic width.`;
+    const value = Number(text);
+    if (!Number.isSafeInteger(value) || value < GRID_COLUMN_WIDTH_MIN || value > GRID_COLUMN_WIDTH_MAX) {
+        return `Width must be a whole number in ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}.`;
+    }
+    return undefined;
+}
+
+// The parent view mirrors the shared definition through `columnWidths`, so a
+// change of the same column's saved width while a draft is pending is an
+// observed external update (another placement/client, Undo/Redo): discard
+// the stale draft and show the new shared value without writing anything
+// back. A read-only transition, a removed column, or a replaced Grid entry
+// discards drafts the same way. Disjoint updates (another column, labels,
+// visibility) leave pending drafts alone. This is the one place a small
+// effect is unavoidable: prop-driven invalidation of local draft state has
+// no event-handler equivalent.
+$effect(() => {
+    const shared = columnWidths;
+    const readOnly = isReadOnly;
+    const liveColumns = new Set(resultColumns);
+    const live = isLiveGridEntry();
+    for (const column of Object.keys(widthDrafts)) {
+        const draft = widthDrafts[column];
+        if (!draft) continue;
+        if (readOnly || !live || !liveColumns.has(column)) {
+            delete widthDrafts[column];
+            continue;
+        }
+        const saved = shared[column];
+        const current = isValidGridColumnWidth(saved) ? String(saved) : "";
+        if (current !== draft.base) {
+            widthDrafts[column] = {
+                text: current,
+                base: current,
+                notice: "Width changed elsewhere; your draft was discarded.",
+            };
+        }
+    }
+});
+
+/** Commit one column's pending text (Enter or focus leaving the control). */
+function commitWidth(column: string, input: HTMLInputElement) {
+    const draft = widthDrafts[column];
+    const text = (draft?.text ?? input.value).trim();
+    const badInput = input.validity?.badInput ?? false;
+    if (isReadOnly || !isLiveGridEntry() || !resultColumns.includes(column)) {
+        delete widthDrafts[column];
+        return;
+    }
+    if (text === "" && !badInput) {
+        try {
+            // A genuinely empty input resets to auto. The shared writer's
+            // no-op contract keeps an already-auto column effect-free.
+            setGridColumnWidth(grid, column, undefined);
+        } catch (error) {
+            widthDrafts[column] = { text: draft?.text ?? "", base: draft?.base ?? sharedWidthText(column), error: String(error) };
+            return;
+        }
+        delete widthDrafts[column];
+        return;
+    }
+    const problem = widthErrorText(text, badInput);
+    if (problem !== undefined) {
+        widthDrafts[column] = { text: draft?.text ?? input.value, base: draft?.base ?? sharedWidthText(column), error: problem };
+        return;
+    }
+    try {
+        // The shared width operation: one isolated Grid Undo step, or a
+        // canonical no-op with no Yjs update or history entry.
+        setGridColumnWidth(grid, column, Number(text));
+    } catch (error) {
+        widthDrafts[column] = { text: draft?.text ?? input.value, base: draft?.base ?? sharedWidthText(column), error: String(error) };
+        return;
+    }
+    delete widthDrafts[column];
+}
+
+/** Discard one column's pending draft and restore the saved display. */
+function discardWidthDraft(column: string) {
+    delete widthDrafts[column];
 }
 </script>
 
@@ -209,6 +341,66 @@ function setColumnShown(column: string, shown: boolean) {
                         />
                         Shown
                     </label>
+                    <label class="width-setting">
+                        Width (px)
+                        <input
+                            type="number"
+                            class="column-width"
+                            min={GRID_COLUMN_WIDTH_MIN}
+                            max={GRID_COLUMN_WIDTH_MAX}
+                            step="1"
+                            inputmode="numeric"
+                            placeholder="auto"
+                            title={(widthDrafts[column.name]?.text ?? sharedWidthText(column.name)) === ""
+                                ? `Automatic width for ${column.name}`
+                                : `Saved width for ${column.name} in CSS pixels`}
+                            aria-label={`Width (px) for ${column.name}`}
+                            aria-invalid={widthDrafts[column.name]?.error !== undefined}
+                            data-testid={`yjs-table-width-${column.name}`}
+                            value={widthDrafts[column.name]?.text ?? sharedWidthText(column.name)}
+                            disabled={isReadOnly}
+                            oninput={(e) => {
+                                const input = e.currentTarget as HTMLInputElement;
+                                widthDrafts[column.name] = {
+                                    text: input.value,
+                                    base: widthDrafts[column.name]?.base ?? sharedWidthText(column.name),
+                                };
+                            }}
+                            onkeydown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    commitWidth(column.name, e.currentTarget as HTMLInputElement);
+                                } else if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    discardWidthDraft(column.name);
+                                }
+                            }}
+                            onfocusout={(e) => {
+                                if (widthDrafts[column.name] !== undefined) {
+                                    commitWidth(column.name, e.currentTarget as HTMLInputElement);
+                                }
+                            }}
+                            ondragstart={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                        />
+                    </label>
+                    {#if (widthDrafts[column.name]?.text ?? sharedWidthText(column.name)) === ""}
+                        <span class="width-auto" aria-hidden="true">auto</span>
+                    {/if}
+                    {#if widthDrafts[column.name]?.error}
+                        <p class="width-error" role="alert" data-testid={`yjs-table-width-error-${column.name}`}>
+                            {widthDrafts[column.name]?.error}
+                        </p>
+                    {/if}
+                    {#if widthDrafts[column.name]?.notice}
+                        <p class="width-notice" role="status" data-testid={`yjs-table-width-notice-${column.name}`}>
+                            {widthDrafts[column.name]?.notice}
+                        </p>
+                    {/if}
                     {#if column.schemaColumn?.checkOptions && column.schemaColumn.checkOptions.length > 0}
                         <span class="check-options" title="Options from CHECK constraint">
                             [{column.schemaColumn.checkOptions.join(", ")}]
@@ -296,6 +488,40 @@ select {
     align-items: center;
     gap: 4px;
     white-space: nowrap;
+}
+
+.width-setting {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.column-width {
+    width: 5.5rem;
+}
+
+.column-width[aria-invalid="true"] {
+    border-color: #dc2626;
+}
+
+.width-auto {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.width-error {
+    font-size: 0.75rem;
+    color: #dc2626;
+    margin: 0;
+}
+
+.width-notice {
+    font-size: 0.75rem;
+    color: #92400e;
+    margin: 0;
 }
 
 .visibility-setting input {

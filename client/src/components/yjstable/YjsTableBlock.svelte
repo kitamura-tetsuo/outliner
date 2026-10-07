@@ -46,9 +46,15 @@ interface ItemLike {
 
 interface Props {
     item: ItemLike;
+    /**
+     * Host surface restriction (outline read-only state). Forwarded to the
+     * Grid view's width controls only; cell writes keep their SQL-derived
+     * eligibility.
+     */
+    isReadOnly?: boolean;
 }
 
-let { item }: Props = $props();
+let { item, isReadOnly = false }: Props = $props();
 
 let gridId = $state<string | undefined>();
 // Bumped by Yjs observers so the $derived lookups below re-evaluate.
@@ -217,6 +223,7 @@ function createFromPreset() {
                 sqlName={tableSqlName}
                 sourceProjectId={tableSourceProjectId}
                 {sourceTableHref}
+                {isReadOnly}
             />
         {/key}
     {:else if grid && !handles}

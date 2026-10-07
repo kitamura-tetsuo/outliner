@@ -53,7 +53,7 @@ const selectionSurfaceAttributes = $derived({ [VISUAL_NODE_SELECTION_SURFACE_ATT
     {#await import("./yjstable/YjsTableBlock.svelte") then { default: YjsTableBlock }}
         <div class="component-wrapper" class:outline-row={outlineRow} {...rootAttributes}>
             {@render selectionSurface()}
-            <YjsTableBlock item={item} />
+            <YjsTableBlock item={item} {isReadOnly} />
         </div>
     {/await}
 {:else if componentType === "calendar"}
