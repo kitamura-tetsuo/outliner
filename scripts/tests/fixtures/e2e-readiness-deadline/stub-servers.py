@@ -6,6 +6,10 @@ port under specific modes:
 - hang-fn: the Functions port accepts the connection and then never
   responds, modelling the wedged endpoint that used to hold the startup
   gate inside one readiness iteration.
+- partial-fn: the Functions port sends HTTP 200 headers declaring a
+  nonzero Content-Length and then never sends the promised body, modelling
+  a stalled transfer where curl already knows the status code when its
+  body read times out.
 - slow-fn: the Functions port answers 500 until READY_AT (epoch seconds),
   then answers 200, modelling slow-but-recoverable startup.
 
@@ -13,6 +17,7 @@ Usage:
     stub-servers.py <mode> <fn_port> <ready_at_epoch> <port>...
 """
 
+import socket
 import sys
 import threading
 import time
@@ -54,7 +59,42 @@ def make_handler(is_fn):
     return Handler
 
 
+def serve_partial(port):
+    """Send HTTP 200 headers with a declared body, then never send it."""
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(("127.0.0.1", port))
+    srv.listen(200)
+
+    def handle(conn):
+        try:
+            conn.settimeout(10)
+            conn.recv(4096)
+            conn.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Length: 1024\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+            )
+            time.sleep(300)
+        except OSError:
+            pass
+        finally:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+    while True:
+        conn, _ = srv.accept()
+        threading.Thread(target=handle, args=(conn,), daemon=True).start()
+
+
 for port in PORTS:
+    if port == FN_PORT and MODE == "partial-fn":
+        thread = threading.Thread(target=serve_partial, args=(port,), daemon=True)
+        thread.start()
+        continue
     server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(port == FN_PORT))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

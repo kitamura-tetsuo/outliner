@@ -3,20 +3,29 @@
 # start_and_wait_for_services gate (scripts/common-functions.sh) with
 # controlled process/endpoint behavior.
 #
-# Required env: REPO_ROOT, GATE_MODE (instant|hang-fn|slow-fn|hang-restart|hang-start),
+# Required env: REPO_ROOT, GATE_MODE (instant|hang-fn|partial-fn|slow-fn|hang-restart|hang-start),
 # GATE_BUDGET (seconds), GATE_SLOW_DELAY (seconds, slow-fn only),
 # GATE_STALL (seconds, hosting-stall threshold override; default 120),
+# GATE_PM2_BEHAVIOR (ok|jlist-fail|jlist-malformed|jlist-missing|jlist-trap-term; default ok),
 # P_YJS P_API P_VITE P_FN P_AUTH P_FS P_HOST P_STORE (test ports).
 #
 # Modes:
 # - instant: every stub port answers 200 immediately.
 # - hang-fn: Functions port accepts the connection and never responds.
+# - partial-fn: Functions port sends HTTP 200 headers with a declared body
+#   and then never sends it (stalled transfer with a known status code).
 # - slow-fn: Functions port answers 500 until GATE_SLOW_DELAY, then 200.
 # - hang-restart: every port except hosting answers 200, hosting never
 #   binds, and `pm2 restart` hangs (sleep past budget) to prove the
 #   recovery branch cannot hold the gate past the deadline.
 # - hang-start: `pm2 start` hangs (sleep past budget) to prove supervision
 #   start itself is inside the wall-clock budget.
+#
+# PM2 behaviors (independent of GATE_MODE; endpoints stay healthy):
+# - jlist-fail: `pm2 jlist` exits nonzero.
+# - jlist-malformed: `pm2 jlist` prints non-JSON.
+# - jlist-missing: `pm2 jlist` omits a required process.
+# - jlist-trap-term: `pm2 jlist` ignores SIGTERM and never completes.
 #
 # Exits with the gate's own status: 0 when every stub service becomes
 # ready within the budget, nonzero when the deadline expires.
@@ -38,11 +47,33 @@ mkdir -p "$TMP_ROOT/bin" "$TMP_ROOT/root/logs" "$TMP_ROOT/root/server/scripts"
 # Fake pm2: every managed service stays online, diagnostics print nothing.
 # In hang-restart mode `restart` sleeps past the budget; in hang-start mode
 # `start` sleeps past the budget. Any other invocation exits 0 instantly.
+# GATE_PM2_BEHAVIOR independently controls `jlist` to prove unavailable
+# process-state evidence can never satisfy the gate (issue #5486, REQ-003).
 cat > "$TMP_ROOT/bin/pm2" <<EOF
 #!/bin/bash
 MODE="${GATE_MODE:-instant}"
 BUDGET="${GATE_BUDGET:-15}"
+PM2_BEHAVIOR="${GATE_PM2_BEHAVIOR:-ok}"
 if [ "\${1:-}" = "jlist" ]; then
+  case "\$PM2_BEHAVIOR" in
+    jlist-fail)
+      echo "fake pm2: jlist unavailable" >&2
+      exit 1
+      ;;
+    jlist-malformed)
+      printf '%s' 'not-json{{{'
+      exit 0
+      ;;
+    jlist-missing)
+      printf '%s' '[{"name":"yjs-server","pm2_env":{"status":"online"}},{"name":"firebase-emulators","pm2_env":{"status":"online"}}]'
+      exit 0
+      ;;
+    jlist-trap-term)
+      trap '' TERM
+      sleep \$((BUDGET + 30))
+      exit 0
+      ;;
+  esac
   printf '%s' '[{"name":"yjs-server","pm2_env":{"status":"online"}},{"name":"vite-server","pm2_env":{"status":"online"}},{"name":"firebase-emulators","pm2_env":{"status":"online"}}]'
   exit 0
 fi

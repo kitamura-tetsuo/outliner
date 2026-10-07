@@ -147,6 +147,10 @@ _readiness_remaining() {
 # at most E2E_PROBE_TIMEOUT_SECONDS so a hung endpoint cannot overrun it.
 _probe_timeout() {
   local deadline="$1"
+  if [ "$deadline" -le 0 ]; then
+    echo "${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+    return
+  fi
   local remaining
   remaining=$(_readiness_remaining "$deadline")
   if [ "$remaining" -lt 1 ]; then
@@ -158,17 +162,41 @@ _probe_timeout() {
   fi
 }
 
-# Run "$@" bounded by $1 seconds. Prefers GNU timeout; without it the
-# command runs directly (the curl --max-time flags still bound HTTP probes
-# on minimal images).
+# True when the wall-clock timestamp $1 (seconds since epoch) has reached
+# the readiness deadline. Every observation consults this first so an
+# already-expired phase fails immediately instead of consuming another
+# probe interval past the budget (issue #5486).
+_deadline_expired() {
+  [ "$(date +%s)" -ge "$1" ]
+}
+
+# Run "$@" bounded by $1 seconds (issue #5486, REQ-002). Prefers GNU timeout
+# with a forced kill shortly after the limit so a command that ignores
+# SIGTERM still returns. A non-positive limit means the budget is already
+# exhausted: fail immediately without running the command (a zero duration
+# would mean "no limit" to GNU timeout). Without GNU timeout the same hard
+# bound is enforced with a watchdog that escalates TERM to KILL, so no
+# observation can hold the gate indefinitely. E2E_FORCE_NO_TIMEOUT=1 forces
+# the watchdog path (test hook for images without timeout support).
 _run_bounded() {
   local limit="$1"
   shift
-  if command -v timeout >/dev/null 2>&1; then
-    timeout "$limit" "$@"
-  else
-    "$@"
+  if ! [[ "$limit" =~ ^[0-9]+$ ]] || [ "$limit" -le 0 ]; then
+    return 124
   fi
+  if [ "${E2E_FORCE_NO_TIMEOUT:-0}" != "1" ] && command -v timeout >/dev/null 2>&1; then
+    timeout --kill-after=2 "$limit" "$@"
+    return
+  fi
+  "$@" &
+  local _pid=$!
+  ( sleep "$limit"; kill -TERM "$_pid" 2>/dev/null || true; sleep 2; kill -KILL "$_pid" 2>/dev/null || true ) &
+  local _watch=$!
+  wait "$_pid"
+  local _rc=$?
+  kill "$_watch" 2>/dev/null || true
+  wait "$_watch" 2>/dev/null || true
+  return "$_rc"
 }
 
 # Quick check: is a port open without waiting (no dependency on nc).
@@ -179,6 +207,11 @@ port_is_open() {
   local deadline="${2:-0}"
   local probe_timeout="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
   if [ "$deadline" -gt 0 ]; then
+    # Already past the deadline: report unready at once instead of spending
+    # another probe interval (which would carry the gate past its budget).
+    if _deadline_expired "$deadline"; then
+      return 1
+    fi
     probe_timeout=$(_probe_timeout "$deadline")
   fi
   if _run_bounded "$probe_timeout" nc -w 2 -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
@@ -187,7 +220,9 @@ port_is_open() {
   if _run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
     return 0
   fi
-  if command -v lsof >/dev/null 2>&1 && lsof -i ":${port}" >/dev/null 2>&1; then
+  # The lsof fallback is an observation like the others: it runs inside the
+  # same hard bound so a wedged lsof cannot hold the gate (issue #5486).
+  if command -v lsof >/dev/null 2>&1 && _run_bounded "$probe_timeout" lsof -i ":${port}" >/dev/null 2>&1; then
     return 0
   fi
   return 1
@@ -698,10 +733,14 @@ start_and_wait_for_services() {
   if ! _run_bounded "$MAX_WAIT_SECONDS" pm2 start "${ROOT_DIR}/ecosystem.config.cjs"; then
     echo "Failed to start PM2-managed services (pm2 start did not complete within ${MAX_WAIT_SECONDS}s)."
     echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-PM2 supervision start (pm2 start unsuccessful)}"
-    echo "State of services:"
-    _run_bounded 10 pm2 list || true
-    echo "--- PM2 Logs (tail) ---"
-    _run_bounded 10 pm2 logs --lines 50 --nostream || true
+    if _deadline_expired "$DEADLINE"; then
+      echo "Post-deadline process diagnostics skipped: the single ${MAX_WAIT_SECONDS}s wall-clock budget is already exhausted."
+    else
+      echo "State of services:"
+      _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 list || true
+      echo "--- PM2 Logs (tail) ---"
+      _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 logs --lines 50 --nostream || true
+    fi
     exit 1
   fi
 
@@ -709,27 +748,50 @@ start_and_wait_for_services() {
   echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
 
   _check_pm2_status() {
-    # Check if key PM2 processes are running
-    # Returns 0 if all good, 1 if any failed.
-    # Bounded so a wedged pm2 daemon cannot hold the gate past DEADLINE;
-    # an unobservable daemon is not treated as ready (callers fail later).
-    _run_bounded "$(_probe_timeout "$DEADLINE")" node -e '
+    # Check if key PM2 processes are running.
+    # Returns 0 only when every required process is positively observed in
+    # an acceptable state; any other outcome (pm2 failure, malformed JSON,
+    # missing process, bad state, timeout, or an already-expired deadline)
+    # returns 1 so unavailable process-state evidence can never satisfy the
+    # gate (issue #5486, REQ-003). Bounded so a wedged pm2 daemon cannot
+    # hold the gate past DEADLINE.
+    if _deadline_expired "$DEADLINE"; then
+      return 1
+    fi
+    local _pm2_probe
+    _pm2_probe=$(_probe_timeout "$DEADLINE")
+    PM2_JLIST_TIMEOUT_MS=$((_pm2_probe * 1000)) _run_bounded "$_pm2_probe" node -e '
       try {
         const exec = require("child_process").execSync;
-        const list = JSON.parse(exec("pm2 jlist", { timeout: 15000 }).toString());
-        const apps = ["yjs-server", "vite-server", "firebase-emulators"];
-        const failed = list.filter(p => apps.includes(p.name) &&
-                                     p.pm2_env.status !== "online" &&
-                                     p.pm2_env.status !== "launching");
-        if (failed.length > 0) {
-          console.log("Error: One or more PM2 services are not running:");
-          failed.forEach(p => console.log(`- ${p.name}: ${p.pm2_env.status}`));
+        const ms = parseInt(process.env.PM2_JLIST_TIMEOUT_MS || "4000", 10);
+        const list = JSON.parse(exec("pm2 jlist", { timeout: ms }).toString());
+        if (!Array.isArray(list)) {
+          console.log("Error: pm2 jlist did not return a process list");
           process.exit(1);
         }
+        const apps = ["yjs-server", "vite-server", "firebase-emulators"];
+        const byName = new Map();
+        for (const p of list) {
+          if (p && typeof p.name === "string") byName.set(p.name, p);
+        }
+        let failed = false;
+        for (const name of apps) {
+          const p = byName.get(name);
+          if (!p) {
+            console.log(`Error: required PM2 process missing: ${name}`);
+            failed = true;
+          } else {
+            const st = p.pm2_env && p.pm2_env.status;
+            if (st !== "online" && st !== "launching") {
+              console.log(`Error: PM2 service not running: ${name}: ${st}`);
+              failed = true;
+            }
+          }
+        }
+        if (failed) process.exit(1);
       } catch (e) {
-        console.error("Failed to check PM2 status:", e.message);
-        // If we cant check PM2, we process to port check assuming it might be fine or we fail later
-        // But if pm2 command failed, likely something is wrong.
+        console.error("Failed to check PM2 status:", e && e.message);
+        process.exit(1);
       }
     '
   }
@@ -756,15 +818,18 @@ start_and_wait_for_services() {
   _is_service_ready() {
     local verbose="${1:-false}"
     local deadline="${2:-0}"
-    local probe_timeout="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
-    if [ "$deadline" -gt 0 ]; then
-      probe_timeout=$(_probe_timeout "$deadline")
-    fi
     local all_ready=true
     local missing_services=()
 
-    # Check all required ports
+    # Check all required ports. The deadline is re-checked before every
+    # probe and each probe timeout is recomputed from the time still left,
+    # so a long port list cannot accumulate stale per-probe budgets past it.
     for port in "${REQUIRED_PORTS[@]}"; do
+      if [ "$deadline" -gt 0 ] && _deadline_expired "$deadline"; then
+        all_ready=false
+        missing_services+=("Readiness deadline exceeded during port checks")
+        break
+      fi
       if ! port_is_open "${port}" "$deadline"; then
         all_ready=false
         missing_services+=("Port ${port}")
@@ -776,35 +841,57 @@ start_and_wait_for_services() {
     # We use direct URL because Hosting Emulator rewrite sometimes duplicates paths causing 404
     # Bounded: the health endpoint may accept the connection and then never
     # respond, which previously wedged the whole gate inside this iteration.
-    if port_is_open "${FIREBASE_FUNCTIONS_PORT}" "$deadline"; then
-       # Default project ID if not set
-       local PROJECT_ID="${FIREBASE_PROJECT_ID:-outliner-d57b0}"
-       local FUNC_URL="http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/health"
+    # The curl exit status is decisive: curl can still print a 200 status
+    # code captured before a body-transfer timeout, so a timed-out health
+    # observation must never count as ready (issue #5486, REQ-003).
+    if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+      if port_is_open "${FIREBASE_FUNCTIONS_PORT}" "$deadline"; then
+         # Default project ID if not set
+         local PROJECT_ID="${FIREBASE_PROJECT_ID:-outliner-d57b0}"
+         local FUNC_URL="http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/health"
 
-       local HTTP_CODE
-       HTTP_CODE=$(_run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null || true)
-       if [ -z "$HTTP_CODE" ]; then
-         HTTP_CODE="000"
-       fi
-       if [ "$HTTP_CODE" != "200" ]; then
-         all_ready=false
-         local MSG="Firebase Function Health [Code: $HTTP_CODE] (URL: $FUNC_URL)"
-         if [ "$verbose" = "true" ]; then
-            # Capture start of body for debugging
-            local BODY
-            BODY=$(_run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "$FUNC_URL" 2>/dev/null | head -c 200 || true)
-            MSG="$MSG [Body: $BODY]"
+         local HTTP_CODE
+         local _fn_probe
+         _fn_probe=$(_probe_timeout "$deadline")
+         if HTTP_CODE=$(_run_bounded "$_fn_probe" curl -s --connect-timeout 2 --max-time "$_fn_probe" -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null); then
+           if [ -z "$HTTP_CODE" ]; then
+             HTTP_CODE="000"
+           fi
+         else
+           HTTP_CODE="000"
          fi
-         missing_services+=("$MSG")
-       fi
+         if [ "$HTTP_CODE" != "200" ]; then
+           all_ready=false
+           local MSG="Firebase Function Health [Code: $HTTP_CODE] (URL: $FUNC_URL)"
+           if [ "$verbose" = "true" ]; then
+              # Capture start of body for debugging
+              local BODY
+              local _body_probe
+              _body_probe=$(_probe_timeout "$deadline")
+              BODY=$(_run_bounded "$_body_probe" curl -s --connect-timeout 2 --max-time "$_body_probe" "$FUNC_URL" 2>/dev/null | head -c 200 || true)
+              MSG="$MSG [Body: $BODY]"
+           fi
+           missing_services+=("$MSG")
+         fi
+      fi
+    else
+      all_ready=false
+      missing_services+=("Readiness deadline exceeded before Functions health check")
     fi
 
     # Check Yjs WebSocket (if port is open)
-    if port_is_open "${TEST_YJS_PORT}" "$deadline"; then
-       if ! _run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! _run_bounded "$probe_timeout" nc -w 2 -z 127.0.0.1 "${TEST_YJS_PORT}" >/dev/null 2>&1; then
-          all_ready=false
-          missing_services+=("Yjs WebSocket")
-       fi
+    if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+      if port_is_open "${TEST_YJS_PORT}" "$deadline"; then
+         local _yjs_probe
+         _yjs_probe=$(_probe_timeout "$deadline")
+         if ! _run_bounded "$_yjs_probe" curl -s --connect-timeout 2 --max-time "$_yjs_probe" "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! _run_bounded "$(_probe_timeout "$deadline")" nc -w 2 -z 127.0.0.1 "${TEST_YJS_PORT}" >/dev/null 2>&1; then
+            all_ready=false
+            missing_services+=("Yjs WebSocket")
+         fi
+      fi
+    else
+      all_ready=false
+      missing_services+=("Readiness deadline exceeded before Yjs check")
     fi
 
     # A timeout, probe failure, or otherwise unobservable service is never
@@ -825,6 +912,29 @@ start_and_wait_for_services() {
     fi
   }
 
+  # Fail the startup phase once the single wall-clock budget is exhausted.
+  # Post-deadline subprocess diagnostics are skipped on purpose: they cannot
+  # complete inside an already-exhausted budget, and running them would carry
+  # the failure exit past the advertised deadline (issue #5486, REQ-001 and
+  # REQ-005). The still-unsatisfied checks were recorded by the last
+  # in-budget readiness evaluation (LAST_READINESS_MISSING); the Firebase
+  # emulator startup log is a local file read that cannot block, so it is
+  # still printed to preserve that diagnostic surface (REQ-004).
+  _fail_deadline() {
+    local _elapsed=$(( $(date +%s) - START_TIME ))
+    echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds (deadline exceeded at ${_elapsed}s elapsed)."
+    echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-unknown (no readiness evaluation completed)}"
+    echo "Post-deadline process diagnostics skipped: the single ${MAX_WAIT_SECONDS}s wall-clock budget is already exhausted."
+    # The tail above is usually drowned by Functions health checks; the
+    # emulator startup section (versions, emulator list, bind errors) is
+    # what diagnoses a missing emulator (issue #5453).
+    if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
+      echo "--- logs/firebase-emulators.log (head: emulator startup) ---"
+      head -n 80 "${ROOT_DIR}/logs/firebase-emulators.log" || true
+    fi
+    exit 1
+  }
+
   while true; do
     local CURRENT_TIME ELAPSED REMAINING
     CURRENT_TIME=$(date +%s)
@@ -832,26 +942,20 @@ start_and_wait_for_services() {
     REMAINING=$((DEADLINE - CURRENT_TIME))
 
     if [ "$REMAINING" -le 0 ]; then
-      echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds (deadline exceeded at ${ELAPSED}s elapsed)."
-      echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-unknown (no readiness evaluation completed)}"
-      echo "State of services:"
-      _run_bounded 10 pm2 list || true
-      echo "--- PM2 Logs (tail) ---"
-      _run_bounded 10 pm2 logs --lines 50 --nostream || true
-      # The tail above is usually drowned by Functions health checks; the
-      # emulator startup section (versions, emulator list, bind errors) is
-      # what diagnoses a missing emulator (issue #5453).
-      if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
-        echo "--- logs/firebase-emulators.log (head: emulator startup) ---"
-        head -n 80 "${ROOT_DIR}/logs/firebase-emulators.log" || true
-      fi
-      exit 1
+      _fail_deadline
     fi
 
     # 1. Check PM2 status - Fail fast if crashed
     if ! _check_pm2_status; then
+      # A failed observation at (or carried past) the deadline is a deadline
+      # failure, not a crash report with fresh diagnostic budgets.
+      if _deadline_expired "$DEADLINE"; then
+        _fail_deadline
+      fi
       echo "Detected crashed services via PM2. Exiting setup."
-      _run_bounded 10 pm2 logs --lines 50 --nostream || true
+      # Diagnostics are capped at the remaining budget so they cannot carry
+      # this failure exit past DEADLINE; local log tails cannot block.
+      _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 logs --lines 50 --nostream || true
       # Force log dumping specifically for server applications
       echo "[TAILING] Tailing last 50 lines for [all] processes (change the value with --lines option)"
       if [ -f "${ROOT_DIR}/server/logs/yjs-server.log" ]; then
@@ -874,8 +978,20 @@ start_and_wait_for_services() {
     fi
 
     if _is_service_ready "$log_status" "$DEADLINE"; then
+      # A readiness evaluation that only completes after the deadline is a
+      # deadline failure, never a success (issue #5486, REQ-001/REQ-005).
+      if _deadline_expired "$DEADLINE"; then
+        _fail_deadline
+      fi
       echo "=== All test services are ready! ==="
       break
+    fi
+
+    # The evaluation above may have consumed the rest of the budget (a probe
+    # started just before expiry). Recovery and re-polling must not run past
+    # the deadline, so re-check before touching the process manager again.
+    if _deadline_expired "$DEADLINE"; then
+      _fail_deadline
     fi
 
     # Self-heal a selectively stalled Hosting emulator (issue #5453): when
@@ -890,6 +1006,12 @@ start_and_wait_for_services() {
       if [ "$HOSTING_STALL_START" -eq 0 ]; then
         HOSTING_STALL_START=$ELAPSED
       elif [ "$HOSTING_RESTART_DONE" -eq 0 ] && [ $((ELAPSED - HOSTING_STALL_START)) -ge "$HOSTING_STALL_THRESHOLD" ]; then
+        # The hosting-missing evaluation above already consumed observations;
+        # re-check before the restart so recovery cannot spend an expired
+        # budget either.
+        if _deadline_expired "$DEADLINE"; then
+          _fail_deadline
+        fi
         echo "Firebase Hosting emulator (port ${FIREBASE_HOSTING_PORT}) has not started after $((ELAPSED - HOSTING_STALL_START))s while all other services are ready. Restarting firebase-emulators once..."
         # Bounded by the remaining budget so a wedged pm2 daemon cannot hold
         # the recovery past DEADLINE; the single budget is never extended.
