@@ -54,19 +54,16 @@ export async function headerWidth(page: Page, placement: number, column: string)
 export async function expectColumnGeometry(page: Page, placement: number, column: string, px: number) {
     const grid = page.getByTestId("yjs-table-view").nth(placement).getByTestId("yjs-table-grid");
     let widths: number[] = [];
-    try {
-        await expect.poll(async () => {
-            const boxes = [await grid.locator(`th[data-col="${column}"]`).boundingBox()];
-            const cells = grid.locator(`td[data-col="${column}"]`);
-            for (let i = 0; i < await cells.count(); i++) boxes.push(await cells.nth(i).boundingBox());
-            widths = boxes.map((b) => b?.width ?? Number.NaN);
-            return widths.every((w) => Math.abs(w - px) <= 1);
-        }, { timeout: 15000 }).toBe(true);
-    } catch (error) {
-        throw new Error(
-            `column ${column} should measure ${px}px; measured ${JSON.stringify(widths)}: ${String(error)}`,
-        );
-    }
+    const matches = () => widths.length > 0 && widths.every((w) => Math.abs(w - px) <= 1);
+    // Let geometry settle, then assert once with the measured widths in the message.
+    await expect.poll(async () => {
+        const boxes = [await grid.locator(`th[data-col="${column}"]`).boundingBox()];
+        const cells = grid.locator(`td[data-col="${column}"]`);
+        for (let i = 0; i < await cells.count(); i++) boxes.push(await cells.nth(i).boundingBox());
+        widths = boxes.map((b) => b?.width ?? Number.NaN);
+        return matches();
+    }, { timeout: 15000 }).toBe(true).catch(() => undefined);
+    expect(matches(), `column ${column} should measure ${px}px; measured ${JSON.stringify(widths)}`).toBe(true);
 }
 
 /**
