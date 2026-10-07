@@ -4,83 +4,16 @@
  */
 import { spawnSync } from "child_process";
 import fs from "fs";
-import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
+import { freePort, gateElapsed, runGate, TOL } from "./fixtures/e2e-readiness-deadline/gate-helper";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
-const runner = path.join(__dirname, "fixtures", "e2e-readiness-deadline", "run-readiness-gate.sh");
 const boundsRunner = path.join(__dirname, "fixtures", "e2e-readiness-deadline", "run-observation-bounds.sh");
 const commonFunctions = path.join(repoRoot, "scripts", "common-functions.sh");
-
-// Wall-clock scheduling tolerance (seconds) added to a test budget. Small
-// enough to reject the historic failure modes (probes, recovery, or
-// diagnostics running tens of seconds past the deadline) while absorbing
-// ordinary CI scheduling jitter and forced-kill grace periods.
-const TOL = 8;
-
-async function freePort(): Promise<number> {
-    return new Promise((resolve, reject) => {
-        const server = net.createServer();
-        server.once("error", reject);
-        server.listen(0, "127.0.0.1", () => {
-            const address = server.address();
-            server.close(() => resolve(typeof address === "object" && address ? address.port : 0));
-        });
-    });
-}
-
-interface GateResult {
-    status: number | null;
-    stdout: string;
-    elapsedSec: number;
-}
-
-async function runGate(
-    mode: string,
-    budget: number,
-    opts: { slowDelay?: number; stall?: number; pm2?: string; } = {},
-): Promise<GateResult> {
-    const [yjs, api, vite, fn, auth, fstore, host, store] = await Promise.all(
-        Array.from({ length: 8 }, () => freePort()),
-    );
-    const start = Date.now();
-    const result = spawnSync("bash", [runner], {
-        cwd: repoRoot,
-        env: {
-            ...process.env,
-            REPO_ROOT: repoRoot,
-            GATE_MODE: mode,
-            GATE_BUDGET: String(budget),
-            GATE_SLOW_DELAY: String(opts.slowDelay ?? 0),
-            GATE_STALL: opts.stall === undefined ? "" : String(opts.stall),
-            GATE_PM2_BEHAVIOR: opts.pm2 ?? "ok",
-            P_YJS: String(yjs),
-            P_API: String(api),
-            P_VITE: String(vite),
-            P_FN: String(fn),
-            P_AUTH: String(auth),
-            P_FS: String(fstore),
-            P_HOST: String(host),
-            P_STORE: String(store),
-        },
-        timeout: Math.max(60000, (budget + 30) * 1000),
-        maxBuffer: 4 * 1024 * 1024,
-        encoding: "utf-8",
-    });
-    return { status: result.status, stdout: String(result.stdout), elapsedSec: (Date.now() - start) / 1000 };
-}
-
-// Gate-measured elapsed seconds from the deadline message, excluding fixture
-// setup, so the budget assertion targets the production phase itself.
-function gateElapsed(stdout: string): number {
-    const match = /deadline exceeded at (\d+)s elapsed/.exec(stdout);
-    expect(match, "expected a deadline message with the gate-measured elapsed time").not.toBeNull();
-    return Number(match?.[1]);
-}
 
 describe("E2E startup wall-clock readiness bound (issue #5486)", () => {
     it("pins the production default budget to 180 seconds", async () => {
