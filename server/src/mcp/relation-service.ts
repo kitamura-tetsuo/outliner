@@ -2241,12 +2241,20 @@ export class OutlinerRelationService {
         relation: string,
         data: Iterable<[string, Y.Map<RelationValue>]>,
     ) {
+        // Every stored key is admitted: Postgres itself enforces schema
+        // membership (an undeclared key fails the INSERT exactly as an
+        // undeclared ASCII key always has), so Japanese and other quoted
+        // identifiers must not be dropped by an ASCII allowlist. Omitted
+        // keys keep their previous meaning (NULL or the column default).
+        // Identifiers are always quoted with embedded quotes doubled, and
+        // data values stay bound parameters.
+        const table = `"${relation.replace(/"/g, '""')}"`;
         for (const [id, record] of data) {
             const values: Record<string, unknown> = { ...Object.fromEntries(record.entries()), id };
-            const keys = Object.keys(values).filter(key => IDENT.test(key));
+            const keys = Object.keys(values);
             if (!keys.length) continue;
             await db.query(
-                `INSERT INTO "${relation}" (${keys.map(key => `"${key}"`).join(",")}) VALUES (${
+                `INSERT INTO ${table} (${keys.map(key => `"${key.replace(/"/g, '""')}"`).join(",")}) VALUES (${
                     keys.map((_, index) => `$${index + 1}`).join(",")
                 })`,
                 keys.map(key => values[key]),
@@ -2263,9 +2271,9 @@ export class OutlinerRelationService {
                 const values: Record<string, RelationValue> = { ...write.values, id: rowId };
                 const keys = Object.keys(values);
                 await lease.db.query(
-                    `INSERT INTO "${relation}" (${keys.map(key => `"${key.replace(/"/g, '""')}"`).join(",")}) VALUES (${
-                        keys.map((_, index) => `$${index + 1}`).join(",")
-                    })`,
+                    `INSERT INTO "${relation.replace(/"/g, '""')}" (${
+                        keys.map(key => `"${key.replace(/"/g, '""')}"`).join(",")
+                    }) VALUES (${keys.map((_, index) => `$${index + 1}`).join(",")})`,
                     keys.map(key => values[key]),
                 );
             } else if (write.op === "UPDATE") {

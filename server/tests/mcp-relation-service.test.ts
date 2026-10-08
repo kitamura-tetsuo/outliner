@@ -901,6 +901,186 @@ describe("Outliner MCP relation service", function() {
             "inaccessible",
         );
     });
+
+    it("preserves Japanese physical column values across SQL materialization paths", async () => {
+        const { service, project, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(
+            0,
+            'CREATE TABLE tasks (id TEXT PRIMARY KEY, "企業" TEXT, company TEXT)',
+        );
+        table.getMap("data").clear();
+        const row = new Y.Map<string | null>();
+        row.set("id", "r1");
+        row.set("企業", "検証企業");
+        row.set("company", "Control");
+        table.getMap("data").set("r1", row);
+        // Mirror of the browser TableSyncAdapter parity fixture in
+        // client/src/services/yjstable/tableSyncAdapter.test.ts: the same
+        // schema, record, and explicit-column query must return the same rows.
+        const expected = [{ id: "r1", "企業": "検証企業", company: "Control" }];
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        grid.set("query", 'SELECT id, "企業", company FROM tasks');
+        const tableBeforeReads = Buffer.from(Y.encodeStateAsUpdate(table)).toString("base64");
+
+        const stored = await service.getTable("uid", "project-1", "table-1", true);
+        expect(stored.records[0].values).to.include({ "企業": "検証企業", company: "Control" });
+
+        const selected = await service.querySql("uid", "project-1", 'SELECT id, "企業", company FROM tasks');
+        expect(selected.rows).to.deep.equal(expected);
+
+        const validated = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            'SELECT id, "企業", company FROM tasks',
+        );
+        expect(validated.accepted).to.equal(true);
+        expect(validated.sampleRows).to.deep.equal(expected);
+
+        const trace = await service.traceGrid("uid", "project-1", "grid-1");
+        const execution = trace.stages.find(stage => stage.stage === "query-execution")!;
+        expect(execution).to.include({ status: "completed" });
+        expect(execution.rows.map((entry: { values: unknown; }) => entry.values)).to.deep.equal(expected);
+
+        // Read/validation operations leave Yjs state unchanged.
+        expect(Buffer.from(Y.encodeStateAsUpdate(table)).toString("base64")).to.equal(tableBeforeReads);
+
+        // Updating the Japanese values and rematerializing reflects the new
+        // values on every path.
+        row.set("企業", "更新企業");
+        const updated = [{ id: "r1", "企業": "更新企業", company: "Control" }];
+        const tableBeforeRereads = Buffer.from(Y.encodeStateAsUpdate(table)).toString("base64");
+        expect((await service.querySql("uid", "project-1", 'SELECT id, "企業", company FROM tasks')).rows)
+            .to.deep.equal(updated);
+        const revalidated = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            'SELECT id, "企業", company FROM tasks',
+        );
+        expect(revalidated.sampleRows).to.deep.equal(updated);
+        expect(Buffer.from(Y.encodeStateAsUpdate(table)).toString("base64")).to.equal(tableBeforeRereads);
+    });
+
+    it("quotes exotic identifiers safely and keeps undeclared keys from altering SQL", async () => {
+        const { service, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(
+            0,
+            'CREATE TABLE tasks (id TEXT PRIMARY KEY, "a""b" TEXT, "with space" TEXT, '
+                + '"MixedCase" TEXT, "order" TEXT, "企業" TEXT)',
+        );
+        table.getMap("data").clear();
+        const row = new Y.Map<string | null>();
+        row.set("id", "r1");
+        row.set('a"b', "quoted");
+        row.set("with space", "spaced");
+        row.set("MixedCase", "cased");
+        row.set("order", "reserved");
+        row.set("企業", "検証企業");
+        table.getMap("data").set("r1", row);
+
+        const selected = await service.querySql(
+            "uid",
+            "project-1",
+            'SELECT id, "a""b", "with space", "MixedCase", "order", "企業" FROM tasks',
+        );
+        expect(selected.rows).to.deep.equal([{
+            id: "r1",
+            'a"b': "quoted",
+            "with space": "spaced",
+            MixedCase: "cased",
+            order: "reserved",
+            "企業": "検証企業",
+        }]);
+        // English physical columns remain selectable under Japanese aliases.
+        const aliased = await service.querySql("uid", "project-1", 'SELECT "MixedCase" AS "会社" FROM tasks');
+        expect(aliased.rows).to.deep.equal([{ "会社": "cased" }]);
+
+        // An identifier-like stored key is quoted as one identifier, so it
+        // cannot alter SQL structure: Postgres rejects the unknown column.
+        const evil = new Y.Map<string | null>();
+        evil.set("id", "r2");
+        evil.set("x\") VALUES ('pwned'); -- ", "pwned");
+        table.getMap("data").set("r2", evil);
+        await expectFailure(service.querySql("uid", "project-1", "SELECT id FROM tasks"), "does not exist");
+        // The declared relation is untouched by the rejected statement.
+        const schema = await service.getRelationSchema("uid", "project-1", "tasks");
+        expect(schema.columns.map(column => column.name)).to.deep.equal(
+            ["id", 'a"b', "with space", "MixedCase", "order", "企業"],
+        );
+        table.getMap("data").delete("r2");
+        const recovered = await service.querySql("uid", "project-1", "SELECT id FROM tasks ORDER BY id");
+        expect(recovered.rows).to.deep.equal([{ id: "r1" }]);
+    });
+
+    it("validates subsequent writes against actual Japanese NOT NULL and UNIQUE values", async () => {
+        const { service, project, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(
+            0,
+            'CREATE TABLE tasks (id TEXT PRIMARY KEY, "企業" TEXT NOT NULL, "社員番号" TEXT UNIQUE, "人数" INTEGER)',
+        );
+        table.getMap("data").clear();
+        const existing = new Y.Map<string | number | null>();
+        existing.set("id", "r1");
+        existing.set("企業", "検証企業");
+        existing.set("社員番号", "E001");
+        existing.set("人数", 3);
+        table.getMap("data").set("r1", existing);
+
+        // The existing Japanese NOT NULL/UNIQUE values load with their real
+        // content, so a permitted mutation validates against populated values.
+        const inserted = await service.writeRelation("uid", "project-1", "tasks", {
+            op: "INSERT",
+            values: { id: "r2", "企業": "更新企業", "社員番号": "E002", "人数": 5 },
+        });
+        expect(inserted.rowId).to.equal("r2");
+        expect(
+            (await service.querySql("uid", "project-1", 'SELECT id, "企業", "社員番号" FROM tasks ORDER BY id'))
+                .rows,
+        ).to.deep.equal([
+            { id: "r1", "企業": "検証企業", "社員番号": "E001" },
+            { id: "r2", "企業": "更新企業", "社員番号": "E002" },
+        ]);
+
+        // A genuine UNIQUE violation on a Japanese column is rejected without
+        // any partial Yjs mutation.
+        await expectFailure(
+            service.writeRelation("uid", "project-1", "tasks", {
+                op: "INSERT",
+                values: { id: "r3", "企業": "第三企業", "社員番号": "E001" },
+            }),
+            "社員番号",
+        );
+        expect(table.getMap("data").has("r3")).to.equal(false);
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).get("社員番号")).to.equal("E001");
+
+        // Tolerant Grid materialization retains valid Japanese rows and
+        // reports the genuinely malformed row under its existing contract.
+        const malformed = new Y.Map<string | number | null>();
+        malformed.set("id", "r-bad");
+        malformed.set("企業", "不良企業");
+        malformed.set("人数", "not-a-number");
+        table.getMap("data").set("r-bad", malformed);
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        grid.set("query", 'SELECT id, "企業" FROM tasks ORDER BY id');
+        const tolerant = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            'SELECT id, "企業" FROM tasks ORDER BY id',
+        );
+        expect(tolerant.accepted).to.equal(true);
+        expect(tolerant.sampleRows).to.deep.equal([
+            { id: "r1", "企業": "検証企業" },
+            { id: "r2", "企業": "更新企業" },
+        ]);
+        expect(tolerant.warnings).to.have.length(1);
+        expect(tolerant.warnings[0]).to.include({ recordId: "r-bad" });
+        table.getMap("data").delete("r-bad");
+    });
 });
 
 async function expectFailure(promise: Promise<unknown>, message: string) {

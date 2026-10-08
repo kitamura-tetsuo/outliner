@@ -318,4 +318,23 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
             adapter.dispose();
         }
     });
+
+    it("materializes Japanese physical columns identically to the server relation service", async () => {
+        // Parity fixture shared with the server regression test "preserves
+        // Japanese physical column values across SQL materialization paths"
+        // in server/tests/mcp-relation-service.test.ts: the same schema,
+        // record, and explicit-column query must return the same rows on
+        // both engines, with no source-data migration.
+        const { handles, pgSchema } = makeTable();
+        setSchemaText(handles, 'CREATE TABLE tasks (id TEXT PRIMARY KEY, "企業" TEXT, company TEXT)');
+        addRecord(handles, { "企業": "検証企業", company: "Control" }, "r1");
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+        try {
+            await adapter.start();
+            const result = await adapter.runQueryNow('SELECT id, "企業", company FROM tasks');
+            expect(result?.rows).toEqual([{ id: "r1", "企業": "検証企業", company: "Control" }]);
+        } finally {
+            adapter.dispose();
+        }
+    });
 });
