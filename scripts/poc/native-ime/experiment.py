@@ -211,38 +211,51 @@ def controls():
     RESULTS["F"] = dict(status="PROVEN", reason="Live Latin input, missing panel with forced active flags, and real foreign-owner X11 window all rejected")
 
 
-def movement_control():
+def movement_control(kind="input"):
     global ACTIVE_CAPABILITY
     ACTIVE_CAPABILITY = "E"
     command("fcitx5-remote", "-c")
     key("ctrl+a")
     key("BackSpace")
     original = driver.get_window_rect()
+    original_style = driver.execute_script("return {marginLeft:arguments[0].style.marginLeft,marginTop:arguments[0].style.marginTop}", textarea)
     positions = []
     for index in range(2):
         begin("nihonn", f"movement-{index}-preedit")
         key("space")
         key("space")
         panel = candidate(f"movement-{index}-candidate")
-        origin = driver.execute_script("return [mozInnerScreenX,mozInnerScreenY]")
+        origin = driver.execute_script("const r=arguments[0].getBoundingClientRect(); return [mozInnerScreenX+r.x,mozInnerScreenY+r.y]", textarea)
         positions.append(dict(panel=panel, origin=origin))
         key("Escape")
         key("Escape")
         wait(lambda: not state()["composing"], "movement-control cancellation")
         absent(f"movement-{index}-cancelled")
         if index == 0:
-            window = command("xdotool", "getactivewindow")
-            command("xdotool", "windowmove", window, str(original["x"] + 100), str(original["y"] + 60))
-            wait(lambda: driver.get_window_rect()["x"] != original["x"], "OS Firefox window movement")
+            if kind == "window":
+                window = command("xdotool", "getactivewindow")
+                command("xdotool", "windowmove", window, str(original["x"] + 100), str(original["y"] + 60))
+                wait(lambda: driver.get_window_rect()["x"] != original["x"], "OS Firefox window movement")
+            else:
+                # Move only the ordinary reference fixture. Never patch Outliner.
+                driver.execute_script("""
+                  const e=arguments[0],s=getComputedStyle(e);
+                  e.style.marginLeft=(parseFloat(s.marginLeft)+100)+'px';
+                  e.style.marginTop=(parseFloat(s.marginTop)+60)+'px';
+                """, textarea)
+                click(textarea)
     first, second = positions
+    save(f"{kind}-movement-control", dict(kind=kind, observations=positions))
     assert first["panel"]["id"] == second["panel"]["id"]
     for axis, offset in [("x", 0), ("y", 1)]:
         delta = second["origin"][offset] - first["origin"][offset]
         assert abs(delta) >= 50, "Reference input did not move on the desktop"
         assert abs(second["panel"][axis] - first["panel"][axis] - delta) <= 4, "Candidate did not follow the native reference input"
-    save("movement-control", positions)
-    driver.set_window_rect(**original)
-    RESULTS["E"]["reason"] += "; candidate follows real OS browser-window movement within 4px"
+    if kind == "window":
+        driver.set_window_rect(**original)
+    else:
+        driver.execute_script("Object.assign(arguments[0].style,arguments[1])", textarea, original_style)
+    RESULTS["E"]["reason"] += f"; candidate follows real {kind} movement within 4px"
 
 
 def placement_samples(prefix):
@@ -313,7 +326,7 @@ def run():
     RESULTS["A"] = dict(status="PROVEN", reason="Stock graphical Firefox has a real X11 window and visible textarea", version=driver.capabilities.get("browserVersion"))
     exercise()
     controls()
-    movement_control()
+    movement_control("window" if STAGE == "window-movement" else "input")
     placement_samples("reference")
     if STAGE == "outliner":
         ACTIVE_CAPABILITY = "G"

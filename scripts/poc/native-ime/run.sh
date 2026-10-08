@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
-MODE=${1:?standalone or outliner}
-case "$MODE" in standalone|outliner) ;; *) exit 2 ;; esac
+MODE=${1:?standalone, outliner, or window-movement}
+case "$MODE" in standalone|outliner|window-movement) ;; *) exit 2 ;; esac
 export IME_ARTIFACTS=${IME_ARTIFACTS:-$ROOT/job_logs/native-ime}
 export IME_STAGE="$MODE"
 mkdir -p "$IME_ARTIFACTS/$MODE"
