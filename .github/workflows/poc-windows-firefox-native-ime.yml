@@ -25,6 +25,26 @@ jobs:
           path: artifacts/windows-native-ime/
           if-no-files-found: error
           retention-days: 14
+  desktop-input:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove GUI keyboard transport independently
+        timeout-minutes: 2
+        shell: powershell
+        run: ./scripts/poc/windows-native-ime/desktop-probe.ps1
+      - name: Upload transport evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-firefox-transport-${{ github.run_id }}
+          path: artifacts/windows-native-ime/
+          if-no-files-found: error
+          retention-days: 14
   native-ime:
     runs-on: windows-2025
     timeout-minutes: 25

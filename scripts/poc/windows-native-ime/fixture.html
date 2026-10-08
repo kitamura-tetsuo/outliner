@@ -30,5 +30,6 @@ function report(event) {
 for (const type of ['focus','blur','keydown','keyup','beforeinput','input','compositionstart','compositionupdate','compositionend'])
     editor.addEventListener(type, report);
 window.addEventListener('focus', () => report());
+window.addEventListener('resize', () => report());
 report();
 </script>
