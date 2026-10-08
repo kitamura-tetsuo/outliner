@@ -106,7 +106,7 @@ test.describe("Paste Special in another project", () => {
         // so the oracle cannot pass by reading too early.
         await page.waitForTimeout(1000);
         expect(await readOutlineSnapshot(page)).toEqual(outlineBeforeCancel);
-        await expect(page.getByTestId("grid-paste-status")).not.toContainText("Pasted values only");
+        await expect(page.getByTestId("grid-paste-status")).toHaveCount(0);
 
         await openPasteSpecialAtAnchor(page);
         await page.getByTestId("paste-special-copy-without-data").click();
