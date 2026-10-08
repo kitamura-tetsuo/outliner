@@ -149,13 +149,17 @@ user_pref("accessibility.force_disabled", -1);
     Expect-Rejection 'committed-unicode-only' { Require-Candidate @($candidate) $commit }
     Assert-That (@($commit.events | Where-Object { $_.type -eq 'compositionend' -and $_.trusted -and $_.data -eq $commit.value }).Count -gt 0) 'No trusted composition confirmation matching committed text'
     Assert-That ($chosen.name -eq $commit.value) 'UIA selected candidate does not exactly match committed text; naming may require investigated parsing'
+    Screen-Capture 'candidate-confirmed'
     $results.G = @{status='PROVEN'; evidence='candidate-open/navigation/after-confirm.json and confirmation.json; selected text equals commit'}
     $stage = 'H'
     Send-Romaji 'tokyo'
+    $cancelReading = Wait-State { param($s) $s.composing -and $s.compositionId -gt $commit.compositionId -and $s.value -ne $commit.value -and $s.focused -and $s.documentFocused } 'Cancellation test did not start a fresh focused native composition'
+    Save-Json 'preedit-cancellation' $cancelReading
     $cancel = Cancel-NativeComposition $commit
     Save-Json 'cancellation' $cancel
     Assert-That ($cancel.value -eq $commit.value -and $cancel.start -eq $commit.start -and $cancel.end -eq $commit.end) 'Cancellation failed to restore text and caret'
     Assert-That (@(Candidate 'after-cancel').Count -eq 0) 'Stale candidate remains after cancellation'
+    Screen-Capture 'candidate-cancelled'
     $results.H = @{status='PROVEN'; evidence='cancellation.json restores confirmation text and selection'}
     $stage = 'I'
     Assert-That $latinControlsProven 'Initial Latin/missing-window controls did not pass'
