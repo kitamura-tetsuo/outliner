@@ -144,7 +144,9 @@ user_pref("accessibility.force_disabled", -1);
     Send-Romaji 'nihon'
     Send-Key 0x20
     Send-Key 0x20
-    $new = Require-Candidate @(Candidate 'second-generation') (State)
+    $secondState = State
+    Expect-Rejection 'old-generation' { Require-Candidate @($candidate) $secondState }
+    $new = Require-Candidate @(Candidate 'second-generation') $secondState
     Send-Key 0x1B
     Send-Key 0x1B
     Assert-That (@(Candidate 'second-disappeared').Count -eq 0) 'Candidate did not disappear after second composition'

@@ -70,6 +70,7 @@ function Snapshot-Raw($Name) {
     Save-Json "uia-$Name" @{time=[DateTime]::UtcNow.ToString('o'); records=$records; errors=$errors; truncated=($queue.Count -gt 0)}
 }
 function Candidate-Raw($Name) {
+    $before = State
     # A fresh desktop-wide query every time: retained UIA elements never serve as an oracle.
     $condition = New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IME_Candidate_Window')
@@ -82,6 +83,8 @@ function Candidate-Raw($Name) {
             [System.Windows.Automation.Condition]::TrueCondition)
         $record.children = @($children | ForEach-Object { Element-Record $_ })
         $record.time = [DateTime]::UtcNow.ToString('o')
+        $record.compositionId = $before.compositionId
+        $record.composingBefore = $before.composing
         $record.foreground = [Native]::ForegroundProfile()
         $observations += $record
     }
@@ -99,6 +102,7 @@ function Require-Candidate($Candidates, $State) {
     Assert-That ($c.pid -ne $script:FirefoxPid -and $c.process -match '^(TextInputHost|InputApp|ctfmon)$') 'Candidate owner is not a recognized Windows input host'
     Assert-That ($c.automationId -eq 'IME_Candidate_Window') 'Candidate AutomationId mismatch'
     Assert-That $State.composing 'No current composition; older composition events cannot satisfy a new session'
+    Assert-That ($c.compositionId -eq $State.compositionId -and $c.composingBefore) 'Candidate observation belongs to a different composition generation'
     Assert-That ($State.focused -and $State.documentFocused) 'Firefox textarea lost focus'
     Assert-That (($State.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted }).Count -gt 0) 'No trusted native composition'
     $fgpid = [uint32]0
