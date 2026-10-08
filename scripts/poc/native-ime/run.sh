@@ -51,6 +51,7 @@ cleanup() {
   exit "$status"
 }
 trap cleanup EXIT
+trap 'printf "Native session failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" > "$IME_ARTIFACTS/$MODE/session-failure.txt"' ERR
 Xvfb "$DISPLAY" -screen 0 1600x1000x24 -dpi 96 -nolisten tcp > "$IME_ARTIFACTS/$MODE/xvfb.log" 2>&1 &
 pids+=("$!")
 for attempt in {1..50}; do
@@ -68,10 +69,18 @@ fcitx5 --disable=ibusfrontend,xim --enable=classicui > "$IME_ARTIFACTS/$MODE/fci
 export IME_FCITX_PID=$!
 pids+=("$IME_FCITX_PID")
 for attempt in {1..50}; do
-  if [[ $(fcitx5-remote 2>/dev/null) =~ ^[12]$ ]]; then break; fi
+  # fcitx5-remote autoactivates the D-Bus service if called before startup.
+  # That races our explicitly configured process and may start a default/XIM one.
+  if gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+      --method org.freedesktop.DBus.NameHasOwner org.fcitx.Fcitx5 | grep -q true; then break; fi
+  kill -0 "$IME_FCITX_PID"
   sleep .1
 done
-[[ $(fcitx5-remote) =~ ^[12]$ ]]
+gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+  --method org.freedesktop.DBus.NameHasOwner org.fcitx.Fcitx5 | grep -q true
+owner_pid=$(gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+  --method org.freedesktop.DBus.GetConnectionUnixProcessID org.fcitx.Fcitx5 | sed -E 's/.*uint32 ([0-9]+).*/\1/')
+[[ "$owner_pid" == "$IME_FCITX_PID" ]]
 fcitx_executable=$(readlink "/proc/$IME_FCITX_PID/exe")
 [[ $(basename "$fcitx_executable") == fcitx5 ]]
 printf '%s\n' "$fcitx_executable" > "$IME_ARTIFACTS/$MODE/fcitx-process-executable.txt"
