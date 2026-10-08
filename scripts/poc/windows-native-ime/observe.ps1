@@ -74,7 +74,7 @@ function Snapshot-Raw($Name) {
     $errors = New-Object 'System.Collections.Generic.List[string]'
     $queue = New-Object 'System.Collections.Generic.Queue[object]'
     $queue.Enqueue(@{element=[System.Windows.Automation.AutomationElement]::RootElement; depth=0})
-    $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+    $walker = [System.Windows.Automation.TreeWalker]::RawViewWalker
     while ($queue.Count -gt 0 -and $records.Count -lt 2500) {
         $node = $queue.Dequeue()
         try {
@@ -151,6 +151,15 @@ function Invoke-UIAProbe($Operation, $Name, [int]$TimeoutSeconds=30) {
         Write-Host "WORKER $Name exit=$($worker.ExitCode)"
         if (Test-Path "$script:Output/worker-$Name-error.txt") { Get-Content "$script:Output/worker-$Name-error.txt" | Write-Host }
         Assert-That ($worker.ExitCode -eq 0) "UIA/OS $Operation $Name failed; see worker-$Name-error.txt"
+        if ($Operation -eq 'snapshot') {
+            $snapshot = Get-Content -Raw "$script:Output/uia-$Name.json" | ConvertFrom-Json
+            $nativeRecords = @($snapshot.records | Where-Object { $_.pid -ne $script:FirefoxPid -or $_.hwnd -ne 0 -or $_.automationId -match 'IME_' } | ForEach-Object {
+                if ($_.name.Length -gt 300) { $_.name = $_.name.Substring(0,300) }
+                $_
+            })
+            Write-Host "DESKTOP UIA $Name $(ConvertTo-Json -InputObject $nativeRecords -Depth 8 -Compress)"
+            Write-Host "DESKTOP UIA ERRORS $Name $(ConvertTo-Json -InputObject $snapshot.errors -Compress) truncated=$($snapshot.truncated)"
+        }
         if ($Operation -eq 'candidate') {
             $raw = Get-Content -Raw "$script:Output/candidate-$Name.json"
             Write-Host "CANDIDATE RAW $Name $raw"
