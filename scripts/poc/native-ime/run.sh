@@ -52,7 +52,9 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'printf "Native session failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" > "$IME_ARTIFACTS/$MODE/session-failure.txt"' ERR
-Xvfb "$DISPLAY" -screen 0 1600x1000x24 -dpi 96 -nolisten tcp > "$IME_ARTIFACTS/$MODE/xvfb.log" 2>&1 &
+# The native vertical list is 424px tall. Leave room below the production
+# placement item as required by REQ-002, so desktop-edge relocation cannot pass.
+Xvfb "$DISPLAY" -screen 0 1600x1200x24 -dpi 96 -nolisten tcp > "$IME_ARTIFACTS/$MODE/xvfb.log" 2>&1 &
 pids+=("$!")
 for attempt in {1..50}; do
   if xdpyinfo > "$IME_ARTIFACTS/$MODE/xdpyinfo.txt" 2>&1; then break; fi
