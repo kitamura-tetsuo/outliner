@@ -37,6 +37,30 @@ export async function expectTextPaintClipped(text: Locator): Promise<void> {
     expect(geometry.clipRight).toBeLessThanOrEqual(geometry.cellRight + 1);
 }
 
+/** Long body text wraps inside its fixed track instead of overflowing it. */
+export async function expectTextWrappedWithin(text: Locator): Promise<void> {
+    const geometry = await text.evaluate((element) => {
+        const cell = element.closest("th, td")!;
+        const cellRight = cell.getBoundingClientRect().right;
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const glyphRight = range.getBoundingClientRect().right;
+        const lineCount = range.getClientRects().length;
+        const htmlElement = element as HTMLElement;
+        return {
+            cellRight,
+            glyphRight,
+            lineCount,
+            overflow: htmlElement.scrollWidth - htmlElement.clientWidth,
+        };
+    });
+    // Wrapping absorbs the long value into multiple lines: the element does
+    // not overflow and no glyph paints past the fixed cell (issue #5502).
+    expect(geometry.lineCount).toBeGreaterThan(1);
+    expect(geometry.overflow).toBeLessThanOrEqual(1);
+    expect(geometry.glyphRight).toBeLessThanOrEqual(geometry.cellRight + 1);
+}
+
 /** Neighbor contents remain the topmost hit target before and during editing. */
 export async function expectNeighborUncovered(cell: Locator): Promise<void> {
     await cell.scrollIntoViewIfNeeded();

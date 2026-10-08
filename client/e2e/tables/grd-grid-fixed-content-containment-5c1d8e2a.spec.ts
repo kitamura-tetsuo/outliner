@@ -3,7 +3,12 @@ import type { Locator, Page } from "@playwright/test";
 import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "../fixtures/grid-render-trace";
 import { addSourceRecord, createBlankGrid, readGridProjectState, setCellValue } from "../utils/crossProjectGridHelpers";
-import { expectNeighborUncovered, expectTextPaintClipped, expectWithin } from "../utils/gridPaintContainmentHelpers";
+import {
+    expectNeighborUncovered,
+    expectTextPaintClipped,
+    expectTextWrappedWithin,
+    expectWithin,
+} from "../utils/gridPaintContainmentHelpers";
 import {
     commitWidthsProduction,
     expectFixedWidth,
@@ -82,7 +87,7 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
         await expect(grid.locator('th[data-col="title"]')).toBeVisible({ timeout: 30000 });
     });
 
-    test("overflowing labels, values and controls stay inside fixed tracks", async ({ page }) => {
+    test("long labels, values and controls stay inside fixed tracks", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-grid");
         for (const [column, px] of NARROW) await expectFixedWidth(page, 0, column, px);
 
@@ -92,7 +97,11 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
         );
         expect(labelOverflow).toBe(true);
         await expectTextPaintClipped(grid.locator('th[data-col="title"] .th-label'));
-        await expectTextPaintClipped(
+        // Body text wraps within its pinned width (issue #5502) instead of
+        // clipping with an ellipsis: the long value spans multiple lines,
+        // never overflows its element, and paints inside the fixed cell.
+        // Headers keep the ellipsis policy asserted above.
+        await expectTextWrappedWithin(
             grid.locator('td[data-col="title"] button.cell-value').filter({ hasText: LONG_WORD }),
         );
         await expectWithin(
