@@ -9,6 +9,22 @@ on:
 permissions:
   contents: read
 jobs:
+  inventory:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record independent inventory
+        shell: powershell
+        run: ./scripts/poc/windows-native-ime/inventory.ps1
+      - name: Upload inventory
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: independent-windows-inventory-${{ github.run_id }}
+          path: artifacts/windows-native-ime/
+          if-no-files-found: error
+          retention-days: 14
   native-ime:
     runs-on: windows-2025
     timeout-minutes: 25

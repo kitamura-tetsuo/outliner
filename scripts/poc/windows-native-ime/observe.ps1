@@ -1,7 +1,11 @@
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase, System.Windows.Forms, System.Drawing
 Add-Type -Path "$PSScriptRoot/Native.cs"
 function Save-Json($Name, $Object) {
-    $Object | ConvertTo-Json -Depth 30 | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
+    $json = $Object | ConvertTo-Json -Depth 30
+    $json | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
+    if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error') {
+        Write-Host "EVIDENCE $Name $json"
+    }
 }
 function Assert-That($Condition, $Message) {
     if (-not $Condition) { throw $Message }

@@ -152,6 +152,7 @@ user_pref("accessibility.force_disabled", -1);
     $results.J = @{status='BLOCKED'; evidence='Existing service bootstrap is Linux-specific; standalone only. No production textarea run.'}
     $results.K = @{status='BLOCKED'; evidence='No production Yjs document/cursor observation; REQ-005 is not verified.'}
 } catch {
+    Write-Host "PROBE FAILURE at $stage : $($_.Exception.Message)"
     $results[$stage] = @{status='FAILED'; evidence="$($_.Exception.Message)"}
     $_ | Out-String | Set-Content "$script:Output/failure.txt"
     Screen-Capture 'failure'
