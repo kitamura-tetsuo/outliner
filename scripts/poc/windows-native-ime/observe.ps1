@@ -67,7 +67,7 @@ function Element-Record($Element) {
     $process = Get-Process -Id $c.ProcessId -ErrorAction SilentlyContinue
     $windowClass = [Native]::WindowClass($c.NativeWindowHandle)
     $legacy = $null
-    if ($windowClass -match '^MSCandUIWindow_') {
+    if ($windowClass -eq 'mscandui40.candidate') {
         try {
             $accessible = [Accessibility.IAccessible][Native]::AccessibleClient($c.NativeWindowHandle)
             $items = @()
@@ -144,7 +144,7 @@ function Require-Candidate($Candidates, $State) {
     Assert-That ($Candidates.Count -eq 1) 'Missing or ambiguous visible native candidate window'
     $c = $Candidates[0]
     $modern = $c.automationId -eq 'IME_Candidate_Window' -and $c.pid -ne $script:FirefoxPid -and $c.process -match '^(TextInputHost|InputApp|ctfmon)$'
-    $classic = $c.name -eq 'Microsoft Candidate UI' -and $c.hwnd -ne 0 -and $c.pid -eq $script:FirefoxPid -and $c.windowClass -match '^MSCandUIWindow_'
+    $classic = $c.name -eq 'Microsoft Candidate UI' -and $c.hwnd -ne 0 -and $c.pid -eq $script:FirefoxPid -and $c.windowClass -eq 'mscandui40.candidate'
     Assert-That ($modern -or $classic) 'Candidate owner/class is not an established Windows IME host or native Microsoft Candidate UI HWND'
     Assert-That ($c.bounds.width -gt 0 -and $c.bounds.height -gt 0) 'Candidate has no visible bounds'
     Assert-That $State.composing 'No current composition; older composition events cannot satisfy a new session'
