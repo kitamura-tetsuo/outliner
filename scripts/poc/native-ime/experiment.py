@@ -258,17 +258,26 @@ def movement_control(kind="input"):
     RESULTS["E"]["reason"] += f"; candidate follows real {kind} movement within 4px"
 
 
-def placement_samples(prefix):
+def placement_samples(prefix, matches=None):
     samples = []
     command("fcitx5-remote", "-c")
     if prefix == "outliner":
-        # Outliner's Ctrl+A can select the document; select only the current line.
-        key("Home")
-        key("shift+End")
+        # Start a separate empty item through normal editor handling. Backspace
+        # on an empty item can merge it with its predecessor and invalidate origin.
+        key("End")
+        key("Return")
+        wait(lambda: state()["value"] == "", "empty placement item")
     else:
         key("ctrl+a")
-    key("BackSpace")
-    for count in [5, 40]:
+        key("BackSpace")
+    for index, count in enumerate([5, 40]):
+        if matches:
+            driver.execute_script("""
+              const e=arguments[0],m=arguments[1];
+              Object.assign(e.style,{position:'absolute',margin:'0',padding:'0',border:'0',
+                font:m.font,left:(m.line_left-mozInnerScreenX)+'px',top:(m.line_top-mozInnerScreenY)+'px'});
+            """, textarea, matches[index])
+            click(textarea)
         begin("a" * count, f"{prefix}-{count}-preedit")
         key("space")
         key("space")
@@ -351,19 +360,13 @@ def run():
         wait(lambda: state()["value"] == "", "new empty production item")
         exercise()
         RESULTS["G"] = dict(status="PROVEN", reason="Normal OS item click and Enter created/focused the app-owned global-textarea; same native composition, selection and panel lifecycle verified")
-        actual = placement_samples("outliner")
         ACTIVE_CAPABILITY = "H"
+        actual = placement_samples("outliner")
         driver.get("http://127.0.0.1:8765/fixture.html")
         attach()
         textarea = driver.find_element(By.ID, "reference")
-        match = actual[0]
-        driver.execute_script("""
-          const e=arguments[0],m=arguments[1];
-          Object.assign(e.style,{position:'absolute',margin:'0',padding:'0',border:'0',
-            font:m.font,left:(m.line_left-mozInnerScreenX)+'px',top:(m.line_top-mozInnerScreenY)+'px'});
-        """, textarea, match)
         click(textarea)
-        reference = placement_samples("matched-reference")
+        reference = placement_samples("matched-reference", actual)
         for ref, app in zip(reference, actual):
             assert abs(ref["line_left"] - app["line_left"]) <= 1, "Visible input start mismatch"
             assert abs(ref["line_top"] - app["line_top"]) <= 1, "Visible input start mismatch"
@@ -382,6 +385,8 @@ if __name__ == "__main__":
         (OUT / "failure.txt").write_text(failure)
         print(failure, flush=True)
         RESULTS[ACTIVE_CAPABILITY] = dict(status="FAILED", reason="Experiment assertion or operation failed; see failure.txt")
+        if STAGE == "outliner" and RESULTS["G"]["status"] != "PROVEN":
+            RESULTS["G"] = dict(status="FAILED", reason="Production native input experiment did not complete; see failure.txt")
         try:
             if driver and desktop:
                 capture("failure")
