@@ -51,7 +51,10 @@ cleanup() {
   fcitx5-diagnose > "$IME_ARTIFACTS/fcitx5-diagnose.txt" 2>&1
   xwininfo -root -tree > "$IME_ARTIFACTS/final-window-tree.txt" 2>&1
   for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null; done
-  rm -rf "$WORK"
+  # Fcitx5 starts mozc_server on demand; stop it before removing the profile it writes to.
+  pkill -u "$(id -u)" -x mozc_server 2>/dev/null
+  sleep .5
+  rm -rf "$WORK" 2>/dev/null
   exit "$status"
 }
 trap cleanup EXIT

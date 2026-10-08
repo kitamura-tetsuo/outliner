@@ -54,6 +54,8 @@ def save(name, value):
 def record(name, passed, **measured):
     entry = dict(name=name, passed=bool(passed), **measured)
     assertions.append(entry)
+    print(f"{'PASS' if passed else 'FAIL'} {name} {json.dumps(measured, ensure_ascii=False, default=str)[:600]}",
+          flush=True)
     if not passed:
         raise Failed(f"{name}: {json.dumps(measured, ensure_ascii=False)[:2000]}")
     return entry
@@ -355,8 +357,7 @@ def reference_run(label, start, keys_end="cancel"):
 
 def application_run(label, prefix, end, matched, mutation=None, expect_failure=None):
     tab("application")
-    current = wait(lambda: (s := app_state()) if s["focused"] else None,
-                   f"{label}: application receiver regains document focus with the tab")
+    current = refocus_application(label, prefix)
     record(f"{label}-production-receiver", current["className"].split()[0] == "global-textarea"
            and current["wrap"] == "off", className=current["className"], wrap=current["wrap"])
     record(f"{label}-normal-proxy-sizing", "min-width" not in (current["style"] or "")
@@ -396,6 +397,34 @@ def application_run(label, prefix, end, matched, mutation=None, expect_failure=N
                cursors=outcome["cursors"], selections=outcome["selections"])
         record(f"{label}-receiver-still-production", after["wrap"] == "off" and after["focused"], state=after)
     return result
+
+
+def refocus_application(label, prefix):
+    """Return input focus to the production receiver after the reference tab was used.
+
+    Firefox may not hand document focus back to the editor when its tab is re-selected. In
+    that case an ordinary OS click on the item, just after its existing text, restores it;
+    the logical caret must then be exactly where the baseline left it.
+    """
+    try:
+        return wait(lambda: (s := app_state()) if s["focused"] else None, "focus returns with the tab", 3)
+    except Failed:
+        pass
+    item = app_item()
+    point = driver.execute_script("""
+      const el = document.querySelector(`.outliner-item[data-item-id="${arguments[0]}"] .item-text`);
+      const range = document.createRange(); range.selectNodeContents(el);
+      const text = range.getBoundingClientRect(), box = el.getBoundingClientRect();
+      const x = el.textContent.length ? text.right + 2 : box.left + 4;
+      return [mozInnerScreenX + x, mozInnerScreenY + box.top + box.height / 2];
+    """, item["id"])
+    os_click(*point)
+    current = wait(lambda: (s := app_state()) if s["focused"] else None,
+                   f"{label}: OS click returns focus to the production receiver")
+    after = app_item()
+    record(f"{label}-refocus-keeps-baseline-caret", after["cursors"] == item["cursors"]
+           and after["cursors"][0]["offset"] == utf16_length(prefix), before=item["cursors"], after=after["cursors"])
+    return current
 
 
 def new_app_item(label, prefix):
@@ -533,6 +562,7 @@ def isolated(errors, name, action):
     except Exception:
         errors.append(dict(scenario=name, error=traceback.format_exc()))
         assertions.append(dict(name=f"{name}-completed", passed=False))
+        print(f"SCENARIO FAILED {name}\n{traceback.format_exc()[-3000:]}", flush=True)
         try:
             capture(f"{name}-failure")
             for _ in range(3):
