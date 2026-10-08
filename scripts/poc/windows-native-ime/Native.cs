@@ -35,6 +35,14 @@ public static class Native {
         a[0].type=0; a[0].data.mouse.dwFlags=2; a[1].type=0; a[1].data.mouse.dwFlags=4;
         return SendInput(2,a,Marshal.SizeOf(typeof(INPUT)));
     }
+    public static uint AltClick(int x,int y) {
+        SetCursorPos(x,y); INPUT[] a=new INPUT[4];
+        a[0].type=1; a[0].data.key.vk=0x12;
+        a[1].type=0; a[1].data.mouse.dwFlags=2;
+        a[2].type=0; a[2].data.mouse.dwFlags=4;
+        a[3]=a[0]; a[3].data.key.flags=2;
+        return SendInput(4,a,Marshal.SizeOf(typeof(INPUT)));
+    }
     public static string InputDesktop() {
         IntPtr h=OpenInputDesktop(0,false,0x0001); if(h==IntPtr.Zero) return "ERROR:"+Marshal.GetLastWin32Error();
         try { var b=new StringBuilder(256); int n;

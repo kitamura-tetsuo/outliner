@@ -1,6 +1,7 @@
-param([string]$OutputPath, [string]$Operation, [string]$Name)
+param([string]$OutputPath, [string]$Operation, [string]$Name, [string]$StateUrl = 'http://127.0.0.1:8765/state')
 $ErrorActionPreference = 'Stop'
 $script:Output = $OutputPath
+$script:StateUrl = $StateUrl
 . "$PSScriptRoot/observe.ps1"
 try {
     if ($Operation -eq 'snapshot') { Snapshot-Raw $Name }

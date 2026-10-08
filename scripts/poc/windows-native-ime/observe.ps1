@@ -21,7 +21,10 @@ function Send-Key([int]$Key) {
 function Send-Romaji([string]$Text) {
     foreach ($c in $Text.ToUpperInvariant().ToCharArray()) { Send-Key ([int]$c) }
 }
-function State { Invoke-RestMethod http://127.0.0.1:8765/state -TimeoutSec 3 }
+function State {
+    $url = if ($script:StateUrl) { $script:StateUrl } else { 'http://127.0.0.1:8765/state' }
+    Invoke-RestMethod $url -TimeoutSec 10
+}
 function Cancel-NativeComposition($Baseline) {
     # Conversion cancellation can first restore the reading, then clear it, then end composition.
     for ($attempt=0; $attempt -lt 6; $attempt++) {
@@ -141,6 +144,9 @@ function Candidate-Raw($Name) {
             [System.Windows.Automation.Condition]::TrueCondition)
         $record.children = @($children | ForEach-Object { Element-Record $_ })
         $record.time = [DateTime]::UtcNow.ToString('o')
+        $record.sessionId = $before.sessionId
+        $record.action = $before.action
+        $record.observationSequence = $before.sequence
         $record.compositionId = $before.compositionId
         $record.composingBefore = $before.composing
         $record.foreground = [Native]::ForegroundProfile()
@@ -165,9 +171,11 @@ function Require-Candidate($Candidates, $State) {
     Assert-That ($modern -or $classic) 'Candidate owner/class is not an established Windows IME host or native Microsoft Candidate UI HWND'
     Assert-That ($c.bounds.width -gt 0 -and $c.bounds.height -gt 0) 'Candidate has no visible bounds'
     Assert-That $State.composing 'No current composition; older composition events cannot satisfy a new session'
+    Assert-That ($c.sessionId -eq $State.sessionId -and $c.action -eq $State.action -and $c.observationSequence -le $State.sequence) 'Candidate belongs to another page session/action or stale telemetry'
+    Assert-That (([DateTime]::UtcNow - [DateTime]::Parse($c.time).ToUniversalTime()).TotalSeconds -lt 15) 'Candidate observation is stale'
     Assert-That ($c.compositionId -eq $State.compositionId -and $c.composingBefore) 'Candidate observation belongs to a different composition generation'
     Assert-That ($State.focused -and $State.documentFocused) 'Firefox textarea lost focus'
-    Assert-That (@($State.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted }).Count -gt 0) 'No trusted native composition'
+    Assert-That (@($State.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted -and $_.compositionId -eq $State.compositionId -and $_.sessionId -eq $State.sessionId }).Count -gt 0) 'No trusted native composition'
     $fgpid = [uint32]0
     [void][Native]::GetWindowThreadProcessId([Native]::GetForegroundWindow(),[ref]$fgpid)
     Assert-That ($fgpid -eq $script:FirefoxPid) 'Firefox is not foreground'
@@ -178,7 +186,7 @@ function Invoke-UIAProbe($Operation, $Name, [int]$TimeoutSeconds=30) {
     # Terminate an isolated OS process on timeout; Stop-Job can itself wait on a hung provider.
     Write-Host "WORKER START $Operation $Name"
     $worker = Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile','-File',
-        "`"$PSScriptRoot/uia-worker.ps1`"",'-OutputPath',"`"$script:Output`"",'-Operation',$Operation,'-Name',$Name) -PassThru `
+        "`"$PSScriptRoot/uia-worker.ps1`"",'-OutputPath',"`"$script:Output`"",'-Operation',$Operation,'-Name',$Name,'-StateUrl',$(if ($script:StateUrl) {$script:StateUrl} else {'http://127.0.0.1:8765/state'})) -PassThru `
         -RedirectStandardOutput "$script:Output/worker-$Name-stdout.txt" -RedirectStandardError "$script:Output/worker-$Name-stderr.txt"
     try {
         [void]$worker.Handle

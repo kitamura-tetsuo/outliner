@@ -56,7 +56,7 @@ jobs:
           retention-days: 14
   native-ime:
     runs-on: windows-2025
-    timeout-minutes: 25
+    timeout-minutes: 45
     defaults:
       run:
         shell: powershell
@@ -65,6 +65,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/checkout@v5
+        with:
+          ref: 73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f
+          path: work/native-ime-app
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare exact application revision with Windows dependencies
+        timeout-minutes: 20
+        run: ./scripts/poc/windows-native-ime/prepare-app.ps1
+      - name: Preserve application preparation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-application-prepare-${{ github.run_id }}
+          path: artifacts/windows-native-ime/
+          if-no-files-found: error
+          retention-days: 14
       - name: Inventory Windows session before expensive probes
         run: ./scripts/poc/windows-native-ime/inventory.ps1
       - name: Preserve initial inventory
@@ -79,7 +98,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Probe native Firefox and Microsoft Japanese IME
-        timeout-minutes: 15
+        timeout-minutes: 20
         run: ./scripts/poc/windows-native-ime/run.ps1
       - name: Upload evidence even on failure
         if: always()

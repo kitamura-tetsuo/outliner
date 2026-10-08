@@ -7,6 +7,7 @@ $results = [ordered]@{}
 foreach ($id in 'A','B','C','D','E','F','G','H','I','J','K') {
     $results[$id] = @{status='BLOCKED'; evidence='Not reached; see failure and predecessor evidence'}
 }
+$script:AppProcesses = @()
 $server = $null
 $firefox = $null
 $stage = 'environment'
@@ -183,22 +184,10 @@ user_pref("accessibility.force_disabled", -1);
     Assert-That (@(Candidate 'second-disappeared').Count -eq 0) 'Candidate did not disappear after second composition'
     $results.I = @{status='PROVEN'; evidence='Actual Latin mode/input rejects candidate assertion, restored Japanese opens native candidate, missing/unchanged/stale/old-generation controls reject; UIA worker errors throw rather than pass'}
     $stage = 'J'
-    Write-Host 'PHASE J: attempting existing Outliner service bootstrap on Windows'
-    $bash = 'C:\Program Files\Git\bin\bash.exe'
-    Save-Json 'integration-preflight' @{bashAvailable=(Test-Path $bash); serverBuildAvailable=(Test-Path 'server/dist/server/src/index.js'); rootDependenciesAvailable=(Test-Path 'node_modules'); clientDependenciesAvailable=(Test-Path 'client/node_modules'); startup='scripts/ci-e2e-start.sh'; boundary='Use existing bootstrap only; no complete infrastructure migration'}
-    if (Test-Path $bash) {
-        $startup = Start-Process $bash -ArgumentList @('-lc','"bash scripts/ci-e2e-start.sh"') -WorkingDirectory (Get-Location).Path -PassThru -RedirectStandardOutput "$script:Output/integration-startup-stdout.txt" -RedirectStandardError "$script:Output/integration-startup-stderr.txt"
-        try {
-            [void]$startup.Handle
-            $finished = $startup.WaitForExit(60000)
-            if (-not $finished) { taskkill /PID $startup.Id /T /F | Out-Null }
-            $startup.Refresh()
-            Save-Json 'integration-startup' @{finished=$finished; exitCode=$startup.ExitCode; timeoutSeconds=60}
-            Get-Content "$script:Output/integration-startup-stdout.txt","$script:Output/integration-startup-stderr.txt" | Select-Object -Last 35 | Write-Host
-        } finally { $startup.Dispose() }
-    }
-    $results.J = @{status='BLOCKED'; evidence='Existing service bootstrap attempted without Ubuntu dependencies or infrastructure migration; see integration-preflight/startup and logs. No ready production textarea path established.'}
-    $results.K = @{status='BLOCKED'; evidence='No production Yjs document/cursor observation; REQ-005 is not verified.'}
+    Write-Host 'PHASE J: establishing authenticated ordinary Outliner editor'
+    . "$PSScriptRoot/start-app.ps1"
+    $stage = 'K'
+    . "$PSScriptRoot/production.ps1"
 } catch {
     Write-Host "PROBE FAILURE at $stage : $($_.Exception.Message)"
     $results[$stage] = @{status='FAILED'; evidence="$($_.Exception.Message)"}
@@ -230,6 +219,9 @@ user_pref("accessibility.force_disabled", -1);
     if (Get-Command Save-Json -ErrorAction SilentlyContinue) {
         Save-Json 'input-trace' $script:InputTrace
         Save-Json 'results' @{capabilities=$results; sha=$env:GITHUB_SHA; run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"}
+    }
+    foreach ($p in $script:AppProcesses) {
+        if ($null -ne $p) { taskkill /PID $p.Id /T /F 2>&1 | Out-File -Append "$script:Output/application-cleanup.txt" }
     }
     if ($server) { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
     if ($firefox) {
