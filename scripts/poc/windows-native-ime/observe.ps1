@@ -154,7 +154,7 @@ function Require-Candidate($Candidates, $State) {
     Assert-That $State.composing 'No current composition; older composition events cannot satisfy a new session'
     Assert-That ($c.compositionId -eq $State.compositionId -and $c.composingBefore) 'Candidate observation belongs to a different composition generation'
     Assert-That ($State.focused -and $State.documentFocused) 'Firefox textarea lost focus'
-    Assert-That (($State.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted }).Count -gt 0) 'No trusted native composition'
+    Assert-That (@($State.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted }).Count -gt 0) 'No trusted native composition'
     $fgpid = [uint32]0
     [void][Native]::GetWindowThreadProcessId([Native]::GetForegroundWindow(),[ref]$fgpid)
     Assert-That ($fgpid -eq $script:FirefoxPid) 'Firefox is not foreground'
