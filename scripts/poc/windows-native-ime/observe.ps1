@@ -126,6 +126,7 @@ function Require-Candidate($Candidates, $State) {
 
 function Invoke-UIAProbe($Operation, $Name) {
     # Terminate an isolated OS process on timeout; Stop-Job can itself wait on a hung provider.
+    Write-Host "WORKER START $Operation $Name"
     $worker = Start-Process powershell.exe -ArgumentList @('-NoProfile','-File',
         "`"$PSScriptRoot/uia-worker.ps1`"",'-OutputPath',"`"$script:Output`"",'-Operation',$Operation,'-Name',$Name) -PassThru `
         -RedirectStandardOutput "$script:Output/worker-$Name-stdout.txt" -RedirectStandardError "$script:Output/worker-$Name-stderr.txt"
@@ -135,7 +136,6 @@ function Invoke-UIAProbe($Operation, $Name) {
             $worker.Kill()
             throw "UIA/OS $Operation $Name timed out after 30 seconds"
         }
-        $worker.WaitForExit()
         $worker.Refresh()
         Write-Host "WORKER $Name exit=$($worker.ExitCode)"
         if (Test-Path "$script:Output/worker-$Name-error.txt") { Get-Content "$script:Output/worker-$Name-error.txt" | Write-Host }
