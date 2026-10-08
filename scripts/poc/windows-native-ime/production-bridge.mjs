@@ -18,15 +18,7 @@ async function json(url, method = "GET", body) {
 }
 const wdBase = "http://127.0.0.1:4444";
 const session = (await json(`${wdBase}/session`, "POST", {
-    capabilities: {
-        alwaysMatch: {
-            browserName: "firefox",
-            "moz:firefoxOptions": {
-                binary: "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
-                prefs: { "accessibility.force_disabled": -1, "browser.shell.checkDefaultBrowser": false },
-            },
-        },
-    },
+    capabilities: { alwaysMatch: { browserName: "firefox" } },
 })).value;
 const wd = async (path, body) => (await json(`${wdBase}/session/${session.sessionId}/${path}`, "POST", body)).value;
 await wd("timeouts", { script: 30000, pageLoad: 60000, implicit: 0 });

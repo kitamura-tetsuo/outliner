@@ -1,9 +1,8 @@
 function Production-Command($Path, $Body) {
     Invoke-RestMethod "http://127.0.0.1:8766/$Path" -Method Post -ContentType 'application/json; charset=utf-8' -Body (ConvertTo-Json -InputObject $Body -Depth 20 -Compress) -TimeoutSec 90
 }
-# End the standalone browser before WebDriver launches regular, visible Firefox.
-Get-Process firefox -ErrorAction SilentlyContinue | Stop-Process -Force
-$driver = Start-Process "$script:Output/geckodriver/geckodriver.exe" -ArgumentList @('--port','4444','--log','info') -PassThru -RedirectStandardOutput "$script:Output/geckodriver.stdout.txt" -RedirectStandardError "$script:Output/geckodriver.stderr.txt"
+# Attach read-only observation/navigation to the same proven regular Firefox GUI.
+$driver = Start-Process "$script:Output/geckodriver/geckodriver.exe" -ArgumentList @('--port','4444','--connect-existing','--marionette-port','2828','--log','debug') -PassThru -RedirectStandardOutput "$script:Output/geckodriver.stdout.txt" -RedirectStandardError "$script:Output/geckodriver.stderr.txt"
 $script:AppProcesses += $driver
 $bridge = Start-Process node -ArgumentList @("`"$PSScriptRoot/production-bridge.mjs`"", "`"$script:Output`"") -PassThru -RedirectStandardOutput "$script:Output/bridge.stdout.txt" -RedirectStandardError "$script:Output/bridge.stderr.txt"
 $script:AppProcesses += $bridge

@@ -35,10 +35,10 @@ try {
     $env:npm_config_script_shell = 'C:\Program Files\Git\bin\bash.exe'
     $env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = '1'
     if ($CacheHit -ne 'true') {
-    foreach ($dir in @('', 'client', 'server', 'functions')) {
-        $name = if ($dir) { $dir } else { 'root' }
-        Run-Preparation "install-$name" (Join-Path $app $dir) @($npmArg,'ci')
-    }
+        foreach ($dir in @('', 'client', 'server', 'functions')) {
+            $name = if ($dir) { $dir } else { 'root' }
+            Run-Preparation "install-$name" (Join-Path $app $dir) @($npmArg,'ci')
+        }
     }
     if (Test-Path "$app/shared/node_modules") {
         $sharedLink = Get-Item "$app/shared/node_modules" -Force
@@ -55,6 +55,6 @@ try {
     if (-not (Test-Path "$app/server/dist/server/src/index.js")) { throw 'Compiled server missing' }
     Run-Preparation 'paraglide-build' "$app/client" @($npmArg,'run','paraglide:compile')
     if ($CacheHit -ne 'true') { Run-Preparation 'firebase-tools-install' $app @($npmArg,'install','--prefix','work/tools','firebase-tools') }
-    Invoke-WebRequest 'https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-win64.zip' -OutFile "$log/geckodriver.zip" -UseBasicParsing
+    Invoke-WebRequest 'https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-win64.zip' -OutFile "$log/geckodriver.zip" -UseBasicParsing
     Expand-Archive "$log/geckodriver.zip" "$log/geckodriver" -Force
 } finally { Stop-Transcript }

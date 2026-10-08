@@ -74,7 +74,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/cache@v5
+      - uses: actions/cache/restore@v5
         id: windows-dependencies
         with:
           path: |
@@ -87,6 +87,16 @@ jobs:
       - name: Prepare exact application revision with Windows dependencies
         timeout-minutes: 20
         run: ./scripts/poc/windows-native-ime/prepare-app.ps1 -CacheHit '${{ steps.windows-dependencies.outputs.cache-hit }}'
+      - uses: actions/cache/save@v5
+        if: steps.windows-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: |
+            work/native-ime-app/node_modules
+            work/native-ime-app/client/node_modules
+            work/native-ime-app/server/node_modules
+            work/native-ime-app/functions/node_modules
+            work/native-ime-app/work/tools
+          key: native-ime-windows-2022-node22-v1-73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f
       - name: Preserve application preparation diagnostics
         if: always()
         uses: actions/upload-artifact@v6

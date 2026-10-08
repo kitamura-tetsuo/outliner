@@ -43,11 +43,12 @@ user_pref("browser.startup.homepage_override.mstone", "ignore");
 user_pref("browser.aboutwelcome.enabled", false);
 user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 user_pref("accessibility.force_disabled", -1);
+user_pref("marionette.port", 2828);
 '@ | Set-Content "$profile/user.js"
     $server = Start-Process node -ArgumentList @("`"$PSScriptRoot/server.mjs`"","`"$script:Output`"") -PassThru -RedirectStandardOutput "$script:Output/server.log" -RedirectStandardError "$script:Output/server-error.log"
     $env:MOZ_LOG = 'timestamp,IMEHandler:5,TextInput:5'
     $env:MOZ_LOG_FILE = "$script:Output/firefox-ime.log"
-    $firefox = Start-Process $exe -ArgumentList @('-no-remote','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru -RedirectStandardOutput "$script:Output/firefox-stdout.log" -RedirectStandardError "$script:Output/firefox-stderr.log"
+    $firefox = Start-Process $exe -ArgumentList @('-no-remote','-marionette','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru -RedirectStandardOutput "$script:Output/firefox-stdout.log" -RedirectStandardError "$script:Output/firefox-stderr.log"
     $gui = Wait-FirefoxWindow
     $script:FirefoxPid = $gui.Id
     $script:FirefoxWindow = $gui.MainWindowHandle
