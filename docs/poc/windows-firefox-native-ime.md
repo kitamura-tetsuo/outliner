@@ -1,141 +1,95 @@
-# Windows Firefox native Microsoft Japanese IME PoC
+# Windows Firefox native Microsoft Japanese IME in Outliner
 
-**Standalone native IME automation is demonstrated on a standard GitHub-hosted windows-2025 runner: A–I are PROVEN. Outliner production integration and authoritative document/cursor state remain BLOCKED (J–K). Overall PoC success and Issue #5501/REQ-005 are not established. PR #5504 was not tested or modified.**
+**A–I remain PROVEN. J is PROVEN on the ordinary Outliner editor. K is PARTIAL: single-caret confirm and cancel pass exact canonical Yjs, rendered-text and logical-cursor assertions; two-caret scenarios are blocked by a demonstrated Alt-click cursor-loss bug. The Linux WSL2 backend trial is in progress. Overall REQ-005 success is not established.**
 
-## Executed environment and evidence
+## Exact application and native evidence
 
-Final [Actions run 37777415483](https://github.com/kitamura-tetsuo/outliner/actions/runs/37777415483), 2026-10-08, tested commit **`3e422ff3bb77eeef51956440a0dfc3ef47d9cd07`**. Base main: `0d83434277463783433d95cf17317a7fec9cd609`.
+[Native run 37798605290](https://github.com/kitamura-tetsuo/outliner/actions/runs/37798605290), harness `dfd2ca98bb14e9bd51fe799aa1f03dffc6b38916`, tested application **`79a976cd8765367ea4f04baa00905822681cf294`**. This is a descendant of the actual #5504 correction **`73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f`**, with two source integration fixes:
 
-| Fact                | Recorded value                                                                                                    |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Runner              | Standard GitHub-hosted `windows-2025`; no self-hosted runner                                                      |
-| OS                  | Windows Server 2025 Datacenter, 10.0.26100, build 26100                                                           |
-| Image               | `win25-vs2026`, version `20260925.250.1`                                                                          |
-| Firefox             | Regular preinstalled desktop 156.0.1, `C:\Program Files\Mozilla Firefox\firefox.exe`; fresh profile, non-headless |
-| Desktop             | Session 2, input desktop `Default`                                                                                |
-| Display             | 1024 × 768, DPR 1, window DPI 96                                                                                  |
-| Initial input       | en-US, `0409:00000409`, default override unset                                                                    |
-| Activated input     | Microsoft Japanese TIP, language 0411, foreground HKL `4110411`                                                   |
-| Optional capability | `Language.Basic~~~ja-JP~0.0.1.0`: state 0 (NotPresent); actual Microsoft Japanese IME nevertheless works          |
+- `7b90e6fb7b709cff0f6d6b19ef8e643a2f50eced`: explicit cursor barrel imports avoid Windows case-insensitive `cursor` / `Cursor.ts` resolution.
+- `79a976cd8765367ea4f04baa00905822681cf294`: the existing libpg-query package patch exports its ESM loader factory, required by the ordinary browser application.
 
-[Final native artifact](https://github.com/kitamura-tetsuo/outliner/actions/runs/37777415483/artifacts/11551445491) contains 104 files: environment, TSF/input profile observations, Firefox IME logs, browser events, UIA snapshots, candidate selection observations, keyboard traces, screenshots, integration startup logs and results. [Initial inventory artifact](https://github.com/kitamura-tetsuo/outliner/actions/runs/37777415483/artifacts/11550620951) survives independently. The inventory and independent GUI transport jobs succeed; the native job correctly exits 1 because J–K are not PROVEN. Artifact upload succeeds. Artifacts expire after 14 days.
+The production run uses standard GitHub-hosted `windows-2022`, native Firefox 157.0 and geckodriver 0.37.1 attached to the same visible desktop browser used for A–I. Real Firebase Auth/Firestore/Functions/Hosting emulators, compiled Yjs server and Vite serve the ordinary authenticated editor. Shared imports resolve through the patched client dependencies. The existing test route/navigation hooks and authenticated seed API prepare disposable project/page data; they do not inject editor cursor state or simulate composition.
 
-Durable, inspected screenshots:
+The browser mounts the app-created `textarea.global-textarea` with its actual `wrap="off"`, geometry and handlers. Its measured proxy is 1 × 1 pixels. No textarea CSS, position, size, wrap or handlers are changed at runtime. This native-popup evidence does not demonstrate long-text wrapping or correct popup placement on every platform.
 
-- [Native candidate list, final run](assets/windows-firefox-candidates-37777415483.png): numbered native popup, 二本 highlighted; corresponds to the native UIA selected item.
-- [Native inline preedit, final run](assets/windows-firefox-preedit-37777415483.png): Japanese inline preedit and a separate native prediction popup.
-- [Confirmed native selection, final run](assets/windows-firefox-confirmed-37777415483.png): 🗾 remains after Enter, matching the selected native item and trusted compositionend.
-- [Text retained after cancellation, final run](assets/windows-firefox-cancelled-37777415483.png): 🗾 remains after a fresh composition is cancelled; exact caret restoration is recorded in cancellation.json.
-- [Independent GUI keyboard transport](assets/windows-firefox-transport-37768108913.png), [run 37768108913](https://github.com/kitamura-tetsuo/outliner/actions/runs/37768108913), SHA `41362f4d33d4497047ddf47bf88a32456da706ce`: actual abc in GUI Firefox.
+[Durable structured evidence](assets/windows-firefox-production-37798605290.json) retains full item IDs, canonical Y.Text/rendered text, complete cursor IDs/item IDs/offsets, selections, current session/action/generation, trusted native composition events, native UIA candidate lists and actual negative-control snapshots. [Raw artifact](https://github.com/kitamura-tetsuo/outliner/actions/runs/37798605290/artifacts/11559334098) includes browser/server logs, screenshots and complete UIA dumps; its retention is 14 days.
 
-The final run's `preedit-long.json` contains **にほ**. `にほｎ` appears in a later event. This demonstrates short preedit growth only; it provides no long-text wrapping coverage.
+| Scenario            | Result                     | Exact assertion                                         |
+| ------------------- | -------------------------- | ------------------------------------------------------- |
+| One caret, confirm  | PROVEN                     | Baseline `prefix                                        | suffix``; independently observed selected native C=``二本``; canonical/rendered ``prefix二本suffix`; same logical cursor moves 6→8. |
+| One caret, cancel   | PROVEN                     | Fresh baseline `prefix                                  | suffix``; selected native C=``🗾``; Escape ends composition with empty committed text; canonical/rendered ``prefixsuffix`, same cursor at 6 and selections exactly restored. |
+| Two carets, confirm | BLOCKED before composition | Native Alt-click leaves only the second `left           | tail` cursor at offset 4; the required first cursor at offset 6 is absent. No successful two-recipient insertion is claimed. |
+| Two carets, cancel  | NOT REACHED                | The preceding invalid two-caret baseline fails the job. |
 
-## Capability results
+All canonical nonrecipient items and their rendered text remain unchanged in the successful scenarios. Expected documents and exact complete cursor sets derive from immutable before-state plus UIA-selected C, never from after-state or the final DOM. A missing canonical Y.Text fails rather than falling back to rendered text. Full IDs and independently derived expected snapshots are in the durable evidence.
 
-Every PROVEN entry below was exercised on the final hosted Windows run.
+Inspected screenshots:
 
-| Capability                          | Classification | Authoritative observation                                                                                                                                                                                     |
-| ----------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A. Firefox GUI                      | PROVEN         | Actual Firefox HWND/PID 1932, desktop snapshot and inspected screenshots.                                                                                                                                     |
-| B. Microsoft Japanese IME activated | PROVEN         | Exact active Microsoft TSF profile/language after session-wide activation; activation/query HRESULTs 0; real native Firefox composition follows.                                                              |
-| C. OS keyboard input through IME    | PROVEN         | Win32 virtual-key SendInput accepts two events per key; foreground Firefox produces trusted native compositionstart/update after romaji.                                                                      |
-| D. Real inline composition          | PROVEN         | preedit-short.json: に; preedit-long.json: にほ (にほｎ occurs in a later event); composing true in generation 1; trusted updates and native screen evidence.                                                 |
-| E. Native candidate appears         | PROVEN         | Fresh desktop UIA native HWND 197366, class mscandui40.candidate, name Microsoft Candidate UI, Firefox PID 1932, visible bounds matching the inspected popup.                                                 |
-| F. Candidate contents/selection     | PROVEN         | Native Primary Candidate List exposes ListItem text and SelectionItemPattern; 二本 has IsSelected true.                                                                                                       |
-| G. Navigation and confirmation      | PROVEN         | Down changes selected runtime ID/text from 二本 to 🗾; Enter commits exactly 🗾, trusted compositionend agrees, and the fresh candidate query becomes empty.                                                  |
-| H. Cancellation                     | PROVEN         | New native composition, bounded Escape cancellation, then exact restoration of 🗾 and textarea selection start/end 2/2; no current composition or candidate remains.                                          |
-| I. Negative controls                | PROVEN         | Actual direct Latin typing rejects candidate assertion; restored Japanese opens a fresh native list. Missing, unchanged, retained-after-disappearance, committed-only and old-generation observations reject. |
-| J. Production textarea              | BLOCKED        | Existing startup attempted on Windows; exit 1 because the compiled Yjs server artifact is absent. No ready production global-textarea path established.                                                       |
-| K. Outliner document/cursor         | BLOCKED        | No production Yjs document or logical cursor observation; fixture caret 2 is a UTF-16 textarea offset, not Outliner's logical cursor proof.                                                                   |
+- [Inline preedit](assets/production-1-confirm-preedit-37798605290.png).
+- [Actual native selection](assets/production-1-confirm-selected-37798605290.png).
+- [Confirmed production editor](assets/production-1-confirm-after-37798605290.png).
+- [Production editor after cancel](assets/production-1-cancel-after-37798605290.png).
 
-## Reproduction and input mechanism
+## Live strict negative controls
 
-The isolated workflow `.github/workflows/poc-windows-firefox-native-ime.yml` has independent inventory, GUI transport and native IME jobs. It runs on its dedicated branch through push or workflow_dispatch. It is not added to required CI and does not depend on the Ubuntu PoC.
+After the successful confirm, controls mutate the attached production Y.Text or logical cursor state, re-read both canonical state and rendered editor, require rejection, and restore the actual state before continuing:
 
-On a **disposable** Windows desktop with Node 22, run from the repository root:
+- Omitted confirmed insertion: rejected by exact canonical/rendered recipient-set assertion.
+- Duplicated confirmed insertion: rejected by the same exact assertion.
+- Incorrect logical caret: rejected by the complete logical cursor-set assertion.
+- After cancellation, incorrect restored caret: rejected by the complete logical cursor-set assertion.
 
-```powershell
-powershell -NoProfile -File scripts/poc/windows-native-ime/run.ps1
-```
+The two-recipient omission control is implemented and locally covered by the independent oracle tests, but **has not yet run against a valid live two-caret production baseline**. The native job exits nonzero while K is incomplete; no skipped assertion or process readiness can make K pass.
 
-Setup changes the current user's language/default input configuration. The harness starts ordinary Firefox with a fresh profile and a normal visible textarea. A real Win32 mouse click focuses it using read-only browser geometry. Accepted OS input, browser focus and foreground PID establish actual interactivity; UIA enumeration alone is insufficient.
+## Demonstrated Alt-click defect and source fix
 
-Virtual-key SendInput delivers romaji, IME mode keys, Space, arrows, Enter and Escape. No Unicode injection, clipboard paste, WM_CHAR, synthetic DOM composition or browser input API is used. PostMessage is used only for WM_INPUTLANGCHANGEREQUEST. Browser text/selection and trusted composition events are supplementary telemetry.
+The failed two-caret before-snapshot records trusted `mousedown`, `mouseup` and `click` on the second item, each with `altKey=true`. Composition generation is 0, no composition events exist, canonical content is unchanged, and only the second cursor remains. This establishes actual native modifier delivery and an editor baseline defect, rather than an IME insertion result.
 
-Setup adds ja-JP to the user's language list, selects the Microsoft Japanese TIP, loads the Japanese layout and requests the Firefox input language. Native COM activates the TSF profile with `TF_IPPMF_FORSESSION | TF_IPPMF_ENABLEPROFILE` (`0x20000001`) and queries the active keyboard-category profile:
+`OutlinerItem.svelte` starts editing during mousedown on a row without a cursor. `startEditing` clears the active row's caret and places a new local caret before the existing additive Alt-click handler executes. Source integration commit **`0b5e6b0b1d3985e6789a6d826c5a76a180642a6d`** returns from plain Alt-mousedown before that destructive path; the existing click handler adds the caret. Shift gestures retain their existing path. The updated application pin contains this fix; its native rerun remains necessary to establish the two-caret outcomes. No application cursor state is seeded by the harness to bypass this defect.
 
-```text
-CLSID 03B5835F-F03C-411B-9CE2-AA23E1171E36
-profile A76C93D9-5523-4E90-AAFA-4DB112F9AC76
-language 0411
-activationHRESULT=00000000 queryHRESULT=00000000 activeMicrosoft=True
-```
+## Linux backend on the Windows 2025 runner
 
-Culture, HKL and configured settings alone do not prove activation. The exact live TSF identity plus real native composition support B. The query runs in the caller in the same session after session-wide activation, not directly inside Firefox's private TSF thread manager.
+[WSL2 trial 37798605301](https://github.com/kitamura-tetsuo/outliner/actions/runs/37798605301) uses a standard GitHub-hosted `windows-2025` runner. Ubuntu WSL2 and a native Linux Docker Engine have provisioned successfully. Compose startup and Windows/Firefox localhost reachability remain under test; these platform facts are not J–K proof.
 
-The final run installs no capability because composition already works. Language packs/layouts and TSF registry facts are retained in language-packs.txt, keyboard-layouts.txt, user-keyboards.txt and microsoft-japanese-tsf-registry.txt. If native preedit fails, supported Add-WindowsCapability runs in a bounded child process. Earlier installations exceeded 300 seconds; reboot-required results fail explicitly because reboot/resume is not implemented. NotPresent Japanese Basic is not evidence of IME absence.
+The implementation is `.github/workflows/poc-windows-wsl2-linux-backend.yml` and `scripts/poc/windows-linux-backend/`. It first records Windows virtualization/features and real WSL commands, provisions Ubuntu with WSL version 2, verifies the actual Linux kernel, installs Ubuntu's native Docker Engine and Compose, and requires Docker's OS type to be Linux. It uses no Docker Desktop or Windows containers.
 
-## Actual native UIA structure
+Compose combines the pinned application's existing `docker-compose.yml` with a PoC runtime overlay for the existing `yjs-server` service. A clean `git archive` enters Ubuntu's ext4 filesystem; Node dependencies and native addons are installed inside the Linux image from their existing lockfiles. The runtime also starts the existing Firebase emulators and ordinary Vite client. Existing Hosting `/api` rewrites and real authentication remain in use. No Linux node_modules are copied into Windows.
 
-The published `IME_Candidate_Window` AutomationId is absent in this configuration. An earlier exact-ID query returned [] even while a native list was plainly visible ([run 37772921746](https://github.com/kitamura-tetsuo/outliner/actions/runs/37772921746), SHA `ff675b832e1419231f79df10183e8b25fe3b93ca`). Raw desktop investigation established this alternate native structure:
+Required Windows localhost endpoints:
 
-```text
-Desktop
-  Firefox
-    Pane: Microsoft Candidate UI
-      HWND 197366, native class mscandui40.candidate
-      PID 1932 (Firefox), AutomationId empty
-      bounds left=10 top=327 width=184 height=256, IsOffscreen=false
-      Custom: Primary Candidate List
-        List: Primary Candidate List [SelectionPattern]
-          ListItem 日本 [SelectionItemPattern, IsSelected=false]
-          ListItem 二本 [SelectionItemPattern, IsSelected=true]
-          ListItem 🗾   [SelectionItemPattern, IsSelected=false]
-          ...actual remaining native candidates...
-```
+| Service                                      | Endpoint                            |
+| -------------------------------------------- | ----------------------------------- |
+| Ordinary client                              | `http://127.0.0.1:7090/`            |
+| Yjs/backend health and authenticated seeding | `http://127.0.0.1:7093/health`      |
+| Functions through Hosting rewrites           | `http://127.0.0.1:57070/api/health` |
+| Auth emulator                                | `http://127.0.0.1:59099/`           |
+| Firestore emulator                           | `http://127.0.0.1:58080/`           |
 
-This is a native Microsoft candidate HWND hosted inside the Firefox process, not a DOM dropdown or a TextInputHost-owned modern popup. Acceptance requires its exact observed native class/name, nonzero HWND, matching foreground Firefox PID, visible bounds, active focused textarea and current composition generation. A name alone cannot pass. Modern published-ID candidates retain a separate Windows input-host ownership check. The fixture itself creates no candidate UI.
+The startup step requires HTTP 200 from all five in Windows PowerShell. The attached native Windows Firefox then navigates to each service and performs a same-origin fetch, saving `windows-firefox-linux-localhost.json`. Those browser checks establish network transport only. A–I subsequently retain the real OS IME/UIA tests, and J–K require the ordinary editor and exact application assertions described above.
 
-Each query starts freshly at the **desktop root**, not the DOM or a Firefox-only subtree. Candidate ownership, class, bounds, visibility, UIA runtime identity, contents, selected state and composition generation are recorded. A native HWND MSAA probe is supplementary; successful selection assertions in the final run use UIA SelectionItemPattern.
+WSL2 actually runs on this image despite some WMI virtualization capability fields reporting false; those inventory fields alone are not a platform blocker. The earlier empty PowerShell ArgumentList and shell CRLF errors were corrected harness failures, not proof that WSL2 is unavailable.
 
-The selected runtime IDs actually change from `42,197366,4,2,0,1` (二本) to `42,197366,4,2,0,2` (🗾). The chosen native text exactly equals the committed textarea value. Candidate ordering is learned from the live list, not hard-coded. Candidate appearance/disappearance is freshly sampled; UIA MenuOpened, MenuClosed and ElementSelected subscriptions were not implemented or claimed.
+A separate Ubuntu runner over a private network is conditional on this approach being unavailable. Since WSL2 and Linux Docker provision successfully, that fallback is not yet needed. If a fallback becomes necessary, paired Ubuntu/Windows jobs would need private-network identity and ACLs, bounded readiness/lifetime coordination, and a verified endpoint configuration for all services. A Tailscale ephemeral-node network supports both operating systems, but current connector access cannot inspect repository secret metadata; no absence of credentials is inferred. Merely running an Ubuntu backend would not establish Windows Firefox access or J–K.
 
-## Negative controls and cancellation
+## Preserved native A–I and correlation rules
 
-The final sequence observes:
+The [archived standalone report](windows-firefox-native-ime-standalone.md) retains the original `windows-2025` run **37777415483**, SHA **`3e422ff3bb77eeef51956440a0dfc3ef47d9cd07`**, original UIA structure, selected C=`🗾`, screenshots and independent GUI transport proof. Its historical J–K failure is superseded by the production results above.
 
-1. Initial actual abc input with no composition/candidate; direct-Latin and explicit missing-window assertions reject.
-2. Real Japanese preedit and visible native candidate; positive assertion succeeds.
-3. Unchanged native selected item fails the navigation predicate.
-4. After confirmation the candidate query is []; the captured old candidate also rejects because composition ended. Committed 🗾 alone cannot pass despite older trusted composition events.
-5. After cancellation, VK_IME_OFF followed by actual abc yields 🗾abc without composition and no candidate; the assertion rejects.
-6. OS Backspace removes abc; VK_IME_ON/Hiragana restore Japanese input. Generation 3 opens a new native candidate HWND 197300. The generation-1 record rejects; the new record passes.
-7. Bounded Escape presses follow conversion back through reading/clearing states until composition ends and committed text is restored. A final fresh query is [].
+A–I continue to require: an interactive desktop; active Microsoft Japanese TSF identity; accepted Win32 SendInput and trusted composition; inline native preedit; a fresh visible native candidate window; actual UIA ListItems and SelectionItemPattern; changed selected native text/runtime ID followed by exact confirmation; native cancellation; and strict live negative controls. Candidate existence alone, committed text alone, synthetic composition events and pasted Unicode are insufficient.
 
-Missing, ambiguous, inaccessible, malformed or timed-out UIA observations never imply PASS. UIA/OS calls run in isolated, bounded PowerShell processes; worker errors throw. A failed observation worker actually produced a failed native job in [run 37774760065, attempt 2](https://github.com/kitamura-tetsuo/outliner/actions/runs/37774760065/attempts/2) when a managed legacy-pattern type was unavailable; that harness defect was corrected. A deliberate OS access-denied UIA tree was not separately induced.
+Session IDs, action IDs, composition generations and observation sequences scope every current observation. Navigation resets sequences and retires prior sessions. Production actions start fresh compositions. Candidate reads enumerate the desktop root anew and correlate current action/generation, native HWND/PID/class/bounds and current browser observations. A stale candidate from a preceding fixture action fails before production candidate navigation.
 
-Screen capture availability has independent records and the native screenshots were inspected. Earlier false preedit failures were traced to Windows PowerShell 5 decoding JSON without an explicit charset; responses now declare application/json; charset=utf-8. Diagnostics preserve those failures rather than attributing them to an absent IME.
+The original `preedit-long.json` contains **`にほ`**; `にほｎ` appears only in a later event. This is short preedit growth, with no long-text wrapping coverage.
 
-## Production Outliner integration blocker
+## Validation and remaining work
 
-After standalone A–I passed, the final job attempted the **existing** `scripts/ci-e2e-start.sh` through the runner's Git Bash, with a 60-second bound. Bash exists; root/client dependency trees and the server build are absent. Startup generated emulator configuration and disposable environment files, then returned exit 1:
+- Independent strict production oracle tests: 3 passed, including astral C, exact cursor identities/counts, unexpected recipients, omissions/duplicates, generation/native agreement and exact cancellation.
+- Fixture/session transport test: passed, including reset, retired-session and reordered-observation rejection.
+- Pinned application client TypeScript and client build: passed, including the Alt-click source fix.
+- Compiled server TypeScript and focused cursor selection test: passed (11 tests).
+- Linux scripts: `bash -n` passed; installed Docker Compose 2.40.3 accepts the existing application plus overlay configuration.
+- `client/e2e` TypeScript has 27 errors also present unchanged at correction revision `73cf8a42`; no new errors are attributed to this change.
+- Basic Playwright E2E was attempted but could not launch the required pinned Chromium executable in this workspace. It supplies no application behavior proof.
 
-```text
-Verifying server build artifact...
-Error: server/dist/server/src/index.js is missing.
-The prepare-e2e-runtime job should have built and uploaded it as an artifact.
-```
-
-See integration-preflight.json, integration-startup.json and integration-startup-stdout/stderr.txt in the final artifact. No production editor or authoritative Yjs state was reached.
-
-Source inspection of `.github/actions/setup-e2e-deps/action.yml`, `scripts/ci-e2e-start.sh` and `scripts/common-functions.sh` shows the existing Ubuntu bootstrap restores multiple npm trees, Java 21, Firebase tools, a compiled Yjs server and PM2 services, with dpkg/apt-get, ln -sfn, pgrep, pkill and lsof references. This minimal independent Windows job does not port that bootstrap or import an Ubuntu PoC service/artifact.
-
-The missing build/dependencies are a **PoC integration boundary**, not an inherent inability of Windows or GitHub-hosted runners to run Outliner. A Windows-compatible dependency/build/service startup path is still required. No complete E2E infrastructure redesign is included. A follow-up must use the real `textarea.global-textarea`, exercise the same native sequence, and read canonical Yjs text plus the logical cursor. Existing `client/e2e/utils/treeValidation.ts` and `cursorValidation.ts` offer application-state references but cannot replace native selection evidence.
-
-## Validation and scope
-
-Final hosted A–I assertions pass; J–K remain BLOCKED. Overall exit is 1 until every A–K entry is PROVEN. There are no skipped native assertions or continue-on-error success substitutions.
-
-Local Node syntax, HTTP/monotonic telemetry smoke checks, dprint and git diff --check pass. Required repository checks were attempted: E2E TypeScript reports 27 errors in existing code; client TypeScript lacks generated $app config/types; client build fails on a missing demoProject route matcher in the cached dependency environment. No production editor changes were made to address these separate failures.
-
-Changes are confined to this isolated workflow, `scripts/poc/windows-native-ime/`, this report and evidence images. Issue #5501 and PR #5504 are unchanged. The result establishes a usable native candidate-selection oracle for standalone hosted Windows Firefox; it does **not** establish Outliner REQ-005 or PR #5504 Windows compatibility.
+PR #5506 remains open; no merge or Issue #5501 closure is performed. Next session: proceed sequentially—inspect the Linux hosted run, validate Windows Firefox access, rerun all four native production scenarios on the explicit fixed application pin, retain exact canonical/cursor/selection and live-control evidence, then update the classifications. Do not infer REQ-005 success from startup or relax the two-caret baseline.
