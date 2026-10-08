@@ -29,6 +29,9 @@ function Screen-Capture($Name) {
         try {
             $g.CopyFromScreen($r.Left,$r.Top,0,0,$bmp.Size)
             $bmp.Save("$script:Output/$Name.png")
+            if ($Name -like 'transport*' -or $Name -eq 'failure') {
+                Write-Host "SCREENSHOT64 $Name $([Convert]::ToBase64String([IO.File]::ReadAllBytes("$script:Output/$Name.png")))"
+            }
             Save-Json "$Name-capture" @{available=$true; rectangle="$r"}
         } finally { $g.Dispose(); $bmp.Dispose() }
     } catch { Save-Json "$Name-capture" @{available=$false; error="$($_.Exception)"} }

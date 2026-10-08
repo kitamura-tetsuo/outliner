@@ -11,7 +11,12 @@ try {
     Assert-That (Test-Path $exe) 'Regular Firefox missing'
     $profile = Join-Path $script:Output 'transport-profile'
     New-Item -ItemType Directory -Force $profile | Out-Null
-    'user_pref("browser.aboutwelcome.enabled", false);' | Set-Content "$profile/user.js"
+    @'
+user_pref("browser.aboutwelcome.enabled", false);
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.startup.homepage_override.mstone", "ignore");
+user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+'@ | Set-Content "$profile/user.js"
     Write-Host 'TRANSPORT launching fixture server'
     $server = Start-Process node -ArgumentList @("`"$PSScriptRoot/server.mjs`"","`"$script:Output`"") -PassThru -RedirectStandardOutput "$script:Output/server.log" -RedirectStandardError "$script:Output/server-error.log"
     Write-Host 'TRANSPORT launching GUI Firefox'
@@ -33,7 +38,18 @@ try {
     $mouseCount = [Native]::Click($x,$y)
     Save-Json 'transport-mouse' @{x=$x;y=$y;accepted=$mouseCount;desktop=[Native]::InputDesktop()}
     Assert-That ($mouseCount -eq 2) 'SendInput mouse rejected'
-    Send-Romaji 'abc'
+    Start-Sleep -Milliseconds 500
+    $afterMouse = State
+    Save-Json 'transport-after-mouse' $afterMouse
+    if (-not $afterMouse.focused) {
+        # Normal OS keyboard navigation is another GUI focus mechanism, not DOM focus.
+        foreach ($attempt in 1..10) {
+            Send-Key 0x09
+            if ((State).focused) { break }
+        }
+        Save-Json 'transport-after-tab-navigation' (State)
+    }
+    Send-Romaji 'abc' 
     $state = State
     $fgpid = [uint32]0
     [void][Native]::GetWindowThreadProcessId([Native]::GetForegroundWindow(),[ref]$fgpid)

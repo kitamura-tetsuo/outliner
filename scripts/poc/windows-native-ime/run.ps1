@@ -33,7 +33,7 @@ try {
             Out-File "$script:Output/firefox-install.txt"
         Assert-That ($LASTEXITCODE -eq 0 -and (Test-Path $exe)) 'Regular Firefox installation failed'
     }
-    Save-Json 'firefox-version' @{path=$exe; version=(Get-Item $exe).VersionInfo; signature=(Get-AuthenticodeSignature $exe | Select-Object Status,SignerCertificate)}
+    Save-Json 'firefox-version' @{path=$exe; version=(Get-Item $exe).VersionInfo; distribution='Regular desktop Firefox preinstalled in hosted runner image (or recorded winget installation)'}
     $profile = Join-Path $script:Output 'firefox-profile'
     New-Item -ItemType Directory -Force $profile | Out-Null
     @'
