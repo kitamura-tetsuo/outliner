@@ -17,6 +17,7 @@ function report(event) {
         start: editor.selectionStart, end: editor.selectionEnd});
     const state = {sequence, events, value: editor.value, start: editor.selectionStart, end: editor.selectionEnd,
         focused: document.activeElement === editor, documentFocused: document.hasFocus(),
+        window: {innerScreenX: window.mozInnerScreenX, innerScreenY: window.mozInnerScreenY},
         screen: {width: screen.width, height: screen.height, dpr: devicePixelRatio},
         rect: editor.getBoundingClientRect().toJSON()};
     document.querySelector('#status').textContent = JSON.stringify(state.events.slice(-3), null, 2);

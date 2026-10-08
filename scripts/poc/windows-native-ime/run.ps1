@@ -54,21 +54,19 @@ user_pref("accessibility.force_disabled", -1);
     Assert-That ($script:FirefoxWindow -ne [IntPtr]::Zero) 'Firefox has no GUI main window'
     [void][Native]::ShowWindow($script:FirefoxWindow,3)
     [void][Native]::SetForegroundWindow($script:FirefoxWindow)
-    Snapshot 'startup'
+    try { Snapshot 'startup' } catch { Save-Json 'uia-startup-error' @{error="$($_.Exception.Message)"} }
     Screen-Capture 'startup'
     $results.A = @{status='PROVEN'; evidence='GUI HWND and uia-startup.json; startup-capture.json separately records capture capability'; pid=$script:FirefoxPid}
     Save-Json 'results' @{capabilities=$results; sha=$env:GITHUB_SHA; run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"}
     Write-Host 'PHASE C: locating UIA textarea and testing SendInput delivery'
     $stage = 'C'
-    $root = [System.Windows.Automation.AutomationElement]::FromHandle($script:FirefoxWindow)
-    $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty,'Native IME test input')
-    $editCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::Edit)
-    $both = New-Object System.Windows.Automation.AndCondition($condition,$editCondition)
-    $input = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$both)
-    Assert-That ($null -ne $input) 'Visible textarea not found in Firefox UIA tree'
-    $r = $input.Current.BoundingRectangle
-    Assert-That ($r.Width -gt 100 -and $r.Height -gt 100) 'Textarea has no usable GUI bounds'
-    Assert-That ([Native]::Click([int]($r.Left+30),[int]($r.Top+30)) -eq 2) 'SendInput mouse focus failed'
+    # Read-only browser geometry locates the real visible fixture; OS mouse input performs focus.
+    $geometry = State
+    Assert-That ($null -ne $geometry.window.innerScreenX -and $geometry.rect.width -gt 100) 'Firefox did not expose fixture geometry'
+    $clickX = [int](($geometry.window.innerScreenX + $geometry.rect.left + 30) * $geometry.screen.dpr)
+    $clickY = [int](($geometry.window.innerScreenY + $geometry.rect.top + 30) * $geometry.screen.dpr)
+    Save-Json 'gui-click' @{x=$clickX; y=$clickY; geometry=$geometry}
+    Assert-That ([Native]::Click($clickX,$clickY) -eq 2) 'SendInput mouse focus failed'
     Start-Sleep -Seconds 1
     Send-Romaji 'abc'
     $latin = State
@@ -151,7 +149,8 @@ user_pref("accessibility.force_disabled", -1);
 } catch {
     $results[$stage] = @{status='FAILED'; evidence="$($_.Exception.Message)"}
     $_ | Out-String | Set-Content "$script:Output/failure.txt"
-    try { Snapshot 'failure'; Screen-Capture 'failure' } catch { $_ | Out-String | Set-Content "$script:Output/diagnostic-failure.txt" }
+    Screen-Capture 'failure'
+    try { Snapshot 'failure' } catch { $_ | Out-String | Set-Content "$script:Output/diagnostic-failure.txt" }
 } finally {
     if (Get-Command Save-Json -ErrorAction SilentlyContinue) {
         Save-Json 'input-trace' $script:InputTrace

@@ -42,7 +42,7 @@ function Element-Record($Element) {
         bounds="$($c.BoundingRectangle)"; offscreen=$c.IsOffscreen; selected=$selected;
         runtimeId=($Element.GetRuntimeId() -join ',')}
 }
-function Snapshot($Name) {
+function Snapshot-Raw($Name) {
     $records = New-Object 'System.Collections.Generic.List[object]'
     $errors = New-Object 'System.Collections.Generic.List[string]'
     $queue = New-Object 'System.Collections.Generic.Queue[object]'
@@ -65,7 +65,7 @@ function Snapshot($Name) {
     }
     Save-Json "uia-$Name" @{time=[DateTime]::UtcNow.ToString('o'); records=$records; errors=$errors; truncated=($queue.Count -gt 0)}
 }
-function Candidate($Name) {
+function Candidate-Raw($Name) {
     # A fresh desktop-wide query every time: retained UIA elements never serve as an oracle.
     $condition = New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IME_Candidate_Window')
@@ -101,3 +101,22 @@ function Require-Candidate($Candidates, $State) {
     Assert-That ($fgpid -eq $script:FirefoxPid) 'Firefox is not foreground'
     return $c
 }
+
+function Invoke-UIAProbe($Operation, $Name) {
+    # Providers can hang even when input works. Isolate each read and never convert timeout into PASS.
+    $job = Start-Job -ScriptBlock {
+        param($Root,$OutputPath,$OperationName,$SnapshotName)
+        $script:Output = $OutputPath
+        . "$Root/observe.ps1"
+        if ($OperationName -eq 'snapshot') { Snapshot-Raw $SnapshotName }
+        else { Candidate-Raw $SnapshotName }
+    } -ArgumentList $PSScriptRoot,$script:Output,$Operation,$Name
+    try {
+        $done = Wait-Job $job -Timeout 20
+        if (-not $done) { throw "UIA $Operation $Name timed out after 20 seconds" }
+        if ($job.State -ne 'Completed') { throw "UIA $Operation $Name failed: $($job.ChildJobs[0].JobStateInfo.Reason)" }
+        Receive-Job $job -ErrorAction Stop
+    } finally { Stop-Job $job; Remove-Job $job -Force }
+}
+function Snapshot($Name) { Invoke-UIAProbe 'snapshot' $Name }
+function Candidate($Name) { Invoke-UIAProbe 'candidate' $Name }
