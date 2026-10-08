@@ -24,6 +24,21 @@ let draft = $state(untrack(() => handles.schemaText.toString()));
 let applyError = $state<string | undefined>(undefined);
 let applying = $state(false);
 let pendingChange = $state<{ parsed: ParsedTableSchema; diff: SchemaDiff; } | undefined>(undefined);
+let dialogElement: HTMLDialogElement | undefined = $state();
+
+$effect(() => {
+    if (dialogElement) {
+        if (pendingChange) {
+            if (!dialogElement.open && typeof dialogElement.showModal === 'function') {
+                dialogElement.showModal();
+            }
+        } else {
+            if (dialogElement.open && typeof dialogElement.close === 'function') {
+                dialogElement.close();
+            }
+        }
+    }
+});
 
 async function apply() {
     applyError = undefined;
@@ -99,8 +114,9 @@ function cancelPending() {
     {/if}
 
     {#if pendingChange}
-        <div class="warning-dialog" role="alertdialog" tabindex="-1" data-testid="yjs-table-schema-warning">
-            <p class="warning-title">This schema change affects existing data:</p>
+        <dialog class="warning-dialog" bind:this={dialogElement} oncancel={(e) => { e.preventDefault(); cancelPending(); }} onclick={(e) => { if (e.target === dialogElement) cancelPending(); }} aria-labelledby="warning-title" data-testid="yjs-table-schema-warning">
+            <div class="dialog-content" role="presentation" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()} onpointerdown={(e) => e.stopPropagation()} onmouseup={(e) => e.stopPropagation()}>
+            <p id="warning-title" class="warning-title">This schema change affects existing data:</p>
             <ul>
                 {#if pendingChange.diff.removedColumns.length > 0}
                     <li>
@@ -123,7 +139,8 @@ function cancelPending() {
                     Cancel
                 </button>
             </div>
-        </div>
+            </div>
+        </dialog>
     {/if}
 </div>
 
@@ -162,6 +179,17 @@ function cancelPending() {
 }
 
 .warning-dialog {
+    margin: auto;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+}
+.warning-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.dialog-content {
     border: 1px solid #f59e0b;
     background: #fffbeb;
     border-radius: 4px;

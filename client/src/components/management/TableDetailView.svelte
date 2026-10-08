@@ -45,6 +45,21 @@
     let dependencies = $state<TableDependencies | undefined>(undefined);
     let deleteActionError = $state<string | undefined>(undefined);
     let isDeleting = $state(false);
+    let dialogElement: HTMLDialogElement | undefined = $state();
+
+    $effect(() => {
+        if (dialogElement) {
+            if (showDeleteDialog) {
+                if (!dialogElement.open && typeof dialogElement.showModal === 'function') {
+                    dialogElement.showModal();
+                }
+            } else {
+                if (dialogElement.open && typeof dialogElement.close === 'function') {
+                    dialogElement.close();
+                }
+            }
+        }
+    });
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -349,8 +364,8 @@
 </main>
 
 {#if showDeleteDialog && dependencies}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="delete-dialog-title">
-        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+    <dialog class="dialog p-0 border-none m-auto bg-transparent max-w-full max-h-full" bind:this={dialogElement} oncancel={(e) => { e.preventDefault(); showDeleteDialog = false; }} onclick={(e) => { if (e.target === dialogElement) showDeleteDialog = false; }} aria-labelledby="delete-dialog-title">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col" role="presentation" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()} onpointerdown={(e) => e.stopPropagation()} onmouseup={(e) => e.stopPropagation()}>
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 id="delete-dialog-title" class="text-lg font-bold text-gray-900">Delete table "{tableName}"</h2>
             </div>
@@ -460,5 +475,11 @@
                 </button>
             </div>
         </div>
-    </div>
+    </dialog>
 {/if}
+
+<style>
+.dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
+</style>
