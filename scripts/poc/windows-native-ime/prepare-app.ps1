@@ -1,4 +1,4 @@
-param([string]$AppPath = 'work/native-ime-app')
+param([string]$AppPath = 'work/native-ime-app', [string]$CacheHit = 'false')
 $ErrorActionPreference = 'Stop'
 $log = Join-Path (Get-Location) 'artifacts/windows-native-ime'
 New-Item -ItemType Directory -Force $log | Out-Null
@@ -34,9 +34,11 @@ try {
     # but install native dependencies on Windows from their own lockfiles.
     $env:npm_config_script_shell = 'C:\Program Files\Git\bin\bash.exe'
     $env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = '1'
+    if ($CacheHit -ne 'true') {
     foreach ($dir in @('', 'client', 'server', 'functions')) {
         $name = if ($dir) { $dir } else { 'root' }
         Run-Preparation "install-$name" (Join-Path $app $dir) @($npmArg,'ci')
+    }
     }
     if (Test-Path "$app/shared/node_modules") {
         $sharedLink = Get-Item "$app/shared/node_modules" -Force
@@ -52,7 +54,7 @@ try {
     Run-Preparation 'server-build' "$app/server" @('node_modules/typescript/bin/tsc')
     if (-not (Test-Path "$app/server/dist/server/src/index.js")) { throw 'Compiled server missing' }
     Run-Preparation 'paraglide-build' "$app/client" @($npmArg,'run','paraglide:compile')
-    Run-Preparation 'firebase-tools-install' $app @($npmArg,'install','--prefix','work/tools','firebase-tools')
+    if ($CacheHit -ne 'true') { Run-Preparation 'firebase-tools-install' $app @($npmArg,'install','--prefix','work/tools','firebase-tools') }
     Invoke-WebRequest 'https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-win64.zip' -OutFile "$log/geckodriver.zip" -UseBasicParsing
     Expand-Archive "$log/geckodriver.zip" "$log/geckodriver" -Force
 } finally { Stop-Transcript }

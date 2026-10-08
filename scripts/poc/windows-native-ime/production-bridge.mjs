@@ -242,6 +242,7 @@ createServer(async (req, res) => {
             result = baseline;
         } else if (req.url === "/assert") {
             const after = await state();
+            save(`${baseline.action}-after`, after); // Retain the immutable outcome even when an assertion fails.
             const expected = assertOutcome(baseline, after, args.candidate, args.cancel);
             result = { baseline, candidate: args.candidate, cancel: args.cancel, expected, after, result: "PROVEN" };
             save(`${baseline.action}-result`, result);
