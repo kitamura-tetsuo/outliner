@@ -334,12 +334,15 @@ def run():
         # No input replacement, focus(), store mutation, CSS patch or synthetic event.
         driver.get("http://127.0.0.1:7090/demo/Welcome")
         attach()
-        item = wait(lambda: driver.find_elements(By.CSS_SELECTOR, ".outliner-item .item-content"), "Outliner demo item", 90)[0]
+        items = wait(lambda: (found if len(found := driver.find_elements(By.CSS_SELECTOR, ".outliner-item .item-content")) >= 2 else False), "Outliner demo body item", 90)
+        item = items[1]  # First ordinary body item, after the page title.
+        original_text = item.text.strip()
         click(item)
         textarea = wait(lambda: driver.find_elements(By.CSS_SELECTOR, "textarea.global-textarea"), "production textarea")[0]
         wait(lambda: state()["focused"], "normal editor focus")
+        wait(lambda: state()["value"] == original_text, "production input mirror catches up to the clicked body item")
         command("fcitx5-remote", "-c")
-        key("Home")
+        key("End")
         # Use an empty new item, created by the editor's ordinary Enter handling.
         key("Return")
         wait(lambda: state()["value"] == "", "new empty production item")
