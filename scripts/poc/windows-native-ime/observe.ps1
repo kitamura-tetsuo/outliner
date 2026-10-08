@@ -3,7 +3,7 @@ Add-Type -Path "$PSScriptRoot/Native.cs"
 function Save-Json($Name, $Object) {
     $json = ConvertTo-Json -InputObject $Object -Depth 30
     $json | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
-    if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error' -or $Name -like 'transport-*' -or $Name -eq 'input-trace') {
+    if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error' -or $Name -like 'transport-*' -or $Name -eq 'input-trace' -or $Name -like 'language-*' -or $Name -like 'default-input*' -or $Name -like 'candidate-*' -or $Name -like 'control-*' -or $Name -like 'preedit-*' -or $Name -in @('confirmation','cancellation')) {
         Write-Host "EVIDENCE $Name $json"
     }
 }
@@ -39,7 +39,7 @@ function Screen-Capture($Name) {
         try {
             $g.CopyFromScreen($r.Left,$r.Top,0,0,$bmp.Size)
             $bmp.Save("$script:Output/$Name.png")
-            if ($Name -like 'transport*' -or $Name -eq 'failure') {
+            if ($Name -like 'transport*' -or $Name -eq 'failure' -or $Name -like 'candidate*' -or $Name -eq 'preedit') {
                 Write-Host "SCREENSHOT64 $Name $([Convert]::ToBase64String([IO.File]::ReadAllBytes("$script:Output/$Name.png")))"
             }
             Save-Json "$Name-capture" @{available=$true; rectangle="$r"}
