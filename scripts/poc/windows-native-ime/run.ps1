@@ -174,6 +174,28 @@ user_pref("accessibility.force_disabled", -1);
     $_ | Out-String | Set-Content "$script:Output/failure.txt"
     Screen-Capture 'failure'
     try { Snapshot 'failure' } catch { $_ | Out-String | Set-Content "$script:Output/diagnostic-failure.txt" }
+    # Independent native cancellation remains testable when selected-item UIA is unavailable.
+    # These observations never promote unobserved candidate selection to PROVEN.
+    if ($results.D.status -eq 'PROVEN' -and $stage -in @('E','F')) {
+        try {
+            Send-Key 0x28
+            $navigated = State
+            Save-Json 'candidate-unverified-navigation' $navigated
+            Send-Key 0x0D
+            $confirmed = Wait-State { param($s) -not $s.composing } 'Supplemental native confirmation did not finish'
+            Save-Json 'confirmation' $confirmed
+            $results.G = @{status='PARTIAL'; evidence='Native Down/Enter and trusted composition confirmation recorded, but selected native text is not observed'}
+            Send-Romaji 'ni'
+            $cancelPreedit = Wait-State { param($s) $s.composing -and $s.compositionId -gt $confirmed.compositionId } 'Independent cancellation preedit did not start'
+            Send-Key 0x1B
+            $cancelled = Wait-State { param($s) -not $s.composing -and $s.value -eq $confirmed.value } 'Independent cancellation did not restore text'
+            Assert-That ($cancelled.start -eq $confirmed.start -and $cancelled.end -eq $confirmed.end) 'Independent cancellation did not restore caret'
+            Assert-That (@($cancelled.events | Where-Object { $_.type -eq 'compositionend' -and $_.trusted }).Count -gt 0) 'Cancellation lacks trusted compositionend'
+            Save-Json 'cancellation' @{before=$confirmed; preedit=$cancelPreedit; after=$cancelled}
+            Screen-Capture 'candidate-cancelled'
+            $results.H = @{status='PROVEN'; evidence='Independent real native composition/Escape restores committed value and exact textarea caret; cancellation.json'}
+        } catch { Save-Json 'supplemental-native-error' @{error="$($_.Exception.Message)"} }
+    }
 } finally {
     if (Get-Command Save-Json -ErrorAction SilentlyContinue) {
         Save-Json 'input-trace' $script:InputTrace
