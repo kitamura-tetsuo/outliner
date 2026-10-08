@@ -4,6 +4,17 @@ function Production-Command($Path, $Body) {
 # Attach read-only observation/navigation to the same proven regular Firefox GUI.
 $driver = Start-Process "$script:Output/geckodriver/geckodriver.exe" -ArgumentList @('--port','4444','--connect-existing','--marionette-port','2828','--log','debug') -PassThru -RedirectStandardOutput "$script:Output/geckodriver.stdout.txt" -RedirectStandardError "$script:Output/geckodriver.stderr.txt"
 $script:AppProcesses += $driver
+$driverReady = $false
+$deadline = [DateTime]::UtcNow.AddSeconds(30)
+do {
+    $driver.Refresh()
+    Assert-That (-not $driver.HasExited) 'Observation driver exited before readiness'
+    try { $driverReady = (Invoke-RestMethod 'http://127.0.0.1:4444/status' -TimeoutSec 2).value.ready } catch { $driverReady = $false }
+    if ($driverReady) { break }
+    Start-Sleep -Milliseconds 100
+} while ([DateTime]::UtcNow -lt $deadline)
+Assert-That $driverReady 'Observation driver did not become ready within 30 seconds'
+
 $bridge = Start-Process node -ArgumentList @("`"$PSScriptRoot/production-bridge.mjs`"", "`"$script:Output`"") -PassThru -RedirectStandardOutput "$script:Output/bridge.stdout.txt" -RedirectStandardError "$script:Output/bridge.stderr.txt"
 $script:AppProcesses += $bridge
 $deadline = [DateTime]::UtcNow.AddSeconds(60)
