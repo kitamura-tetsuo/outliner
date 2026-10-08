@@ -22,7 +22,10 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: independent-windows-inventory-${{ github.run_id }}
-          path: artifacts/windows-native-ime/
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
           if-no-files-found: error
           retention-days: 14
   desktop-input:
@@ -42,7 +45,10 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: windows-firefox-transport-${{ github.run_id }}
-          path: artifacts/windows-native-ime/
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
           if-no-files-found: error
           retention-days: 14
   native-ime:
@@ -63,7 +69,10 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: windows-ime-inventory-${{ github.run_id }}
-          path: artifacts/windows-native-ime/
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
           if-no-files-found: error
           retention-days: 14
       - name: Probe native Firefox and Microsoft Japanese IME
@@ -74,6 +83,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: windows-firefox-native-ime-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/windows-native-ime/
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
           if-no-files-found: error
           retention-days: 14

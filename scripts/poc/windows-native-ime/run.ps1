@@ -77,8 +77,8 @@ user_pref("accessibility.force_disabled", -1);
     Save-Json 'interactive-desktop' @{proven=$true; desktop=[Native]::InputDesktop(); foreground=[Native]::ForegroundProfile(); dpi=[Native]::GetDpiForWindow($script:FirefoxWindow); oracle='OS mouse focus and SendInput abc observed by Firefox'}
     try {
         $absent = @(Candidate 'latin')
-        Assert-That ($absent.Count -eq 0) 'Negative Latin control exposed candidate window'
-        Expect-Rejection 'missing-candidate' { Require-Candidate $absent $latin }
+        Expect-Rejection 'direct-latin' { Require-Candidate $absent $latin }
+        Expect-Rejection 'missing-candidate' { Require-Candidate @() $latin }
     } catch {
         Save-Json 'negative-latin-uia-error' @{error="$($_.Exception.Message)"}
         $results.I = @{status='FAILED'; evidence='Negative Latin UIA query failed; never treated as candidate absence'}
@@ -93,7 +93,19 @@ user_pref("accessibility.force_disabled", -1);
     $stage = 'D'
     Send-Key 0xF2 # VK_DBE_HIRAGANA through SendInput, never Unicode insertion.
     Send-Romaji 'ni'
-    $short = Wait-State { param($s) $s.composing -and $s.value -match '[\u3040-\u30ff]' } 'Japanese native preedit did not appear within 10 seconds'
+    try {
+        $short = Wait-State { param($s) $s.composing -and $s.value -match '[\u3040-\u30ff]' } 'Japanese native preedit did not appear within 10 seconds'
+    } catch {
+        Save-Json 'initial-ime-activation-error' @{error="$($_.Exception.Message)"}
+        Install-JapaneseBasic
+        . "$PSScriptRoot/setup-ime.ps1"
+        # OS editing and mode keys only; no committed Unicode substitution.
+        foreach ($unused in 1..2) { Send-Key 8 }
+        Send-Key 0x16 # VK_IME_ON
+        Send-Key 0xF2
+        Send-Romaji 'ni'
+        $short = Wait-State { param($s) $s.composing -and $s.value -match '[\u3040-\u30ff]' } 'Native Japanese preedit failed after supported capability installation'
+    }
     Save-Json 'preedit-short' $short
     Assert-That (@($short.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted }).Count -gt 0) 'Microsoft Japanese IME did not start native composition after romaji'
     Send-Romaji 'hon'

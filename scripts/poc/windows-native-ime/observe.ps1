@@ -56,7 +56,7 @@ function Element-Record($Element) {
     $process = Get-Process -Id $c.ProcessId -ErrorAction SilentlyContinue
     return @{name=$c.Name; automationId=$c.AutomationId; controlType=$c.ControlType.ProgrammaticName;
         pid=$c.ProcessId; process=$process.ProcessName; hwnd=$c.NativeWindowHandle;
-        bounds="$($c.BoundingRectangle)"; offscreen=$c.IsOffscreen; selected=$selected;
+        bounds=@{left=$c.BoundingRectangle.Left;top=$c.BoundingRectangle.Top;width=$c.BoundingRectangle.Width;height=$c.BoundingRectangle.Height}; offscreen=$c.IsOffscreen; selected=$selected;
         runtimeId=($Element.GetRuntimeId() -join ',')}
 }
 function Snapshot-Raw($Name) {
@@ -113,6 +113,7 @@ function Require-Candidate($Candidates, $State) {
     Assert-That ($Candidates.Count -eq 1) 'Missing or ambiguous visible native candidate window'
     $c = $Candidates[0]
     Assert-That ($c.pid -ne $script:FirefoxPid -and $c.process -match '^(TextInputHost|InputApp|ctfmon)$') 'Candidate owner is not a recognized Windows input host'
+    Assert-That ($c.bounds.width -gt 0 -and $c.bounds.height -gt 0) 'Candidate has no visible bounds'
     Assert-That ($c.automationId -eq 'IME_Candidate_Window') 'Candidate AutomationId mismatch'
     Assert-That $State.composing 'No current composition; older composition events cannot satisfy a new session'
     Assert-That ($c.compositionId -eq $State.compositionId -and $c.composingBefore) 'Candidate observation belongs to a different composition generation'
@@ -124,7 +125,7 @@ function Require-Candidate($Candidates, $State) {
     return $c
 }
 
-function Invoke-UIAProbe($Operation, $Name) {
+function Invoke-UIAProbe($Operation, $Name, [int]$TimeoutSeconds=30) {
     # Terminate an isolated OS process on timeout; Stop-Job can itself wait on a hung provider.
     Write-Host "WORKER START $Operation $Name"
     $worker = Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile','-File',
@@ -132,15 +133,17 @@ function Invoke-UIAProbe($Operation, $Name) {
         -RedirectStandardOutput "$script:Output/worker-$Name-stdout.txt" -RedirectStandardError "$script:Output/worker-$Name-stderr.txt"
     try {
         [void]$worker.Handle
-        if (-not $worker.WaitForExit(30000)) {
+        if (-not $worker.WaitForExit($TimeoutSeconds * 1000)) {
             $worker.Kill()
-            throw "UIA/OS $Operation $Name timed out after 30 seconds"
+            throw "UIA/OS $Operation $Name timed out after $TimeoutSeconds seconds"
         }
         $worker.Refresh()
         Write-Host "WORKER $Name exit=$($worker.ExitCode)"
         if (Test-Path "$script:Output/worker-$Name-error.txt") { Get-Content "$script:Output/worker-$Name-error.txt" | Write-Host }
         Assert-That ($worker.ExitCode -eq 0) "UIA/OS $Operation $Name failed; see worker-$Name-error.txt"
         if ($Operation -eq 'candidate') {
+            $raw = Get-Content -Raw "$script:Output/candidate-$Name.json"
+            Write-Host "CANDIDATE RAW $Name $raw"
             @(Get-Content -Raw "$script:Output/candidate-$Name.json" | ConvertFrom-Json | Where-Object { -not $_.offscreen })
         }
     } finally { $worker.Dispose() }

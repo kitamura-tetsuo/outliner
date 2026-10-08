@@ -1,13 +1,13 @@
 # Supported Windows capability provisioning; changes apply only to this disposable runner.
-$before = @(Get-WindowsCapability -Online | Where-Object Name -like '*~~~ja-JP~*')
-Save-Json 'language-capabilities-before' $before
-$basic = $before | Where-Object Name -like 'Language.Basic*'
-if (-not $basic) { throw 'Windows does not advertise the Japanese basic language capability' }
-if ($basic.State -ne 'Installed') {
-    $change = Add-WindowsCapability -Online -Name $basic.Name
-    Save-Json 'language-install' $change
-    if ($change.RestartNeeded) { throw 'Japanese capability installation requires reboot; this job cannot resume an interactive login after reboot' }
+# Inspect one named capability in an isolated process; servicing inventory may hang.
+try {
+    Invoke-UIAProbe 'capabilities' 'japanese-capability'
+    $script:JapaneseCapability = Get-Content -Raw "$script:Output/language-capabilities-before.json" | ConvertFrom-Json
+} catch {
+    Save-Json 'language-capability-query-error' @{error="$($_.Exception.Message)"}
+    $script:JapaneseCapability = $null
 }
+# Registration/configuration is attempted independently. Only native composition can prove usability.
 $list = Get-WinUserLanguageList
 if (-not ($list.LanguageTag -contains 'ja-JP')) { $list.Add('ja-JP') }
 $japanese = $list | Where-Object LanguageTag -eq 'ja-JP'
@@ -19,7 +19,7 @@ Set-WinUserLanguageList $list -Force
 Set-WinDefaultInputMethodOverride -InputTip $tip
 Save-Json 'language-list-after' @(Get-WinUserLanguageList)
 Save-Json 'default-input-after' (Get-WinDefaultInputMethodOverride)
-Save-Json 'language-capabilities-after' @(Get-WindowsCapability -Online | Where-Object Name -like '*~~~ja-JP~*')
+Save-Json 'language-registration-note' @{capability=$script:JapaneseCapability; activationNotYetProven=$true; method='Set-WinUserLanguageList + Microsoft TIP + foreground keyboard profile request'}
 $paths = @('HKLM:\SOFTWARE\Microsoft\CTF\TIP\{03B5835F-F03C-411B-9CE2-AA23E1171E36}',
     'HKCU:\SOFTWARE\Microsoft\CTF\TIP\{03B5835F-F03C-411B-9CE2-AA23E1171E36}')
 foreach ($path in $paths) {
@@ -34,3 +34,10 @@ Assert-That ($layout -ne [IntPtr]::Zero) 'Japanese keyboard layout could not be 
 [void][Native]::PostMessage($script:FirefoxWindow,0x50,[IntPtr]::Zero,$layout)
 Start-Sleep -Seconds 2
 Save-Json 'profile-requested' @{tip=$tip; requestedHkl=$layout.ToInt64().ToString('X'); foreground=[Native]::ForegroundProfile()}
+
+function Install-JapaneseBasic {
+    Write-Host 'Attempt supported Japanese basic capability installation after failed native activation'
+    Invoke-UIAProbe 'install' 'japanese-install' 300
+    $change = Get-Content -Raw "$script:Output/language-install.json" | ConvertFrom-Json
+    if ($change.RestartNeeded) { throw 'Japanese installation requires reboot; hosted job cannot resume interactive login after reboot' }
+}
