@@ -56,7 +56,8 @@ user_pref("accessibility.force_disabled", -1);
     [void][Native]::SetForegroundWindow($script:FirefoxWindow)
     Snapshot 'startup'
     Screen-Capture 'startup'
-    $results.A = @{status='PROVEN'; evidence='GUI HWND, uia-startup.json and startup.png'; pid=$script:FirefoxPid}
+    $results.A = @{status='PROVEN'; evidence='GUI HWND and uia-startup.json; startup-capture.json separately records capture capability'; pid=$script:FirefoxPid}
+    Save-Json 'results' @{capabilities=$results; sha=$env:GITHUB_SHA; run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"}
     Write-Host 'PHASE C: locating UIA textarea and testing SendInput delivery'
     $stage = 'C'
     $root = [System.Windows.Automation.AutomationElement]::FromHandle($script:FirefoxWindow)
@@ -80,6 +81,7 @@ user_pref("accessibility.force_disabled", -1);
     foreach ($unused in 1..3) { Send-Key 8 }
     Write-Host 'PHASE B: provisioning Microsoft Japanese IME'
     $stage = 'B'
+    Save-Json 'input-trace' $script:InputTrace
     . "$PSScriptRoot/setup-ime.ps1"
     $results.B = @{status='PARTIAL'; evidence='Japanese capability and Microsoft TIP configured; activation requires trusted composition'}
     Write-Host 'PHASE D: testing real Japanese preedit'

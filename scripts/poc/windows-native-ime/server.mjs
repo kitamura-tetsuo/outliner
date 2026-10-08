@@ -11,7 +11,8 @@ createServer((req, res) => {
         let data = "";
         req.on("data", (chunk) => data += chunk);
         req.on("end", () => {
-            latest = JSON.parse(data);
+            const incoming = JSON.parse(data);
+            if ((incoming.sequence ?? 0) >= (latest.sequence ?? 0)) latest = incoming;
             writeFileSync(join(output, "browser-events.json"), JSON.stringify(latest, null, 2));
             res.end("ok");
         });
