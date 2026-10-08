@@ -171,7 +171,7 @@ async function mutationControls({ candidate, cancel }) {
                     };
                     find(project.items);
                     if (!target) throw new Error("Mutation target missing");
-                    const text = target.value.get("text");
+                    const text = target.yMap.get("text");
                     if (name === "duplicated-insertion") text.insert(cursor.offset, chosen);
                     else text.delete(cursor.offset, chosen.length);
                 },
@@ -195,7 +195,7 @@ async function mutationControls({ candidate, cancel }) {
                 const restore = items => {
                     for (const item of items) {
                         const saved = snapshot.items.find(i => i.id === item.id);
-                        const text = item.value.get("text");
+                        const text = item.yMap.get("text");
                         if (text.toString() !== saved.canonical) {
                             text.delete(0, text.length);
                             text.insert(0, saved.canonical);

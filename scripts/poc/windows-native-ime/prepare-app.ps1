@@ -6,6 +6,7 @@ Start-Transcript "$log/application-prepare.txt"
 function Run-Preparation($Name, $Directory, $Arguments) {
     $node = (Get-Command node.exe).Source
     $p = Start-Process $node -ArgumentList $Arguments -WorkingDirectory $Directory -PassThru -RedirectStandardOutput "$log/$Name.stdout.txt" -RedirectStandardError "$log/$Name.stderr.txt"
+    [void]$p.Handle
     $deadline = [DateTime]::UtcNow.AddMinutes(10)
     try {
         do {
@@ -14,6 +15,8 @@ function Run-Preparation($Name, $Directory, $Arguments) {
             if ([DateTime]::UtcNow -ge $deadline) { taskkill /PID $p.Id /T /F | Out-Null; throw "$Name timed out" }
             Start-Sleep -Milliseconds 250
         } while ($true)
+        $p.WaitForExit()
+        $p.Refresh()
         if ($p.ExitCode -ne 0) {
             Get-Content "$log/$Name.stdout.txt","$log/$Name.stderr.txt" | Select-Object -Last 60 | Write-Host
             throw "$Name exited $($p.ExitCode)"

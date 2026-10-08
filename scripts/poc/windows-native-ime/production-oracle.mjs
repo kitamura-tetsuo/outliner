@@ -14,7 +14,7 @@ export function readApplication() {
     const items = [];
     const walk = (children) => {
         for (const item of children) {
-            const text = item.value.get("text");
+            const text = item.yMap.get("text");
             if (!text || text.doc !== project.ydoc || typeof text.toDelta !== "function") {
                 throw new Error(`Missing attached canonical Y.Text for ${item.id}`);
             }

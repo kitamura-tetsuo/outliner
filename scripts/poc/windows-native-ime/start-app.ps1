@@ -22,6 +22,7 @@ node "$app/scripts/setup-emulator-config.js"
 Assert-That ($LASTEXITCODE -eq 0) 'Emulator configuration generation failed'
 [void](Start-AppProcess 'firebase' $app @('work/tools/node_modules/firebase-tools/lib/bin/firebase.js','emulators:start','--only','auth,firestore,functions,hosting','--project','outliner-d57b0','--config','firebase.emulator.json'))
 [void](Start-AppProcess 'yjs' "$app/server" @('dist/server/src/index.js'))
+$env:NODE_ENV = 'development' # Keep the existing Svelte-managed debug navigation available.
 [void](Start-AppProcess 'client' "$app/client" @('node_modules/vite/bin/vite.js','dev','--mode','test','--host','127.0.0.1','--port','7090','--strictPort'))
 $deadline = [DateTime]::UtcNow.AddSeconds(180)
 $ready = @{}
