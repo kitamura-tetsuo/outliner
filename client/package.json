@@ -90,7 +90,7 @@
         "@inlang/paraglide-js": "2.25.4",
         "@inlang/plugin-m-function-matcher": "^2.2.16",
         "@inlang/plugin-message-format": "^4.4.4",
-        "@modelcontextprotocol/sdk": "^1.32.0",
+        "@modelcontextprotocol/sdk": "^1.32.1",
         "@playwright/mcp": "^0.0.83",
         "@playwright/test": "^1.63.0",
         "@stryker-mutator/core": "^9.6.0",
