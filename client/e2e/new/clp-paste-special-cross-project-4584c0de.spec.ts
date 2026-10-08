@@ -35,12 +35,23 @@ test.describe("Paste Special in another project", () => {
         const warmupId = (await readGridProjectState(page)).tables[0].id;
 
         await openPasteSpecialAtAnchor(page);
+        const dialog = page.getByTestId("paste-special-dialog");
+        await expect(dialog).toHaveJSProperty("open", true);
         const anotherView = page.getByTestId("paste-special-another-view");
         await expect(anotherView).toBeDisabled();
         await expect(anotherView).toContainText("belongs to another project");
+        await expect(page.getByTestId("paste-special-copy-with-data")).toBeFocused();
+        // Cancelling reports no selection: Escape closes the dialog without creating tables.
+        await page.keyboard.press("Escape");
+        await expect(dialog).toHaveCount(0);
+        let state = await readGridProjectState(page);
+        expect(state.tables).toHaveLength(1);
+        expect(state.tables[0].id).toBe(warmupId);
+
+        await openPasteSpecialAtAnchor(page);
         await page.getByTestId("paste-special-copy-without-data").click();
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 60000 });
-        let state = await readGridProjectState(page);
+        state = await readGridProjectState(page);
         expect(state.tables.find(table => table.id !== warmupId)?.dataSize).toBe(0);
         await expect(page.getByTestId("grid-paste-status")).toContainText("independent copy without data");
 
