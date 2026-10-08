@@ -22,6 +22,19 @@ function Send-Romaji([string]$Text) {
     foreach ($c in $Text.ToUpperInvariant().ToCharArray()) { Send-Key ([int]$c) }
 }
 function State { Invoke-RestMethod http://127.0.0.1:8765/state -TimeoutSec 3 }
+function Cancel-NativeComposition($Baseline) {
+    # Conversion cancellation can first restore the reading, then clear it, then end composition.
+    for ($attempt=0; $attempt -lt 6; $attempt++) {
+        $observed = State
+        if (-not $observed.composing) {
+            Assert-That ($observed.value -eq $Baseline.value) 'Native cancellation ended with different text'
+            return $observed
+        }
+        Send-Key 0x1B
+        Start-Sleep -Milliseconds 200
+    }
+    return Wait-State { param($s) -not $s.composing -and $s.value -eq $Baseline.value } 'Native cancellation did not restore committed text'
+}
 function Wait-State([scriptblock]$Predicate, [string]$Message, [int]$TimeoutSeconds=10) {
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     do {

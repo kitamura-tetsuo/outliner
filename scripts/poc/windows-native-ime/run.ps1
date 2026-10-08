@@ -128,7 +128,7 @@ user_pref("accessibility.force_disabled", -1);
     Screen-Capture 'candidate-open'
     $candidates = @(Candidate 'open')
     $candidate = Require-Candidate $candidates (State)
-    $results.E = @{status='PROVEN'; evidence='Fresh desktop IME_Candidate_Window in Windows input host during focused Firefox composition; candidate-open.json, candidate-open.png'}
+    $results.E = @{status='PROVEN'; evidence="Fresh desktop native candidate during focused Firefox composition: class=$($candidate.windowClass), name=$($candidate.name), pid=$($candidate.pid), hwnd=$($candidate.hwnd); candidate-open.json/png"}
     $stage = 'F'
     $initial = Selected $candidate
     $results.F = @{status='PROVEN'; evidence='candidate-open.json exposes native selected item and candidate contents'}
@@ -145,14 +145,14 @@ user_pref("accessibility.force_disabled", -1);
     $afterConfirm = @(Candidate 'after-confirm')
     Assert-That ($afterConfirm.Count -eq 0) 'Candidate window did not disappear on confirmation'
     Expect-Rejection 'stale-candidate' { Require-Candidate $afterConfirm $commit }
+    Expect-Rejection 'captured-after-disappearance' { Require-Candidate @($candidate) $commit }
+    Expect-Rejection 'committed-unicode-only' { Require-Candidate @($candidate) $commit }
     Assert-That (@($commit.events | Where-Object { $_.type -eq 'compositionend' -and $_.trusted -and $_.data -eq $commit.value }).Count -gt 0) 'No trusted composition confirmation matching committed text'
     Assert-That ($chosen.name -eq $commit.value) 'UIA selected candidate does not exactly match committed text; naming may require investigated parsing'
     $results.G = @{status='PROVEN'; evidence='candidate-open/navigation/after-confirm.json and confirmation.json; selected text equals commit'}
     $stage = 'H'
     Send-Romaji 'tokyo'
-    Send-Key 0x1B
-    Send-Key 0x1B
-    $cancel = Wait-State { param($s) -not $s.composing -and $s.value -eq $commit.value } 'Cancellation did not restore text within 10 seconds'
+    $cancel = Cancel-NativeComposition $commit
     Save-Json 'cancellation' $cancel
     Assert-That ($cancel.value -eq $commit.value -and $cancel.start -eq $commit.start -and $cancel.end -eq $commit.end) 'Cancellation failed to restore text and caret'
     Assert-That (@(Candidate 'after-cancel').Count -eq 0) 'Stale candidate remains after cancellation'
@@ -175,9 +175,7 @@ user_pref("accessibility.force_disabled", -1);
     $secondState = State
     Expect-Rejection 'old-generation' { Require-Candidate @($candidate) $secondState }
     $new = Require-Candidate @(Candidate 'second-generation') $secondState
-    Send-Key 0x1B
-    Send-Key 0x1B
-    [void](Wait-State { param($s) -not $s.composing -and $s.value -eq $commit.value } 'Second composition cancellation did not restore committed text')
+    [void](Cancel-NativeComposition $commit)
     Assert-That (@(Candidate 'second-disappeared').Count -eq 0) 'Candidate did not disappear after second composition'
     $results.I = @{status='PROVEN'; evidence='Actual Latin mode/input rejects candidate assertion, restored Japanese opens native candidate, missing/unchanged/stale/old-generation controls reject; UIA worker errors throw rather than pass'}
     $stage = 'J'
@@ -216,9 +214,7 @@ user_pref("accessibility.force_disabled", -1);
             $results.G = @{status='PARTIAL'; evidence='Native Down/Enter and trusted composition confirmation recorded, but selected native text is not observed'}
             Send-Romaji 'ni'
             $cancelPreedit = Wait-State { param($s) $s.composing -and $s.compositionId -gt $confirmed.compositionId } 'Independent cancellation preedit did not start'
-            Send-Key 0x1B
-            Send-Key 0x1B
-            $cancelled = Wait-State { param($s) -not $s.composing -and $s.value -eq $confirmed.value } 'Independent cancellation did not restore text'
+            $cancelled = Cancel-NativeComposition $confirmed
             Assert-That ($cancelled.start -eq $confirmed.start -and $cancelled.end -eq $confirmed.end) 'Independent cancellation did not restore caret'
             Assert-That (@($cancelled.events | Where-Object { $_.type -eq 'compositionend' -and $_.trusted }).Count -gt 0) 'Cancellation lacks trusted compositionend'
             Save-Json 'cancellation' @{before=$confirmed; preedit=$cancelPreedit; after=$cancelled}
