@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/checkout@v5
         with:
-          ref: 79a976cd8765367ea4f04baa00905822681cf294
+          ref: 0b5e6b0b1d3985e6789a6d826c5a76a180642a6d
           path: work/native-ime-app
       - uses: actions/setup-node@v4
         with:
@@ -42,7 +42,7 @@ jobs:
         timeout-minutes: 2
         shell: powershell
         run: |
-          $root = (Get-Location).Path -replace '\', '/'
+          $root = (Get-Location).Path.Replace('\', '/')
           $linuxRoot = '/mnt/' + $root.Substring(0,1).ToLower() + $root.Substring(2)
           wsl.exe --distribution Ubuntu --user root --exec bash "$linuxRoot/scripts/poc/windows-linux-backend/collect-compose.sh" "$linuxRoot/artifacts/windows-linux-backend"
       - name: Preserve exact platform and provisioning evidence

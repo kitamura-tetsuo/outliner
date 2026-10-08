@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 windows_output=$1
-export APPLICATION_SHA=79a976cd8765367ea4f04baa00905822681cf294
+export APPLICATION_SHA=0b5e6b0b1d3985e6789a6d826c5a76a180642a6d
 if [ -f /opt/outliner-app/docker-compose.yml ]; then
   cd /opt/outliner-app
   compose=(docker compose -f docker-compose.yml -f /opt/outliner-harness/scripts/poc/windows-linux-backend/compose.linux.yml)
