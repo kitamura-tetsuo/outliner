@@ -1,6 +1,6 @@
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const root = dirname(fileURLToPath(import.meta.url));
 const output = process.argv[2];

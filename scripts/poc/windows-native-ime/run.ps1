@@ -12,6 +12,7 @@ $firefox = $null
 $stage = 'environment'
 try {
     . "$PSScriptRoot/observe.ps1"
+    . "$PSScriptRoot/controls.ps1"
     Save-Json 'environment' @{os=(Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber);
         imageOS=$env:ImageOS; imageVersion=$env:ImageVersion; runner=$env:RUNNER_NAME;
         sha=$env:GITHUB_SHA; run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID";
@@ -57,7 +58,9 @@ user_pref("accessibility.force_disabled", -1);
     $stage = 'C'
     $root = [System.Windows.Automation.AutomationElement]::FromHandle($script:FirefoxWindow)
     $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty,'Native IME test input')
-    $input = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
+    $editCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::Edit)
+    $both = New-Object System.Windows.Automation.AndCondition($condition,$editCondition)
+    $input = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$both)
     Assert-That ($null -ne $input) 'Visible textarea not found in Firefox UIA tree'
     $r = $input.Current.BoundingRectangle
     Assert-That ($r.Width -gt 100 -and $r.Height -gt 100) 'Textarea has no usable GUI bounds'
@@ -68,7 +71,9 @@ user_pref("accessibility.force_disabled", -1);
     Save-Json 'latin-desktop-probe' $latin
     Assert-That ($latin.focused -and $latin.documentFocused -and $latin.value -eq 'abc') 'Real desktop keyboard input did not reach focused Firefox textarea'
     Save-Json 'interactive-desktop' @{proven=$true; desktop=[Native]::InputDesktop(); foreground=[Native]::ForegroundProfile(); dpi=[Native]::GetDpiForWindow($script:FirefoxWindow); oracle='OS mouse focus and SendInput abc observed by Firefox'}
-    Assert-That (@(Candidate 'latin').Count -eq 0) 'Negative Latin control exposed candidate window'
+    $absent = @(Candidate 'latin')
+    Assert-That ($absent.Count -eq 0) 'Negative Latin control exposed candidate window'
+    Expect-Rejection 'missing-candidate' { Require-Candidate $absent $latin }
     foreach ($unused in 1..3) { Send-Key 8 }
     $stage = 'B'
     . "$PSScriptRoot/setup-ime.ps1"
@@ -103,12 +108,15 @@ user_pref("accessibility.force_disabled", -1);
     Send-Key 0x28
     $next = Require-Candidate @(Candidate 'navigation') (State)
     $chosen = Selected $next
-    Assert-That ($chosen.runtimeId -ne $initial.runtimeId -and $chosen.name -ne $initial.name) 'Unchanged selection cannot count as navigation'
+    Expect-Rejection 'unchanged-selection' { Require-Navigation $initial $initial }
+    Require-Navigation $initial $chosen
     Assert-That (-not [string]::IsNullOrWhiteSpace($chosen.name)) 'Selected candidate text is empty'
     Send-Key 0x0D
     $commit = State
     Save-Json 'confirmation' $commit
-    Assert-That (@(Candidate 'after-confirm').Count -eq 0) 'Candidate window did not disappear on confirmation'
+    $afterConfirm = @(Candidate 'after-confirm')
+    Assert-That ($afterConfirm.Count -eq 0) 'Candidate window did not disappear on confirmation'
+    Expect-Rejection 'stale-candidate' { Require-Candidate $afterConfirm $commit }
     Assert-That (@($commit.events | Where-Object { $_.type -eq 'compositionend' -and $_.trusted -and $_.data -eq $commit.value }).Count -gt 0) 'No trusted composition confirmation matching committed text'
     Assert-That ($chosen.name -eq $commit.value) 'UIA selected candidate does not exactly match committed text; naming may require investigated parsing'
     $results.G = @{status='PROVEN'; evidence='candidate-open/navigation/after-confirm.json and confirmation.json; selected text equals commit'}
