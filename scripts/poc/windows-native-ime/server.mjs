@@ -18,8 +18,10 @@ createServer((req, res) => {
                 if (activeSession) retiredSessions.add(activeSession);
                 activeSession = incoming.sessionId;
                 latest = {};
-            } else if (req.url === "/telemetry" && incoming.sessionId === activeSession
-                && (incoming.sequence ?? 0) >= (latest.sequence ?? 0)) latest = incoming;
+            } else if (
+                req.url === "/telemetry" && incoming.sessionId === activeSession
+                && (incoming.sequence ?? 0) >= (latest.sequence ?? 0)
+            ) latest = incoming;
             writeFileSync(join(output, "browser-events.json"), JSON.stringify(latest, null, 2));
             res.end("ok");
         });
