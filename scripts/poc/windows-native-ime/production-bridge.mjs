@@ -230,6 +230,10 @@ createServer(async (req, res) => {
             ) throw new Error("Invalid production baseline");
             for (const c of baseline.cursors) {
                 const expected = args.targets.find(t => t.itemId === c.itemId);
+                const item = baseline.items.find(item => item.id === c.itemId);
+                if (!item || item.rendered !== item.canonical) {
+                    throw new Error("Baseline target has no matching rendered text");
+                }
                 if (!expected || c.offset !== expected.offset) {
                     throw new Error("UI did not place the required baseline caret");
                 }

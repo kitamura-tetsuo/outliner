@@ -38,7 +38,16 @@ try {
         $name = if ($dir) { $dir } else { 'root' }
         Run-Preparation "install-$name" (Join-Path $app $dir) @($npmArg,'ci')
     }
-    if (Test-Path "$app/shared/node_modules") { Remove-Item "$app/shared/node_modules" -Force }
+    if (Test-Path "$app/shared/node_modules") {
+        $sharedLink = Get-Item "$app/shared/node_modules" -Force
+        if ($sharedLink.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            cmd.exe /c rmdir "$app/shared/node_modules"
+        } else {
+            # Git Bash can materialize ln -s as a copy on Windows. This disposable
+            # dependency copy is replaced with a native junction, never Linux modules.
+            Remove-Item "$app/shared/node_modules" -Recurse -Force
+        }
+    }
     New-Item -ItemType Junction -Path "$app/shared/node_modules" -Target "$app/server/node_modules" | Out-Null
     Run-Preparation 'server-build' "$app/server" @('node_modules/typescript/bin/tsc')
     if (-not (Test-Path "$app/server/dist/server/src/index.js")) { throw 'Compiled server missing' }

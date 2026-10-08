@@ -47,6 +47,7 @@ foreach ($count in @(1,2)) {
         Send-Key 0xF2
         Send-Romaji 'nihon'
         $preedit = Wait-State { param($s) $s.sessionId -eq $baseline.sessionId -and $s.action -eq $action -and $s.compositionId -eq 1 -and $s.composing -and $s.focused } 'Fresh production native composition not observed'
+        Expect-Rejection "$action-other-page-candidate" { Require-Candidate @($candidate) $preedit }
         Save-Json "$action-preedit" $preedit
         Screen-Capture "$action-preedit"
         # Observe actual inline text and canonical preedit through the production boundary.

@@ -28,6 +28,8 @@ Durable, inspected screenshots:
 - [Text retained after cancellation, final run](assets/windows-firefox-cancelled-37777415483.png): 🗾 remains after a fresh composition is cancelled; exact caret restoration is recorded in cancellation.json.
 - [Independent GUI keyboard transport](assets/windows-firefox-transport-37768108913.png), [run 37768108913](https://github.com/kitamura-tetsuo/outliner/actions/runs/37768108913), SHA `41362f4d33d4497047ddf47bf88a32456da706ce`: actual abc in GUI Firefox.
 
+The final run's `preedit-long.json` contains **にほ**. `にほｎ` appears in a later event. This demonstrates short preedit growth only; it provides no long-text wrapping coverage.
+
 ## Capability results
 
 Every PROVEN entry below was exercised on the final hosted Windows run.
@@ -37,7 +39,7 @@ Every PROVEN entry below was exercised on the final hosted Windows run.
 | A. Firefox GUI                      | PROVEN         | Actual Firefox HWND/PID 1932, desktop snapshot and inspected screenshots.                                                                                                                                     |
 | B. Microsoft Japanese IME activated | PROVEN         | Exact active Microsoft TSF profile/language after session-wide activation; activation/query HRESULTs 0; real native Firefox composition follows.                                                              |
 | C. OS keyboard input through IME    | PROVEN         | Win32 virtual-key SendInput accepts two events per key; foreground Firefox produces trusted native compositionstart/update after romaji.                                                                      |
-| D. Real inline composition          | PROVEN         | preedit-short.json: に; preedit-long.json: にほｎ; composing true in generation 1; trusted updates and native screen evidence.                                                                                |
+| D. Real inline composition          | PROVEN         | preedit-short.json: に; preedit-long.json: にほ (にほｎ occurs in a later event); composing true in generation 1; trusted updates and native screen evidence.                                                 |
 | E. Native candidate appears         | PROVEN         | Fresh desktop UIA native HWND 197366, class mscandui40.candidate, name Microsoft Candidate UI, Firefox PID 1932, visible bounds matching the inspected popup.                                                 |
 | F. Candidate contents/selection     | PROVEN         | Native Primary Candidate List exposes ListItem text and SelectionItemPattern; 二本 has IsSelected true.                                                                                                       |
 | G. Navigation and confirmation      | PROVEN         | Down changes selected runtime ID/text from 二本 to 🗾; Enter commits exactly 🗾, trusted compositionend agrees, and the fresh candidate query becomes empty.                                                  |

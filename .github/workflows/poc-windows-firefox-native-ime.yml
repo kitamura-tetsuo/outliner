@@ -55,7 +55,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   native-ime:
-    runs-on: windows-2025
+    # Locked better-sqlite3 needs node-gyp's supported VS 2022 toolchain.
+    runs-on: windows-2022
     timeout-minutes: 45
     defaults:
       run:
