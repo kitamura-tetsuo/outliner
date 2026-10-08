@@ -1,0 +1,129 @@
+name: PoC Windows Firefox native Japanese IME
+on:
+  workflow_dispatch:
+concurrency:
+  group: windows-native-ime-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record independent inventory
+        shell: powershell
+        run: ./scripts/poc/windows-native-ime/inventory.ps1
+      - name: Upload inventory
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: independent-windows-inventory-${{ github.run_id }}
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
+          if-no-files-found: error
+          retention-days: 14
+  desktop-input:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove GUI keyboard transport independently
+        timeout-minutes: 2
+        shell: powershell
+        run: ./scripts/poc/windows-native-ime/desktop-probe.ps1
+      - name: Upload transport evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-firefox-transport-${{ github.run_id }}
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
+          if-no-files-found: error
+          retention-days: 14
+  native-ime:
+    # Locked better-sqlite3 needs node-gyp's supported VS 2022 toolchain.
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v5
+        with:
+          ref: archive/native-ime-2026-10-08-application
+          path: work/native-ime-app
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/cache/restore@v5
+        id: windows-dependencies
+        with:
+          path: |
+            work/native-ime-app/node_modules
+            work/native-ime-app/client/node_modules
+            work/native-ime-app/server/node_modules
+            work/native-ime-app/functions/node_modules
+            work/native-ime-app/work/tools
+          key: native-ime-windows-2022-node22-v1-73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f
+      - name: Prepare exact application revision with Windows dependencies
+        timeout-minutes: 20
+        run: ./scripts/poc/windows-native-ime/prepare-app.ps1 -CacheHit '${{ steps.windows-dependencies.outputs.cache-hit }}'
+      - uses: actions/cache/save@v5
+        if: steps.windows-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: |
+            work/native-ime-app/node_modules
+            work/native-ime-app/client/node_modules
+            work/native-ime-app/server/node_modules
+            work/native-ime-app/functions/node_modules
+            work/native-ime-app/work/tools
+          key: native-ime-windows-2022-node22-v1-73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f
+      - name: Preserve application preparation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-application-prepare-${{ github.run_id }}
+          path: artifacts/windows-native-ime/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Inventory Windows session before expensive probes
+        run: ./scripts/poc/windows-native-ime/inventory.ps1
+      - name: Preserve initial inventory
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-ime-inventory-${{ github.run_id }}
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
+          if-no-files-found: error
+          retention-days: 14
+      - name: Probe native Firefox and Microsoft Japanese IME
+        timeout-minutes: 20
+        run: ./scripts/poc/windows-native-ime/run.ps1
+      - name: Upload evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-firefox-native-ime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+            !artifacts/windows-native-ime/transport-profile/**
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,69 @@
+$ErrorActionPreference = 'Stop'
+$script:Output = Join-Path (Get-Location) 'artifacts/windows-native-ime'
+New-Item -ItemType Directory -Force $script:Output | Out-Null
+. "$PSScriptRoot/observe.ps1"
+$script:InputTrace = New-Object 'System.Collections.Generic.List[object]'
+$server = $null
+$browser = $null
+$passed = $false
+try {
+    $exe = 'C:\Program Files\Mozilla Firefox\firefox.exe'
+    Assert-That (Test-Path $exe) 'Regular Firefox missing'
+    $profile = Join-Path $script:Output 'transport-profile'
+    New-Item -ItemType Directory -Force $profile | Out-Null
+    @'
+user_pref("browser.aboutwelcome.enabled", false);
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.startup.homepage_override.mstone", "ignore");
+user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+'@ | Set-Content "$profile/user.js"
+    Write-Host 'TRANSPORT launching fixture server'
+    $server = Start-Process node -ArgumentList @("`"$PSScriptRoot/server.mjs`"","`"$script:Output`"") -PassThru -RedirectStandardOutput "$script:Output/server.log" -RedirectStandardError "$script:Output/server-error.log"
+    Write-Host 'TRANSPORT launching GUI Firefox'
+    $browser = Start-Process $exe -ArgumentList @('-no-remote','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru -RedirectStandardOutput "$script:Output/firefox-stdout.log" -RedirectStandardError "$script:Output/firefox-stderr.log"
+    $gui = Wait-FirefoxWindow
+    $window = $gui.MainWindowHandle
+    $script:FirefoxPid = $gui.Id
+    [void][Native]::SetForegroundWindow($window)
+    Start-Sleep -Seconds 1
+    $geometry = Wait-State { param($s) $null -ne $s.window.innerScreenX -and $s.rect.width -gt 100 } 'Firefox fixture geometry unavailable after 30 seconds' 30
+    Save-Json 'transport-geometry' $geometry
+    Assert-That ($geometry.rect.width -gt 100 -and $null -ne $geometry.window.innerScreenX) 'Firefox fixture geometry unavailable'
+    $x = [int](($geometry.window.innerScreenX + $geometry.rect.left + 30) * $geometry.screen.dpr)
+    $y = [int](($geometry.window.innerScreenY + $geometry.rect.top + 30) * $geometry.screen.dpr)
+    $mouseCount = [Native]::Click($x,$y)
+    Save-Json 'transport-mouse' @{x=$x;y=$y;accepted=$mouseCount;desktop=[Native]::InputDesktop()}
+    Assert-That ($mouseCount -eq 2) 'SendInput mouse rejected'
+    Start-Sleep -Milliseconds 500
+    $afterMouse = State
+    Save-Json 'transport-after-mouse' $afterMouse
+    if (-not $afterMouse.focused) {
+        # Normal OS keyboard navigation is another GUI focus mechanism, not DOM focus.
+        foreach ($attempt in 1..10) {
+            Send-Key 0x09
+            if ((State).focused) { break }
+        }
+        Save-Json 'transport-after-tab-navigation' (State)
+    }
+    Send-Romaji 'abc'
+    $state = Wait-State { param($s) $s.value -eq 'abc' -and $s.focused -and $s.documentFocused } 'Keyboard abc was not observed within 10 seconds'
+    $fgpid = [uint32]0
+    [void][Native]::GetWindowThreadProcessId([Native]::GetForegroundWindow(),[ref]$fgpid)
+    Save-Json 'transport-state' $state
+    Save-Json 'transport-observation' @{firefoxPid=$script:FirefoxPid;foregroundPid=$fgpid;profile=[Native]::ForegroundProfile();dpi=[Native]::GetDpiForWindow($window)}
+    Screen-Capture 'transport'
+    Assert-That ($fgpid -eq $script:FirefoxPid -and $state.focused -and $state.documentFocused -and $state.value -eq 'abc') 'OS keyboard input did not reach the foreground Firefox textarea'
+    Assert-That (@($state.events | Where-Object { $_.type -eq 'input' -and $_.trusted }).Count -gt 0) 'No trusted keyboard input evidence'
+    $passed = $true
+} catch {
+    Write-Host "TRANSPORT FAILURE: $($_.Exception.Message)"
+    $_ | Out-String | Set-Content "$script:Output/transport-failure.txt"
+    Screen-Capture 'transport-failure'
+} finally {
+    Save-Json 'input-trace' $script:InputTrace
+    Save-Json 'results' @{transportProven=$passed;nativeImeProven=$false;sha=$env:GITHUB_SHA;run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"}
+    if ($server) { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
+    # This script explicitly targets a disposable hosted runner and owns its sole Firefox window.
+    Get-Process firefox -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
+}
+if (-not $passed) { exit 1 }

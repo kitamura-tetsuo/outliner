@@ -1490,10 +1490,12 @@ th.col-fixed .th-label {
     white-space: nowrap;
 }
 
+/* Fixed-column body text wraps within its pinned width instead of clipping
+ * with an ellipsis; rows grow to fit it (issue #5502). Headers keep their
+ * separate ellipsis policy above. */
 td.col-fixed > :global(.cell-value) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 td.col-fixed > :global(.cell-input),
