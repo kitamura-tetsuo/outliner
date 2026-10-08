@@ -4,7 +4,7 @@ Add-Type -AssemblyName Accessibility
 function Save-Json($Name, $Object) {
     $json = ConvertTo-Json -InputObject $Object -Depth 30
     $json | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
-    if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error' -or $Name -like 'transport-*' -or $Name -eq 'input-trace' -or $Name -like 'active-tsf*' -or $Name -like 'language-*' -or $Name -like 'default-input*' -or $Name -like 'candidate-*' -or $Name -like 'control-*' -or $Name -eq 'wait-state-failure' -or $Name -like 'preedit-*' -or $Name -in @('confirmation','cancellation')) {
+    if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error' -or $Name -like 'integration-*' -or $Name -like 'transport-*' -or $Name -eq 'input-trace' -or $Name -like 'active-tsf*' -or $Name -like 'language-*' -or $Name -like 'default-input*' -or $Name -like 'candidate-*' -or $Name -like 'control-*' -or $Name -eq 'wait-state-failure' -or $Name -like 'preedit-*' -or $Name -in @('confirmation','cancellation')) {
         Write-Host "EVIDENCE $Name $json"
     }
 }
@@ -66,6 +66,10 @@ function Element-Record($Element) {
     }
     $process = Get-Process -Id $c.ProcessId -ErrorAction SilentlyContinue
     $windowClass = [Native]::WindowClass($c.NativeWindowHandle)
+    $bounds = @{left=$c.BoundingRectangle.Left;top=$c.BoundingRectangle.Top;width=$c.BoundingRectangle.Width;height=$c.BoundingRectangle.Height}
+    foreach ($key in @('left','top','width','height')) {
+        if ([double]::IsInfinity($bounds[$key]) -or [double]::IsNaN($bounds[$key])) { $bounds[$key] = $null }
+    }
     $legacy = $null
     if ($windowClass -eq 'mscandui40.candidate') {
         try {
@@ -81,7 +85,7 @@ function Element-Record($Element) {
     return @{name=$c.Name; automationId=$c.AutomationId; controlType=$c.ControlType.ProgrammaticName;
         windowClass=$windowClass; legacy=$legacy; supportedPatterns=@($Element.GetSupportedPatterns() | ForEach-Object { $_.ProgrammaticName });
         pid=$c.ProcessId; process=$process.ProcessName; hwnd=$c.NativeWindowHandle;
-        bounds=@{left=$c.BoundingRectangle.Left;top=$c.BoundingRectangle.Top;width=$c.BoundingRectangle.Width;height=$c.BoundingRectangle.Height}; offscreen=$c.IsOffscreen; selected=$selected;
+        bounds=$bounds; offscreen=$c.IsOffscreen; selected=$selected;
         runtimeId=($Element.GetRuntimeId() -join ',')}
 }
 function Snapshot-Raw($Name) {
