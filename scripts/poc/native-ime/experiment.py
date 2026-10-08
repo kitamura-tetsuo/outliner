@@ -204,8 +204,8 @@ def controls():
     finally:
         foreign.destroy()
         desktop.display.sync()
-    # Openbox can leave Firefox's GTK input context unfocused after the foreign
-    # window steals focus, even while its DOM activeElement remains the textarea.
+    # The foreign popup is unmanaged, like the real Classic UI panel, so it must
+    # not steal OS focus. Keep an explicit user-like click before resuming input.
     click(textarea)
     wait(lambda: state()["focused"], "OS click restores Firefox focus after foreign-window control")
     RESULTS["F"] = dict(status="PROVEN", reason="Live Latin input, missing panel with forced active flags, and real foreign-owner X11 window all rejected")

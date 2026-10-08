@@ -47,7 +47,8 @@ class Desktop:
     def unrelated_window(self):
         # A real foreign X11 window with plausible title/class/type must be rejected.
         win = self.root.create_window(1300, 100, 200, 150, 0, X.CopyFromParent, X.InputOutput,
-                                      X.CopyFromParent, background_pixel=self.display.screen().white_pixel)
+                                      X.CopyFromParent, background_pixel=self.display.screen().white_pixel,
+                                      override_redirect=True)
         win.set_wm_name("Fcitx5 Input Window")
         win.set_wm_class("fcitx", "fcitx")
         win.change_property(self.display.intern_atom("_NET_WM_PID"), Xatom.CARDINAL, 32, [os.getpid()])
