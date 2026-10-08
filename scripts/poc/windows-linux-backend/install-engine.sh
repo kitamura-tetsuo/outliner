@@ -13,7 +13,7 @@ for attempt in $(seq 1 60); do
   if docker --host=unix:///var/run/docker.sock info >/dev/null 2>&1; then break; fi
   sleep 1
 done
-docker --host=unix:///var/run/docker.sock info --format '{{json .}}'
+docker --host=unix:///var/run/docker.sock info --format 'OSType={{.OSType}} KernelVersion={{.KernelVersion}} ServerVersion={{.ServerVersion}} DockerRootDir={{.DockerRootDir}} Driver={{.Driver}}'
 test "$(docker --host=unix:///var/run/docker.sock info --format '{{.OSType}}')" = linux
 docker --host=unix:///var/run/docker.sock version
 docker compose version

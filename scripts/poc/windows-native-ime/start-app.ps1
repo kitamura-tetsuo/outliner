@@ -1,3 +1,6 @@
+if ($env:OUTLINER_NATIVE_BACKEND -eq 'wsl2-linux') {
+    $script:AppProcesses = @() # Compose is managed and collected by the WSL workflow.
+} else {
 # Sourced by run.ps1; processes are stopped in its finally block.
 $app = (Resolve-Path 'work/native-ime-app').Path
 $env:NODE_ENV = 'test'
@@ -26,6 +29,7 @@ Assert-That ($LASTEXITCODE -eq 0) 'Windows emulator port configuration failed'
 [void](Start-AppProcess 'yjs' "$app/server" @('dist/server/src/index.js'))
 $env:NODE_ENV = 'development' # Keep the existing Svelte-managed debug navigation available.
 [void](Start-AppProcess 'client' "$app/client" @('node_modules/vite/bin/vite.js','dev','--config','vite.config.ts','--mode','test','--host','127.0.0.1','--port','7090','--strictPort'))
+}
 $deadline = [DateTime]::UtcNow.AddSeconds(180)
 $ready = @{}
 $urls = @('http://127.0.0.1:59099/', 'http://127.0.0.1:58080/', 'http://127.0.0.1:57070/api/health', 'http://127.0.0.1:7093/health', 'http://127.0.0.1:7090/')

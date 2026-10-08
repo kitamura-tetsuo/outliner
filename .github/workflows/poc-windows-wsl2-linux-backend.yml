@@ -14,17 +14,45 @@ concurrency:
 jobs:
   provision-wsl2:
     runs-on: windows-2025
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          ref: 79a976cd8765367ea4f04baa00905822681cf294
+          path: work/native-ime-app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Attempt WSL2 Ubuntu and native Linux Docker Engine
         shell: powershell
         run: ./scripts/poc/windows-linux-backend/provision-wsl2.ps1
+      - name: Start the pinned Linux backend through Compose and verify Windows localhost
+        timeout-minutes: 30
+        shell: powershell
+        run: ./scripts/poc/windows-linux-backend/start-compose.ps1
+      - name: Run unchanged native A-I and strict production J-K against Linux services
+        timeout-minutes: 20
+        shell: powershell
+        env:
+          OUTLINER_NATIVE_BACKEND: wsl2-linux
+        run: ./scripts/poc/windows-native-ime/run.ps1
+      - name: Collect Linux service diagnostics and stop Compose
+        if: always()
+        timeout-minutes: 2
+        shell: powershell
+        run: |
+          $root = (Get-Location).Path -replace '\', '/'
+          $linuxRoot = '/mnt/' + $root.Substring(0,1).ToLower() + $root.Substring(2)
+          wsl.exe --distribution Ubuntu --user root --exec bash "$linuxRoot/scripts/poc/windows-linux-backend/collect-compose.sh" "$linuxRoot/artifacts/windows-linux-backend"
       - name: Preserve exact platform and provisioning evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: windows-wsl2-platform-${{ github.run_id }}
-          path: artifacts/windows-linux-backend/
+          path: |
+            artifacts/windows-linux-backend/
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
           if-no-files-found: error
           retention-days: 14

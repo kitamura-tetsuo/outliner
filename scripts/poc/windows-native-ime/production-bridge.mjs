@@ -25,6 +25,36 @@ await wd("timeouts", { script: 30000, pageLoad: 60000, implicit: 0 });
 const execute = (fn, ...args) => wd("execute/sync", { script: `return (${fn.toString()})(...arguments)`, args });
 const asyncExecute = (script, ...args) => wd("execute/async", { script, args });
 const state = () => execute(readApplication);
+if (process.env.OUTLINER_NATIVE_BACKEND === "wsl2-linux") {
+    const observations = [];
+    for (
+        const url of [
+            "http://127.0.0.1:7090/",
+            "http://127.0.0.1:7093/health",
+            "http://127.0.0.1:57070/api/health",
+            "http://127.0.0.1:59099/",
+            "http://127.0.0.1:58080/",
+        ]
+    ) {
+        await wd("url", { url });
+        const observed = await asyncExecute(`
+            const done = arguments[arguments.length - 1];
+            fetch(location.href, {cache: 'no-store', signal: AbortSignal.timeout(10000)})
+                .then(async r => done({url:location.href, documentURI:document.documentURI,
+                    status:r.status, text:(await r.text()).slice(0, 500)}))
+                .catch(e => done({url:location.href, error:String(e)}));
+        `);
+        observations.push(observed);
+        save("windows-firefox-linux-localhost", {
+            platform: session.capabilities.platformName,
+            browser: session.capabilities.browserVersion,
+            observations,
+        });
+        if (observed.status !== 200 || observed.error || observed.documentURI.startsWith("about:")) {
+            throw new Error(`Windows-native Firefox could not reach Linux service ${url}`);
+        }
+    }
+}
 let baseline;
 async function waitFor(fn, message) {
     const deadline = Date.now() + 60000;

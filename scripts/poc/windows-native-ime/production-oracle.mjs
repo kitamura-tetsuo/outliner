@@ -67,7 +67,21 @@ export function installObservation(action) {
         composing: false,
         sequence: 0,
         events: [],
+        gestures: [],
     };
+    for (const type of ["mousedown", "mouseup", "click"]) {
+        document.addEventListener(type, event => {
+            const item = event.target.closest?.(".outliner-item[data-item-id]");
+            if (!item) return;
+            observation.gestures.push({
+                type,
+                trusted: event.isTrusted,
+                altKey: event.altKey,
+                itemId: item.dataset.itemId,
+                time: Date.now(),
+            });
+        }, true);
+    }
     for (const type of ["compositionstart", "compositionupdate", "compositionend", "input"]) {
         document.addEventListener(type, event => {
             if (!event.target.matches("textarea.global-textarea")) return;

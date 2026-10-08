@@ -1,0 +1,28 @@
+# Overlay the existing root Compose backend with disposable test services.
+# Traefik and cloudflared are not started; all browser access uses local ports.
+services:
+  yjs-server:
+    build:
+      context: .
+      dockerfile: /opt/outliner-harness/scripts/poc/windows-linux-backend/Dockerfile.runtime
+      args:
+        APPLICATION_SHA: ${APPLICATION_SHA:?exact source revision required}
+    env_file: !reset []
+    environment:
+      APPLICATION_SHA: ${APPLICATION_SHA}
+    ports: !override
+      - '7090:7090'
+      - '7093:7093'
+      - '57070:57070'
+      - '59099:59099'
+      - '58080:58080'
+    volumes: !override
+      - /opt/outliner-harness:/harness:ro
+      - /opt/outliner-evidence:/evidence
+    restart: 'no'
+  cloudflared:
+    env_file: !reset []
+networks:
+  yjs-net:
+    enable_ipv6: false
+    ipam: !reset {}
