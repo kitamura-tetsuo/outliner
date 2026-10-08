@@ -63,7 +63,7 @@ public interface ITfProfileManager {
     [PreserveSig] int EnumProfiles(ushort language, out IntPtr result);
     [PreserveSig] int ReleaseInputProcessor(ref Guid clsid, uint flags);
     [PreserveSig] int RegisterProfile(ref Guid clsid, ushort language, ref Guid profile, IntPtr description, uint descriptionLength,
-        IntPtr icon, uint iconLength, uint iconIndex, IntPtr substitute, uint preferredLayout, uint enabled);
+        IntPtr icon, uint iconLength, uint iconIndex, IntPtr substitute, uint preferredLayout, uint enabled, uint flags);
     [PreserveSig] int UnregisterProfile(ref Guid clsid, ushort language, ref Guid profile, uint flags);
     [PreserveSig] int GetActiveProfile(ref Guid category, out TFPROFILE result);
 }

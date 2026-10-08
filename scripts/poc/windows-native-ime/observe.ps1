@@ -144,7 +144,12 @@ function Invoke-UIAProbe($Operation, $Name, [int]$TimeoutSeconds=30) {
         if ($Operation -eq 'candidate') {
             $raw = Get-Content -Raw "$script:Output/candidate-$Name.json"
             Write-Host "CANDIDATE RAW $Name $raw"
-            @(Get-Content -Raw "$script:Output/candidate-$Name.json" | ConvertFrom-Json | Where-Object { -not $_.offscreen })
+            Assert-That ($raw.Trim().StartsWith('[') -and $raw.Trim().EndsWith(']')) 'UIA worker did not return a candidate array; inaccessible or missing observations cannot pass'
+            $decoded = ConvertFrom-Json -InputObject $raw
+            # PowerShell 5 can emit an empty JSON array as one pipeline object; foreach unwraps it.
+            foreach ($item in $decoded) {
+                if ($null -ne $item -and -not $item.offscreen) { Write-Output $item }
+            }
         }
     } finally { $worker.Dispose() }
 }
