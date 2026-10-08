@@ -91,6 +91,7 @@ user_pref("accessibility.force_disabled", -1);
     $results.B = @{status='PARTIAL'; evidence='Japanese capability and Microsoft TIP configured; activation requires trusted composition'}
     Write-Host 'PHASE D: testing real Japanese preedit'
     $stage = 'D'
+    Send-Key 0x16 # VK_IME_ON
     Send-Key 0xF2 # VK_DBE_HIRAGANA through SendInput, never Unicode insertion.
     Send-Romaji 'ni'
     try {

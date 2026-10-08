@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/poc-windows-firefox-native-ime.yml'
       - 'scripts/poc/windows-native-ime/**'
+concurrency:
+  group: windows-native-ime-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

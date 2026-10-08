@@ -28,6 +28,13 @@ foreach ($path in $paths) {
             Out-File -Append "$script:Output/microsoft-japanese-tsf-registry.txt"
     }
 }
+$layout = [Native]::LoadKeyboardLayout('00000411',1)
+Assert-That ($layout -ne [IntPtr]::Zero) 'Japanese keyboard layout could not be loaded'
+# This requests a keyboard profile change only; actual IME composition is checked separately.
+[void][Native]::PostMessage($script:FirefoxWindow,0x50,[IntPtr]::Zero,$layout)
+Start-Sleep -Seconds 2
+Save-Json 'profile-requested' @{tip=$tip; requestedHkl=$layout.ToInt64().ToString('X'); foreground=[Native]::ForegroundProfile()}
+
 try {
     $script:TsfObservation = [JapaneseTsf]::ActivateSession()
     Save-Json 'active-tsf-session' @{observation=$script:TsfObservation; callerSession=(Get-Process -Id $PID).SessionId; scope='Session activation; native Firefox composition still required'}
@@ -35,12 +42,7 @@ try {
     $script:TsfObservation = "ERROR: $($_.Exception.Message)"
     Save-Json 'active-tsf-session-error' @{error=$script:TsfObservation}
 }
-$layout = [Native]::LoadKeyboardLayout('00000411',1)
-Assert-That ($layout -ne [IntPtr]::Zero) 'Japanese keyboard layout could not be loaded'
-# This requests a keyboard profile change only; actual IME composition is checked separately.
-[void][Native]::PostMessage($script:FirefoxWindow,0x50,[IntPtr]::Zero,$layout)
-Start-Sleep -Seconds 2
-Save-Json 'profile-requested' @{tip=$tip; requestedHkl=$layout.ToInt64().ToString('X'); foreground=[Native]::ForegroundProfile()}
+Save-Json 'profile-after-tsf' @{foreground=[Native]::ForegroundProfile(); tsf=$script:TsfObservation}
 
 function Install-JapaneseBasic {
     Write-Host 'Attempt supported Japanese basic capability installation after failed native activation'
