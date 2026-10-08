@@ -62,6 +62,8 @@ The editor toolbar (located at the top of the outline editor) provides:
 - **History / Diff:** Opens the history panel to view past edits and differences.
 - **Keyboard Shortcuts:** Opens a list of available keyboard shortcuts.
 
+When you focus on an outline item on a mobile device or a narrow screen, a floating action toolbar will appear at the bottom. It provides quick access to indentation controls (`Indent`, `Outdent`), item manipulation (`Add Above`, `Add Below`), and other quick actions.
+
 ### User Authentication
 
 The login status indicator located in the top right area of the top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in". You can also find a "Sign in to see your projects" prompt in the Projects section of the main sidebar.
@@ -102,7 +104,7 @@ Powerful item manipulation features expected in an outliner.
 
 ### Adding New Items
 
-Press `Enter` to insert a new item below the current one, or click the **Add Item** button at the top right of the page.
+Press `Enter` to insert a new item below the current one, or click the **Add Item** button in the editor toolbar. On mobile devices, you can use the **Add Above** or **Add Below** buttons in the floating action toolbar.
 
 ### Indenting Items
 
