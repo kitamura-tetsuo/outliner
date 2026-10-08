@@ -112,20 +112,20 @@ function Require-Candidate($Candidates, $State) {
 }
 
 function Invoke-UIAProbe($Operation, $Name) {
-    # Providers can hang even when input works. Isolate each read and never convert timeout into PASS.
-    $job = Start-Job -ScriptBlock {
-        param($Root,$OutputPath,$OperationName,$SnapshotName)
-        $script:Output = $OutputPath
-        . "$Root/observe.ps1"
-        if ($OperationName -eq 'snapshot') { Snapshot-Raw $SnapshotName }
-        else { Candidate-Raw $SnapshotName }
-    } -ArgumentList $PSScriptRoot,$script:Output,$Operation,$Name
+    # Terminate an isolated OS process on timeout; Stop-Job can itself wait on a hung provider.
+    $worker = Start-Process powershell.exe -ArgumentList @('-NoProfile','-File',
+        "`"$PSScriptRoot/uia-worker.ps1`"",'-OutputPath',"`"$script:Output`"",'-Operation',$Operation,'-Name',$Name) -PassThru `
+        -RedirectStandardOutput "$script:Output/worker-$Name-stdout.txt" -RedirectStandardError "$script:Output/worker-$Name-stderr.txt"
     try {
-        $done = Wait-Job $job -Timeout 20
-        if (-not $done) { throw "UIA $Operation $Name timed out after 20 seconds" }
-        if ($job.State -ne 'Completed') { throw "UIA $Operation $Name failed: $($job.ChildJobs[0].JobStateInfo.Reason)" }
-        Receive-Job $job -ErrorAction Stop
-    } finally { Stop-Job $job; Remove-Job $job -Force }
+        if (-not $worker.WaitForExit(30000)) {
+            $worker.Kill()
+            throw "UIA/OS $Operation $Name timed out after 30 seconds"
+        }
+        Assert-That ($worker.ExitCode -eq 0) "UIA/OS $Operation $Name failed; see worker-$Name-error.txt"
+        if ($Operation -eq 'candidate') {
+            @(Get-Content -Raw "$script:Output/candidate-$Name.json" | ConvertFrom-Json | Where-Object { -not $_.offscreen })
+        }
+    } finally { $worker.Dispose() }
 }
 function Snapshot($Name) { Invoke-UIAProbe 'snapshot' $Name }
 function Candidate($Name) { Invoke-UIAProbe 'candidate' $Name }

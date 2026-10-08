@@ -24,7 +24,7 @@ try {
     reg query 'HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts' /s 2>&1 | Out-File "$script:Output/keyboard-layouts.txt"
     reg query 'HKCU\Keyboard Layout' /s 2>&1 | Out-File "$script:Output/user-keyboards.txt"
     Get-WinSystemLocale | Out-File "$script:Output/system-locale.txt"
-    Get-WindowsPackage -Online | Where-Object PackageName -match 'LanguagePack' | Out-File "$script:Output/language-packs.txt"
+    try { Invoke-UIAProbe 'packages' 'language-packs' } catch { Save-Json 'language-packs-error' @{error="$($_.Exception.Message)"} }
     Write-Host 'PHASE A: launching regular Firefox GUI'
     $stage = 'A'
     $exe = 'C:\Program Files\Mozilla Firefox\firefox.exe'
