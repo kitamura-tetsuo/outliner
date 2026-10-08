@@ -64,7 +64,13 @@ function Element-Record($Element) {
         $selected = $p.Current.IsSelected
     }
     $process = Get-Process -Id $c.ProcessId -ErrorAction SilentlyContinue
+    $legacy = $null
+    $lp = $null
+    if ($Element.TryGetCurrentPattern([System.Windows.Automation.LegacyIAccessiblePattern]::Pattern,[ref]$lp)) {
+        $legacy = @{name=$lp.Current.Name; role=$lp.Current.Role; state=$lp.Current.State; childId=$lp.Current.ChildId}
+    }
     return @{name=$c.Name; automationId=$c.AutomationId; controlType=$c.ControlType.ProgrammaticName;
+        windowClass=([Native]::WindowClass($c.NativeWindowHandle)); legacy=$legacy;
         pid=$c.ProcessId; process=$process.ProcessName; hwnd=$c.NativeWindowHandle;
         bounds=@{left=$c.BoundingRectangle.Left;top=$c.BoundingRectangle.Top;width=$c.BoundingRectangle.Width;height=$c.BoundingRectangle.Height}; offscreen=$c.IsOffscreen; selected=$selected;
         runtimeId=($Element.GetRuntimeId() -join ',')}
@@ -95,8 +101,11 @@ function Snapshot-Raw($Name) {
 function Candidate-Raw($Name) {
     $before = State
     # A fresh desktop-wide query every time: retained UIA elements never serve as an oracle.
-    $condition = New-Object System.Windows.Automation.PropertyCondition(
+    $published = New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IME_Candidate_Window')
+    $classic = New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::NameProperty,'Microsoft Candidate UI')
+    $condition = New-Object System.Windows.Automation.OrCondition($published,$classic)
     $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
         [System.Windows.Automation.TreeScope]::Descendants,$condition)
     $observations = @()
@@ -122,9 +131,10 @@ function Selected($Candidate) {
 function Require-Candidate($Candidates, $State) {
     Assert-That ($Candidates.Count -eq 1) 'Missing or ambiguous visible native candidate window'
     $c = $Candidates[0]
-    Assert-That ($c.pid -ne $script:FirefoxPid -and $c.process -match '^(TextInputHost|InputApp|ctfmon)$') 'Candidate owner is not a recognized Windows input host'
+    $modern = $c.automationId -eq 'IME_Candidate_Window' -and $c.pid -ne $script:FirefoxPid -and $c.process -match '^(TextInputHost|InputApp|ctfmon)$'
+    $classic = $c.name -eq 'Microsoft Candidate UI' -and $c.hwnd -ne 0 -and $c.pid -eq $script:FirefoxPid -and $c.windowClass -match '^MSCandUIWindow_'
+    Assert-That ($modern -or $classic) 'Candidate owner/class is not an established Windows IME host or native Microsoft Candidate UI HWND'
     Assert-That ($c.bounds.width -gt 0 -and $c.bounds.height -gt 0) 'Candidate has no visible bounds'
-    Assert-That ($c.automationId -eq 'IME_Candidate_Window') 'Candidate AutomationId mismatch'
     Assert-That $State.composing 'No current composition; older composition events cannot satisfy a new session'
     Assert-That ($c.compositionId -eq $State.compositionId -and $c.composingBefore) 'Candidate observation belongs to a different composition generation'
     Assert-That ($State.focused -and $State.documentFocused) 'Firefox textarea lost focus'

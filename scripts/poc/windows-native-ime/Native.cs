@@ -21,6 +21,8 @@ public static class Native {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern bool GetUserObjectInformation(IntPtr h,int index,StringBuilder text,int len,out int needed);
     [DllImport("imm32.dll",CharSet=CharSet.Unicode)] public static extern uint ImmGetDescription(IntPtr h,StringBuilder text,uint len);
     [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h,StringBuilder text,int length);
+    public static string WindowClass(int h) { var b=new StringBuilder(256); GetClassName(new IntPtr(h),b,256); return b.ToString(); }
     public static uint Key(ushort vk) {
         INPUT[] a=new INPUT[2]; a[0].type=1; a[0].data.key.vk=vk;
         a[1]=a[0]; a[1].data.key.flags=2;
