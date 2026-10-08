@@ -180,7 +180,22 @@ user_pref("accessibility.force_disabled", -1);
     [void](Wait-State { param($s) -not $s.composing -and $s.value -eq $commit.value } 'Second composition cancellation did not restore committed text')
     Assert-That (@(Candidate 'second-disappeared').Count -eq 0) 'Candidate did not disappear after second composition'
     $results.I = @{status='PROVEN'; evidence='Actual Latin mode/input rejects candidate assertion, restored Japanese opens native candidate, missing/unchanged/stale/old-generation controls reject; UIA worker errors throw rather than pass'}
-    $results.J = @{status='BLOCKED'; evidence='Existing service bootstrap is Linux-specific; standalone only. No production textarea run.'}
+    $stage = 'J'
+    Write-Host 'PHASE J: attempting existing Outliner service bootstrap on Windows'
+    $bash = 'C:\Program Files\Git\bin\bash.exe'
+    Save-Json 'integration-preflight' @{bashAvailable=(Test-Path $bash); serverBuildAvailable=(Test-Path 'server/dist/server/src/index.js'); rootDependenciesAvailable=(Test-Path 'node_modules'); clientDependenciesAvailable=(Test-Path 'client/node_modules'); startup='scripts/ci-e2e-start.sh'; boundary='Use existing bootstrap only; no complete infrastructure migration'}
+    if (Test-Path $bash) {
+        $startup = Start-Process $bash -ArgumentList @('-lc','"bash scripts/ci-e2e-start.sh"') -WorkingDirectory (Get-Location).Path -PassThru -RedirectStandardOutput "$script:Output/integration-startup-stdout.txt" -RedirectStandardError "$script:Output/integration-startup-stderr.txt"
+        try {
+            [void]$startup.Handle
+            $finished = $startup.WaitForExit(60000)
+            if (-not $finished) { taskkill /PID $startup.Id /T /F | Out-Null }
+            $startup.Refresh()
+            Save-Json 'integration-startup' @{finished=$finished; exitCode=$startup.ExitCode; timeoutSeconds=60}
+            Get-Content "$script:Output/integration-startup-stdout.txt","$script:Output/integration-startup-stderr.txt" | Select-Object -Last 35 | Write-Host
+        } finally { $startup.Dispose() }
+    }
+    $results.J = @{status='BLOCKED'; evidence='Existing service bootstrap attempted without Ubuntu dependencies or infrastructure migration; see integration-preflight/startup and logs. No ready production textarea path established.'}
     $results.K = @{status='BLOCKED'; evidence='No production Yjs document/cursor observation; REQ-005 is not verified.'}
 } catch {
     Write-Host "PROBE FAILURE at $stage : $($_.Exception.Message)"
