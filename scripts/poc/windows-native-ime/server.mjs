@@ -17,7 +17,7 @@ createServer((req, res) => {
             res.end("ok");
         });
     } else if (req.url === "/state") {
-        res.setHeader("Content-Type", "application/json");
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
         res.end(JSON.stringify(latest));
     } else {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
