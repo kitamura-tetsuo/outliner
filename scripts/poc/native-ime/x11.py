@@ -4,6 +4,11 @@ from Xlib import X, Xatom, display, error
 from PIL import Image
 
 
+def text_property(value):
+    # GTK may publish legacy WM_NAME as raw UTF-8 bytes for a Japanese title.
+    return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+
+
 class Desktop:
     def __init__(self):
         self.display = display.Display()
@@ -19,8 +24,8 @@ class Desktop:
                     pos = self.root.translate_coords(win, 0, 0)
                     pid = win.get_full_property(self.display.intern_atom("_NET_WM_PID"), X.AnyPropertyType)
                     types = win.get_full_property(self.display.intern_atom("_NET_WM_WINDOW_TYPE"), X.AnyPropertyType)
-                    records.append(dict(id=win.id, name=win.get_wm_name(),
-                                        **{"class": list(win.get_wm_class() or [])},
+                    records.append(dict(id=win.id, name=text_property(win.get_wm_name()),
+                                        **{"class": [text_property(c) for c in (win.get_wm_class() or [])]},
                                         pid=int(pid.value[0]) if pid is not None else None,
                                         types=[self.display.get_atom_name(int(t)) for t in types.value] if types is not None else [],
                                         viewable=win.get_attributes().map_state == X.IsViewable,

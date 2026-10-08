@@ -243,7 +243,12 @@ def movement_control():
 def placement_samples(prefix):
     samples = []
     command("fcitx5-remote", "-c")
-    key("ctrl+a")
+    if prefix == "outliner":
+        # Outliner's Ctrl+A can select the document; select only the current line.
+        key("Home")
+        key("shift+End")
+    else:
+        key("ctrl+a")
     key("BackSpace")
     for count in [5, 40]:
         begin("a" * count, f"{prefix}-{count}-preedit")
