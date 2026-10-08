@@ -3,7 +3,7 @@ import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.sve
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
-import { searchItem } from "../cursor";
+import { searchItem } from "../cursor/index";
 import { textSelectionEndpoints, textSelectionOffsetBounds } from "../selection/selectionEndpoints";
 
 export class CursorFormatting {
