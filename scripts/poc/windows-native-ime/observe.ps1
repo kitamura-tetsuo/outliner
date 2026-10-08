@@ -1,5 +1,6 @@
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase, System.Windows.Forms, System.Drawing
 Add-Type -Path "$PSScriptRoot/Native.cs"
+Add-Type -AssemblyName Accessibility
 function Save-Json($Name, $Object) {
     $json = ConvertTo-Json -InputObject $Object -Depth 30
     $json | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
@@ -64,13 +65,21 @@ function Element-Record($Element) {
         $selected = $p.Current.IsSelected
     }
     $process = Get-Process -Id $c.ProcessId -ErrorAction SilentlyContinue
+    $windowClass = [Native]::WindowClass($c.NativeWindowHandle)
     $legacy = $null
-    $lp = $null
-    if ($Element.TryGetCurrentPattern([System.Windows.Automation.LegacyIAccessiblePattern]::Pattern,[ref]$lp)) {
-        $legacy = @{name=$lp.Current.Name; role=$lp.Current.Role; state=$lp.Current.State; childId=$lp.Current.ChildId}
+    if ($windowClass -match '^MSCandUIWindow_') {
+        try {
+            $accessible = [Accessibility.IAccessible][Native]::AccessibleClient($c.NativeWindowHandle)
+            $items = @()
+            for ($childId=1; $childId -le $accessible.accChildCount; $childId++) {
+                $state = [int]$accessible.get_accState($childId)
+                $items += @{name=$accessible.get_accName($childId); selected=(($state -band 2) -ne 0); state=$state; childId=$childId; runtimeId="hwnd=$($c.NativeWindowHandle),msaa=$childId"}
+            }
+            $legacy = @{name=$accessible.get_accName(0); role=$accessible.get_accRole(0); state=$accessible.get_accState(0); childCount=$accessible.accChildCount; items=$items; source='Native HWND OBJID_CLIENT IAccessible'}
+        } catch { $legacy = @{error="$($_.Exception.Message)"; source='Native HWND OBJID_CLIENT IAccessible'} }
     }
     return @{name=$c.Name; automationId=$c.AutomationId; controlType=$c.ControlType.ProgrammaticName;
-        windowClass=([Native]::WindowClass($c.NativeWindowHandle)); legacy=$legacy;
+        windowClass=$windowClass; legacy=$legacy; supportedPatterns=@($Element.GetSupportedPatterns() | ForEach-Object { $_.ProgrammaticName });
         pid=$c.ProcessId; process=$process.ProcessName; hwnd=$c.NativeWindowHandle;
         bounds=@{left=$c.BoundingRectangle.Left;top=$c.BoundingRectangle.Top;width=$c.BoundingRectangle.Width;height=$c.BoundingRectangle.Height}; offscreen=$c.IsOffscreen; selected=$selected;
         runtimeId=($Element.GetRuntimeId() -join ',')}
@@ -125,6 +134,9 @@ function Candidate-Raw($Name) {
 }
 function Selected($Candidate) {
     $items = @($Candidate.children | Where-Object { $_.selected -eq $true })
+    if ($items.Count -eq 0 -and $null -ne $Candidate.legacy.items) {
+        $items = @($Candidate.legacy.items | Where-Object { $_.selected -eq $true })
+    }
     Assert-That ($items.Count -eq 1) 'UIA must expose exactly one selected candidate'
     return $items[0]
 }

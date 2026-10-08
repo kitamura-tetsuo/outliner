@@ -149,6 +149,7 @@ user_pref("accessibility.force_disabled", -1);
     $stage = 'H'
     Send-Romaji 'tokyo'
     Send-Key 0x1B
+    Send-Key 0x1B
     $cancel = Wait-State { param($s) -not $s.composing -and $s.value -eq $commit.value } 'Cancellation did not restore text within 10 seconds'
     Save-Json 'cancellation' $cancel
     Assert-That ($cancel.value -eq $commit.value -and $cancel.start -eq $commit.start -and $cancel.end -eq $commit.end) 'Cancellation failed to restore text and caret'
@@ -187,6 +188,7 @@ user_pref("accessibility.force_disabled", -1);
             $results.G = @{status='PARTIAL'; evidence='Native Down/Enter and trusted composition confirmation recorded, but selected native text is not observed'}
             Send-Romaji 'ni'
             $cancelPreedit = Wait-State { param($s) $s.composing -and $s.compositionId -gt $confirmed.compositionId } 'Independent cancellation preedit did not start'
+            Send-Key 0x1B
             Send-Key 0x1B
             $cancelled = Wait-State { param($s) -not $s.composing -and $s.value -eq $confirmed.value } 'Independent cancellation did not restore text'
             Assert-That ($cancelled.start -eq $confirmed.start -and $cancelled.end -eq $confirmed.end) 'Independent cancellation did not restore caret'

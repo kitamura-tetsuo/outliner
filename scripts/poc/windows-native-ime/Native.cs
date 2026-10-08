@@ -23,6 +23,8 @@ public static class Native {
     [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h,StringBuilder text,int length);
     public static string WindowClass(int h) { var b=new StringBuilder(256); GetClassName(new IntPtr(h),b,256); return b.ToString(); }
+    [DllImport("oleacc.dll")] public static extern int AccessibleObjectFromWindow(IntPtr hwnd,uint objectId,ref Guid iid,[MarshalAs(UnmanagedType.Interface)] out object accessible);
+    public static object AccessibleClient(int h) { object a; Guid iid=new Guid("618736E0-3C3D-11CF-810C-00AA00389B71"); int hr=AccessibleObjectFromWindow(new IntPtr(h),0xFFFFFFFC,ref iid,out a); if(hr!=0) Marshal.ThrowExceptionForHR(hr); return a; }
     public static uint Key(ushort vk) {
         INPUT[] a=new INPUT[2]; a[0].type=1; a[0].data.key.vk=vk;
         a[1]=a[0]; a[1].data.key.flags=2;
