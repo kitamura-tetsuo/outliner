@@ -21,6 +21,7 @@ jobs:
         with:
           node-version: '22'
       - name: Probe native Firefox and Microsoft Japanese IME
+        timeout-minutes: 15
         run: ./scripts/poc/windows-native-ime/run.ps1
       - name: Upload evidence even on failure
         if: always()

@@ -10,6 +10,7 @@ foreach ($id in 'A','B','C','D','E','F','G','H','I','J','K') {
 $server = $null
 $firefox = $null
 $stage = 'environment'
+Write-Host 'PHASE environment: inspecting Windows session and packages'
 try {
     . "$PSScriptRoot/observe.ps1"
     . "$PSScriptRoot/controls.ps1"
@@ -24,6 +25,7 @@ try {
     reg query 'HKCU\Keyboard Layout' /s 2>&1 | Out-File "$script:Output/user-keyboards.txt"
     Get-WinSystemLocale | Out-File "$script:Output/system-locale.txt"
     Get-WindowsPackage -Online | Where-Object PackageName -match 'LanguagePack' | Out-File "$script:Output/language-packs.txt"
+    Write-Host 'PHASE A: launching regular Firefox GUI'
     $stage = 'A'
     $exe = 'C:\Program Files\Mozilla Firefox\firefox.exe'
     if (-not (Test-Path $exe)) {
@@ -55,6 +57,7 @@ user_pref("accessibility.force_disabled", -1);
     Snapshot 'startup'
     Screen-Capture 'startup'
     $results.A = @{status='PROVEN'; evidence='GUI HWND, uia-startup.json and startup.png'; pid=$script:FirefoxPid}
+    Write-Host 'PHASE C: locating UIA textarea and testing SendInput delivery'
     $stage = 'C'
     $root = [System.Windows.Automation.AutomationElement]::FromHandle($script:FirefoxWindow)
     $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty,'Native IME test input')
@@ -75,9 +78,11 @@ user_pref("accessibility.force_disabled", -1);
     Assert-That ($absent.Count -eq 0) 'Negative Latin control exposed candidate window'
     Expect-Rejection 'missing-candidate' { Require-Candidate $absent $latin }
     foreach ($unused in 1..3) { Send-Key 8 }
+    Write-Host 'PHASE B: provisioning Microsoft Japanese IME'
     $stage = 'B'
     . "$PSScriptRoot/setup-ime.ps1"
     $results.B = @{status='PARTIAL'; evidence='Japanese capability and Microsoft TIP configured; activation requires trusted composition'}
+    Write-Host 'PHASE D: testing real Japanese preedit'
     $stage = 'D'
     Send-Key 0xF2 # VK_DBE_HIRAGANA through SendInput, never Unicode insertion.
     Send-Romaji 'ni'
@@ -93,6 +98,7 @@ user_pref("accessibility.force_disabled", -1);
     $results.D = @{status='PROVEN'; evidence='preedit-short.json, preedit-long.json, preedit.png'}
     # Configuration alone is not sufficient to prove the active TSF service identity.
     $results.B = @{status='PARTIAL'; evidence='Microsoft TIP requested and Japanese composition observed; foreground HKL/profile-requested.json; exact active TSF identity still requires verification'}
+    Write-Host 'PHASE E: querying native desktop candidate UI'
     $stage = 'E'
     Send-Key 0x20
     Send-Key 0x20
