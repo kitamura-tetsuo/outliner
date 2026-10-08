@@ -12,7 +12,9 @@ parser.add_argument('--list', action='store_true')
 parser.add_argument('--cat', metavar='ENTRY')
 args = parser.parse_args()
 assets = Path(__file__).resolve().parents[3] / 'docs/poc/assets'
-manifest = json.loads((assets / 'windows-native-ime-manifest.json').read_text())
+lines = (assets / 'windows-native-ime-manifest.jsonl').read_text().splitlines()
+manifest = json.loads(lines[0])
+manifest['entries'] = [json.loads(line) for line in lines[1:]]
 archive = assets / 'windows-native-ime-evidence.zip'
 assert hashlib.sha256(archive.read_bytes()).hexdigest() == manifest['archiveSha256'], 'Archive hash differs'
 with zipfile.ZipFile(archive) as z:
