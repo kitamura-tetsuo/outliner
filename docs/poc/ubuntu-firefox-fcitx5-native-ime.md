@@ -31,16 +31,16 @@ negative controls and the passing limited reference comparison.
 The [generated execution report](native-ime-evidence/execution-report.md) is retained alongside
 the detailed analysis here.
 
-The following screenshots and corresponding X11/browser snapshots from this run are also
-retained in the repository, beyond the short Actions artifact lifetime:
+The following screenshots from this run are also retained in the repository, beyond the short
+Actions artifact lifetime. Raw JSON observations are retained only in the CI artifact:
 
 ![Native Firefox/Fcitx5 candidate panel in the ordinary textarea](native-ime-evidence/standalone-candidate.png)
 
 ![Native Firefox/Fcitx5 candidate panel with Outliner's actual input focus](native-ime-evidence/outliner-candidate.png)
 
-[Standalone snapshot](native-ime-evidence/standalone-candidate.json) and
-[production snapshot](native-ime-evidence/outliner-candidate.json) identify the panel and record
-trusted composition/focus. These are captures of the actual desktop, not diagrammed or generated UI.
+The artifact's `job_logs/native-ime/standalone/candidate-open.json` and
+`job_logs/native-ime/outliner/candidate-open.json` identify the panel and record trusted
+composition/focus. These screenshots capture the actual desktop, not diagrammed or generated UI.
 
 The earlier [run 37770271487](https://github.com/kitamura-tetsuo/outliner/actions/runs/37770271487)
 independently proved A–F at tested merge checkout `7c38f52dddb2545ad51cf62ee41bf0893cb475fd`
@@ -149,9 +149,9 @@ contains `movement-0/1-candidate.json/png` and the failure. OS movement translat
 (100,60), but the actual native panel stayed at `(133,412)` instead of following the new screen
 position. This happened in the reference fixture, before Outliner integration; it cannot be
 attributed to Outliner's wrap setting. The [before](native-ime-evidence/window-movement-before.png)
-and [after](native-ime-evidence/window-movement-after.png) screenshots and their
-[before snapshot](native-ime-evidence/window-movement-before.json) /
-[after snapshot](native-ime-evidence/window-movement-after.json) are retained with the report.
+and [after](native-ime-evidence/window-movement-after.png) screenshots are retained with the report.
+Their `standalone/movement-0-candidate.json` and `standalone/movement-1-candidate.json`
+snapshots remain under `job_logs/native-ime/` in that run's artifact only.
 
 This stronger diagnostic remains reproducible with `run.sh window-movement` and fails when the
 native anchor stays stale. It is explicitly separate from the default passing input-within-window
@@ -176,9 +176,10 @@ with room below. The app visible line bottom was 590.067.
 It requires matching conversion text and OS selection sequence, adequate room below, no candidate
 above the composing line's lower edge, and reference-relative horizontal displacement within 4px.
 The conversion record contains observed selected preedit, not a fabricated native row index.
-The [recorded comparison](native-ime-evidence/placement-comparison.json),
-[app long-composition capture](native-ime-evidence/outliner-long.png) and
-[matched reference capture](native-ime-evidence/reference-long.png) are retained.
+The recorded comparison remains in the CI artifact at
+`job_logs/native-ime/outliner/placement-comparison.json`.
+The [app long-composition capture](native-ime-evidence/outliner-long.png) and
+[matched reference capture](native-ime-evidence/reference-long.png) are retained in the repository.
 
 This comparison is not yet an authoritative REQ-002 oracle. Specifically:
 
