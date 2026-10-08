@@ -291,7 +291,9 @@ def placement_samples(prefix):
             line_bottom = visible["bottom"]
         else:
             line_bottom = layout["line_top"] + layout["line_height"]
-        samples.append(dict(layout, text=state()["preedit"], selection=0,
+        selected_preedit = state()["preedit"]
+        samples.append(dict(layout, text=selected_preedit,
+                            selection={"os_keys": ["space", "space"], "selected_preedit": selected_preedit},
                             panel_left=panel["x"], panel_top=panel["y"],
                             line_bottom=line_bottom,
                             room_below=line_bottom + panel["height"] + 20 < layout["screen_height"]))
@@ -340,9 +342,9 @@ def run():
         click(item)
         textarea = wait(lambda: driver.find_elements(By.CSS_SELECTOR, "textarea.global-textarea"), "production textarea")[0]
         wait(lambda: state()["focused"], "normal editor focus")
-        wait(lambda: state()["value"] == original_text, "production input mirror catches up to the clicked body item")
         command("fcitx5-remote", "-c")
         key("End")
+        wait(lambda: state()["value"] == original_text, "normal End handling synchronizes the production mirror")
         # Use an empty new item, created by the editor's ordinary Enter handling.
         key("Return")
         wait(lambda: state()["value"] == "", "new empty production item")
