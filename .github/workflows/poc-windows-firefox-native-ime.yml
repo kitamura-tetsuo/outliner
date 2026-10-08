@@ -20,6 +20,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Inventory Windows session before expensive probes
+        run: ./scripts/poc/windows-native-ime/inventory.ps1
+      - name: Preserve initial inventory
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-ime-inventory-${{ github.run_id }}
+          path: artifacts/windows-native-ime/
+          if-no-files-found: error
+          retention-days: 14
       - name: Probe native Firefox and Microsoft Japanese IME
         timeout-minutes: 15
         run: ./scripts/poc/windows-native-ime/run.ps1
