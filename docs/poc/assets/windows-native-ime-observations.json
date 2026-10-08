@@ -1,0 +1,968 @@
+[
+  {
+    "run": "37800147669",
+    "application": {
+      "applicationSha": "0b5e6b0b1d3985e6789a6d826c5a76a180642a6d",
+      "harnessSha": "e8d26d06a76791c538d1528ce48a0ba3d6b1434d",
+      "services": "Disposable Firebase emulators, compiled Yjs server, Vite ordinary editor",
+      "correction": "PR #5504",
+      "integrationCommits": [
+        "7b90e6fb7b709cff0f6d6b19ef8e643a2f50eced",
+        "79a976cd8765367ea4f04baa00905822681cf294",
+        "0b5e6b0b1d3985e6789a6d826c5a76a180642a6d"
+      ],
+      "correctionSha": "73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f"
+    },
+    "tsf": {
+      "scope": "Session activation; native Firefox composition still required",
+      "observation": "activationHRESULT=00000000 queryHRESULT=00000000 activeMicrosoft=True type=1 language=0411 clsid=03b5835f-f03c-411b-9ce2-aa23e1171e36 profile=a76c93d9-5523-4e90-aafa-4db112f9ac76 flags=3 scope=TF_IPPMF_FORSESSION|TF_IPPMF_ENABLEPROFILE",
+      "callerSession": 2
+    },
+    "capabilities": {
+      "sha": "e8d26d06a76791c538d1528ce48a0ba3d6b1434d",
+      "run": "https://github.com/kitamura-tetsuo/outliner/actions/runs/37800147669",
+      "capabilities": {
+        "A": {
+          "status": "PROVEN",
+          "evidence": "GUI HWND and uia-startup.json; startup-capture.json separately records capture capability",
+          "pid": 1240
+        },
+        "B": {
+          "evidence": "Microsoft Japanese CLSID/profile returned by live TSF manager after session activation; trusted Firefox Japanese composition; active-tsf-session.json",
+          "status": "PROVEN"
+        },
+        "C": {
+          "evidence": "input-trace.json, trusted browser compositionstart/update following romaji SendInput",
+          "status": "PROVEN"
+        },
+        "D": {
+          "evidence": "preedit-short.json, preedit-long.json, preedit.png",
+          "status": "PROVEN"
+        },
+        "E": {
+          "evidence": "Fresh desktop native candidate during focused Firefox composition: class=mscandui40.candidate, name=Microsoft Candidate UI, pid=1240, hwnd=197468; candidate-open.json/png",
+          "status": "PROVEN"
+        },
+        "F": {
+          "evidence": "candidate-open.json exposes native selected item and candidate contents",
+          "status": "PROVEN"
+        },
+        "G": {
+          "evidence": "candidate-open/navigation/after-confirm.json and confirmation.json; selected text equals commit",
+          "status": "PROVEN"
+        },
+        "H": {
+          "evidence": "cancellation.json restores confirmation text and selection",
+          "status": "PROVEN"
+        },
+        "I": {
+          "evidence": "Actual Latin mode/input rejects candidate assertion, restored Japanese opens native candidate, missing/unchanged/stale/old-generation controls reject; UIA worker errors throw rather than pass",
+          "status": "PROVEN"
+        },
+        "J": {
+          "evidence": "application-revision/readiness, production authentication and before snapshots; ordinary app-created global-textarea, wrap=off, normal handlers and sizing",
+          "status": "PROVEN"
+        },
+        "K": {
+          "evidence": "Four production scenarios: immutable before, native selected candidate, independently expected and canonical/rendered after; exact local cursor/selection set; live Y.Text and cursor mutation controls reject",
+          "status": "PROVEN"
+        }
+      }
+    },
+    "scenarios": [
+      {
+        "action": "production-1-confirm",
+        "result": "PROVEN",
+        "candidate": "二本",
+        "before": {
+          "sessionId": "a5feef04-9462-4b3d-b975-6abdb2b3a790",
+          "documentGuid": "p5a892e00",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "lefttail",
+              "id": "153479426333716034",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "untouched",
+              "id": "153479426343701912",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "15347942635011883",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "production-1-confirm",
+              "id": "153479426357147021",
+              "rendered": "production-1-confirm"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "90a44740-2b30-454a-aaf4-0f7aea7e43c5",
+              "isActive": true,
+              "itemId": "15347942635011883",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "lefttail",
+              "id": "153479426333716034",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "untouched",
+              "id": "153479426343701912",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "prefix二本suffix",
+              "id": "15347942635011883",
+              "rendered": "prefix二本suffix"
+            },
+            {
+              "canonical": "production-1-confirm",
+              "id": "153479426357147021",
+              "rendered": "production-1-confirm"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "90a44740-2b30-454a-aaf4-0f7aea7e43c5",
+              "isActive": true,
+              "itemId": "15347942635011883",
+              "offset": 8,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-1-confirm-control-duplicated-insertion.json",
+            "mutation": "duplicated-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n... Skipped lines\n\n  [\n    {\n      canonical: 'lefttail',\n      id: '153479426333716034',\n      rendered: 'lefttail'\n...\n    {\n+     canonical: 'prefix二本二本suffix',\n-     canonical: 'prefix二本suffix',\n      id: '15347942635011883',\n+     rendered: 'prefix二本二本suffix'\n-     rendered: 'prefix二本suffix'\n    },\n    {\n      canonical: 'production-1-confirm',\n      id: '153479426357147021',\n      rendered: 'production-1-confirm'\n"
+          },
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-1-confirm-control-incorrect-caret.json",
+            "mutation": "incorrect-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: '90a44740-2b30-454a-aaf4-0f7aea7e43c5',\n      isActive: true,\n      itemId: '15347942635011883',\n+     offset: 6,\n-     offset: 8,\n      userId: 'local'\n    }\n  ]\n"
+          },
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-1-confirm-control-omitted-insertion.json",
+            "mutation": "omitted-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n... Skipped lines\n\n  [\n    {\n      canonical: 'lefttail',\n      id: '153479426333716034',\n      rendered: 'lefttail'\n...\n    {\n+     canonical: 'prefixsuffix',\n-     canonical: 'prefix二本suffix',\n      id: '15347942635011883',\n+     rendered: 'prefixsuffix'\n-     rendered: 'prefix二本suffix'\n    },\n    {\n      canonical: 'production-1-confirm',\n      id: '153479426357147021',\n      rendered: 'production-1-confirm'\n"
+          }
+        ]
+      },
+      {
+        "action": "production-1-cancel",
+        "result": "PROVEN",
+        "candidate": "🗾",
+        "before": {
+          "sessionId": "010ab20d-e00f-45f9-9d73-d2db42cd51d8",
+          "documentGuid": "p135ec3cc",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "production-1-cancel",
+              "id": "396282450257628554",
+              "rendered": "production-1-cancel"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "396282450261825902",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "396282450279241706",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "untouched",
+              "id": "396282450289056501",
+              "rendered": "untouched"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "e9d171c3-1fbc-4a18-9775-df6d79eb2bfc",
+              "isActive": true,
+              "itemId": "396282450279241706",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "production-1-cancel",
+              "id": "396282450257628554",
+              "rendered": "production-1-cancel"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "396282450261825902",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "396282450279241706",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "untouched",
+              "id": "396282450289056501",
+              "rendered": "untouched"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "e9d171c3-1fbc-4a18-9775-df6d79eb2bfc",
+              "isActive": true,
+              "itemId": "396282450279241706",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-1-cancel-control-incorrect-restored-caret.json",
+            "mutation": "incorrect-restored-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: 'e9d171c3-1fbc-4a18-9775-df6d79eb2bfc',\n      isActive: true,\n      itemId: '396282450279241706',\n+     offset: 7,\n-     offset: 6,\n      userId: 'local'\n    }\n  ]\n"
+          }
+        ]
+      },
+      {
+        "action": "production-2-confirm",
+        "result": "PROVEN",
+        "candidate": "🗾",
+        "before": {
+          "sessionId": "35afa83c-e301-4c57-9987-6123586c7076",
+          "documentGuid": "p7a29f1e0",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "121799635620845991",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "121799635635056702",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "production-2-confirm",
+              "id": "121799635688136780",
+              "rendered": "production-2-confirm"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "121799635691690414",
+              "rendered": "lefttail"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "1680ba30-6159-4619-8d5c-99e3078b04c4",
+              "isActive": true,
+              "itemId": "121799635691690414",
+              "offset": 4,
+              "userId": "local"
+            },
+            {
+              "cursorId": "2b772796-a47f-45c7-aa47-2a2c4da2eb41",
+              "isActive": true,
+              "itemId": "121799635635056702",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "121799635620845991",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "prefix🗾suffix",
+              "id": "121799635635056702",
+              "rendered": "prefix🗾suffix"
+            },
+            {
+              "canonical": "production-2-confirm",
+              "id": "121799635688136780",
+              "rendered": "production-2-confirm"
+            },
+            {
+              "canonical": "left🗾tail",
+              "id": "121799635691690414",
+              "rendered": "left🗾tail"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "1680ba30-6159-4619-8d5c-99e3078b04c4",
+              "isActive": true,
+              "itemId": "121799635691690414",
+              "offset": 6,
+              "userId": "local"
+            },
+            {
+              "cursorId": "2b772796-a47f-45c7-aa47-2a2c4da2eb41",
+              "isActive": true,
+              "itemId": "121799635635056702",
+              "offset": 8,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-2-confirm-control-duplicated-insertion.json",
+            "mutation": "duplicated-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n... Skipped lines\n\n  [\n    {\n      canonical: 'untouched',\n      id: '121799635620845991',\n      rendered: 'untouched'\n...\n    {\n+     canonical: 'left🗾🗾tail',\n-     canonical: 'left🗾tail',\n      id: '121799635691690414',\n+     rendered: 'left🗾🗾tail'\n-     rendered: 'left🗾tail'\n    }\n  ]\n"
+          },
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-2-confirm-control-incorrect-caret.json",
+            "mutation": "incorrect-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: '1680ba30-6159-4619-8d5c-99e3078b04c4',\n      isActive: true,\n      itemId: '121799635691690414',\n+     offset: 4,\n-     offset: 6,\n      userId: 'local'\n    },\n    {\n      cursorId: '2b772796-a47f-45c7-aa47-2a2c4da2eb41',\n      isActive: true,\n"
+          },
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-2-confirm-control-missing-second-recipient.json",
+            "mutation": "missing-second-recipient",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n\n  [\n    {\n      canonical: 'untouched',\n      id: '121799635620845991',\n      rendered: 'untouched'\n    },\n    {\n+     canonical: 'prefixsuffix',\n-     canonical: 'prefix🗾suffix',\n      id: '121799635635056702',\n+     rendered: 'prefixsuffix'\n-     rendered: 'prefix🗾suffix'\n    },\n    {\n      canonical: 'production-2-confirm',\n      id: '121799635688136780',\n      rendered: 'production-2-confirm'\n"
+          },
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-2-confirm-control-omitted-insertion.json",
+            "mutation": "omitted-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n... Skipped lines\n\n  [\n    {\n      canonical: 'untouched',\n      id: '121799635620845991',\n      rendered: 'untouched'\n...\n    {\n+     canonical: 'lefttail',\n-     canonical: 'left🗾tail',\n      id: '121799635691690414',\n+     rendered: 'lefttail'\n-     rendered: 'left🗾tail'\n    }\n  ]\n"
+          }
+        ]
+      },
+      {
+        "action": "production-2-cancel",
+        "result": "PROVEN",
+        "candidate": "二本",
+        "before": {
+          "sessionId": "1b00f88b-4257-4833-bae3-fb1e6a02ac6f",
+          "documentGuid": "pa8de838",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "206205357848512961",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "206205357858899671",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "production-2-cancel",
+              "id": "206205357885925509",
+              "rendered": "production-2-cancel"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "206205357889358811",
+              "rendered": "lefttail"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "a7adf357-b9b0-49db-a07a-8cb14d48b018",
+              "isActive": true,
+              "itemId": "206205357858899671",
+              "offset": 6,
+              "userId": "local"
+            },
+            {
+              "cursorId": "d4d14f9b-ef0e-453b-be12-75985869ebd4",
+              "isActive": true,
+              "itemId": "206205357889358811",
+              "offset": 4,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "206205357848512961",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "206205357858899671",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "production-2-cancel",
+              "id": "206205357885925509",
+              "rendered": "production-2-cancel"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "206205357889358811",
+              "rendered": "lefttail"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "a7adf357-b9b0-49db-a07a-8cb14d48b018",
+              "isActive": true,
+              "itemId": "206205357858899671",
+              "offset": 6,
+              "userId": "local"
+            },
+            {
+              "cursorId": "d4d14f9b-ef0e-453b-be12-75985869ebd4",
+              "isActive": true,
+              "itemId": "206205357889358811",
+              "offset": 4,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37800147669/windows-native-ime/production-2-cancel-control-incorrect-restored-caret.json",
+            "mutation": "incorrect-restored-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: 'a7adf357-b9b0-49db-a07a-8cb14d48b018',\n      isActive: true,\n      itemId: '206205357858899671',\n+     offset: 7,\n-     offset: 6,\n      userId: 'local'\n    },\n    {\n      cursorId: 'd4d14f9b-ef0e-453b-be12-75985869ebd4',\n      isActive: true,\n"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run": "37802796925",
+    "application": {
+      "applicationSha": "0b5e6b0b1d3985e6789a6d826c5a76a180642a6d",
+      "harnessSha": "781455fb131150e9c822cb40d45712805eed5ba3",
+      "services": "Linux Compose on Ubuntu WSL2; native Windows Firefox",
+      "correction": "PR #5504",
+      "integrationCommits": [
+        "7b90e6fb7b709cff0f6d6b19ef8e643a2f50eced",
+        "79a976cd8765367ea4f04baa00905822681cf294",
+        "0b5e6b0b1d3985e6789a6d826c5a76a180642a6d"
+      ],
+      "correctionSha": "73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f"
+    },
+    "tsf": {
+      "scope": "Session activation; native Firefox composition still required",
+      "observation": "activationHRESULT=00000000 queryHRESULT=00000000 activeMicrosoft=True type=1 language=0411 clsid=03b5835f-f03c-411b-9ce2-aa23e1171e36 profile=a76c93d9-5523-4e90-aafa-4db112f9ac76 flags=3 scope=TF_IPPMF_FORSESSION|TF_IPPMF_ENABLEPROFILE",
+      "callerSession": 2
+    },
+    "capabilities": {
+      "sha": "781455fb131150e9c822cb40d45712805eed5ba3",
+      "run": "https://github.com/kitamura-tetsuo/outliner/actions/runs/37802796925",
+      "capabilities": {
+        "A": {
+          "status": "PROVEN",
+          "evidence": "GUI HWND and uia-startup.json; startup-capture.json separately records capture capability",
+          "pid": 6976
+        },
+        "B": {
+          "evidence": "Microsoft Japanese CLSID/profile returned by live TSF manager after session activation; trusted Firefox Japanese composition; active-tsf-session.json",
+          "status": "PROVEN"
+        },
+        "C": {
+          "evidence": "input-trace.json, trusted browser compositionstart/update following romaji SendInput",
+          "status": "PROVEN"
+        },
+        "D": {
+          "evidence": "preedit-short.json, preedit-long.json, preedit.png",
+          "status": "PROVEN"
+        },
+        "E": {
+          "evidence": "Fresh desktop native candidate during focused Firefox composition: class=mscandui40.candidate, name=Microsoft Candidate UI, pid=6976, hwnd=197612; candidate-open.json/png",
+          "status": "PROVEN"
+        },
+        "F": {
+          "evidence": "candidate-open.json exposes native selected item and candidate contents",
+          "status": "PROVEN"
+        },
+        "G": {
+          "evidence": "candidate-open/navigation/after-confirm.json and confirmation.json; selected text equals commit",
+          "status": "PROVEN"
+        },
+        "H": {
+          "evidence": "cancellation.json restores confirmation text and selection",
+          "status": "PROVEN"
+        },
+        "I": {
+          "evidence": "Actual Latin mode/input rejects candidate assertion, restored Japanese opens native candidate, missing/unchanged/stale/old-generation controls reject; UIA worker errors throw rather than pass",
+          "status": "PROVEN"
+        },
+        "J": {
+          "evidence": "application-revision/readiness, production authentication and before snapshots; ordinary app-created global-textarea, wrap=off, normal handlers and sizing",
+          "status": "PROVEN"
+        },
+        "K": {
+          "evidence": "Four production scenarios: immutable before, native selected candidate, independently expected and canonical/rendered after; exact local cursor/selection set; live Y.Text and cursor mutation controls reject",
+          "status": "PROVEN"
+        }
+      }
+    },
+    "scenarios": [
+      {
+        "action": "production-1-confirm",
+        "result": "PROVEN",
+        "candidate": "二本",
+        "before": {
+          "sessionId": "8e7373af-fb8c-458a-b1f9-eb37f7521a43",
+          "documentGuid": "p1c5107d0",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "prefixsuffix",
+              "id": "267842210617973747",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "267842210622216960",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "production-1-confirm",
+              "id": "267842210656408630",
+              "rendered": "production-1-confirm"
+            },
+            {
+              "canonical": "untouched",
+              "id": "267842210686949937",
+              "rendered": "untouched"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "a91dc6f7-9a96-409d-a9f8-75a19d3ec48e",
+              "isActive": true,
+              "itemId": "267842210617973747",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "prefix二本suffix",
+              "id": "267842210617973747",
+              "rendered": "prefix二本suffix"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "267842210622216960",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "production-1-confirm",
+              "id": "267842210656408630",
+              "rendered": "production-1-confirm"
+            },
+            {
+              "canonical": "untouched",
+              "id": "267842210686949937",
+              "rendered": "untouched"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "a91dc6f7-9a96-409d-a9f8-75a19d3ec48e",
+              "isActive": true,
+              "itemId": "267842210617973747",
+              "offset": 8,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-1-confirm-control-duplicated-insertion.json",
+            "mutation": "duplicated-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n\n  [\n    {\n+     canonical: 'prefix二本二本suffix',\n-     canonical: 'prefix二本suffix',\n      id: '267842210617973747',\n+     rendered: 'prefix二本二本suffix'\n-     rendered: 'prefix二本suffix'\n    },\n    {\n      canonical: 'lefttail',\n      id: '267842210622216960',\n      rendered: 'lefttail'\n"
+          },
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-1-confirm-control-incorrect-caret.json",
+            "mutation": "incorrect-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: 'a91dc6f7-9a96-409d-a9f8-75a19d3ec48e',\n      isActive: true,\n      itemId: '267842210617973747',\n+     offset: 6,\n-     offset: 8,\n      userId: 'local'\n    }\n  ]\n"
+          },
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-1-confirm-control-omitted-insertion.json",
+            "mutation": "omitted-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n\n  [\n    {\n+     canonical: 'prefixsuffix',\n-     canonical: 'prefix二本suffix',\n      id: '267842210617973747',\n+     rendered: 'prefixsuffix'\n-     rendered: 'prefix二本suffix'\n    },\n    {\n      canonical: 'lefttail',\n      id: '267842210622216960',\n      rendered: 'lefttail'\n"
+          }
+        ]
+      },
+      {
+        "action": "production-1-cancel",
+        "result": "PROVEN",
+        "candidate": "🗾",
+        "before": {
+          "sessionId": "e7f4ec59-96d0-4d81-a2e4-b7e6a48ff52e",
+          "documentGuid": "p6ff9e8a0",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "200834299827009013",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "production-1-cancel",
+              "id": "200834299886268461",
+              "rendered": "production-1-cancel"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "200834299888493931",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "200834299898410745",
+              "rendered": "prefixsuffix"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "9a744166-230a-4792-bfda-b2a839314c9a",
+              "isActive": true,
+              "itemId": "200834299898410745",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "200834299827009013",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "production-1-cancel",
+              "id": "200834299886268461",
+              "rendered": "production-1-cancel"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "200834299888493931",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "200834299898410745",
+              "rendered": "prefixsuffix"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "9a744166-230a-4792-bfda-b2a839314c9a",
+              "isActive": true,
+              "itemId": "200834299898410745",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-1-cancel-control-incorrect-restored-caret.json",
+            "mutation": "incorrect-restored-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: '9a744166-230a-4792-bfda-b2a839314c9a',\n      isActive: true,\n      itemId: '200834299898410745',\n+     offset: 7,\n-     offset: 6,\n      userId: 'local'\n    }\n  ]\n"
+          }
+        ]
+      },
+      {
+        "action": "production-2-confirm",
+        "result": "PROVEN",
+        "candidate": "🗾",
+        "before": {
+          "sessionId": "dc770171-7e28-4f4b-b066-cd9f4895a1b8",
+          "documentGuid": "p2fac25c",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "lefttail",
+              "id": "165293666824020929",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "165293666855151500",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "production-2-confirm",
+              "id": "165293666874451056",
+              "rendered": "production-2-confirm"
+            },
+            {
+              "canonical": "untouched",
+              "id": "16529366689555145",
+              "rendered": "untouched"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "3f3352a8-d4d1-4f14-bc96-3d83709c3253",
+              "isActive": true,
+              "itemId": "165293666824020929",
+              "offset": 4,
+              "userId": "local"
+            },
+            {
+              "cursorId": "fea26356-6a8d-4255-9aa8-8ee3abf9e515",
+              "isActive": true,
+              "itemId": "165293666855151500",
+              "offset": 6,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "left🗾tail",
+              "id": "165293666824020929",
+              "rendered": "left🗾tail"
+            },
+            {
+              "canonical": "prefix🗾suffix",
+              "id": "165293666855151500",
+              "rendered": "prefix🗾suffix"
+            },
+            {
+              "canonical": "production-2-confirm",
+              "id": "165293666874451056",
+              "rendered": "production-2-confirm"
+            },
+            {
+              "canonical": "untouched",
+              "id": "16529366689555145",
+              "rendered": "untouched"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "3f3352a8-d4d1-4f14-bc96-3d83709c3253",
+              "isActive": true,
+              "itemId": "165293666824020929",
+              "offset": 6,
+              "userId": "local"
+            },
+            {
+              "cursorId": "fea26356-6a8d-4255-9aa8-8ee3abf9e515",
+              "isActive": true,
+              "itemId": "165293666855151500",
+              "offset": 8,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-2-confirm-control-duplicated-insertion.json",
+            "mutation": "duplicated-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n\n  [\n    {\n+     canonical: 'left🗾🗾tail',\n-     canonical: 'left🗾tail',\n      id: '165293666824020929',\n+     rendered: 'left🗾🗾tail'\n-     rendered: 'left🗾tail'\n    },\n    {\n      canonical: 'prefix🗾suffix',\n      id: '165293666855151500',\n      rendered: 'prefix🗾suffix'\n"
+          },
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-2-confirm-control-incorrect-caret.json",
+            "mutation": "incorrect-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: '3f3352a8-d4d1-4f14-bc96-3d83709c3253',\n      isActive: true,\n      itemId: '165293666824020929',\n+     offset: 4,\n-     offset: 6,\n      userId: 'local'\n    },\n    {\n      cursorId: 'fea26356-6a8d-4255-9aa8-8ee3abf9e515',\n      isActive: true,\n"
+          },
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-2-confirm-control-missing-second-recipient.json",
+            "mutation": "missing-second-recipient",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n\n  [\n    {\n      canonical: 'left🗾tail',\n      id: '165293666824020929',\n      rendered: 'left🗾tail'\n    },\n    {\n+     canonical: 'prefixsuffix',\n-     canonical: 'prefix🗾suffix',\n      id: '165293666855151500',\n+     rendered: 'prefixsuffix'\n-     rendered: 'prefix🗾suffix'\n    },\n    {\n      canonical: 'production-2-confirm',\n      id: '165293666874451056',\n      rendered: 'production-2-confirm'\n"
+          },
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-2-confirm-control-omitted-insertion.json",
+            "mutation": "omitted-insertion",
+            "rejected": true,
+            "reason": "Canonical/rendered recipient set differs\n+ actual - expected\n\n  [\n    {\n+     canonical: 'lefttail',\n-     canonical: 'left🗾tail',\n      id: '165293666824020929',\n+     rendered: 'lefttail'\n-     rendered: 'left🗾tail'\n    },\n    {\n      canonical: 'prefix🗾suffix',\n      id: '165293666855151500',\n      rendered: 'prefix🗾suffix'\n"
+          }
+        ]
+      },
+      {
+        "action": "production-2-cancel",
+        "result": "PROVEN",
+        "candidate": "二本",
+        "before": {
+          "sessionId": "a5cfc662-070b-4af4-b463-c7db59511cd0",
+          "documentGuid": "p9b858fc0",
+          "compositionId": 0,
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "186347199977662172",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "186347199993448532",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "186347199993615998",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "production-2-cancel",
+              "id": "186347199994384402",
+              "rendered": "production-2-cancel"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "5294e7ea-05d4-4a18-a0ac-7883580b7255",
+              "isActive": true,
+              "itemId": "186347199993615998",
+              "offset": 6,
+              "userId": "local"
+            },
+            {
+              "cursorId": "bb17c84f-49b5-406b-84df-1951724cc695",
+              "isActive": true,
+              "itemId": "186347199993448532",
+              "offset": 4,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "after": {
+          "compositionId": 1,
+          "composing": false,
+          "receiver": "global-textarea svelte-12laeiz",
+          "wrap": "off",
+          "items": [
+            {
+              "canonical": "untouched",
+              "id": "186347199977662172",
+              "rendered": "untouched"
+            },
+            {
+              "canonical": "lefttail",
+              "id": "186347199993448532",
+              "rendered": "lefttail"
+            },
+            {
+              "canonical": "prefixsuffix",
+              "id": "186347199993615998",
+              "rendered": "prefixsuffix"
+            },
+            {
+              "canonical": "production-2-cancel",
+              "id": "186347199994384402",
+              "rendered": "production-2-cancel"
+            }
+          ],
+          "cursors": [
+            {
+              "cursorId": "5294e7ea-05d4-4a18-a0ac-7883580b7255",
+              "isActive": true,
+              "itemId": "186347199993615998",
+              "offset": 6,
+              "userId": "local"
+            },
+            {
+              "cursorId": "bb17c84f-49b5-406b-84df-1951724cc695",
+              "isActive": true,
+              "itemId": "186347199993448532",
+              "offset": 4,
+              "userId": "local"
+            }
+          ],
+          "selections": []
+        },
+        "controls": [
+          {
+            "entry": "runs/37802796925/windows-native-ime/production-2-cancel-control-incorrect-restored-caret.json",
+            "mutation": "incorrect-restored-caret",
+            "rejected": true,
+            "reason": "Exact logical cursor set differs\n+ actual - expected\n\n  [\n    {\n      cursorId: '5294e7ea-05d4-4a18-a0ac-7883580b7255',\n      isActive: true,\n      itemId: '186347199993615998',\n+     offset: 7,\n-     offset: 6,\n      userId: 'local'\n    },\n    {\n      cursorId: 'bb17c84f-49b5-406b-84df-1951724cc695',\n      isActive: true,\n"
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -2,7 +2,7 @@
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../../utils/domUtils";
-import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "../cursor/index";
+import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "../cursor";
 import { getLogger } from "../logger";
 import { textSelectionEndpoints } from "../selection/selectionEndpoints";
 

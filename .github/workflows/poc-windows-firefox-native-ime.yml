@@ -1,11 +1,6 @@
 name: PoC Windows Firefox native Japanese IME
 on:
   workflow_dispatch:
-  push:
-    branches: [poc/windows-firefox-native-ime]
-    paths:
-      - '.github/workflows/poc-windows-firefox-native-ime.yml'
-      - 'scripts/poc/windows-native-ime/**'
 concurrency:
   group: windows-native-ime-${{ github.ref }}
   cancel-in-progress: true
@@ -68,7 +63,7 @@ jobs:
           node-version: '22'
       - uses: actions/checkout@v5
         with:
-          ref: 0b5e6b0b1d3985e6789a6d826c5a76a180642a6d
+          ref: archive/native-ime-2026-10-08-application
           path: work/native-ime-app
       - uses: actions/setup-java@v5
         with:

@@ -24,11 +24,11 @@ Final [Actions run 37777415483](https://github.com/kitamura-tetsuo/outliner/acti
 
 Durable, inspected screenshots:
 
-- [Native candidate list, final run](assets/windows-firefox-candidates-37777415483.png): numbered native popup, 二本 highlighted; corresponds to the native UIA selected item.
-- [Native inline preedit, final run](assets/windows-firefox-preedit-37777415483.png): Japanese inline preedit and a separate native prediction popup.
-- [Confirmed native selection, final run](assets/windows-firefox-confirmed-37777415483.png): 🗾 remains after Enter, matching the selected native item and trusted compositionend.
-- [Text retained after cancellation, final run](assets/windows-firefox-cancelled-37777415483.png): 🗾 remains after a fresh composition is cancelled; exact caret restoration is recorded in cancellation.json.
-- [Independent GUI keyboard transport](assets/windows-firefox-transport-37768108913.png), [run 37768108913](https://github.com/kitamura-tetsuo/outliner/actions/runs/37768108913), SHA `41362f4d33d4497047ddf47bf88a32456da706ce`: actual abc in GUI Firefox.
+- [Native candidate list, final run](assets/windows-native-ime-evidence.zip): numbered native popup, 二本 highlighted; corresponds to the native UIA selected item.
+- [Native inline preedit, final run](assets/windows-native-ime-evidence.zip): Japanese inline preedit and a separate native prediction popup.
+- [Confirmed native selection, final run](assets/windows-native-ime-evidence.zip): 🗾 remains after Enter, matching the selected native item and trusted compositionend.
+- [Text retained after cancellation, final run](assets/windows-native-ime-evidence.zip): 🗾 remains after a fresh composition is cancelled; exact caret restoration is recorded in cancellation.json.
+- [Independent GUI keyboard transport](assets/windows-native-ime-evidence.zip), [run 37768108913](https://github.com/kitamura-tetsuo/outliner/actions/runs/37768108913), SHA `41362f4d33d4497047ddf47bf88a32456da706ce`: actual abc in GUI Firefox.
 
 The final run's `preedit-long.json` contains **にほ**. `にほｎ` appears in a later event. This demonstrates short preedit growth only; it provides no long-text wrapping coverage.
 
