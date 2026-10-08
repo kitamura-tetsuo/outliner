@@ -1,5 +1,5 @@
 {
-    "extends": "./.svelte-kit/tsconfig.json",
+    "extends": "$app/tsconfig",
     "compilerOptions": {
         "allowJs": true,
         "checkJs": false,
@@ -12,6 +12,7 @@
         "moduleResolution": "bundler",
         "verbatimModuleSyntax": true,
         "types": [
+            "$app/types",
             "@playwright/test"
         ],
         "noUnusedLocals": false // loosen unused checks for tests
@@ -22,8 +23,13 @@
         "src/**/*",
         "tests/**/*"
     ]
-    // Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
-    // except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
+    // Path aliases ($lib, $stores, $shared) come from the `alias` option in
+    // sveltekit.options.js; `svelte-kit sync` writes them into the generated
+    // `$app/tsconfig` this file extends.
+    //
+    // src/service-worker.ts stays included (SvelteKit suggests excluding it)
+    // because it imports the DOM-typed logger and has always been type-checked
+    // together with the rest of the client.
     //
     // If you want to overwrite includes/excludes, make sure to copy over the relevant includes/excludes
     // from the referenced tsconfig.json - TypeScript does not merge them in

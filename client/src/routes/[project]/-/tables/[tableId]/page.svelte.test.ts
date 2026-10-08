@@ -2,28 +2,17 @@ import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-// Mocked Svelte store for `$app/stores`; the route reads `$page.params`.
-// A real (if minimal) store rather than a one-shot callback: SvelteKit reuses
-// this route component across a `[tableId]` change, so pushing new params into
-// a live subscriber is the only way to exercise that navigation.
-const mockPageStore = { params: { project: "demo", tableId: "demo-table-sales" } };
-const pageSubscribers = new Set<(value: typeof mockPageStore) => void>();
+// `$app/state` test double; the route reads `page.params`. It is reactive like
+// the real one: SvelteKit reuses this route component across a `[tableId]`
+// change, so updating the params of a mounted page is the only way to
+// exercise that navigation.
+vi.mock("$app/state", () => import("../../../../../tests/mocks/appState.svelte"));
+setPage({ params: { project: "demo", tableId: "demo-table-sales" } });
 
 /** Navigate within the route, the way SvelteKit does: params change, no remount. */
-function setPageParams(params: typeof mockPageStore.params) {
-    mockPageStore.params = params;
-    for (const run of pageSubscribers) run(mockPageStore);
+function setPageParams(params: { project: string; tableId: string; }) {
+    setPage({ params });
 }
-
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (run: (value: typeof mockPageStore) => void) => {
-            pageSubscribers.add(run);
-            run(mockPageStore);
-            return () => pageSubscribers.delete(run);
-        },
-    },
-}));
 
 // The real UserManager talks to Firebase; the anonymous visitor case is one of
 // the things under test, so it always reports "no user".
@@ -84,6 +73,7 @@ vi.mock("../../../../../components/yjstable/TableEntityView.svelte", async () =>
 import { createScheduleRule } from "../../../../../services/schedule/scheduleRuleService";
 import { createGrid, GRID_REGISTRY_KEY, listGrids } from "../../../../../services/yjstable/gridDocs";
 import { store } from "../../../../../stores/store.svelte";
+import { setPage } from "../../../../../tests/mocks/appState.svelte";
 import TableStandalonePage from "./+page.svelte";
 
 /** The project the mocked opener publishes, as the page sees it. */
@@ -93,8 +83,7 @@ function currentProject(): NonNullable<typeof store.project> {
 
 describe("standalone table route", () => {
     beforeEach(() => {
-        pageSubscribers.clear();
-        mockPageStore.params = { project: "demo", tableId: "demo-table-sales" };
+        setPage({ params: { project: "demo", tableId: "demo-table-sales" } });
         // A fresh doc per test: the Grid registry assertions below are about
         // what this page did, so leftovers from a sibling test would lie.
         projectDoc = new Y.Doc();
@@ -126,7 +115,7 @@ describe("standalone table route", () => {
         });
 
         it("still gates a non-public project behind sign-in", async () => {
-            mockPageStore.params = { project: "private-project", tableId: "demo-table-sales" };
+            setPage({ params: { project: "private-project", tableId: "demo-table-sales" } });
 
             render(TableStandalonePage);
 

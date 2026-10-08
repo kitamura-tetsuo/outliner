@@ -6,15 +6,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-const mockPageStore = { params: { project: "demo", gridId: "grid-a" } };
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (run: (value: typeof mockPageStore) => void) => {
-            run(mockPageStore);
-            return () => {};
-        },
-    },
-}));
+vi.mock("$app/state", () => import("../../../../../tests/mocks/appState.svelte"));
+setPage({ params: { project: "demo", gridId: "grid-a" } });
 
 vi.mock("../../../../../auth/UserManager", () => ({
     userManager: {
@@ -68,11 +61,12 @@ vi.mock("../../../../../components/yjstable/YjsTableView.svelte", async () => {
 });
 
 import { createGrid } from "../../../../../services/yjstable/gridDocs";
+import { setPage } from "../../../../../tests/mocks/appState.svelte";
 import GridStandalonePage from "./+page.svelte";
 
 describe("standalone grid route", () => {
     beforeEach(() => {
-        mockPageStore.params = { project: "demo", gridId: "grid-a" };
+        setPage({ params: { project: "demo", gridId: "grid-a" } });
         projectDoc = new Y.Doc();
         registeredTables = [{ tableId: "demo-table-sales", name: "Sales", sqlName: "sales" }];
     });
@@ -129,7 +123,7 @@ describe("standalone grid route", () => {
         expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Open sales");
         first.unmount();
 
-        mockPageStore.params = { project: "demo", gridId: "grid-b" };
+        setPage({ params: { project: "demo", gridId: "grid-b" } });
         render(GridStandalonePage);
         await waitFor(() => {
             expect(screen.getByTestId("grid-view-stub").getAttribute("data-grid-id")).toBe("grid-b");
@@ -159,7 +153,7 @@ describe("standalone grid route", () => {
 
     it("still gates a non-public project behind sign-in", async () => {
         createGrid(projectDoc, "demo-table-sales", { gridId: "grid-a", name: "Open sales" });
-        mockPageStore.params = { project: "private-project", gridId: "grid-a" };
+        setPage({ params: { project: "private-project", gridId: "grid-a" } });
 
         render(GridStandalonePage);
 

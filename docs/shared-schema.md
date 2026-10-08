@@ -33,7 +33,8 @@ The existing `client/src/schema/app-schema.ts`, `client/src/types/yjs-types.ts`,
 now **thin re-exports** of `shared/`, so the ~50 existing import sites are
 unchanged.
 
-- **Client** — `svelte.config.js` aliases `$shared` → `../shared/src`; Vite
+- **Client** — `client/sveltekit.options.js` (passed to `sveltekit(...)` in the
+  Vite config) aliases `$shared` → `../shared/src`; Vite
   bundles the shared source. `vite.config.ts` sets `resolve.dedupe` for
   `yjs`/`yjs-orderedtree`/`uuid` so the bundle contains a single Yjs instance
   (no "Yjs was already imported" dual-package hazard). The client wires its pino

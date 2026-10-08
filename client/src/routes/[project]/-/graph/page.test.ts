@@ -37,13 +37,8 @@ vi.mock("../../../../services", () => ({
     }),
 }));
 
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (fn: (value: unknown) => void) => {
-            fn({ params: { project: "Test Project" } });
-            return () => {};
-        },
-    },
+vi.mock("$app/state", () => ({
+    page: { params: { project: "Test Project" } },
 }));
 
 describe("Graph View Page", () => {

@@ -47,7 +47,7 @@ import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/ta
 import { resolvePath } from "../../utils/pathUtils";
 import { projectTablePath } from "../../lib/managementPaths";
 import { deriveSqlName, sqlNameError } from "../../services/yjstable/sqlNames";
-import { page as pageStore } from "$app/stores";
+import { page as pageState } from "$app/state";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 import { isForeignInput } from "../../lib/KeyEventHandler";
@@ -159,7 +159,7 @@ const projectId = $derived(yjsStore.currentProjectId ?? undefined);
 // with. Used to point at the source Table's own page — schema and data are
 // Table-owned, so the block references the Table instead of hosting it.
 const routeProjectName = $derived(
-    $pageStore.params.demoProject || $pageStore.params.project || undefined,
+    pageState.params.demoProject || pageState.params.project || undefined,
 );
 const sourceTableHref = $derived(
     routeProjectName && sourceTableId

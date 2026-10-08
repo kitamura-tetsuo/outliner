@@ -1,6 +1,6 @@
 <script lang="ts">
     import { resolvePath } from "../../utils/pathUtils";
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 import {
     onDestroy,
     onMount,

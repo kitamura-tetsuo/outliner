@@ -36,6 +36,7 @@ vi.mock("../stores/projectStore.svelte", () => {
 
 // Import the mocked projectStore for test manipulation
 import { projectStore } from "../stores/projectStore.svelte";
+import { setPage } from "../tests/mocks/appState.svelte";
 
 vi.mock("../stores/store.svelte", () => {
     const mockProject = {
@@ -106,18 +107,9 @@ vi.mock("$app/navigation", () => {
     };
 });
 
-// Mock $app/stores
-vi.mock("$app/stores", async () => {
-    const { readable } = await import("svelte/store");
-    return {
-        page: readable({
-            url: {
-                pathname: "/Test%20Project/Test%20Page%201",
-            },
-            params: { project: "Test Project" },
-        }),
-    };
-});
+// Route state comes from the reactive `$app/state` test double.
+vi.mock("$app/state", () => import("../tests/mocks/appState.svelte"));
+setPage({ url: "/Test%20Project/Test%20Page%201", params: { project: "Test Project" } });
 
 describe("Sidebar", () => {
     beforeEach(() => {
@@ -381,14 +373,8 @@ describe("Sidebar", () => {
             // (e.g. created via a CLI/script), store.project.title can end up holding
             // the raw container UUID. Sidebar must still build page links from the
             // project name in the current route, not the corrupted title.
-            const appStores = await import("$app/stores");
-            const { readable } = await import("svelte/store");
-            const originalPage = appStores.page;
             const originalProject = store.project;
-            vi.mocked(appStores).page = readable({
-                url: { pathname: "/tetsuo/Test%20Page%201" },
-                params: { project: "tetsuo" },
-            }) as unknown as typeof appStores.page;
+            setPage({ url: "/tetsuo/Test%20Page%201", params: { project: "tetsuo" } });
 
             const proj = Project.createInstance("4a934322-05de-4c97-932c-bc87fb43e18c");
             store.project = proj;
@@ -399,7 +385,7 @@ describe("Sidebar", () => {
                 const pageItem = screen.getByText("Test Page 1").closest("a");
                 expect(pageItem).toHaveAttribute("href", "/tetsuo/Test%20Page%201");
             } finally {
-                vi.mocked(appStores).page = originalPage;
+                setPage({ url: "/Test%20Project/Test%20Page%201", params: { project: "Test Project" } });
                 if (originalProject) store.project = originalProject;
             }
         });

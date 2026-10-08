@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { store } from "../../../stores/store.svelte";
 import { yjsStore } from "../../../stores/yjsStore.svelte";
+import { setPage } from "../../../tests/mocks/appState.svelte";
 import DemoPageView from "./+page.svelte";
 
 // Mock dependencies
@@ -67,37 +68,21 @@ vi.mock("../../../utils/pageUtils", async (importOriginal) => {
     };
 });
 
-// Mock $app/stores by hoisting. The subscribers are kept so a navigation can
-// push new route params, the way SvelteKit's router does.
-const pageSubscribers = new Set<(value: { params: Record<string, string>; url: URL; }) => void>();
-let mockPageStore = {
-    params: { demoProject: "demo", page: "TestPage" },
-    url: new URL("http://localhost/demo/TestPage"),
-};
+// Reactive `$app/state` test double, so a navigation can push new route
+// params into the mounted page, the way SvelteKit's router does.
+vi.mock("$app/state", () => import("../../../tests/mocks/appState.svelte"));
 
 function setRoutePage(pageName: string) {
-    mockPageStore = {
-        params: { ...mockPageStore.params, page: pageName },
+    setPage({
+        params: { demoProject: "demo", page: pageName },
         url: new URL(`http://localhost/demo/${encodeURIComponent(pageName)}`),
-    };
-    pageSubscribers.forEach(fn => fn(mockPageStore));
+    });
 }
-
-vi.mock("$app/stores", () => {
-    return {
-        page: {
-            subscribe: (fn: (value: { params: Record<string, string>; url: URL; }) => void) => {
-                pageSubscribers.add(fn);
-                fn(mockPageStore);
-                return () => pageSubscribers.delete(fn);
-            },
-        },
-    };
-});
+setRoutePage("TestPage");
 
 // `goto` stands in for the router: it applies the new page segment to the
 // mocked page store, so a title-driven route update reaches the component the
-// same way a real replaceState navigation would.
+// same way a real `replace: true` navigation would.
 vi.mock("$app/navigation", () => ({
     goto: vi.fn((url: string) => {
         const segments = new URL(url, "http://localhost").pathname.split("/");
@@ -112,7 +97,6 @@ describe("Demo Page View", () => {
         vi.clearAllMocks();
 
         mockProjectItems.length = 0;
-        pageSubscribers.clear();
         setRoutePage("TestPage");
 
         store.project = undefined;
@@ -345,7 +329,7 @@ describe("Demo Page View", () => {
             await vi.waitFor(() => {
                 expect(goto).toHaveBeenCalledWith(
                     expect.stringContaining("Renamed%20Page"),
-                    { replaceState: true, keepFocus: true, noScroll: true },
+                    { replace: true, reset: false },
                 );
             }, { timeout: 2000, interval: 50 });
 
@@ -373,7 +357,7 @@ describe("Demo Page View", () => {
             await vi.waitFor(() => {
                 expect(goto).toHaveBeenCalledWith(
                     expect.stringContaining(encodeURIComponent("書式ノート")),
-                    { replaceState: true, keepFocus: true, noScroll: true },
+                    { replace: true, reset: false },
                 );
             }, { timeout: 2000, interval: 50 });
 

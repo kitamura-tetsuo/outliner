@@ -2,18 +2,12 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "../../stores/store.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
+import { setPage } from "../../tests/mocks/appState.svelte";
 import DemoPage from "./+page.svelte";
 
 // The route reads its project from the URL, so the page store must supply it.
-const mockPageStore = { params: { demoProject: "demo" }, url: new URL("http://localhost/demo") };
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (fn: (value: typeof mockPageStore) => void) => {
-            fn(mockPageStore);
-            return () => {};
-        },
-    },
-}));
+vi.mock("$app/state", () => import("../../tests/mocks/appState.svelte"));
+setPage({ params: { demoProject: "demo" }, url: new URL("http://localhost/demo") });
 
 // Mock dependencies
 vi.mock("../../lib/demoSeed", () => ({

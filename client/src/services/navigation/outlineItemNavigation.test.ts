@@ -1,5 +1,5 @@
 // The real `navigateToOutlineItem` — no stand-in for any of this repository's
-// own code. Only SvelteKit's `$app/navigation` / `$app/stores` are replaced,
+// own code. Only SvelteKit's `$app/navigation` / `$app/state` are replaced,
 // the framework boundary every routing test here already replaces
 // (BacklinkPanel.test.ts, SearchBox.test.ts, routes/[project]/graph/page.test.ts).
 //
@@ -16,8 +16,12 @@ const goto = vi.hoisted(() => vi.fn<(url: string, options?: unknown) => Promise<
 const pathname = vi.hoisted(() => ({ current: "/Workspace/Tasks" }));
 
 vi.mock("$app/navigation", () => ({ goto }));
-vi.mock("$app/stores", () => ({
-    page: { subscribe: (run: (value: unknown) => void) => (run({ url: { pathname: pathname.current } }), () => {}) },
+vi.mock("$app/state", () => ({
+    page: {
+        get url() {
+            return { pathname: pathname.current };
+        },
+    },
 }));
 vi.mock("$app/paths", () => ({ resolve: (path: string) => path }));
 

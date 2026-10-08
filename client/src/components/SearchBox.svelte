@@ -8,7 +8,7 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchBox");
     import { goto } from "$app/navigation";
-    import { page as pageStore } from "$app/stores";
+    import { page as pageState } from "$app/state";
     import { resolvePath } from "../utils/pathUtils";
     import type { Project } from "../schema/app-schema";
     import type { ItemLike } from "../types/yjs-types";
@@ -239,8 +239,8 @@ const logger = getLogger("SearchBox");
             const title = targetPage.text ?? "";
             searchHistoryStore.add(title);
             // Prefer a project whose Y.Doc matches the active page/project before falling back to placeholders
-            const projTitle = $pageStore?.params?.demoProject
-                || $pageStore?.params?.project
+            const projTitle = pageState?.params?.demoProject
+                || pageState?.params?.project
                 || resolveProjectTitle(targetPage);
             // Encode path segments to ensure correct routing for titles with spaces/special characters
             // `projTitle` is already the demo's own slug when we are in a demo,

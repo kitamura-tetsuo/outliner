@@ -1,0 +1,22 @@
+id: ENV-b7c41e29
+title: SvelteKit 3 configuration lives in the Vite config
+title-ja: SvelteKit 3の設定をVite設定に集約
+description: SvelteKit 3 no longer reads `svelte.config.js`. The client's SvelteKit options (static adapter writing to the Firebase Hosting `build/` directory with `index.html` as SPA fallback, Svelte/mdsvex preprocessing, the `$lib`/`$stores`/`$shared` aliases and manually registered service worker) live in `client/sveltekit.options.js` and are passed to `sveltekit(...)` by both `client/vite.config.js` (resolved first by the `vite` CLI for the dev, E2E and production servers) and `client/vite.config.ts` (resolved by Vitest), and to the Svelte ESLint parser by `client/eslint.config.js`. `client/tsconfig.json` extends the generated `$app/tsconfig`. The service worker takes its precache inputs from `$app/manifest`, `$app/env` and `$app/paths` instead of the removed `$service-worker` module, and route param matchers live in `client/src/params.ts` (`defineParams`).
+category: environment
+status: implemented
+components:
+- client/eslint.config.js
+- client/src/params.ts
+- client/src/routes/+layout.svelte
+- client/src/service-worker.ts
+- client/sveltekit.options.js
+- client/tsconfig.json
+- client/vite.config.js
+- client/vite.config.ts
+verification:
+- npx svelte-kit sync in client exits 0 without config_file_unsupported.
+- npm run build:production in client writes build/index.html and build/service-worker.js with the immutable manifest inlined.
+- Served like Firebase Hosting, the built app registers the worker itself; in Chromium it activates, precaches the shell, entry chunks and static assets, and answers an offline navigation with the app shell.
+tests:
+- client/src/tests/unit/service-worker.spec.ts
+- scripts/tests/env-sveltekit3-config-and-build-b7c41e29.spec.ts

@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { sveltekitOptions } from "./sveltekit.options.js";
 
 export default defineConfig(async ({ mode }) => {
     // Load environment variables with dotenvx (ES module support)
@@ -44,7 +45,7 @@ export default defineConfig(async ({ mode }) => {
                 },
             }),
             tailwindcss(),
-            sveltekit(),
+            sveltekit(sveltekitOptions),
             paraglideVitePlugin({
                 project: "./project.inlang",
                 outdir: "./src/lib/paraglide",

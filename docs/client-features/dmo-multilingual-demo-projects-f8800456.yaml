@@ -6,7 +6,7 @@ status: implemented
 components:
 - client/src/lib/demoInit.ts
 - client/src/lib/publicProject.ts
-- client/src/params/demoProject.ts
+- client/src/params.ts
 - client/src/routes/[demoProject=demoProject]/+page.svelte
 - client/src/routes/[demoProject=demoProject]/[page]/+page.svelte
 services:
@@ -18,7 +18,7 @@ services:
 tests:
 - client/e2e/core/dmo-multilingual-demo-projects-f8800456.spec.ts
 - client/src/lib/publicProject.test.ts
-- client/src/params/demoProject.test.ts
+- client/src/params.test.ts
 - server/tests/demo-locale-content.test.ts
 - server/tests/demo-locale-isolation.test.ts
 - server/tests/demo-projects-registry.test.ts

@@ -5,7 +5,7 @@ import { resolvePath } from "../../../../utils/pathUtils";
 import { formatDateTime } from "../../../../utils/dateUtils";
 
 
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import { onMount } from "svelte";
 import {
     cancelSchedule,
@@ -47,7 +47,7 @@ onMount(() => {
         storeProjectItems: store.project?.items?.length ?? 0,
     });
 
-    const params = $page.params as { project: string; page: string; };
+    const params = page.params as { project: string; page: string; };
     project = params.project;
     pageTitle = params.page;
 
