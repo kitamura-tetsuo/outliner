@@ -1,0 +1,265 @@
+{
+  "run": "https://github.com/kitamura-tetsuo/outliner/actions/runs/37800611798",
+  "provision": {
+    "productionK": "NOT TESTED",
+    "stage": "linux-engine-ready",
+    "harnessSha": "efbf780abd72ba79a64eb8fdd75ddc8f8683db6e",
+    "commands": [
+      {
+        "name": "systeminfo",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [],
+        "deadlineSeconds": 60,
+        "executable": "systeminfo.exe"
+      },
+      {
+        "name": "wsl-version-before",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--version"
+        ],
+        "deadlineSeconds": 30,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "wsl-status-before",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--status"
+        ],
+        "deadlineSeconds": 30,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "wsl-runtime-install",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--install",
+          "--no-distribution",
+          "--web-download"
+        ],
+        "deadlineSeconds": 300,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "wsl-version-after",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--version"
+        ],
+        "deadlineSeconds": 30,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "wsl-status-after",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--status"
+        ],
+        "deadlineSeconds": 30,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "wsl-default-version",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--set-default-version",
+          "2"
+        ],
+        "deadlineSeconds": 30,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "ubuntu-install",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--install",
+          "--distribution",
+          "Ubuntu",
+          "--web-download",
+          "--no-launch"
+        ],
+        "deadlineSeconds": 300,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "wsl-distributions",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--list",
+          "--verbose"
+        ],
+        "deadlineSeconds": 30,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "ubuntu-kernel",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--distribution",
+          "Ubuntu",
+          "--user",
+          "root",
+          "--exec",
+          "uname",
+          "-a"
+        ],
+        "deadlineSeconds": 60,
+        "executable": "wsl.exe"
+      },
+      {
+        "name": "linux-docker-engine",
+        "exitCode": 0,
+        "timedOut": false,
+        "arguments": [
+          "--distribution",
+          "Ubuntu",
+          "--user",
+          "root",
+          "--exec",
+          "bash",
+          "/mnt/d/a/outliner/outliner/scripts/poc/windows-linux-backend/install-engine.sh"
+        ],
+        "deadlineSeconds": 600,
+        "executable": "wsl.exe"
+      }
+    ],
+    "productionJ": "NOT TESTED",
+    "status": "PROVEN",
+    "applicationSha": "0b5e6b0b1d3985e6789a6d826c5a76a180642a6d",
+    "evidence": "Ubuntu WSL2 kernel, Linux dockerd on unix socket, docker info OSType=linux and Compose version. Application services and J-K require their separate validation.",
+    "run": "https://github.com/kitamura-tetsuo/outliner/actions/runs/37800611798"
+  },
+  "platform": {
+    "features": [
+      {
+        "FeatureName": "Microsoft-Windows-Subsystem-Linux",
+        "State": 2,
+        "RestartRequired": 1
+      },
+      {
+        "FeatureName": "VirtualMachinePlatform",
+        "State": 2,
+        "RestartRequired": 1
+      }
+    ],
+    "processor": [
+      {
+        "Name": "AMD EPYC 7763 64-Core Processor                ",
+        "VirtualizationFirmwareEnabled": true,
+        "VMMonitorModeExtensions": false,
+        "SecondLevelAddressTranslationExtensions": false
+      }
+    ],
+    "computer": {
+      "Manufacturer": "Microsoft Corporation",
+      "Model": "Virtual Machine",
+      "HypervisorPresent": true
+    },
+    "imageOS": "win25-vs2026",
+    "imageVersion": "20260925.250.1",
+    "os": {
+      "Caption": "Microsoft Windows Server 2025 Datacenter",
+      "Version": "10.0.26100",
+      "BuildNumber": "26100"
+    }
+  },
+  "wslVersion": "W\u0000S\u0000L\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00002\u0000.\u00007\u0000.\u00001\u00004\u0000.\u00000\u0000\r\u0000\n\u0000K\u0000e\u0000r\u0000n\u0000e\u0000l\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00006\u0000.\u00001\u00008\u0000.\u00003\u00003\u0000.\u00002\u0000-\u00002\u0000\r\u0000\n\u0000W\u0000S\u0000L\u0000g\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u0000.\u00000\u0000.\u00007\u00003\u0000.\u00002\u0000\r\u0000\n\u0000M\u0000S\u0000R\u0000D\u0000C\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u0000.\u00002\u0000.\u00007\u00002\u00001\u00004\u0000\r\u0000\n\u0000D\u0000i\u0000r\u0000e\u0000c\u0000t\u00003\u0000D\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u0000.\u00006\u00001\u00001\u0000.\u00001\u0000-\u00008\u00001\u00005\u00002\u00008\u00005\u00001\u00001\u0000\r\u0000\n\u0000D\u0000X\u0000C\u0000o\u0000r\u0000e\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u00000\u0000.\u00000\u0000.\u00002\u00006\u00001\u00000\u00000\u0000.\u00001\u0000-\u00002\u00004\u00000\u00003\u00003\u00001\u0000-\u00001\u00004\u00003\u00005\u0000.\u0000g\u0000e\u0000-\u0000r\u0000e\u0000l\u0000e\u0000a\u0000s\u0000e\u0000\r\u0000\n\u0000W\u0000i\u0000n\u0000d\u0000o\u0000w\u0000s\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u00000\u0000.\u00000\u0000.\u00002\u00006\u00001\u00000\u00000\u0000.\u00003\u00003\u00004\u00003\u00008\u0000\r\u0000\n\u0000",
+  "distribution": " \u0000 \u0000N\u0000A\u0000M\u0000E\u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000S\u0000T\u0000A\u0000T\u0000E\u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000V\u0000E\u0000R\u0000S\u0000I\u0000O\u0000N\u0000\r\u0000\n\u0000*\u0000 \u0000U\u0000b\u0000u\u0000n\u0000t\u0000u\u0000 \u0000 \u0000 \u0000 \u0000S\u0000t\u0000o\u0000p\u0000p\u0000e\u0000d\u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u0000 \u00002\u0000\r\u0000\n\u0000",
+  "kernel": "Linux runnervmfi6oq 6.18.33.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun 18 21:54:43 UTC 2026 x86_64 GNU/Linux\n",
+  "engine": [
+    "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"",
+    "OSType=linux KernelVersion=6.18.33.2-microsoft-standard-WSL2 ServerVersion=29.1.3 DockerRootDir=/var/lib/docker Driver=overlayfs",
+    "Docker Compose version 2.40.3+ds1-0ubuntu1"
+  ],
+  "composeImageBuildAndStart": "f glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\n#9 200.0 \n#9 200.0 added 672 packages in 32s\n#9 200.0 \n#9 200.0 100 packages are looking for funding\n#9 200.0   run `npm fund` for details\n#9 DONE 203.4s\n\n#10 [yjs-server] exporting to image\n#10 exporting layers\n#10 exporting layers 139.7s done\n#10 exporting manifest sha256:6efa91516766d2afc148638a89b84f438e3325fa0b4a45136b7f6d8ea59fceea 0.1s done\n#10 exporting config sha256:ce058d6c9bb55d641c2882baf08a6b7bcfe73cc8ad3c6f5076432c8ed6b9cd62 0.1s done\n#10 exporting attestation manifest sha256:9dc4744e37ee8dbb0fa4195539cfc48f4db5dd224642188ccd2f66e8dfa005f8 0.1s done\n#10 exporting manifest list sha256:9610a1edb8640cf57791dc937dd362e2f9beeb01eef50938a7ce7cfecbd90138\n#10 exporting manifest list sha256:9610a1edb8640cf57791dc937dd362e2f9beeb01eef50938a7ce7cfecbd90138 0.1s done\n#10 naming to docker.io/library/outliner-app-yjs-server:latest done\n#10 unpacking to docker.io/library/outliner-app-yjs-server:latest\n#10 unpacking to docker.io/library/outliner-app-yjs-server:latest 104.0s done\n#10 DONE 244.1s\n\n#11 [yjs-server] resolving provenance for metadata file\n#11 DONE 0.0s\nNAME         IMAGE                     COMMAND                  SERVICE      CREATED         STATUS        PORTS\nyjs-server   outliner-app-yjs-server   \"docker-entrypoint.s…\"   yjs-server   6 seconds ago   Up 1 second   0.0.0.0:7090->7090/tcp, [::]:7090->7090/tcp, 0.0.0.0:7093->7093/tcp, [::]:7093->7093/tcp, 0.0.0.0:57070->57070/tcp, [::]:57070->57070/tcp, 0.0.0.0:58080->58080/tcp, [::]:58080->58080/tcp, 0.0.0.0:59099->59099/tcp, [::]:59099->59099/tcp\nImage=sha256:9610a1edb8640cf57791dc937dd362e2f9beeb01eef50938a7ce7cfecbd90138 OS=linux Source=0b5e6b0b1d3985e6789a6d826c5a76a180642a6d\n",
+  "linuxReadiness": "http://127.0.0.1:7090/ 000\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 000\r\nhttp://127.0.0.1:59099/ 000\r\nhttp://127.0.0.1:58080/ 000\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 000\r\nhttp://127.0.0.1:59099/ 000\r\nhttp://127.0.0.1:58080/ 000\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 000\r\nhttp://127.0.0.1:59099/ 000\r\nhttp://127.0.0.1:58080/ 200\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 000\r\nhttp://127.0.0.1:59099/ 000\r\nhttp://127.0.0.1:58080/ 200\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 000\r\nhttp://127.0.0.1:59099/ 000\r\nhttp://127.0.0.1:58080/ 200\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 404\r\nhttp://127.0.0.1:59099/ 200\r\nhttp://127.0.0.1:58080/ 200\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 404\r\nhttp://127.0.0.1:59099/ 200\r\nhttp://127.0.0.1:58080/ 200\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 404\r\nhttp://127.0.0.1:59099/ 200\r\nhttp://127.0.0.1:58080/ 200\r\nhttp://127.0.0.1:7090/ 200\r\nhttp://127.0.0.1:7093/health 200\r\nhttp://127.0.0.1:57070/api/health 200\r\nhttp://127.0.0.1:59099/ 200\r\nhttp://127.0.0.1:58080/ 200\r\n",
+  "windowsReadiness": {
+    "browserReachability": "Requires the subsequent Windows-native Firefox browser checks; HTTP readiness alone is not J-K proof",
+    "deadlineSeconds": 300,
+    "architecture": "Windows localhost -> Ubuntu WSL2 -> native Linux Docker Engine -> Compose backend",
+    "source": "0b5e6b0b1d3985e6789a6d826c5a76a180642a6d",
+    "services": {
+      "http://127.0.0.1:57070/api/health": true,
+      "http://127.0.0.1:59099/": true,
+      "http://127.0.0.1:7093/health": true,
+      "http://127.0.0.1:7090/": true,
+      "http://127.0.0.1:58080/": true
+    }
+  },
+  "firefoxReachability": {
+    "platform": "windows",
+    "browser": "156.0.1",
+    "observations": [
+      {
+        "documentURI": "http://127.0.0.1:7090/",
+        "status": 200,
+        "text": "<!DOCTYPE html>\r\n<html lang=\"en\" dir=\"ltr\">\r\n    <head>\r\n        <meta charset=\"utf-8\" />\r\n        <link rel=\"icon\" href=\"./favicon.png\" />\r\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, interactive-widget=resizes-content\" />\r\n        \r\n    </head>\r\n    <body data-sveltekit-preload-data=\"hover\">\r\n        <!-- Prepare a minimal placeholder so that E2E can detect it immediately even when SSR is disabled -->\r\n        <div\r\n            data-testid=\"main-toolbar\"\r\n      ",
+        "url": "http://127.0.0.1:7090/"
+      }
+    ]
+  },
+  "capabilityResults": {
+    "sha": "efbf780abd72ba79a64eb8fdd75ddc8f8683db6e",
+    "run": "https://github.com/kitamura-tetsuo/outliner/actions/runs/37800611798",
+    "capabilities": {
+      "A": {
+        "status": "PROVEN",
+        "evidence": "GUI HWND and uia-startup.json; startup-capture.json separately records capture capability",
+        "pid": 7884
+      },
+      "B": {
+        "evidence": "Microsoft Japanese CLSID/profile returned by live TSF manager after session activation; trusted Firefox Japanese composition; active-tsf-session.json",
+        "status": "PROVEN"
+      },
+      "C": {
+        "evidence": "input-trace.json, trusted browser compositionstart/update following romaji SendInput",
+        "status": "PROVEN"
+      },
+      "D": {
+        "evidence": "preedit-short.json, preedit-long.json, preedit.png",
+        "status": "PROVEN"
+      },
+      "E": {
+        "evidence": "Fresh desktop native candidate during focused Firefox composition: class=mscandui40.candidate, name=Microsoft Candidate UI, pid=7884, hwnd=394164; candidate-open.json/png",
+        "status": "PROVEN"
+      },
+      "F": {
+        "evidence": "candidate-open.json exposes native selected item and candidate contents",
+        "status": "PROVEN"
+      },
+      "G": {
+        "evidence": "candidate-open/navigation/after-confirm.json and confirmation.json; selected text equals commit",
+        "status": "PROVEN"
+      },
+      "H": {
+        "evidence": "cancellation.json restores confirmation text and selection",
+        "status": "PROVEN"
+      },
+      "I": {
+        "evidence": "Actual Latin mode/input rejects candidate assertion, restored Japanese opens native candidate, missing/unchanged/stale/old-generation controls reject; UIA worker errors throw rather than pass",
+        "status": "PROVEN"
+      },
+      "J": {
+        "evidence": "Not reached; see failure and predecessor evidence",
+        "status": "BLOCKED"
+      },
+      "K": {
+        "evidence": "Production browser bridge exited; inspect bridge logs",
+        "status": "FAILED"
+      }
+    }
+  },
+  "bridgeError": "file:///D:/a/outliner/outliner/scripts/poc/windows-native-ime/production-bridge.mjs:16\r\n    if (!response.ok || result.value?.error) throw new Error(`${url}: ${JSON.stringify(result)}`);\r\n                                                   ^\r\n\r\nError: http://127.0.0.1:4444/session/c85c3a31-1967-4ee6-8199-c497e55cc98b/execute/async: {\"value\":{\"error\":\"TypeError: NetworkError when attempting to fetch resource.\",\"url\":\"http://127.0.0.1:7093/health\"}}\r\n    at json (file:///D:/a/outliner/outliner/scripts/poc/windows-native-ime/production-bridge.mjs:16:52)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async wd (file:///D:/a/outliner/outliner/scripts/poc/windows-native-ime/production-bridge.mjs:23:35)\r\n    at async file:///D:/a/outliner/outliner/scripts/poc/windows-native-ime/production-bridge.mjs:40:26\r\n\r\nNode.js v22.23.3\r\n",
+  "composeStatus": "time=\"2026-10-08T15:36:53Z\" level=warning msg=\"/opt/outliner-app/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion\"\nNAME         IMAGE                     COMMAND                  SERVICE      CREATED              STATUS              PORTS\nyjs-server   outliner-app-yjs-server   \"docker-entrypoint.s…\"   yjs-server   About a minute ago   Up About a minute   0.0.0.0:7090->7090/tcp, [::]:7090->7090/tcp, 0.0.0.0:7093->7093/tcp, [::]:7093->7093/tcp, 0.0.0.0:57070->57070/tcp, [::]:57070->57070/tcp, 0.0.0.0:58080->58080/tcp, [::]:58080->58080/tcp, 0.0.0.0:59099->59099/tcp, [::]:59099->59099/tcp\n"
+}
