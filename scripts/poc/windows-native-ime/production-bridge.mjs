@@ -79,7 +79,25 @@ async function prepare({ action }) {
             })
         ) localStorage.setItem(key, value);
     });
-    await waitFor(() => execute(() => !!window.__SVELTE_GOTO__), "Svelte navigation unavailable");
+    try {
+        await waitFor(() => execute(() => !!window.__SVELTE_GOTO__), "Svelte navigation unavailable");
+    } catch (error) {
+        // Retain bootstrap facts before failing; do not substitute application state.
+        save(
+            `${action}-bootstrap-failure`,
+            await execute(() => ({
+                url: location.href,
+                readyState: document.readyState,
+                body: document.body.textContent.slice(0, 2000),
+                navigation: !!window.__SVELTE_GOTO__,
+                authManager: !!window.__USER_MANAGER__,
+                authenticated: !!window.__USER_MANAGER__?.auth?.currentUser,
+                yjsStore: !!window.__YJS_STORE__,
+                connected: !!window.__YJS_STORE__?.isConnected,
+            })),
+        );
+        throw error;
+    }
     await asyncExecute(
         "const done = arguments[arguments.length - 1]; window.__SVELTE_GOTO__(arguments[0]).then(() => done(true), e => done({error:String(e)}));",
         `/${encodeURIComponent(project)}/${page}?isTest=true`,
@@ -216,6 +234,7 @@ createServer(async (req, res) => {
         else if (req.url === "/state") result = await state();
         else if (req.url === "/baseline") {
             baseline = await state();
+            save(`${baseline.action}-before`, baseline); // Also retain invalid UI-placement diagnostics.
             if (
                 baseline.cursors.length !== args.count || baseline.selections.length || !baseline.focused
                 || baseline.wrap !== "off"
@@ -230,7 +249,6 @@ createServer(async (req, res) => {
                     throw new Error("UI did not place the required baseline caret");
                 }
             }
-            save(`${baseline.action}-before`, baseline);
             result = baseline;
         } else if (req.url === "/assert") {
             const after = await state();
