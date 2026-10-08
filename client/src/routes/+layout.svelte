@@ -1,5 +1,5 @@
 <script lang="ts">
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 import SvelteSEO from "svelte-seo";
 import { getLogger } from "$lib/logger";
 import { store as appStore } from "../stores/store.svelte";

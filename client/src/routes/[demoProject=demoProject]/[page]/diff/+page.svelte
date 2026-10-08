@@ -1,7 +1,7 @@
 <script lang="ts">
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import { onMount, onDestroy } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
 import Breadcrumb from "../../../../components/Breadcrumb.svelte";
@@ -13,7 +13,7 @@ import { userManager } from "../../../../auth/UserManager";
 import { projectBasePath, projectPagePath } from "../../../../lib/publicProject";
 
 // Which demo project this route is showing (`demo`, `demo-ja`, …).
-let project = $derived($page.params.demoProject as string);
+let project = $derived(page.params.demoProject as string);
 let pageTitle = $state("");
 let content = $state("");
 let user = $derived(userManager.getCurrentUser()?.name ?? "Guest");
@@ -79,7 +79,7 @@ async function loadLiveContent(proj: string, pTitle: string) {
 
 onMount(() => {
     try {
-        const params = $page.params as { page: string; };
+        const params = page.params as { page: string; };
         if (params) {
             pageTitle = params.page;
 

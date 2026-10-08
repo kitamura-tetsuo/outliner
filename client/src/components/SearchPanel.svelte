@@ -4,8 +4,7 @@ const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, untrack } from "svelte";
-    import { page as pageStore } from "$app/stores";
-    import { get } from "svelte/store";
+    import { page as pageState } from "$app/state";
     import { store } from "../stores/store.svelte";
     import {
         buildRegExp,
@@ -242,12 +241,12 @@ const logger = getLogger("SearchPanel");
         if (!previousTitle || !pageItem) return;
         const newTitle = textOf(pageItem);
         if (!newTitle || newTitle === previousTitle) return;
-        const currentPage = get(pageStore);
+        const currentPage = pageState;
         if (currentPage.params?.page !== previousTitle) return;
         const routedProject = currentPage.params?.demoProject ?? currentPage.params?.project;
         // A rename rewrites where the open page lives; it is not a visit to a
         // different page, so it replaces the entry instead of stacking history.
-        const options = { replaceState: true, keepFocus: true, noScroll: true };
+        const options = { replace: true, reset: false };
         if (routedProject) goto(resolvePath(projectPagePath(routedProject, newTitle)), options);
     }
 
@@ -390,7 +389,7 @@ const logger = getLogger("SearchPanel");
         }
         if (!project) return;
         const pageName = match.pageTitle;
-        const currentPage = get(pageStore);
+        const currentPage = pageState;
         const routedProject = currentPage.params?.demoProject ?? currentPage.params?.project ?? project.title;
         if (pageItem?.id === match.pageId) {
             document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(match.itemId)}"]`)

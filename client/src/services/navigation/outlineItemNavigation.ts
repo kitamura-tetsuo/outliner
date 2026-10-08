@@ -21,8 +21,7 @@
 // call reports `false` and leaves the user where they are. Nothing throws.
 
 import { goto } from "$app/navigation";
-import { page as pageStore } from "$app/stores";
-import { get } from "svelte/store";
+import { page as pageState } from "$app/state";
 import { getLogger } from "../../lib/logger";
 import { projectPagePath } from "../../lib/publicProject";
 import type { Project } from "../../schema/app-schema";
@@ -58,7 +57,7 @@ export interface NavigateToOutlineItemOptions {
  * follows when it jumps to a match.
  */
 function routeProjectName(project: Project): string {
-    const current = get(pageStore);
+    const current = pageState;
     return current?.params?.demoProject ?? current?.params?.project ?? project.title;
 }
 

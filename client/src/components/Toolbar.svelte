@@ -5,7 +5,7 @@ const logger = getLogger("Toolbar");
 import type { Project } from "../schema/app-schema";
 import SearchBox from "./SearchBox.svelte";
 import { isProvisionalProject, store } from "../stores/store.svelte";
-import { page as pageStore } from "$app/stores";
+import { page as pageState } from "$app/state";
 import { onMount, onDestroy } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
@@ -29,7 +29,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 // title of its own is addressed. Demo routes carry it under their own param.
 // `params` is absent outside a routed context (component tests), hence `?.`.
 let routedProjectName: string = $derived(
-    ($pageStore.params?.demoProject as string | undefined) ?? $pageStore.params?.project ?? "",
+    (pageState.params?.demoProject as string | undefined) ?? pageState.params?.project ?? "",
 );
 
 // The router's stacks are `$state`, so availability tracks every recorded and

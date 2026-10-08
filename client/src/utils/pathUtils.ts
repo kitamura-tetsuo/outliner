@@ -1,12 +1,9 @@
 import { resolve as kitResolve } from "$app/paths";
 
 /**
- * Strongly-typed wrapper around SvelteKit's resolve function to bypass
- * 'Expected 2 arguments, but got 1' errors with dynamic paths.
+ * Wrapper around SvelteKit's resolve function for dynamic (already
+ * parameter-populated) paths, which its route-ID-typed signature cannot express.
  */
 export function resolvePath(path: string): string {
-    return kitResolve(
-        path as Parameters<typeof kitResolve>[0],
-        undefined as unknown as Parameters<typeof kitResolve>[1],
-    );
+    return (kitResolve as (path: string, params: undefined) => string)(path, undefined);
 }

@@ -7,15 +7,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-const mockPageStore = { params: { project: "demo" } };
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (run: (value: typeof mockPageStore) => void) => {
-            run(mockPageStore);
-            return () => {};
-        },
-    },
-}));
+vi.mock("$app/state", () => import("../../../../tests/mocks/appState.svelte"));
+setPage({ params: { project: "demo" } });
 
 // A signed-out visitor: the public-demo read-only path is under test.
 vi.mock("../../../../auth/UserManager", () => ({
@@ -55,6 +48,7 @@ import { createScheduleRule } from "../../../../services/schedule/scheduleRuleSe
 import { runScheduleRuleNow } from "../../../../services/schedule/scheduleRunService";
 import { createTable, renameTable } from "../../../../services/yjstable/tableDocs";
 import { store } from "../../../../stores/store.svelte";
+import { setPage } from "../../../../tests/mocks/appState.svelte";
 import ProjectSchedulesPage from "./+page.svelte";
 
 function currentProject(): NonNullable<typeof store.project> {
@@ -63,7 +57,7 @@ function currentProject(): NonNullable<typeof store.project> {
 
 describe("project schedules route", () => {
     beforeEach(() => {
-        mockPageStore.params = { project: "demo" };
+        setPage({ params: { project: "demo" } });
         projectDoc = new Y.Doc();
         vi.mocked(runScheduleRuleNow).mockClear();
     });
@@ -161,7 +155,7 @@ describe("project schedules route", () => {
 // writes back into that same map.
 describe("Schedules Manager route", () => {
     beforeEach(() => {
-        mockPageStore.params = { project: "demo" };
+        setPage({ params: { project: "demo" } });
         projectDoc = new Y.Doc();
         vi.mocked(runScheduleRuleNow).mockClear();
     });

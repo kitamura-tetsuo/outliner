@@ -3,13 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import Page from "./+page.svelte";
 
 // Mock minimal dependencies
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (fn: (val: { params: { page: string; }; }) => void) => {
-            fn({ params: { page: "Test Page" } });
-            return () => {};
-        },
-    },
+vi.mock("$app/state", () => ({
+    page: { params: { page: "Test Page" } },
 }));
 
 vi.mock("$lib/logger", () => ({

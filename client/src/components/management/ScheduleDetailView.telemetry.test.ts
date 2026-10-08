@@ -7,15 +7,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-const mockPageStore = { params: { project: "demo", ruleId: "rule-1" } };
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (run: (value: typeof mockPageStore) => void) => {
-            run(mockPageStore);
-            return () => {};
-        },
-    },
-}));
+vi.mock("$app/state", () => import("../../tests/mocks/appState.svelte"));
+setPage({ params: { project: "demo", ruleId: "rule-1" } });
 
 vi.mock("$app/navigation", () => ({ goto: vi.fn() }));
 
@@ -53,6 +46,7 @@ vi.mock("../../services/schedule/scheduleRunService", () => ({
 }));
 
 import { store } from "../../stores/store.svelte";
+import { setPage } from "../../tests/mocks/appState.svelte";
 import ScheduleDetailView from "./ScheduleDetailView.svelte";
 
 const RULE_ID = "rule-1";

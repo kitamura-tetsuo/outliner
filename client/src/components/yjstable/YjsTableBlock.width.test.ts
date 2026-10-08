@@ -14,18 +14,12 @@ import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
 import { addRecord, createTable, getTableHandles, setSchemaText } from "../../services/yjstable/tableDocs";
 import { resetTableEngineForTests } from "../../services/yjstable/tableEngine";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { setPage } from "../../tests/mocks/appState.svelte";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import YjsTableBlock from "./YjsTableBlock.svelte";
 
-const mockPage = { params: {} };
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (run: (value: typeof mockPage) => void) => {
-            run(mockPage);
-            return () => {};
-        },
-    },
-}));
+vi.mock("$app/state", () => import("../../tests/mocks/appState.svelte"));
+setPage({ params: {} });
 
 // The UI Definition panel embeds the shared Monaco SQL editor; see
 // SqlEditor.test.ts for why the runtime is faked under jsdom.

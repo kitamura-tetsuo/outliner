@@ -13,8 +13,7 @@ const logger = getLogger("GraphView");
     import type { GraphData } from "../utils/graphUtils";
     import { getYjsClientByProjectTitle } from "../services";
     import { yjsStore } from "../stores/yjsStore.svelte";
-    import { page } from "$app/stores";
-    import { get } from "svelte/store";
+    import { page } from "$app/state";
     import { projectPagePath } from "../lib/publicProject";
 
     let graphDiv: HTMLDivElement;
@@ -240,11 +239,10 @@ const logger = getLogger("GraphView");
 
     function getPageUrl(pageName: string) {
         if (!pageName) return "#";
-        const pageStore = get(page);
         // The demo routes name their project `demoProject`; reading the param
         // avoids the prefix test that also matched `/demo-ja`.
-        const projectName = pageStore.params.demoProject
-            || pageStore.params.project
+        const projectName = page.params.demoProject
+            || page.params.project
             || store.project?.title;
         if (projectName) {
             return resolvePath(projectPagePath(projectName, pageName));
@@ -286,7 +284,7 @@ const logger = getLogger("GraphView");
         // Initial render handled by $effect
 
         // Ensure Yjs connection for the current project
-        const projectName = $page.params.project;
+        const projectName = page.params.project;
         if (projectName) {
             getYjsClientByProjectTitle(projectName)
                 .then((client) => {

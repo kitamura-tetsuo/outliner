@@ -1,0 +1,17 @@
+id: RTE-5a93f2c1
+title: Route parameters and query state follow client-side navigation
+title-ja: ルートパラメータとクエリ状態がクライアントサイド遷移に追従
+description: Application, management and demo routes read their route parameters and query string from SvelteKit's reactive `$app/state` page object (SvelteKit 3 removed `$app/stores`) through `$derived` values. SvelteKit reuses a mounted route component when only its parameters change, so link clicks and history traversal between two projects, pages or management resources (tables, grids, calendars, schedules) always show the resource the URL names, and query-driven state such as the Object Manager `?selected=` preselection follows the route.
+category: client
+status: implemented
+acceptance:
+- Demo routes (`/demo`, `/demo-ja`, ...) are matched by the `demoProject` param matcher in `client/src/params.ts`.
+- Following an internal link from one page to another in the same project shows the destination page, and a back navigation shows the original page again.
+- The Object Manager preselects exactly the objects named by its `?selected=` query.
+- Traversing history between two tables on the same `/:project/-/tables/:tableId` route shows the table the URL names.
+tests:
+- client/e2e/new/rte-route-state-follows-navigation-demo-5a93f2c1.spec.ts
+- client/e2e/new/rte-route-state-follows-navigation-project-5a93f2c1.spec.ts
+- client/src/params.test.ts
+- client/src/routes/[demoProject=demoProject]/[page]/page.svelte.test.ts
+- client/src/routes/[project]/-/tables/[tableId]/page.svelte.test.ts

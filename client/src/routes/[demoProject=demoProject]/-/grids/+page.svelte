@@ -1,8 +1,8 @@
 <script lang="ts">
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import GridListView from "../../../../components/management/GridListView.svelte";
 
-let projectName = $derived($page.params.demoProject ?? "");
+let projectName = $derived(page.params.demoProject ?? "");
 </script>
 
 <GridListView {projectName} />

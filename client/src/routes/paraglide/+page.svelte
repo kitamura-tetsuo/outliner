@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import * as m from "$lib/paraglide/messages.js";
 import {
     getLocale,
@@ -10,7 +10,7 @@ import {
 import { resolvePath } from "../../utils/pathUtils";
 
 function switchToLanguage(newLanguage: "en" | "ja") {
-    const localisedPath = localizeHref($page.url.pathname, { locale: newLanguage });
+    const localisedPath = localizeHref(page.url.pathname, { locale: newLanguage });
     goto(resolvePath(localisedPath));
 }
 </script>

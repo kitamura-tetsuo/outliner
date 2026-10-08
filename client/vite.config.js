@@ -2,12 +2,13 @@ import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
+import { sveltekitOptions } from "./sveltekit.options.js";
 
 export default defineConfig({
     plugins: [
         paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/paraglide./src/lib/paraglide" }),
         tailwindcss(),
-        sveltekit(),
+        sveltekit(sveltekitOptions),
     ],
     build: {
         // Output to the public directory for Firebase Hosting
