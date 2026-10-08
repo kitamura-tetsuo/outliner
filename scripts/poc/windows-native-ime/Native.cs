@@ -75,14 +75,14 @@ public static class JapaneseTsf {
             Guid clsid = new Guid("03B5835F-F03C-411B-9CE2-AA23E1171E36");
             Guid profile = new Guid("A76C93D9-5523-4E90-AAFA-4DB112F9AC76");
             Guid category = new Guid("34745C63-B2F0-4784-8B67-5E12C8701A31");
-            int activation = manager.ActivateProfile(1,0x411,ref clsid,ref profile,IntPtr.Zero,0x10000000); // TF_IPPMF_FORSESSION
+            int activation = manager.ActivateProfile(1,0x411,ref clsid,ref profile,IntPtr.Zero,0x20000001); // TF_IPPMF_FORSESSION | TF_IPPMF_ENABLEPROFILE
             TFPROFILE active;
             int query = manager.GetActiveProfile(ref category,out active);
             bool matches = activation == 0 && query == 0 && active.type == 1 && active.language == 0x411 && active.clsid == clsid && active.profile == profile;
             return "activationHRESULT="+activation.ToString("X8")+" queryHRESULT="+query.ToString("X8")+
                 " activeMicrosoft="+matches+" type="+active.type+" language="+active.language.ToString("X4")+
                 " clsid="+active.clsid+" profile="+active.profile+" flags="+active.flags+
-                " scope=TF_IPPMF_FORSESSION";
+                " scope=TF_IPPMF_FORSESSION|TF_IPPMF_ENABLEPROFILE";
         } finally { Marshal.ReleaseComObject(instance); }
     }
 }

@@ -21,8 +21,8 @@ function Send-Romaji([string]$Text) {
     foreach ($c in $Text.ToUpperInvariant().ToCharArray()) { Send-Key ([int]$c) }
 }
 function State { Invoke-RestMethod http://127.0.0.1:8765/state -TimeoutSec 3 }
-function Wait-State([scriptblock]$Predicate, [string]$Message) {
-    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+function Wait-State([scriptblock]$Predicate, [string]$Message, [int]$TimeoutSeconds=10) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     do {
         $observed = State
         if (& $Predicate $observed) { return $observed }
@@ -30,6 +30,16 @@ function Wait-State([scriptblock]$Predicate, [string]$Message) {
     } while ([DateTime]::UtcNow -lt $deadline)
     Save-Json 'wait-state-failure' $observed
     throw $Message
+}
+function Wait-FirefoxWindow {
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    do {
+        $windows = @(Get-Process firefox -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero })
+        if ($windows.Count -eq 1) { return $windows[0] }
+        Assert-That ($windows.Count -le 1) 'Ambiguous Firefox GUI windows on disposable runner'
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw 'Firefox GUI window did not appear within 30 seconds'
 }
 function Screen-Capture($Name) {
     try {

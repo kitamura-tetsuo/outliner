@@ -21,16 +21,12 @@ user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
     $server = Start-Process node -ArgumentList @("`"$PSScriptRoot/server.mjs`"","`"$script:Output`"") -PassThru -RedirectStandardOutput "$script:Output/server.log" -RedirectStandardError "$script:Output/server-error.log"
     Write-Host 'TRANSPORT launching GUI Firefox'
     $browser = Start-Process $exe -ArgumentList @('-no-remote','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru -RedirectStandardOutput "$script:Output/firefox-stdout.log" -RedirectStandardError "$script:Output/firefox-stderr.log"
-    Start-Sleep -Seconds 8
-    $browser.Refresh()
-    # Firefox may use a launcher process; find the actual window rather than assuming its PID.
-    $windows = @(Get-Process firefox | Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero })
-    Assert-That ($windows.Count -eq 1) 'Expected exactly one Firefox GUI window on this disposable runner'
-    $window = $windows[0].MainWindowHandle
-    $script:FirefoxPid = $windows[0].Id
+    $gui = Wait-FirefoxWindow
+    $window = $gui.MainWindowHandle
+    $script:FirefoxPid = $gui.Id
     [void][Native]::SetForegroundWindow($window)
     Start-Sleep -Seconds 1
-    $geometry = State
+    $geometry = Wait-State { param($s) $null -ne $s.window.innerScreenX -and $s.rect.width -gt 100 } 'Firefox fixture geometry unavailable after 30 seconds' 30
     Save-Json 'transport-geometry' $geometry
     Assert-That ($geometry.rect.width -gt 100 -and $null -ne $geometry.window.innerScreenX) 'Firefox fixture geometry unavailable'
     $x = [int](($geometry.window.innerScreenX + $geometry.rect.left + 30) * $geometry.screen.dpr)

@@ -47,12 +47,9 @@ user_pref("accessibility.force_disabled", -1);
     $env:MOZ_LOG = 'timestamp,IMEHandler:5,TextInput:5'
     $env:MOZ_LOG_FILE = "$script:Output/firefox-ime.log"
     $firefox = Start-Process $exe -ArgumentList @('-no-remote','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru -RedirectStandardOutput "$script:Output/firefox-stdout.log" -RedirectStandardError "$script:Output/firefox-stderr.log"
-    Start-Sleep -Seconds 8
-    $firefox.Refresh()
-    $windows = @(Get-Process firefox | Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero })
-    Assert-That ($windows.Count -eq 1) 'Expected one real Firefox GUI window; launcher PID alone is insufficient'
-    $script:FirefoxPid = $windows[0].Id
-    $script:FirefoxWindow = $windows[0].MainWindowHandle
+    $gui = Wait-FirefoxWindow
+    $script:FirefoxPid = $gui.Id
+    $script:FirefoxWindow = $gui.MainWindowHandle
     Assert-That ($script:FirefoxWindow -ne [IntPtr]::Zero) 'Firefox has no GUI main window'
     [void][Native]::ShowWindow($script:FirefoxWindow,3)
     [void][Native]::SetForegroundWindow($script:FirefoxWindow)
@@ -63,7 +60,7 @@ user_pref("accessibility.force_disabled", -1);
     Write-Host 'PHASE C: locating UIA textarea and testing SendInput delivery'
     $stage = 'C'
     # Read-only browser geometry locates the real visible fixture; OS mouse input performs focus.
-    $geometry = State
+    $geometry = Wait-State { param($s) $null -ne $s.window.innerScreenX -and $s.rect.width -gt 100 } 'Firefox fixture did not load within 30 seconds' 30
     Assert-That ($null -ne $geometry.window.innerScreenX -and $geometry.rect.width -gt 100) 'Firefox did not expose fixture geometry'
     $clickX = [int](($geometry.window.innerScreenX + $geometry.rect.left + 30) * $geometry.screen.dpr)
     $clickY = [int](($geometry.window.innerScreenY + $geometry.rect.top + 30) * $geometry.screen.dpr)
