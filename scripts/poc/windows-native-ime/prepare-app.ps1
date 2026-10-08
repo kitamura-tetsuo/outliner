@@ -50,7 +50,7 @@ try {
             Remove-Item "$app/shared/node_modules" -Recurse -Force
         }
     }
-    New-Item -ItemType Junction -Path "$app/shared/node_modules" -Target "$app/server/node_modules" | Out-Null
+    New-Item -ItemType Junction -Path "$app/shared/node_modules" -Target "$app/client/node_modules" | Out-Null
     Run-Preparation 'server-build' "$app/server" @('node_modules/typescript/bin/tsc')
     if (-not (Test-Path "$app/server/dist/server/src/index.js")) { throw 'Compiled server missing' }
     Run-Preparation 'paraglide-build' "$app/client" @($npmArg,'run','paraglide:compile')
