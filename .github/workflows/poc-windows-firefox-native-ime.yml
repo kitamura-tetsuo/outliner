@@ -1,0 +1,32 @@
+name: PoC Windows Firefox native Japanese IME
+on:
+  workflow_dispatch:
+  push:
+    branches: [poc/windows-firefox-native-ime]
+    paths:
+      - '.github/workflows/poc-windows-firefox-native-ime.yml'
+      - 'scripts/poc/windows-native-ime/**'
+permissions:
+  contents: read
+jobs:
+  native-ime:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe native Firefox and Microsoft Japanese IME
+        run: ./scripts/poc/windows-native-ime/run.ps1
+      - name: Upload evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-firefox-native-ime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/windows-native-ime/
+          if-no-files-found: error
+          retention-days: 14

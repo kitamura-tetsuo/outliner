@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Native IME PoC</title>
+<style>body{font:24px sans-serif;padding:40px}textarea{font:32px sans-serif;width:800px;height:240px}</style>
+<h1>Native IME PoC</h1>
+<label for="editor">Native IME test input</label><br>
+<textarea id="editor" aria-label="Native IME test input"></textarea>
+<pre id="status"></pre>
+<script>
+const editor = document.querySelector('#editor');
+const events = [];
+let sequence = 0;
+function report(event) {
+    if (event) events.push({sequence: ++sequence, time: performance.now(), type: event.type,
+        trusted: event.isTrusted, data: event.data, key: event.key, code: event.code,
+        inputType: event.inputType, isComposing: event.isComposing, value: editor.value,
+        start: editor.selectionStart, end: editor.selectionEnd});
+    const state = {events, value: editor.value, start: editor.selectionStart, end: editor.selectionEnd,
+        focused: document.activeElement === editor, documentFocused: document.hasFocus(),
+        screen: {width: screen.width, height: screen.height, dpr: devicePixelRatio},
+        rect: editor.getBoundingClientRect().toJSON()};
+    document.querySelector('#status').textContent = JSON.stringify(state.events.slice(-3), null, 2);
+    fetch('/telemetry', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(state)});
+}
+for (const type of ['focus','blur','keydown','keyup','beforeinput','input','compositionstart','compositionupdate','compositionend'])
+    editor.addEventListener(type, report);
+window.addEventListener('focus', () => report());
+report();
+</script>
