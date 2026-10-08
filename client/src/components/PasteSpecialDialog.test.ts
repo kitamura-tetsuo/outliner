@@ -69,7 +69,10 @@ describe("PasteSpecialDialog", () => {
 
         expect(unavailable.disabled).toBe(true);
         expect(unavailable).toBeVisible();
-        expect(unavailable.textContent).toContain("The source component belongs to another project");
+        const reason = unavailable.querySelector("#another-view-description") as HTMLElement | null;
+        expect(reason).not.toBeNull();
+        expect(reason as HTMLElement).toBeVisible();
+        expect((reason as HTMLElement).textContent).toContain("The source component belongs to another project");
         await waitFor(() => {
             // A closed dialog (or body focus) must not count as success.
             expect(dialog.open).toBe(true);

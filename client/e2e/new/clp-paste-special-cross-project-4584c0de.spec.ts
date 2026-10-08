@@ -92,6 +92,9 @@ test.describe("Paste Special in another project", () => {
         const anotherView = page.getByTestId("paste-special-another-view");
         await expect(anotherView).toBeDisabled();
         await expect(anotherView).toContainText("belongs to another project");
+        const anotherViewReason = anotherView.locator("#another-view-description");
+        await expect(anotherViewReason).toBeVisible();
+        await expect(anotherViewReason).toContainText("belongs to another project");
         await expect(page.getByTestId("paste-special-copy-with-data")).toBeFocused();
         // Cancelling reports no selection: Escape closes the dialog without
         // pasting. A values-only resolution leaves the table registry
