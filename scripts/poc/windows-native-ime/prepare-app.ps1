@@ -28,8 +28,8 @@ try {
     $npmArg = "`"$npm`""
     $app = (Resolve-Path $AppPath).Path
     $sha = git -C $app rev-parse HEAD
-    if ($sha -ne '7b90e6fb7b709cff0f6d6b19ef8e643a2f50eced') { throw "Unexpected application revision $sha" }
-    @{applicationSha=$sha; correction='PR #5504'; correctionSha='73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f'; harnessSha=$env:GITHUB_SHA; integrationCommits=@('7b90e6fb7b709cff0f6d6b19ef8e643a2f50eced'); services='Disposable Firebase emulators, compiled Yjs server, Vite ordinary editor'} | ConvertTo-Json | Set-Content "$log/application-revision.json"
+    if ($sha -ne '79a976cd8765367ea4f04baa00905822681cf294') { throw "Unexpected application revision $sha" }
+    @{applicationSha=$sha; correction='PR #5504'; correctionSha='73cf8a42c1e9d729ac61b2006ab9a6d8b10a3a8f'; harnessSha=$env:GITHUB_SHA; integrationCommits=@('7b90e6fb7b709cff0f6d6b19ef8e643a2f50eced','79a976cd8765367ea4f04baa00905822681cf294'); services='Disposable Firebase emulators, compiled Yjs server, Vite ordinary editor'} | ConvertTo-Json | Set-Content "$log/application-revision.json"
     # Package lifecycle scripts contain rm/ln/patch-package. Use the runner's Git Bash,
     # but install native dependencies on Windows from their own lockfiles.
     $env:npm_config_script_shell = 'C:\Program Files\Git\bin\bash.exe'
@@ -39,6 +39,9 @@ try {
             $name = if ($dir) { $dir } else { 'root' }
             Run-Preparation "install-$name" (Join-Path $app $dir) @($npmArg,'ci')
         }
+    } else {
+        # Refresh the client so its source-pinned package patches also apply on cache hits.
+        Run-Preparation 'install-client' "$app/client" @($npmArg,'ci')
     }
     if (Test-Path "$app/shared/node_modules") {
         $sharedLink = Get-Item "$app/shared/node_modules" -Force

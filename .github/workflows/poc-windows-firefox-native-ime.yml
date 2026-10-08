@@ -68,7 +68,7 @@ jobs:
           node-version: '22'
       - uses: actions/checkout@v5
         with:
-          ref: 7b90e6fb7b709cff0f6d6b19ef8e643a2f50eced
+          ref: 79a976cd8765367ea4f04baa00905822681cf294
           path: work/native-ime-app
       - uses: actions/setup-java@v5
         with:
