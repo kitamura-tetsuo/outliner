@@ -37,20 +37,29 @@ if (process.env.OUTLINER_NATIVE_BACKEND === "wsl2-linux") {
         ]
     ) {
         await wd("url", { url });
-        const observed = await asyncExecute(`
-            const done = arguments[arguments.length - 1];
-            fetch(location.href, {cache: 'no-store', signal: AbortSignal.timeout(10000)})
-                .then(async r => done({url:location.href, documentURI:document.documentURI,
-                    status:r.status, text:(await r.text()).slice(0, 500)}))
-                .catch(e => done({url:location.href, error:String(e)}));
-        `);
+        // JSON endpoints mount Firefox's JSON viewer, whose page principal/CSP
+        // can forbid fetch even after a successful navigation. Read the browser's
+        // actual navigation response, without changing those security settings.
+        const observed = await execute(() => {
+            const navigation = performance.getEntriesByType("navigation")[0];
+            return {
+                url: location.href,
+                documentURI: document.documentURI,
+                responseUrl: navigation?.name,
+                status: navigation?.responseStatus,
+                text: document.body.textContent.slice(0, 500),
+            };
+        });
         observations.push(observed);
         save("windows-firefox-linux-localhost", {
             platform: session.capabilities.platformName,
             browser: session.capabilities.browserVersion,
             observations,
         });
-        if (observed.status !== 200 || observed.error || observed.documentURI.startsWith("about:")) {
+        if (
+            observed.status !== 200 || observed.responseUrl !== url || observed.url !== url
+            || observed.documentURI.startsWith("about:")
+        ) {
             throw new Error(`Windows-native Firefox could not reach Linux service ${url}`);
         }
     }

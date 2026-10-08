@@ -1,4 +1,4 @@
-name: PoC Windows WSL2 Linux backend feasibility
+name: PoC Windows WSL2 Linux backend and native IME
 on:
   workflow_dispatch:
   push:
