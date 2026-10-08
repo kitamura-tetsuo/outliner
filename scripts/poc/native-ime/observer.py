@@ -6,7 +6,10 @@ def candidate_windows(windows, fcitx_pid):
             w.get("name") == "Fcitx5 Input Window"
             and w.get("class") == ["fcitx", "fcitx"]
             and w.get("pid") == fcitx_pid
-            and "_NET_WM_WINDOW_TYPE_COMBO" in w.get("types", [])
+            # Ubuntu's Fcitx5 5.1.7 uses POPUP_MENU; newer Classic UI uses COMBO.
+            # Both signatures are grounded in the corresponding upstream source.
+            and any(t in w.get("types", []) for t in
+                    ["_NET_WM_WINDOW_TYPE_POPUP_MENU", "_NET_WM_WINDOW_TYPE_COMBO"])
             and w.get("viewable") is True
             and w.get("width", 0) > 0 and w.get("height", 0) > 0]
 

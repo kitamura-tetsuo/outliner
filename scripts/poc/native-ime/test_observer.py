@@ -10,7 +10,9 @@ class OracleControls(unittest.TestCase):
                     width=250, height=160)
 
     def test_correct_identity(self):
-        self.assertEqual(require_candidate([self.record()], 42, True, True)["pid"], 42)
+        for window_type in ["_NET_WM_WINDOW_TYPE_COMBO", "_NET_WM_WINDOW_TYPE_POPUP_MENU"]:
+            record = dict(self.record(), types=[window_type])
+            self.assertEqual(require_candidate([record], 42, True, True)["pid"], 42)
 
     def test_missing_and_duplicate(self):
         for records in [[], [self.record(), self.record()]]:
