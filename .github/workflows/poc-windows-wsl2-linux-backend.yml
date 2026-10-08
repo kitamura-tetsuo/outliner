@@ -1,0 +1,30 @@
+name: PoC Windows WSL2 Linux backend feasibility
+on:
+  workflow_dispatch:
+  push:
+    branches: [poc/windows-firefox-native-ime]
+    paths:
+      - '.github/workflows/poc-windows-wsl2-linux-backend.yml'
+      - 'scripts/poc/windows-linux-backend/**'
+permissions:
+  contents: read
+concurrency:
+  group: windows-wsl2-backend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  provision-wsl2:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Attempt WSL2 Ubuntu and native Linux Docker Engine
+        shell: powershell
+        run: ./scripts/poc/windows-linux-backend/provision-wsl2.ps1
+      - name: Preserve exact platform and provisioning evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-wsl2-platform-${{ github.run_id }}
+          path: artifacts/windows-linux-backend/
+          if-no-files-found: error
+          retention-days: 14
