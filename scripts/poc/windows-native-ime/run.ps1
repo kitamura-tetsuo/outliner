@@ -73,9 +73,14 @@ user_pref("accessibility.force_disabled", -1);
     Save-Json 'latin-desktop-probe' $latin
     Assert-That ($latin.focused -and $latin.documentFocused -and $latin.value -eq 'abc') 'Real desktop keyboard input did not reach focused Firefox textarea'
     Save-Json 'interactive-desktop' @{proven=$true; desktop=[Native]::InputDesktop(); foreground=[Native]::ForegroundProfile(); dpi=[Native]::GetDpiForWindow($script:FirefoxWindow); oracle='OS mouse focus and SendInput abc observed by Firefox'}
-    $absent = @(Candidate 'latin')
-    Assert-That ($absent.Count -eq 0) 'Negative Latin control exposed candidate window'
-    Expect-Rejection 'missing-candidate' { Require-Candidate $absent $latin }
+    try {
+        $absent = @(Candidate 'latin')
+        Assert-That ($absent.Count -eq 0) 'Negative Latin control exposed candidate window'
+        Expect-Rejection 'missing-candidate' { Require-Candidate $absent $latin }
+    } catch {
+        Save-Json 'negative-latin-uia-error' @{error="$($_.Exception.Message)"}
+        $results.I = @{status='FAILED'; evidence='Negative Latin UIA query failed; never treated as candidate absence'}
+    }
     foreach ($unused in 1..3) { Send-Key 8 }
     Write-Host 'PHASE B: provisioning Microsoft Japanese IME'
     $stage = 'B'

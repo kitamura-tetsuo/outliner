@@ -94,6 +94,7 @@ function Require-Candidate($Candidates, $State) {
     $c = $Candidates[0]
     Assert-That ($c.pid -ne $script:FirefoxPid -and $c.process -match '^(TextInputHost|InputApp|ctfmon)$') 'Candidate owner is not a recognized Windows input host'
     Assert-That ($c.automationId -eq 'IME_Candidate_Window') 'Candidate AutomationId mismatch'
+    Assert-That $State.composing 'No current composition; older composition events cannot satisfy a new session'
     Assert-That ($State.focused -and $State.documentFocused) 'Firefox textarea lost focus'
     Assert-That (($State.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted }).Count -gt 0) 'No trusted native composition'
     $fgpid = [uint32]0
