@@ -25,7 +25,9 @@ try:
             raise AssertionError(f"False positive: {label}")
     desktop.screenshot(str(out / "observer-foreign-control.png"))
     (out / "observer-live-controls.json").write_text(json.dumps(dict(windows=windows, controls=records), indent=2))
-    foreign.set_wm_name("日本語のウィンドウ".encode("utf-8"))
+    foreign.change_property(desktop.display.intern_atom("WM_NAME"),
+                            desktop.display.intern_atom("UTF8_STRING"), 8,
+                            "日本語のウィンドウ".encode("utf-8"))
     desktop.display.sync()
     unicode_windows = desktop.windows()
     assert next(w for w in unicode_windows if w["id"] == foreign.id)["name"] == "日本語のウィンドウ"

@@ -24,7 +24,8 @@ class Desktop:
                     pos = self.root.translate_coords(win, 0, 0)
                     pid = win.get_full_property(self.display.intern_atom("_NET_WM_PID"), X.AnyPropertyType)
                     types = win.get_full_property(self.display.intern_atom("_NET_WM_WINDOW_TYPE"), X.AnyPropertyType)
-                    records.append(dict(id=win.id, name=text_property(win.get_wm_name()),
+                    name = win.get_full_property(self.display.intern_atom("WM_NAME"), X.AnyPropertyType)
+                    records.append(dict(id=win.id, name=text_property(name.value) if name is not None else None,
                                         **{"class": [text_property(c) for c in (win.get_wm_class() or [])]},
                                         pid=int(pid.value[0]) if pid is not None else None,
                                         types=[self.display.get_atom_name(int(t)) for t in types.value] if types is not None else [],
