@@ -65,7 +65,23 @@ jobs:
 
       - name: Run E2E-specific startup (services + readiness)
         shell: bash
-        run: bash scripts/ci-e2e-start.sh
+        run: |
+          # The startup script is idempotent (it stops stale PM2 services,
+          # frees ports, and re-probes readiness), so one retry converts a
+          # transient runner-level bring-up failure into a pass without
+          # weakening any test. A systematic breakage still fails after the
+          # second attempt with its original exit status.
+          attempt=1
+          max_attempts=2
+          until bash scripts/ci-e2e-start.sh; do
+            status=$?
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "E2E startup failed after ${attempt} attempt(s) (exit ${status})."
+              exit "$status"
+            fi
+            echo "E2E startup attempt ${attempt} failed (exit ${status}); retrying once..."
+            attempt=$((attempt + 1))
+          done
         env:
           CI: true
           NODE_ENV: test
