@@ -1,7 +1,7 @@
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase, System.Windows.Forms, System.Drawing
 Add-Type -Path "$PSScriptRoot/Native.cs"
 function Save-Json($Name, $Object) {
-    $json = $Object | ConvertTo-Json -Depth 30
+    $json = ConvertTo-Json -InputObject $Object -Depth 30
     $json | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
     if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error' -or $Name -like 'transport-*' -or $Name -eq 'input-trace') {
         Write-Host "EVIDENCE $Name $json"
@@ -20,7 +20,17 @@ function Send-Key([int]$Key) {
 function Send-Romaji([string]$Text) {
     foreach ($c in $Text.ToUpperInvariant().ToCharArray()) { Send-Key ([int]$c) }
 }
-function State { Invoke-RestMethod http://127.0.0.1:8765/state }
+function State { Invoke-RestMethod http://127.0.0.1:8765/state -TimeoutSec 3 }
+function Wait-State([scriptblock]$Predicate, [string]$Message) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+    do {
+        $observed = State
+        if (& $Predicate $observed) { return $observed }
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    Save-Json 'wait-state-failure' $observed
+    throw $Message
+}
 function Screen-Capture($Name) {
     try {
         $r = [System.Windows.Forms.SystemInformation]::VirtualScreen
@@ -120,10 +130,15 @@ function Invoke-UIAProbe($Operation, $Name) {
         "`"$PSScriptRoot/uia-worker.ps1`"",'-OutputPath',"`"$script:Output`"",'-Operation',$Operation,'-Name',$Name) -PassThru `
         -RedirectStandardOutput "$script:Output/worker-$Name-stdout.txt" -RedirectStandardError "$script:Output/worker-$Name-stderr.txt"
     try {
+        [void]$worker.Handle
         if (-not $worker.WaitForExit(30000)) {
             $worker.Kill()
             throw "UIA/OS $Operation $Name timed out after 30 seconds"
         }
+        $worker.WaitForExit()
+        $worker.Refresh()
+        Write-Host "WORKER $Name exit=$($worker.ExitCode)"
+        if (Test-Path "$script:Output/worker-$Name-error.txt") { Get-Content "$script:Output/worker-$Name-error.txt" | Write-Host }
         Assert-That ($worker.ExitCode -eq 0) "UIA/OS $Operation $Name failed; see worker-$Name-error.txt"
         if ($Operation -eq 'candidate') {
             @(Get-Content -Raw "$script:Output/candidate-$Name.json" | ConvertFrom-Json | Where-Object { -not $_.offscreen })

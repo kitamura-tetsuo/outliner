@@ -49,8 +49,10 @@ user_pref("accessibility.force_disabled", -1);
     $firefox = Start-Process $exe -ArgumentList @('-no-remote','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru -RedirectStandardOutput "$script:Output/firefox-stdout.log" -RedirectStandardError "$script:Output/firefox-stderr.log"
     Start-Sleep -Seconds 8
     $firefox.Refresh()
-    $script:FirefoxPid = $firefox.Id
-    $script:FirefoxWindow = $firefox.MainWindowHandle
+    $windows = @(Get-Process firefox | Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero })
+    Assert-That ($windows.Count -eq 1) 'Expected one real Firefox GUI window; launcher PID alone is insufficient'
+    $script:FirefoxPid = $windows[0].Id
+    $script:FirefoxWindow = $windows[0].MainWindowHandle
     Assert-That ($script:FirefoxWindow -ne [IntPtr]::Zero) 'Firefox has no GUI main window'
     [void][Native]::ShowWindow($script:FirefoxWindow,3)
     [void][Native]::SetForegroundWindow($script:FirefoxWindow)
@@ -69,7 +71,7 @@ user_pref("accessibility.force_disabled", -1);
     Assert-That ([Native]::Click($clickX,$clickY) -eq 2) 'SendInput mouse focus failed'
     Start-Sleep -Seconds 1
     Send-Romaji 'abc'
-    $latin = State
+    $latin = Wait-State { param($s) $s.value -eq 'abc' -and $s.focused -and $s.documentFocused } 'Latin SendInput did not reach Firefox within 10 seconds'
     Save-Json 'latin-desktop-probe' $latin
     Assert-That ($latin.focused -and $latin.documentFocused -and $latin.value -eq 'abc') 'Real desktop keyboard input did not reach focused Firefox textarea'
     Save-Json 'interactive-desktop' @{proven=$true; desktop=[Native]::InputDesktop(); foreground=[Native]::ForegroundProfile(); dpi=[Native]::GetDpiForWindow($script:FirefoxWindow); oracle='OS mouse focus and SendInput abc observed by Firefox'}
@@ -91,11 +93,11 @@ user_pref("accessibility.force_disabled", -1);
     $stage = 'D'
     Send-Key 0xF2 # VK_DBE_HIRAGANA through SendInput, never Unicode insertion.
     Send-Romaji 'ni'
-    $short = State
+    $short = Wait-State { param($s) $s.composing -and $s.value -match '[\u3040-\u30ff]' } 'Japanese native preedit did not appear within 10 seconds'
     Save-Json 'preedit-short' $short
     Assert-That (@($short.events | Where-Object { $_.type -eq 'compositionstart' -and $_.trusted }).Count -gt 0) 'Microsoft Japanese IME did not start native composition after romaji'
     Send-Romaji 'hon'
-    $long = State
+    $long = Wait-State { param($s) $s.composing -and $s.value -ne $short.value } 'Japanese preedit did not extend within 10 seconds'
     Save-Json 'preedit-long' $long
     Screen-Capture 'preedit'
     Assert-That ($long.value -ne $short.value -and $long.value -match '[\u3040-\u30ff]') 'Inline preedit did not extend to Japanese characters'
@@ -123,7 +125,7 @@ user_pref("accessibility.force_disabled", -1);
     Require-Navigation $initial $chosen
     Assert-That (-not [string]::IsNullOrWhiteSpace($chosen.name)) 'Selected candidate text is empty'
     Send-Key 0x0D
-    $commit = State
+    $commit = Wait-State { param($s) -not $s.composing } 'Composition confirmation did not finish within 10 seconds'
     Save-Json 'confirmation' $commit
     $afterConfirm = @(Candidate 'after-confirm')
     Assert-That ($afterConfirm.Count -eq 0) 'Candidate window did not disappear on confirmation'
@@ -134,7 +136,7 @@ user_pref("accessibility.force_disabled", -1);
     $stage = 'H'
     Send-Romaji 'tokyo'
     Send-Key 0x1B
-    $cancel = State
+    $cancel = Wait-State { param($s) -not $s.composing -and $s.value -eq $commit.value } 'Cancellation did not restore text within 10 seconds'
     Save-Json 'cancellation' $cancel
     Assert-That ($cancel.value -eq $commit.value -and $cancel.start -eq $commit.start -and $cancel.end -eq $commit.end) 'Cancellation failed to restore text and caret'
     Assert-That (@(Candidate 'after-cancel').Count -eq 0) 'Stale candidate remains after cancellation'

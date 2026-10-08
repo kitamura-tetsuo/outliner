@@ -49,8 +49,8 @@ user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
         }
         Save-Json 'transport-after-tab-navigation' (State)
     }
-    Send-Romaji 'abc' 
-    $state = State
+    Send-Romaji 'abc'
+    $state = Wait-State { param($s) $s.value -eq 'abc' -and $s.focused -and $s.documentFocused } 'Keyboard abc was not observed within 10 seconds'
     $fgpid = [uint32]0
     [void][Native]::GetWindowThreadProcessId([Native]::GetForegroundWindow(),[ref]$fgpid)
     Save-Json 'transport-state' $state
