@@ -50,7 +50,7 @@ def wait(predicate, description, timeout=10):
 
 
 def state():
-    return driver.execute_script("return {...window.__nativeIme, focused: document.activeElement === arguments[0], value: arguments[0].value}", textarea)
+    return driver.execute_script("return {...window.__nativeIme, focused: document.hasFocus() && document.activeElement === arguments[0], value: arguments[0].value}", textarea)
 
 
 def key(name):
@@ -136,6 +136,7 @@ def verify_gtk():
 
 
 def begin(text, label):
+    wait(lambda: state()["focused"], "actual foreground textarea focus")
     command("fcitx5-remote", "-s", "mozc")
     command("fcitx5-remote", "-o")
     assert command("fcitx5-remote", "-n") == "mozc"
@@ -181,7 +182,7 @@ def exercise():
     assert state()["value"] == before + selected, "Cancellation changed textarea value"
     absent("cancelled")
     RESULTS["C"] = dict(status="PROVEN", reason="XTest typing extends kana; candidate Down changes preedit; Enter value and second composition cancellation verified")
-    RESULTS["D"] = dict(status="PROVEN", reason="Exactly one viewable Fcitx5 Input Window, matching process PID, class and COMBO type, correlated with trusted focused composition and screenshots")
+    RESULTS["D"] = dict(status="PROVEN", reason="Exactly one viewable Fcitx5 Input Window, matching process PID, class and source-defined Classic UI type, correlated with trusted focused composition and screenshots")
     RESULTS["E"] = dict(status="PROVEN", reason="Root coordinates, dimensions and viewable state recorded; same panel lifecycle observed across selection, confirmation and cancellation", selection_geometry=[first, second])
 
 
@@ -203,6 +204,10 @@ def controls():
     finally:
         foreign.destroy()
         desktop.display.sync()
+    # Openbox can leave Firefox's GTK input context unfocused after the foreign
+    # window steals focus, even while its DOM activeElement remains the textarea.
+    click(textarea)
+    wait(lambda: state()["focused"], "OS click restores Firefox focus after foreign-window control")
     RESULTS["F"] = dict(status="PROVEN", reason="Live Latin input, missing panel with forced active flags, and real foreign-owner X11 window all rejected")
 
 
