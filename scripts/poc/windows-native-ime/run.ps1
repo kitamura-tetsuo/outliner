@@ -46,7 +46,7 @@ user_pref("accessibility.force_disabled", -1);
     $server = Start-Process node -ArgumentList @("`"$PSScriptRoot/server.mjs`"","`"$script:Output`"") -PassThru -RedirectStandardOutput "$script:Output/server.log" -RedirectStandardError "$script:Output/server-error.log"
     $env:MOZ_LOG = 'timestamp,IMEHandler:5,TextInput:5'
     $env:MOZ_LOG_FILE = "$script:Output/firefox-ime.log"
-    $firefox = Start-Process $exe -ArgumentList @('-no-remote','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru
+    $firefox = Start-Process $exe -ArgumentList @('-no-remote','-profile',"`"$profile`"",'http://127.0.0.1:8765') -PassThru -RedirectStandardOutput "$script:Output/firefox-stdout.log" -RedirectStandardError "$script:Output/firefox-stderr.log"
     Start-Sleep -Seconds 8
     $firefox.Refresh()
     $script:FirefoxPid = $firefox.Id
@@ -162,7 +162,11 @@ user_pref("accessibility.force_disabled", -1);
         Save-Json 'results' @{capabilities=$results; sha=$env:GITHUB_SHA; run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"}
     }
     if ($server) { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
-    if ($firefox) { Stop-Process -Id $firefox.Id -ErrorAction SilentlyContinue }
+    if ($firefox) {
+        $browserProcesses = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'firefox.exe' -and ($_.CommandLine -like "*$profile*" -or $_.ParentProcessId -eq $firefox.Id) })
+        foreach ($browserProcess in $browserProcesses) { Stop-Process -Id $browserProcess.ProcessId -ErrorAction SilentlyContinue }
+        Stop-Process -Id $firefox.Id -ErrorAction SilentlyContinue
+    }
     Stop-Transcript
 }
 # A standalone success cannot make the complete PoC green: all A-K are required.

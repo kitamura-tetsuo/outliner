@@ -19,7 +19,8 @@ $inventory = @{
 }
 $inventory | ConvertTo-Json -Depth 15 | Set-Content -Encoding UTF8 "$target/inventory.json"
 $inventory | ConvertTo-Json -Depth 15 | Write-Host
-reg query 'HKLM\SOFTWARE\Microsoft\CTF\TIP\{03B5835F-F03C-411B-9CE2-AA23E1171E36}' /s 2>&1 |
-    Out-File "$target/tsf-before.txt"
-# A missing registry key is a recorded observation, not a probe success/failure exit.
-$global:LASTEXITCODE = 0
+$tipPath = 'HKLM:\SOFTWARE\Microsoft\CTF\TIP\{03B5835F-F03C-411B-9CE2-AA23E1171E36}'
+if (Test-Path $tipPath) {
+    Get-ChildItem $tipPath -Recurse | ForEach-Object { Get-ItemProperty $_.PSPath } |
+        Out-File "$target/tsf-before.txt"
+} else { 'Microsoft Japanese TIP registry key absent' | Set-Content "$target/tsf-before.txt" }
