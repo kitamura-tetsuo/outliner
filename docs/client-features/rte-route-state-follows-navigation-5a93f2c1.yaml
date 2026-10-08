@@ -7,11 +7,16 @@ status: implemented
 acceptance:
 - Demo routes (`/demo`, `/demo-ja`, ...) are matched by the `demoProject` param matcher in `client/src/params.ts`.
 - Following an internal link from one page to another in the same project shows the destination page, and a back navigation shows the original page again.
+- History traversal between two pages' diff or schedule routes, and between two projects' diff routes, shows and writes to the page the URL names.
+- 'Route components that bind their resource when they mount are remounted per resource by a keyed layout: `/:project/:page/diff` and `/demo/:page/diff` (heading, snapshots, live content), `/:project/:page/schedule` (the page id every schedule read and write targets), and the `/:project/-/…` and `/demo/-/…` management trees (project connection).'
 - The Object Manager preselects exactly the objects named by its `?selected=` query.
 - Traversing history between two tables on the same `/:project/-/tables/:tableId` route shows the table the URL names.
 tests:
 - client/e2e/new/rte-route-state-follows-navigation-demo-5a93f2c1.spec.ts
+- client/e2e/new/rte-route-state-follows-navigation-diff-5a93f2c1.spec.ts
+- client/e2e/new/rte-route-state-follows-navigation-diff-cross-5a93f2c1.spec.ts
 - client/e2e/new/rte-route-state-follows-navigation-project-5a93f2c1.spec.ts
+- client/e2e/new/rte-route-state-follows-navigation-schedule-5a93f2c1.spec.ts
 - client/src/params.test.ts
 - client/src/routes/[demoProject=demoProject]/[page]/page.svelte.test.ts
 - client/src/routes/[project]/-/tables/[tableId]/page.svelte.test.ts

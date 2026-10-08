@@ -7,6 +7,7 @@ status: implemented
 components:
 - client/eslint.config.js
 - client/src/params.ts
+- client/src/routes/+layout.svelte
 - client/src/service-worker.ts
 - client/sveltekit.options.js
 - client/tsconfig.json
@@ -14,7 +15,8 @@ components:
 - client/vite.config.ts
 verification:
 - npx svelte-kit sync in client exits 0 without config_file_unsupported.
-- npm run build in client writes build/index.html and build/service-worker.js with the immutable manifest inlined.
+- npm run build:production in client writes build/index.html and build/service-worker.js with the immutable manifest inlined.
+- Served like Firebase Hosting, the built app registers the worker itself; in Chromium it activates, precaches the shell, entry chunks and static assets, and answers an offline navigation with the app shell.
 tests:
 - client/src/tests/unit/service-worker.spec.ts
 - scripts/tests/env-sveltekit3-config-and-build-b7c41e29.spec.ts
