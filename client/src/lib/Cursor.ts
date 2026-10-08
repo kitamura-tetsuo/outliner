@@ -7,6 +7,8 @@ import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
+import { collectAllItemIds, CursorNavigation, type CursorNavigationContext } from "./cursor/CursorNavigation";
+import { searchItem } from "./cursor/CursorNavigationUtils";
 import {
     getCurrentLineIndex,
     getDeepestDescendant,
@@ -17,9 +19,7 @@ import {
     hasSelection as storeHasSelection,
     resolveItemText,
     selectionSpansMultipleItems,
-} from "./cursor";
-import { collectAllItemIds, CursorNavigation, type CursorNavigationContext } from "./cursor/CursorNavigation";
-import { searchItem } from "./cursor/CursorNavigationUtils";
+} from "./cursor/index";
 
 import { diagramEditingTarget, isDiagramItem } from "../services/diagram/diagramEditing";
 import { nextCharacterOffset, previousCharacterOffset } from "../services/diagram/diagramSourceView";
