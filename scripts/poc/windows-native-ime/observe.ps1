@@ -3,7 +3,7 @@ Add-Type -Path "$PSScriptRoot/Native.cs"
 function Save-Json($Name, $Object) {
     $json = ConvertTo-Json -InputObject $Object -Depth 30
     $json | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
-    if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error' -or $Name -like 'transport-*' -or $Name -eq 'input-trace' -or $Name -like 'language-*' -or $Name -like 'default-input*' -or $Name -like 'candidate-*' -or $Name -like 'control-*' -or $Name -like 'preedit-*' -or $Name -in @('confirmation','cancellation')) {
+    if ($Name -in @('results','environment','language-install','profile-requested') -or $Name -like '*-capture' -or $Name -like '*-error' -or $Name -like 'transport-*' -or $Name -eq 'input-trace' -or $Name -like 'active-tsf*' -or $Name -like 'language-*' -or $Name -like 'default-input*' -or $Name -like 'candidate-*' -or $Name -like 'control-*' -or $Name -like 'preedit-*' -or $Name -in @('confirmation','cancellation')) {
         Write-Host "EVIDENCE $Name $json"
     }
 }

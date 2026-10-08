@@ -28,6 +28,13 @@ foreach ($path in $paths) {
             Out-File -Append "$script:Output/microsoft-japanese-tsf-registry.txt"
     }
 }
+try {
+    $script:TsfObservation = [JapaneseTsf]::ActivateSession()
+    Save-Json 'active-tsf-session' @{observation=$script:TsfObservation; callerSession=(Get-Process -Id $PID).SessionId; scope='Session activation; native Firefox composition still required'}
+} catch {
+    $script:TsfObservation = "ERROR: $($_.Exception.Message)"
+    Save-Json 'active-tsf-session-error' @{error=$script:TsfObservation}
+}
 $layout = [Native]::LoadKeyboardLayout('00000411',1)
 Assert-That ($layout -ne [IntPtr]::Zero) 'Japanese keyboard layout could not be loaded'
 # This requests a keyboard profile change only; actual IME composition is checked separately.

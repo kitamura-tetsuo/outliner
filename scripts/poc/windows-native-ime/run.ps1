@@ -116,7 +116,10 @@ user_pref("accessibility.force_disabled", -1);
     $results.C = @{status='PROVEN'; evidence='input-trace.json, trusted browser compositionstart/update following romaji SendInput'}
     $results.D = @{status='PROVEN'; evidence='preedit-short.json, preedit-long.json, preedit.png'}
     # Configuration alone is not sufficient to prove the active TSF service identity.
-    $results.B = @{status='PARTIAL'; evidence='Microsoft TIP requested and Japanese composition observed; foreground HKL/profile-requested.json; exact active TSF identity still requires verification'}
+    $results.B = @{status='PARTIAL'; evidence='Microsoft TIP requested and Japanese composition observed; see active-tsf-session.json and foreground profile'}
+    if ($script:TsfObservation -match 'activeMicrosoft=True') {
+        $results.B = @{status='PROVEN'; evidence='Microsoft Japanese CLSID/profile returned by live TSF manager after session activation; trusted Firefox Japanese composition; active-tsf-session.json'}
+    }
     Write-Host 'PHASE E: querying native desktop candidate UI'
     $stage = 'E'
     Send-Key 0x20

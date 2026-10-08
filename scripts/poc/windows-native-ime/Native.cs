@@ -44,3 +44,45 @@ public static class Native {
         return "pid="+pid+" tid="+tid+" hkl="+h.ToInt64().ToString("X")+" immDescription="+b;
     }
 }
+
+[StructLayout(LayoutKind.Sequential)]
+public struct TFPROFILE {
+    public uint type;
+    public ushort language;
+    public Guid clsid, profile, category;
+    public IntPtr substitute;
+    public uint capabilities;
+    public IntPtr hkl;
+    public uint flags;
+}
+[ComImport, Guid("71C6E74C-0F28-11D8-A82A-00065B84435C"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface ITfProfileManager {
+    [PreserveSig] int ActivateProfile(uint type, ushort language, ref Guid clsid, ref Guid profile, IntPtr hkl, uint flags);
+    [PreserveSig] int DeactivateProfile(uint type, ushort language, ref Guid clsid, ref Guid profile, IntPtr hkl, uint flags);
+    [PreserveSig] int GetProfile(uint type, ushort language, ref Guid clsid, ref Guid profile, IntPtr hkl, out TFPROFILE result);
+    [PreserveSig] int EnumProfiles(ushort language, out IntPtr result);
+    [PreserveSig] int ReleaseInputProcessor(ref Guid clsid, uint flags);
+    [PreserveSig] int RegisterProfile(ref Guid clsid, ushort language, ref Guid profile, IntPtr description, uint descriptionLength,
+        IntPtr icon, uint iconLength, uint iconIndex, IntPtr substitute, uint preferredLayout, uint enabled);
+    [PreserveSig] int UnregisterProfile(ref Guid clsid, ushort language, ref Guid profile, uint flags);
+    [PreserveSig] int GetActiveProfile(ref Guid category, out TFPROFILE result);
+}
+public static class JapaneseTsf {
+    public static string ActivateSession() {
+        object instance = Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("33C53A50-F456-4884-B049-85FD643ECFED")));
+        try {
+            ITfProfileManager manager = (ITfProfileManager)instance;
+            Guid clsid = new Guid("03B5835F-F03C-411B-9CE2-AA23E1171E36");
+            Guid profile = new Guid("A76C93D9-5523-4E90-AAFA-4DB112F9AC76");
+            Guid category = new Guid("34745C63-B2F0-4784-8B67-5E12C8701A31");
+            int activation = manager.ActivateProfile(1,0x411,ref clsid,ref profile,IntPtr.Zero,0x10000000); // TF_IPPMF_FORSESSION
+            TFPROFILE active;
+            int query = manager.GetActiveProfile(ref category,out active);
+            bool matches = activation == 0 && query == 0 && active.type == 1 && active.language == 0x411 && active.clsid == clsid && active.profile == profile;
+            return "activationHRESULT="+activation.ToString("X8")+" queryHRESULT="+query.ToString("X8")+
+                " activeMicrosoft="+matches+" type="+active.type+" language="+active.language.ToString("X4")+
+                " clsid="+active.clsid+" profile="+active.profile+" flags="+active.flags+
+                " scope=TF_IPPMF_FORSESSION";
+        } finally { Marshal.ReleaseComObject(instance); }
+    }
+}
