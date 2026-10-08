@@ -4,7 +4,9 @@ New-Item -ItemType Directory -Force $output | Out-Null
 Start-Transcript "$output/provision.txt"
 $commands = @()
 function Invoke-Provision($Name, $Executable, $Arguments, $Seconds=300) {
-    $p = Start-Process $Executable -ArgumentList $Arguments -PassThru -RedirectStandardOutput "$output/$Name.stdout.txt" -RedirectStandardError "$output/$Name.stderr.txt"
+    $start = @{FilePath=$Executable; PassThru=$true; RedirectStandardOutput="$output/$Name.stdout.txt"; RedirectStandardError="$output/$Name.stderr.txt"}
+    if (@($Arguments).Count -gt 0) { $start.ArgumentList = $Arguments }
+    $p = Start-Process @start
     [void]$p.Handle
     $deadline = [DateTime]::UtcNow.AddSeconds($Seconds)
     $timedOut = $false
