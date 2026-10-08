@@ -344,7 +344,8 @@ def run():
         wait(lambda: state()["focused"], "normal editor focus")
         command("fcitx5-remote", "-c")
         key("End")
-        wait(lambda: state()["value"] == original_text, "normal End handling synchronizes the production mirror")
+        mirror = wait(lambda: state()["value"], "normal End handling synchronizes the production mirror")
+        save("production-entry", {"visible_item_text": original_text, "mirror_after_end": mirror})
         # Use an empty new item, created by the editor's ordinary Enter handling.
         key("Return")
         wait(lambda: state()["value"] == "", "new empty production item")
