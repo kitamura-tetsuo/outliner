@@ -148,7 +148,7 @@ def exercise():
     global ACTIVE_CAPABILITY
     ACTIVE_CAPABILITY = "C"
     before = state()["value"]
-    begin("nihon", "short-preedit")
+    begin("nihonn", "short-preedit")
     assert state()["preedit"] == "にほん", f"Unexpected Mozc preedit: {state()['preedit']}"
     verify_gtk()
     ACTIVE_CAPABILITY = "C"
@@ -170,7 +170,7 @@ def exercise():
     wait(lambda: not state()["composing"], "composition confirms")
     assert state()["value"] == before + selected, "Confirmed textarea value differs from selected candidate"
     absent("confirmed")
-    begin("nihon", "second-composition")
+    begin("nihonn", "second-composition")
     key("space")
     key("space")
     candidate("second-candidates")
@@ -215,7 +215,7 @@ def movement_control():
     original = driver.get_window_rect()
     positions = []
     for index in range(2):
-        begin("nihon", f"movement-{index}-preedit")
+        begin("nihonn", f"movement-{index}-preedit")
         key("space")
         key("space")
         panel = candidate(f"movement-{index}-candidate")
