@@ -72,10 +72,12 @@ user_pref("accessibility.force_disabled", -1);
     Save-Json 'latin-desktop-probe' $latin
     Assert-That ($latin.focused -and $latin.documentFocused -and $latin.value -eq 'abc') 'Real desktop keyboard input did not reach focused Firefox textarea'
     Save-Json 'interactive-desktop' @{proven=$true; desktop=[Native]::InputDesktop(); foreground=[Native]::ForegroundProfile(); dpi=[Native]::GetDpiForWindow($script:FirefoxWindow); oracle='OS mouse focus and SendInput abc observed by Firefox'}
+    $latinControlsProven = $false
     try {
         $absent = @(Candidate 'latin')
         Expect-Rejection 'direct-latin' { Require-Candidate $absent $latin }
         Expect-Rejection 'missing-candidate' { Require-Candidate @() $latin }
+        $latinControlsProven = $true
     } catch {
         Save-Json 'negative-latin-uia-error' @{error="$($_.Exception.Message)"}
         $results.I = @{status='FAILED'; evidence='Negative Latin UIA query failed; never treated as candidate absence'}
@@ -156,6 +158,16 @@ user_pref("accessibility.force_disabled", -1);
     Assert-That (@(Candidate 'after-cancel').Count -eq 0) 'Stale candidate remains after cancellation'
     $results.H = @{status='PROVEN'; evidence='cancellation.json restores confirmation text and selection'}
     $stage = 'I'
+    Assert-That $latinControlsProven 'Initial Latin/missing-window controls did not pass'
+    Send-Key 0x1A # VK_IME_OFF: explicitly switch the same textarea back to direct Latin input.
+    Send-Romaji 'abc'
+    $direct = Wait-State { param($s) -not $s.composing -and $s.value -eq ($commit.value + 'abc') } 'Direct Latin control did not produce uncomposed abc'
+    Save-Json 'control-direct-latin-state' $direct
+    $directCandidates = @(Candidate 'direct-latin-restored')
+    Expect-Rejection 'direct-latin-after-japanese' { Require-Candidate $directCandidates $direct }
+    foreach ($unused in 1..3) { Send-Key 8 }
+    Send-Key 0x16
+    Send-Key 0xF2
     # Fresh second generation prevents a captured/stale window from satisfying the oracle.
     Send-Romaji 'nihon'
     Send-Key 0x20
@@ -165,8 +177,9 @@ user_pref("accessibility.force_disabled", -1);
     $new = Require-Candidate @(Candidate 'second-generation') $secondState
     Send-Key 0x1B
     Send-Key 0x1B
+    [void](Wait-State { param($s) -not $s.composing -and $s.value -eq $commit.value } 'Second composition cancellation did not restore committed text')
     Assert-That (@(Candidate 'second-disappeared').Count -eq 0) 'Candidate did not disappear after second composition'
-    $results.I = @{status='PARTIAL'; evidence='Latin absence and second generation disappearance verified; adversarial oracle checks in controls.ps1; full direct-input restore control still required'}
+    $results.I = @{status='PROVEN'; evidence='Actual Latin mode/input rejects candidate assertion, restored Japanese opens native candidate, missing/unchanged/stale/old-generation controls reject; UIA worker errors throw rather than pass'}
     $results.J = @{status='BLOCKED'; evidence='Existing service bootstrap is Linux-specific; standalone only. No production textarea run.'}
     $results.K = @{status='BLOCKED'; evidence='No production Yjs document/cursor observation; REQ-005 is not verified.'}
 } catch {
