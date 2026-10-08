@@ -54,6 +54,7 @@ try {
         }
     }
     New-Item -ItemType Junction -Path "$app/shared/node_modules" -Target "$app/client/node_modules" | Out-Null
+    Run-Preparation 'browser-dependencies' $app @("`"$PSScriptRoot/verify-browser-deps.mjs`"","`"$app`"")
     Run-Preparation 'server-build' "$app/server" @('node_modules/typescript/bin/tsc')
     if (-not (Test-Path "$app/server/dist/server/src/index.js")) { throw 'Compiled server missing' }
     Run-Preparation 'paraglide-build' "$app/client" @($npmArg,'run','paraglide:compile')
