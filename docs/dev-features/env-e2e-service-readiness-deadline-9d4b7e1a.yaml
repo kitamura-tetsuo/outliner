@@ -1,19 +1,11 @@
 id: ENV-9d4b7e1a
 title: E2E startup enforces a real 180-second wall-clock readiness bound
-description: start_and_wait_for_services resolves E2E service readiness within
-  a single 180-second wall-clock budget that no probe, diagnostic, or recovery
-  action may extend. Every PM2, port, HTTP, and WebSocket observation is
-  bounded and clamped to the remaining budget, so an endpoint that accepts a
-  connection and never responds can no longer wedge the gate past the nominal
-  limit (previously 600s with unbounded probes). Deadline expiry fails startup
-  while naming the still-unsatisfied checks and keeping the PM2 and Firebase
-  emulator startup diagnostics. 180 seconds preserves the observed successful
-  envelope (slowest success 151s on 2026-10-07) with margin.
+description: start_and_wait_for_services resolves E2E service readiness within a single 180-second wall-clock budget that no probe, diagnostic, or recovery action may extend. Every PM2, port, HTTP, and WebSocket observation is bounded and clamped to the remaining budget, so an endpoint that accepts a connection and never responds can no longer wedge the gate past the nominal limit (previously 600s with unbounded probes). Deadline expiry fails startup while naming the still-unsatisfied checks and keeping the PM2 and Firebase emulator startup diagnostics. 180 seconds preserves the observed successful envelope (slowest success 151s on 2026-10-07) with margin.
 category: environment
 status: implemented
 components:
-- scripts/common-functions.sh
 - scripts/ci-e2e-start.sh
+- scripts/common-functions.sh
 tests:
 - scripts/tests/env-e2e-service-readiness-deadline-9d4b7e1a.spec.ts
 title-ja: E2E起動時のサービス準備完了に180秒の実時間制限を適用する

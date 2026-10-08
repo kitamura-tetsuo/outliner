@@ -1,6 +1,6 @@
 id: ENV-7f3a9c2e
 title: E2E startup retries a selectively stalled hosting emulator
-description: 'When every required E2E port except the Firebase Hosting emulator port is open for a sustained period while the firebase-emulators process stays online (the CI failure mode of PR #5453, where two shards burned the full 600s wait with zero specs executed), start_and_wait_for_services restarts the firebase-emulators process once and keeps waiting within the same overall deadline. The restart is safe before any test runs because the auth emulator holds no test state yet. On timeout the script also prints the head of logs/firebase-emulators.log so the emulator startup section is diagnosable instead of being drowned by Functions health-check spam.'
+description: Hosting readiness belongs to firebase-emulators in the generic service recovery policy. If its checks stay continuously unready for 60 seconds, the shared startup gate restarts firebase-emulators at most once within the original 180-second deadline. This replaces the former Hosting-only 120-second restart and cannot trigger an additional legacy restart. Timeout diagnostics retain the head of logs/firebase-emulators.log.
 category: environment
 status: implemented
 components:

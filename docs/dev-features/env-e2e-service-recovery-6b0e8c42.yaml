@@ -1,0 +1,12 @@
+id: ENV-6b0e8c42
+title: Automatically recover crashed or stalled E2E services during startup
+title-ja: E2E起動中に停止または停滞したサービスを自動復旧する
+description: The shared startup supervisor maps Yjs, log-service, Vite, and all Firebase emulator ports and Functions health checks to their owning PM2 services. A positively observed terminal or non-starting service is restarted once. Online or launching services with continuously unsatisfied checks are restarted after 60 seconds. Satisfied owners are never restarted. Each owner may restart at most once, including Firebase Hosting recovery, within the original 180-second startup deadline. Failed restart commands cannot lead to successful startup; persistent failures report affected services and checks without extending the budget.
+category: environment
+status: implemented
+components:
+- scripts/common-functions.sh
+tests:
+- scripts/tests/env-e2e-recovery-fail-closed-a71c3e90.spec.ts
+- scripts/tests/env-e2e-service-readiness-deadline-9d4b7e1a.spec.ts
+- scripts/tests/env-e2e-service-recovery-6b0e8c42.spec.ts
