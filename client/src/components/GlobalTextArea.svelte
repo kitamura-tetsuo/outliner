@@ -166,6 +166,10 @@ function handleCompositionEnd(event: CompositionEvent) {
 
     store.setIsComposing(false);
     if (textareaRef) {
+        // The model already placed every local caret. Re-applying the mirror's own range arms
+        // the selection-resync suppression, so the browser's post-commit selectionchange is not
+        // read back as a single caret that would drop the other local carets (#5501, REQ-005).
+        store.applyTextareaSelectionRange(textareaRef, textareaRef.selectionStart, textareaRef.selectionEnd);
         textareaRef.classList.remove("ime-input");
         textareaRef.style.opacity = "0";
         textareaRef.style.width = "1px";
@@ -274,10 +278,15 @@ function handleBlur(event: FocusEvent) {
 }
 </script>
 
+<!--
+    wrap="off": the textarea is only an input proxy; the rendered item does the visual wrapping.
+    Soft wrapping inside the proxy makes Firefox + Fcitx5 (GTK IM module) compute the native
+    candidate anchor from a wrapped internal line, displacing it or covering inline preedit (#5501).
+-->
 <textarea
-
     bind:this={textareaRef}
     class="global-textarea"
+    wrap="off"
     aria-label="Edit item text"
     role={commandPaletteStore.isVisible ? "combobox" : undefined}
     aria-expanded={commandPaletteStore.isVisible ? "true" : undefined}
