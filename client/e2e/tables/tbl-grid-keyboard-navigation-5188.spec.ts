@@ -7,8 +7,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await page.goto("/demo/-/grids/demo-table-routine-occurrences-grid");
         const gridView = page.getByTestId("yjs-table-view");
         await expect(gridView).toBeVisible({ timeout: 30000 });
-        const tbody = gridView.getByTestId("yjs-table-grid").locator("tbody");
-        await tbody.locator("tr").first().waitFor({ state: "visible", timeout: 30000 });
+        await occurrenceRow(page, "daily-inbox-").waitFor({ state: "visible", timeout: 30000 });
     });
 
     function occurrenceRow(page: import("@playwright/test").Page, idPrefix: string) {

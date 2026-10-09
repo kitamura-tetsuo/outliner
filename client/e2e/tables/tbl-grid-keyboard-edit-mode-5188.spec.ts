@@ -7,8 +7,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         await page.goto("/demo/-/grids/demo-table-routine-occurrences-grid");
         const gridView = page.getByTestId("yjs-table-view");
         await expect(gridView).toBeVisible({ timeout: 30000 });
-        const tbody = gridView.getByTestId("yjs-table-grid").locator("tbody");
-        await tbody.locator("tr").first().waitFor({ state: "visible", timeout: 30000 });
+        await stableFirstRow(page).waitFor({ state: "visible", timeout: 30000 });
     });
 
     function stableFirstRow(page: import("@playwright/test").Page) {
