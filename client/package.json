@@ -79,7 +79,7 @@
         "yjs-orderedtree": "^1.0.1-beta.3"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "^2.32.4",
+        "@dotenvx/dotenvx": "^2.33.0",
         "@eslint/compat": "^2.1.1",
         "@eslint/js": "^10.0.1",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
@@ -128,7 +128,7 @@
         "knip": "^6.39.0",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.8",
-        "monocart-coverage-reports": "^2.13.0",
+        "monocart-coverage-reports": "^2.13.1",
         "patch-package": "^8.0.1",
         "picomatch": "4.0.7",
         "playwright": "1.63.0",

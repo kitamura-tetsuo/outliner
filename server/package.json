@@ -24,7 +24,7 @@
         "yjs": "13.6.33"
     },
     "dependencies": {
-        "@dotenvx/dotenvx": "^2.32.4",
+        "@dotenvx/dotenvx": "^2.33.0",
         "@electric-sql/pglite": "^0.5.8",
         "@google-cloud/firestore": "^9.3.1",
         "@google-cloud/secret-manager": "^7.1.1",
