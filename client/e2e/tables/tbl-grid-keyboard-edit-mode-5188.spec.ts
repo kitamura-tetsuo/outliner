@@ -11,8 +11,12 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         await tbody.locator("tr").first().waitFor({ state: "visible", timeout: 30000 });
     });
 
+    function stableFirstRow(page: import("@playwright/test").Page) {
+        return page.getByTestId("yjs-table-grid").locator("tbody tr").filter({ hasText: "daily-inbox-" });
+    }
+
     test("F2 opens the active cell for editing without a mouse", async ({ page }) => {
-        const titleCell = page.getByTestId("yjs-table-grid").locator("tbody tr").first().locator(
+        const titleCell = stableFirstRow(page).locator(
             "td[data-col='title']",
         );
         await titleCell.locator("button").click();
@@ -24,7 +28,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
     });
 
     test("typing a printable character replaces the cell content and starts editing", async ({ page }) => {
-        const titleCell = page.getByTestId("yjs-table-grid").locator("tbody tr").first().locator(
+        const titleCell = stableFirstRow(page).locator(
             "td[data-col='title']",
         );
         await titleCell.locator("button").click();
@@ -36,7 +40,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
 
     test("Enter commits the edit and moves the active cell down", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = stableFirstRow(page);
         const titleCell = firstRow.locator("td[data-col='title']");
         // A click on the display button already opens the editor (see TextCell).
         await titleCell.locator("button").click();
@@ -52,7 +56,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
 
     test("Escape cancels an in-progress edit and Tab commits + moves right instead", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = stableFirstRow(page);
         const titleCell = firstRow.locator("td[data-col='title']");
         const originalTitle = (await titleCell.locator("button").textContent())?.trim() ?? "";
 
@@ -82,7 +86,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
 
     test("a focused select cell keeps native arrow-key behavior instead of navigating the grid", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const cadenceCell = grid.locator("tbody tr").first().locator("td[data-col='cadence']");
+        const cadenceCell = stableFirstRow(page).locator("td[data-col='cadence']");
         const select = cadenceCell.locator("select");
         await select.click();
         await expect(cadenceCell).toHaveClass(/grid-active/);

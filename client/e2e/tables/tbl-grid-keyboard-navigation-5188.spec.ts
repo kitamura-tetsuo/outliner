@@ -11,6 +11,10 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await tbody.locator("tr").first().waitFor({ state: "visible", timeout: 30000 });
     });
 
+    function occurrenceRow(page: import("@playwright/test").Page, idPrefix: string) {
+        return page.getByTestId("yjs-table-grid").locator("tbody tr").filter({ hasText: idPrefix });
+    }
+
     /**
      * Selects a text cell and focuses it without leaving it in edit mode: a
      * plain click on the display button opens the editor (see TextCell), so
@@ -26,7 +30,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("arrow keys move the active cell in all four directions", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox-");
         const titleCell = firstRow.locator("td[data-col='title']");
         await selectAndFocus(titleCell);
         await expect(titleCell).toHaveClass(/grid-active/);
@@ -40,7 +44,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await expect(titleCell).not.toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowDown");
-        const secondRow = grid.locator("tbody tr").nth(1);
+        const secondRow = occurrenceRow(page, "daily-standup-");
         await expect(secondRow.locator("td[data-col='template_id']")).toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowRight");
@@ -52,7 +56,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Shift+Arrow extends a rectangular selection from the anchor", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
@@ -65,7 +69,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Escape reduces an extended range to its active cell", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
@@ -80,7 +84,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Tab moves right and wraps to the next row at the edge", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.press("Tab");
@@ -92,8 +96,8 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Shift+Enter moves the active cell up", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
-        const secondRow = grid.locator("tbody tr").nth(1);
+        const firstRow = occurrenceRow(page, "daily-inbox-");
+        const secondRow = occurrenceRow(page, "daily-standup-");
         await selectAndFocus(secondRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
