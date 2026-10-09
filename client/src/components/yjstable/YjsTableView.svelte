@@ -107,11 +107,14 @@ let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
-// Schema text used by the execution currently represented by `result`.
-// Comparing schema notifications with this value (rather than with the
-// immediately preceding notification) prevents an equivalent replay from
-// revoking a completed result after transient adapter notifications.
-let queryExecutionSchemaSql = $state<string | undefined>(undefined);
+// Revisions are advanced only by the authoritative Yjs configuration
+// sources, not by adapter state replays. A completion captures both revisions
+// so an old result cannot regain authority after A -> B -> A configuration
+// changes, while an equivalent adapter notification cannot make it read-only.
+let queryRevision = $state(0);
+let schemaRevision = $state(0);
+let executionQueryRevision = $state(-1);
+let executionSchemaRevision = $state(-1);
 let clientRevision = $state(0);
 
 // View switching: panels can be toggled independently (parallel display).
@@ -150,16 +153,20 @@ function refreshGridMirror() {
 
 const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
     if (events.some(event => event.target === grid.entry && event.changes.keys.has("query"))) {
-        // Revoke the displayed result's authority immediately. In particular,
-        // A -> B -> A must not make an old A completion current again.
-        queryExecution = undefined;
-        queryExecutionSchemaSql = undefined;
+        queryRevision++;
     }
     refreshGridMirror();
 };
 
+const schemaTextObserver = () => {
+    schemaRevision++;
+};
+
 const bareIdAuthority = $derived.by(() => {
-    if (!schema || !sqlName || queryExecution?.status !== "completed" || queryExecution.query !== gridQuery) {
+    if (
+        !schema || !sqlName || queryExecution?.status !== "completed" || queryExecution.query !== gridQuery
+        || executionQueryRevision !== queryRevision || executionSchemaRevision !== schemaRevision
+    ) {
         return undefined;
     }
     return resolveBareIdMutationAuthority(queryExecution.query, sqlName, schema, result.columns);
@@ -214,6 +221,7 @@ onMount(() => {
     // bound to the same Grid keeps its manager when this one unmounts.
     retainGridUndoManager(grid.entry);
     grid.entry.observeDeep(gridMirrorObserver);
+    handles.schemaText.observe(schemaTextObserver);
     registerTableClipboardSource(handles.tableId, clipboardSource);
 
     cleanupWebMCP = registerWebMCPGridTools(
@@ -243,16 +251,6 @@ onMount(() => {
         isInitialSyncDone = acquired.remoteSynced;
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed, error) => {
-                // Adapter subscriptions may replay the same applied schema
-                // after a completed query (for example while demo records are
-                // hydrating).  Only a material schema change invalidates the
-                // result-bound authority; revoking on an identical replay
-                // leaves a current result permanently read-only because that
-                // replay does not itself require another query execution.
-                if (queryExecution && queryExecutionSchemaSql !== parsed?.createSql) {
-                    queryExecution = undefined;
-                    queryExecutionSchemaSql = undefined;
-                }
                 schema = parsed;
                 schemaError = error;
             },
@@ -265,7 +263,8 @@ onMount(() => {
             onResult: (r, execution) => {
                 result = r;
                 queryExecution = execution;
-                queryExecutionSchemaSql = execution?.status === "completed" ? schema?.createSql : undefined;
+                executionQueryRevision = queryRevision;
+                executionSchemaRevision = schemaRevision;
                 clientRevision++;
                 chartPanel?.update(r);
             },
@@ -280,6 +279,7 @@ onMount(() => {
 
 onDestroy(() => {
     grid.entry.unobserveDeep(gridMirrorObserver);
+    handles.schemaText.unobserve(schemaTextObserver);
     unsubscribeAdapter?.();
     unsubscribeRunner?.();
     runner?.dispose();
