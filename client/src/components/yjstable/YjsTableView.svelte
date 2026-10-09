@@ -109,6 +109,8 @@ let schemaRevision = $state(0);
 let executionQueryRevision = $state(-1);
 let executionSchemaRevision = $state(-1);
 let clientRevision = $state(0);
+let observedQuery = getGridQuery(grid);
+let observedSchemaSql = handles.schemaText.toString();
 
 // View switching: panels can be toggled independently (parallel display).
 let showUiDef = $state(false);
@@ -144,13 +146,23 @@ function refreshGridMirror() {
 
 const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
     if (events.some(event => event.target === grid.entry && event.changes.keys.has("query"))) {
-        queryRevision++;
+        const nextQuery = getGridQuery(grid);
+        // A same-value Yjs rewrite is not a configuration change. Distinct
+        // A -> B -> A transactions still advance twice and cannot revive an
+        // action captured against the first A.
+        if (nextQuery !== observedQuery) queryRevision++;
+        observedQuery = nextQuery;
     }
     refreshGridMirror();
 };
 
 const schemaTextObserver = () => {
-    schemaRevision++;
+    const nextSchemaSql = handles.schemaText.toString();
+    // Schema application normalizes by replacing the Y.Text even when its
+    // final SQL is unchanged. Do not invalidate a completed result for that
+    // replay; actual intervening schema values still advance the revision.
+    if (nextSchemaSql !== observedSchemaSql) schemaRevision++;
+    observedSchemaSql = nextSchemaSql;
 };
 
 const bareIdAuthority = $derived.by(() => {
