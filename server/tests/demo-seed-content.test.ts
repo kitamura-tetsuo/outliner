@@ -21,6 +21,7 @@ import {
     DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
     DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
+    DEMO_TASKS_PRIORITY_GRID_ID,
     DEMO_TASKS_TABLE_ID,
     DEMO_TEMPLATE_REVISION,
     DEMO_WEEKLY_RULE_ID,
@@ -498,6 +499,38 @@ describe("Demo seed content", () => {
         // The two Grids are independent presentations of one Table.
         const dflt = grids.get(`${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}-grid`)!;
         expect(history!.get("query")).to.not.equal(dflt.get("query"));
+    });
+
+    it("seeds the semantic-priority Grid over the unchanged Tasks Table", () => {
+        const tasks = demoTables.find(template => template.tableId === DEMO_TASKS_TABLE_ID)!;
+        const originalQuery = tasks.query;
+        const originalSchema = tasks.schemaSql;
+        const originalRecords = structuredClone(tasks.records);
+        const projectDoc = new Y.Doc();
+
+        registerDemoTables(projectDoc, "demo", "en");
+
+        const grids = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
+        const semanticGrid = grids.get(DEMO_TASKS_PRIORITY_GRID_ID);
+        expect(semanticGrid).to.not.equal(undefined);
+        expect(semanticGrid!.get("sourceTableId")).to.equal(DEMO_TASKS_TABLE_ID);
+        expect(semanticGrid!.get("name")).to.equal("Tasks · semantic priority order");
+        expect(semanticGrid!.get("query")).to.equal(
+            "SELECT id, title, priority\n"
+                + "FROM tasks\n"
+                + "ORDER BY CASE priority\n"
+                + "  WHEN 'high' THEN 0\n"
+                + "  WHEN 'medium' THEN 1\n"
+                + "  WHEN 'low' THEN 2\n"
+                + "  ELSE 3\n"
+                + "END, id",
+        );
+        expect(semanticGrid!.get("query")).to.not.equal(
+            grids.get(`${DEMO_TASKS_TABLE_ID}-grid`)!.get("query"),
+        );
+        expect(tasks.query).to.equal(originalQuery);
+        expect(tasks.schemaSql).to.equal(originalSchema);
+        expect(tasks.records).to.deep.equal(originalRecords);
     });
 
     it("seeds votes and a comment thread on the Comments and Votes page", () => {
