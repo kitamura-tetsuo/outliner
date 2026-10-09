@@ -42,7 +42,11 @@ for (
         await expect(rows).toHaveCount(EXPECTED_IDS.length, { timeout: 30000 });
         expect(await rows.evaluateAll(elements => elements.map(row => row.getAttribute("data-record-id"))))
             .toEqual(EXPECTED_IDS);
-        expect(await rows.locator("td[data-col='priority']").allTextContents())
+        expect(
+            await rows.locator("td[data-col='priority'] select").evaluateAll(
+                selects => selects.map(select => (select as HTMLSelectElement).value),
+            ),
+        )
             .toEqual(["high", "high", "medium", "medium", "low"]);
 
         await view.getByTestId("yjs-table-toggle-ui").click();
