@@ -28,7 +28,7 @@ test(
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         const before = await snapshotProject(page);
         const cell = fixture.gridA.getByTestId("yjs-table-grid")
-            .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
+            .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
         await expect(cell.locator("button.cell-value")).toHaveAttribute("aria-disabled", "true");
         await cell.click();
@@ -51,7 +51,7 @@ test(
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         const standaloneBefore = await snapshotProject(page);
         const standaloneCell = standalone.getByTestId("yjs-table-grid")
-            .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
+            .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
         await standaloneCell.click();
         await page.keyboard.press("Enter");
         await expect(standaloneCell.locator("input.cell-input")).toHaveCount(0);
