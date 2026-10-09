@@ -39,7 +39,6 @@ import {
 import type {
     RecordSyncError,
     TableQueryResult,
-    TableSyncAdapter,
 } from "../../services/yjstable/tableSyncAdapter";
 import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
@@ -112,7 +111,6 @@ let chartPanel = $state<TableChartPanel | undefined>(undefined);
 // The adapter is owned by the engine, not by this component: several views of
 // the same table share one materialization, and sibling tables pulled in by a
 // cross-table query stay alive for as long as this session holds them.
-let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let runner = $state<GridQueryRunner | undefined>(undefined);
 
 function refreshGridMirror() {
@@ -211,7 +209,6 @@ onMount(() => {
             logger.warn({ tableId: handles.tableId }, "[YjsTableView] table is not registered in this project");
             return;
         }
-        adapter = acquired.adapter;
         isInitialSyncDone = acquired.remoteSynced;
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed) => {
