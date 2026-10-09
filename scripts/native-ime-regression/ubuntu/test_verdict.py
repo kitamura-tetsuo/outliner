@@ -7,8 +7,9 @@ from verdict import (CALIBRATION_LIMIT_PX, HORIZONTAL_TOLERANCE_PX, OVERLAP_TOLE
 
 def sample(glyph_left=200.0, top=300.0, panel_x=None, panel_y=None, text="亜々", reading="ああ"):
     line = dict(left=glyph_left, right=glyph_left + 48, top=top, bottom=top + 23)
-    return dict(text=text, reading=reading, keys=["space", "space", "Down"], font="400 16px \"Noto Sans CJK JP\"", glyph_left=glyph_left,
-                line_rects=[line],
+    return dict(text=text, reading=reading, prefix="", keys=["space", "space", "Down"], font="400 16px \"Noto Sans CJK JP\"", glyph_left=glyph_left,
+                line_rects=[line], selection=dict(source="fcitx5-candidate-list", text=text,
+                    segment=dict(index=0, start=0, end=len(text)), expected=text),
                 panel=dict(x=glyph_left - 12 if panel_x is None else panel_x,
                            y=top + 27 if panel_y is None else panel_y, width=254, height=424))
 
@@ -45,13 +46,18 @@ class PlacementVerdict(unittest.TestCase):
         self.assertIn("application-room-below", failed_checks(verdict))
 
     def test_mismatched_reference_is_rejected(self):
-        for ref in [sample(reading="いい"), dict(sample(), keys=["space", "space"]), dict(sample(), font="16px serif"),
+        for ref in [sample(reading="いい"), dict(sample(), prefix="prefix"), dict(sample(), keys=["space", "space"]), dict(sample(), font="16px serif"),
                     sample(glyph_left=260, panel_x=248)]:
             self.assertFalse(placement_verdict(sample(), ref, 1200)["ok"])
 
-    def test_learned_candidate_order_is_recorded_not_required(self):
+    def test_different_native_candidate_is_rejected(self):
         verdict = placement_verdict(sample(text="ああ"), sample(text="あゝ"), 1200)
-        self.assertTrue(verdict["ok"], failed_checks(verdict))
+        self.assertEqual(failed_checks(verdict), ["matched-reference-native-selection"])
+
+    def test_different_segment_and_missing_observation_are_rejected(self):
+        for native in [None, dict(sample()["selection"], segment=dict(index=1, start=2, end=4))]:
+            self.assertEqual(failed_checks(placement_verdict(dict(sample(), selection=native), sample(), 1200)),
+                             ["matched-reference-native-selection"])
 
 
 class Calibration(unittest.TestCase):

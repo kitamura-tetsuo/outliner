@@ -33,7 +33,8 @@ frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
   - At each stage the harness converts, opens the native list, changes its selection with
     Down, and samples placement.
   - The run fails unless all of the following hold:
-    - the panel highlight changes and the inline preedit changes;
+    - the native candidate cursor/text or focused segment changes, and the inline preedit
+      matches the independently observed native selection;
     - exactly one trusted composition covers the whole sequence;
     - the composing text is rendered inline in the item;
     - after confirmation, the canonical Y.Text and the rendered text equal the existing
@@ -44,18 +45,46 @@ frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
   properties. On top of that, `identity.py` requires the X server's own record of the
   window's owning client (X-Resource extension) to be the launched Fcitx5 daemon.
   `_NET_WM_PID` alone can be forged; the owning client cannot.
+- **Native selection.** A test-only Fcitx5 addon (`selection-observer.cpp`) observes
+  `InputContextFlushUI` and reads the same `CandidateList` that classicui renders. It
+  records `cursorIndex()`, the selected candidate's text, and the native client-preedit
+  pieces with Mozc's `HighLight` formatting. This also identifies the focused segment.
+  The full candidate display label is preserved. Fcitx5's `toStringForCommit()` excludes
+  formatted `DontCommit` pieces. Legacy Mozc versions also embed script annotations
+  directly in candidate text; `selection.py` decodes only the three known Japanese
+  script labels in this kana-only corpus and rejects other ambiguous annotations.
+  It never uses preedit to infer the candidate value. The observer
+  does not change the engine, panel, or application. An atomic snapshot includes the
+  daemon PID, input-context UUID and increasing sequence number; missing, stale, foreign,
+  unfocused or ambiguous observations fail closed. X-Resource panel ownership is still
+  checked separately. This is a native model observer, not AT-SPI or OCR.
+  - The confirmation expectation replaces the native focused segment with the candidate
+    read from the list, keeping other native segments. Browser preedit and trusted
+    `compositionend` data must independently agree with this expectation.
+  - `--check-selection` runs the observer preflight on a real Firefox reference textarea,
+    without application services. It covers native selection changes, all three reading
+    lengths, confirmation, cancellation and the selection negative controls.
 - **Placement verdict** (`verdict.py`). Every sample is compared with a normal
   `wrap="off"` textarea (no padding or border) in a second tab of the same window. That
-  reference has the item's font and line height and receives the same keystrokes.
+  reference has the item's font, line height and existing text prefix and receives the
+  same keystrokes. Its left edge is offset by the measured prefix width, so the first
+  composing glyph still starts at the application's composing glyph.
   - **Placing the reference.** Before each pair, a throwaway one-kana composition in the
     item measures where its first composing glyph is drawn. That composition is then
     cancelled and its panel must close. The reference is placed so its glyph box
     coincides with the measured one.
-  - **Learning.** Mozc learns from confirmations, so the selected candidate can differ
-    between the two observations. The reading and the OS key script must match; the
-    selected text is recorded but not compared.
+  - **Surrounding text.** The prefix must match as well: Mozc uses it when selecting
+    candidates, so an empty reference cannot stand in for an application item after
+    existing text. Cancellation must restore the prefix in the reference.
+  - **Learning.** Even when Mozc learns from confirmations, the selected candidate text,
+    focused segment (index and character range), and full native conversion must match
+    the reference exactly. An incomparable pair is repeated at most three times, with
+    separate evidence for every attempt. Editing outcomes and all other placement
+    checks remain mandatory on every attempt; only native selection mismatches can
+    trigger retries. Exhaustion fails the scenario, with no fallback to reading-only
+    matching. Candidate ordering can be investigated using the saved native snapshots.
   - A sample passes only if all of these hold:
-    - the reading, keys, font and input start match the reference;
+    - the reading, keys, native selected text/segment, font and input start match the reference;
     - there is room below the line for the panel in both observations;
     - the panel covers neither observation's displayed composing glyphs by more than 2px;
     - `(panel left − first composing glyph)` differs from the reference by at most 2px.
@@ -63,6 +92,15 @@ frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
   rounding alone. Each relative offset mixes one integer X11 coordinate with one
   sub-pixel layout coordinate. Calibration error is common to both tabs.
 - **Live negative controls.**
+  - Resize the actual X11 panel by 3px and send an Expose redraw, without changing
+    its native selection. The old pixel/size rule would accept this as a selection
+    change; the native predicate must reject it. Restore and verify the original
+    panel size before confirmation.
+  - Holding a live panel observation fixed, separately corrupt the measured browser
+    preedit and trusted commit text. Both mismatches must be rejected. These are mutations
+    of live evidence, like the Windows outcome controls; they do not simulate IME output.
+    The original and corrupted observations are preserved. The report requires all three
+    selection controls in addition to the placement/identity controls.
   - Latin input with no panel is rejected, including when the active flags are forced.
   - A foreign X11 window that copies the panel's name, class, type and even the daemon's
     `_NET_WM_PID` is rejected.
@@ -87,20 +125,6 @@ frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
 `calibration.json`, root screenshots, panel crops and per-sample window records.
 `report.py` turns these into `verdict.json` and the job summary.
 
-### Known limitations of the Ubuntu oracle
-
-- **Selected candidate is not observed natively.** The Ubuntu job takes the selected
-  candidate text from the browser's inline preedit; it does not read the candidate
-  highlighted in the Fcitx5 panel. "Selection changed" is judged from a pixel difference of
-  the panel. The Windows job reads the selected candidate from UI Automation instead.
-- **Selection is not matched against the reference.** Only the reading and the key script
-  are matched. A placement that depends on which candidate or segment is focused is
-  therefore not compared like-for-like.
-
-Both limits are accepted for this revision because the regression targets proxy
-placement, which the 2px checks cover for the first focused segment. Closing them needs a
-native selection observer on Ubuntu (for example AT-SPI) and is tracked separately.
-
 ## Windows Firefox + Microsoft Japanese IME (AS-003)
 
 The Windows job reuses the prepared harness unchanged: Win32 `SendInput`, native UI
@@ -122,6 +146,8 @@ Ubuntu 24.04 machine with sudo, run as a non-root user (Mozc refuses to start as
 
 ```sh
 bash scripts/poc/native-ime/setup.sh
+sudo apt-get install -y g++ pkg-config libfcitx5core-dev nlohmann-json3-dev
+bash scripts/native-ime-regression/ubuntu/run.sh --check-selection
 (cd server && npm run build) && bash scripts/ci-e2e-start.sh
 node scripts/native-ime-regression/verify-served-revision.mjs . http://127.0.0.1:7090 job_logs/native-ime-regression/ubuntu/application-identity.json
 bash scripts/native-ime-regression/ubuntu/run.sh

@@ -7,6 +7,7 @@ pointer events (see ``calibration_verdict``) before any placement verdict is eva
 The tolerances below are declared before any observation and are never derived from,
 or widened by, the observations they judge.
 """
+from selection import matched_selection
 
 # Pointer-event calibration: a commanded X11 pointer position must be reported back by
 # Firefox at the same CSS position. Pointer coordinates are integers, while
@@ -74,13 +75,15 @@ def placement_verdict(app, reference, screen_height):
     def check(name, passed, **measured):
         checks.append(dict(name=name, passed=bool(passed), **measured))
 
-    # Same reading and the same OS key script (convert, open the list, one Down). Mozc's own
-    # learning may reorder candidates between the two runs, so the selected text is recorded
-    # rather than required to be equal: the panel anchors at the focused first segment, which
-    # starts at the composition start in both observations.
+    # A learned candidate order must never weaken the like-for-like comparison.
     check("matched-reference-reading", app["reading"] == reference["reading"]
-          and app["keys"] == reference["keys"], app_text=app["text"], reference_text=reference["text"],
-          app_reading=app["reading"], reference_reading=reference["reading"])
+          and app["keys"] == reference["keys"] and app["prefix"] == reference["prefix"],
+          app_text=app["text"], reference_text=reference["text"],
+          app_reading=app["reading"], reference_reading=reference["reading"],
+          app_prefix=app["prefix"], reference_prefix=reference["prefix"])
+    check("matched-reference-native-selection", bool(app.get("selection") and reference.get("selection"))
+          and matched_selection(app["selection"], reference["selection"]),
+          application=app.get("selection"), reference=reference.get("selection"))
     check("matched-reference-font", app["font"] == reference["font"], app_font=app["font"],
           reference_font=reference["font"])
     check("matched-input-start", abs(app["glyph_left"] - reference["glyph_left"]) <= HORIZONTAL_TOLERANCE_PX

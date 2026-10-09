@@ -41,9 +41,13 @@ jobs:
           cat /etc/os-release > "$IME_ARTIFACTS/os-release.txt"
       - name: Verdict unit controls
         working-directory: scripts/native-ime-regression/ubuntu
-        run: python3 -m unittest test_verdict -v
+        run: python3 -m unittest discover -p 'test_*.py' -v
       - name: Install native Firefox, Fcitx5 and Mozc
         run: bash scripts/poc/native-ime/setup.sh
+      - name: Install native observer build dependencies
+        run: sudo apt-get install -y g++ pkg-config libfcitx5core-dev nlohmann-json3-dev
+      - name: Verify native selection observer and live controls
+        run: IME_ARTIFACTS="$IME_ARTIFACTS/selection-preflight" bash scripts/native-ime-regression/ubuntu/run.sh --check-selection
       - name: Prepare application runtime
         uses: ./.github/actions/setup-e2e-deps
       - name: Build and start the application under test
