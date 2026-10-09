@@ -39,6 +39,7 @@ NEGATIVE_STYLE_ID = "native-ime-negative-control"
 
 driver = desktop = None
 handles = {}
+last_item = {"id": None}  # The most recent item the harness created through the editor UI.
 assertions = []
 log = []
 
@@ -54,7 +55,7 @@ def save(name, value):
 def record(name, passed, **measured):
     entry = dict(name=name, passed=bool(passed), **measured)
     assertions.append(entry)
-    print(f"{'PASS' if passed else 'FAIL'} {name} {json.dumps(measured, ensure_ascii=False, default=str)[:600]}",
+    print(f"{'PASS' if passed else 'FAIL'} {name} {json.dumps(measured, ensure_ascii=False, default=str)[:3000]}",
           flush=True)
     if not passed:
         raise Failed(f"{name}: {json.dumps(measured, ensure_ascii=False)[:2000]}")
@@ -298,7 +299,11 @@ def stage(env, selector, label, line_of):
     visible = sum(ink(Image.open(path).crop(tuple(round(v) for v in (r["left"], r["top"], r["right"], r["bottom"]))))
                   for r in line["rects"])
     record(f"{label}-composing-text-visible-inline", visible >= 20, dark_pixels=visible)
-    return dict(env=env, text=selected["preedit"], reading=reading, before_selection=first, font=font_key(line["font"]),
+    receiver = driver.execute_script(
+        "const r=document.querySelector(arguments[0]).getBoundingClientRect();"
+        "return {left:mozInnerScreenX+r.left,top:mozInnerScreenY+r.top,right:mozInnerScreenX+r.right,"
+        "bottom:mozInnerScreenY+r.bottom}", selector)
+    return dict(env=env, receiver_rect=receiver, text=selected["preedit"], reading=reading, before_selection=first, font=font_key(line["font"]),
                 glyph_left=line["rects"][0]["left"], line_rects=line["rects"], panel=panel,
                 screenshot=path.name, compositions=selected["compositions"])
 
@@ -393,7 +398,10 @@ def application_run(label, prefix, end, matched, mutation=None, expect_failure=N
         for index, entry in enumerate(verdicts):
             record(f"{label}-{STAGES[index][0]}-placement", entry["verdict"]["ok"],
                    failed=failed_checks(entry["verdict"]), displacement_px=entry["verdict"]["displacement_px"],
-                   covered=entry["verdict"]["covered"])
+                   covered=entry["verdict"]["covered"],
+                   checks=[c for c in entry["verdict"]["checks"] if not c["passed"]],
+                   application_receiver=entry["application"]["receiver_rect"],
+                   reference_receiver=entry["reference"]["receiver_rect"])
         record(f"{label}-canonical-and-rendered-text", outcome["canonical"] == expected_text
                and outcome["rendered"] == expected_text, canonical=outcome["canonical"],
                rendered=outcome["rendered"], expected=expected_text)
@@ -416,25 +424,28 @@ def refocus_application(label, prefix):
     except Failed:
         pass
     item = app_item()
+    target = item["id"] or last_item["id"]
     point = driver.execute_script("""
       const el = document.querySelector(`.outliner-item[data-item-id="${arguments[0]}"] .item-text`);
       const range = document.createRange(); range.selectNodeContents(el);
       const text = range.getBoundingClientRect(), box = el.getBoundingClientRect();
       const x = el.textContent.length ? text.right + 2 : box.left + 4;
       return [mozInnerScreenX + x, mozInnerScreenY + box.top + box.height / 2];
-    """, item["id"])
+    """, target)
     os_click(*point)
     current = wait(lambda: when(app_state(), lambda s: s["focused"]),
                    f"{label}: OS click returns focus to the production receiver")
-    after = app_item()
-    record(f"{label}-refocus-keeps-baseline-caret", after["cursors"] == item["cursors"]
-           and after["cursors"][0]["offset"] == utf16_length(prefix), before=item["cursors"], after=after["cursors"])
+    if prefix is not None:
+        after = app_item()
+        record(f"{label}-refocus-keeps-baseline-caret", after["cursors"] == item["cursors"]
+               and after["cursors"][0]["offset"] == utf16_length(prefix), before=item["cursors"], after=after["cursors"])
     return current
 
 
 def new_app_item(label, prefix):
     tab("application")
     ime(False)
+    refocus_application(f"{label}-new-item", None)
     key("End")
     key("Return")
     wait(lambda: (s := app_item())["canonical"] == "" and s["rendered"] == "" and app_state()["value"] == "",
@@ -442,6 +453,7 @@ def new_app_item(label, prefix):
     type_text(prefix)
     wait(lambda: app_item()["canonical"] == prefix, f"{label}: ordinary typing writes the existing text")
     item = app_item()
+    last_item["id"] = item["id"]
     record(f"{label}-baseline-caret", item["cursors"] == [dict(itemId=item["id"], offset=utf16_length(prefix),
                                                                 isActive=True)], cursors=item["cursors"])
     return app_start_geometry(item["id"])
@@ -465,6 +477,7 @@ def enter_application():
                                  "return [mozInnerScreenX+r.left+r.width/2, mozInnerScreenY+r.top+r.height/2]", items[1])
     os_click(*rect)
     wait(lambda: app_state()["focused"], "OS click focuses the app-created production receiver")
+    last_item["id"] = app_item()["id"]
     record("production-receiver-created-by-app", app_state()["className"].split()[0] == "global-textarea")
 
 
@@ -570,11 +583,16 @@ def isolated(errors, name, action):
         print(f"SCENARIO FAILED {name}\n{traceback.format_exc()[-3000:]}", flush=True)
         try:
             capture(f"{name}-failure")
-            for _ in range(3):
-                key("Escape")
+            for selector in ("#reference", APP_RECEIVER):
+                if driver.execute_script("return !!document.querySelector(arguments[0])", selector):
+                    for _ in range(3):
+                        if not state(selector)["composing"]:
+                            break
+                        key("Escape")
             ime(False)
             tab("application")
             driver.execute_script("document.getElementById(arguments[0])?.remove()", NEGATIVE_STYLE_ID)
+            refocus_application(f"{name}-recovery", None)
         except Exception:
             errors.append(dict(scenario=f"{name}-recovery", error=traceback.format_exc()))
 
