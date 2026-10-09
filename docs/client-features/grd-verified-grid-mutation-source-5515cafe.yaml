@@ -5,11 +5,11 @@ description: Bare-id Grid edits are permitted only when the completed query prov
 category: tables
 status: implemented
 acceptance:
-- A completed plain SELECT from the Grid source Table keeps unaliased source columns editable
 - A SELECT from a different Table remains visible but cannot mutate either Table even when schemas and record IDs overlap
+- A completed plain SELECT from the Grid source Table keeps unaliased source columns editable
 - Calculated, renamed, duplicate, synthetic identity, CTE, JOIN, DISTINCT, aggregate, and set-operation provenance fails closed for bare-id writes
-- Changing the saved query or source schema immediately revokes authority from displayed rows until a compatible query completes
 - Cell, selection, paste, replace, delete, and add-row boundaries revalidate bare-id authority before writing
+- Changing the saved query or source schema immediately revokes authority from displayed rows until a compatible query completes
 - Explicit source_kind and source_id routing and raw Table editing remain independent
 tests:
 - client/src/services/yjstable/queryAnalysis.test.ts

@@ -237,7 +237,13 @@ onMount(() => {
         isInitialSyncDone = acquired.remoteSynced;
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed, error) => {
-                queryExecution = undefined;
+                // Adapter subscriptions may replay the same applied schema
+                // after a completed query (for example while demo records are
+                // hydrating).  Only a material schema change invalidates the
+                // result-bound authority; revoking on an identical replay
+                // leaves a current result permanently read-only because that
+                // replay does not itself require another query execution.
+                if (schema?.createSql !== parsed?.createSql) queryExecution = undefined;
                 schema = parsed;
                 schemaError = error;
             },

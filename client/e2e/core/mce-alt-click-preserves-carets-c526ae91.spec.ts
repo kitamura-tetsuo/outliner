@@ -1,8 +1,11 @@
 import "../utils/registerAfterEachSnapshot";
 import { expect, type Page, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
+
+registerCoverageHooks();
 
 /** @feature MCE-37b78b62: additive mouse gestures preserve existing local carets. */
 async function localCursors(page: Page) {
