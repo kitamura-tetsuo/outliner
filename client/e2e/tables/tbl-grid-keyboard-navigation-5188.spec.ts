@@ -22,7 +22,9 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
      */
     async function selectAndFocus(cell: import("@playwright/test").Locator) {
         const button = cell.locator("button");
-        await button.click();
+        // aria-disabled communicates that editing is unavailable, but the
+        // button deliberately remains a Grid selection/navigation target.
+        await button.click({ force: true });
         const input = cell.locator("input");
         if (await input.isVisible()) {
             await input.press("Escape");
