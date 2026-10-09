@@ -87,6 +87,20 @@ frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
 `calibration.json`, root screenshots, panel crops and per-sample window records.
 `report.py` turns these into `verdict.json` and the job summary.
 
+### Known limitations of the Ubuntu oracle
+
+- **Selected candidate is not observed natively.** The Ubuntu job takes the selected
+  candidate text from the browser's inline preedit; it does not read the candidate
+  highlighted in the Fcitx5 panel. "Selection changed" is judged from a pixel difference of
+  the panel. The Windows job reads the selected candidate from UI Automation instead.
+- **Selection is not matched against the reference.** Only the reading and the key script
+  are matched. A placement that depends on which candidate or segment is focused is
+  therefore not compared like-for-like.
+
+Both limits are accepted for this revision because the regression targets proxy
+placement, which the 2px checks cover for the first focused segment. Closing them needs a
+native selection observer on Ubuntu (for example AT-SPI) and is tracked separately.
+
 ## Windows Firefox + Microsoft Japanese IME (AS-003)
 
 The Windows job reuses the prepared harness unchanged: Win32 `SendInput`, native UI
