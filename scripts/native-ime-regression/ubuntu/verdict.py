@@ -74,8 +74,12 @@ def placement_verdict(app, reference, screen_height):
     def check(name, passed, **measured):
         checks.append(dict(name=name, passed=bool(passed), **measured))
 
-    check("matched-reference-text", app["text"] == reference["text"] and app["reading"] == reference["reading"],
-          app_text=app["text"], reference_text=reference["text"],
+    # Same reading and the same OS key script (convert, open the list, one Down). Mozc's own
+    # learning may reorder candidates between the two runs, so the selected text is recorded
+    # rather than required to be equal: the panel anchors at the focused first segment, which
+    # starts at the composition start in both observations.
+    check("matched-reference-reading", app["reading"] == reference["reading"]
+          and app["keys"] == reference["keys"], app_text=app["text"], reference_text=reference["text"],
           app_reading=app["reading"], reference_reading=reference["reading"])
     check("matched-reference-font", app["font"] == reference["font"], app_font=app["font"],
           reference_font=reference["font"])

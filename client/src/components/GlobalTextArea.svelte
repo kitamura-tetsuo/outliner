@@ -334,6 +334,11 @@ function handleBlur(event: FocusEvent) {
     height: 1px;
     opacity: 0;
     pointer-events: none;
+    /* The native IME anchors its candidate window to the caret inside this textarea. Without
+       the user-agent padding and border, that caret starts exactly at the left/top where
+       EditorOverlay places the textarea, i.e. at the displayed composition start (#5501). */
+    padding: 0;
+    border: 0;
     /* Prevent the hidden textarea from extending the document width and causing horizontal scrollbars */
     contain: layout;
 }

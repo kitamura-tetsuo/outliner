@@ -55,8 +55,8 @@ def save(name, value):
 def record(name, passed, **measured):
     entry = dict(name=name, passed=bool(passed), **measured)
     assertions.append(entry)
-    print(f"{'PASS' if passed else 'FAIL'} {name} {json.dumps(measured, ensure_ascii=False, default=str)[:3000]}",
-          flush=True)
+    detail = json.dumps(measured, ensure_ascii=False, default=str)
+    print(f"PASS {name}" if passed else f"FAIL {name} {detail[:3000]}", flush=True)
     if not passed:
         raise Failed(f"{name}: {json.dumps(measured, ensure_ascii=False)[:2000]}")
     return entry
@@ -197,25 +197,35 @@ def app_item():
     """)
 
 
-def app_start_geometry(item_id):
-    """Predicted visible input start of the next composition, from the rendered item."""
-    return driver.execute_script("""
+def app_start_geometry(item_id, prefix):
+    """The application's actual composing-glyph box at the composition start.
+
+    A throwaway one-kana preedit (OS keystroke "a") is rendered inline and measured, then
+    cancelled with Escape before any conversion, so Mozc learns nothing from it and the item
+    text is restored. The reference textarea is then placed so its glyph box coincides.
+    """
+    start = utf16_length(prefix)
+    before = app_state()["compositions"]
+    ime(True)
+    type_text("a")
+    wait(lambda: when(app_state(), lambda s: s["composing"] and s["preedit"] == "あ"
+                      and s["compositions"] == before + 1), "start probe: one-kana inline preedit")
+    line = wait(lambda: app_line(item_id, start, 1), "start probe: composing glyph rendered inline")
+    style = driver.execute_script("""
       const el = document.querySelector(`.outliner-item[data-item-id="${arguments[0]}"] .item-text`);
-      const s = getComputedStyle(el), r = el.getBoundingClientRect();
-      const left = r.left + parseFloat(s.paddingLeft) + parseFloat(s.borderLeftWidth);
-      const top = r.top + parseFloat(s.paddingTop) + parseFloat(s.borderTopWidth);
-      const contentHeight = r.height - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom)
-        - parseFloat(s.borderTopWidth) - parseFloat(s.borderBottomWidth);
-      let start = left;
-      if (el.textContent.length) {
-        const range = document.createRange(); range.selectNodeContents(el);
-        start = range.getBoundingClientRect().right;
-      }
-      const lineHeight = parseFloat(s.lineHeight);
-      return {left: start, top, lineHeight: Number.isFinite(lineHeight) ? lineHeight : contentHeight,
-              font: {fontFamily: s.fontFamily, fontSize: s.fontSize, fontWeight: s.fontWeight,
-                     fontStyle: s.fontStyle, letterSpacing: s.letterSpacing}};
+      const s = getComputedStyle(el);
+      return {lineHeight: parseFloat(s.lineHeight), font: {fontFamily: s.fontFamily, fontSize: s.fontSize,
+              fontWeight: s.fontWeight, fontStyle: s.fontStyle, letterSpacing: s.letterSpacing}};
     """, item_id)
+    key("Escape")
+    wait(lambda: when(app_state(), lambda s: not s["composing"]), "start probe: preedit cancelled")
+    wait(lambda: app_item()["canonical"] == prefix, "start probe: item text restored")
+    ime(False)
+    glyph = line["rects"][0]
+    origin = screen()
+    record("start-probe-glyph-measured", glyph["bottom"] > glyph["top"], glyph=glyph)
+    return dict(left=glyph["left"] - origin["x"], glyphTop=glyph["top"] - origin["y"],
+                glyphHeight=glyph["bottom"] - glyph["top"], lineHeight=style["lineHeight"], font=style["font"])
 
 
 def font_key(font):
@@ -259,7 +269,9 @@ def place_reference(start):
     driver.execute_script("""
       const [g] = arguments, ta = document.getElementById('reference');
       ta.value = '';
-      Object.assign(ta.style, {left: g.left + 'px', top: g.top + 'px', lineHeight: g.lineHeight + 'px',
+      // Half-leading: a glyph box of height h sits (lineHeight - h) / 2 below its line top.
+      const top = g.glyphTop - (g.lineHeight - g.glyphHeight) / 2;
+      Object.assign(ta.style, {left: g.left + 'px', top: top + 'px', lineHeight: g.lineHeight + 'px',
                                height: g.lineHeight + 'px', ...g.font});
     """, start)
 
@@ -303,7 +315,7 @@ def stage(env, selector, label, line_of):
         "const r=document.querySelector(arguments[0]).getBoundingClientRect();"
         "return {left:mozInnerScreenX+r.left,top:mozInnerScreenY+r.top,right:mozInnerScreenX+r.right,"
         "bottom:mozInnerScreenY+r.bottom}", selector)
-    return dict(env=env, receiver_rect=receiver, text=selected["preedit"], reading=reading, before_selection=first, font=font_key(line["font"]),
+    return dict(env=env, receiver_rect=receiver, text=selected["preedit"], reading=reading, keys=["space", "space", "Down"], before_selection=first, font=font_key(line["font"]),
                 glyph_left=line["rects"][0]["left"], line_rects=line["rects"], panel=panel,
                 screenshot=path.name, compositions=selected["compositions"])
 
@@ -456,7 +468,7 @@ def new_app_item(label, prefix):
     last_item["id"] = item["id"]
     record(f"{label}-baseline-caret", item["cursors"] == [dict(itemId=item["id"], offset=utf16_length(prefix),
                                                                 isActive=True)], cursors=item["cursors"])
-    return app_start_geometry(item["id"])
+    return app_start_geometry(item["id"], prefix)
 
 
 def matched_pair(label, prefix, end, mutation=None, expect_failure=None):

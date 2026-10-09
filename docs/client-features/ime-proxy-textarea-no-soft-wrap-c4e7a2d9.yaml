@@ -4,6 +4,7 @@ title-ja: 共有入力テキストエリアはIME変換中もソフト折り返�
 category: input-method
 status: implemented
 tests:
+- client/e2e/core/ime-proxy-line-alignment-c4e7a2d9.spec.ts
 - client/e2e/core/ime-proxy-no-wrap-document-layout-c4e7a2d9.spec.ts
 - client/e2e/core/ime-proxy-no-wrap-editing-results-c4e7a2d9.spec.ts
 - client/e2e/core/ime-proxy-textarea-no-soft-wrap-c4e7a2d9.spec.ts
@@ -14,4 +15,5 @@ acceptance:
 - Confirming or cancelling a composition at one or more local carets yields the same text and caret results as before
 - Native verification is automated by .github/workflows/native-ime-regression.yml (see docs/native-ime-regression.md) against the revision under test, with OS-level input on Ubuntu/X11 Firefox + Fcitx5 and Windows Firefox + Microsoft Japanese IME
 - Rendered item text still wraps at its available width, other text controls keep soft wrapping, the caret is followed during composition, and the document scroll width does not grow
+- The proxy has no padding or border and its line coincides with the displayed line holding the composition start, so the native caret (and candidate window anchor) starts at the displayed composing glyph
 - The shared input proxy textarea.global-textarea has wrap="off" from its first render and keeps it through composition start, updates, confirmation, cancellation, later compositions and reloads
