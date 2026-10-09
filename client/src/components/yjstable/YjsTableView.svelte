@@ -107,6 +107,11 @@ let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
+// Schema text used by the execution currently represented by `result`.
+// Comparing schema notifications with this value (rather than with the
+// immediately preceding notification) prevents an equivalent replay from
+// revoking a completed result after transient adapter notifications.
+let queryExecutionSchemaSql = $state<string | undefined>(undefined);
 let clientRevision = $state(0);
 
 // View switching: panels can be toggled independently (parallel display).
@@ -148,6 +153,7 @@ const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
         // Revoke the displayed result's authority immediately. In particular,
         // A -> B -> A must not make an old A completion current again.
         queryExecution = undefined;
+        queryExecutionSchemaSql = undefined;
     }
     refreshGridMirror();
 };
@@ -243,7 +249,10 @@ onMount(() => {
                 // result-bound authority; revoking on an identical replay
                 // leaves a current result permanently read-only because that
                 // replay does not itself require another query execution.
-                if (schema?.createSql !== parsed?.createSql) queryExecution = undefined;
+                if (queryExecution && queryExecutionSchemaSql !== parsed?.createSql) {
+                    queryExecution = undefined;
+                    queryExecutionSchemaSql = undefined;
+                }
                 schema = parsed;
                 schemaError = error;
             },
@@ -256,6 +265,7 @@ onMount(() => {
             onResult: (r, execution) => {
                 result = r;
                 queryExecution = execution;
+                queryExecutionSchemaSql = execution?.status === "completed" ? schema?.createSql : undefined;
                 clientRevision++;
                 chartPanel?.update(r);
             },
