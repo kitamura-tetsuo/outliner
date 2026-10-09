@@ -49,7 +49,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
 
         await expect(titleCell.locator("input")).not.toBeVisible();
         await expect(titleCell.locator("button")).toHaveText("Renamed via keyboard", { timeout: 30000 });
-        const secondRow = grid.locator("tbody tr").nth(1);
+        const secondRow = grid.locator("tbody tr").filter({ hasText: "daily-standup-" });
         await expect(secondRow.locator("td[data-col='title']")).toHaveClass(/grid-active/);
     });
 

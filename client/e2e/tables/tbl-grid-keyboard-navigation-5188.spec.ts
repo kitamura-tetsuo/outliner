@@ -78,7 +78,9 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await page.keyboard.press("Escape");
 
         await expect(grid.locator("td.grid-selected")).toHaveCount(1);
-        await expect(grid.locator("tbody tr").nth(1).locator("td[data-col='cadence']")).toHaveClass(/grid-active/);
+        await expect(occurrenceRow(page, "daily-standup-").locator("td[data-col='cadence']")).toHaveClass(
+            /grid-active/,
+        );
     });
 
     test("Tab moves right and wraps to the next row at the edge", async ({ page }) => {
