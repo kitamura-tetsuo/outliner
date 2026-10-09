@@ -2,7 +2,13 @@
 import type { Page } from "@playwright/test";
 import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "../fixtures/grid-render-trace";
-import { addSourceRecord, createBlankGrid, readGridProjectState, setCellValue } from "../utils/crossProjectGridHelpers";
+import {
+    addSourceRecord,
+    configureGrid,
+    createBlankGrid,
+    readGridProjectState,
+    setCellValue,
+} from "../utils/crossProjectGridHelpers";
 import { expectTextWrappedWithin, rowBoxOf, rowsContiguous } from "../utils/gridPaintContainmentHelpers";
 import { commitWidthsProduction, expectFixedWidth, singleGridId } from "../utils/gridWidthHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
@@ -40,17 +46,7 @@ test.describe("Grid fixed-column wrapping shows every line and rows reflow", () 
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["page 1"]);
         await createBlankGrid(page, "Widths", "width_items");
         const view = page.getByTestId("yjs-table-view").first();
-        if (!await view.getByTestId("yjs-table-schema-input").isVisible().catch(() => false)) {
-            await view.getByTestId("yjs-table-toggle-schema").click();
-        }
-        const schemaEditor = new SqlEditorHelper(view.getByTestId("yjs-table-schema-input"));
-        await schemaEditor.waitForReady();
-        await schemaEditor.setValue(page, SCHEMA);
-        await view.getByTestId("yjs-table-schema-apply").click();
-        const warning = view.getByTestId("yjs-table-schema-warning");
-        if (await warning.isVisible().catch(() => false)) await view.getByTestId("yjs-table-schema-confirm").click();
-        await expect.poll(async () => await schemaEditor.value(), { timeout: 30000 }).toBe(SCHEMA);
-        await setQuery(page, BASE_QUERY);
+        await configureGrid(page, 0, SCHEMA, BASE_QUERY, "title");
         await addSourceRecord(page);
         await addSourceRecord(page, 0, 2);
         const grid = view.getByTestId("yjs-table-grid");

@@ -25,9 +25,12 @@ test.describe("Grid Schema Editor Paste", () => {
 
         const view = page.getByTestId("yjs-table-view").first();
         await expect(view).toBeVisible({ timeout: 15000 });
-        await view.getByTestId("yjs-table-toggle-schema").click();
+        await view.getByTestId("yjs-grid-source-table-link").click();
+        const tableView = page.getByTestId("table-entity-view");
+        await expect(tableView).toBeVisible({ timeout: 30000 });
+        await tableView.getByTestId("table-entity-toggle-schema").click();
 
-        const schemaEditor = new SqlEditorHelper(view.getByTestId("yjs-table-schema-input"));
+        const schemaEditor = new SqlEditorHelper(tableView.getByTestId("yjs-table-schema-input"));
         await schemaEditor.waitForReady();
         const itemCountBefore = await page.locator(".outliner-item[data-item-id]").count();
 

@@ -35,14 +35,12 @@ test.describe("Table schema editor keyboard handling", () => {
         // Wait for the grid container to appear
         await expect(view.locator(".yjs-table-container")).toBeVisible({ timeout: 15000 }).catch(() => {});
 
-        // Open the schema panel explicitly via the panel control button
-        const toggleBtn = view.locator('[data-testid="yjs-table-toggle-schema"]');
-        if (await toggleBtn.count() > 0) {
-            await toggleBtn.first().click();
-        }
-
-        // Wait for the schema editor to appear
-        await page.locator('[data-testid="yjs-table-schema-input"]').waitFor({ state: "visible", timeout: 15000 });
+        // Open the Table-owned schema editor through the Grid's source action.
+        await view.getByTestId("yjs-grid-source-table-link").click();
+        const tableView = page.getByTestId("table-entity-view");
+        await expect(tableView).toBeVisible({ timeout: 30000 });
+        await tableView.getByTestId("table-entity-toggle-schema").click();
+        await tableView.getByTestId("yjs-table-schema-input").waitFor({ state: "visible", timeout: 15000 });
     });
 
     test("Enter key inserts newline in schema editor and retains focus", async ({ page }) => {
@@ -91,7 +89,9 @@ test.describe("Table schema editor keyboard handling", () => {
         // Wait for the applying state to clear
         await expect(schemaApplyButton).toHaveText("Apply schema");
 
-        // Explicitly set the query to ensure we get results back and the grid renders columns
+        // Explicitly set the query on the Grid after returning from the Table page.
+        await page.goBack();
+        await expect(page.getByTestId("yjs-table-view").first()).toBeVisible({ timeout: 30000 });
         await page.getByTestId("yjs-table-toggle-ui").first().click();
         await expect(page.locator('[data-testid="yjs-table-ui-editor"]')).toBeVisible({ timeout: 15000 });
 

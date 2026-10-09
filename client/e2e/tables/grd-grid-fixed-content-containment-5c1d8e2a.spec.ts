@@ -2,7 +2,13 @@
 import type { Locator, Page } from "@playwright/test";
 import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "../fixtures/grid-render-trace";
-import { addSourceRecord, createBlankGrid, readGridProjectState, setCellValue } from "../utils/crossProjectGridHelpers";
+import {
+    addSourceRecord,
+    configureGrid,
+    createBlankGrid,
+    readGridProjectState,
+    setCellValue,
+} from "../utils/crossProjectGridHelpers";
 import {
     expectNeighborUncovered,
     expectTextPaintClipped,
@@ -46,24 +52,7 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["page 1"]);
         await createBlankGrid(page, "Widths", "width_items");
         const view = page.getByTestId("yjs-table-view").first();
-        if (!await view.getByTestId("yjs-table-schema-input").isVisible().catch(() => false)) {
-            await view.getByTestId("yjs-table-toggle-schema").click();
-        }
-        const schemaEditor = new SqlEditorHelper(view.getByTestId("yjs-table-schema-input"));
-        await schemaEditor.waitForReady();
-        await schemaEditor.setValue(page, SCHEMA);
-        await view.getByTestId("yjs-table-schema-apply").click();
-        const warning = view.getByTestId("yjs-table-schema-warning");
-        if (await warning.isVisible().catch(() => false)) await view.getByTestId("yjs-table-schema-confirm").click();
-        await expect.poll(async () => await schemaEditor.value(), { timeout: 30000 }).toBe(SCHEMA);
-        if (!await view.getByTestId("yjs-table-query-input").isVisible().catch(() => false)) {
-            await view.getByTestId("yjs-table-toggle-ui").click();
-        }
-        await new SqlEditorHelper(view.getByTestId("yjs-table-query-input")).fillAndCommit(page, QUERY);
-        const labelInput = view.getByTestId("yjs-table-label-title");
-        await expect(labelInput).toBeVisible({ timeout: 30000 });
-        await labelInput.fill(LONG_LABEL);
-        await labelInput.evaluate((e) => e.blur());
+        await configureGrid(page, 0, SCHEMA, QUERY, LONG_LABEL);
         await addSourceRecord(page);
         await addSourceRecord(page, 0, 2);
         const grid = view.getByTestId("yjs-table-grid");
