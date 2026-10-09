@@ -50,6 +50,7 @@ import { registerWebMCPGridTools } from "../../mcp/WebMCP";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
 import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
 import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
+import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
 
 const logger = getLogger("YjsTableView");
 
@@ -142,7 +143,21 @@ function refreshGridMirror() {
     confirmRowDelete = getGridConfirmRowDelete(grid);
 }
 
-const gridMirrorObserver = () => refreshGridMirror();
+const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
+    if (events.some(event => event.target === grid.entry && event.changes.keys.has("query"))) {
+        // Revoke the displayed result's authority immediately. In particular,
+        // A -> B -> A must not make an old A completion current again.
+        queryExecution = undefined;
+    }
+    refreshGridMirror();
+};
+
+const bareIdAuthority = $derived.by(() => {
+    if (!schema || !sqlName || queryExecution?.status !== "completed" || queryExecution.query !== gridQuery) {
+        return undefined;
+    }
+    return resolveBareIdMutationAuthority(queryExecution.query, sqlName, schema, result.columns);
+});
 
 // What this view hands to the system clipboard when a copy crosses its host
 // item. The getters run at copy time, so they read whatever is on screen then.
@@ -222,6 +237,7 @@ onMount(() => {
         isInitialSyncDone = acquired.remoteSynced;
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed, error) => {
+                queryExecution = undefined;
                 schema = parsed;
                 schemaError = error;
             },
@@ -400,6 +416,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {schema}
                     query={gridQuery}
                     {result}
+                    {bareIdAuthority}
                     {componentTypes}
                     {columnOrder}
                     {columnLabels}

@@ -414,3 +414,24 @@ describe("collectSelectedRowTargets + removeRowTargets for unioned/source rows",
         expect(provider.writes).toEqual([{ op: "DELETE", rowId: "row-1", disposition: undefined }]);
     });
 });
+
+describe("bare-id mutation boundary", () => {
+    it("revalidates delayed writes and refuses deleted records", () => {
+        const { handles, rowTargets, ctx } = setup([{ name: "before", done: false, status: "Open", score: 1 }]);
+        const recordId = rowTargets[0];
+        const selection = new GridSelection();
+        selection.select({ rowId: recordId, columnId: "name" });
+        let authorized = false;
+        ctx.canMutateBareId = () => authorized;
+
+        expect(applyValueToSelection(selection, ctx, "blocked")).toEqual({
+            applied: false,
+            reason: "authority-unavailable",
+        });
+        expect(valueOf(handles, recordId, "name")).toBe("before");
+        authorized = true;
+        handles.data.delete(recordId);
+        applyValueToSelection(selection, ctx, "must-not-recreate");
+        expect(handles.data.has(recordId)).toBe(false);
+    });
+});

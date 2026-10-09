@@ -1,10 +1,57 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { resetPgliteForTests, TableSqlError } from "./pgliteService";
-import { analyzeQueryEditability, assertSelectQuery } from "./queryAnalysis";
+import { analyzeQueryEditability, assertSelectQuery, resolveBareIdMutationAuthority } from "./queryAnalysis";
 import { parseCreateTable } from "./schemaIntrospection";
 
 afterAll(async () => {
     await resetPgliteForTests();
+});
+
+describe("resolveBareIdMutationAuthority", () => {
+    const schemaPromise = parseCreateTable(
+        'CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, "題名" TEXT, points INTEGER)',
+    );
+
+    it("rejects an equally shaped sibling relation as a source mismatch", async () => {
+        const authority = resolveBareIdMutationAuthority(
+            "SELECT id, title FROM other_tasks",
+            "tasks",
+            await schemaPromise,
+            ["id", "title"],
+        );
+        expect(authority.status).toBe("source-mismatch");
+        expect(authority.reason).toMatch(/other_tasks.*source Table/);
+    });
+
+    it("proves the required plain single-table projection forms", async () => {
+        const schema = await schemaPromise;
+        for (
+            const query of [
+                "SELECT t.id, t.title, t.\"題名\" FROM tasks AS t WHERE t.title <> '' ORDER BY t.title LIMIT 2 OFFSET 1",
+                "SELECT * FROM tasks WHERE NOT EXISTS (SELECT 1 FROM tasks later WHERE later.id = tasks.id)",
+            ]
+        ) {
+            const authority = resolveBareIdMutationAuthority(query, "tasks", schema, ["id", "title", "題名", "points"]);
+            expect(authority.status, query).toBe("compatible");
+            expect(authority.editableColumns.has("title"), query).toBe(true);
+        }
+    });
+
+    it("does not authorize calculated, renamed, CTE, or synthetic identity outputs", async () => {
+        const schema = await schemaPromise;
+        const cases = [
+            "SELECT 'same-id' AS id, title FROM tasks",
+            "SELECT id, points * 2 AS title FROM tasks",
+            "WITH tasks AS (SELECT * FROM other_tasks) SELECT id, title FROM tasks",
+        ];
+        for (const query of cases) {
+            const authority = resolveBareIdMutationAuthority(query, "tasks", schema, ["id", "title"]);
+            if (query.includes("points")) {
+                expect(authority.status).toBe("compatible");
+                expect(authority.editableColumns.has("title")).toBe(false);
+            } else expect(authority.status).toBe("unavailable");
+        }
+    });
 });
 
 describe("assertSelectQuery", () => {
