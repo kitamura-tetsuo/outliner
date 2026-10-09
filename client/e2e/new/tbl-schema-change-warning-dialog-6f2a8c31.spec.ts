@@ -85,6 +85,8 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
 
         await editor.getByTestId("yjs-table-schema-confirm").click();
         await expect(warning).toBeHidden({ timeout: 10000 });
+        const schemaValue = await new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input")).value();
+        expect(schemaValue).not.toContain("done");
 
         await page.goBack();
         // The stale UI query still selects the removed "done" column, so it
@@ -92,9 +94,5 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
         // (not just the dialog) actually took effect.
         await expect(page.getByTestId("yjs-table-query-error")).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId("yjs-table-query-error")).toContainText("done");
-
-        // The schema text itself reflects the applied (destructive) change.
-        const schemaValue = await new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input")).value();
-        expect(schemaValue).not.toContain("done");
     });
 });
