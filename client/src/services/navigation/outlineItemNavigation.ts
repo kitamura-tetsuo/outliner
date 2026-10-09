@@ -165,10 +165,6 @@ export async function navigateToOutlineItem(
         if (!alreadyOpen) {
             const projectName = options.projectName ?? routeProjectName(project);
             if (!projectName) return false;
-            // `resolvePath` is this repository's wrapper around SvelteKit's own
-            // `resolve`, which the lint rule cannot see through (same disable as
-            // lib/debug.ts).
-            /* eslint-disable-next-line svelte/no-navigation-without-resolve */
             await goto(resolvePath(projectPagePath(projectName, location.pageTitle)));
         }
         return await revealOutlineItem(location, options.timeoutMs ?? DEFAULT_REVEAL_TIMEOUT_MS);
