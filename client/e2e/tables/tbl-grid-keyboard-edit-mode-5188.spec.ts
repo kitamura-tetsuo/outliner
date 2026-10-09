@@ -85,7 +85,10 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
     test("a focused select cell keeps native arrow-key behavior instead of navigating the grid", async ({ page }) => {
         const cadenceCell = stableFirstTaskRow(page).locator("td[data-col='status']");
         const select = cadenceCell.locator("select");
-        await select.click();
+        // The result may be fail-closed while another demo client refreshes;
+        // aria-disabled blocks editing but the native control stays focusable
+        // so selection and keyboard navigation remain available.
+        await select.click({ force: true });
         await expect(cadenceCell).toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowDown");

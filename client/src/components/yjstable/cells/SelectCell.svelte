@@ -16,9 +16,10 @@ const current = $derived(value === null || value === undefined ? "" : String(val
 
 <select
     class="cell-select"
+    class:readonly={!editable}
     aria-label={ariaLabel || "Select value"}
+    aria-disabled={!editable}
     value={current}
-    disabled={!editable}
     onpointerdown={(e: Event) => e.stopPropagation()}
     onmousedown={(e: Event) => e.stopPropagation()}
     onmouseup={(e: Event) => e.stopPropagation()}
@@ -26,7 +27,13 @@ const current = $derived(value === null || value === undefined ? "" : String(val
         e.stopPropagation();
         (e.target as HTMLElement).focus();
     }}
+    onkeydown={(e) => {
+        if (!editable && ["ArrowDown", "ArrowUp", "Home", "End", " "].includes(e.key)) {
+            e.preventDefault();
+        }
+    }}
     onchange={(e) => {
+        if (!editable) return;
         const v = (e.target as HTMLSelectElement).value;
         onCommit(v === "" ? null : v);
     }}
@@ -51,7 +58,7 @@ const current = $derived(value === null || value === undefined ? "" : String(val
     font: inherit;
 }
 
-.cell-select:disabled {
+.cell-select.readonly {
     color: #4b5563;
     appearance: none;
 }
