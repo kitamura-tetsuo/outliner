@@ -7,12 +7,15 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         await page.goto("/demo/-/grids/demo-table-routine-occurrences-grid");
         const gridView = page.getByTestId("yjs-table-view");
         await expect(gridView).toBeVisible({ timeout: 30000 });
-        const tbody = gridView.getByTestId("yjs-table-grid").locator("tbody");
-        await tbody.locator("tr").first().waitFor({ state: "visible", timeout: 30000 });
+        await occurrenceRow(page, "daily-inbox").waitFor({ state: "visible", timeout: 30000 });
     });
 
+    function occurrenceRow(page: import("@playwright/test").Page, templateId: string) {
+        return page.getByTestId("yjs-table-grid").locator(`tbody tr[data-record-id^='${templateId}-']`);
+    }
+
     test("F2 opens the active cell for editing without a mouse", async ({ page }) => {
-        const titleCell = page.getByTestId("yjs-table-grid").locator("tbody tr").first().locator(
+        const titleCell = occurrenceRow(page, "daily-inbox").locator(
             "td[data-col='title']",
         );
         await titleCell.locator("button").click();
@@ -24,7 +27,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
     });
 
     test("typing a printable character replaces the cell content and starts editing", async ({ page }) => {
-        const titleCell = page.getByTestId("yjs-table-grid").locator("tbody tr").first().locator(
+        const titleCell = occurrenceRow(page, "daily-inbox").locator(
             "td[data-col='title']",
         );
         await titleCell.locator("button").click();
@@ -35,8 +38,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
     });
 
     test("Enter commits the edit and moves the active cell down", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox");
         const titleCell = firstRow.locator("td[data-col='title']");
         // A click on the display button already opens the editor (see TextCell).
         await titleCell.locator("button").click();
@@ -46,13 +48,12 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
 
         await expect(titleCell.locator("input")).not.toBeVisible();
         await expect(titleCell.locator("button")).toHaveText("Renamed via keyboard", { timeout: 30000 });
-        const secondRow = grid.locator("tbody tr").nth(1);
+        const secondRow = occurrenceRow(page, "daily-standup");
         await expect(secondRow.locator("td[data-col='title']")).toHaveClass(/grid-active/);
     });
 
     test("Escape cancels an in-progress edit and Tab commits + moves right instead", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox");
         const titleCell = firstRow.locator("td[data-col='title']");
         const originalTitle = (await titleCell.locator("button").textContent())?.trim() ?? "";
 
@@ -81,8 +82,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
     });
 
     test("a focused select cell keeps native arrow-key behavior instead of navigating the grid", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
-        const cadenceCell = grid.locator("tbody tr").first().locator("td[data-col='cadence']");
+        const cadenceCell = occurrenceRow(page, "daily-inbox").locator("td[data-col='cadence']");
         const select = cadenceCell.locator("select");
         await select.click();
         await expect(cadenceCell).toHaveClass(/grid-active/);

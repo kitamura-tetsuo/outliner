@@ -7,9 +7,12 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await page.goto("/demo/-/grids/demo-table-routine-occurrences-grid");
         const gridView = page.getByTestId("yjs-table-view");
         await expect(gridView).toBeVisible({ timeout: 30000 });
-        const tbody = gridView.getByTestId("yjs-table-grid").locator("tbody");
-        await tbody.locator("tr").first().waitFor({ state: "visible", timeout: 30000 });
+        await occurrenceRow(page, "daily-inbox").waitFor({ state: "visible", timeout: 30000 });
     });
+
+    function occurrenceRow(page: import("@playwright/test").Page, templateId: string) {
+        return page.getByTestId("yjs-table-grid").locator(`tbody tr[data-record-id^='${templateId}-']`);
+    }
 
     /**
      * Selects a text cell and focuses it without leaving it in edit mode: a
@@ -25,8 +28,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     }
 
     test("arrow keys move the active cell in all four directions", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox");
         const titleCell = firstRow.locator("td[data-col='title']");
         await selectAndFocus(titleCell);
         await expect(titleCell).toHaveClass(/grid-active/);
@@ -40,7 +42,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await expect(titleCell).not.toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowDown");
-        const secondRow = grid.locator("tbody tr").nth(1);
+        const secondRow = occurrenceRow(page, "daily-standup");
         await expect(secondRow.locator("td[data-col='template_id']")).toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowRight");
@@ -52,7 +54,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Shift+Arrow extends a rectangular selection from the anchor", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
@@ -65,7 +67,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Escape reduces an extended range to its active cell", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
@@ -75,12 +77,13 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await page.keyboard.press("Escape");
 
         await expect(grid.locator("td.grid-selected")).toHaveCount(1);
-        await expect(grid.locator("tbody tr").nth(1).locator("td[data-col='cadence']")).toHaveClass(/grid-active/);
+        await expect(occurrenceRow(page, "daily-standup").locator("td[data-col='cadence']")).toHaveClass(
+            /grid-active/,
+        );
     });
 
     test("Tab moves right and wraps to the next row at the edge", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
+        const firstRow = occurrenceRow(page, "daily-inbox");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.press("Tab");
@@ -91,9 +94,8 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Shift+Enter moves the active cell up", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = grid.locator("tbody tr").first();
-        const secondRow = grid.locator("tbody tr").nth(1);
+        const firstRow = occurrenceRow(page, "daily-inbox");
+        const secondRow = occurrenceRow(page, "daily-standup");
         await selectAndFocus(secondRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
