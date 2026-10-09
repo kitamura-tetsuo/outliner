@@ -15,8 +15,8 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     }
 
     /**
-     * Selects a text cell and focuses it without leaving it in edit mode: a
-     * editable display buttons open the editor, so this cancels that path;
+     * Selects a text cell and focuses it without leaving it in edit mode.
+     * Editable display buttons open the editor, so this cancels that path;
      * read-only result buttons remain focusable for selection/navigation and
      * need no cancellation. Both land in the same Grid navigation mode.
      */
