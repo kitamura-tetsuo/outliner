@@ -45,15 +45,20 @@ frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
   window's owning client (X-Resource extension) to be the launched Fcitx5 daemon.
   `_NET_WM_PID` alone can be forged; the owning client cannot.
 - **Placement verdict** (`verdict.py`). Every sample is compared with a normal
-  `wrap="off"` textarea in a second tab of the same window. That reference has the
-  item's font and line height, sits at the item's visible input-start position, and
-  receives the same keystrokes. The reference runs before the application in each pair,
-  so Mozc's learning from a confirmation cannot change the candidate order between the
-  two. A sample passes only if all of these hold:
-  - the text, reading, font and input start match the reference;
-  - there is room below the line for the panel in both observations;
-  - the panel covers neither observation's displayed composing glyphs by more than 2px;
-  - `(panel left − first composing glyph)` differs from the reference by at most 2px.
+  `wrap="off"` textarea (no padding or border) in a second tab of the same window. That
+  reference has the item's font and line height and receives the same keystrokes.
+  - **Placing the reference.** Before each pair, a throwaway one-kana composition in the
+    item measures where its first composing glyph is drawn. That composition is then
+    cancelled and its panel must close. The reference is placed so its glyph box
+    coincides with the measured one.
+  - **Learning.** Mozc learns from confirmations, so the selected candidate can differ
+    between the two observations. The reading and the OS key script must match; the
+    selected text is recorded but not compared.
+  - A sample passes only if all of these hold:
+    - the reading, keys, font and input start match the reference;
+    - there is room below the line for the panel in both observations;
+    - the panel covers neither observation's displayed composing glyphs by more than 2px;
+    - `(panel left − first composing glyph)` differs from the reference by at most 2px.
 - **Tolerances.** They are declared in `verdict.py` before any observation and come from
   rounding alone. Each relative offset mixes one integer X11 coordinate with one
   sub-pixel layout coordinate. Calibration error is common to both tabs.
@@ -65,6 +70,18 @@ frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
     one shifted up 1.25em (overlap without displacement) each fail for exactly the
     expected reason only, by more than the tolerance. The defect is injected as a style
     that exists only during that run and is verified removed afterwards.
+
+- **What the verdict found in the application.** The first runs showed defects that the
+  Chromium specs had not caught. Both were fixed, and
+  `client/e2e/core/ime-proxy-line-alignment-c4e7a2d9.spec.ts` now covers them:
+  - **Empty items: 4px to the right and ~5px overlap.** The panel anchors at the proxy
+    textarea's caret, so the proxy's UA padding/border and the 4px selection lift in
+    `EditorOverlay` moved the anchor. The proxy now has no padding or border, and its
+    top comes from the caret's line box (`caretLineTop`).
+  - **After existing text: 4px to the right.** The proxy mirrors the whole item but is
+    only as wide as the composition. Its scroll was clamped 4px short, because that
+    caret room was part of the width. `GlobalTextArea` now scrolls the text before the
+    composition start exactly out of view, and keeps the caret room as right padding.
 
 `results.json` contains every assertion with its measured values. The other evidence is
 `calibration.json`, root screenshots, panel crops and per-sample window records.
