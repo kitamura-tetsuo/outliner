@@ -28,7 +28,8 @@ def ubuntu(directory):
     for scenario in results.get("scenarios") or []:
         for index, sample in enumerate(scenario["samples"]):
             verdict = sample["verdict"]
-            rows.append(f"| {scenario['label']} | {index + 1} | `{sample['application']['text']}` | "
+            native = sample["application"].get("selection") or {}
+            rows.append(f"| {scenario['label']} | {index + 1} | `{native.get('text')}` | `{native.get('segment')}` | "
                         f"{verdict['displacement_px']:.2f} | {min(verdict['covered'].values()):.2f} | "
                         f"{'PASS' if verdict['ok'] else 'FAIL'} |")
     controls = [f"| {c['name']} | {', '.join(c.get('failed') or [r['control'] for r in c.get('rejections', [])])} | "
@@ -38,7 +39,8 @@ def ubuntu(directory):
                 "after-text-cancel-application"}
     control_names = {c["name"] for c in results.get("negative_controls") or []}
     required_controls = {"control-missing-and-foreign", "control-horizontal-displacement-without-overlap",
-                         "control-overlap-without-horizontal-displacement"}
+                         "control-overlap-without-horizontal-displacement", "control-redraw-without-selection-change",
+                         "control-native-selection-preedit-mismatch", "control-native-selection-commit-mismatch"}
     ok = (results.get("status") == "PASSED" and identity.get("verified") is True and not failed
           and required <= scenarios and required_controls <= control_names)
     lines = ["## Ubuntu/X11 Firefox + Fcitx5 native IME regression", "",
@@ -51,8 +53,8 @@ def ubuntu(directory):
              f"- Calibration: `{json.dumps((results.get('calibration') or {}))[:300]}`", ""]
     if failed:
         lines += ["Failed assertions:", ""] + [f"- `{name}`" for name in failed[:40]] + [""]
-    lines += ["| Scenario | Stage | Selected candidate | Horizontal displacement px | Coverage px | Verdict |",
-              "| --- | --- | --- | --- | --- | --- |"] + rows + ["",
+    lines += ["| Scenario | Stage | Native selected candidate | Focused segment | Horizontal displacement px | Coverage px | Verdict |",
+              "| --- | --- | --- | --- | --- | --- | --- |"] + rows + ["",
               "| Negative control | Rejected by | Defect px |", "| --- | --- | --- |"] + controls
     versions = directory / "versions.txt"
     if versions.exists():

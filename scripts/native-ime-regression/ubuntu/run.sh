@@ -18,6 +18,11 @@ WORK=$(mktemp -d /tmp/native-ime.XXXXXX)
 export XDG_CONFIG_HOME="$WORK/config" XDG_CACHE_HOME="$WORK/cache" XDG_RUNTIME_DIR="$WORK/runtime"
 mkdir -p "$XDG_CONFIG_HOME/fcitx5/conf" "$XDG_CACHE_HOME" "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
+bash "$HERE/build-observer.sh" "$WORK/observer"
+export FCITX_ADDON_DIRS="$WORK/observer/lib:$(pkg-config --variable=libdir Fcitx5Core)/fcitx5"
+export XDG_DATA_DIRS="$WORK/observer/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export IME_SELECTION_FILE="$IME_ARTIFACTS/native-selection.json"
+rm -f "$IME_SELECTION_FILE"
 # The reported configuration: Mozc through the GTK frontend with inline preedit enabled.
 cat > "$XDG_CONFIG_HOME/fcitx5/profile" <<'EOF'
 [Groups/0]
@@ -69,7 +74,7 @@ done
 xdpyinfo >/dev/null
 openbox > "$IME_ARTIFACTS/openbox.log" 2>&1 &
 pids+=("$!")
-fcitx5 --disable=ibusfrontend,xim --enable=classicui > "$IME_ARTIFACTS/fcitx5.log" 2>&1 &
+fcitx5 --disable=ibusfrontend,xim --enable=classicui,nativeimeselection --verbose=key_trace=5 > "$IME_ARTIFACTS/fcitx5.log" 2>&1 &
 export IME_FCITX_PID=$!
 pids+=("$IME_FCITX_PID")
 for attempt in {1..50}; do
@@ -81,12 +86,18 @@ done
 owner_pid=$(gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
   --method org.freedesktop.DBus.GetConnectionUnixProcessID org.fcitx.Fcitx5 | sed -E 's/.*uint32 ([0-9]+).*/\1/')
 [[ "$owner_pid" == "$IME_FCITX_PID" ]]
+dbus-monitor --session "interface='org.fcitx.Fcitx.InputContext1'" > "$IME_ARTIFACTS/dbus-input.log" 2>&1 &
+pids+=("$!")
 {
-  firefox --version
+  "${IME_FIREFOX_BINARY:-firefox}" --version
   fcitx5 --version
   dpkg-query -W firefox fcitx5 fcitx5-frontend-gtk3 fcitx5-mozc mozc-server xvfb openbox 2>/dev/null
   echo "display: 1600x1600x24 @ 96 DPI, Firefox layout.css.devPixelsPerPx=1.0"
 } > "$IME_ARTIFACTS/versions.txt" 2>&1
 python3 -m http.server 8765 --bind 127.0.0.1 --directory "$HERE" > "$IME_ARTIFACTS/reference-server.log" 2>&1 &
 pids+=("$!")
-"$ROOT/work/native-ime/venv/bin/python" "$HERE/regression.py"
+if [[ ${1:-} == --check-selection ]]; then
+  "$ROOT/work/native-ime/venv/bin/python" "$HERE/check-selection.py"
+else
+  "$ROOT/work/native-ime/venv/bin/python" "$HERE/regression.py"
+fi

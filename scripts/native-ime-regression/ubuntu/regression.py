@@ -14,13 +14,14 @@ import time
 import traceback
 from pathlib import Path
 
-from PIL import Image, ImageChops
+from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
 from identity import NativeDesktop, native_candidates, require_native_candidate
+from selection import selection, selection_changed, matches_preedit, matches_commit
 from verdict import (HORIZONTAL_TOLERANCE_PX, OVERLAP_TOLERANCE_PX, CALIBRATION_LIMIT_PX, ROOM_BELOW_MARGIN_PX,
                      calibration_verdict, failed_checks, placement_verdict, utf16_length)
 
@@ -46,6 +47,14 @@ log = []
 
 class Failed(AssertionError):
     pass
+
+
+class ReferenceMismatch(Failed):
+    """A complete run with valid editing outcomes but an incomparable native selection."""
+
+    def __init__(self, result):
+        super().__init__("Native selection differs from reference")
+        self.result = result
 
 
 def save(name, value):
@@ -101,6 +110,7 @@ def ime(on):
     command("fcitx5-remote", "-o" if on else "-c")
     if on:
         record("mozc-active", command("fcitx5-remote", "-n") == "mozc")
+        key("Hiragana")  # Explicit OS mode selection; fresh Mozc profiles may start in direct mode.
 
 
 def tab(name):
@@ -259,25 +269,41 @@ def reference_line(preedit):
       for (const p of ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight']) m.style[p] = s[p];
       m.textContent = arguments[0];
       const g = m.getBoundingClientRect(), lineHeight = parseFloat(s.lineHeight);
-      const top = mozInnerScreenY + r.top + (lineHeight - g.height) / 2, left = mozInnerScreenX + r.left;
+      const top = mozInnerScreenY + r.top + (lineHeight - g.height) / 2;
+      const left = mozInnerScreenX + r.left + Number(ta.dataset.prefixWidth || 0);
       return {rects: [{left, top, right: left + g.width, bottom: top + g.height}],
               font: {fontFamily: s.fontFamily, fontSize: s.fontSize, fontWeight: s.fontWeight,
                      fontStyle: s.fontStyle, letterSpacing: s.letterSpacing}};
     """, preedit)
 
 
-def place_reference(start):
+def place_reference(start, prefix=""):
     driver.execute_script("""
-      const [g] = arguments, ta = document.getElementById('reference');
-      ta.value = '';
+      const [g, prefix] = arguments, ta = document.getElementById('reference'), m = document.getElementById('measure');
+      Object.assign(m.style, g.font);
+      m.textContent = prefix;
+      const prefixWidth = m.getBoundingClientRect().width;
+      ta.dataset.prefixWidth = String(prefixWidth);
+      ta.value = prefix;
       // Half-leading: a glyph box of height h sits (lineHeight - h) / 2 below its line top.
       const top = g.glyphTop - (g.lineHeight - g.glyphHeight) / 2;
-      Object.assign(ta.style, {left: g.left + 'px', top: top + 'px', lineHeight: g.lineHeight + 'px',
+      Object.assign(ta.style, {left: (g.left - prefixWidth) + 'px', top: top + 'px', lineHeight: g.lineHeight + 'px',
                                height: g.lineHeight + 'px', ...g.font});
-    """, start)
+    """, start, prefix)
 
 
 # --- Native composition -------------------------------------------------------------------
+
+def native_raw():
+    try:
+        return json.loads(Path(os.environ["IME_SELECTION_FILE"]).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def native_selection(after=0):
+    return wait(lambda: selection(native_raw(), FCITX_PID, after), "fresh native highlighted candidate")
+
 
 def panel_snapshot(selector, label):
     wait(lambda: native_candidates(desktop.windows(), FCITX_PID), f"{label}: native candidate panel becomes visible")
@@ -288,25 +314,29 @@ def panel_snapshot(selector, label):
     region = crop(path, dict(left=panel["x"], top=panel["y"], right=panel["x"] + panel["width"],
                              bottom=panel["y"] + panel["height"]), f"{label}-panel-{panel['id']}")
     record(f"{label}-panel-renders-candidates", len(region.getcolors(region.width * region.height) or []) > 8)
-    save(label, dict(windows=windows, state=current, panel=panel))
+    save(label, dict(windows=windows, state=current, panel=panel, native=native_raw()))
     return panel, region, path
 
 
-def stage(env, selector, label, line_of):
+def stage(env, selector, label, line_of, prefix=""):
     """Convert, open the native panel, change its selection and sample placement."""
     reading = state(selector)["preedit"]
+    sequence = native_raw().get("sequence", 0)
     key("space")
     key("space")
-    first_panel, first_region, _ = panel_snapshot(selector, f"{label}-open")
-    first = state(selector)["preedit"]
+    first_panel, _, _ = panel_snapshot(selector, f"{label}-open")
+    first = native_selection(sequence)
     key("Down")
-    wait(lambda: state(selector)["preedit"] != first, f"{label}: native selection changes the inline preedit")
-    panel, region, path = panel_snapshot(selector, f"{label}-selected")
-    selected = state(selector)
+    native = wait(lambda: when(native_selection(first["sequence"]),
+                              lambda n: selection_changed(first, n)), f"{label}: native candidate changes")
+    panel, _, path = panel_snapshot(selector, f"{label}-selected")
+    selected = wait(lambda: when(state(selector), lambda s: matches_preedit(native, s["preedit"])),
+                    f"{label}: inline preedit matches native selected candidate")
+    save(f"{label}-selection", dict(before=first, after=native, browser=selected))
     record(f"{label}-same-native-panel", panel["id"] == first_panel["id"], before=first_panel["id"], after=panel["id"])
-    changed = first_region.size != region.size or ImageChops.difference(first_region.convert("RGB"),
-                                                                         region.convert("RGB")).getbbox() is not None
-    record(f"{label}-native-selection-highlight-changed", changed, before=first, after=selected["preedit"])
+    record(f"{label}-native-selection-highlight-changed", selection_changed(first, native), before=first, after=native)
+    record(f"{label}-native-selection-matches-preedit", matches_preedit(native, selected["preedit"]), native=native,
+           preedit=selected["preedit"])
     record(f"{label}-one-ongoing-composition", selected["composing"], compositions=selected["compositions"])
     line = line_of(selected["preedit"])
     visible = sum(ink(Image.open(path).crop(tuple(round(v) for v in (r["left"], r["top"], r["right"], r["bottom"]))))
@@ -316,7 +346,8 @@ def stage(env, selector, label, line_of):
         "const r=document.querySelector(arguments[0]).getBoundingClientRect();"
         "return {left:mozInnerScreenX+r.left,top:mozInnerScreenY+r.top,right:mozInnerScreenX+r.right,"
         "bottom:mozInnerScreenY+r.bottom}", selector)
-    return dict(env=env, receiver_rect=receiver, text=selected["preedit"], reading=reading, keys=["space", "space", "Down"], before_selection=first, font=font_key(line["font"]),
+    return dict(env=env, receiver_rect=receiver, text=selected["preedit"], reading=reading, prefix=prefix,
+                keys=["space", "space", "Down"], before_selection=first, selection=native, font=font_key(line["font"]),
                 glyph_left=line["rects"][0]["left"], line_rects=line["rects"], panel=panel,
                 screenshot=path.name, compositions=selected["compositions"])
 
@@ -336,7 +367,7 @@ def compose(env, selector, label, line_of, end):
         expected = (before["compositions"] + 1)
         wait(lambda: (s := state(selector))["composing"] and s["compositions"] == expected
              and s["preedit"] == "あ" * kana, f"{label}-{name}: trusted Japanese preedit in one ongoing composition")
-        samples.append(stage(env, selector, f"{label}-{name}", line_of))
+        samples.append(stage(env, selector, f"{label}-{name}", line_of, before["value"]))
         if index < len(STAGES) - 1:
             key("Escape")  # Mozc: leave conversion; the same composition continues as its reading.
             wait(lambda: (s := state(selector))["composing"] and s["preedit"] == samples[-1]["reading"],
@@ -345,7 +376,8 @@ def compose(env, selector, label, line_of, end):
     if len(samples) == 3:
         record(f"{label}-composition-grows-then-shrinks", lengths[0] < lengths[1] and lengths[2] < lengths[1],
                reading_lengths=lengths)
-    selected = samples[-1]["text"]
+    native = samples[-1]["selection"]
+    selected = native["expected"]
     if end == "confirm":
         key("Return")
     else:
@@ -356,7 +388,8 @@ def compose(env, selector, label, line_of, end):
            before=before["compositions"], after=after["compositions"])
     end_event = driver.execute_script("return window.__nativeImeProbe.events.filter(e => e.type === 'compositionend').at(-1)")
     record(f"{label}-trusted-native-end", end_event and end_event["trusted"]
-           and end_event["data"] == (selected if end == "confirm" else ""), event=end_event, selected=selected)
+           and (matches_commit(native, end_event["data"]) if end == "confirm" else end_event["data"] == ""),
+           event=end_event, native=native)
     wait(lambda: not native_candidates(desktop.windows(), FCITX_PID), f"{label}: native panel closes")
     for _ in range(5):  # Bounded interval, not one lucky sample.
         record(f"{label}-native-panel-stays-closed", not native_candidates(desktop.windows(), FCITX_PID))
@@ -365,16 +398,89 @@ def compose(env, selector, label, line_of, end):
     return samples, selected, after
 
 
-def reference_run(label, start, keys_end="cancel"):
+def selection_controls(results, selector, native, panel, label):
+    """Live redraw and mutations of live observations, with native evidence held fixed.
+
+    Like the Windows document controls, corrupt one measured browser field at a
+    time. No fabricated panel or replacement candidate can become the oracle.
+    """
+    before = capture(f"{label}-before-redraw")
+    window = desktop.display.create_resource_object("window", panel["id"])
+    # The old pixel/size rule would accept this as a selection change. Resize
+    # the real panel and expose it, while leaving the native candidate untouched.
+    try:
+        window.configure(width=panel["width"] + 3)
+        window.clear_area(exposures=True)
+        desktop.display.sync()
+        time.sleep(.2)
+        width = window.get_geometry().width
+        record(f"{label}-redraw-changes-panel-size", width == panel["width"] + 3,
+               before=panel["width"], after=width)
+        after = native_selection()
+        capture(f"{label}-after-redraw")
+    finally:
+        window.configure(width=panel["width"])
+        desktop.display.sync()
+    record(f"{label}-panel-size-restored", window.get_geometry().width == panel["width"])
+    unchanged = (native["text"], native["cursor"], native["segment"], native["context"]) == \
+                (after["text"], after["cursor"], after["segment"], after["context"])
+    record(f"{label}-redraw-preserves-selection", unchanged, before=native, after=after)
+    rejected = not selection_changed(native, after)
+    record(f"{label}-redraw-is-not-selection-change", rejected)
+    results.append(dict(name="control-redraw-without-selection-change", failed=["native-selection-changed"],
+                        rejected=rejected, before=native, after=after, screenshot=before.name,
+                        old_pixel_or_size_rule_would_accept=True, original_width=panel["width"], redraw_width=width))
+    actual = state(selector)["preedit"]
+    record(f"{label}-live-preedit-matches-native", matches_preedit(native, actual), preedit=actual, native=native)
+    corrupted = actual + "誤"
+    rejected = not matches_preedit(native, corrupted)
+    record(f"{label}-wrong-preedit-rejected", rejected)
+    results.append(dict(name="control-native-selection-preedit-mismatch", failed=["native-selection-matches-preedit"],
+                        rejected=rejected, native=native, actual=actual, corrupted=corrupted))
+
+
+def commit_control(results, native, committed, label):
+    record(f"{label}-live-commit-matches-native", matches_commit(native, committed), native=native, committed=committed)
+    corrupted = committed + "誤"
+    rejected = not matches_commit(native, corrupted)
+    record(f"{label}-wrong-commit-rejected", rejected)
+    results.append(dict(name="control-native-selection-commit-mismatch", failed=["native-selection-matches-commit"],
+                        rejected=rejected, native=native, actual=committed, corrupted=corrupted))
+
+
+def native_selection_controls(results):
     tab("reference")
-    place_reference(start)
+    driver.execute_script("const ta=document.getElementById('reference');ta.value='';ta.dataset.prefixWidth='0'")
     rect = driver.execute_script("const r=document.getElementById('reference').getBoundingClientRect();"
-                                 "return [mozInnerScreenX+r.left+20, mozInnerScreenY+r.top+r.height/2]")
+                                 "return [mozInnerScreenX+r.left+20,mozInnerScreenY+r.top+r.height/2]")
+    ime(False)
+    os_click(*rect)
+    wait(lambda: state("#reference")["focused"], "selection controls: reference focused")
+    ime(True)
+    type_text("aaaaa")
+    wait(lambda: state("#reference")["preedit"] == "あ" * 5, "selection controls: native reading")
+    sample = stage("reference", "#reference", "selection-controls", reference_line)
+    native = sample["selection"]
+    selection_controls(results, "#reference", native, sample["panel"], "selection-controls")
+    key("Return")
+    after = wait(lambda: when(state("#reference"), lambda s: not s["composing"]), "selection controls: committed")
+    event = driver.execute_script("return window.__nativeImeProbe.events.filter(e=>e.type==='compositionend').at(-1)")
+    record("selection-controls-trusted-commit", event and event["trusted"])
+    commit_control(results, native, event["data"], "selection-controls")
+    record("selection-controls-reference-value", matches_commit(native, after["value"]), value=after["value"])
+    ime(False)
+
+
+def reference_run(label, start, keys_end="cancel", prefix=""):
+    tab("reference")
+    place_reference(start, prefix)
+    rect = driver.execute_script("const r=document.getElementById('reference').getBoundingClientRect();"
+                                 "return [mozInnerScreenX+r.left+Number(document.getElementById('reference').dataset.prefixWidth || 0)+20, mozInnerScreenY+r.top+r.height/2]")
     ime(False)
     os_click(*rect)
     wait(lambda: state("#reference")["focused"], f"{label}: OS click focuses the reference textarea")
     samples, _, after = compose("reference", "#reference", label, reference_line, keys_end)
-    record(f"{label}-reference-cancel-restores-empty-value", after["value"] == "", value=after["value"])
+    record(f"{label}-reference-cancel-restores-prefix", after["value"] == prefix, value=after["value"], prefix=prefix)
     return samples
 
 
@@ -408,13 +514,6 @@ def application_run(label, prefix, end, matched, mutation=None, expect_failure=N
     result = dict(label=label, item=item, outcome=outcome, selected=selected, expected_text=expected_text,
                   samples=verdicts, final_state=after)
     if expect_failure is None:
-        for index, entry in enumerate(verdicts):
-            record(f"{label}-{STAGES[index][0]}-placement", entry["verdict"]["ok"],
-                   failed=failed_checks(entry["verdict"]), displacement_px=entry["verdict"]["displacement_px"],
-                   covered=entry["verdict"]["covered"],
-                   checks=[c for c in entry["verdict"]["checks"] if not c["passed"]],
-                   application_receiver=entry["application"]["receiver_rect"],
-                   reference_receiver=entry["reference"]["receiver_rect"])
         record(f"{label}-canonical-and-rendered-text", outcome["canonical"] == expected_text
                and outcome["rendered"] == expected_text, canonical=outcome["canonical"],
                rendered=outcome["rendered"], expected=expected_text)
@@ -422,6 +521,23 @@ def application_run(label, prefix, end, matched, mutation=None, expect_failure=N
                offset=utf16_length(expected_text), isActive=True)] and outcome["selections"] == 0,
                cursors=outcome["cursors"], selections=outcome["selections"])
         record(f"{label}-receiver-still-production", after["wrap"] == "off" and after["focused"], state=after)
+    incomparable = False
+    for entry in verdicts:
+        failures = failed_checks(entry["verdict"])
+        incomparable |= "matched-reference-native-selection" in failures
+        other = [f for f in failures if f not in ("matched-reference-native-selection", expect_failure)]
+        record(f"{label}-placement-checks-before-reference-match", not other, failed=other)
+    if incomparable:
+        save(f"{label}-unmatched-reference", result)
+        raise ReferenceMismatch(result)
+    if expect_failure is None:
+        for index, entry in enumerate(verdicts):
+            record(f"{label}-{STAGES[index][0]}-placement", entry["verdict"]["ok"],
+                   failed=failed_checks(entry["verdict"]), displacement_px=entry["verdict"]["displacement_px"],
+                   covered=entry["verdict"]["covered"],
+                   checks=[c for c in entry["verdict"]["checks"] if not c["passed"]],
+                   application_receiver=entry["application"]["receiver_rect"],
+                   reference_receiver=entry["reference"]["receiver_rect"])
     return result
 
 
@@ -473,9 +589,23 @@ def new_app_item(label, prefix):
 
 
 def matched_pair(label, prefix, end, mutation=None, expect_failure=None):
-    start = new_app_item(label, prefix)
-    reference = reference_run(f"{label}-reference", start)
-    return application_run(f"{label}-application", prefix, end, reference, mutation, expect_failure)
+    attempts = []
+    for attempt in range(1, 4):
+        trial = f"{label}-attempt-{attempt}"
+        start = new_app_item(trial, prefix)
+        reference = reference_run(f"{trial}-reference", start, prefix=prefix)
+        try:
+            result = application_run(f"{trial}-application", prefix, end, reference, mutation, expect_failure)
+        except ReferenceMismatch as mismatch:
+            attempts.append(mismatch.result)
+            print(f"RETRY {label}: incomparable native selection (attempt {attempt}/3)", flush=True)
+            continue
+        result["label"] = f"{label}-application"
+        result["unmatched_attempts"] = attempts
+        record(f"{label}-native-reference-matched", True, attempts=attempt)
+        return result
+    record(f"{label}-native-reference-matched", False, attempts=len(attempts),
+           evidence=[f"{label}-attempt-{i}-application-unmatched-reference.json" for i in range(1, 4)])
 
 
 # --- Scenarios -----------------------------------------------------------------------------
@@ -574,6 +704,7 @@ def run():
     scenarios, controls, errors = [], [], []
     for label, prefix, end in RUNS:
         isolated(errors, label, lambda: scenarios.append(matched_pair(label, prefix, end)))
+    isolated(errors, "control-native-selection", lambda: native_selection_controls(controls))
     isolated(errors, "control-missing-and-foreign", lambda: negative_identity_controls(controls))
     # Deliberately defective proxy placements, confined to these runs: the textarea moves by
     # a fixed 60px to the right, or up by 1.25 of its own (item-matched) font size.
