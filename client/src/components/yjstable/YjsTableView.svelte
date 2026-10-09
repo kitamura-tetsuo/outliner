@@ -47,6 +47,7 @@ import { registerWebMCPGridTools } from "../../mcp/WebMCP";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
 import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
 import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
+import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
 
 const logger = getLogger("YjsTableView");
 
@@ -99,7 +100,22 @@ let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
+// Authority is revoked only by material changes from the authoritative Yjs
+// configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
+// grid/handles are static for this keyed component lifecycle.
+// svelte-ignore state_referenced_locally
+let observedQuery = getGridQuery(grid);
+// svelte-ignore state_referenced_locally
+let observedSchemaSql = handles.schemaText.toString();
+
+function revalidateMutationAuthority() {
+    // GridQueryRunner has already invalidated any older generation by the
+    // time this microtask runs. Execute the replacement immediately instead
+    // of leaving a visible result read-only while repeated sync notifications
+    // keep resetting the ordinary debounce timer.
+    queueMicrotask(() => void runner?.runQueryNow());
+}
 
 // View switching: panels can be toggled independently (parallel display).
 let showUiDef = $state(false);
@@ -133,7 +149,39 @@ function refreshGridMirror() {
     confirmRowDelete = getGridConfirmRowDelete(grid);
 }
 
-const gridMirrorObserver = () => refreshGridMirror();
+const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
+    if (events.some(event => event.target === grid.entry && event.changes.keys.has("query"))) {
+        const nextQuery = getGridQuery(grid);
+        // A same-value Yjs rewrite is not a configuration change. Distinct
+        // A -> B -> A transactions still advance twice and cannot revive an
+        // action captured against the first A.
+        if (nextQuery !== observedQuery) {
+            queryExecution = undefined;
+            revalidateMutationAuthority();
+        }
+        observedQuery = nextQuery;
+    }
+    refreshGridMirror();
+};
+
+const schemaTextObserver = () => {
+    const nextSchemaSql = handles.schemaText.toString();
+    // Schema application normalizes by replacing the Y.Text even when its
+    // final SQL is unchanged. Do not invalidate a completed result for that
+    // replay; an actual intervening schema value still revokes authority.
+    if (nextSchemaSql !== observedSchemaSql) {
+        queryExecution = undefined;
+        revalidateMutationAuthority();
+    }
+    observedSchemaSql = nextSchemaSql;
+};
+
+const bareIdAuthority = $derived.by(() => {
+    if (!schema || !sqlName || queryExecution?.status !== "completed" || queryExecution.query !== gridQuery) {
+        return undefined;
+    }
+    return resolveBareIdMutationAuthority(queryExecution.query, sqlName, schema, result.columns);
+});
 
 // What this view hands to the system clipboard when a copy crosses its host
 // item. The getters run at copy time, so they read whatever is on screen then.
@@ -184,6 +232,7 @@ onMount(() => {
     // bound to the same Grid keeps its manager when this one unmounts.
     retainGridUndoManager(grid.entry);
     grid.entry.observeDeep(gridMirrorObserver);
+    handles.schemaText.observe(schemaTextObserver);
     registerTableClipboardSource(handles.tableId, clipboardSource);
 
     cleanupWebMCP = registerWebMCPGridTools(
@@ -237,6 +286,7 @@ onMount(() => {
 
 onDestroy(() => {
     grid.entry.unobserveDeep(gridMirrorObserver);
+    handles.schemaText.unobserve(schemaTextObserver);
     unsubscribeAdapter?.();
     unsubscribeRunner?.();
     runner?.dispose();
@@ -369,6 +419,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {schema}
                     query={gridQuery}
                     {result}
+                    {bareIdAuthority}
                     {componentTypes}
                     {columnOrder}
                     {columnLabels}

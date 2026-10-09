@@ -6,6 +6,7 @@
 
 import {
     analyzeQueryEditability,
+    type BareIdMutationAuthority,
     SOURCE_ID_COLUMN,
     SOURCE_KIND_COLUMN,
 } from "../../services/yjstable/queryAnalysis";
@@ -64,6 +65,8 @@ interface Props {
     schema: ParsedTableSchema | undefined;
     query: string;
     result: TableQueryResult;
+    /** Result-bound proof for bare-id writes. Undefined fails closed on saved Grids. */
+    bareIdAuthority?: BareIdMutationAuthority;
     /** Component type per column from the Grid Definition mirror. */
     componentTypes: Record<string, string | undefined>;
     /** The column order stored in the Grid Definition. */
@@ -119,6 +122,7 @@ let {
     schema,
     query,
     result,
+    bareIdAuthority,
     componentTypes,
     columnOrder,
     columnLabels,
@@ -174,7 +178,16 @@ let suppressClickUntil = 0;
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
-const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
+const editability = $derived(analyzeQueryEditability(
+    query,
+    schema,
+    result.columns,
+    grid ? bareIdAuthority ?? {
+        status: "unavailable",
+        editableColumns: new Set<string>(),
+        reason: "Read-only view: query provenance has not been validated",
+    } : undefined,
+));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
 const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
@@ -290,6 +303,7 @@ const commandContext = $derived<GridCommandContext>({
     valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
     checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
+    canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
 });
 
 const selectionSummary = $derived.by(() => {
@@ -671,6 +685,7 @@ $effect.pre(() => {
 const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
 
 function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
+    if (!editability.editable || !editability.editableColumns.has(column)) return;
     const rowId = selectableRowId(row);
     const cell: GridCellAddress | undefined = rowId !== undefined ? { rowId, columnId: column } : undefined;
     if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
@@ -984,10 +999,12 @@ function newRecordDefaults(): Record<string, TableRecordValue> {
 }
 
 function addRow() {
+    if (rowCreationMode === "query" && (!editability.editable || editability.rowIdentity !== "id")) return;
     addRecord(handles, newRecordDefaults());
 }
 
 function deleteRow(recordId: string) {
+    if (!editability.editable || editability.rowIdentity !== "id") return;
     if (confirmRowDelete) {
         rowToDelete = recordId;
         isConfirmDialogOpen = true;

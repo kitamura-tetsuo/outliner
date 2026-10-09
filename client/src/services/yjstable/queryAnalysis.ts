@@ -42,6 +42,149 @@ export interface QueryEditability {
     rowIdentity?: "id" | "source";
 }
 
+export interface BareIdMutationAuthority {
+    status: "compatible" | "source-mismatch" | "unavailable";
+    editableColumns: Set<string>;
+    reason?: string;
+}
+
+/**
+ * Resolve the deliberately small, writable SELECT subset used by bare-id
+ * Grids. This is an authority decision, not a general SQL lineage parser:
+ * anything it cannot prove is refused. The relation identifier is compared
+ * with the primary Table's registered SQL name (which is unique per project).
+ */
+export function resolveBareIdMutationAuthority(
+    query: string,
+    primarySqlName: string,
+    schema: ParsedTableSchema,
+    resultColumns: string[],
+): BareIdMutationAuthority {
+    const unavailable = (reason: string): BareIdMutationAuthority => ({
+        status: "unavailable",
+        editableColumns: new Set(),
+        reason,
+    });
+    const sql = stripSqlNoise(query).trim().replace(/;\s*$/, "");
+    if (new Set(resultColumns).size !== resultColumns.length) {
+        return unavailable("Read-only view: duplicate result column names have ambiguous provenance");
+    }
+    if (
+        /^with\b/i.test(sql) || /\b(union|intersect|except|join|distinct|group\s+by)\b/i.test(sql)
+        || AGGREGATE_RE.test(sql)
+    ) {
+        return unavailable("Read-only view: query provenance is unsupported");
+    }
+    const select = topLevelSelectAndFrom(sql);
+    if (!select) return unavailable("Read-only view: query provenance is unavailable");
+    const relation = parseRelation(select.from);
+    if (!relation) return unavailable("Read-only view: query source provenance is unavailable");
+    if (relation.name !== primarySqlName) {
+        return {
+            status: "source-mismatch",
+            editableColumns: new Set(),
+            reason: `Read-only view: query rows come from "${relation.name}", not the Grid's source Table`,
+        };
+    }
+
+    const schemaColumns = new Set(schema.columns.map(column => column.name));
+    const editableColumns = new Set<string>();
+    let provesId = false;
+    for (const expression of splitTopLevel(select.projection)) {
+        const trimmed = expression.trim();
+        if (trimmed === "*") {
+            provesId = schemaColumns.has("id");
+            for (const column of schemaColumns) if (column !== "id") editableColumns.add(column);
+            continue;
+        }
+        const qualifiedStar = trimmed.match(/^(.+)\.\*$/);
+        if (qualifiedStar && isSourceQualifier(qualifiedStar[1], relation)) {
+            provesId = schemaColumns.has("id");
+            for (const column of schemaColumns) if (column !== "id") editableColumns.add(column);
+            continue;
+        }
+        const column = parsePlainColumn(trimmed, relation);
+        if (!column || !resultColumns.includes(column)) continue;
+        if (column === "id") provesId = true;
+        else if (schemaColumns.has(column)) editableColumns.add(column);
+    }
+    if (!provesId || !resultColumns.includes("id")) {
+        return unavailable("Read-only view: id is not an unmodified source-record identifier");
+    }
+    return { status: "compatible", editableColumns };
+}
+
+function topLevelSelectAndFrom(sql: string): { projection: string; from: string; } | undefined {
+    const select = /^select\b/i.exec(sql);
+    if (!select) return undefined;
+    let depth = 0;
+    let quoted = false;
+    for (let i = select[0].length; i < sql.length; i++) {
+        const char = sql[i];
+        if (char === '"') quoted = !quoted;
+        if (quoted) continue;
+        if (char === "(") depth++;
+        else if (char === ")") depth--;
+        else if (depth === 0 && /^from\b/i.test(sql.slice(i)) && /\s/.test(sql[i - 1] ?? " ")) {
+            return { projection: sql.slice(select[0].length, i), from: sql.slice(i + 4).trim() };
+        }
+    }
+    return undefined;
+}
+
+function splitTopLevel(value: string): string[] {
+    const parts: string[] = [];
+    let start = 0;
+    let depth = 0;
+    let quoted = false;
+    for (let i = 0; i < value.length; i++) {
+        const char = value[i];
+        if (char === '"') quoted = !quoted;
+        else if (!quoted && char === "(") depth++;
+        else if (!quoted && char === ")") depth--;
+        else if (!quoted && depth === 0 && char === ",") {
+            parts.push(value.slice(start, i));
+            start = i + 1;
+        }
+    }
+    parts.push(value.slice(start));
+    return parts;
+}
+
+function identifier(value: string): string | undefined {
+    const trimmed = value.trim();
+    const quoted = trimmed.match(/^"((?:[^"]|"")+)"$/);
+    if (quoted) return quoted[1].replace(/""/g, '"');
+    return /^[a-z_][a-z0-9_$]*$/i.test(trimmed) ? trimmed.toLowerCase() : undefined;
+}
+
+function parseRelation(from: string): { name: string; alias?: string; } | undefined {
+    const match = from.match(
+        /^("(?:[^"]|"")+"|[a-z_][a-z0-9_$]*)(?:\s+(?:as\s+)?("(?:[^"]|"")+"|[a-z_][a-z0-9_$]*))?/i,
+    );
+    if (!match) return undefined;
+    const name = identifier(match[1]);
+    const candidateAlias = match[2] && !/^(where|order|limit|offset)$/i.test(match[2])
+        ? identifier(match[2])
+        : undefined;
+    return name ? { name, alias: candidateAlias } : undefined;
+}
+
+function isSourceQualifier(value: string, relation: { name: string; alias?: string; }): boolean {
+    const qualifier = identifier(value);
+    return qualifier === relation.name || qualifier === relation.alias;
+}
+
+function parsePlainColumn(expression: string, relation: { name: string; alias?: string; }): string | undefined {
+    // Aliases are calculated/display outputs for authority purposes, even
+    // when the expression happens to be a plain column.
+    if (/\s+as\s+/i.test(expression)) return undefined;
+    const parts = expression.split(".");
+    if (parts.length === 1) return identifier(parts[0]);
+    if (parts.length === 2 && isSourceQualifier(parts[0], relation)) return identifier(parts[1]);
+    return undefined;
+}
+
 /** Reject anything that is not a single SELECT statement. */
 export function assertSelectQuery(sql: string, requireExplicitAliases = true): string {
     try {
@@ -76,6 +219,7 @@ export function analyzeQueryEditability(
     query: string,
     schema: ParsedTableSchema | undefined,
     resultColumns: string[],
+    bareIdAuthority?: BareIdMutationAuthority,
 ): QueryEditability {
     const none = (reason: string): QueryEditability => ({
         editable: false,
@@ -113,6 +257,13 @@ export function analyzeQueryEditability(
         : undefined;
     if (!rowIdentity) {
         return none("Query result has no id column");
+    }
+
+    if (rowIdentity === "id" && bareIdAuthority) {
+        if (bareIdAuthority.status !== "compatible") {
+            return none(bareIdAuthority.reason ?? "Read-only view: query provenance is unavailable");
+        }
+        return { editable: true, editableColumns: bareIdAuthority.editableColumns, rowIdentity };
     }
 
     const schemaColumns = new Set(schema.columns.map((c) => c.name));

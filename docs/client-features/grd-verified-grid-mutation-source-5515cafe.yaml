@@ -1,0 +1,17 @@
+id: GRD-5515cafe
+title: Verified source Table for Grid mutations
+title-ja: Grid 変更元 Table の検証
+description: Bare-id Grid edits are permitted only when the completed query proves that its row identity and edited columns are unmodified fields of the Grid's current source Table. Mismatched, stale, and unsupported query provenance remains visible but read-only.
+category: tables
+status: implemented
+acceptance:
+- A SELECT from a different Table remains visible but cannot mutate either Table even when schemas and record IDs overlap
+- A completed plain SELECT from the Grid source Table keeps unaliased source columns editable
+- Calculated, renamed, duplicate, synthetic identity, CTE, JOIN, DISTINCT, aggregate, and set-operation provenance fails closed for bare-id writes
+- Cell, selection, paste, replace, delete, and add-row boundaries revalidate bare-id authority before writing
+- Changing the saved query or source schema immediately revokes authority from displayed rows until a compatible query completes
+- Explicit source_kind and source_id routing and raw Table editing remain independent
+tests:
+- client/e2e/new/grd-bare-id-matched-source-persistence-5515cafe.spec.ts
+- client/e2e/new/grd-bare-id-source-mismatch-refusal-5515cafe.spec.ts
+- client/src/services/yjstable/queryAnalysis.test.ts

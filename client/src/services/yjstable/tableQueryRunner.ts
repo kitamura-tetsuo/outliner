@@ -132,6 +132,11 @@ export abstract class TableQueryRunnerBase {
     /** Debounced re-run of the query. */
     scheduleRequery(): void {
         if (this.disposed) return;
+        // Invalidate an execution that is already in flight immediately. The
+        // replacement remains debounced, but an old completion must not be
+        // published during that debounce window after query/schema/data input
+        // changed.
+        this.queryGeneration++;
         if (this.requeryTimer !== undefined) clearTimeout(this.requeryTimer);
         this.requeryTimer = setTimeout(() => {
             this.requeryTimer = undefined;

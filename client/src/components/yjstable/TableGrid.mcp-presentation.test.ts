@@ -20,6 +20,7 @@ import {
     setGridConfirmRowDelete,
     setGridShowAddRowButton,
 } from "../../services/yjstable/gridDocs";
+import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { addRecord, createTable, getTableHandles, setSchemaText } from "../../services/yjstable/tableDocs";
@@ -107,6 +108,7 @@ function setupSavedPresentation() {
                 { id: "r1", title: "Write report", due_date: "2026-10-31", done: false },
             ],
         } satisfies TableQueryResult,
+        bareIdAuthority: resolveBareIdMutationAuthority(QUERY, "tasks", schema, RESULT_COLUMNS),
         componentTypes: components.types as Record<string, string | undefined>,
         columnLabels: components.labels as Record<string, string | undefined>,
         hiddenColumns: components.hidden,

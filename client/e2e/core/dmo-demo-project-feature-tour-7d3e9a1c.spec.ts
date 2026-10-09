@@ -86,7 +86,11 @@ test.describe("Demo project feature tour", () => {
 
         const chart = salesTable.getByTestId("yjs-table-chart").first();
         await expect(chart).toBeVisible({ timeout: 10000 });
-        await expect(chart).toHaveAttribute("aria-label", /Bar chart of revenue by month: Jan \(120\)/, {
+        // ECharts may replace the component's concise label with its generated
+        // description after rendering. Both labels must still identify the
+        // revenue bar chart and expose Jan's value, proving that month is the
+        // category axis rather than a numeric series.
+        await expect(chart).toHaveAttribute("aria-label", /Bar chart.*revenue.*Jan.*120/, {
             timeout: 10000,
         });
     });
