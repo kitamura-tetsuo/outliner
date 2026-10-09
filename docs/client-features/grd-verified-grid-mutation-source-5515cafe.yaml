@@ -14,4 +14,5 @@ acceptance:
 tests:
 - client/e2e/new/grd-bare-id-matched-source-persistence-5515cafe.spec.ts
 - client/e2e/new/grd-bare-id-source-mismatch-refusal-5515cafe.spec.ts
+- client/e2e/new/grd-bare-id-whitespace-padded-query-5525cafe.spec.ts
 - client/src/services/yjstable/queryAnalysis.test.ts

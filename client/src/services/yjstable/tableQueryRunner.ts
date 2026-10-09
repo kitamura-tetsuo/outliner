@@ -44,6 +44,26 @@ export interface TableQueryExecution {
     columnCount: number;
 }
 
+/**
+ * Consumer-side currency check for a saved Grid SELECT against its latest
+ * query execution (issue #5525).
+ *
+ * The producer (`runQueryNow`) executes `currentQuery().trim()` and records
+ * that trimmed string as `execution.query`, so a saved SELECT with leading or
+ * trailing whitespace that SQL execution ignores is current when trimmed
+ * equality holds. Only exact trimmed equality counts: differing SQL content,
+ * internal whitespace, comments, literals, or different query revisions are
+ * never equivalent. This checks currency only — callers keep their independent
+ * completed-execution, staleness/invalidation, and source-provenance checks.
+ */
+export function isCurrentExecutionForQuery(
+    execution: TableQueryExecution | undefined,
+    savedQuery: string,
+): boolean {
+    if (!execution || execution.status !== "completed") return false;
+    return execution.query === savedQuery.trim();
+}
+
 export interface TableRunnerOptions {
     /** The adapter of the source Table (materialization + relation registry). */
     sourceAdapter: TableSyncAdapter;
