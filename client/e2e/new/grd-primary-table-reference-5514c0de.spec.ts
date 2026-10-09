@@ -35,9 +35,7 @@ test(
         const embeddedAction = embedded.getByTestId("yjs-grid-source-table-link");
         await embeddedAction.focus();
         await page.keyboard.press("Enter");
-        await expect(page.getByTestId("table-entity-view")).toHaveAttribute("data-table-id", tableA.id, {
-            timeout: 30000,
-        });
+        await expect(page).toHaveURL(new RegExp(`/-/tables/${tableA.id}$`), { timeout: 30000 });
 
         await page.goto(`/${encodeURIComponent(projectName)}/-/grids/${gridId}`);
         const standalone = page.getByTestId("yjs-table-view");
