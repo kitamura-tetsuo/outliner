@@ -55,7 +55,7 @@ The top-right toolbar (above the page content) provides:
 - **Search:** Opens the "Search and Replace" (Unified Find) panel to search and replace text and grid cells within the current page.
 - **Graph View:** Opens a visual graph representation of page links.
 
-The editor toolbar (located at the top of the outline editor) provides:
+The page controls toolbar (located above the page title) provides:
 
 - **Add Item:** Adds a new item to the bottom of the page.
 - **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
@@ -263,7 +263,7 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-You can create a new database table by clicking the **Add Database** button in the top navigation bar, or by typing `/` on a new line to open the Command Palette and selecting **Grid**.
+You can create a new database table by clicking the **Add Database** button in the top navigation bar (available when editing a page), or by typing `/` on a new line to open the Command Palette and selecting **Grid**.
 
 A new database block will be inserted into the current page. Within this block, you can:
 
