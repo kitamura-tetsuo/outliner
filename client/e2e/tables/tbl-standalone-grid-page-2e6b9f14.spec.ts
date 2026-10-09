@@ -20,6 +20,14 @@ test.describe("Standalone grid page", () => {
             "href",
             "/demo/-/tables/demo-table-routine-occurrences",
         );
+        await expect(gridView.getByTestId("yjs-grid-source-table-link")).toHaveAttribute(
+            "href",
+            "/demo/-/tables/demo-table-routine-occurrences",
+        );
+        await expect(gridView.getByTestId("yjs-table-name")).toHaveText("Routine Occurrences");
+        await expect(gridView.getByTestId("yjs-table-sql-name")).toHaveText("routine_occurrences");
+        await expect(gridView.getByTestId("yjs-table-toggle-schema")).toHaveCount(0);
+        await expect(gridView.getByTestId("yjs-table-schema-input")).toHaveCount(0);
 
         // This Grid renames occurrence_date and drops cadence; the other Grid
         // over the same Table does not. Two presentations, one Table.
@@ -68,5 +76,21 @@ test.describe("Standalone grid page", () => {
 
         // Verify the Add row button comes back
         await expect(addRowButton).toBeVisible();
+    });
+    test("opens the source Table with a keyboard-accessible action", async ({ page }) => {
+        await page.goto("/demo/-/grids/demo-table-routine-occurrences-history-grid");
+
+        const action = page.getByTestId("yjs-grid-source-table-link");
+        await expect(action).toBeVisible({ timeout: 30000 });
+        await action.focus();
+        await page.keyboard.press("Enter");
+
+        await expect(page).toHaveURL(/\/demo\/-\/tables\/demo-table-routine-occurrences$/);
+        await expect(page.getByTestId("table-entity-view")).toHaveAttribute(
+            "data-table-id",
+            "demo-table-routine-occurrences",
+            { timeout: 30000 },
+        );
+        await expect(page.getByTestId("table-entity-toggle-schema")).toBeVisible();
     });
 });

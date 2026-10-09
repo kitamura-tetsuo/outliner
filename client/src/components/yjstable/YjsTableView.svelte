@@ -4,10 +4,9 @@
 // and lets the user switch/parallel-display the Grid Definition editor, grid
 // and chart.
 //
-// Grid-owned state only. Schedules belong to the project, not to a Grid or a
-// Table (issue #5012), so they are not edited here at all. The source Table's
-// schema is reachable through the "Table schema" panel, which is labelled and
-// linked as the *Table's* schema so it never reads as Grid state.
+// Grid-owned state only. Schedules and CREATE TABLE editing belong outside a
+// Grid (issue #5514). The source Table remains identified here, with a separate
+// navigation action to its Table-owned schema and raw-data surface.
 //
 // This component is always mounted under {#key} on both the Grid entry and
 // the source Table's Y.Doc guid (see YjsTableBlock), so switching either one
@@ -40,11 +39,9 @@ import {
 import type {
     RecordSyncError,
     TableQueryResult,
-    TableSyncAdapter,
 } from "../../services/yjstable/tableSyncAdapter";
 import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
-import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import { registerWebMCPGridTools } from "../../mcp/WebMCP";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
@@ -70,10 +67,7 @@ interface Props {
     sqlName?: string;
     /** Provenance info from whence this table was copied */
     sourceProjectId?: string;
-    /**
-     * Link to the source Table's own page, offered next to the schema it
-     * owns. Undefined when the host cannot resolve a project route.
-     */
+    /** Link to the source Table's own page. Undefined without a project route. */
     sourceTableHref?: string;
     /**
      * Host surface restriction (outline read-only state). Forwarded to the
@@ -88,7 +82,6 @@ let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tabl
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
-let schemaError = $state<string | undefined>(undefined);
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
@@ -109,7 +102,6 @@ let queryExecution = $state<TableQueryExecution | undefined>(undefined);
 let clientRevision = $state(0);
 
 // View switching: panels can be toggled independently (parallel display).
-let showSchema = $state(false);
 let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
@@ -119,7 +111,6 @@ let chartPanel = $state<TableChartPanel | undefined>(undefined);
 // The adapter is owned by the engine, not by this component: several views of
 // the same table share one materialization, and sibling tables pulled in by a
 // cross-table query stay alive for as long as this session holds them.
-let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let runner = $state<GridQueryRunner | undefined>(undefined);
 
 function refreshGridMirror() {
@@ -218,12 +209,10 @@ onMount(() => {
             logger.warn({ tableId: handles.tableId }, "[YjsTableView] table is not registered in this project");
             return;
         }
-        adapter = acquired.adapter;
         isInitialSyncDone = acquired.remoteSynced;
         unsubscribeAdapter = acquired.adapter.subscribe({
-            onSchemaChanged: (parsed, error) => {
+            onSchemaChanged: (parsed) => {
                 schema = parsed;
-                schemaError = error;
             },
             onRecordErrors: (errors) => {
                 recordErrors = errors;
@@ -277,12 +266,8 @@ function stateVectorRevision(doc: Y.Doc): string {
     }}
 >
     <div class="view-toolbar">
-        <!-- The Table this Grid selects from. Deliberately plain text, never a
-             link: the name has to stay drag-selectable (guarded by
-             tbl-grid-text-is-selectable-4669a11e), and an anchor cannot be —
-             a drag across it either starts a native link drag or ends in a
-             click that navigates away. The link to the Table lives in the
-             schema panel below and in the Grid page header instead. -->
+        <!-- Keep the name plain text so drag-selection cannot navigate. The
+             adjacent action provides keyboard-accessible Table navigation. -->
         {#if tableName}
             <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
         {/if}
@@ -293,6 +278,15 @@ function stateVectorRevision(doc: Y.Doc): string {
         {/if}
         {#if sourceProjectId}
             <span class="table-provenance" data-testid="yjs-table-provenance">copied from project</span>
+        {/if}
+        {#if sourceTableHref && tableName}
+            <a
+                class="source-table-link"
+                href={sourceTableHref}
+                data-testid="yjs-grid-source-table-link"
+                aria-label={`Open Table ${tableName}`}
+                onkeydown={(event) => event.stopPropagation()}
+            >Open Table</a>
         {/if}
         <div class="view-toggles" role="group" aria-label="Table views">
             <button
@@ -315,15 +309,6 @@ function stateVectorRevision(doc: Y.Doc): string {
             >Chart</button>
             <button
                 type="button"
-                class:active={showSchema}
-                aria-pressed={showSchema}
-                data-testid="yjs-table-toggle-schema"
-                onclick={() => {
-                    showSchema = !showSchema;
-                }}
-            >Schema</button>
-            <button
-                type="button"
                 class:active={showUiDef}
                 aria-pressed={showUiDef}
                 data-testid="yjs-table-toggle-ui"
@@ -333,22 +318,6 @@ function stateVectorRevision(doc: Y.Doc): string {
             >UI</button>
         </div>
     </div>
-
-    {#if showSchema}
-        <section class="panel" data-testid="yjs-table-schema-panel">
-            <p class="panel-note">
-                Schema of the source table{tableName ? ` "${tableName}"` : ""} — shared by every grid over it.
-                {#if sourceTableHref}
-                    <a href={sourceTableHref}>Open the table page</a>
-                {/if}
-            </p>
-            {#if adapter}
-                <TableSchemaEditor {handles} {adapter} {schemaError} />
-            {:else}
-                <p class="loading">Loading table...</p>
-            {/if}
-        </section>
-    {/if}
 
     {#if showUiDef}
         <section class="panel">
@@ -447,10 +416,10 @@ function stateVectorRevision(doc: Y.Doc): string {
     color: #111827;
 }
 
-.panel-note {
-    margin: 0 0 6px;
-    font-size: 0.75rem;
-    color: #6b7280;
+.source-table-link {
+    font-size: 0.8rem;
+    color: #2563eb;
+    text-decoration: underline;
 }
 
 .table-sql-name {
