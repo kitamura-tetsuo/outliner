@@ -23,7 +23,6 @@ import {
     singleGridId,
 } from "../utils/gridWidthHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
