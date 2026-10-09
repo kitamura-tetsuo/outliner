@@ -46,7 +46,10 @@ import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import { registerWebMCPGridTools } from "../../mcp/WebMCP";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
 import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
-import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
+import {
+    isCurrentExecutionForQuery,
+    type TableQueryExecution,
+} from "../../services/yjstable/tableQueryRunner";
 import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
 
 const logger = getLogger("YjsTableView");
@@ -177,10 +180,16 @@ const schemaTextObserver = () => {
 };
 
 const bareIdAuthority = $derived.by(() => {
-    if (!schema || !sqlName || queryExecution?.status !== "completed" || queryExecution.query !== gridQuery) {
+    // `queryExecution.query` is the runner-trimmed text, while `gridQuery` is
+    // the untrimmed persisted SELECT: compare trimmed so leading/trailing
+    // whitespace the runner discards before execution does not revoke
+    // authority (issue #5525). The Grid-query observer above still revokes on
+    // any raw text change, so a stale execution never survives a rewrite.
+    const execution = queryExecution;
+    if (!schema || !sqlName || !execution || !isCurrentExecutionForQuery(execution, gridQuery)) {
         return undefined;
     }
-    return resolveBareIdMutationAuthority(queryExecution.query, sqlName, schema, result.columns);
+    return resolveBareIdMutationAuthority(execution.query, sqlName, schema, result.columns);
 });
 
 // What this view hands to the system clipboard when a copy crosses its host
