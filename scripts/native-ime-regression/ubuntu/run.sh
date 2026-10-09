@@ -58,7 +58,9 @@ cleanup() {
   exit "$status"
 }
 trap cleanup EXIT
-Xvfb "$DISPLAY" -screen 0 1600x1200x24 -dpi 96 -nolisten tcp > "$IME_ARTIFACTS/xvfb.log" 2>&1 &
+# A tall desktop keeps room for the 424px native list below every item the runs create, so
+# desktop-edge relocation of the panel cannot occur; the Firefox window geometry is fixed.
+Xvfb "$DISPLAY" -screen 0 1600x1600x24 -dpi 96 -nolisten tcp > "$IME_ARTIFACTS/xvfb.log" 2>&1 &
 pids+=("$!")
 for attempt in {1..50}; do
   if xdpyinfo > "$IME_ARTIFACTS/xdpyinfo.txt" 2>&1; then break; fi
@@ -83,7 +85,7 @@ owner_pid=$(gdbus call --session --dest org.freedesktop.DBus --object-path /org/
   firefox --version
   fcitx5 --version
   dpkg-query -W firefox fcitx5 fcitx5-frontend-gtk3 fcitx5-mozc mozc-server xvfb openbox 2>/dev/null
-  echo "display: 1600x1200x24 @ 96 DPI, Firefox layout.css.devPixelsPerPx=1.0"
+  echo "display: 1600x1600x24 @ 96 DPI, Firefox layout.css.devPixelsPerPx=1.0"
 } > "$IME_ARTIFACTS/versions.txt" 2>&1
 python3 -m http.server 8765 --bind 127.0.0.1 --directory "$HERE" > "$IME_ARTIFACTS/reference-server.log" 2>&1 &
 pids+=("$!")

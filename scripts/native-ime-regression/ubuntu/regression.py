@@ -81,6 +81,11 @@ def wait(predicate, description, timeout=15):
     raise Failed(f"Timed out: {description}; last={last!r}"[:2000])
 
 
+def when(value, predicate):
+    """``value`` if ``predicate(value)`` holds, else None (for ``wait`` conditions)."""
+    return value if predicate(value) else None
+
+
 def key(name):
     command("xdotool", "key", "--clearmodifiers", name)
 
@@ -328,7 +333,7 @@ def compose(env, selector, label, line_of, end):
     else:
         key("Escape")
         key("Escape")
-    after = wait(lambda: (s := state(selector)) if not s["composing"] else None, f"{label}: composition ends")
+    after = wait(lambda: when(state(selector), lambda s: not s["composing"]), f"{label}: composition ends")
     record(f"{label}-exactly-one-composition", after["compositions"] == before["compositions"] + 1,
            before=before["compositions"], after=after["compositions"])
     end_event = driver.execute_script("return window.__nativeImeProbe.events.filter(e => e.type === 'compositionend').at(-1)")
@@ -407,7 +412,7 @@ def refocus_application(label, prefix):
     the logical caret must then be exactly where the baseline left it.
     """
     try:
-        return wait(lambda: (s := app_state()) if s["focused"] else None, "focus returns with the tab", 3)
+        return wait(lambda: when(app_state(), lambda s: s["focused"]), "focus returns with the tab", 3)
     except Failed:
         pass
     item = app_item()
@@ -419,7 +424,7 @@ def refocus_application(label, prefix):
       return [mozInnerScreenX + x, mozInnerScreenY + box.top + box.height / 2];
     """, item["id"])
     os_click(*point)
-    current = wait(lambda: (s := app_state()) if s["focused"] else None,
+    current = wait(lambda: when(app_state(), lambda s: s["focused"]),
                    f"{label}: OS click returns focus to the production receiver")
     after = app_item()
     record(f"{label}-refocus-keeps-baseline-caret", after["cursors"] == item["cursors"]
@@ -528,7 +533,7 @@ def run():
     options.set_preference("browser.shell.checkDefaultBrowser", False)
     driver = webdriver.Firefox(options=options, service=Service(str(ROOT / "work/native-ime/geckodriver"),
                                                                  log_output=str(OUT / "geckodriver.log")))
-    # Fixed browser geometry for every matched pair: a 1600x1200 desktop leaves room for the
+    # Fixed browser geometry for every matched pair: a 1600x1600 desktop leaves room for the
     # 424px native list below the composing line, so desktop-edge relocation cannot occur.
     driver.set_window_rect(x=40, y=40, width=1450, height=880)
     handles["application"] = driver.current_window_handle

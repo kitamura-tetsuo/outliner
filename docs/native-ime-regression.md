@@ -17,7 +17,7 @@ job fail. Nothing is skipped or downgraded to a pass.
 ## Ubuntu/X11 Firefox + Fcitx5 (AS-002)
 
 `scripts/native-ime-regression/ubuntu/` runs graphical Mozilla Firefox under Xvfb
-(1600×1200, 96 DPI, `devicePixelRatio` 1) and Openbox. It uses Fcitx5 with the GTK
+(1600×1600, 96 DPI, `devicePixelRatio` 1) and Openbox. It uses Fcitx5 with the GTK
 frontend (`GTK_IM_MODULE=fcitx`), Mozc, and inline preedit enabled. XTest
 (`xdotool`) supplies every keystroke. Selenium only navigates and reads the page.
 
