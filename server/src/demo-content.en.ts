@@ -444,6 +444,10 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "Semantic priority ordering: ordinary ORDER BY priority sorts text lexically (high, low, medium), not by its intended meaning. Open the live CASE-ordered Grid at [/demo/-/grids/demo-table-tasks-priority-grid] to see high, medium, then low and inspect its saved SELECT in the UI.",
+                    },
+                    {
+                        text:
                             "Habit tracker: one table holds habit definitions and daily completion logs. Add a log row for today to extend a streak.",
                     },
                     {

@@ -476,6 +476,10 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "優先度の意味順: 通常の ORDER BY priority は文字列を辞書順（high, low, medium）に並べ、意図した優先順位にはなりません。[/demo-ja/-/grids/demo-table-tasks-priority-grid] で稼働中の CASE 順 Grid を開き、high, medium, low の順序と保存済み SELECT を UI で確認できます。",
+                    },
+                    {
+                        text:
                             "習慣トラッカー: ひとつのテーブルが習慣の定義と日々の実施ログの両方を保持します。今日のログ行を追加すると連続日数が伸びます。",
                     },
                     {

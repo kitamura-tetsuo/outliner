@@ -175,6 +175,8 @@ export function demoUtcWeekStart(weeksAgo: number): string {
 
 export const DEMO_SALES_TABLE_ID = "demo-table-sales";
 export const DEMO_TASKS_TABLE_ID = "demo-table-tasks";
+/** Stable additional Grid demonstrating semantic ordering of text priorities. */
+export const DEMO_TASKS_PRIORITY_GRID_ID = "demo-table-tasks-priority-grid";
 export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
 export const DEMO_ROUTINE_TEMPLATES_TABLE_ID = "demo-table-routine-templates";
 export const DEMO_ROUTINE_OCCURRENCES_TABLE_ID = "demo-table-routine-occurrences";
@@ -341,6 +343,24 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                         repeat_days: null,
                         created_at: `${demoDate(-2)}T10:00:00`,
                         completed_at: `${demoDate(-1)}T16:45:00`,
+                    },
+                },
+            ],
+            extraGrids: [
+                {
+                    gridId: DEMO_TASKS_PRIORITY_GRID_ID,
+                    name: "Tasks · semantic priority order",
+                    query: "SELECT id, title, priority\n"
+                        + "FROM tasks\n"
+                        + "ORDER BY CASE priority\n"
+                        + "  WHEN 'high' THEN 0\n"
+                        + "  WHEN 'medium' THEN 1\n"
+                        + "  WHEN 'low' THEN 2\n"
+                        + "  ELSE 3\n"
+                        + "END, id",
+                    components: {
+                        title: "text",
+                        priority: "select",
                     },
                 },
             ],
