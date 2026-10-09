@@ -1,22 +1,22 @@
 id: FTR-5514c0de
 title: Table-owned schema editing
 title-ja: Table ページ専用のスキーマ編集
-description: Embedded and standalone Grids identify their primary Table by display and SQL name and provide a separate keyboard-accessible link to its Table page. Grid surfaces retain SELECT, presentation, chart, and record controls, but never mount or expose CREATE TABLE editing. A missing primary Table remains explicitly unavailable without substitution. Table pages continue to own schema editing and their implicit raw-data browser.
+description: 'Embedded and standalone Grids identify their primary Table by display and SQL name and provide a separate keyboard-accessible link to its Table page. Grid surfaces retain SELECT, presentation, chart, and record controls, but never mount or expose CREATE TABLE editing. A missing primary Table remains explicitly unavailable without substitution. Table pages continue to own schema editing and their implicit raw-data browser.'
 category: client
 status: implemented
 components:
+- client/src/components/yjstable/YjsTableView.svelte
+- client/src/components/yjstable/YjsTableBlock.svelte
 - client/src/components/management/GridDetailView.svelte
 - client/src/components/yjstable/TableEntityView.svelte
-- client/src/components/yjstable/YjsTableBlock.svelte
-- client/src/components/yjstable/YjsTableView.svelte
 acceptance:
-- A separate keyboard-accessible action opens the Table identified by sourceTableId while its displayed name remains selectable
-- Each resolved Grid identifies its source Table by display name and SQL name
 - Embedded and standalone Grid surfaces do not mount or expose a CREATE TABLE editor
+- Each resolved Grid identifies its source Table by display name and SQL name
+- A separate keyboard-accessible action opens the Table identified by sourceTableId while its displayed name remains selectable
 - Missing source Tables remain unavailable and are not substituted
 - Table pages retain CREATE TABLE editing and editable raw data without requiring a Grid
 tests:
 - client/e2e/new/grd-primary-table-reference-5514c0de.spec.ts
-- client/e2e/new/tbl-grid-text-is-selectable-4669a11e.spec.ts
-- client/e2e/tables/tbl-standalone-grid-page-2e6b9f14.spec.ts
 - client/src/components/yjstable/YjsTableView.test.ts
+- client/e2e/tables/tbl-standalone-grid-page-2e6b9f14.spec.ts
+- client/e2e/new/tbl-grid-text-is-selectable-4669a11e.spec.ts
