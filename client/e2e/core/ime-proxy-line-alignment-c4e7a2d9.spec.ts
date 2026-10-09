@@ -30,12 +30,27 @@ const alignment = (page: Page, itemId: string, start: number) =>
         }
         const style = getComputedStyle(ta), lineHeight = parseFloat(getComputedStyle(el).lineHeight);
         const proxy = ta.getBoundingClientRect();
+        // Rendered width of the mirrored text before the composition, in the proxy's font.
+        const probe = document.createElement("span");
+        Object.assign(probe.style, {
+            position: "absolute",
+            whiteSpace: "pre",
+            font: style.font,
+            letterSpacing: style.letterSpacing,
+            visibility: "hidden",
+        });
+        probe.textContent = ta.value.slice(0, offset as number);
+        document.body.appendChild(probe);
+        const prefixWidth = probe.getBoundingClientRect().width;
+        probe.remove();
         return {
-            padding: [style.paddingTop, style.paddingLeft],
+            padding: [style.paddingTop, style.paddingLeft, style.paddingBottom],
             border: [style.borderTopWidth, style.borderLeftWidth],
             leftDelta: glyph ? proxy.left - glyph.left : NaN,
             // Line box top of the displayed glyph under CSS half-leading.
             topDelta: glyph ? proxy.top - (glyph.top - (lineHeight - glyph.height) / 2) : NaN,
+            // The composition inside the non-wrapping proxy starts at the proxy's left edge.
+            startInsideProxy: prefixWidth - ta.scrollLeft,
             proxyLineHeight: parseFloat(style.lineHeight),
             lineHeight,
         };
@@ -57,11 +72,12 @@ test.describe("IME-c4e7a2d9: proxy caret line matches the displayed composition"
                 await session.compose(text);
                 await expect.poll(() => itemText(page, itemId)).toBe(prefix + text);
                 const measured = await alignment(page, itemId, prefix.length);
-                expect(measured.padding).toEqual(["0px", "0px"]);
+                expect(measured.padding).toEqual(["0px", "0px", "0px"]);
                 expect(measured.border).toEqual(["0px", "0px"]);
                 expect(measured.proxyLineHeight).toBe(measured.lineHeight);
                 expect(Math.abs(measured.leftDelta)).toBeLessThanOrEqual(1);
                 expect(Math.abs(measured.topDelta)).toBeLessThanOrEqual(1);
+                expect(Math.abs(measured.startInsideProxy)).toBeLessThanOrEqual(1);
             }
             await session.cancel();
             await expect.poll(() => itemText(page, itemId)).toBe(prefix);

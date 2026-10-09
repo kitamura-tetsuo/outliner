@@ -221,6 +221,7 @@ def app_start_geometry(item_id, prefix):
     wait(lambda: when(app_state(), lambda s: not s["composing"]), "start probe: preedit cancelled")
     wait(lambda: app_item()["canonical"] == prefix, "start probe: item text restored")
     ime(False)
+    wait(lambda: not native_candidates(desktop.windows(), FCITX_PID), "start probe: native panel closes")
     glyph = line["rects"][0]
     origin = screen()
     record("start-probe-glyph-measured", glyph["bottom"] > glyph["top"], glyph=glyph)
@@ -497,9 +498,12 @@ def negative_identity_controls(results):
     """Missing panel and a foreign window presented as the panel must be rejected live."""
     label = "control-missing-and-foreign"
     new_app_item(label, "latin")
+    wait(lambda: not app_state()["composing"] and not native_candidates(desktop.windows(), FCITX_PID),
+         f"{label}: Latin input leaves no composition and no native panel")
     current = app_state()
     windows = desktop.windows()
-    record(f"{label}-latin-has-no-composition", not current["composing"] and not native_candidates(windows, FCITX_PID))
+    record(f"{label}-latin-has-no-composition", not current["composing"] and not native_candidates(windows, FCITX_PID),
+           state=current)
     rejections = []
     for name, observed, composing, focused in [("missing-with-forced-active-flags", windows, True, True),
                                                 ("inactive-composition", windows, False, True)]:
