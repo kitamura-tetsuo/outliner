@@ -12,4 +12,6 @@ acceptance:
 - Changing the saved query or source schema immediately revokes authority from displayed rows until a compatible query completes
 - Explicit source_kind and source_id routing and raw Table editing remain independent
 tests:
+- client/e2e/new/grd-bare-id-matched-source-persistence-5515cafe.spec.ts
+- client/e2e/new/grd-bare-id-source-mismatch-refusal-5515cafe.spec.ts
 - client/src/services/yjstable/queryAnalysis.test.ts
