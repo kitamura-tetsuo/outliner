@@ -16,15 +16,18 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     /**
      * Selects a text cell and focuses it without leaving it in edit mode: a
-     * plain click on the display button opens the editor (see TextCell), so
-     * this clicks then immediately cancels with Escape, landing exactly on
-     * Grid's navigation-mode contract (selected, focused, not editing).
+     * editable display buttons open the editor, so this cancels that path;
+     * read-only result buttons remain focusable for selection/navigation and
+     * need no cancellation. Both land in the same Grid navigation mode.
      */
     async function selectAndFocus(cell: import("@playwright/test").Locator) {
-        await cell.locator("button").click();
-        await expect(cell.locator("input")).toBeVisible();
-        await cell.locator("input").press("Escape");
-        await expect(cell.locator("button")).toBeFocused();
+        const button = cell.locator("button");
+        await button.click();
+        const input = cell.locator("input");
+        if (await input.isVisible()) {
+            await input.press("Escape");
+        }
+        await expect(button).toBeFocused();
     }
 
     test("arrow keys move the active cell in all four directions", async ({ page }) => {
