@@ -285,6 +285,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                 href={sourceTableHref}
                 data-testid="yjs-grid-source-table-link"
                 aria-label={`Open Table ${tableName}`}
+                onkeydown={(event) => event.stopPropagation()}
             >Open Table</a>
         {/if}
         <div class="view-toggles" role="group" aria-label="Table views">
