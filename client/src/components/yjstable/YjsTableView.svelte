@@ -109,6 +109,14 @@ let observedQuery = getGridQuery(grid);
 // svelte-ignore state_referenced_locally
 let observedSchemaSql = handles.schemaText.toString();
 
+function revalidateMutationAuthority() {
+    // GridQueryRunner has already invalidated any older generation by the
+    // time this microtask runs. Execute the replacement immediately instead
+    // of leaving a visible result read-only while repeated sync notifications
+    // keep resetting the ordinary debounce timer.
+    queueMicrotask(() => void runner?.runQueryNow());
+}
+
 // View switching: panels can be toggled independently (parallel display).
 let showUiDef = $state(false);
 let showGrid = $state(true);
@@ -147,7 +155,10 @@ const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
         // A same-value Yjs rewrite is not a configuration change. Distinct
         // A -> B -> A transactions still advance twice and cannot revive an
         // action captured against the first A.
-        if (nextQuery !== observedQuery) queryExecution = undefined;
+        if (nextQuery !== observedQuery) {
+            queryExecution = undefined;
+            revalidateMutationAuthority();
+        }
         observedQuery = nextQuery;
     }
     refreshGridMirror();
@@ -158,7 +169,10 @@ const schemaTextObserver = () => {
     // Schema application normalizes by replacing the Y.Text even when its
     // final SQL is unchanged. Do not invalidate a completed result for that
     // replay; an actual intervening schema value still revokes authority.
-    if (nextSchemaSql !== observedSchemaSql) queryExecution = undefined;
+    if (nextSchemaSql !== observedSchemaSql) {
+        queryExecution = undefined;
+        revalidateMutationAuthority();
+    }
     observedSchemaSql = nextSchemaSql;
 };
 
@@ -248,6 +262,7 @@ onMount(() => {
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed) => {
                 schema = parsed;
+                revalidateMutationAuthority();
             },
             onRecordErrors: (errors) => {
                 recordErrors = errors;
