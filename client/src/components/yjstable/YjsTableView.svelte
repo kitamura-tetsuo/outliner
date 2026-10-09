@@ -157,7 +157,7 @@ const schemaTextObserver = () => {
     const nextSchemaSql = handles.schemaText.toString();
     // Schema application normalizes by replacing the Y.Text even when its
     // final SQL is unchanged. Do not invalidate a completed result for that
-    // replay; actual intervening schema values still advance the revision.
+    // replay; an actual intervening schema value still revokes authority.
     if (nextSchemaSql !== observedSchemaSql) queryExecution = undefined;
     observedSchemaSql = nextSchemaSql;
 };
