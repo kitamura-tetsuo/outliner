@@ -44,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [basic, core-1, core-2, core-3, core-4, core-4b, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables, schedule]
+        project: [basic, core-1, core-2, core-3, core-4, core-4b, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables-1, tables-2, schedule]
 
     steps:
       - name: Checkout code
@@ -96,7 +96,12 @@ jobs:
           set -o pipefail
           mkdir -p job_logs
           cd client
-          npm run github:test:e2e -- --project=${{ matrix.project }} 2>&1 | tee -a ../job_logs/e2e-${{ matrix.project }}.log
+          project="${{ matrix.project }}"
+          if [[ "$project" =~ ^tables-([12])$ ]]; then
+            npm run github:test:e2e -- --project=tables --shard="${BASH_REMATCH[1]}/2" 2>&1 | tee -a "../job_logs/e2e-${project}.log"
+          else
+            npm run github:test:e2e -- --project="$project" 2>&1 | tee -a "../job_logs/e2e-${project}.log"
+          fi
         env:
           CI: true
           NODE_ENV: test
