@@ -100,16 +100,13 @@ let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
-// Revisions are advanced only by the authoritative Yjs configuration
-// sources, not by adapter state replays. A completion captures both revisions
-// so an old result cannot regain authority after A -> B -> A configuration
-// changes, while an equivalent adapter notification cannot make it read-only.
-let queryRevision = $state(0);
-let schemaRevision = $state(0);
-let executionQueryRevision = $state(-1);
-let executionSchemaRevision = $state(-1);
+// Authority is revoked only by material changes from the authoritative Yjs
+// configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
+// grid/handles are static for this keyed component lifecycle.
+// svelte-ignore state_referenced_locally
 let observedQuery = getGridQuery(grid);
+// svelte-ignore state_referenced_locally
 let observedSchemaSql = handles.schemaText.toString();
 
 // View switching: panels can be toggled independently (parallel display).
@@ -150,7 +147,7 @@ const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
         // A same-value Yjs rewrite is not a configuration change. Distinct
         // A -> B -> A transactions still advance twice and cannot revive an
         // action captured against the first A.
-        if (nextQuery !== observedQuery) queryRevision++;
+        if (nextQuery !== observedQuery) queryExecution = undefined;
         observedQuery = nextQuery;
     }
     refreshGridMirror();
@@ -161,15 +158,12 @@ const schemaTextObserver = () => {
     // Schema application normalizes by replacing the Y.Text even when its
     // final SQL is unchanged. Do not invalidate a completed result for that
     // replay; actual intervening schema values still advance the revision.
-    if (nextSchemaSql !== observedSchemaSql) schemaRevision++;
+    if (nextSchemaSql !== observedSchemaSql) queryExecution = undefined;
     observedSchemaSql = nextSchemaSql;
 };
 
 const bareIdAuthority = $derived.by(() => {
-    if (
-        !schema || !sqlName || queryExecution?.status !== "completed" || queryExecution.query !== gridQuery
-        || executionQueryRevision !== queryRevision || executionSchemaRevision !== schemaRevision
-    ) {
+    if (!schema || !sqlName || queryExecution?.status !== "completed" || queryExecution.query !== gridQuery) {
         return undefined;
     }
     return resolveBareIdMutationAuthority(queryExecution.query, sqlName, schema, result.columns);
@@ -264,8 +258,6 @@ onMount(() => {
             onResult: (r, execution) => {
                 result = r;
                 queryExecution = execution;
-                executionQueryRevision = queryRevision;
-                executionSchemaRevision = schemaRevision;
                 clientRevision++;
                 chartPanel?.update(r);
             },
