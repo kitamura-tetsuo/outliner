@@ -262,7 +262,6 @@ onMount(() => {
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed) => {
                 schema = parsed;
-                revalidateMutationAuthority();
             },
             onRecordErrors: (errors) => {
                 recordErrors = errors;
