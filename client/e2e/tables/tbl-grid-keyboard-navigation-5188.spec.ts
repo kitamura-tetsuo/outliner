@@ -28,7 +28,6 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     }
 
     test("arrow keys move the active cell in all four directions", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = occurrenceRow(page, "daily-inbox-");
         const titleCell = firstRow.locator("td[data-col='title']");
         await selectAndFocus(titleCell);
@@ -54,7 +53,6 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Shift+Arrow extends a rectangular selection from the anchor", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
@@ -67,7 +65,6 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Escape reduces an extended range to its active cell", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 

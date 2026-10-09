@@ -38,7 +38,6 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
     });
 
     test("Enter commits the edit and moves the active cell down", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = stableFirstRow(page);
         const titleCell = firstRow.locator("td[data-col='title']");
         // A click on the display button already opens the editor (see TextCell).
@@ -84,7 +83,6 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
     });
 
     test("a focused select cell keeps native arrow-key behavior instead of navigating the grid", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const cadenceCell = stableFirstRow(page).locator("td[data-col='cadence']");
         const select = cadenceCell.locator("select");
         await select.click();
