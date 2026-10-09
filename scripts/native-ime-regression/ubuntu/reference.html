@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Native IME placement reference</title>
+<style>
+    html, body { margin: 0; background: #fff; color: #222; }
+    #calibration { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+    /* A normal, non-soft-wrapping textarea. Its font, line height and position are set
+       to match the application's displayed composing line before each reference run. */
+    #reference { position: absolute; margin: 0; padding: 0; border: 0; outline: none; resize: none;
+        overflow: hidden; background: #fff; color: #222; width: 1200px; }
+    #measure { position: absolute; left: -10000px; top: 0; white-space: pre; }
+</style>
+<div id="calibration"></div>
+<textarea id="reference" wrap="off" aria-label="Native IME placement reference"></textarea>
+<span id="measure"></span>

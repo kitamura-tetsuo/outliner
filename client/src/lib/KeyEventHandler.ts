@@ -1513,6 +1513,12 @@ export class KeyEventHandler {
             return;
         }
 
+        // Chromium removes a cancelled composition from the textarea with a non-composing
+        // delete input that arrives before compositionend. handleCompositionUpdate("") has
+        // already removed the preedit from the model, so applying this delete again would
+        // erase one character of the original text (#5501, REQ-005).
+        if (store.isComposing && inputEvent.inputType.startsWith("delete")) return;
+
         if (inputEvent.inputType === "historyUndo") {
             globalUndoRouter.undo();
             inputEvent.preventDefault?.();

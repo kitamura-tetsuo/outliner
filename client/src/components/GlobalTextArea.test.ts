@@ -59,4 +59,36 @@ describe("GlobalTextArea", () => {
         expect(textarea.getAttribute("enterkeyhint")).toBe("enter");
         expect(textarea.getAttribute("inputmode")).toBe("text");
     });
+
+    it("keeps wrap=off from the initial render through composition (#5501)", async () => {
+        const { container } = render(GlobalTextArea);
+        const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+        expect(textarea.getAttribute("wrap")).toBe("off");
+
+        textarea.focus();
+        await fireEvent.compositionStart(textarea, { data: "" });
+        expect(textarea.getAttribute("wrap")).toBe("off");
+        await fireEvent.compositionUpdate(textarea, { data: "にほん" });
+        expect(textarea.getAttribute("wrap")).toBe("off");
+        await fireEvent.compositionEnd(textarea, { data: "日本" });
+        expect(textarea.getAttribute("wrap")).toBe("off");
+    });
+
+    it("suppresses reading back the post-commit selectionchange after compositionend (#5501)", async () => {
+        const { container } = render(GlobalTextArea);
+        const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+        const syncSpy = vi.spyOn(store, "syncSelectionFromTextarea");
+        textarea.focus();
+
+        await fireEvent.compositionStart(textarea, { data: "" });
+        await fireEvent.compositionEnd(textarea, { data: "" });
+        expect(store.isComposing).toBe(false);
+        expect(store.suppressSelectionResync).toBe(true);
+
+        document.dispatchEvent(new Event("selectionchange"));
+        vi.runOnlyPendingTimers();
+        expect(syncSpy).not.toHaveBeenCalled();
+        expect(store.suppressSelectionResync).toBe(false);
+        syncSpy.mockRestore();
+    });
 });

@@ -8,7 +8,7 @@ acceptance:
 - Text can be edited independently from each cursor
 - Undo/redo applies to all cursors
 tests:
-- client/e2e/core/mce-multi-cursor-editing-37b78b62.spec.ts
 - client/e2e/core/mce-alt-click-preserves-carets-c526ae91.spec.ts
+- client/e2e/core/mce-multi-cursor-editing-37b78b62.spec.ts
 - client/src/stores/EditorOverlayStore.test.ts
 title-ja: マルチカーサーの編集
