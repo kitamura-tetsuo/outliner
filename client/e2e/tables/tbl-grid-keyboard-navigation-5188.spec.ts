@@ -53,6 +53,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Shift+Arrow extends a rectangular selection from the anchor", async ({ page }) => {
+        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
@@ -65,6 +66,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Escape reduces an extended range to its active cell", async ({ page }) => {
+        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
@@ -81,7 +83,6 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Tab moves right and wraps to the next row at the edge", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = occurrenceRow(page, "daily-inbox-");
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
@@ -93,7 +94,6 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Shift+Enter moves the active cell up", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const firstRow = occurrenceRow(page, "daily-inbox-");
         const secondRow = occurrenceRow(page, "daily-standup-");
         await selectAndFocus(secondRow.locator("td[data-col='title']"));
