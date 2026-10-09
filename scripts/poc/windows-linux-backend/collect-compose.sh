@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 windows_output=$1
-export APPLICATION_SHA=0b5e6b0b1d3985e6789a6d826c5a76a180642a6d
+# The historical PoC pin unless a current-revision regression run names its application.
+export APPLICATION_SHA=${NATIVE_IME_APPLICATION_SHA:-0b5e6b0b1d3985e6789a6d826c5a76a180642a6d}
 if [ -f /opt/outliner-app/docker-compose.yml ]; then
   cd /opt/outliner-app
   compose=(docker compose -f docker-compose.yml -f /opt/outliner-harness/scripts/poc/windows-linux-backend/compose.linux.yml)

@@ -1,4 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, type Page, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";

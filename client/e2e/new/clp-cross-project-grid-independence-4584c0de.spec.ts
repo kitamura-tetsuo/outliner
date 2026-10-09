@@ -4,6 +4,7 @@ import {
     configureGrid,
     copyGridHosts,
     createBlankGrid,
+    openGridSourceSchema,
     openPasteSpecialAtAnchor,
     openProjectPage,
     pasteAtAnchor,
@@ -70,16 +71,14 @@ test.describe("cross-project Grid clone independence", () => {
         // column the copy-time snapshot never had).
         await openProjectPage(page, fixture, "source");
         const sourceViewBeforeEdit = page.getByTestId("yjs-table-view").first();
-        if (!await sourceViewBeforeEdit.getByTestId("yjs-table-schema-input").isVisible().catch(() => false)) {
-            await sourceViewBeforeEdit.getByTestId("yjs-table-toggle-schema").click();
-        }
-        const sourceSchemaEditor = new SqlEditorHelper(sourceViewBeforeEdit.getByTestId("yjs-table-schema-input"));
+        const sourceSchemaHost = await openGridSourceSchema(page, sourceViewBeforeEdit);
+        const sourceSchemaEditor = new SqlEditorHelper(sourceSchemaHost.getByTestId("yjs-table-schema-input"));
         await sourceSchemaEditor.waitForReady();
         await sourceSchemaEditor.setValue(page, EDITED_SOURCE_SCHEMA);
-        await sourceViewBeforeEdit.getByTestId("yjs-table-schema-apply").click();
-        const sourceWarning = sourceViewBeforeEdit.getByTestId("yjs-table-schema-warning");
+        await sourceSchemaHost.getByTestId("yjs-table-schema-apply").click();
+        const sourceWarning = sourceSchemaHost.getByTestId("yjs-table-schema-warning");
         if (await sourceWarning.isVisible().catch(() => false)) {
-            await sourceViewBeforeEdit.getByTestId("yjs-table-schema-confirm").click();
+            await sourceSchemaHost.getByTestId("yjs-table-schema-confirm").click();
         }
         await expect.poll(async () => await sourceSchemaEditor.value(), { timeout: 30000 }).toBe(EDITED_SOURCE_SCHEMA);
         const sourceStateAfterEdit = await readGridProjectState(page);

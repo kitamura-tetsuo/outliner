@@ -30,7 +30,7 @@ function Feature-State {
         Get-WindowsOptionalFeature -Online -FeatureName $name | Select-Object FeatureName,State,RestartRequired
     }
 }
-$result = @{status='BLOCKED'; stage='platform-inventory'; harnessSha=$env:GITHUB_SHA; applicationSha='0b5e6b0b1d3985e6789a6d826c5a76a180642a6d'; run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"; productionJ='NOT TESTED'; productionK='NOT TESTED'}
+$result = @{status='BLOCKED'; stage='platform-inventory'; harnessSha=$env:GITHUB_SHA; applicationSha=$(if ($env:NATIVE_IME_APPLICATION_SHA) { $env:NATIVE_IME_APPLICATION_SHA } else { '0b5e6b0b1d3985e6789a6d826c5a76a180642a6d' }); run="https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"; productionJ='NOT TESTED'; productionK='NOT TESTED'}
 try {
     @{os=(Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber); computer=(Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer,Model,HypervisorPresent); processor=@(Get-CimInstance Win32_Processor | Select-Object Name,VirtualizationFirmwareEnabled,VMMonitorModeExtensions,SecondLevelAddressTranslationExtensions); features=@(Feature-State); imageOS=$env:ImageOS; imageVersion=$env:ImageVersion} | ConvertTo-Json -Depth 15 | Set-Content "$output/platform-before.json"
     [void](Invoke-Provision 'systeminfo' 'systeminfo.exe' @() 60)

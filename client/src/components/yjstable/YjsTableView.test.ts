@@ -77,6 +77,28 @@ describe("YjsTableView focus handling", () => {
         expect(Object.keys(editorOverlayStore.selections).length).toBe(0);
     });
 
+    it("identifies its source Table without mounting schema editing", () => {
+        const { projectDoc, handles, grid } = makeProps();
+        const { getByTestId, queryByTestId } = render(YjsTableView, {
+            props: {
+                grid,
+                handles,
+                projectDoc,
+                tableName: "Test Table",
+                sqlName: "test_table",
+                sourceTableHref: "/project/-/tables/table-1",
+            },
+        });
+
+        expect(getByTestId("yjs-table-name").textContent).toBe("Test Table");
+        expect(getByTestId("yjs-table-sql-name").textContent).toBe("test_table");
+        expect(getByTestId("yjs-grid-source-table-link").getAttribute("href"))
+            .toBe("/project/-/tables/table-1");
+        expect(queryByTestId("yjs-table-toggle-schema")).toBeNull();
+        expect(queryByTestId("yjs-table-schema-panel")).toBeNull();
+        expect(queryByTestId("yjs-table-schema-input")).toBeNull();
+    });
+
     it("does not render table-local undo/redo buttons", () => {
         const { projectDoc, handles, grid } = makeProps();
         const { queryByTestId } = render(YjsTableView, {
