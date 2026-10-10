@@ -317,7 +317,10 @@ const commandContext = $derived<GridCommandContext>({
     columnOrder: displayColumns,
     editableColumns: editability.editableColumns,
     valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
-    checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
+    checkOptionsOf: (columnId) => {
+        const column = columnByName.get(columnId);
+        return column?.enumLabels ?? column?.checkOptions;
+    },
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
     canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
     writeBareCell: (recordId, columnId, value) => commitBareRecordValue(recordId, columnId, value),
@@ -1337,7 +1340,7 @@ function handleCancelDelete() {
                                     editable={editability.editable
                                     && (recordId !== undefined || source !== undefined)
                                     && editability.editableColumns.has(column)}
-                                    options={schemaColumn?.checkOptions}
+                                    options={schemaColumn?.enumLabels ?? schemaColumn?.checkOptions}
                                     ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
                                     editSeed={logicalCell !== undefined && cellEditing(logicalCell) ? pendingEditSeed : undefined}
                                     bind:editing={

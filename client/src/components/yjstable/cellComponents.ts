@@ -47,6 +47,7 @@ export function isCellComponentType(type: unknown): type is CellComponentType {
 /** Default component type derived from the schema column. */
 export function defaultCellType(column: TableColumnSchema | undefined): CellComponentType {
     if (!column) return "text";
+    if (column.kind === "enum") return "select";
     if (column.checkOptions && column.checkOptions.length > 0) return "select";
     switch (column.kind) {
         case "boolean":

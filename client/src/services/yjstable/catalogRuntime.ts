@@ -4,7 +4,7 @@ import { readSqlCatalog, type SqlCatalogSnapshot } from "$shared/services/sqlCat
 import { compileSqlEnvironment, type SqlTableSnapshot } from "$shared/services/sqlEnvironmentCompiler";
 import { enqueueWrite } from "./pgliteService";
 import { quoteIdent } from "./sqlNames";
-import type { TableHandles } from "./tableDocs";
+import { getTableSqlName, type TableHandles } from "./tableDocs";
 
 export type CatalogRuntimeState =
     | { status: "building"; revision?: string; }
@@ -178,18 +178,36 @@ export class CatalogRuntime {
             ) return this.state;
             await enqueueWrite(async db => {
                 try {
-                    await db.exec(
-                        `DROP SCHEMA IF EXISTS ${quoteIdent(this.pgSchema)} CASCADE; CREATE SCHEMA ${
-                            quoteIdent(this.pgSchema)
-                        };`,
-                    );
-                    if (snapshot.objects.length > 0) {
-                        await db.exec(
-                            `BEGIN; SET LOCAL search_path TO ${quoteIdent(this.pgSchema)}; `
-                                + snapshot.objects.map(object => object.source).join(";\n")
-                                + "; COMMIT;",
-                        );
+                    await db.exec("BEGIN;");
+                    await db.exec(`DROP SCHEMA IF EXISTS ${quoteIdent(this.pgSchema)} CASCADE;`);
+                    await db.exec(`CREATE SCHEMA ${quoteIdent(this.pgSchema)};`);
+                    await db.exec(`SET LOCAL search_path TO ${quoteIdent(this.pgSchema)};`);
+                    for (const object of snapshot.objects) await db.exec(object.source);
+                    // Reconstruct every captured relation in the same
+                    // transaction as the catalog. Replacing an ENUM requires
+                    // DROP ... CASCADE, which also removes scalar relations in
+                    // the project schema; publishing ready before restoring
+                    // them would make an unrelated Table disappear until a
+                    // later schema edit or cold restart.
+                    for (const table of tables) {
+                        const tableName = getTableSqlName(this.projectDoc, table.id);
+                        if (!tableName) throw new Error(`SQL name for Table ${table.id} is unavailable`);
+                        await db.exec(table.schema);
+                        for (const record of table.records) {
+                            const columns = Object.keys(record.values);
+                            if (columns.length === 0) {
+                                await db.exec(`INSERT INTO ${quoteIdent(tableName)} DEFAULT VALUES`);
+                                continue;
+                            }
+                            await db.query(
+                                `INSERT INTO ${quoteIdent(tableName)} (${columns.map(quoteIdent).join(",")}) VALUES (${
+                                    columns.map((_, index) => `$${index + 1}`).join(",")
+                                })`,
+                                columns.map(column => record.values[column]),
+                            );
+                        }
                     }
+                    await db.exec("COMMIT;");
                 } catch (error) {
                     await db.exec("ROLLBACK").catch(() => {});
                     throw error;

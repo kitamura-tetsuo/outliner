@@ -1,4 +1,4 @@
-import { createSqlCatalogObject } from "$shared/services/sqlCatalog";
+import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
@@ -17,8 +17,9 @@ afterAll(resetPgliteForTests);
 describe("catalog-independent Table writes", { timeout: 60_000 }, () => {
     it("keeps scalar bulk writes authoritative while another Table uses the catalog", async () => {
         const doc = new Y.Doc({ guid: "catalog-independent-writes" });
-        createSqlCatalogObject(
-            doc as unknown as Parameters<typeof createSqlCatalogObject>[0],
+        const catalogDoc = doc as unknown as Parameters<typeof createSqlCatalogObject>[0];
+        const catalogId = createSqlCatalogObject(
+            catalogDoc,
             "enum",
             "CREATE TYPE task_state AS ENUM ('Open', 'Closed')",
         );
@@ -44,6 +45,20 @@ describe("catalog-independent Table writes", { timeout: 60_000 }, () => {
                 );
                 acquired!.adapter.commitRecordValue("scalar-1", "done", true, acquired!.adapter.writeAuthorityToken);
             });
+            expect(Object.fromEntries(scalar.data.get("scalar-1")!.entries())).toEqual({
+                id: "scalar-1",
+                title: "Updated",
+                done: true,
+            });
+            await expect.poll(
+                async () => (await acquired!.adapter.runQueryNow("SELECT id, title, done FROM scalar_tasks"))?.rows,
+            ).toEqual([{ id: "scalar-1", title: "Updated", done: true }]);
+
+            replaceSqlCatalogSource(catalogDoc, catalogId, "CREATE TYPE task_state AS ENUM ('Closed', 'Open')");
+            await expect.poll(
+                async () => (await acquired!.adapter.runQueryNow("SELECT id, title, done FROM scalar_tasks"))?.rows,
+                { timeout: 30_000 },
+            ).toEqual([{ id: "scalar-1", title: "Updated", done: true }]);
             expect(Object.fromEntries(scalar.data.get("scalar-1")!.entries())).toEqual({
                 id: "scalar-1",
                 title: "Updated",

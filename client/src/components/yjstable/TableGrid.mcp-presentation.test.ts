@@ -224,6 +224,16 @@ describe("MCP-saved Grid presentation in the normal renderer (#5436)", () => {
                 checkOptions: ["Open", "Done"],
             }),
         ).toBe("select");
+        expect(
+            cellComponentTypeFor(undefined, {
+                name: "state",
+                dataType: "task_state",
+                isNullable: true,
+                isPrimaryKey: false,
+                kind: "enum",
+                enumLabels: ["Open", "", "Done"],
+            }),
+        ).toBe("select");
         // An explicit override wins over the schema kind.
         expect(cellComponentTypeFor("checkbox", byName.get("due_date"))).toBe("checkbox");
         expect(cellComponentTypeFor("date", byName.get("done"))).toBe("date");

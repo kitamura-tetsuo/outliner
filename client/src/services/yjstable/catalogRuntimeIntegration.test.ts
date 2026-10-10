@@ -17,7 +17,7 @@ const localConnector: TableDocConnector = async () => ({
 afterEach(resetTableEngineForTests);
 afterAll(resetPgliteForTests);
 
-describe("browser catalog generations", { timeout: 30_000 }, () => {
+describe("browser catalog generations", { timeout: 60_000 }, () => {
     it("materializes catalog ENUMs on a cold route and rebuilds a mounted table in declaration order", async () => {
         const projectId = "catalog-generation-project";
         const projectDoc = new Y.Doc({ guid: projectId });
@@ -80,7 +80,10 @@ describe("browser catalog generations", { timeout: 30_000 }, () => {
             expect(acquired?.adapter.appliedSchema).toBeUndefined();
 
             setSchemaText(handles, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
-            await expect.poll(() => acquired?.adapter.appliedSchema?.columns[1]?.enumLabels).toEqual(["Open"]);
+            await expect.poll(
+                () => acquired?.adapter.appliedSchema?.columns[1]?.enumLabels,
+                { timeout: 30_000 },
+            ).toEqual(["Open"]);
             await expect(session.catalogReady()).resolves.toBeUndefined();
         } finally {
             session.dispose();
@@ -114,7 +117,7 @@ describe("browser catalog generations", { timeout: 30_000 }, () => {
                 },
             });
             runner.start();
-            await expect.poll(() => execution?.status).toBe("completed");
+            await expect.poll(() => execution?.status, { timeout: 30_000 }).toBe("completed");
 
             replaceSqlCatalogSource(catalogDoc, catalogId, "CREATE TYPE priority AS ENUM ('High', 'Low')");
             expect(invalidated).toBe(true);

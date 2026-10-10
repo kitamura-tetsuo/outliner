@@ -2,7 +2,7 @@
 interface Props {
     value: unknown;
     editable: boolean;
-    /** Allowed values, read from the schema's CHECK (col IN (...)) constraint. */
+    /** Allowed values, read from CHECK metadata or scalar ENUM labels. */
     options?: string[];
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
@@ -11,7 +11,12 @@ interface Props {
 
 let { value, editable, options = [], ariaLabel, onCommit, onRequestFocus: _ }: Props = $props();
 
-const current = $derived(value === null || value === undefined ? "" : String(value));
+const nullOption = $derived.by(() => {
+    let candidate = "__outliner_sql_null__";
+    while (options.includes(candidate)) candidate += "_";
+    return candidate;
+});
+const current = $derived(value === null || value === undefined ? nullOption : String(value));
 </script>
 
 <select
@@ -28,14 +33,14 @@ const current = $derived(value === null || value === undefined ? "" : String(val
     }}
     onchange={(e) => {
         const v = (e.target as HTMLSelectElement).value;
-        onCommit(v === "" ? null : v);
+        onCommit(v === nullOption ? null : v);
     }}
 >
-    <option value=""></option>
+    <option value={nullOption}></option>
     {#each options as option (option)}
         <option value={option}>{option}</option>
     {/each}
-    {#if current !== "" && !options.includes(current)}
+    {#if current !== nullOption && !options.includes(current)}
         <option value={current}>{current}</option>
     {/if}
 </select>
