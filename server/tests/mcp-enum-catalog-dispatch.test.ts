@@ -1,7 +1,9 @@
 import { expect } from "chai";
+import * as Y from "yjs";
 import { createDocumentStore } from "../src/persistence.js";
 import { SqlCatalogMutationService } from "../src/sql-catalog-service.js";
 import { PROJECT, startMcpTestServer, UID } from "./mcp-create-table-fixture.js";
+import { seedProject, withRoom } from "./server-create-table-fixture.js";
 
 describe("MCP ENUM catalog dispatch (#5534 REQ-008)", function() {
     this.timeout(60000);
@@ -37,6 +39,16 @@ describe("MCP ENUM catalog dispatch (#5534 REQ-008)", function() {
                 operationId: "enum-dispatch-create",
             });
             expect(created.payload.applied).to.equal(true);
+            const tableId = created.payload.tableId as string;
+
+            for (const [id, state] of [["first", "first"], ["empty", ""], ["nil", null], ["last", "second"]] as const) {
+                const write = await fixture.production.call("write_relation", {
+                    projectId: PROJECT,
+                    relation: "dispatch_rows",
+                    write: { op: "INSERT", values: { id, state } },
+                });
+                expect(write.payload.applied).to.equal(true);
+            }
 
             const schema = await fixture.production.call("get_relation_schema", {
                 projectId: PROJECT,
@@ -47,6 +59,86 @@ describe("MCP ENUM catalog dispatch (#5534 REQ-008)", function() {
                     objectId: "enum-dispatch-state",
                     labels: ["first", "", "second"],
                 });
+
+            const ordered = await fixture.production.call("query_sql", {
+                projectId: PROJECT,
+                sql: "SELECT state FROM dispatch_rows ORDER BY state NULLS LAST",
+            });
+            expect(ordered.payload.rows).to.deep.equal([
+                { state: "first" },
+                { state: "" },
+                { state: "second" },
+                { state: null },
+            ]);
+            const records = await fixture.production.call("get_table", {
+                projectId: PROJECT,
+                tableId,
+                includeRecords: true,
+            });
+            expect(records.payload.records.find((row: { recordId: string; }) => row.recordId === "empty").values.state)
+                .to.equal("");
+            expect(records.payload.records.find((row: { recordId: string; }) => row.recordId === "nil").values.state)
+                .to.equal(null);
+
+            await withRoom(fixture.server.hocuspocus, `projects/${PROJECT}/tables/${tableId}`, doc => {
+                doc.getMap<Y.Map<string>>("data").get("last")!.set("state", "invalid-synchronized-label");
+            });
+            const broken = await fixture.production.call("get_table", { projectId: PROJECT, tableId });
+            const corrected = await fixture.production.call("update_table_records", {
+                projectId: PROJECT,
+                tableId,
+                expectedRevision: broken.payload.revision,
+                changes: [{ recordId: "last", values: { state: "second" } }],
+            });
+            expect(corrected.payload.applied).to.equal(true);
+            const current = await fixture.production.call("get_table", { projectId: PROJECT, tableId });
+            const refused = await fixture.production.call("update_table_records", {
+                projectId: PROJECT,
+                tableId,
+                expectedRevision: current.payload.revision,
+                changes: [{ recordId: "last", values: { state: "still-invalid" } }],
+            });
+            expect(refused.payload.code).to.equal("validation_failed");
+
+            const projectB = "proj-b";
+            fixture.acl.grant("projectUsers", projectB, UID);
+            await seedProject(fixture.server.hocuspocus, projectB);
+            const beforeB = await catalog.read(UID, projectB);
+            expect(
+                (await catalog.apply(UID, projectB, {
+                    expectedRevision: beforeB.revision,
+                    intent: {
+                        operation: "create",
+                        object: {
+                            id: "enum-dispatch-state-b",
+                            kind: "enum",
+                            source: "CREATE TYPE dispatch_state AS ENUM ('second', 'first')",
+                        },
+                    },
+                })).status,
+            ).to.equal("applied");
+            expect(
+                (await fixture.production.call("create_table", {
+                    projectId: projectB,
+                    name: "Reverse typed table",
+                    schemaSql: "CREATE TABLE reverse_rows (id TEXT PRIMARY KEY, state dispatch_state)",
+                    operationId: "enum-dispatch-create-b",
+                })).payload.applied,
+            ).to.equal(true);
+            for (const [id, state] of [["one", "first"], ["two", "second"]]) {
+                expect(
+                    (await fixture.production.call("write_relation", {
+                        projectId: projectB,
+                        relation: "reverse_rows",
+                        write: { op: "INSERT", values: { id, state } },
+                    })).payload.applied,
+                ).to.equal(true);
+            }
+            const reversed = await fixture.production.call("query_sql", {
+                projectId: projectB,
+                sql: "SELECT state FROM reverse_rows ORDER BY state",
+            });
+            expect(reversed.payload.rows).to.deep.equal([{ state: "second" }, { state: "first" }]);
         } finally {
             await fixture.stop();
         }
