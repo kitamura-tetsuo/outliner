@@ -158,6 +158,7 @@ export class UndoRouter {
      */
     private routingDepth = 0;
     private pendingEntry: AsyncUndoEntry | undefined = $state();
+    private pendingDirection: "undo" | "redo" | undefined;
     private _lastAsyncOutcome: AsyncUndoOutcome | undefined = $state();
 
     public register(um: Y.UndoManager, options: UndoScopeOptions = {}): void {
@@ -184,8 +185,12 @@ export class UndoRouter {
                 }
                 this.undoStack.push(um);
                 // A new operation invalidates the redo history, exactly as it
-                // does inside a single Y.UndoManager.
-                this.redoStack = [];
+                // does inside a single Y.UndoManager. A catalog Redo already
+                // submitted to its service is retained until that exact
+                // request settles; it is not an executable second request.
+                this.redoStack = this.pendingDirection === "redo" && this.pendingEntry
+                    ? [this.pendingEntry]
+                    : [];
             } else {
                 // A scope pushed a redo item without the router asking for it,
                 // which means undo() was called on that scope directly. Repair
@@ -592,7 +597,7 @@ export class UndoRouter {
                     // source. New ordinary captures remain observable while it
                     // waits because routingDepth is not held across the await.
                     from.push(entry);
-                    this.startAsyncReplay(entry, from, to, isUndo ? "undo" : "redo");
+                    this.startAsyncReplay(entry, isUndo ? "undo" : "redo");
                     return;
                 }
 
@@ -647,8 +652,6 @@ export class UndoRouter {
 
     private startAsyncReplay(
         entry: AsyncUndoEntry,
-        from: UndoRouterEntry[],
-        to: UndoRouterEntry[],
         direction: "undo" | "redo",
     ): void {
         if (!entry.isActive()) {
@@ -656,6 +659,7 @@ export class UndoRouter {
             return;
         }
         this.pendingEntry = entry;
+        this.pendingDirection = direction;
         this._lastAsyncOutcome = undefined;
         void entry.replay(direction).then(
             outcome => {
@@ -668,9 +672,13 @@ export class UndoRouter {
                 }
                 this._lastAsyncOutcome = outcome;
                 if (outcome.status !== "applied") return;
+                // A normal edit may replace redoStack while this request is
+                // pending. Resolve both stacks at settlement rather than
+                // retaining the array references passed to run().
+                const from = direction === "undo" ? this.undoStack : this.redoStack;
+                const to = direction === "undo" ? this.redoStack : this.undoStack;
                 const index = from.lastIndexOf(entry);
-                // clear()/unregister-style lifecycle teardown may have removed
-                // the captured entry while the request was in flight.
+                // clear() or lifecycle teardown may remove the captured entry.
                 if (index === -1) return;
                 from.splice(index, 1);
                 to.push(entry);
@@ -682,7 +690,10 @@ export class UndoRouter {
                 };
             },
         ).finally(() => {
-            if (this.pendingEntry === entry) this.pendingEntry = undefined;
+            if (this.pendingEntry === entry) {
+                this.pendingEntry = undefined;
+                this.pendingDirection = undefined;
+            }
         });
     }
 }

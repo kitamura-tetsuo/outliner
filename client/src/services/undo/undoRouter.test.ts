@@ -81,6 +81,67 @@ describe("UndoRouter", () => {
         expect(router.lastAsyncOutcome).toEqual({ status: "refused", reason: "referenced" });
     });
 
+    it("settles applied Undo into live history after an unrelated edit replaces redo", async () => {
+        const router = new UndoRouter();
+        const pending = deferredOutcome();
+        const outline = scope(router, "outline");
+        router.captureAsync({
+            type: "async",
+            projectId: "project-a",
+            affectedObjectIds: ["enum-a"],
+            beforeSource: [],
+            afterSource: [{ id: "enum-a" }],
+            isActive: () => true,
+            replay: () => pending.promise,
+        });
+
+        router.undo();
+        outline.edit("unrelated", 1);
+        pending.settle({ status: "applied" });
+        await pending.promise;
+        await Promise.resolve();
+
+        expect(outline.map.get("unrelated")).toBe(1);
+        expect([router.undoDepth, router.redoDepth]).toEqual([1, 1]);
+    });
+
+    it("retains a pending Redo across an unrelated edit and settles it last", async () => {
+        const router = new UndoRouter();
+        const undo = deferredOutcome();
+        const redo = deferredOutcome();
+        const outline = scope(router, "outline");
+        let direction: "undo" | "redo" = "undo";
+        router.captureAsync({
+            type: "async",
+            projectId: "project-a",
+            affectedObjectIds: ["enum-a"],
+            beforeSource: [],
+            afterSource: [{ id: "enum-a" }],
+            isActive: () => true,
+            replay: replayDirection => {
+                direction = replayDirection;
+                return replayDirection === "undo" ? undo.promise : redo.promise;
+            },
+        });
+        router.undo();
+        undo.settle({ status: "applied" });
+        await undo.promise;
+        await Promise.resolve();
+
+        router.redo();
+        outline.edit("unrelated", 1);
+        expect(router.redoDepth).toBe(1);
+        redo.settle({ status: "applied" });
+        await redo.promise;
+        await Promise.resolve();
+
+        expect(direction).toBe("redo");
+        expect(outline.map.get("unrelated")).toBe(1);
+        expect([router.undoDepth, router.redoDepth]).toEqual([2, 0]);
+        router.undo();
+        expect(outline.map.get("unrelated")).toBe(1);
+    });
+
     it("does not advance a captured entry after its Project lifecycle ends", async () => {
         const router = new UndoRouter();
         const pending = deferredOutcome();
