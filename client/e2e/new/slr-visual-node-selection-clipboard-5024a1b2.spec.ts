@@ -16,7 +16,6 @@ import { itemIdByText, seedSelectionPage } from "../utils/visualNodeSelectionSee
 test.describe("SLR-5024a1b2: copying a selection that spans a visual node", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
-        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
         // A bound Calendar renders its whole view, which is taller than the
         // default viewport, and a drag can only reach an endpoint on screen.
         await page.setViewportSize({ width: 1280, height: 1400 });

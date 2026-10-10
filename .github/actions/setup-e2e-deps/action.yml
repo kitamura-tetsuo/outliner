@@ -2,7 +2,7 @@ name: 'Setup E2E dependencies (direct runner)'
 description: >-
   Restores everything the E2E runtime needs on a plain ubuntu-latest runner
   (no job-level container): Node.js, JDK 21, npm dependency trees, the
-  firebase-tools CLI, OS packages, and the Playwright browser. Uses
+  firebase-tools CLI, OS packages, and the requested Playwright browser. Uses
   GitHub Actions caching keyed on the lockfiles / pinned versions so a cache
   hit (the common case) restores in seconds instead of paying container pull
   + `cp -r node_modules` costs. Called independently by every E2E matrix
@@ -10,6 +10,10 @@ description: >-
   populates it, later shards on the same run reuse whatever finished first.
 
 inputs:
+  browser:
+    description: 'Playwright browser to prepare: chromium or firefox.'
+    required: false
+    default: 'chromium'
   cache-key-suffix:
     description: >-
       Appended to every cache key used by this action. Used to force a
@@ -40,9 +44,13 @@ runs:
     - name: Configure npm global prefix
       shell: bash
       run: |
-        mkdir -p "$HOME/.npm-global"
-        npm config set prefix "$HOME/.npm-global"
-        echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
+        set -euo pipefail
+        mkdir -p job_logs
+        (
+          mkdir -p "$HOME/.npm-global"
+          npm config set prefix "$HOME/.npm-global"
+          echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
+        ) 2>&1 | tee -a job_logs/setup-dependencies.log
 
     # pm2, tinylicious and dotenvx are already devDependencies of root/client
     # (see the PATH step below), so the only CLI that actually needs a global
@@ -59,7 +67,10 @@ runs:
     - name: Install global npm tools
       if: steps.cache-global-tools.outputs.cache-hit != 'true'
       shell: bash
-      run: npm install -g firebase-tools
+      run: |
+        set -euo pipefail
+        mkdir -p job_logs
+        npm install -g firebase-tools 2>&1 | tee -a job_logs/setup-dependencies.log
 
     - name: Cache npm dependency trees
       id: cache-node-modules
@@ -81,20 +92,28 @@ runs:
         # This runner has no pre-baked browser (unlike the Playwright base
         # image the container architecture used), so an unguarded postinstall
         # would download all three browser engines here and then again,
-        # redundantly, in the pinned-chromium-only step below.
+        # redundantly, in the lockfile-matched browser step below.
         PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       run: |
-        npm ci
-        (cd client && npm ci)
-        (cd server && npm ci)
-        (cd functions && npm ci)
+        set -euo pipefail
+        mkdir -p job_logs
+        (
+          npm ci
+          (cd client && npm ci)
+          (cd server && npm ci)
+          (cd functions && npm ci)
+        ) 2>&1 | tee -a job_logs/setup-dependencies.log
 
     - name: Link shared/node_modules
       shell: bash
       run: |
-        if [ -f shared/package.json ] && [ -d client/node_modules ]; then
-          ln -sfn ../client/node_modules shared/node_modules
-        fi
+        set -euo pipefail
+        mkdir -p job_logs
+        (
+          if [ -f shared/package.json ] && [ -d client/node_modules ]; then
+            ln -sfn ../client/node_modules shared/node_modules
+          fi
+        ) 2>&1 | tee -a job_logs/setup-dependencies.log
 
     # pm2 (root devDependency) is invoked directly (not via `npm run`), so it
     # needs node_modules/.bin on PATH explicitly.
@@ -102,18 +121,28 @@ runs:
       shell: bash
       run: echo "${{ github.workspace }}/node_modules/.bin" >> "$GITHUB_PATH"
 
+    # Separate cache identities prevent a Chromium-only shard from winning the
+    # Firefox cache write. A legacy shared cache is still a valid restore source;
+    # installation and real Firefox launch are checked even on an exact hit.
     - name: Cache Playwright browser
       id: cache-playwright
       uses: actions/cache@v5
       with:
         path: ~/.cache/ms-playwright
-        key: e2e-playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}${{ inputs.cache-key-suffix }}
+        key: e2e-playwright-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('client/package-lock.json') }}${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          e2e-playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}${{ inputs.cache-key-suffix }}
 
     - name: Install OS packages and Playwright browser
       shell: bash
       env:
         ROOT_DIR: ${{ github.workspace }}
+        E2E_BROWSER: ${{ inputs.browser }}
       run: |
-        source scripts/common-config.sh
-        source scripts/common-functions.sh
-        install_os_utilities
+        set -euo pipefail
+        mkdir -p job_logs
+        (
+          source scripts/common-config.sh
+          source scripts/common-functions.sh
+          install_os_utilities
+        ) 2>&1 | tee -a job_logs/setup-browser-${{ inputs.browser }}.log

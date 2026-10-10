@@ -18,6 +18,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  selection-coverage:
+    name: Guard Chromium and Firefox selection coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install collection guard dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          (
+            npm ci --no-audit --no-fund
+            npm ci --prefix client --no-audit --no-fund
+            npm ci --prefix server --no-audit --no-fund
+            npm ci --prefix scripts/tests --ignore-scripts --no-audit --no-fund
+            ln -sfn ../client/node_modules shared/node_modules
+          ) 2>&1 | tee job_logs/selection-coverage-setup.log
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Check actual collection and CI coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd scripts/tests
+          npx vitest run env-playwright-collects-every-spec-7d41ae62.spec.ts env-firefox-selection-coverage-78ad2b91.spec.ts 2>&1 | tee ../../job_logs/selection-coverage.log
+
+      - name: Upload collection guard logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-selection-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: job_logs/
+          retention-days: 2
+
   # No serialized prepare job (issue #5169): each shard restores its own
   # dependency / Playwright / global-tool caches and builds server/dist
   # locally, instead of waiting on a single upstream job. Real GitHub
@@ -40,11 +85,17 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    env:
+      E2E_BROWSER: ${{ startsWith(matrix.project, 'firefox-') && 'firefox' || 'chromium' }}
+      E2E_PROJECT: ${{ matrix.project }}
+      E2E_EXECUTION_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+      E2E_EXECUTION_REPORT: ../job_logs/e2e-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}.execution.json
+      E2E_BROWSER_RUNTIME_REPORT: ${{ github.workspace }}/job_logs/browser-runtime-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}.json
 
     strategy:
       fail-fast: false
       matrix:
-        project: [basic, core-1, core-2, core-3, core-4, core-4b, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables-1, tables-2, schedule]
+        project: [basic, core-1, core-2, core-3, core-4, core-4b, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables-1, tables-2, schedule, firefox-selection-core-4, firefox-selection-core-4b, firefox-selection-new, firefox-selection-basic]
 
     steps:
       - name: Checkout code
@@ -52,20 +103,64 @@ jobs:
         with:
           clean: true
 
-      - name: Setup E2E dependencies
-        uses: ./.github/actions/setup-e2e-deps
-        with:
-          cache-key-suffix: ${{ github.event.inputs.cache_bust && format('-{0}', github.event.inputs.cache_bust) || '' }}
-
-      - name: Build server
-        run: |
-          cd server
-          npm run build
-          test -s dist/server/src/index.js
-
-      - name: Run E2E-specific startup (services + readiness)
+      - name: Initialize execution evidence
         shell: bash
         run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          node <<'NODE'
+          const fs = require('node:fs');
+          fs.writeFileSync('job_logs/execution-context.json', JSON.stringify({
+            browserEngine: process.env.E2E_BROWSER,
+            browserVersion: null,
+            playwrightVersion: JSON.parse(fs.readFileSync('client/package-lock.json', 'utf8')).packages['node_modules/@playwright/test'].version,
+            playwrightVersionSource: 'client/package-lock.json',
+            project: process.env.E2E_PROJECT,
+            executionId: process.env.E2E_EXECUTION_ID,
+            commit: process.env.GITHUB_SHA,
+            status: 'setup',
+            testExecution: process.env.E2E_BROWSER === 'firefox'
+              ? { status: 'not-started', collected: null, executed: 0, attempts: 0 }
+              : undefined,
+            startedAt: new Date().toISOString(),
+          }, null, 2) + '\n');
+          NODE
+
+      - name: Setup E2E dependencies
+        id: setup
+        uses: ./.github/actions/setup-e2e-deps
+        with:
+          browser: ${{ env.E2E_BROWSER }}
+          cache-key-suffix: ${{ github.event.inputs.cache_bust && format('-{0}', github.event.inputs.cache_bust) || '' }}
+
+      - name: Verify Firefox execution results and failure evidence
+        id: firefox-execution-contract
+        if: matrix.project == 'firefox-selection-basic'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/tests --ignore-scripts --no-audit --no-fund 2>&1 | tee job_logs/firefox-execution-contract-setup.log
+          (
+            cd scripts/tests
+            npx vitest run env-firefox-execution-results-64ab7e91.spec.ts
+          ) 2>&1 | tee job_logs/firefox-execution-contract.log
+
+      - name: Build server
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd server
+            npm run build
+            test -s dist/server/src/index.js
+          ) 2>&1 | tee job_logs/setup-server-build.log
+
+      - name: Run E2E-specific startup (services + readiness)
+        id: startup
+        shell: bash
+        run: |
+          set -euo pipefail
           # The startup script is idempotent (it stops stale PM2 services,
           # frees ports, and re-probes readiness), so one retry converts a
           # transient runner-level bring-up failure into a pass without
@@ -73,7 +168,7 @@ jobs:
           # second attempt with its original exit status.
           attempt=1
           max_attempts=2
-          until bash scripts/ci-e2e-start.sh; do
+          until bash scripts/ci-e2e-start.sh 2>&1 | tee "job_logs/setup-services-${attempt}.log"; do
             status=$?
             if [ "$attempt" -ge "$max_attempts" ]; then
               echo "E2E startup failed after ${attempt} attempt(s) (exit ${status})."
@@ -91,23 +186,32 @@ jobs:
           VITE_DISABLE_FLUID_TELEMETRY: true
 
       - name: Run E2E tests (${{ matrix.project }})
+        id: tests
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           mkdir -p job_logs
           cd client
           project="${{ matrix.project }}"
+          if [ "$E2E_BROWSER" = "firefox" ]; then
+            export E2E_EXPECTED_COLLECTION="$GITHUB_WORKSPACE/job_logs/expected-${project}.json"
+            rm -f "$E2E_EXPECTED_COLLECTION"
+            PLAYWRIGHT_COLLECTION_E2E_DIR="$PWD/e2e" PLAYWRIGHT_COLLECTION_OUTPUT="$E2E_EXPECTED_COLLECTION" \
+              npm run github:test:e2e -- --project="$project" --list --reporter=../scripts/tests/helpers/playwright-collection-reporter.mjs \
+              2>&1 | tee "../job_logs/collection-${E2E_BROWSER}-${project}-${E2E_EXECUTION_ID}.log"
+          fi
           if [[ "$project" =~ ^tables-([12])$ ]]; then
-            npm run github:test:e2e -- --project=tables --shard="${BASH_REMATCH[1]}/2" 2>&1 | tee -a "../job_logs/e2e-${project}.log"
+            npm run github:test:e2e -- --project=tables --shard="${BASH_REMATCH[1]}/2" 2>&1 | tee -a "../job_logs/e2e-${E2E_BROWSER}-${project}-${E2E_EXECUTION_ID}.log"
           else
-            npm run github:test:e2e -- --project="$project" 2>&1 | tee -a "../job_logs/e2e-${project}.log"
+            npm run github:test:e2e -- --project="$project" 2>&1 | tee -a "../job_logs/e2e-${E2E_BROWSER}-${project}-${E2E_EXECUTION_ID}.log"
           fi
         env:
           CI: true
           NODE_ENV: test
           TEST_ENV: localhost
           DISPLAY: :99
-          PLAYWRIGHT_JSON_OUTPUT_NAME: ../job_logs/e2e-${{ matrix.project }}.json
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ../job_logs/e2e-${{ env.E2E_BROWSER }}-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}.json
+          E2E_ATTACH_BROWSER_CONSOLE: '1'
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
@@ -115,19 +219,62 @@ jobs:
         if: failure()
         run: |
           echo "## ❌ E2E Test Failed (${{ matrix.project }})" >> $GITHUB_STEP_SUMMARY
-          if [ -f "job_logs/e2e-${{ matrix.project }}.log" ]; then
-            grep -E -A1 -B0 "FAIL|FAILED" "job_logs/e2e-${{ matrix.project }}.log" >> $GITHUB_STEP_SUMMARY || true
+          if [ -f "job_logs/e2e-${E2E_BROWSER}-${E2E_PROJECT}-${E2E_EXECUTION_ID}.log" ]; then
+            grep -E -A1 -B0 "FAIL|FAILED" "job_logs/e2e-${E2E_BROWSER}-${E2E_PROJECT}-${E2E_EXECUTION_ID}.log" >> $GITHUB_STEP_SUMMARY || true
           fi
 
+      - name: Record setup and execution status
+        if: always()
+        shell: bash
+        env:
+          E2E_JOB_STATUS: ${{ job.status }}
+          E2E_STEP_OUTCOMES: ${{ toJSON(steps) }}
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          node <<'NODE' 2>&1 | tee job_logs/execution-status.log
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const file = 'job_logs/execution-context.json';
+          const record = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+          const runtimeFile = process.env.E2E_BROWSER_RUNTIME_REPORT;
+          if (runtimeFile && fs.existsSync(runtimeFile)) {
+            record.browserRuntimeProbe = JSON.parse(fs.readFileSync(runtimeFile, 'utf8'));
+            record.browserVersion = record.browserRuntimeProbe.browserVersion;
+            record.playwrightVersion = record.browserRuntimeProbe.playwrightVersion;
+            record.playwrightVersionSource = 'Firefox runtime probe';
+          }
+          record.status = process.env.E2E_JOB_STATUS;
+          record.steps = JSON.parse(process.env.E2E_STEP_OUTCOMES);
+          if (process.env.E2E_BROWSER === 'firefox') {
+            const executionFile = path.resolve('client', process.env.E2E_EXECUTION_REPORT);
+            if (fs.existsSync(executionFile)) {
+              const execution = JSON.parse(fs.readFileSync(executionFile, 'utf8'));
+              record.testExecution = {
+                status: execution.status,
+                ...execution.counts,
+                report: path.relative(process.cwd(), executionFile),
+              };
+            } else if (record.steps.tests && record.steps.tests.outcome !== 'skipped') {
+              record.testExecution = { status: 'unobserved', collected: null, executed: null, attempts: null };
+            }
+          }
+          record.finishedAt = new Date().toISOString();
+          fs.writeFileSync(file, JSON.stringify(record, null, 2) + '\n');
+          console.log(JSON.stringify(record));
+          NODE
+
       - name: Upload Logs & Artifacts
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-artifacts-${{ matrix.project }}
+          name: e2e-artifacts-${{ env.E2E_BROWSER }}-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             job_logs/
             client/test-results/
             client/playwright-report/
             client/logs/
             server/logs/
+            logs/
+            firebase-debug.log
           retention-days: 2

@@ -177,25 +177,10 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // 4. Cancel with Esc key (without pasting)
         await page.keyboard.press("Escape");
 
-        // Explicitly call cancelBoxSelection
-        await page.evaluate(() => {
-            if (
-                (globalThis as any).KeyEventHandler
-                && typeof (globalThis as any).KeyEventHandler.cancelBoxSelection === "function"
-            ) {
-                (globalThis as any).KeyEventHandler.cancelBoxSelection();
-            }
-
-            // Forcibly clear the selection range
-            if ((globalThis as any).editorOverlayStore) {
-                (globalThis as any).editorOverlayStore.clearSelections();
-            }
-        });
-
         // Verify that rectangular selection has been canceled (using waitForFunction)
         await page.waitForFunction(
             () => {
-                if (!(globalThis as any).editorOverlayStore) return true; // Treat as no selection if store is missing
+                if (!(globalThis as any).editorOverlayStore) return false;
                 const selections = Object.values((globalThis as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },
@@ -248,7 +233,7 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Selection range should be cleared after pasting (using waitForFunction)
         await page.waitForFunction(
             () => {
-                if (!(globalThis as any).editorOverlayStore) return true;
+                if (!(globalThis as any).editorOverlayStore) return false;
                 const selections = Object.values((globalThis as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },

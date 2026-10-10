@@ -60,16 +60,16 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
         // Manually create selection range (including empty items)
         await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            if (!store) return;
+            if (!store) throw new Error("editorOverlayStore is required for the selection fixture");
 
             // Get items
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 3) return;
+            if (items.length < 3) throw new Error("Required selection fixture items are missing");
 
             const firstItemId = items[0].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!firstItemId || !thirdItemId) return;
+            if (!firstItemId || !thirdItemId) throw new Error("Required selection endpoint IDs are missing");
 
             // Set selection range
             store.setSelection({
@@ -88,12 +88,7 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
         await page.waitForTimeout(300);
 
         // Confirm that the selection range was created
-        try {
-            await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch {
-            console.log("Selection not created, skipping test");
-            return;
-        }
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // Get the text of the selection range (from the application's selection range management system)
         const selectionText = await page.evaluate(() => {

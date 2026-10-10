@@ -1,0 +1,26 @@
+id: ENV-78ad2b91
+title: Selection E2E collection is complete for Chromium and Firefox
+title-ja: 選択範囲の E2E テスト収集を Chromium と Firefox の両方で検証する
+description: >-
+  The coverage guard independently discovers every required core/new SLR spec
+  and the basic selection-duplication regression. A separate unfiltered
+  Playwright collection supplies the required cases, which are compared with
+  actual production collection per browser under the CI engine/project
+  environment and with the Firefox CI matrix.
+  Adversarial tests remove a matcher, omit an individual case or CI project,
+  mislabel Chromium as Firefox, add a matching spec, and relocate a retained
+  spec. Collection evidence is never treated as passing execution evidence.
+category: environment
+status: implemented
+components:
+  - client/playwright.config.ts
+  - client/playwright-selection-suite.ts
+  - client/playwright-selection-retained.json
+  - scripts/tests/helpers/playwright-collection.ts
+  - scripts/tests/helpers/playwright-collection-reporter.mjs
+  - .github/workflows/ci-test-e2e.yml
+tests:
+  - scripts/tests/env-playwright-collects-every-spec-7d41ae62.spec.ts
+  - scripts/tests/env-firefox-selection-coverage-78ad2b91.spec.ts
+commands:
+  - cd scripts/tests && npx vitest run env-playwright-collects-every-spec-7d41ae62.spec.ts env-firefox-selection-coverage-78ad2b91.spec.ts

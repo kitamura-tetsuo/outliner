@@ -30,7 +30,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Re-enable debug mode
         await page.evaluate(() => {
@@ -56,16 +56,16 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         // Manually create selection
         await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            if (!store) return;
+            if (!store) throw new Error("editorOverlayStore is required for the selection fixture");
 
             // Select the second and third items
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 3) return;
+            if (items.length < 3) throw new Error("Required selection fixture items are missing");
 
             const secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!secondItemId || !thirdItemId) return;
+            if (!secondItemId || !thirdItemId) throw new Error("Required selection endpoint IDs are missing");
 
             // Set the selection
             store.setSelection({
@@ -84,9 +84,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         await page.waitForTimeout(300);
 
         // Confirm that the selection was created
-        await page.evaluate(() => {
-            return document.querySelector(".editor-overlay .selection") !== null;
-        });
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // Get item count before deletion
         const beforeCount = await page.locator(".outliner-item").count();
@@ -130,16 +128,16 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         // Manually create selection
         await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            if (!store) return;
+            if (!store) throw new Error("editorOverlayStore is required for the selection fixture");
 
             // Select the second and third items
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 3) return;
+            if (items.length < 3) throw new Error("Required selection fixture items are missing");
 
             const secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!secondItemId || !thirdItemId) return;
+            if (!secondItemId || !thirdItemId) throw new Error("Required selection endpoint IDs are missing");
 
             // Set the selection
             store.setSelection({
@@ -158,13 +156,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         await page.waitForTimeout(300);
 
         // Confirm that the selection was created
-        try {
-            await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch (e) {
-            void e; // explicitly mark as intentionally unused
-            console.log("Selection not created, skipping test");
-            return;
-        }
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // Get item count before deletion
         const beforeCount = await page.locator(".outliner-item").count();
@@ -212,16 +204,16 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         // Manually create selection
         await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            if (!store) return;
+            if (!store) throw new Error("editorOverlayStore is required for the selection fixture");
 
             // Select the second and third items (partial selection)
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 3) return;
+            if (items.length < 3) throw new Error("Required selection fixture items are missing");
 
             const secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!secondItemId || !thirdItemId) return;
+            if (!secondItemId || !thirdItemId) throw new Error("Required selection endpoint IDs are missing");
 
             // Set the selection
             store.setSelection({
@@ -240,13 +232,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         await page.waitForTimeout(300);
 
         // Confirm that the selection was created
-        try {
-            await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch (e) {
-            void e; // explicitly mark as intentionally unused
-            console.log("Selection not created, skipping test");
-            return;
-        }
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // Get item count before deletion
         const beforeCount = await page.locator(".outliner-item").count();
@@ -288,16 +274,16 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         // Manually create selection
         await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            if (!store) return;
+            if (!store) throw new Error("editorOverlayStore is required for the selection fixture");
 
             // Select the first and second items (partial selection)
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 2) return;
+            if (items.length < 2) throw new Error("Required selection fixture items are missing");
 
             const firstItemId = items[0].getAttribute("data-item-id");
             const secondItemId = items[1].getAttribute("data-item-id");
 
-            if (!firstItemId || !secondItemId) return;
+            if (!firstItemId || !secondItemId) throw new Error("Required selection endpoint IDs are missing");
 
             // Set the selection
             store.setSelection({
@@ -316,13 +302,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         await page.waitForTimeout(300);
 
         // Confirm that the selection was created
-        try {
-            await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch (e) {
-            void e; // explicitly mark as intentionally unused
-            console.log("Selection not created, skipping test");
-            return;
-        }
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // Press Delete key to delete the selection
         await page.keyboard.press("Delete");
@@ -331,9 +311,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         await page.waitForTimeout(300);
 
         // Confirm that the cursor is displayed
-        await page.evaluate(() => {
-            return document.querySelector(".editor-overlay .cursor") !== null;
-        });
+        await expect(page.locator(".editor-overlay .cursor").first()).toBeVisible();
 
         // Enter text and check cursor position
         await page.keyboard.type("INSERTED");
