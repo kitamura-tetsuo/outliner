@@ -122,6 +122,11 @@ describe("catalog lifecycle orderings", { timeout: 90_000 }, () => {
         try {
             const acquired = await session.acquire(tableId);
             expect((await acquired!.adapter.runQueryNow("SELECT points FROM legacy"))?.rows).toEqual([{ points: 7 }]);
+            doc.transact(() => {
+                acquired!.adapter.commitRecordValue("r1", "points", 8, acquired!.adapter.writeAuthorityToken);
+                acquired!.adapter.commitRecordValue("r1", "points", 9, acquired!.adapter.writeAuthorityToken);
+            });
+            expect(handles.data.get("r1")?.get("points")).toBe(9);
         } finally {
             session.dispose();
         }

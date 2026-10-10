@@ -26,13 +26,24 @@ export class CatalogRuntime {
     private readyGeneration = 0;
     private disposed = false;
     private lastObserved = "";
+    private catalogObjectCount = 0;
     private currentBuild: Promise<CatalogRuntimeState>;
     private readonly tables = new Map<string, { handles: TableHandles; unobserve: () => void; }>();
 
     private readonly updateObserver = () => {
+        const catalog = readSqlCatalog(this.projectId, this.catalogDoc());
         const descriptor = this.readDescriptor();
         if (descriptor === this.lastObserved) return;
         this.lastObserved = descriptor;
+        const nextObjectCount = catalog.status === "ready" ? catalog.snapshot.objects.length : 0;
+        const catalogRemainedEmpty = this.catalogObjectCount === 0 && nextObjectCount === 0;
+        this.catalogObjectCount = nextObjectCount;
+        // Legacy projects share this Y.Doc with their Table records. Their
+        // catalog revision can therefore advance on an ordinary record edit,
+        // but an empty-to-empty transition has no SQL environment to rebuild
+        // and must not revoke a multi-cell write between its individual field
+        // updates.
+        if (catalogRemainedEmpty && catalog.status === "ready") return;
         this.currentBuild = this.rebuild();
     };
 
@@ -42,8 +53,9 @@ export class CatalogRuntime {
         private readonly pgSchema: string,
     ) {
         this.lastObserved = this.readDescriptor();
-        this.projectDoc.on("update", this.updateObserver);
         const initial = readSqlCatalog(this.projectId, this.catalogDoc());
+        this.catalogObjectCount = initial.status === "ready" ? initial.snapshot.objects.length : 0;
+        this.projectDoc.on("update", this.updateObserver);
         if (initial.status === "ready" && initial.snapshot.objects.length === 0) {
             this.state = { status: "ready", snapshot: initial.snapshot, generation: ++this.readyGeneration };
             this.currentBuild = Promise.resolve(this.state);
