@@ -1,5 +1,5 @@
 import type * as Y from "yjs";
-import { getKanban, getKanbanRegistry, type KanbanHandles, type KanbanLaneValue } from "./kanbanDocs";
+import { getKanban, type KanbanHandles, type KanbanLaneValue } from "./kanbanDocs";
 import { resolveBareIdMutationAuthority } from "./queryAnalysis";
 import { getTableRegistry, getTableSqlName } from "./tableDocs";
 import { type TableQueryExecution, TableQueryRunnerBase, type TableRunnerOptions } from "./tableQueryRunner";
