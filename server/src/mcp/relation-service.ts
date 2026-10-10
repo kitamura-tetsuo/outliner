@@ -890,7 +890,7 @@ export class OutlinerRelationService {
                     currentCatalog.status !== "ready"
                     || currentCatalog.snapshot.revision !== validatedCatalogRevision
                 ) {
-                    throw new McpReadError("conflict", "SQL catalog changed after schema validation", {
+                    throw new McpReadError("stale_revision", "SQL catalog changed after schema validation", {
                         expectedCatalogRevision: validatedCatalogRevision,
                         actualCatalogRevision: currentCatalog.status === "ready"
                             ? currentCatalog.snapshot.revision
@@ -1941,7 +1941,7 @@ export class OutlinerRelationService {
             }
             const currentCatalog = readSqlCatalog(projectId, project as never);
             if (currentCatalog.status !== "ready" || currentCatalog.snapshot.revision !== catalogRevision) {
-                throw new McpReadError("conflict", "SQL catalog changed after record validation", {
+                throw new McpReadError("stale_revision", "SQL catalog changed after record validation", {
                     expectedCatalogRevision: catalogRevision,
                     actualCatalogRevision: currentCatalog.status === "ready"
                         ? currentCatalog.snapshot.revision
@@ -2315,7 +2315,7 @@ export class OutlinerRelationService {
                 return catalog.status === "ready" ? catalog.snapshot.revision : undefined;
             });
             if (currentCatalogRevision !== validatedCatalogRevision) {
-                throw new McpReadError("conflict", "SQL catalog changed after Grid validation", {
+                throw new McpReadError("stale_revision", "SQL catalog changed after Grid validation", {
                     expectedCatalogRevision: validatedCatalogRevision,
                     actualCatalogRevision: currentCatalogRevision,
                 });
