@@ -3,13 +3,13 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-8f29a6d0 — Genuine Text mirror changes remain effective. */
 import { expect, type Page, test } from "@playwright/test";
-import { pointForOffset } from "../utils/selectionGeometryHelpers";
+import { pointInsideCharacter } from "../utils/selectionGeometryHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { localSelectionEndpoints } from "../utils/visualNodeSelectionHelpers";
 import { itemIdByText, seedSelectionPage } from "../utils/visualNodeSelectionSeed";
 
 async function clickAtStart(page: Page, id: string) {
-    const point = await pointForOffset(page, id, 0);
+    const point = await pointInsideCharacter(page, id, 0);
     await page.mouse.click(point.x, point.y);
     await page.keyboard.press("Home");
     await expect(page.locator(".global-textarea")).toBeFocused();

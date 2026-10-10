@@ -3,7 +3,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-8f29a6d0 — Visual endpoint ranges survive character-mirror notifications. */
 import { expect, type Page, test } from "@playwright/test";
-import { pointForOffset } from "../utils/selectionGeometryHelpers";
+import { pointForOffset, pointInsideCharacter } from "../utils/selectionGeometryHelpers";
 import {
     expectNodeFragmentCoversBlock,
     fragmentsForItem,
@@ -108,9 +108,9 @@ for (const kind of ["yjstable", "calendar", "layout"] as VisualKind[]) {
             expect(await model(page)).toEqual(before);
 
             // A plain Text click is the semantic boundary that releases the visual
-            // range. Use the unambiguous leading edge, then drive the caret with real
+            // range. Click inside the first character's left half, then drive the caret with real
             // keys so the test independently proves both release and caret movement.
-            const click = await pointForOffset(page, omega, 0);
+            const click = await pointInsideCharacter(page, omega, 0);
             await page.mouse.click(click.x, click.y);
             await page.waitForTimeout(400);
             await replaySelectionNotification(page);
