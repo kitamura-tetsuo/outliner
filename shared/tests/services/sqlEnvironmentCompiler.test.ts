@@ -106,10 +106,10 @@ describe("compileSqlEnvironment", () => {
         ));
         expect(built.status).toBe("failed");
         if (built.status !== "failed") return;
-        expect(
-            built.diagnostics.filter(diagnostic => diagnostic.kind === "record").map(diagnostic => diagnostic.recordId),
-        )
-            .toEqual(["invalid-enum", "missing-id"]);
+        expect(built.diagnostics.filter(diagnostic => diagnostic.kind === "record")).toEqual([
+            expect.objectContaining({ recordId: "invalid-enum", column: "priority" }),
+            expect.objectContaining({ recordId: "missing-id", column: "id" }),
+        ]);
     }, 30_000);
 
     it.each([

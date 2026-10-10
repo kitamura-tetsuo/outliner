@@ -203,6 +203,10 @@ async function resetDatabase(db: PGlite): Promise<void> {
     } catch {
         // There is normally no transaction. ROLLBACK is only recovery for a failed statement.
     }
+    // TEMP relations live in session-owned pg_temp_* schemas. Those schemas
+    // are intentionally excluded from the ordinary schema-drop loop below,
+    // so clear their contents through PostgreSQL's session cleanup command.
+    await db.exec("DISCARD TEMP");
     const schemas = await db.query<{ nspname: string; }>(
         "SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema'",
     );
@@ -366,18 +370,26 @@ async function insertRecords(
             await db.query(sql, values);
         } catch (error) {
             const text = messageOf(error);
-            let column = columns.find(name => text.includes(name));
-            if (!column) {
-                for (let index = 0; index < columns.length; index++) {
-                    const type = typeByColumn.get(columns[index]);
-                    if (!type) continue;
-                    try {
-                        await db.query(`SELECT $1::${type}`, [values[index]]);
-                    } catch {
-                        column = columns[index];
-                        break;
-                    }
+            let column: string | undefined;
+            // Ask PostgreSQL to validate every supplied value against its
+            // actual declared type. Error-message substring matching cannot
+            // safely attribute a failure (for example, "invalid" contains
+            // the common column name "id").
+            for (let index = 0; index < columns.length; index++) {
+                const type = typeByColumn.get(columns[index]);
+                if (!type) continue;
+                try {
+                    await db.query(`SELECT $1::${type}`, [values[index]]);
+                } catch {
+                    column = columns[index];
+                    break;
                 }
+            }
+            // Constraint errors may not be reproducible by a scalar cast.
+            // Only accept an exact quoted column name emitted by PostgreSQL.
+            if (!column) {
+                const namedColumn = /column\s+"([^"]+)"/i.exec(text)?.[1];
+                if (namedColumn && typeByColumn.has(namedColumn)) column = namedColumn;
             }
             diagnostics.push({
                 kind: "record",
@@ -478,6 +490,9 @@ export async function compileSqlEnvironment(
                 }
                 if (create.relation.schemaname !== undefined) {
                     throw new Error("Schema-qualified tables are not supported");
+                }
+                if (create.relation.relpersistence === "t") {
+                    throw new Error("Temporary tables are not supported");
                 }
                 tableName = create.relation.relname;
                 await db.exec(table.schema);
