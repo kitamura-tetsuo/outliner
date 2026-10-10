@@ -336,8 +336,8 @@ async function runQuery() {
     }
 }
 
-function scheduleRequery() {
-    catalogResultCurrent = false;
+function scheduleRequery(invalidateCurrentResult = false) {
+    if (invalidateCurrentResult) catalogResultCurrent = false;
     if (requeryTimer !== undefined) clearTimeout(requeryTimer);
     requeryTimer = setTimeout(() => {
         requeryTimer = undefined;
@@ -354,7 +354,14 @@ function refreshMirror() {
     const ganttScaleChanged = next.ganttScale !== settings.ganttScale;
     settings = next;
     queryInput = next.query;
-    if (queryChanged || viewTypeChanged || timezoneChanged || ganttScaleChanged) scheduleRequery();
+    if (queryChanged || timezoneChanged) {
+        scheduleRequery(true);
+    } else if (viewTypeChanged || ganttScaleChanged) {
+        // Presentation-only changes reuse the same current SQL result. They
+        // must not temporarily revoke drag/write authority while the
+        // debounced refresh confirms that unchanged result.
+        scheduleRequery();
+    }
     if (!isInitialSyncDone) {
         isInitialSyncDone = true;
         if (!next.query) {
@@ -592,7 +599,7 @@ onMount(() => {
         } else if (state.status === "error") {
             queryError = state.message;
         } else {
-            scheduleRequery();
+            scheduleRequery(true);
         }
     });
 });

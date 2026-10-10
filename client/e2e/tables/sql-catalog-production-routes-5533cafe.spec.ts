@@ -10,6 +10,9 @@ import {
 } from "../utils/catalogBrowserRoutes";
 import { CatalogBrowserServer, type CatalogSnapshot } from "../utils/catalogBrowserServer";
 import { authorCatalogFixture, gridValues, INITIAL_ORDER, navigateCatalog } from "../utils/catalogBrowserUi";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+
+registerCoverageHooks();
 
 test(
     "catalog services, normal routes, delayed work and persisted fresh clients share one source",
