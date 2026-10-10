@@ -348,6 +348,16 @@ function sourceOf(row: Record<string, unknown>): { sourceKind: string; sourceId:
     return { sourceKind, sourceId };
 }
 
+function rowKeyBase(row: Record<string, unknown>, rowIndex: number): string {
+    const sourceKind = row.source_kind;
+    const sourceId = row.source_id;
+    if (typeof sourceKind === "string" && typeof sourceId === "string") {
+        return `${sourceKind}:${sourceId}`;
+    }
+    if (typeof row.id === "string") return row.id;
+    return `row-${rowIndex}`;
+}
+
 function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     // DOM identity, not write authority: this keys Svelte's `<tr>` nodes, so
     // it must not consult the async `editability` verdict. Resolving or
@@ -356,13 +366,16 @@ function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     // keyboard navigation. Derive it from the result data alone, preferring
     // the same durable identity `selectableRowId` uses; write routing keeps
     // using the gated `recordIdOf`/`sourceOf` above.
-    const sourceKind = row.source_kind;
-    const sourceId = row.source_id;
-    if (typeof sourceKind === "string" && typeof sourceId === "string") {
-        return `${sourceKind}:${sourceId}`;
-    }
-    if (typeof row.id === "string") return row.id;
-    return `row-${rowIndex}`;
+    const base = rowKeyBase(row, rowIndex);
+    // A cross join (or any non-unique projection) can repeat the same durable
+    // identity across rows, but Svelte keyed each blocks require unique keys
+    // (`each_key_duplicate` throws otherwise). Disambiguate repeats by
+    // occurrence, keeping the first occurrence's key exactly as before so DOM
+    // identity stays stable for the common unique-identity case.
+    const repeatsBefore = result.rows.slice(0, rowIndex).filter((candidate, candidateIndex) =>
+        rowKeyBase(candidate, candidateIndex) === base
+    ).length;
+    return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
 }
 
 /** Search/navigation identity for read-only projections that have no writable record identity. */
