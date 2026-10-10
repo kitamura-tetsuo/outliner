@@ -82,4 +82,59 @@ describe("SQL catalog referenced ENUM evolution (#5532 REQ-006)", function() {
         );
         expect(afterTable).to.deep.equal(beforeTable);
     });
+
+    it("allows adding and reordering labels on a referenced ENUM without changing Table state", async () => {
+        const initial = await service.read(uid, projectId);
+        const original = "CREATE TYPE mood AS ENUM ('ok', 'bad')";
+        expect(
+            (await service.apply(uid, projectId, {
+                expectedRevision: initial.revision,
+                intent: { operation: "create", object: { id: "enum-mood", kind: "enum", source: original } },
+            })).status,
+        ).to.equal("applied");
+        await withRoom(server.hocuspocus, `projects/${projectId}/tables/table-existing`, doc => {
+            const schema = doc.getText("schema");
+            schema.delete(0, schema.length);
+            schema.insert(0, "CREATE TABLE existing_table (id TEXT PRIMARY KEY, mood mood)");
+            const record = new Y.Map<unknown>();
+            record.set("id", "row-1");
+            record.set("mood", "ok");
+            doc.getMap<Y.Map<unknown>>("data").set("row-1", record);
+        });
+        const tableState = () =>
+            withRoom(
+                server.hocuspocus,
+                `projects/${projectId}/tables/table-existing`,
+                doc => Buffer.from(Y.encodeStateAsUpdate(doc)).toString("base64"),
+            );
+        const beforeTable = await tableState();
+
+        const reorderedSource = "CREATE TYPE mood AS ENUM ('bad', 'ok')";
+        let current = await service.read(uid, projectId);
+        expect(
+            (await service.apply(uid, projectId, {
+                expectedRevision: current.revision,
+                intent: {
+                    operation: "replace",
+                    object: { id: "enum-mood", kind: "enum", source: reorderedSource },
+                },
+            })).status,
+        ).to.equal("applied");
+        expect((await service.read(uid, projectId)).objects[0]?.source).to.equal(reorderedSource);
+        expect(await tableState()).to.equal(beforeTable);
+
+        const addedSource = "CREATE TYPE mood AS ENUM ('ok', 'bad', 'new')";
+        current = await service.read(uid, projectId);
+        expect(
+            (await service.apply(uid, projectId, {
+                expectedRevision: current.revision,
+                intent: {
+                    operation: "replace",
+                    object: { id: "enum-mood", kind: "enum", source: addedSource },
+                },
+            })).status,
+        ).to.equal("applied");
+        expect((await service.read(uid, projectId)).objects[0]?.source).to.equal(addedSource);
+        expect(await tableState()).to.equal(beforeTable);
+    });
 });
