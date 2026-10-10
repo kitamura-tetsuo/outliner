@@ -384,6 +384,7 @@ export async function importTableStructures(
     requestedSourceTableIds?: ReadonlySet<string>,
     allowProvenanceReuse = true,
 ): Promise<TableCloneResult> {
+    let portableGuard: (() => Promise<void>) | undefined;
     const capturedCatalogs = Object.values(snapshots).map(snapshot => snapshot.catalog).filter(catalog =>
         catalog !== undefined
     );
@@ -392,7 +393,7 @@ export async function importTableStructures(
         if (capturedCatalogs.some(candidate => candidate.revision !== catalog.revision)) {
             throw new TableCloneError("Clipboard SQL catalog evidence is inconsistent");
         }
-        await assertPortableStructuralEnumCompatibility(destinationProjectDoc, {
+        const portableSnapshot = {
             catalog,
             tables: Object.values(snapshots).map(snapshot => ({
                 id: snapshot.sourceTableId,
@@ -404,7 +405,11 @@ export async function importTableStructures(
                 kind: "grid" as const,
                 sql: snapshot.ui.query,
             })),
-        }, new Set(Object.keys(snapshots)));
+        };
+        const relevantIds = new Set(Object.keys(snapshots));
+        portableGuard = () =>
+            assertPortableStructuralEnumCompatibility(destinationProjectDoc, portableSnapshot, relevantIds);
+        await portableGuard();
     }
     const failures: Record<string, string> = {};
     const failureGroups: string[][] = [];
@@ -537,6 +542,10 @@ export async function importTableStructures(
 
         const created: string[] = [];
         try {
+            // Compiler/scratch planning is asynchronous. Re-admit against the
+            // live destination immediately before the first registry/subdoc
+            // effect so a catalog edit during planning cannot change meaning.
+            await portableGuard?.();
             for (const sourceTableId of group) {
                 const plan = plans.get(sourceTableId)!;
                 const destinationTableId = createTable(

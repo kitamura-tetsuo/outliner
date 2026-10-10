@@ -3,6 +3,8 @@ import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/service
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createCalendar } from "../calendar/calendarService";
+import { serializeGridToHtml, serializeGridToTsv } from "../clipboard/gridClipboardExport";
+import { exportProjectToMarkdown, exportProjectToOpml } from "../importExportService";
 import { duplicateSelectedObjects, getObjects } from "../objectManager/objectManagerController";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
@@ -158,5 +160,25 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
                 .rejects.toThrow('Required ENUM type "task_state" is missing or incompatible');
         }
         expect(listTables(destination)).toEqual([]);
+    });
+
+    it("keeps ordinary text, HTML, TSV, Markdown and OPML exports catalog-independent", () => {
+        const doc = new Y.Doc({ guid: "representation-exports" });
+        createSqlCatalogObject(doc, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+        const project = Project.fromDoc(doc);
+        const page = project.addPage("Exports", "test");
+        const item = page.items.addNode("test");
+        item.updateText("Open");
+        const config = {
+            columns: ["state"],
+            hiddenColumns: {},
+            labels: { state: "State" },
+            rows: [{ state: "Open" }],
+        };
+
+        expect(serializeGridToTsv(config).text).toBe("State\nOpen");
+        expect(serializeGridToHtml(config).html).toContain("<td>Open</td>");
+        expect(exportProjectToMarkdown(project)).toContain("Open");
+        expect(exportProjectToOpml(project)).toContain('text="Open"');
     });
 });

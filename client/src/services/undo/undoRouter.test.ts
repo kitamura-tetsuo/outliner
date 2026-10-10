@@ -1,5 +1,8 @@
+import { createSqlCatalogObject, readSqlCatalog, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import type { GridTableSnapshot } from "../clipboard/itemClipboard";
+import { portableStructuralEnumsStillCompatible } from "../yjstable/structuralEnumGuard";
 import type { AsyncUndoOutcome } from "./undoRouter.svelte";
 import { UndoRouter } from "./undoRouter.svelte";
 
@@ -503,14 +506,40 @@ describe("UndoRouter", () => {
             entry.set("doc", new Y.Doc());
             registry.set("typed", entry);
             treeMap.set("item", 1);
-            let compatible = true;
-            router.captureCrossProjectPaste(manager, projectDoc, ["typed"], [], () => compatible);
+            const enumId = createSqlCatalogObject(
+                projectDoc,
+                "enum",
+                "CREATE TYPE task_state AS ENUM ('Open', 'Closed')",
+            );
+            const captured = readSqlCatalog(projectDoc.guid, projectDoc);
+            if (captured.status !== "ready") throw new Error("Expected catalog");
+            const snapshots: Record<string, GridTableSnapshot> = {
+                typed: {
+                    sourceTableId: "typed",
+                    name: "Typed",
+                    sqlName: "typed",
+                    schemaSql: "CREATE TABLE typed (id TEXT, state task_state)",
+                    ui: { query: "SELECT * FROM typed", components: {}, columnOrder: [] },
+                    catalog: captured.snapshot,
+                },
+            };
+            router.captureCrossProjectPaste(
+                manager,
+                projectDoc,
+                ["typed"],
+                [],
+                () => portableStructuralEnumsStillCompatible(projectDoc, snapshots),
+            );
             router.undo();
             expect(registry.has("typed")).toBe(false);
             const undoDepth = router.undoDepth;
             const redoDepth = router.redoDepth;
 
-            compatible = false;
+            replaceSqlCatalogSource(
+                projectDoc,
+                enumId,
+                "CREATE TYPE task_state AS ENUM ('Closed', 'Open')",
+            );
             router.redo();
             expect(router.lastAsyncOutcome?.status).toBe("refused");
             expect(router.undoDepth).toBe(undoDepth);
