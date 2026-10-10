@@ -38,6 +38,49 @@ export function attemptEvidence(result: TestResult) {
     };
 }
 
+export function expectedCollectionCount(): number | undefined {
+    const inventoryPath = process.env.E2E_EXPECTED_COLLECTION;
+    if (!inventoryPath) return;
+    try {
+        const inventory = JSON.parse(fs.readFileSync(inventoryPath, "utf8"));
+        return Array.isArray(inventory.cases) ? inventory.cases.length : undefined;
+    } catch {
+        return;
+    }
+}
+
+export type DiagnosticCaseOutcome =
+    | "passed"
+    | "assertion-failed"
+    | "setup-or-launch-error"
+    | "skipped"
+    | "expected-failure"
+    | "incomplete";
+
+/** Normalize Playwright states into the outcomes required by the diagnostic contract. */
+export function diagnosticCaseOutcome(test: TestCase): DiagnosticCaseOutcome {
+    const last = test.results[test.results.length - 1];
+    const annotations = [...test.annotations, ...(last?.annotations ?? [])];
+    if (annotations.some(annotation => annotation.type === "fail") || test.expectedStatus === "failed") {
+        return "expected-failure";
+    }
+    if (
+        annotations.some(annotation => annotation.type === "skip" || annotation.type === "fixme")
+        || test.expectedStatus === "skipped" || last?.status === "skipped"
+    ) {
+        return "skipped";
+    }
+    if (!last || last.workerIndex < 0 || last.status === "interrupted") return "incomplete";
+    if (last.status === "passed") return "passed";
+    if (
+        !browserRuntime(last)
+        && JSON.stringify(last.errors).match(/Executable doesn't exist|browserType\.launch|Failed to launch/i)
+    ) {
+        return "setup-or-launch-error";
+    }
+    return "assertion-failed";
+}
+
 /** Compare execution selection with the fresh, unfiltered project inventory. */
 export function collectionViolations(tests: TestCase[], e2eDir: string): string[] {
     const inventoryPath = process.env.E2E_EXPECTED_COLLECTION;

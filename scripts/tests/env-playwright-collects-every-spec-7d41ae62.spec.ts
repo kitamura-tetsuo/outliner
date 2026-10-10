@@ -18,6 +18,10 @@ describe("ENV-7d41ae62: Playwright project coverage", () => {
         const listed = new Set(actual.cases.map(test => test.file));
         const uncollected = onDisk.filter(file => !listed.has(file));
         expect(uncollected, "Spec files not collected by any Playwright project").toEqual([]);
-        verifySelectionCoverage(CLIENT, path.join(ROOT, ".github/workflows/ci-test-e2e.yml"), actual);
+        verifySelectionCoverage(
+            CLIENT,
+            path.join(ROOT, ".github/workflows/firefox-selection-diagnostic.yml"),
+            actual,
+        );
     }, 300_000);
 });

@@ -11,6 +11,7 @@ describe("Firefox execution evidence through the CI npm entrypoint", () => {
         expect(result.evidence.status).toBe("passed");
         expect(result.evidence.mode).toBe("execution");
         expect(result.evidence.counts).toEqual({ collected: 1, executed: 1, passed: 1, attempts: 1 });
+        expect(result.evidence.cases[0].diagnosticOutcome).toBe("passed");
         const runtime = result.evidence.cases[0].attempts[0].runtime;
         expect(runtime.engine).toBe("firefox");
         expect(runtime.version).toMatch(/^\d+\./);
@@ -27,6 +28,7 @@ describe("Firefox execution evidence through the CI npm entrypoint", () => {
         expect(result.status, result.output).not.toBe(0);
         expect(result.evidence.status).toBe("failed");
         const attempt = result.evidence.cases[0].attempts[0];
+        expect(result.evidence.cases[0].diagnosticOutcome).toBe("assertion-failed");
         expect(attempt.status).toBe("failed");
         expect(attempt.retry).toBe(0);
         expect(attempt.attachments.map(attachment => attachment.name)).toEqual(expect.arrayContaining([
@@ -55,6 +57,9 @@ describe("Firefox execution evidence through the CI npm entrypoint", () => {
         expect(result.evidence.status).toBe("failed");
         expect(result.evidence.counts.passed).toBe(0);
         expect(result.evidence.violations.length).toBeGreaterThan(0);
+        expect(result.evidence.cases[0].diagnosticOutcome).toBe(
+            _name === "expected failure" ? "expected-failure" : "skipped",
+        );
         if (_name === "expected failure") {
             expect(result.evidence.cases[0].attempts[0].status).toBe("failed");
             for (const name of ["trace", "screenshot"]) {
@@ -82,6 +87,7 @@ describe("Firefox execution evidence through the CI npm entrypoint", () => {
         expect(result.status, result.output).not.toBe(0);
         expect(result.evidence.status).toBe("failed");
         const attempt = result.evidence.cases[0].attempts[0];
+        expect(result.evidence.cases[0].diagnosticOutcome).toBe("setup-or-launch-error");
         expect(attempt.runtime).toBeUndefined();
         expect(attempt.errors.length).toBeGreaterThan(0);
         expect(result.output).toMatch(/Executable doesn't exist|browserType.launch/);
@@ -109,6 +115,7 @@ describe("Firefox execution evidence through the CI npm entrypoint", () => {
             { inventory: "collect", args: ["--grep=included case"] },
         );
         expect(result.status, result.output).not.toBe(0);
+        expect(result.evidence.counts.expected).toBe(2);
         expect(result.evidence.counts.passed).toBe(1);
         expect(result.evidence.violations.join("\n")).toContain("Required case missing from execution");
     });

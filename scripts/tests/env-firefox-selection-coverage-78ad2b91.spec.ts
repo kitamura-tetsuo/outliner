@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { createCollectionFixture } from "./helpers/firefox-collection-fixture";
 import { collectPlaywright, verifySelectionCoverage } from "./helpers/playwright-collection";
 
@@ -18,13 +19,35 @@ afterEach(() => {
 const verify = () => verifySelectionCoverage(fixture.client, fixture.workflow);
 
 describe("ENV-78ad2b91: browser-specific selection coverage guard", () => {
-    it("collects every required case in both engines and preserves ordinary Chromium membership", () => {
+    it("keeps Firefox in a manually invoked diagnostic workflow", () => {
+        const diagnosticText = fs.readFileSync(fixture.workflow, "utf8");
+        const diagnostic = parse(diagnosticText);
+        expect(Object.keys(diagnostic.on)).toEqual(["workflow_dispatch"]);
+        expect(diagnosticText).toContain("ref: ${{ inputs.revision }}");
+        expect(diagnosticText).toContain("testedCommit");
+        expect(diagnosticText).not.toContain("continue-on-error");
+
+        const ordinary = parse(fs.readFileSync(fixture.ordinaryWorkflow, "utf8"));
+        expect(ordinary.jobs).not.toHaveProperty("selection-coverage");
+        expect(ordinary.jobs["e2e-test"].strategy.matrix.project)
+            .not.toEqual(expect.arrayContaining([
+                "firefox-selection-core-4",
+                "firefox-selection-core-4b",
+                "firefox-selection-new",
+                "firefox-selection-basic",
+            ]));
+    });
+
+    it("collects every required case in both engines and leaves ordinary CI Chromium-only", () => {
         const actual = collectPlaywright(fixture.client);
         verifySelectionCoverage(fixture.client, fixture.workflow, actual);
         expect(
             actual.cases.filter(test => test.file === "basic/ordinary-78ad2b91.spec.ts")
                 .map(test => [test.project, test.browser]),
         ).toEqual([["basic", "chromium"]]);
+        const ordinary = parse(fs.readFileSync(fixture.ordinaryWorkflow, "utf8"));
+        expect(ordinary.jobs["e2e-test"].strategy.matrix.project)
+            .not.toContain("firefox-selection-core-4");
     }, 120_000);
 
     it("rejects a removed Firefox match while Chromium still collects the spec", () => {
@@ -46,9 +69,9 @@ describe("ENV-78ad2b91: browser-specific selection coverage guard", () => {
         expect(verify).toThrow(/Missing chromium collection:[\s\S]+Missing firefox collection:/);
     }, 120_000);
 
-    it("rejects an omitted Firefox CI project without confusing listing with execution", () => {
-        fixture.removeCiProject("firefox-selection-core-4b");
-        expect(verify).toThrow("Firefox project missing from CI matrix: firefox-selection-core-4b");
+    it("rejects an omitted diagnostic project without confusing listing with execution", () => {
+        fixture.removeDiagnosticProject("firefox-selection-core-4b");
+        expect(verify).toThrow("Firefox project missing from diagnostic matrix: firefox-selection-core-4b");
     }, 120_000);
 
     it("allows a local duplicate project when scheduled Firefox projects already cover every required case", () => {

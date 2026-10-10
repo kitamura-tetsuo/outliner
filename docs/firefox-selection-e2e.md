@@ -1,6 +1,6 @@
 # Firefox outline-selection E2E
 
-[Issue #5560](https://github.com/kitamura-tetsuo/outliner/issues/5560) adds desktop Firefox execution of the existing outline-selection scenarios. Both engines use the same spec files, input gestures, and semantic assertions. The browser projects live in [client/playwright.config.ts](../client/playwright.config.ts); their Firefox membership is defined in [client/playwright-selection-suite.ts](../client/playwright-selection-suite.ts).
+[Issue #5562](https://github.com/kitamura-tetsuo/outliner/issues/5562) adds an out-of-band desktop Firefox diagnostic for the existing outline-selection scenarios. It records genuine passing and failing results without adding Firefox to ordinary pull-request CI. Both engines use the same spec files, input gestures, and semantic assertions. The browser projects live in [client/playwright.config.ts](../client/playwright.config.ts); their Firefox membership is defined in [client/playwright-selection-suite.ts](../client/playwright-selection-suite.ts).
 
 ## Required suite
 
@@ -51,7 +51,7 @@ Default endpoints come from [`scripts/common-config.sh`](../scripts/common-confi
 
 ## List the Firefox suite
 
-This command uses the same configuration as normal CI. Listing loads and collects cases; it does not launch Firefox or establish that any scenario passed.
+This command uses the same configuration as the manual diagnostic workflow. Listing loads and collects cases; it does not launch Firefox or establish that any scenario passed.
 
 ```bash
 E2E_BROWSER=firefox npm --prefix client run github:test:e2e -- \
@@ -167,7 +167,7 @@ npm ci --prefix scripts/tests --ignore-scripts
 )
 ```
 
-The selection guard independently discovers the required paths, obtains an unfiltered case inventory, and compares it with collection from the production projects under the CI engine/project environment. It checks both engines and the Firefox CI matrix. Its adversarial cases cover missing matchers/cases/projects, an incorrectly named Chromium project, new matching files, and retained moved specs.
+The selection guard independently discovers the required paths, obtains an unfiltered case inventory, and compares it with collection from the production projects under the diagnostic engine/project environment. It checks both engines and the Firefox diagnostic matrix. Its adversarial cases cover missing matchers/cases/projects, an incorrectly named Chromium project, new matching files, and retained moved specs. It also verifies that ordinary PR CI remains Chromium-only.
 
 After preparing Firefox, run the separate execution-boundary tests:
 
@@ -180,11 +180,21 @@ After preparing Firefox, run the separate execution-boundary tests:
 
 These tests invoke the actual `npm run github:test:e2e` entrypoint with an isolated temporary spec and the production browser configuration/reporters. They verify passing execution, a deliberate assertion failure, initial-attempt artifacts, skip/fixme/expected-failure rejection, zero collection, missing Firefox, collection-only reporting, an omitted case, a missing inventory, late teardown console evidence, and report-persistence failure. They do not exercise the application's selection behavior; the required SLR/basic specs provide that coverage.
 
-## CI behavior and evidence
+## Invoke the out-of-band diagnostic
 
-Whenever normal CI reaches its Chromium E2E phase, [ci-test-e2e.yml](../.github/workflows/ci-test-e2e.yml) schedules all four Firefox projects in the same matrix with `fail-fast: false`. Firefox does not depend on Chromium test success. The independent selection-coverage job verifies project membership. The `firefox-selection-basic` shard also runs the execution-boundary guard.
+[firefox-selection-diagnostic.yml](../.github/workflows/firefox-selection-diagnostic.yml) has only a `workflow_dispatch` trigger. It is not called by ordinary PR CI, and [ci-test-e2e.yml](../.github/workflows/ci-test-e2e.yml) retains its existing Chromium-only matrix. A failing Firefox assertion therefore remains a genuine failed diagnostic run without becoming an automatically scheduled merge gate.
 
-Before a Firefox shard executes, CI collects that whole project's expected case inventory through the same npm command and environment, then supplies it to the execution reporter as `E2E_EXPECTED_COLLECTION`. A passing subset cannot satisfy that inventory. CI uses project groups to distribute work; local sequential execution above partitions the same inventory into individual spec files.
+From a checkout with GitHub CLI access, dispatch the workflow on the default branch and identify the revision to test explicitly:
+
+```bash
+set -euo pipefail
+revision="$(git rev-parse HEAD)"
+gh workflow run firefox-selection-diagnostic.yml --ref main -f revision="$revision"
+```
+
+The `revision` input accepts a branch, tag, or full SHA. A full SHA is preferred for attribution. The workflow checks out that revision with persisted credentials disabled and records both the exact tested commit and the separate workflow commit. It uses read-only repository permissions and no production secrets or public test data.
+
+The workflow first runs the actual Chromium/Firefox collection contract and then schedules all four Firefox projects with `fail-fast: false`. Before a Firefox shard executes, it collects that project's expected case inventory through the same npm command and environment, then supplies it to the execution reporter as `E2E_EXPECTED_COLLECTION`. A passing subset cannot satisfy that inventory. The `firefox-selection-basic` shard also runs the execution-boundary guard.
 
 | Evidence                 | Contents and location                                                                                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -193,9 +203,9 @@ Before a Firefox shard executes, CI collects that whole project's expected case 
 | Playwright JSON and HTML | Configured JSON report and HTML report; `scripts/test.sh` also writes its JSON report under `logs/tests/`                                                                             |
 | Attempt artifacts        | A trace and screenshot retained for every Firefox browser attempt when a page was available, including successful attempts, the first attempt, expected failures, and retries         |
 | Browser console          | An attached `browser-console.log` written while the page exists, including console messages, page errors, and failed requests; retained even if failure happens during later teardown |
-| Setup and service logs   | CI `job_logs/`, application service logs, and `execution-context.json`, including failed setup/startup when no page or test result exists                                             |
+| Setup and service logs   | Diagnostic `job_logs/`, application service logs, and `execution-context.json`, including failed setup/startup when no page or test result exists                                     |
 
-Firefox uses `trace: "on"` and `screenshot: "on"` so Playwright cannot discard artifacts for an expected failure or an attempt that the Firefox reporter later rejects. The CI artifact name is `e2e-artifacts-<engine>-<project>-<run-id>-<run-attempt>`, with a retention period of two days. Attempt directories distinguish Playwright retries, and separate shard artifacts prevent cross-project overwrites. CI retains successful execution reports and attempt artifacts as well as failure evidence. The local commands above also use unique run and spec directories.
+Firefox uses `trace: "on"` and `screenshot: "on"` so Playwright cannot discard artifacts for an expected failure or an attempt that the Firefox reporter later rejects. The diagnostic artifact name is `firefox-selection-diagnostic-<project>-<run-id>-<run-attempt>`, with a retention period of seven days. Attempt directories distinguish Playwright retries, and separate shard artifacts prevent cross-project overwrites. The workflow retains successful execution reports and attempt artifacts as well as failure evidence. The local commands above also use unique run and spec directories.
 
 A full-suite success requires all required cases from all four projects to have executed passing results in actual Firefox. Zero tests, skipped/fixme/expected-failure cases, missing cases, an unavailable browser, interrupted work, and report-persistence errors produce non-success. Reports with `mode: collection` are inventories only. A successful browser launch probe is setup evidence; it is not a successful selection scenario.
 
@@ -209,10 +219,10 @@ node client/node_modules/playwright/cli.js show-trace /absolute/path/to/trace.zi
 
 Record a timeout with the spec, project, attempted command, and retained evidence. Restricted-host failures that prevent Firefox content processes from running are environment failures and require a suitable runtime; they do not establish a product regression or a passing test.
 
-A Firefox product defect revealed by a required scenario remains a failed assertion and a separate blocker to report with its evidence. Issue #5560 enables the browser suite; it does not authorize changing production selection/rendering semantics, skipping the case, changing Firefox's expected outcome, replacing real gestures with store writes, or repairing selection/style state inside the test to produce a passing result. The suite's existing semantic assertions also do not guarantee reproduction of the darker-highlight screenshot that motivated the issue.
+A Firefox product defect revealed by a required scenario remains a failed assertion to report with its evidence. Issue #5562 provides diagnostics; it does not authorize changing production selection/rendering semantics, skipping the case, changing Firefox's expected outcome, replacing real gestures with store writes, or repairing selection/style state inside the test to produce a passing result. Product repair and promotion to merge-blocking CI remain separately scoped under [Issue #5560](https://github.com/kitamura-tetsuo/outliner/issues/5560). The suite's existing semantic assertions also do not guarantee reproduction of the darker-highlight screenshot that motivated the issue.
 
 ## Moving or renaming a required case
 
 If a required spec moves outside the `core/slr-*`, `new/slr-*`, or basic #1512 paths, add its destination relative to `client/e2e/` to [client/playwright-selection-retained.json](../client/playwright-selection-retained.json) in the same change. For example, a destination `client/e2e/regressions/renamed-selection.spec.ts` is recorded as `regressions/renamed-selection.spec.ts`. Preserve the manifest's other entries. If a case alone moves to a different file, retain that destination file too.
 
-Both Chromium `basic` and `firefox-selection-basic` include these retained destinations. Keep entries pointed at existing files and keep the moved scenario's body/assertions. Run both collection guards and the moved spec in both engines. Files that still match the required globs remain automatic members. A relocation is not a reason to drop a case's dual-engine coverage.
+Both Chromium `basic` and `firefox-selection-basic` include these retained destinations. Keep entries pointed at existing files and keep the moved scenario's body/assertions. Run both collection guards and the moved spec in both engines. Files that still match the required globs remain automatic members. A relocation is not a reason to drop a case's dual-engine diagnostic coverage.

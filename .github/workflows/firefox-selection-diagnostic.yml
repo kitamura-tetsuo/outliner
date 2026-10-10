@@ -1,0 +1,423 @@
+name: Firefox Selection Diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Repository revision to test (branch, tag, or full commit SHA).
+        required: true
+        default: main
+      cache_bust:
+        description: Optional suffix used to force fresh dependency and browser caches.
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firefox-selection-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+  cancel-in-progress: false
+
+jobs:
+  selection-contract:
+    name: Verify diagnostic collection contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout requested revision
+        id: checkout
+        uses: actions/checkout@v5
+        with:
+          clean: true
+          persist-credentials: false
+          ref: ${{ inputs.revision }}
+
+      - name: Record requested and tested revisions
+        id: revision
+        shell: bash
+        env:
+          REQUESTED_REVISION: ${{ inputs.revision }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          tested_sha="$(git rev-parse HEAD)"
+          export TESTED_SHA="$tested_sha"
+          printf 'TESTED_SHA=%s\n' "$tested_sha" >> "$GITHUB_ENV"
+          node <<'NODE' | tee job_logs/revision.log
+          const fs = require("node:fs");
+          const record = {
+            requestedRevision: process.env.REQUESTED_REVISION,
+            testedCommit: process.env.TESTED_SHA,
+            workflowCommit: process.env.WORKFLOW_SHA,
+            runId: process.env.GITHUB_RUN_ID,
+            runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+          };
+          fs.writeFileSync("job_logs/revision.json", JSON.stringify(record, null, 2) + "\n");
+          console.log(JSON.stringify(record));
+          NODE
+          {
+            echo "## Firefox selection diagnostic"
+            echo "- Requested revision: `$REQUESTED_REVISION`"
+            echo "- Tested commit: `$tested_sha`"
+            echo "- Workflow commit: `$WORKFLOW_SHA`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install collection guard dependencies
+        id: install
+        shell: bash
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: |
+          set -euo pipefail
+          (
+            npm ci --no-audit --no-fund
+            npm ci --prefix client --no-audit --no-fund
+            npm ci --prefix server --no-audit --no-fund
+            npm ci --prefix scripts/tests --ignore-scripts --no-audit --no-fund
+            ln -sfn ../client/node_modules shared/node_modules
+          ) 2>&1 | tee job_logs/selection-contract-setup.log
+
+      - name: Verify actual Chromium and Firefox collection
+        id: collection
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd scripts/tests
+            npx vitest run \
+              env-playwright-collects-every-spec-7d41ae62.spec.ts \
+              env-firefox-selection-coverage-78ad2b91.spec.ts
+          ) 2>&1 | tee job_logs/selection-contract.log
+
+      - name: Record collection contract result
+        if: always()
+        shell: bash
+        env:
+          CONTRACT_JOB_STATUS: ${{ job.status }}
+          CONTRACT_STEP_OUTCOMES: ${{ toJSON(steps) }}
+          REQUESTED_REVISION: ${{ inputs.revision }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          node <<'NODE' 2>&1 | tee job_logs/selection-contract-status.log
+          const fs = require("node:fs");
+          const revisionFile = "job_logs/revision.json";
+          const steps = JSON.parse(process.env.CONTRACT_STEP_OUTCOMES);
+          const record = fs.existsSync(revisionFile)
+            ? JSON.parse(fs.readFileSync(revisionFile, "utf8"))
+            : {
+              requestedRevision: process.env.REQUESTED_REVISION,
+              testedCommit: process.env.TESTED_SHA,
+              workflowCommit: process.env.WORKFLOW_SHA,
+              runId: process.env.GITHUB_RUN_ID,
+              runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            };
+          if (steps.checkout?.outcome === "failure") record.status = "checkout-error";
+          else if (steps.install?.outcome === "failure") record.status = "setup-error";
+          else if (steps.collection?.outcome === "failure") record.status = "collection-error";
+          else record.status = process.env.CONTRACT_JOB_STATUS === "success" ? "passed" : "incomplete";
+          record.jobStatus = process.env.CONTRACT_JOB_STATUS;
+          record.steps = steps;
+          record.finishedAt = new Date().toISOString();
+          fs.writeFileSync("job_logs/selection-contract-context.json", JSON.stringify(record, null, 2) + "\n");
+          console.log(JSON.stringify(record));
+          NODE
+
+      - name: Upload collection evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: firefox-selection-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: job_logs/
+          retention-days: 7
+
+  firefox-selection:
+    name: Firefox selection diagnostic (${{ matrix.project }})
+    needs: selection-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - firefox-selection-core-4
+          - firefox-selection-core-4b
+          - firefox-selection-new
+          - firefox-selection-basic
+    env:
+      E2E_BROWSER: firefox
+      E2E_PROJECT: ${{ matrix.project }}
+      E2E_EXECUTION_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.project }}
+      E2E_EXECUTION_REPORT: ../job_logs/e2e-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}.execution.json
+      E2E_BROWSER_RUNTIME_REPORT: ${{ github.workspace }}/job_logs/browser-runtime-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}.json
+
+    steps:
+      - name: Checkout requested revision
+        id: checkout
+        uses: actions/checkout@v5
+        with:
+          clean: true
+          persist-credentials: false
+          ref: ${{ inputs.revision }}
+
+      - name: Initialize diagnostic evidence
+        shell: bash
+        env:
+          REQUESTED_REVISION: ${{ inputs.revision }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          tested_sha="$(git rev-parse HEAD)"
+          export TESTED_SHA="$tested_sha"
+          printf 'TESTED_SHA=%s\n' "$tested_sha" >> "$GITHUB_ENV"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const lockfile = JSON.parse(fs.readFileSync("client/package-lock.json", "utf8"));
+          const record = {
+            requestedRevision: process.env.REQUESTED_REVISION,
+            testedCommit: process.env.TESTED_SHA,
+            workflowCommit: process.env.WORKFLOW_SHA,
+            browserEngine: "firefox",
+            browserVersion: null,
+            playwrightVersion: lockfile.packages["node_modules/@playwright/test"].version,
+            playwrightVersionSource: "client/package-lock.json",
+            project: process.env.E2E_PROJECT,
+            executionId: process.env.E2E_EXECUTION_ID,
+            runId: process.env.GITHUB_RUN_ID,
+            runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            status: "setup",
+            testExecution: {
+              status: "not-started",
+              collected: null,
+              executed: 0,
+              attempts: 0,
+            },
+            startedAt: new Date().toISOString(),
+          };
+          fs.writeFileSync("job_logs/execution-context.json", JSON.stringify(record, null, 2) + "\n");
+          NODE
+
+      - name: Setup Firefox E2E dependencies
+        id: setup
+        uses: ./.github/actions/setup-e2e-deps
+        with:
+          browser: firefox
+          cache-key-suffix: ${{ inputs.cache_bust && format('-{0}', inputs.cache_bust) || '' }}
+
+      - name: Verify Firefox execution reporting
+        id: execution-contract
+        if: matrix.project == 'firefox-selection-basic'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/tests --ignore-scripts --no-audit --no-fund \
+            2>&1 | tee job_logs/firefox-execution-contract-setup.log
+          (
+            cd scripts/tests
+            npx vitest run env-firefox-execution-results-64ab7e91.spec.ts
+          ) 2>&1 | tee job_logs/firefox-execution-contract.log
+
+      - name: Build server
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd server
+            npm run build
+            test -s dist/server/src/index.js
+          ) 2>&1 | tee job_logs/setup-server-build.log
+
+      - name: Start isolated E2E services
+        id: startup
+        shell: bash
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+        run: |
+          set -euo pipefail
+          attempt=1
+          max_attempts=2
+          until bash scripts/ci-e2e-start.sh 2>&1 | tee "job_logs/setup-services-${attempt}.log"; do
+            status=$?
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "E2E startup failed after ${attempt} attempt(s) (exit ${status})."
+              exit "$status"
+            fi
+            echo "E2E startup attempt ${attempt} failed (exit ${status}); retrying once..."
+            attempt=$((attempt + 1))
+          done
+
+      - name: Collect expected Firefox cases
+        id: collection
+        shell: bash
+        run: |
+          set -euo pipefail
+          export E2E_EXPECTED_COLLECTION="$GITHUB_WORKSPACE/job_logs/expected-${E2E_PROJECT}.json"
+          rm -f "$E2E_EXPECTED_COLLECTION"
+          (
+            cd client
+            PLAYWRIGHT_COLLECTION_E2E_DIR="$PWD/e2e" \
+              PLAYWRIGHT_COLLECTION_OUTPUT="$E2E_EXPECTED_COLLECTION" \
+              npm run github:test:e2e -- --project="$E2E_PROJECT" --list \
+                --reporter=../scripts/tests/helpers/playwright-collection-reporter.mjs
+          ) 2>&1 | tee "job_logs/collection-firefox-${E2E_PROJECT}-${E2E_EXECUTION_ID}.log"
+          printf 'E2E_EXPECTED_COLLECTION=%s\n' "$E2E_EXPECTED_COLLECTION" >> "$GITHUB_ENV"
+
+      - name: Run actual Firefox selection cases
+        id: tests
+        shell: bash
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ../job_logs/e2e-firefox-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}.json
+          E2E_ATTACH_BROWSER_CONSOLE: '1'
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+        run: |
+          set -euo pipefail
+          (
+            cd client
+            npm run github:test:e2e -- --project="$E2E_PROJECT"
+          ) 2>&1 | tee "job_logs/e2e-firefox-${E2E_PROJECT}-${E2E_EXECUTION_ID}.log"
+
+      - name: Record diagnostic result
+        if: always()
+        shell: bash
+        env:
+          E2E_JOB_STATUS: ${{ job.status }}
+          E2E_STEP_OUTCOMES: ${{ toJSON(steps) }}
+          REQUESTED_REVISION: ${{ inputs.revision }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          node <<'NODE' 2>&1 | tee job_logs/execution-status.log
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const contextFile = "job_logs/execution-context.json";
+          const record = fs.existsSync(contextFile)
+            ? JSON.parse(fs.readFileSync(contextFile, "utf8"))
+            : {
+              requestedRevision: process.env.REQUESTED_REVISION,
+              testedCommit: process.env.TESTED_SHA,
+              workflowCommit: process.env.WORKFLOW_SHA,
+              browserEngine: "firefox",
+              project: process.env.E2E_PROJECT,
+              executionId: process.env.E2E_EXECUTION_ID,
+            };
+          const steps = JSON.parse(process.env.E2E_STEP_OUTCOMES);
+          const runtimeFile = process.env.E2E_BROWSER_RUNTIME_REPORT;
+          if (runtimeFile && fs.existsSync(runtimeFile)) {
+            record.browserRuntimeProbe = JSON.parse(fs.readFileSync(runtimeFile, "utf8"));
+            record.browserVersion = record.browserRuntimeProbe.browserVersion;
+            record.playwrightVersion = record.browserRuntimeProbe.playwrightVersion;
+            record.playwrightVersionSource = "Firefox runtime probe";
+          }
+          const executionFile = path.resolve("client", process.env.E2E_EXECUTION_REPORT);
+          if (fs.existsSync(executionFile)) {
+            const execution = JSON.parse(fs.readFileSync(executionFile, "utf8"));
+            const caseOutcomes = Object.fromEntries(
+              [
+                "passed",
+                "assertion-failed",
+                "setup-or-launch-error",
+                "skipped",
+                "expected-failure",
+                "incomplete",
+              ].map(outcome => [
+                outcome,
+                execution.cases.filter(test => test.diagnosticOutcome === outcome).length,
+              ]),
+            );
+            caseOutcomes["not-collected"] = Math.max(
+              0,
+              (execution.counts.expected ?? execution.counts.collected) - execution.counts.collected,
+            );
+            record.testExecution = {
+              status: execution.status,
+              ...execution.counts,
+              caseOutcomes,
+              cases: execution.cases.map(test => ({
+                file: test.file,
+                title: test.title,
+                outcome: test.diagnosticOutcome,
+              })),
+              violations: execution.violations,
+              report: path.relative(process.cwd(), executionFile),
+            };
+            record.status = execution.status;
+          } else if (steps.checkout?.outcome === "failure") {
+            record.status = "checkout-error";
+          } else if (steps.setup?.outcome === "failure") {
+            record.status = "setup-or-launch-error";
+          } else if (steps.startup?.outcome === "failure") {
+            record.status = "setup-error";
+          } else if (steps.collection?.outcome === "failure") {
+            record.status = "collection-error";
+          } else if (steps.tests?.outcome === "failure") {
+            record.status = "test-error";
+          } else {
+            record.status = process.env.E2E_JOB_STATUS === "success" ? "incomplete" : process.env.E2E_JOB_STATUS;
+          }
+          record.jobStatus = process.env.E2E_JOB_STATUS;
+          record.steps = steps;
+          record.finishedAt = new Date().toISOString();
+          fs.writeFileSync(contextFile, JSON.stringify(record, null, 2) + "\n");
+          console.log(JSON.stringify(record));
+
+          const counts = record.testExecution || {};
+          const outcomeSummary = counts.caseOutcomes
+            ? Object.entries(counts.caseOutcomes).map(([outcome, count]) => `- ${outcome}: ${count}`)
+            : [];
+          const caseSummary = (counts.cases || []).map(test =>
+            `- [${test.outcome}] ${test.file}: ${test.title.join(" > ")}`
+          );
+          const violationSummary = (counts.violations || []).map(violation => `- ${violation}`);
+          const summary = [
+            `## Firefox selection diagnostic: ${record.project}`,
+            `- Requested revision: \`${record.requestedRevision || "unknown"}\``,
+            `- Tested commit: \`${record.testedCommit || "unknown"}\``,
+            `- Workflow commit: \`${record.workflowCommit || "unknown"}\``,
+            `- Browser: ${record.browserEngine || "firefox"} ${record.browserVersion || "unavailable"}`,
+            `- Playwright: ${record.playwrightVersion || "unavailable"}`,
+            `- Diagnostic status: **${record.status}**`,
+            `- Expected/collected/executed/passed: ${counts.expected ?? "n/a"}/${counts.collected ?? "n/a"}/${counts.executed ?? "n/a"}/${counts.passed ?? "n/a"}`,
+            "",
+            "### Outcome counts",
+            ...(outcomeSummary.length ? outcomeSummary : [`- ${record.status}: no per-case report`]),
+            ...(caseSummary.length ? ["", "### Cases", ...caseSummary] : []),
+            ...(violationSummary.length ? ["", "### Contract violations", ...violationSummary] : []),
+          ].join("\n") + "\n";
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          NODE
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: firefox-selection-diagnostic-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            job_logs/
+            client/test-results/
+            client/playwright-report/
+            client/logs/
+            server/logs/
+            logs/
+            firebase-debug.log
+          retention-days: 7

@@ -127,7 +127,11 @@ function collectRequiredCases(client: string, files: string[]): CollectedCase[] 
     }
 }
 
-export function verifySelectionCoverage(client: string, workflow: string, actual = collectPlaywright(client)): void {
+export function verifySelectionCoverage(
+    client: string,
+    diagnosticWorkflow: string,
+    actual = collectPlaywright(client),
+): void {
     const files = requiredSelectionFiles(client);
     const required = collectRequiredCases(client, files);
     const emptyFiles = files.filter(file => !required.some(test => test.file === file));
@@ -136,7 +140,7 @@ export function verifySelectionCoverage(client: string, workflow: string, actual
     }
     if (!required.length) throw new Error("No required selection cases were collected");
 
-    // CI sets these variables per shard. Re-list the relevant projects with the
+    // The diagnostic sets these variables per shard. Re-list the relevant projects with the
     // same invocation context so an environment-conditional declaration cannot
     // disappear from both the execution and its expected collection catalog.
     const requiredFiles = new Set(files);
@@ -164,10 +168,10 @@ export function verifySelectionCoverage(client: string, workflow: string, actual
         }
     }
 
-    const document = parse(fs.readFileSync(workflow, "utf8"));
-    const matrix = document.jobs?.["e2e-test"]?.strategy?.matrix?.project;
+    const document = parse(fs.readFileSync(diagnosticWorkflow, "utf8"));
+    const matrix = document.jobs?.["firefox-selection"]?.strategy?.matrix?.project;
     if (!Array.isArray(matrix) || matrix.some(value => typeof value !== "string")) {
-        throw new Error("The E2E workflow must declare a project matrix for collection coverage validation");
+        throw new Error("The Firefox diagnostic workflow must declare a project matrix");
     }
     const scheduled = new Set(
         invoked.filter(test => test.browser === "firefox" && matrix.includes(test.project)).map(caseKey),
@@ -179,7 +183,7 @@ export function verifySelectionCoverage(client: string, workflow: string, actual
             .map(test => test.project),
     );
     for (const project of firefoxProjects) {
-        if (!matrix.includes(project)) failures.push(`Firefox project missing from CI matrix: ${project}`);
+        if (!matrix.includes(project)) failures.push(`Firefox project missing from diagnostic matrix: ${project}`);
     }
     if (failures.length) throw new Error(failures.join("\n"));
 }

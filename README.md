@@ -265,7 +265,7 @@ scripts/bootstrap-e2e.sh --no-test           # prepare only
 
 It also works where only the npm registry is reachable (no apt mirrors, no Playwright browser CDN, no dprint plugin CDN). See [docs/e2e-environment-setup.md](docs/e2e-environment-setup.md).
 
-For the outline-selection suite in desktop Firefox, see [Firefox selection E2E](docs/firefox-selection-e2e.md) for locked browser preparation, sequential local execution, collection guards, and retained browser evidence. Firefox preparation verifies its own compatible binary and fails if it cannot launch.
+For the out-of-band outline-selection diagnostic in desktop Firefox, see [Firefox selection E2E](docs/firefox-selection-e2e.md) for locked browser preparation, manual workflow dispatch, sequential local execution, collection guards, and retained browser evidence. Firefox preparation verifies its own compatible binary and fails if it cannot launch.
 
 ### Running Playwright Tests Sequentially
 

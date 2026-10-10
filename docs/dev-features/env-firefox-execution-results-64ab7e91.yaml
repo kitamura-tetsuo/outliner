@@ -10,7 +10,8 @@ description: >-
   initial-attempt trace/screenshot/console files, skip/fixme/expected-failure
   rejection, zero collection, missing Firefox, collection-only results, omitted
   cases, missing inventories, late teardown console capture, and report-write
-  failures. Setup and test errors retain non-success through the shell and CI.
+  failures. Setup and test errors retain non-success through the shell and the
+  manually invoked diagnostic workflow without changing ordinary PR CI.
 category: environment
 status: implemented
 components:
@@ -20,7 +21,7 @@ components:
   - client/e2e/reporters/firefox-selection-reporter.ts
   - client/e2e/reporters/firefox-execution-evidence.ts
   - scripts/tests/helpers/firefox-execution-fixture.ts
-  - .github/workflows/ci-test-e2e.yml
+  - .github/workflows/firefox-selection-diagnostic.yml
   - docs/firefox-selection-e2e.md
 tests:
   - scripts/tests/env-firefox-execution-results-64ab7e91.spec.ts

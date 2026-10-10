@@ -10,7 +10,13 @@ import type {
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { attemptEvidence, browserRuntime, collectionViolations } from "./firefox-execution-evidence";
+import {
+    attemptEvidence,
+    browserRuntime,
+    collectionViolations,
+    diagnosticCaseOutcome,
+    expectedCollectionCount,
+} from "./firefox-execution-evidence";
 
 const require = createRequire(import.meta.url);
 const playwrightVersion: string = require("playwright/package.json").version;
@@ -106,6 +112,7 @@ export default class FirefoxSelectionReporter implements Reporter {
             configuredEngine: test.parent.project()?.use.browserName,
             expectedStatus: test.expectedStatus,
             outcome: test.outcome(),
+            diagnosticOutcome: diagnosticCaseOutcome(test),
             attempts: test.results.map(attemptEvidence),
         }));
         const attempts = cases.flatMap(test => test.attempts);
@@ -127,6 +134,7 @@ export default class FirefoxSelectionReporter implements Reporter {
                         status,
                         runnerStatus: result?.status,
                         counts: {
+                            expected: expectedCollectionCount(),
                             collected: cases.length,
                             executed: cases.filter(test =>
                                 test.attempts.some(attempt =>
