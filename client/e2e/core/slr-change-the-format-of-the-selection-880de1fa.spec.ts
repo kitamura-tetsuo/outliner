@@ -30,7 +30,7 @@ test.describe("SLR-0010: Change selection format", () => {
         await item.locator(".item-content").click({ force: true });
 
         // Wait for cursor to appear
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Return to the first item (click resets cursor to end usually, or just click first item is enough)
         // Ensure we are at start if needed, but the tests seem to do specific navigation anyway
@@ -47,7 +47,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Click and select the first item
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Use Shift+End to select the rest of the line (proven to work in sibling tests)
         await page.keyboard.press("Home");
@@ -62,9 +62,10 @@ test.describe("SLR-0010: Change selection format", () => {
             },
             null,
             { timeout: 3000 },
-        ).catch(async () => {
+        ).catch(async (error) => {
             const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
+            throw error;
         });
 
         await page.waitForTimeout(300);
@@ -95,7 +96,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Click and select the first item
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Use Shift+End to select the rest of the line
         await page.keyboard.press("Home");
@@ -110,9 +111,10 @@ test.describe("SLR-0010: Change selection format", () => {
             },
             null,
             { timeout: 3000 },
-        ).catch(async () => {
+        ).catch(async (error) => {
             const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
+            throw error;
         });
 
         // Verify selection is created
@@ -133,7 +135,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Click and select the first item
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Use Shift+End to select the rest of the line
         await page.keyboard.press("Home");
@@ -148,9 +150,10 @@ test.describe("SLR-0010: Change selection format", () => {
             },
             null,
             { timeout: 3000 },
-        ).catch(async () => {
+        ).catch(async (error) => {
             const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
+            throw error;
         });
 
         // Verify selection is created
@@ -177,7 +180,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Click and select the first item
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Use Shift+End to select the rest of the line
         await page.keyboard.press("Home");
@@ -192,9 +195,10 @@ test.describe("SLR-0010: Change selection format", () => {
             },
             null,
             { timeout: 3000 },
-        ).catch(async () => {
+        ).catch(async (error) => {
             const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
+            throw error;
         });
 
         // Verify selection is created
@@ -216,7 +220,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Click and select the first item
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Use Shift+End to select the rest of the line
         await page.keyboard.press("Home");
@@ -231,9 +235,10 @@ test.describe("SLR-0010: Change selection format", () => {
             },
             null,
             { timeout: 3000 },
-        ).catch(async () => {
+        ).catch(async (error) => {
             const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
+            throw error;
         });
 
         // Verify selection is created
@@ -255,7 +260,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Click and select the first item
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Select part of text (Press Shift+Right Arrow 4 times)
         await page.keyboard.press("Home");

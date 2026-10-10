@@ -16,14 +16,13 @@ test.describe("SLR-0006: Ctrl+C outside the editor", () => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [ITEM_TEXT]);
     });
 
-    test("copies the foreign input selection, not the item selection", async ({ page, context }) => {
-        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    test("copies the foreign input selection, not the item selection", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
 
         // Focus an item and leave a selection behind in the editor store
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         await page.evaluate(() => {
             const store = (globalThis as { editorOverlayStore?: any; }).editorOverlayStore;
@@ -55,13 +54,7 @@ test.describe("SLR-0006: Ctrl+C outside the editor", () => {
         await page.keyboard.press("Control+c");
         await page.waitForTimeout(300);
 
-        const clipboardText = await page.evaluate(async () => {
-            try {
-                return await navigator.clipboard.readText();
-            } catch {
-                return "";
-            }
-        });
+        const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
         expect(clipboardText).toBe("foreign input text");
 
         // The editor must not have hijacked the copy

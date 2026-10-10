@@ -9,10 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0009: Drag and drop selection", () => {
-    test.beforeEach(async ({ page, context }, testInfo) => {
-        // Grant clipboard permissions
-        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-
+    test.beforeEach(async ({ page }, testInfo) => {
         await page.evaluate(async () => {
             (globalThis as any).DEBUG_MODE = true;
             // Clear global variables to avoid affecting other tests
@@ -44,14 +41,14 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         await TestHelpers.insertText(page, firstId!, "First item text");
         await page.waitForTimeout(300);
         await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
         const secondItem = page.locator(".outliner-item").nth(1);
         const secondId = await secondItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, secondId!);
         await TestHelpers.insertText(page, secondId!, "Second item text");
         await page.waitForTimeout(300);
         await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
         const thirdItem = page.locator(".outliner-item").nth(2);
         const thirdId = await thirdItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, thirdId!);

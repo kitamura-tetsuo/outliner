@@ -51,7 +51,6 @@ async function seedBoundGrid(page: Page): Promise<string> {
 test.describe("SLR-5026a1b2: copying, cutting and deleting a directly selected block", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
-        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
         await page.setViewportSize({ width: 1280, height: 1400 });
         await seedSelectionPage(page, testInfo);
     });
