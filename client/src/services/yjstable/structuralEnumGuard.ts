@@ -209,9 +209,8 @@ export async function assertStructuralEnumCompatibility(
     source: StructuralSqlSnapshot,
     relevantIds: ReadonlySet<string>,
 ): Promise<void> {
-    // Catalog-independent transfers must not become coupled to unrelated
-    // catalog/runtime work (REQ-006). With no source declarations there is no
-    // portable custom type whose meaning can be lost.
+    // Reject custom-type syntax whose declaration evidence is unavailable,
+    // then keep genuinely catalog-independent SQL off compiler/runtime work.
     assertResolvableCustomTypes(source, relevantIds);
     if (!referencesCapturedEnum(source, relevantIds)) return;
     const destination = captureStructuralSqlSnapshot(destinationDoc);
