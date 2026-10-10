@@ -57,10 +57,12 @@ describe("catalog ENUM Grid cells", { timeout: 60_000 }, () => {
             const selects = view.container.querySelectorAll<HTMLSelectElement>("td[data-col='state'] select");
             expect(selects).toHaveLength(2);
             expect([...selects[0].options].slice(1).map(option => option.value)).toEqual(["Open", "", " Done "]);
+            await fireEvent.focus(selects[0]);
             await fireEvent.change(selects[0], { target: { value: " Done " } });
             await waitFor(() => expect(handles.data.get("r1")?.get("state")).toBe(" Done "));
             await session.catalogReady();
             await waitFor(() => expect(acquired!.adapter.appliedSchema).toBeDefined());
+            await fireEvent.focus(selects[1]);
             await fireEvent.change(selects[1], { target: { value: "" } });
             await waitFor(() => expect(handles.data.get("r2")?.get("state")).toBe(""));
             view.unmount();

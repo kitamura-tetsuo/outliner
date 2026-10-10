@@ -192,7 +192,7 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
                 && groupSchema.checkOptions
             ? groupSchema.checkOptions
             : [];
-        const eligible = [...declared];
+        const eligible: KanbanLaneValue[] = [...declared];
         for (const key of observedOrder) if (!eligible.includes(key)) eligible.push(key);
         const preferred = settings.laneOrder.filter(key => eligible.includes(key));
         const ordered = [...preferred, ...eligible.filter(key => !preferred.includes(key))];

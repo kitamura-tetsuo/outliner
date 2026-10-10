@@ -6,10 +6,24 @@ interface Props {
     options?: string[];
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    onEditStart?: () => void;
+    onEditEnd?: () => void;
     onRequestFocus?: () => void;
 }
 
-let { value, editable, options = [], ariaLabel, onCommit, onRequestFocus: _ }: Props = $props();
+let { value, editable, options = [], ariaLabel, onCommit, onEditStart, onEditEnd, onRequestFocus: _ }: Props = $props();
+let interactionActive = false;
+
+function beginEdit(): void {
+    if (!editable || interactionActive) return;
+    interactionActive = true;
+    onEditStart?.();
+}
+
+function endEdit(): void {
+    interactionActive = false;
+    onEditEnd?.();
+}
 
 const nullOption = $derived.by(() => {
     let candidate = "__outliner_sql_null__";
@@ -24,7 +38,13 @@ const current = $derived(value === null || value === undefined ? nullOption : St
     aria-label={ariaLabel || "Select value"}
     value={current}
     disabled={!editable}
-    onpointerdown={(e: Event) => e.stopPropagation()}
+    onfocus={beginEdit}
+    onblur={endEdit}
+    onkeydown={beginEdit}
+    onpointerdown={(e: Event) => {
+        beginEdit();
+        e.stopPropagation();
+    }}
     onmousedown={(e: Event) => e.stopPropagation()}
     onmouseup={(e: Event) => e.stopPropagation()}
     onclick={(e: Event) => {
@@ -33,7 +53,11 @@ const current = $derived(value === null || value === undefined ? nullOption : St
     }}
     onchange={(e) => {
         const v = (e.target as HTMLSelectElement).value;
-        onCommit(v === nullOption ? null : v);
+        try {
+            onCommit(v === nullOption ? null : v);
+        } finally {
+            endEdit();
+        }
     }}
 >
     <option value={nullOption}></option>

@@ -417,7 +417,19 @@ export class SqlCatalogMutationService {
                 affected,
             );
         }
-        const currentCompiled = await compileSqlEnvironment(captured.input);
+        let currentCompiled = await compileSqlEnvironment(captured.input);
+        if (
+            currentCompiled.status === "failed" && currentCompiled.diagnostics.length > 0
+            && currentCompiled.diagnostics.every(diagnostic => diagnostic.kind === "record")
+        ) {
+            // Invalid synchronized records must not prevent a source correction.
+            // Recover only the previous definition/reference evidence without
+            // records; the candidate below still validates every captured value.
+            currentCompiled = await compileSqlEnvironment({
+                ...captured.input,
+                tables: captured.input.tables.map(table => ({ ...table, records: [] })),
+            });
+        }
         if (currentCompiled.status === "failed") {
             const unknown = currentCompiled.dependencies.some(dependency => dependency.status === "incomplete");
             return this.refusal(

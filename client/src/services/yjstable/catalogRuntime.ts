@@ -85,15 +85,22 @@ export class CatalogRuntime {
     }
 
     registerTable(handles: TableHandles): () => void {
-        if (this.tables.has(handles.tableId)) return () => {};
+        const previous = this.tables.get(handles.tableId);
+        if (previous?.handles === handles) return () => {};
+        // Cache eviction can release the old adapter after a reopened view
+        // has registered its successor. Only the latest handles own the
+        // captured inputs; the old unregister closure is fenced below.
+        previous?.unobserve();
         const schemaChanged = () => {
-            if (this.hasCatalogObjects()) this.startBuild();
+            if (this.state.status !== "ready" || this.hasCatalogObjects()) this.startBuild();
         };
         const dataChanged = () => {
-            if (
-                this.dependentTableIds.has(handles.tableId)
-                || (this.state.status === "error" && this.hasCatalogObjects())
-            ) {
+            // Every registered Table is captured by a replacement, including
+            // scalar Tables and the build that removes the last catalog type.
+            // A changed input must schedule a successor before the older
+            // completion is discarded. Ready scalar Tables still use their
+            // normal incremental writes without rebuilding the catalog.
+            if (this.state.status !== "ready" || this.dependentTableIds.has(handles.tableId)) {
                 this.startBuild();
             }
         };
@@ -106,12 +113,13 @@ export class CatalogRuntime {
                 handles.data.unobserveDeep(dataChanged);
             },
         });
-        if (this.hasCatalogObjects()) this.startBuild();
+        if (this.state.status !== "ready" || this.hasCatalogObjects()) this.startBuild();
         return () => {
             const registered = this.tables.get(handles.tableId);
             if (registered?.handles !== handles) return;
             registered.unobserve();
             this.tables.delete(handles.tableId);
+            if (this.state.status !== "ready") this.startBuild();
         };
     }
 

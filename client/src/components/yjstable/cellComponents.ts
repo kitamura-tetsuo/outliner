@@ -26,6 +26,9 @@ export interface CellProps {
     /** Initial text for an edit started by typing a printable character in Grid navigation mode. */
     editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    /** Native select interactions retain their write authority until commit or blur. */
+    onEditStart?: () => void;
+    onEditEnd?: () => void;
     /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
     onRequestFocus?: (direction?: GridNavDirection) => void;
 }
