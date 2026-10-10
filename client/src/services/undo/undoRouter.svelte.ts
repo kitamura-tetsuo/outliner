@@ -188,9 +188,7 @@ export class UndoRouter {
                 // does inside a single Y.UndoManager. A catalog Redo already
                 // submitted to its service is retained until that exact
                 // request settles; it is not an executable second request.
-                this.redoStack = this.pendingDirection === "redo" && this.pendingEntry
-                    ? [this.pendingEntry]
-                    : [];
+                this.clearRedoForNewCapture();
             } else {
                 // A scope pushed a redo item without the router asking for it,
                 // which means undo() was called on that scope directly. Repair
@@ -412,7 +410,7 @@ export class UndoRouter {
             this.undoStack.length = preTransactUndoDepth;
         }
         this.undoStack.push(entry);
-        this.redoStack = [];
+        this.clearRedoForNewCapture();
     }
 
     /**
@@ -469,14 +467,14 @@ export class UndoRouter {
     public async captureManualAsync(mutate: () => Promise<void>, entry: ManualUndoEntry): Promise<void> {
         await this.runAsyncWithoutAutoCapture(mutate);
         this.undoStack.push(entry);
-        this.redoStack = [];
+        this.clearRedoForNewCapture();
     }
 
     /** Record an already-confirmed, effectful service mutation as one step. */
     public captureAsync(entry: AsyncUndoEntry): void {
         if (entry.affectedObjectIds.length === 0) return;
         this.undoStack.push(entry);
-        this.redoStack = [];
+        this.clearRedoForNewCapture();
     }
 
     public get isPending(): boolean {
@@ -507,8 +505,15 @@ export class UndoRouter {
                 for (const entry of entries) entry.redo();
             },
         });
-        this.redoStack = [];
+        this.clearRedoForNewCapture();
         return true;
+    }
+
+    /** Clear ordinary redo history without discarding an in-flight catalog Redo. */
+    private clearRedoForNewCapture(): void {
+        this.redoStack = this.pendingDirection === "redo" && this.pendingEntry
+            ? [this.pendingEntry]
+            : [];
     }
 
     public canUndo(): boolean {

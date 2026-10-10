@@ -12,9 +12,7 @@ function snapshot(revision: string, objects: readonly SqlCatalogSourceObject[]):
 }
 
 async function settled(): Promise<void> {
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let turn = 0; turn < 6; turn++) await Promise.resolve();
 }
 
 class CatalogServiceFixture implements CatalogReplayService {

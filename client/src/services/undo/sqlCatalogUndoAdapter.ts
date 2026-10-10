@@ -80,6 +80,28 @@ export function captureConfirmedCatalogEdit(
     const before = objectMap(receipt.before).get(id);
     const after = objectMap(receipt.after).get(id);
     if (sameObject(before, after)) return;
+    let unresolved: {
+        direction: "undo" | "redo";
+        intended: SqlCatalogSourceObject | { readonly objectId: string; readonly object?: SqlCatalogSourceObject; };
+        reason: string;
+    } | undefined;
+
+    const reconcileUnresolved = async (): Promise<AsyncUndoOutcome> => {
+        if (!unresolved) throw new Error("No unresolved catalog replay");
+        try {
+            const reconciliation = await service.reconcile(projectId, unresolved.intended);
+            if (reconciliation.status === "durable-match") {
+                unresolved = undefined;
+                return { status: "applied" };
+            }
+            return {
+                status: reconciliation.status === "conflict" ? "conflict" : "unconfirmed",
+                reason: unresolved.reason,
+            };
+        } catch (error) {
+            return failure("unconfirmed", error);
+        }
+    };
 
     const entry: AsyncUndoEntry = {
         type: "async",
@@ -92,11 +114,16 @@ export function captureConfirmedCatalogEdit(
         replay: async direction => {
             const expected = direction === "undo" ? after : before;
             const desired = direction === "undo" ? before : after;
+            const intended = desired ?? { objectId: id, object: undefined };
+            if (unresolved?.direction === direction) return reconcileUnresolved();
             let current: SqlCatalogSnapshot;
             try {
                 current = await service.read(projectId);
             } catch (error) {
                 return failure("refused", error);
+            }
+            if (!isProjectActive(projectId)) {
+                return { status: "inactive", reason: "The Project session ended before catalog submission" };
             }
             if (!sameObject(objectMap(current).get(id), expected)) {
                 return { status: "conflict", reason: `Catalog object ${id} no longer has the expected source` };
@@ -109,7 +136,9 @@ export function captureConfirmedCatalogEdit(
                     intent: intentFor(expected, desired),
                 });
             } catch (error) {
-                return failure("unconfirmed", error);
+                if ((error as { code?: unknown; })?.code === "forbidden") return failure("refused", error);
+                unresolved = { direction, intended, reason: error instanceof Error ? error.message : String(error) };
+                return reconcileUnresolved();
             }
             if (result.status === "applied" && result.applied) return { status: "applied" };
             if (result.status === "refused") return { status: "refused", reason: result.reason };
@@ -117,17 +146,8 @@ export function captureConfirmedCatalogEdit(
                 return { status: "conflict", reason: "Catalog replay unexpectedly produced no source change" };
             }
 
-            const intended = desired ?? { objectId: id, object: undefined };
-            try {
-                const reconciliation = await service.reconcile(projectId, intended);
-                if (reconciliation.status === "durable-match") return { status: "applied" };
-                return {
-                    status: reconciliation.status === "conflict" ? "conflict" : "unconfirmed",
-                    reason: result.reason,
-                };
-            } catch (error) {
-                return failure("unconfirmed", error);
-            }
+            unresolved = { direction, intended, reason: result.reason };
+            return reconcileUnresolved();
         },
     };
     router.captureAsync(entry);

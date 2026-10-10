@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import fs from "fs-extra";
-import * as Y from "yjs";
 import type {
     CatalogReplayService,
     ConfirmedCatalogEdit,
 } from "../../client/src/services/undo/sqlCatalogUndoAdapter.js";
 import type { UndoRouter as UndoRouterType } from "../../client/src/services/undo/undoRouter.svelte.js";
 import { createDocumentLoader, createDocumentStore } from "../src/persistence.js";
+import { Project } from "../src/schema/app-schema.js";
 import { SqlCatalogMutationService } from "../src/sql-catalog-service.js";
 import {
     AclStore,
@@ -43,6 +43,9 @@ describe("SQL catalog Undo with the production service (#5537 REQ-007)", functio
     let acl: AclStore;
     let ordinary: SqlCatalogMutationService;
     let UndoRouter: typeof UndoRouterType;
+    let globalUndoRouter: UndoRouterType;
+    let createCalendar: (project: Project, options: { name: string; calendarId?: string; }) => string;
+    let removeCalendarWithPlacements: (project: Project, calendarId: string) => boolean;
     let captureConfirmedCatalogEdit: (
         router: UndoRouterType,
         receipt: ConfirmedCatalogEdit,
@@ -54,8 +57,11 @@ describe("SQL catalog Undo with the production service (#5537 REQ-007)", functio
         // Svelte compiles this rune to identity-like reactive state. The router's
         // server integration test needs only its ordinary array semantics.
         (globalThis as { $state?: <T>(value?: T) => T; }).$state = <T>(value?: T) => value as T;
-        ({ UndoRouter } = await import("../../client/src/services/undo/undoRouter.svelte.js"));
+        ({ UndoRouter, globalUndoRouter } = await import("../../client/src/services/undo/undoRouter.svelte.js"));
         ({ captureConfirmedCatalogEdit } = await import("../../client/src/services/undo/sqlCatalogUndoAdapter.js"));
+        ({ createCalendar, removeCalendarWithPlacements } = await import(
+            "../../client/src/services/calendar/calendarService.js"
+        ));
     });
 
     beforeEach(async () => {
@@ -88,8 +94,25 @@ describe("SQL catalog Undo with the production service (#5537 REQ-007)", functio
         return result;
     }
 
-    it("keeps one real replay pending across repeated commands and an unrelated edit", async () => {
+    it("keeps one real Redo pending across repeated commands and a Calendar deletion", async () => {
         const created = await create();
+        let activeService = ordinary;
+        const service: CatalogReplayService = {
+            read: project => activeService.read(uid, project),
+            apply: (project, request) => activeService.apply(uid, project, request),
+            reconcile: (project, intended) => activeService.reconcile(uid, project, intended),
+        };
+        const router = globalUndoRouter;
+        router.clear();
+        const calendarProject = Project.createInstance("Calendar history project");
+        createCalendar(calendarProject, { name: "Unrelated", calendarId: "calendar-unrelated" });
+        createCalendar(calendarProject, { name: "Second", calendarId: "calendar-second" });
+        router.clear();
+        captureConfirmedCatalogEdit(router, created, service, () => true);
+        router.undo();
+        await settle(router);
+        expect((await ordinary.read(uid, projectId)).objects).to.deep.equal([]);
+
         let release!: () => void;
         let reached!: () => void;
         const atPublication = new Promise<void>(resolve => reached = resolve);
@@ -108,29 +131,51 @@ describe("SQL catalog Undo with the production service (#5537 REQ-007)", functio
                 },
             },
         );
-        const router = new UndoRouter();
-        const doc = new Y.Doc();
-        const unrelated = doc.getMap<number>("ordinary");
-        router.register(new Y.UndoManager(unrelated));
-        captureConfirmedCatalogEdit(router, created, replayService(guarded), () => true);
+        activeService = guarded;
 
-        router.undo();
+        router.redo();
         await atPublication;
         router.undo();
         router.redo();
-        unrelated.set("preserved", 1);
+        expect(removeCalendarWithPlacements(calendarProject, "calendar-unrelated")).to.equal(true);
         expect(publications).to.equal(1);
-        expect([router.undoDepth, router.redoDepth]).to.deep.equal([2, 0]);
+        expect([router.undoDepth, router.redoDepth]).to.deep.equal([1, 1]);
         release();
         await settle(router);
 
-        expect((await ordinary.read(uid, projectId)).objects).to.deep.equal([]);
-        expect(unrelated.get("preserved")).to.equal(1);
-        expect([router.undoDepth, router.redoDepth]).to.deep.equal([1, 1]);
-        router.redo();
-        await settle(router);
         expect((await ordinary.read(uid, projectId)).objects).to.deep.equal([original]);
+        expect(calendarProject.calendars.has("calendar-unrelated")).to.equal(false);
         expect([router.undoDepth, router.redoDepth]).to.deep.equal([2, 0]);
+        router.undo();
+        await settle(router);
+        expect((await ordinary.read(uid, projectId)).objects).to.deep.equal([]);
+        expect(calendarProject.calendars.has("calendar-unrelated")).to.equal(false);
+
+        let releaseRefusal!: () => void;
+        let reachedRefusal!: () => void;
+        const refusalBoundary = new Promise<void>(resolve => reachedRefusal = resolve);
+        const refusalBarrier = new Promise<void>(resolve => releaseRefusal = resolve);
+        activeService = new SqlCatalogMutationService(
+            server.hocuspocus,
+            acl.checkAccess,
+            createDocumentStore(server.persistence!),
+            {
+                beforePublication: async () => {
+                    reachedRefusal();
+                    await refusalBarrier;
+                },
+            },
+        );
+        router.redo();
+        await refusalBoundary;
+        expect(removeCalendarWithPlacements(calendarProject, "calendar-second")).to.equal(true);
+        acl.revokeAll(projectId);
+        releaseRefusal();
+        await settle(router);
+        expect(router.lastAsyncOutcome?.status).to.equal("refused");
+        expect([router.undoDepth, router.redoDepth]).to.deep.equal([2, 1]);
+        acl.grant("projectUsers", projectId, uid);
+        expect((await ordinary.read(uid, projectId)).objects).to.deep.equal([]);
     });
 
     it("keeps history on real reference refusal, peer conflict, and revoked authorization", async () => {
@@ -173,9 +218,47 @@ describe("SQL catalog Undo with the production service (#5537 REQ-007)", functio
         expect([router.undoDepth, router.redoDepth]).to.deep.equal([1, 0]);
     });
 
-    it("settles an unconfirmed mutation only after persisted-source reconciliation", async () => {
+    it("does not submit after the captured Project lifecycle ends during service read", async () => {
+        const created = await create();
+        let active = true;
+        let releaseRead!: () => void;
+        let reachedRead!: () => void;
+        const readBoundary = new Promise<void>(resolve => reachedRead = resolve);
+        const readBarrier = new Promise<void>(resolve => releaseRead = resolve);
+        let applyCalls = 0;
+        const service: CatalogReplayService = {
+            read: async project => {
+                const result = await ordinary.read(uid, project);
+                reachedRead();
+                await readBarrier;
+                return result;
+            },
+            apply: async (project, request) => {
+                applyCalls++;
+                return ordinary.apply(uid, project, request);
+            },
+            reconcile: (project, intended) => ordinary.reconcile(uid, project, intended),
+        };
+        const router = new UndoRouter();
+        captureConfirmedCatalogEdit(router, created, service, () => active);
+
+        router.undo();
+        await readBoundary;
+        active = false;
+        releaseRead();
+        await settle(router);
+
+        expect(applyCalls).to.equal(0);
+        expect(router.lastAsyncOutcome?.status).to.equal("inactive");
+        expect([router.undoDepth, router.redoDepth]).to.deep.equal([1, 0]);
+        expect((await ordinary.read(uid, projectId)).objects).to.deep.equal([original]);
+    });
+
+    it("reconciles a recovered unconfirmed mutation on retry without applying twice", async () => {
         const created = await create();
         const store = createDocumentStore(server.persistence!);
+        const loader = createDocumentLoader(server.persistence!);
+        let persistenceAvailable = false;
         const uncertain = new SqlCatalogMutationService(
             server.hocuspocus,
             acl.checkAccess,
@@ -183,15 +266,33 @@ describe("SQL catalog Undo with the production service (#5537 REQ-007)", functio
                 await store(room, doc);
                 throw new Error("acknowledgement lost after durable store");
             },
-            { loadStoredDocument: createDocumentLoader(server.persistence!) },
+            { loadStoredDocument: room => persistenceAvailable ? loader(room) : Promise.resolve(undefined) },
         );
+        let applyCalls = 0;
+        const service: CatalogReplayService = {
+            read: project => uncertain.read(uid, project),
+            apply: async (project, request) => {
+                applyCalls++;
+                await uncertain.apply(uid, project, request);
+                throw new Error("response lost after publication");
+            },
+            reconcile: (project, intended) => uncertain.reconcile(uid, project, intended),
+        };
         const router = new UndoRouter();
-        captureConfirmedCatalogEdit(router, created, replayService(uncertain), () => true);
+        captureConfirmedCatalogEdit(router, created, service, () => true);
+        router.undo();
+        await settle(router);
+
+        expect(router.lastAsyncOutcome?.status).to.equal("unconfirmed");
+        expect([router.undoDepth, router.redoDepth]).to.deep.equal([1, 0]);
+        expect(applyCalls).to.equal(1);
+        persistenceAvailable = true;
         router.undo();
         await settle(router);
 
         expect(router.lastAsyncOutcome?.status).to.equal("applied");
         expect([router.undoDepth, router.redoDepth]).to.deep.equal([0, 1]);
+        expect(applyCalls).to.equal(1);
         expect((await ordinary.read(uid, projectId)).objects).to.deep.equal([]);
         expect((await uncertain.reconcile(uid, projectId, { objectId: original.id })).status)
             .to.equal("durable-match");

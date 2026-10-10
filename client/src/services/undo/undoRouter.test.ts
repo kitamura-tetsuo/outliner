@@ -70,7 +70,14 @@ describe("UndoRouter", () => {
         });
 
         router.undo();
-        outline.edit("unrelated", 1);
+        router.captureManual(
+            () => outline.map.set("unrelated", 1),
+            {
+                type: "manual",
+                undo: () => outline.map.delete("unrelated"),
+                redo: () => outline.map.set("unrelated", 1),
+            },
+        );
         pending.settle({ status: "refused", reason: "referenced" });
         await pending.promise;
         await Promise.resolve();
@@ -129,7 +136,14 @@ describe("UndoRouter", () => {
         await Promise.resolve();
 
         router.redo();
-        outline.edit("unrelated", 1);
+        router.captureManual(
+            () => outline.map.set("unrelated", 1),
+            {
+                type: "manual",
+                undo: () => outline.map.delete("unrelated"),
+                redo: () => outline.map.set("unrelated", 1),
+            },
+        );
         expect(router.redoDepth).toBe(1);
         redo.settle({ status: "applied" });
         await redo.promise;
@@ -140,6 +154,34 @@ describe("UndoRouter", () => {
         expect([router.undoDepth, router.redoDepth]).toEqual([2, 0]);
         router.undo();
         expect(outline.map.get("unrelated")).toBe(1);
+    });
+
+    it("retains a refused pending Redo when a manual entry is captured", async () => {
+        const router = new UndoRouter();
+        const undo = deferredOutcome();
+        const redo = deferredOutcome();
+        router.captureAsync({
+            type: "async",
+            projectId: "project-a",
+            affectedObjectIds: ["enum-a"],
+            beforeSource: [],
+            afterSource: [{ id: "enum-a" }],
+            isActive: () => true,
+            replay: direction => direction === "undo" ? undo.promise : redo.promise,
+        });
+        router.undo();
+        undo.settle({ status: "applied" });
+        await undo.promise;
+        await Promise.resolve();
+
+        router.redo();
+        router.captureManual(() => {}, { type: "manual", undo: () => {}, redo: () => {} });
+        redo.settle({ status: "refused", reason: "stale" });
+        await redo.promise;
+        await Promise.resolve();
+
+        expect([router.undoDepth, router.redoDepth]).toEqual([1, 1]);
+        expect(router.lastAsyncOutcome).toEqual({ status: "refused", reason: "stale" });
     });
 
     it("does not advance a captured entry after its Project lifecycle ends", async () => {
