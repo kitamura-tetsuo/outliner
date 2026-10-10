@@ -37,14 +37,11 @@ export const sveltekitOptions = {
         precompress: false,
         strict: true,
     }),
+
     alias: {
-        // SvelteKit 3 no longer provides `$lib` implicitly; keep the existing
-        // import specifier working for the whole code base.
-        $lib: "src/lib",
-        $stores: "src/stores",
-        // Single source of truth for the SharedTree/Yjs schema, shared with
-        // the server workspace. See ../shared/src.
-        $shared: "../shared/src",
+        "$lib": "src/lib",
+        "$stores": "src/stores",
+        "$shared": "../shared/src",
     },
     serviceWorker: {
         register: false, // Disabled to register Service Worker manually
