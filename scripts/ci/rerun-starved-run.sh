@@ -20,6 +20,14 @@
 # concludes as "cancelled", and its jobs give up long before the timeout, so
 # neither is retried here.
 #
+# A hosted runner can also die mid-run: the job then concludes as "failure"
+# with a runner assigned, but its steps never reach a terminal state (e.g. run
+# 38041845041, e2e core-3: startup frozen `in_progress`, the test step still
+# `pending`, no step failed, job dead after ~1 minute with nothing executed).
+# That shape carries no verdict either, so it is re-queued as well. The guard
+# is deliberately narrow -- any job with a failed step keeps its failure --
+# so a genuine test or script failure is never mistaken for a lost runner.
+#
 # Environment:
 #   GH_TOKEN            token with `actions: write` on the repository
 #   REPO                owner/name (defaults to GITHUB_REPOSITORY)
@@ -62,13 +70,34 @@ starved="$(
 
 starved_count="$(printf '%s' "$starved" | jq -r 'length')"
 
-if [ "$starved_count" -eq 0 ]; then
+if [ "$starved_count" -gt 0 ]; then
+    echo "$starved_count job(s) in run $RUN_ID never reached a runner:"
+    printf '%s' "$starved" | jq -r '.[] | "  - " + .'
+fi
+
+runner_lost="$(
+    printf '%s' "$jobs_json" | jq -r '
+    [ .jobs[]
+      | select(.conclusion == "failure")
+      | select((.runner_name // "") != "")
+      | select((.steps // []) | length > 0)
+      | select([.steps[] | select(.conclusion == "failure")] | length == 0)
+      | select([.steps[] | select(.status != "completed")] | length > 0)
+      | .name
+    ]'
+)"
+
+runner_lost_count="$(printf '%s' "$runner_lost" | jq -r 'length')"
+
+if [ "$runner_lost_count" -gt 0 ]; then
+    echo "$runner_lost_count job(s) in run $RUN_ID lost their runner before any step reported a verdict:"
+    printf '%s' "$runner_lost" | jq -r '.[] | "  - " + .'
+fi
+
+if [ "$starved_count" -eq 0 ] && [ "$runner_lost_count" -eq 0 ]; then
     echo "No job in run $RUN_ID was starved of a runner; leaving the failure alone."
     exit 0
 fi
-
-echo "$starved_count job(s) in run $RUN_ID never reached a runner:"
-printf '%s' "$starved" | jq -r '.[] | "  - " + .'
 
 # `rerun-failed-jobs` keeps the successful jobs of the attempt and re-queues the
 # rest together with everything that depended on them. It rejects runs with no

@@ -9,7 +9,13 @@ description: 'When GitHub cannot hand a queued job to a hosted runner it kills t
 
   that waited out the acquisition timeout, inside a run whose conclusion is failure) and re-queues the run,
 
-  up to three attempts. Runs cancelled by a superseding push or by hand are left untouched.
+  up to three attempts. Runs cancelled by a superseding push or by hand are left untouched. A hosted runner
+
+  that dies mid-run is recognised the same way: the job concludes as failure with a runner assigned but its
+
+  steps never reach a terminal state and no step failed, so no verdict exists (run 38041845041, e2e core-3).
+
+  Jobs with a failed step keep their failure and are never re-queued as infrastructure loss.
 
   '
 category: environment

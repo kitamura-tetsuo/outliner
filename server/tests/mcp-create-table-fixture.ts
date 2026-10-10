@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs-extra";
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { WriteStream } from "node:fs";
 import request from "supertest";
 import * as Y from "yjs";
 import { CreateTableTool } from "../src/mcp/create-table-tool.js";
@@ -14,7 +15,7 @@ import {
 } from "../src/mcp/table-creation.js";
 import { signAccessToken } from "../src/oauth/tokens.js";
 import { createDocumentStore, type DocumentStore } from "../src/persistence.js";
-import { mcpLogger, mcpLogPath } from "../src/utils/log-manager.js";
+import { mcpLogger, mcpLogPath, refreshMcpLogStream } from "../src/utils/log-manager.js";
 import {
     AclStore,
     seedProject,
@@ -59,11 +60,22 @@ export interface Seams {
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
 }
 
+/**
+ * Live destination of the MCP audit log for the most recently started
+ * fixture server. Pino's multistream flush does not await fs.WriteStream
+ * writes, so auditRecords queues a barrier write on this stream before
+ * reading the file (the same approach as the create_grid audit test's
+ * readAuditRecords); otherwise the trailing record can still be buffered
+ * and is missed by the read.
+ */
+let mcpLogStream: WriteStream | undefined;
+
 export async function startMcpTestServer() {
     const acl = new AclStore();
     acl.grant("projectUsers", PROJECT, UID);
     const dir = tempDir();
     const server = await startTestServer(dir, acl);
+    mcpLogStream = refreshMcpLogStream();
     await seedProject(server.hocuspocus, PROJECT);
     const context = new AsyncLocalStorage<string>();
     const checks = new Map<string, number>();
@@ -164,7 +176,17 @@ export function registry(doc: Y.Doc) {
 
 /** Durable mcp_audit records for the given operation IDs, in order. */
 export async function auditRecords(operationIds: string[]) {
-    await new Promise<void>((resolve, reject) => mcpLogger.flush(error => error ? reject(error) : resolve()));
+    const stream = mcpLogStream;
+    if (stream) {
+        // Queue a barrier write on the actual log destination before reading
+        // its file, so every record written so far (including the trailing
+        // one) is visible. mcpLogger.flush alone does not await these writes.
+        await new Promise<void>((resolve, reject) => {
+            stream.write("", error => error ? reject(error) : resolve());
+        });
+    } else {
+        await new Promise<void>((resolve, reject) => mcpLogger.flush(error => error ? reject(error) : resolve()));
+    }
     return fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean)
         .map(line => JSON.parse(line))
         .filter(record => record.event === "mcp_audit" && operationIds.includes(record.operationId));

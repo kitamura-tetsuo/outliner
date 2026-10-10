@@ -288,8 +288,8 @@ const fixedTableWidth = $derived(
 
 /** One row target per query result row, for the selection command layer (`gridSelectionCommands.ts`). */
 const rowTargetEntries = $derived(
-    result.rows.flatMap((row): Array<[string, GridCommandRowTarget]> => {
-        const rowId = selectableRowId(row);
+    result.rows.flatMap((row, rowIndex): Array<[string, GridCommandRowTarget]> => {
+        const rowId = selectionRowId(row, rowIndex);
         return rowId === undefined ? [] : [[rowId, { row, recordId: recordIdOf(row), source: sourceOf(row) }]];
     }),
 );
@@ -348,14 +348,7 @@ function sourceOf(row: Record<string, unknown>): { sourceKind: string; sourceId:
     return { sourceKind, sourceId };
 }
 
-function rowKey(row: Record<string, unknown>, rowIndex: number): string {
-    // DOM identity, not write authority: this keys Svelte's `<tr>` nodes, so
-    // it must not consult the async `editability` verdict. Resolving or
-    // revoking bare-id mutation authority flips `rowIdentity`, which used to
-    // destroy and recreate every row — dropping DOM focus in the middle of
-    // keyboard navigation. Derive it from the result data alone, preferring
-    // the same durable identity `selectableRowId` uses; write routing keeps
-    // using the gated `recordIdOf`/`sourceOf` above.
+function rowKeyBase(row: Record<string, unknown>, rowIndex: number): string {
     const sourceKind = row.source_kind;
     const sourceId = row.source_id;
     if (typeof sourceKind === "string" && typeof sourceId === "string") {
@@ -365,9 +358,29 @@ function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     return `row-${rowIndex}`;
 }
 
+function rowKey(row: Record<string, unknown>, rowIndex: number): string {
+    // DOM identity, not write authority: this keys Svelte's `<tr>` nodes, so
+    // it must not consult the async `editability` verdict. Resolving or
+    // revoking bare-id mutation authority flips `rowIdentity`, which used to
+    // destroy and recreate every row — dropping DOM focus in the middle of
+    // keyboard navigation. Derive it from the result data alone, preferring
+    // the same durable identity `selectableRowId` uses; write routing keeps
+    // using the gated `recordIdOf`/`sourceOf` above.
+    const base = rowKeyBase(row, rowIndex);
+    // A cross join (or any non-unique projection) can repeat the same durable
+    // identity across rows, but Svelte keyed each blocks require unique keys
+    // (`each_key_duplicate` throws otherwise). Disambiguate repeats by
+    // occurrence, keeping the first occurrence's key exactly as before so DOM
+    // identity stays stable for the common unique-identity case.
+    const repeatsBefore = result.rows.slice(0, rowIndex).filter((candidate, candidateIndex) =>
+        rowKeyBase(candidate, candidateIndex) === base
+    ).length;
+    return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
+}
+
 /** Search/navigation identity for read-only projections that have no writable record identity. */
 function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
-    const durableId = selectableRowId(row);
+    const durableId = selectionRowId(row, rowIndex);
     if (durableId !== undefined) return durableId;
     const value = JSON.stringify(row);
     const duplicateIndex = result.rows.slice(0, rowIndex).filter(candidate => JSON.stringify(candidate) === value).length;
@@ -376,6 +389,14 @@ function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
 
 /** Rows without a durable query identity are intentionally not selectable. */
 function selectableRowId(row: Record<string, unknown>): string | undefined {
+    return durableRowIdBase(row);
+}
+
+/**
+ * Durable query identity without write gating (see `selectableRowId`).
+ * Split out so occurrence disambiguation below can compare bases.
+ */
+function durableRowIdBase(row: Record<string, unknown>): string | undefined {
     // Query editability is a write concern. Read-only DISTINCT/aggregate
     // results may still expose durable identity columns suitable for local
     // selection, so do not gate identity on editability.rowIdentity.
@@ -383,6 +404,23 @@ function selectableRowId(row: Record<string, unknown>): string | undefined {
         return `${row.source_kind}:${row.source_id}`;
     }
     return typeof row.id === "string" ? row.id : undefined;
+}
+
+/**
+ * Occurrence-aware selection identity (issue #5547): a cross join repeats
+ * the same bare `id` across result rows, and keying selection/copy targets
+ * by that bare id collapses every occurrence onto the last row's values.
+ * Disambiguate repeats by occurrence with the same `#N` scheme `rowKey`
+ * uses for Svelte DOM keys, keeping the first occurrence exactly as before
+ * so unique-identity results behave identically.
+ */
+function selectionRowId(row: Record<string, unknown>, rowIndex: number): string | undefined {
+    const base = durableRowIdBase(row);
+    if (base === undefined) return undefined;
+    const repeatsBefore = result.rows.slice(0, rowIndex).filter(candidate =>
+        durableRowIdBase(candidate) === base
+    ).length;
+    return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
 }
 
 onMount(() => {
@@ -454,8 +492,8 @@ onMount(() => {
 onDestroy(() => unregisterSearch?.());
 
 function rowIdsOf(rows: TableQueryResult["rows"]): string[] {
-    return rows.flatMap(row => {
-        const id = selectableRowId(row);
+    return rows.flatMap((row, rowIndex) => {
+        const id = selectionRowId(row, rowIndex);
         return id === undefined ? [] : [id];
     });
 }
@@ -695,7 +733,8 @@ const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
 
 function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
     if (!editability.editable || !editability.editableColumns.has(column)) return;
-    const rowId = selectableRowId(row);
+    const rowIndex = result.rows.indexOf(row);
+    const rowId = rowIndex < 0 ? selectableRowId(row) : selectionRowId(row, rowIndex);
     const cell: GridCellAddress | undefined = rowId !== undefined ? { rowId, columnId: column } : undefined;
     if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
         const summary = summarizeSelection(selection, commandContext);
@@ -1272,7 +1311,7 @@ function handleCancelDelete() {
                 {#each result.rows as row, rowIndex (rowKey(row, rowIndex))}
                     {@const recordId = recordIdOf(row)}
                     {@const source = sourceOf(row)}
-                    {@const logicalRowId = selectableRowId(row)}
+                    {@const logicalRowId = selectionRowId(row, rowIndex)}
                     {@const navigationRowId = searchRowId(row, rowIndex)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         <th
