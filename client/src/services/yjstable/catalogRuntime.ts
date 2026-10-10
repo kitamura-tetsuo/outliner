@@ -29,6 +29,7 @@ export class CatalogRuntime {
     private catalogObjectCount = 0;
     private currentBuild: Promise<CatalogRuntimeState>;
     private readonly tables = new Map<string, { handles: TableHandles; unobserve: () => void; }>();
+    private dependentTableIds = new Set<string>();
 
     private readonly updateObserver = () => {
         const catalog = readSqlCatalog(this.projectId, this.catalogDoc());
@@ -80,16 +81,19 @@ export class CatalogRuntime {
 
     registerTable(handles: TableHandles): () => void {
         if (this.tables.has(handles.tableId)) return () => {};
-        const changed = () => {
+        const schemaChanged = () => {
             if (this.hasCatalogObjects()) this.startBuild();
         };
-        handles.schemaText.observe(changed);
-        handles.data.observeDeep(changed);
+        const dataChanged = () => {
+            if (this.dependentTableIds.has(handles.tableId)) this.startBuild();
+        };
+        handles.schemaText.observe(schemaChanged);
+        handles.data.observeDeep(dataChanged);
         this.tables.set(handles.tableId, {
             handles,
             unobserve: () => {
-                handles.schemaText.unobserve(changed);
-                handles.data.unobserveDeep(changed);
+                handles.schemaText.unobserve(schemaChanged);
+                handles.data.unobserveDeep(dataChanged);
             },
         });
         if (this.hasCatalogObjects()) this.startBuild();
@@ -149,12 +153,18 @@ export class CatalogRuntime {
         const snapshot = result.snapshot;
         const tables = this.tableSnapshots();
         const inputIdentity = JSON.stringify([snapshot.revision, tables]);
+        let dependentTableIds = new Set<string>();
         try {
             if (snapshot.objects.length > 0) {
                 const compiled = await compileSqlEnvironment({ catalog: snapshot, tables, inspections: [] });
                 if (compiled.status === "failed") {
                     throw new Error(compiled.diagnostics.map(diagnostic => diagnostic.message).join("; "));
                 }
+                dependentTableIds = new Set(
+                    compiled.environment.dependencies
+                        .filter(dependency => dependency.requiredEnums.length > 0)
+                        .map(dependency => dependency.referencingId),
+                );
                 await compiled.environment.dispose();
             }
             const beforeInstall = readSqlCatalog(this.projectId, this.catalogDoc());
@@ -202,6 +212,7 @@ export class CatalogRuntime {
             snapshot,
             generation: ++this.readyGeneration,
         };
+        this.dependentTableIds = dependentTableIds;
         this.publish(state);
         return state;
     }

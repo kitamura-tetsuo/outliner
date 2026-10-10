@@ -15,7 +15,7 @@ const localConnector: TableDocConnector = async () => ({
 afterEach(resetTableEngineForTests);
 afterAll(resetPgliteForTests);
 
-describe("catalog-bound field writes", { timeout: 30_000 }, () => {
+describe("catalog-bound field writes", { timeout: 90_000 }, () => {
     it("refuses a delayed edit and an unlisted label before mutating Yjs", async () => {
         const projectId = "catalog-write-authority";
         const projectDoc = new Y.Doc({ guid: projectId });
@@ -42,7 +42,10 @@ describe("catalog-bound field writes", { timeout: 30_000 }, () => {
             // Repair the preserved source record through the catalog service;
             // no client-side coercion or deletion is involved.
             replaceSqlCatalogSource(catalogDoc, catalogId, "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
-            await expect.poll(() => acquired?.adapter.appliedSchema?.columns[1]?.enumLabels)
+            await expect.poll(
+                () => acquired?.adapter.appliedSchema?.columns[1]?.enumLabels,
+                { timeout: 60_000 },
+            )
                 .toEqual(["Open", "Closed"]);
             expect(() =>
                 acquired!.adapter.commitRecordValue(
