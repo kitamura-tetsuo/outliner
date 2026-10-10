@@ -94,7 +94,7 @@ export class CatalogRuntime {
                     if (snapshot.objects.length > 0) {
                         await db.exec(
                             `BEGIN; SET LOCAL search_path TO ${quoteIdent(this.pgSchema)}; `
-                                + snapshot.objects.map(object => object.source).join("\n")
+                                + snapshot.objects.map(object => object.source).join(";\n")
                                 + "; COMMIT;",
                         );
                     }
