@@ -186,7 +186,7 @@ export async function materializeDuplicationPlan(
     // Capture dependency authority before the first await. The guard compiles
     // actual schemas/queries and rechecks these snapshots immediately before
     // any registry, subdoc, placement or history-visible effect.
-    const sqlSnapshot = captureStructuralSqlSnapshot(source);
+    let sqlSnapshot = captureStructuralSqlSnapshot(source);
     const tableObjects = objects.filter(object => object.type === "table");
     const connections: TableDocConnection[] = [];
 
@@ -225,6 +225,12 @@ export async function materializeDuplicationPlan(
     // schema with unavailable declarations is unresolved evidence, not proof
     // that the transfer is catalog-independent.
     const relevantSqlIds = new Set(objects.map(object => object.id));
+    // Table room synchronization can reveal schema and records that were not
+    // present in the registry-attached subdoc. Admission must use that hydrated
+    // state, never the pre-load shell.
+    if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
+        sqlSnapshot = captureStructuralSqlSnapshot(source);
+    }
     if (structuralSqlSnapshotRequiresGuard(sqlSnapshot, relevantSqlIds)) {
         await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
     }

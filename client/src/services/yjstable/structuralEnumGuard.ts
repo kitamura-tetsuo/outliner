@@ -55,9 +55,14 @@ function enumDeclaration(source: string): { name: string; labels: string[]; } | 
 export function portableStructuralEnumsStillCompatible(
     destinationDoc: Y.Doc,
     snapshots: Readonly<Record<string, import("../clipboard/itemClipboard").GridTableSnapshot>>,
+    currentSourceDoc?: Y.Doc,
 ): boolean {
     const first = Object.values(snapshots)[0];
     if (!first?.catalog) return true;
+    if (currentSourceDoc) {
+        const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
+        if (current.status !== "ready" || current.snapshot.revision !== first.catalog.revision) return false;
+    }
     const sql = Object.values(snapshots).flatMap(snapshot => [snapshot.schemaSql, snapshot.ui.query]).join("\n")
         .toLowerCase();
     const required = first.catalog.objects.map(object => enumDeclaration(object.source)).filter(value =>
@@ -85,12 +90,25 @@ function relevantSql(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<s
     ];
 }
 
+function referencedTypeNames(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): Set<string> {
+    const names = new Set<string>();
+    for (const sql of relevantSql(snapshot, relevantIds)) {
+        for (const match of sql.matchAll(/::\s*"?([A-Za-z_][A-Za-z0-9_$]*)"?/g)) names.add(match[1].toLowerCase());
+        const tableBody = /CREATE\s+TABLE\s+[^()]+\((.*)\)/is.exec(sql)?.[1];
+        if (!tableBody) continue;
+        for (const column of tableBody.split(",")) {
+            const type = /^\s*(?:"(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*)\s+"?([A-Za-z_][A-Za-z0-9_$]*)"?/i
+                .exec(column)?.[1];
+            if (type) names.add(type.toLowerCase());
+        }
+    }
+    return names;
+}
+
 /** Fast negative proof: unrelated catalog entries cannot affect plain SQL. */
 function referencesCapturedEnum(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): boolean {
-    const sql = relevantSql(snapshot, relevantIds).join("\n").toLowerCase();
-    return declaredEnumNames(snapshot).some(name =>
-        new RegExp(`(^|[^a-z0-9_$])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9_$]|$)`).test(sql)
-    );
+    const referenced = referencedTypeNames(snapshot, relevantIds);
+    return declaredEnumNames(snapshot).some(name => referenced.has(name));
 }
 
 const BUILTIN_TYPES = new Set([
@@ -126,20 +144,8 @@ const BUILTIN_TYPES = new Set([
 
 function unresolvedCustomType(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): string | undefined {
     const declared = new Set(declaredEnumNames(snapshot));
-    for (const sql of relevantSql(snapshot, relevantIds)) {
-        const candidates = [...sql.matchAll(/::\s*"?([A-Za-z_][A-Za-z0-9_$]*)"?/g)].map(match => match[1]);
-        const tableBody = /CREATE\s+TABLE\s+[^()]+\((.*)\)/is.exec(sql)?.[1];
-        if (tableBody) {
-            for (const column of tableBody.split(",")) {
-                const type = /^\s*(?:"(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*)\s+"?([A-Za-z_][A-Za-z0-9_$]*)"?/i
-                    .exec(column)?.[1];
-                if (type) candidates.push(type);
-            }
-        }
-        for (const candidate of candidates) {
-            const name = candidate.toLowerCase();
-            if (name && !BUILTIN_TYPES.has(name) && !declared.has(name)) return name;
-        }
+    for (const name of referencedTypeNames(snapshot, relevantIds)) {
+        if (!BUILTIN_TYPES.has(name) && !declared.has(name)) return name;
     }
     return undefined;
 }

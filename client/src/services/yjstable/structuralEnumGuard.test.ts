@@ -118,6 +118,22 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
         expect(getTableHandles(plain, result.primaryId)?.data.get("one")?.get("body")).toBe("unchanged");
     });
 
+    it("does not infer ENUM use from a column name or SQL string literal", async () => {
+        for (const query of ["SELECT body FROM notes", "SELECT 'body' AS value FROM notes"]) {
+            const plain = new Y.Doc({ guid: `plain-name-${query}` });
+            createSqlCatalogObject(plain, "enum", "this is not a catalog declaration");
+            createSqlCatalogObject(plain, "enum", "CREATE TYPE body AS ENUM ('x')");
+            const tableId = createTable(plain, "Notes", "notes", undefined, handles => {
+                handles.schemaText.insert(0, "CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT)");
+            });
+            createGrid(plain, tableId, { query });
+
+            await expect(duplicateObjects(plain, plain, { type: "table", id: tableId }, "item-only"))
+                .resolves.toBeDefined();
+            expect(listTables(plain)).toHaveLength(2);
+        }
+    });
+
     it("preserves typed values in same-Project structural duplication", async () => {
         const source = typedProject("same-project-typed", ["Open", "Closed"]);
         const result = await duplicateObjects(

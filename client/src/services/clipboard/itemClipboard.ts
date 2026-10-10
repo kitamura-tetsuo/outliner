@@ -102,6 +102,7 @@ export interface ItemClipboardPayloadV3 {
     operation?: "cut";
     tables?: Record<string, GridTableSnapshot>;
     calendars?: Record<string, CalendarSettings>;
+    catalog?: SqlCatalogSnapshot;
 }
 
 /**
@@ -130,6 +131,7 @@ export interface ItemClipboardPayloadV4 {
     operation?: "cut";
     tables?: Record<string, GridTableSnapshot>;
     calendars?: Record<string, CalendarSettings>;
+    catalog?: SqlCatalogSnapshot;
     /** Copy only: snapshots keyed by the original Diagram id. */
     diagrams?: Record<string, DiagramSnapshot>;
     /** Cut only: the session-local pending transfer this payload refers to. */
@@ -179,13 +181,14 @@ const bindings = {
 
 const PAYLOAD_V1_KEYS = new Set(["version", "sourceProjectId", "items", "operation"]);
 const PAYLOAD_V2_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "operation"]);
-const PAYLOAD_V3_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "calendars", "operation"]);
+const PAYLOAD_V3_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "calendars", "catalog", "operation"]);
 const PAYLOAD_V4_KEYS = new Set([
     "version",
     "sourceProjectId",
     "items",
     "tables",
     "calendars",
+    "catalog",
     "diagrams",
     "transferId",
     "operation",
@@ -356,6 +359,15 @@ export function isGridTableSnapshot(value: unknown, sourceTableId?: string): val
     return isGridUiDefinitionDto(value.ui);
 }
 
+function isSqlCatalogSnapshot(value: unknown): value is SqlCatalogSnapshot {
+    return isRecord(value) && value.format === 1 && typeof value.projectId === "string"
+        && typeof value.revision === "string" && Array.isArray(value.objects)
+        && value.objects.every(object =>
+            isRecord(object) && typeof object.id === "string" && object.kind === "enum"
+            && typeof object.source === "string"
+        );
+}
+
 function isCalendarSettings(value: unknown): value is CalendarSettings {
     if (!isRecord(value) || !hasOnlyKeys(value, CALENDAR_SETTINGS_KEYS)) return false;
     if (typeof value.name !== "string" || typeof value.query !== "string" || typeof value.viewType !== "string") {
@@ -434,6 +446,7 @@ export function serializeClipboardItems(
     calendars?: Readonly<Record<string, CalendarSettings>>,
     operation?: "cut",
     diagramTransfer?: { diagrams?: Readonly<Record<string, DiagramSnapshot>>; transferId?: string; },
+    catalog?: SqlCatalogSnapshot,
 ): string {
     const serialized = items.map(({ item, depth, text: textOverride }) => {
         const value = nodeValue(item);
@@ -495,6 +508,7 @@ export function serializeClipboardItems(
                 items: serialized,
                 ...(snapshotMap ? { tables: snapshotMap } : {}),
                 ...(calendarMap ? { calendars: calendarMap } : {}),
+                ...(calendarMap && catalog ? { catalog } : {}),
                 ...(diagrams ? { diagrams } : {}),
                 ...(transferId ? { transferId } : {}),
                 ...(operation ? { operation } : {}),
@@ -543,6 +557,7 @@ export function serializeClipboardItems(
             items: serialized,
             ...(snapshotMap ? { tables: snapshotMap } : {}),
             ...(calendarMap ? { calendars: calendarMap } : {}),
+            ...(calendarMap && catalog ? { catalog } : {}),
             ...(operation ? { operation } : {}),
         } satisfies ItemClipboardPayloadV3,
     );
@@ -564,6 +579,7 @@ export function deserializeClipboardItems(value: string): ItemClipboardPayload |
             if (!hasOnlyKeys(payload, PAYLOAD_V4_KEYS)) return undefined;
             if (payload.tables !== undefined && !isSnapshotMap(payload.tables)) return undefined;
             if (payload.calendars !== undefined && !isCalendarSettingsMap(payload.calendars)) return undefined;
+            if (payload.catalog !== undefined && !isSqlCatalogSnapshot(payload.catalog)) return undefined;
             if (!isValidDiagramTransfer(payload.items, payload.operation, payload.diagrams, payload.transferId)) {
                 return undefined;
             }
@@ -584,6 +600,7 @@ export function deserializeClipboardItems(value: string): ItemClipboardPayload |
             if (!hasOnlyKeys(payload, PAYLOAD_V3_KEYS)) return undefined;
             if (payload.tables !== undefined && !isSnapshotMap(payload.tables)) return undefined;
             if (payload.calendars !== undefined && !isCalendarSettingsMap(payload.calendars)) return undefined;
+            if (payload.catalog !== undefined && !isSqlCatalogSnapshot(payload.catalog)) return undefined;
             return payload as unknown as ItemClipboardPayloadV3;
         }
         return undefined;

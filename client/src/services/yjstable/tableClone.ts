@@ -398,7 +398,11 @@ export async function importTableStructures(
             tables: Object.values(snapshots).map(snapshot => ({
                 id: snapshot.sourceTableId,
                 schema: snapshot.schemaSql,
-                records: [],
+                records: sourceProjectId === destinationProjectDoc.guid
+                    ? [...(getTableHandles(destinationProjectDoc, snapshot.sourceTableId)?.data ?? [])].map(
+                        ([id, values]) => ({ id, values: Object.fromEntries(values) }),
+                    )
+                    : [],
             })),
             inspections: Object.values(snapshots).filter(snapshot => snapshot.ui.query.trim()).map(snapshot => ({
                 id: snapshot.sourceTableId,

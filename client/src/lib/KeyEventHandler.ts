@@ -1,3 +1,4 @@
+import { readSqlCatalog } from "$shared/services/sqlCatalog";
 import { Item as OutlineItem } from "../schema/app-schema";
 import { getItemCalendarId } from "../services/calendar/calendarBinding";
 import { type CalendarSettings, createCalendar, getCalendar } from "../services/calendar/calendarService";
@@ -370,6 +371,12 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
         diagramTransfer,
+        Object.keys(calendarSnapshots).length > 0
+            ? (() => {
+                const catalog = readSqlCatalog(project.ydoc.guid, project.ydoc);
+                return catalog.status === "ready" ? catalog.snapshot : undefined;
+            })()
+            : undefined,
     );
     const payload = deserializeClipboardItems(encoded);
     if (!payload) return diagramTransfer ? refusedCapture("unsupported-payload") : undefined;
@@ -3158,6 +3165,30 @@ export class KeyEventHandler {
 
                     const pastedCalendarIdMap: Record<string, string> = {};
                     if ("calendars" in structured && structured.calendars) {
+                        if (!("catalog" in structured) || !structured.catalog) {
+                            throw new Error("Calendar SQL catalog dependency evidence is unavailable.");
+                        }
+                        const { assertPortableStructuralEnumCompatibility } = await import(
+                            "../services/yjstable/structuralEnumGuard"
+                        );
+                        const calendarEntries = Object.entries(structured.calendars);
+                        await assertPortableStructuralEnumCompatibility(
+                            destinationDoc,
+                            {
+                                catalog: structured.catalog,
+                                tables: Object.values(referencedSnapshots).map(snapshot => ({
+                                    id: snapshot.sourceTableId,
+                                    schema: snapshot.schemaSql,
+                                    records: [],
+                                })),
+                                inspections: calendarEntries.map(([id, settings]) => ({
+                                    id,
+                                    kind: "calendar" as const,
+                                    sql: settings.query,
+                                })),
+                            },
+                            new Set(calendarEntries.map(([id]) => id)),
+                        );
                         const sqlNameMap = new Map<string, string>();
                         if (pastedTableIdMap) {
                             for (const [sourceTableId, destinationTableId] of Object.entries(pastedTableIdMap)) {
@@ -3272,6 +3303,7 @@ export class KeyEventHandler {
                         const { portableStructuralEnumsStillCompatible } = await import(
                             "../services/yjstable/structuralEnumGuard"
                         );
+                        const { getLoadedProjectDocById } = await import("./yjsService.svelte");
                         const pastedSnapshots = structured && "tables" in structured ? structured.tables : undefined;
                         globalUndoRouter.captureCrossProjectPaste(
                             generalStore.undoManager,
@@ -3279,7 +3311,15 @@ export class KeyEventHandler {
                             Object.values(pastedTableIdMap),
                             pastedRuleIds,
                             pastedSnapshots
-                                ? () => portableStructuralEnumsStillCompatible(destinationDoc, pastedSnapshots)
+                                ? () => {
+                                    const sourceDoc = getLoadedProjectDocById(structured!.sourceProjectId);
+                                    return sourceDoc !== undefined
+                                        && portableStructuralEnumsStillCompatible(
+                                            destinationDoc,
+                                            pastedSnapshots,
+                                            sourceDoc,
+                                        );
+                                }
                                 : undefined,
                         );
                     }
