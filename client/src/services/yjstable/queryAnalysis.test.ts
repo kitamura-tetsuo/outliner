@@ -37,6 +37,46 @@ describe("resolveBareIdMutationAuthority", () => {
         }
     });
 
+    it("rejects comma-joined outer FROM lists as multiple-source results", async () => {
+        const schema = await schemaPromise;
+        const cases = [
+            "SELECT a.id, a.title FROM tasks AS a, other_tasks AS b",
+            "SELECT tasks.id, tasks.title FROM tasks, other_tasks",
+            "SELECT a.id, a.title FROM tasks AS a, tasks AS b",
+            "SELECT a.id, a.title FROM tasks AS a /* join */ , -- line\n other_tasks AS b",
+            "SELECT a.id, a.title FROM tasks AS a, other_tasks AS b LIMIT 1",
+            "SELECT a.id, a.title FROM tasks AS a, other_tasks AS b WHERE a.title <> ''",
+        ];
+        for (const query of cases) {
+            const authority = resolveBareIdMutationAuthority(query, "tasks", schema, ["id", "title"]);
+            expect(authority.status, query).toBe("unavailable");
+            expect(authority.reason, query).toMatch(/multiple sources|several tables/);
+        }
+    });
+
+    it("keeps comma-bearing single-table queries writable", async () => {
+        const schema = await schemaPromise;
+        const cases: Array<{ query: string; columns: string[]; }> = [
+            { query: "SELECT id, title FROM tasks ORDER BY title, id LIMIT 10 OFFSET 0", columns: ["id", "title"] },
+            {
+                query: "SELECT id, title, coalesce(title, '') AS display_title FROM tasks",
+                columns: ["id", "title", "display_title"],
+            },
+            { query: "SELECT id, title FROM tasks WHERE title <> 'a,b'", columns: ["id", "title"] },
+            {
+                query: "SELECT id, title FROM tasks WHERE id IN (SELECT id FROM other_tasks WHERE title = 'x,y')",
+                columns: ["id", "title"],
+            },
+            { query: "SELECT * FROM tasks", columns: ["id", "title", "題名", "points"] },
+            { query: "  SELECT id, title FROM tasks  ", columns: ["id", "title"] },
+        ];
+        for (const { query, columns } of cases) {
+            const authority = resolveBareIdMutationAuthority(query, "tasks", schema, columns);
+            expect(authority.status, query).toBe("compatible");
+            expect(authority.editableColumns.has("title"), query).toBe(true);
+        }
+    });
+
     it("does not authorize calculated, renamed, CTE, or synthetic identity outputs", async () => {
         const schema = await schemaPromise;
         const cases = [
@@ -104,6 +144,17 @@ describe("analyzeQueryEditability", () => {
             analyzeQueryEditability("SELECT id, COUNT(*) AS n FROM tasks GROUP BY id", schema, ["id", "n"])
                 .editable,
         ).toBe(false);
+    });
+
+    it("is read-only for comma-joined outer FROM lists even without an authority verdict", async () => {
+        const schema = await schemaPromise;
+        const res = analyzeQueryEditability(
+            "SELECT a.id, a.title FROM tasks AS a, tasks AS b",
+            schema,
+            ["id", "title"],
+        );
+        expect(res.editable).toBe(false);
+        expect(res.readOnlyReason).toMatch(/several tables|multiple sources/);
     });
 
     it("treats calculated columns as read-only", async () => {

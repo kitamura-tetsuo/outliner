@@ -79,6 +79,9 @@ export function resolveBareIdMutationAuthority(
     if (!select) return unavailable("Read-only view: query provenance is unavailable");
     const relation = parseRelation(select.from);
     if (!relation) return unavailable("Read-only view: query source provenance is unavailable");
+    if (hasCommaJoinedOuterFrom(select.from)) {
+        return unavailable("Read-only view: rows combined from multiple sources cannot be edited here");
+    }
     if (relation.name !== primarySqlName) {
         return {
             status: "source-mismatch",
@@ -150,6 +153,51 @@ function splitTopLevel(value: string): string[] {
     parts.push(value.slice(start));
     return parts;
 }
+
+/**
+ * True when the outer FROM clause lists two or more comma-separated sources
+ * (`FROM a, b`), which is a cross join that bare-id authority must refuse.
+ * Only a top-level comma inside the outer FROM list counts: the input is
+ * already `stripSqlNoise` output (quoted values/comments replaced), commas
+ * inside parentheses (function arguments, subqueries) are nested, and the
+ * scan stops at the clause ending the FROM list so commas in WHERE
+ * expressions/subqueries or ORDER BY lists are never separators here.
+ */
+function hasCommaJoinedOuterFrom(from: string): boolean {
+    const name = from.match(/^("(?:[^"]|"")+"|[a-z_][a-z0-9_$]*)/i);
+    if (!name) return false;
+    let rest = from.slice(name[0].length);
+    // Consume at most one alias token (`x`, `AS x`), never a clause keyword,
+    // so the scan below starts at the real remainder of the FROM list.
+    const alias = /^\s+(?:as\s+)?("(?:[^"]|"")+"|[a-z_][a-z0-9_$]*)/i.exec(rest);
+    if (alias) {
+        const candidate = /^"/.test(alias[1]!) ? alias[1]! : alias[1]!.toLowerCase();
+        if (
+            !/^(where|group|having|window|order|limit|offset|fetch|for|join|on|using|union|intersect|except|inner|left|right|full|cross|natural)$/
+                .test(candidate)
+        ) {
+            rest = rest.slice(alias[0].length);
+        }
+    }
+    let depth = 0;
+    for (let i = 0; i < rest.length; i++) {
+        const char = rest[i]!;
+        if (char === "(") depth++;
+        else if (char === ")") depth = Math.max(0, depth - 1);
+        else if (depth !== 0) continue;
+        else if (char === ",") return true;
+        else {
+            const prev = rest[i - 1];
+            if ((i === 0 || !/[a-z0-9_$"]/i.test(prev!)) && FROM_CLAUSE_END_RE.test(rest.slice(i))) {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
+const FROM_CLAUSE_END_RE =
+    /^(where|group\s+by|having|window|order\s+by|limit|offset|fetch|for|join|union|intersect|except)\b/i;
 
 function identifier(value: string): string | undefined {
     const trimmed = value.trim();
@@ -257,6 +305,16 @@ export function analyzeQueryEditability(
         : undefined;
     if (!rowIdentity) {
         return none("Query result has no id column");
+    }
+
+    // A comma-joined outer FROM list is a cross join even without the JOIN
+    // keyword. Bare-id rows from combined sources have no single record to
+    // address, so they stay read-only with or without an authority verdict.
+    if (rowIdentity === "id") {
+        const from = topLevelSelectAndFrom(stripped.trim())?.from;
+        if (from !== undefined && hasCommaJoinedOuterFrom(from)) {
+            return none("Read-only view: rows combined from several tables cannot be edited here");
+        }
     }
 
     if (rowIdentity === "id" && bareIdAuthority) {
