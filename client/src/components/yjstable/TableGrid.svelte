@@ -349,10 +349,19 @@ function sourceOf(row: Record<string, unknown>): { sourceKind: string; sourceId:
 }
 
 function rowKey(row: Record<string, unknown>, rowIndex: number): string {
-    const recordId = recordIdOf(row);
-    if (recordId !== undefined) return recordId;
-    const source = sourceOf(row);
-    if (source) return `${source.sourceKind}:${source.sourceId}`;
+    // DOM identity, not write authority: this keys Svelte's `<tr>` nodes, so
+    // it must not consult the async `editability` verdict. Resolving or
+    // revoking bare-id mutation authority flips `rowIdentity`, which used to
+    // destroy and recreate every row — dropping DOM focus in the middle of
+    // keyboard navigation. Derive it from the result data alone, preferring
+    // the same durable identity `selectableRowId` uses; write routing keeps
+    // using the gated `recordIdOf`/`sourceOf` above.
+    const sourceKind = row.source_kind;
+    const sourceId = row.source_id;
+    if (typeof sourceKind === "string" && typeof sourceId === "string") {
+        return `${sourceKind}:${sourceId}`;
+    }
+    if (typeof row.id === "string") return row.id;
     return `row-${rowIndex}`;
 }
 
