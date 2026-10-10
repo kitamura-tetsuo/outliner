@@ -195,6 +195,19 @@ const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name
 const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
 
+function commitBareRecordValue(
+    recordId: string,
+    columnId: string,
+    value: TableRecordValue,
+    authorityToken?: number,
+): void {
+    if (adapter && columnByName.get(columnId)?.enumLabels !== undefined) {
+        adapter.commitRecordValue(recordId, columnId, value, authorityToken ?? adapter.writeAuthorityToken);
+    } else {
+        setRecordValue(handles, recordId, columnId, value);
+    }
+}
+
 /**
  * Fixed border-box width for a visible data column, resolved by exact
  * result-column name. Malformed stored values render as automatic sizing and
@@ -307,10 +320,7 @@ const commandContext = $derived<GridCommandContext>({
     checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
     canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
-    writeBareCell: (recordId, columnId, value) =>
-        adapter
-            ? adapter.commitRecordValue(recordId, columnId, value, adapter.writeAuthorityToken)
-            : setRecordValue(handles, recordId, columnId, value),
+    writeBareCell: (recordId, columnId, value) => commitBareRecordValue(recordId, columnId, value),
 });
 
 const selectionSummary = $derived.by(() => {
@@ -713,11 +723,7 @@ function commitCell(row: Record<string, unknown>, column: string, value: TableRe
     }
     const recordId = recordIdOf(row);
     if (recordId !== undefined) {
-        if (adapter) {
-            adapter.commitRecordValue(recordId, column, value, editingAuthorityToken ?? adapter.writeAuthorityToken);
-        } else {
-            setRecordValue(handles, recordId, column, value);
-        }
+        commitBareRecordValue(recordId, column, value, editingAuthorityToken);
         return;
     }
     const source = sourceOf(row);
