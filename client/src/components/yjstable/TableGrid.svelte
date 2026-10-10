@@ -11,6 +11,7 @@ import {
     SOURCE_KIND_COLUMN,
 } from "../../services/yjstable/queryAnalysis";
 import { applyUnionedRowEdit, type RelationResolver } from "../../services/yjstable/relationRowWrite";
+import { RelationWriteError } from "../../services/yjstable/relationProvider";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
@@ -22,7 +23,7 @@ import {
 import type { GridHandles } from "../../services/yjstable/gridDocs";
 import { isValidGridColumnWidth } from "../../services/yjstable/gridDocs";
 import { ColumnResizeGesture } from "../../services/yjstable/columnResize";
-import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import type { TableQueryResult, TableSyncAdapter } from "../../services/yjstable/tableSyncAdapter";
 import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import {
@@ -40,6 +41,7 @@ import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePla
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { onDestroy, onMount, untrack } from "svelte";
+import { SvelteMap } from "svelte/reactivity";
 import {
     type GridCellReplaceOutcome,
     type GridCellReplacement,
@@ -62,6 +64,7 @@ interface Props {
     onColumnOrderChange?: (order: string[]) => void;
     /** Source Table handles: writes for editable cells go here. */
     handles: TableHandles;
+    adapter?: TableSyncAdapter;
     schema: ParsedTableSchema | undefined;
     query: string;
     result: TableQueryResult;
@@ -119,6 +122,7 @@ let {
     pageTitle,
     onColumnOrderChange,
     handles,
+    adapter,
     schema,
     query,
     result,
@@ -145,6 +149,7 @@ const selection = new GridSelection();
 let selectionRevision = $state(0);
 /** Feedback for a paste this Grid rejected (shape mismatch, incompatible value, ...); see `pasteClipboardIntoSelection`. */
 let pasteStatus: string | undefined = $state();
+let cellEditStatus: string | undefined = $state();
 let findMatch: GridCellSearchMatch | undefined = $state();
 let unregisterSearch: (() => void) | undefined;
 
@@ -154,6 +159,17 @@ let unregisterSearch: (() => void) | undefined;
  * active cell instead of a foreign editor's cursor/selection.
  */
 let editingCell: GridCellAddress | undefined = $state();
+interface CellWriteAuthority {
+    readonly cell: GridCellAddress;
+    readonly handles: TableHandles;
+    readonly adapter: TableSyncAdapter | undefined;
+    readonly token: number | undefined;
+    readonly catalogBound: boolean;
+    readonly record: unknown;
+}
+// Pointer-down on the next control can precede blur/commit on the old one.
+// Keep each origin until its own interaction finishes.
+const cellWriteAuthorities = new SvelteMap<string, CellWriteAuthority>();
 /**
  * Initial text for the cell named by `editingCell`, set once when a
  * printable keystroke opens the editor. Stays referentially stable for the
@@ -191,6 +207,49 @@ const editability = $derived(analyzeQueryEditability(
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
 const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
+
+function commitBareRecordValue(
+    recordId: string,
+    columnId: string,
+    value: TableRecordValue,
+    authority?: CellWriteAuthority,
+): void {
+    if (adapter && (authority?.catalogBound || columnByName.get(columnId)?.enumLabels !== undefined)) {
+        // Immediate selection commands capture at this synchronous write boundary.
+        // Delayed cell editors must keep the authority captured when editing began.
+        const token = authority === undefined ? adapter.writeAuthorityToken : authority.token;
+        if (token === undefined) throw new RelationWriteError("This cell has no current write authority");
+        adapter.commitRecordValue(recordId, columnId, value, token);
+    } else {
+        setRecordValue(handles, recordId, columnId, value);
+    }
+}
+
+function captureCellWriteAuthority(cell: GridCellAddress): void {
+    cellWriteAuthorities.set(JSON.stringify([cell.rowId, cell.columnId]), {
+        cell,
+        handles,
+        adapter,
+        token: adapter?.writeAuthorityToken,
+        catalogBound: columnByName.get(cell.columnId)?.enumLabels !== undefined,
+        record: handles.data.get(cell.rowId),
+    });
+    cellEditStatus = undefined;
+}
+
+function releaseCellWriteAuthority(cell: GridCellAddress): void {
+    cellWriteAuthorities.delete(JSON.stringify([cell.rowId, cell.columnId]));
+}
+
+function checkCellWriteAuthority(cell: GridCellAddress, authority: CellWriteAuthority | undefined): void {
+    if (!authority?.catalogBound && columnByName.get(cell.columnId)?.enumLabels === undefined) return;
+    if (
+        !authority || authority.handles !== handles || authority.adapter !== adapter || !adapter
+        || authority.token !== adapter.writeAuthorityToken || authority.record !== handles.data.get(cell.rowId)
+    ) {
+        throw new RelationWriteError("This cell changed while you were editing. Please edit it again.");
+    }
+}
 
 /**
  * Fixed border-box width for a visible data column, resolved by exact
@@ -301,9 +360,13 @@ const commandContext = $derived<GridCommandContext>({
     columnOrder: displayColumns,
     editableColumns: editability.editableColumns,
     valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
-    checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
+    checkOptionsOf: (columnId) => {
+        const column = columnByName.get(columnId);
+        return column?.enumLabels ?? column?.checkOptions;
+    },
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
     canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
+    writeBareCell: (recordId, columnId, value) => commitBareRecordValue(recordId, columnId, value),
 });
 
 const selectionSummary = $derived.by(() => {
@@ -736,20 +799,29 @@ function commitCell(row: Record<string, unknown>, column: string, value: TableRe
     const rowIndex = result.rows.indexOf(row);
     const rowId = rowIndex < 0 ? selectableRowId(row) : selectionRowId(row, rowIndex);
     const cell: GridCellAddress | undefined = rowId !== undefined ? { rowId, columnId: column } : undefined;
-    if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
-        const summary = summarizeSelection(selection, commandContext);
-        if (summary.writableTargets.length > 1) {
-            applyValueToSelection(selection, commandContext, value);
+    const authority = cell ? cellWriteAuthorities.get(JSON.stringify([cell.rowId, cell.columnId])) : undefined;
+    try {
+        if (cell) checkCellWriteAuthority(cell, authority);
+        if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
+            const summary = summarizeSelection(selection, commandContext);
+            if (summary.writableTargets.length > 1) {
+                // The captured origin is checked before the synchronous batch can write any target.
+                applyValueToSelection(selection, commandContext, value);
+                return;
+            }
+        }
+        const recordId = recordIdOf(row);
+        if (recordId !== undefined) {
+            commitBareRecordValue(recordId, column, value, authority);
             return;
         }
+        const source = sourceOf(row);
+        if (source) void applyUnionedRowEdit(session, source.sourceKind, source.sourceId, column, value);
+    } catch (error) {
+        cellEditStatus = error instanceof Error ? error.message : String(error);
+    } finally {
+        if (cell) releaseCellWriteAuthority(cell);
     }
-    const recordId = recordIdOf(row);
-    if (recordId !== undefined) {
-        setRecordValue(handles, recordId, column, value);
-        return;
-    }
-    const source = sourceOf(row);
-    if (source) void applyUnionedRowEdit(session, source.sourceKind, source.sourceId, column, value);
 }
 
 /** Focuses `cell`'s control right now if its DOM already exists. Returns whether it did. */
@@ -1027,6 +1099,7 @@ function handleGridKeyDown(event: KeyboardEvent) {
         selection.select(cell);
         selectionRevision++;
         editingCell = cell;
+        captureCellWriteAuthority(cell);
         pendingEditSeed = event.key;
     }
 }
@@ -1146,6 +1219,9 @@ function handleCancelDelete() {
         {/if}
         {#if pasteStatus}
             <p class="grid-paste-status" data-testid="grid-paste-status" role="status">{pasteStatus}</p>
+        {/if}
+        {#if cellEditStatus}
+            <p class="grid-paste-status" data-testid="grid-edit-status" role="status">{cellEditStatus}</p>
         {/if}
         <table
             role="grid"
@@ -1359,7 +1435,7 @@ function handleCancelDelete() {
                                     editable={editability.editable
                                     && (recordId !== undefined || source !== undefined)
                                     && editability.editableColumns.has(column)}
-                                    options={schemaColumn?.checkOptions}
+                                    options={schemaColumn?.enumLabels ?? schemaColumn?.checkOptions}
                                     ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
                                     editSeed={logicalCell !== undefined && cellEditing(logicalCell) ? pendingEditSeed : undefined}
                                     bind:editing={
@@ -1370,12 +1446,16 @@ function handleCancelDelete() {
                                                 selection.select(logicalCell);
                                                 selectionRevision++;
                                                 editingCell = logicalCell;
+                                                captureCellWriteAuthority(logicalCell);
                                             } else if (cellEditing(logicalCell)) {
                                                 editingCell = undefined;
+                                                releaseCellWriteAuthority(logicalCell);
                                                 pendingEditSeed = undefined;
                                             }
                                         }
                                     }
+                                    onEditStart={() => logicalCell && captureCellWriteAuthority(logicalCell)}
+                                    onEditEnd={() => logicalCell && releaseCellWriteAuthority(logicalCell)}
                                     onCommit={(value) => {
                                         if (recordId !== undefined || source !== undefined) commitCell(row, column, value);
                                     }}
