@@ -79,6 +79,10 @@ export class CatalogRuntime {
         return this.state;
     }
 
+    dependsOnTable(tableId: string): boolean {
+        return this.dependentTableIds.has(tableId);
+    }
+
     registerTable(handles: TableHandles): () => void {
         if (this.tables.has(handles.tableId)) return () => {};
         const schemaChanged = () => {

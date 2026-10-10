@@ -178,7 +178,9 @@ export class TableSyncAdapter {
     }
 
     commitRecordValue(recordId: string, columnName: string, value: TableRecordValue, expectedToken: number): void {
-        if (expectedToken !== this.writeAuthorityGeneration || this.catalogRuntime?.current.status === "building") {
+        const catalogIsRebuildingThisTable = this.catalogRuntime?.current.status === "building"
+            && this.catalogRuntime.dependsOnTable(this.handles.tableId);
+        if (expectedToken !== this.writeAuthorityGeneration || catalogIsRebuildingThisTable) {
             throw new RelationWriteError("Table write authority changed while the edit was open");
         }
         const column = this.schema?.columns.find(candidate => candidate.name === columnName);
@@ -258,6 +260,7 @@ export class TableSyncAdapter {
     private onCatalogState(state: CatalogRuntimeState): void {
         if (!this.started || this.disposed) return;
         if (state.status !== "ready") {
+            if (!this.catalogRuntime?.dependsOnTable(this.handles.tableId)) return;
             this.rebuildEpoch++;
             this.writeAuthorityGeneration++;
             this.schema = undefined;
@@ -266,6 +269,7 @@ export class TableSyncAdapter {
         }
         if (state.generation === this.catalogGeneration) return;
         this.catalogGeneration = state.generation;
+        if (!this.catalogRuntime?.dependsOnTable(this.handles.tableId)) return;
         void this.rebuildFromSchemaText();
     }
 
