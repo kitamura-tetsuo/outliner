@@ -109,9 +109,6 @@ export function castValueForColumn(value: unknown, column: TableColumnSchema): u
             }
             throw castError(column, value, "timestamp (YYYY-MM-DDTHH:MM[:SS])");
         }
-        case "enum":
-            // Handled before the generic empty-string-to-NULL conversion.
-            return value;
         case "other": {
             if (typeof value === "string") return value;
             throw castError(column, value, column.dataType);
