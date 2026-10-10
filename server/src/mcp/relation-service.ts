@@ -136,6 +136,7 @@ export class OutlinerRelationService {
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
+        private readonly options: { beforeRecordBatchPublication?: () => Promise<void>; } = {},
     ) {}
 
     /** Release the shared scratch database when the owning server shuts down. */
@@ -574,7 +575,13 @@ export class OutlinerRelationService {
 
     private castRecordValue(value: unknown, column: { name: string; dataType: string; kind: string; }): unknown {
         if (value === null || value === undefined) return null;
-        if (typeof value === "string" && value === "" && column.kind !== "text") return null;
+        // Empty strings retain their literal meaning for text and user-defined
+        // scalar types. In particular, an ENUM may explicitly declare '' as a
+        // label; only built-in non-string scalars keep the legacy blank-as-NULL
+        // input behavior.
+        if (typeof value === "string" && value === "" && column.kind !== "text" && column.kind !== "other") {
+            return null;
+        }
         const invalid = (expected: string) => {
             throw new Error(
                 `Value ${
@@ -1151,7 +1158,11 @@ export class OutlinerRelationService {
      * race-free with respect to collaborator updates.
      */
     private validationSnapshot(doc: Y.Doc, sources: Map<string, TableDoc>): string {
+        const catalog = readSqlCatalog("validation-snapshot", doc as never);
         return revisionOf({
+            catalog: catalog.status === "ready"
+                ? { revision: catalog.snapshot.revision, objects: catalog.snapshot.objects }
+                : { status: catalog.status, reason: catalog.reason },
             tables: this.tables(doc).map(table => {
                 const source = sources.get(table.tableId);
                 return {
@@ -1273,6 +1284,10 @@ export class OutlinerRelationService {
             try {
                 for (let attempt = 1; attempt <= MAX_CREATE_GRID_VALIDATIONS; attempt++) {
                     this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                    const catalogBefore = readSqlCatalog(projectId, doc as never);
+                    if (catalogBefore.status !== "ready") {
+                        throw new McpReadError("validation_failed", "Project SQL catalog is unavailable");
+                    }
                     const { validation, snapshot } = await this.validateGridCandidate(
                         uid,
                         projectId,
@@ -1300,6 +1315,18 @@ export class OutlinerRelationService {
                     // Mutation boundary: nothing below awaits until publication
                     // has completed, so no collaborator update can interleave.
                     const { table, page } = this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                    const currentCatalog = readSqlCatalog(projectId, doc as never);
+                    if (
+                        currentCatalog.status !== "ready"
+                        || currentCatalog.snapshot.revision !== catalogBefore.snapshot.revision
+                    ) {
+                        throw new McpReadError("stale_revision", "SQL catalog changed after Grid validation", {
+                            expectedCatalogRevision: catalogBefore.snapshot.revision,
+                            actualCatalogRevision: currentCatalog.status === "ready"
+                                ? currentCatalog.snapshot.revision
+                                : undefined,
+                        });
+                    }
                     if (this.validationSnapshot(doc, sources) !== snapshot) continue;
                     const gridName = name ?? String(table.get("name") ?? "");
                     const created = options.dryRun
@@ -2087,7 +2114,7 @@ export class OutlinerRelationService {
                 const source = await this.openTable(uid, projectId, tableId);
                 const lease = await acquireDb();
                 try {
-                    await materializeProjectCatalog(lease.db, projectId, doc);
+                    const validatedCatalog = await materializeProjectCatalog(lease.db, projectId, doc);
                     const schema = await this.inspectTableSchema(lease.db, source.schema);
                     if (schema.status !== "valid") {
                         throw new McpReadError("validation_failed", "Table has no valid applied schema", { tableId });
@@ -2183,6 +2210,31 @@ export class OutlinerRelationService {
                             })),
                         };
                     }
+                    await this.options.beforeRecordBatchPublication?.();
+                    const currentCatalog = readSqlCatalog(projectId, doc as never);
+                    if (
+                        currentCatalog.status !== "ready"
+                        || currentCatalog.snapshot.revision !== validatedCatalog.snapshot.revision
+                    ) {
+                        throw new McpReadError("stale_revision", "SQL catalog changed after record validation", {
+                            expectedCatalogRevision: validatedCatalog.snapshot.revision,
+                            actualCatalogRevision: currentCatalog.status === "ready"
+                                ? currentCatalog.snapshot.revision
+                                : undefined,
+                        });
+                    }
+                    // The Table revision is re-read after the asynchronous
+                    // publication barrier as part of the same final boundary.
+                    assertRevision(
+                        precondition.expectedRevision,
+                        this.tableRevision(
+                            tableId,
+                            displayName,
+                            sqlName,
+                            source,
+                        ),
+                        { tableId },
+                    );
                     source.doc.transact(() => {
                         for (const change of changes) {
                             const record = source.data.get(change.recordId)!;
