@@ -1,6 +1,6 @@
 # Firefox outline-selection E2E
 
-[Issue #5562](https://github.com/kitamura-tetsuo/outliner/issues/5562) adds an out-of-band desktop Firefox diagnostic for the existing outline-selection scenarios. It records genuine passing and failing results without adding Firefox to ordinary pull-request CI. Both engines use the same spec files, input gestures, and semantic assertions. The browser projects live in [client/playwright.config.ts](../client/playwright.config.ts); their Firefox membership is defined in [client/playwright-selection-suite.ts](../client/playwright-selection-suite.ts).
+[Issue #5560](https://github.com/kitamura-tetsuo/outliner/issues/5560) schedules the outline-selection suite in desktop Firefox alongside Chromium during ordinary CI. The earlier [Issue #5562](https://github.com/kitamura-tetsuo/outliner/issues/5562) diagnostic remains available for testing an explicitly selected revision. Both engines use the same spec files, input gestures, and semantic assertions. The browser projects live in [client/playwright.config.ts](../client/playwright.config.ts); their Firefox membership is defined in [client/playwright-selection-suite.ts](../client/playwright-selection-suite.ts).
 
 ## Required suite
 
@@ -51,7 +51,7 @@ Default endpoints come from [`scripts/common-config.sh`](../scripts/common-confi
 
 ## List the Firefox suite
 
-This command uses the same configuration as the manual diagnostic workflow. Listing loads and collects cases; it does not launch Firefox or establish that any scenario passed.
+This command uses the same configuration as ordinary CI and the manual diagnostic workflow. Listing loads and collects cases; it does not launch Firefox or establish that any scenario passed.
 
 ```bash
 E2E_BROWSER=firefox npm --prefix client run github:test:e2e -- \
@@ -163,26 +163,42 @@ npm ci --prefix scripts/tests --ignore-scripts
   cd scripts/tests
   npx vitest run \
     env-playwright-collects-every-spec-7d41ae62.spec.ts \
-    env-firefox-selection-coverage-78ad2b91.spec.ts
+    env-firefox-selection-coverage-78ad2b91.spec.ts \
+    env-firefox-ci-promotion-934d0f2a.spec.ts
 )
 ```
 
-The selection guard independently discovers the required paths, obtains an unfiltered case inventory, and compares it with collection from the production projects under the diagnostic engine/project environment. It checks both engines and the Firefox diagnostic matrix. Its adversarial cases cover missing matchers/cases/projects, an incorrectly named Chromium project, new matching files, and retained moved specs. It also verifies that ordinary PR CI remains Chromium-only.
+The selection guard independently discovers the required paths, obtains an unfiltered case inventory, and compares it with collection from the production projects under the CI engine/project environment. It checks both engines and the effective Firefox matrix in ordinary CI, including exclusions. Its adversarial cases cover missing matchers/cases/projects, an incorrectly named Chromium project, new matching files, and retained moved specs. The scheduling contract also verifies that Chromium membership is preserved and that Firefox runs independently of Chromium success.
 
 After preparing Firefox, run the separate execution-boundary tests:
 
 ```bash
 (
   cd scripts/tests
-  npx vitest run env-firefox-execution-results-64ab7e91.spec.ts
+  npx vitest run env-firefox-execution-results-64ab7e91.spec.ts \
+    env-firefox-ci-entrypoint-a31f98d4.spec.ts
 )
 ```
 
 These tests invoke the actual `npm run github:test:e2e` entrypoint with an isolated temporary spec and the production browser configuration/reporters. They verify passing execution, a deliberate assertion failure, initial-attempt artifacts, skip/fixme/expected-failure rejection, zero collection, missing Firefox, collection-only reporting, an omitted case, a missing inventory, late teardown console evidence, and report-persistence failure. They do not exercise the application's selection behavior; the required SLR/basic specs provide that coverage.
 
+## Ordinary CI execution boundary
+
+Ordinary CI invokes the shared command below from the repository root, after browser and isolated application-service preparation:
+
+```bash
+node scripts/run-firefox-selection.mjs --project=firefox-selection-new
+```
+
+The command collects a fresh, unfiltered inventory for that project, executes the actual Playwright npm entrypoint, and verifies its machine-readable execution report against that inventory and the installed lockfile version. Each invocation removes previous evidence before starting. It accepts success only when every inventoried case has an actual passing Firefox attempt; collection-only runs, reporter overrides without evidence, passing filtered subsets, zero tests, skips, expected failures, and stale reports cannot satisfy it. Per-phase logs and collection/execution JSON are written under unique `job_logs/` names by default. CI provides absolute report paths and identifies artifacts by browser, project, workflow run, and run attempt.
+
+Use the sequential per-file command above for local application debugging, following the repository rule. A selected-file pass is partial evidence. The complete-project command is the same strict boundary used by CI, and the execution-boundary ENV tests exercise that command with real Firefox and the production reporters.
+
+Normal CI always uploads Firefox evidence, on success as well as failure, with two-day retention. Existing Chromium failure artifacts remain available. Setup context, launch probes, and service logs are uploaded even when setup fails before a page exists. The independent collection guard is a sibling job, so Chromium failures cannot suppress required Firefox execution.
+
 ## Invoke the out-of-band diagnostic
 
-[firefox-selection-diagnostic.yml](../.github/workflows/firefox-selection-diagnostic.yml) has only a `workflow_dispatch` trigger. It is not called by ordinary PR CI, and [ci-test-e2e.yml](../.github/workflows/ci-test-e2e.yml) retains its existing Chromium-only matrix. A failing Firefox assertion therefore remains a genuine failed diagnostic run without becoming an automatically scheduled merge gate.
+[firefox-selection-diagnostic.yml](../.github/workflows/firefox-selection-diagnostic.yml) has only a `workflow_dispatch` trigger. It is not called by ordinary PR CI, and its run is separate from [ci-test-e2e.yml](../.github/workflows/ci-test-e2e.yml). Normal CI schedules the existing Chromium projects and all four Firefox projects in the same independent, fail-fast-disabled matrix; a Firefox failure fails that ordinary CI run. The optional diagnostic still records a genuine failed result for its selected revision.
 
 From a checkout with GitHub CLI access, dispatch the workflow on the default branch and identify the revision to test explicitly:
 
@@ -219,7 +235,7 @@ node client/node_modules/playwright/cli.js show-trace /absolute/path/to/trace.zi
 
 Record a timeout with the spec, project, attempted command, and retained evidence. Restricted-host failures that prevent Firefox content processes from running are environment failures and require a suitable runtime; they do not establish a product regression or a passing test.
 
-A Firefox product defect revealed by a required scenario remains a failed assertion to report with its evidence. Issue #5562 provides diagnostics; it does not authorize changing production selection/rendering semantics, skipping the case, changing Firefox's expected outcome, replacing real gestures with store writes, or repairing selection/style state inside the test to produce a passing result. Product repair and promotion to merge-blocking CI remain separately scoped under [Issue #5560](https://github.com/kitamura-tetsuo/outliner/issues/5560). The suite's existing semantic assertions also do not guarantee reproduction of the darker-highlight screenshot that motivated the issue.
+A Firefox product defect revealed by a required scenario remains a failed assertion to report with its evidence. Neither diagnostic nor CI promotion authorizes changing production selection/rendering semantics, skipping the case, changing Firefox's expected outcome, replacing real gestures with store writes, or repairing selection/style state inside the test to produce a passing result. Product repairs remain independently scoped prerequisites for [Issue #5560](https://github.com/kitamura-tetsuo/outliner/issues/5560); its CI changes must not conceal their failures. The suite's existing semantic assertions also do not guarantee reproduction of the darker-highlight screenshot that motivated the issue.
 
 ## Moving or renaming a required case
 

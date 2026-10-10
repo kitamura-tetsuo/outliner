@@ -5,9 +5,10 @@ description: >-
   The coverage guard independently discovers every required core/new SLR spec
   and the basic selection-duplication regression. A separate unfiltered
   Playwright collection supplies the required cases, which are compared with
-  actual production collection per browser under the diagnostic engine/project
-  environment and with the manually invoked Firefox diagnostic matrix.
-  Adversarial tests remove a matcher, omit an individual case or diagnostic project,
+  actual production collection per browser under the CI engine/project
+  environment and with the effective normal E2E CI matrix.
+  Adversarial tests remove a matcher, omit an individual case or CI project,
+  exclude a Firefox matrix row while leaving its project name declared,
   mislabel Chromium as Firefox, add a matching spec, and relocate a retained
   spec. Collection evidence is never treated as passing execution evidence.
 category: environment

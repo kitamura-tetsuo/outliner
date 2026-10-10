@@ -21,10 +21,8 @@ export function createCollectionFixture() {
             fs.copyFileSync(path.join(ROOT, "client", file), path.join(client, file));
         }
     }
-    const workflow = path.join(root, "firefox-selection-diagnostic.yml");
-    fs.copyFileSync(path.join(ROOT, ".github/workflows/firefox-selection-diagnostic.yml"), workflow);
-    const ordinaryWorkflow = path.join(root, "ci-test-e2e.yml");
-    fs.copyFileSync(path.join(ROOT, ".github/workflows/ci-test-e2e.yml"), ordinaryWorkflow);
+    const workflow = path.join(root, "ci-test-e2e.yml");
+    fs.copyFileSync(path.join(ROOT, ".github/workflows/ci-test-e2e.yml"), workflow);
     const addSpec = (relative: string, titles = ["first probe"]) => {
         const file = path.join(client, "e2e", relative);
         fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -43,7 +41,6 @@ export function createCollectionFixture() {
         root,
         client,
         workflow,
-        ordinaryWorkflow,
         addSpec,
         mutateProjects(expression: string) {
             fs.renameSync(
@@ -56,13 +53,18 @@ export function createCollectionFixture() {
                     + `export default { ...original, projects: original.projects.flatMap(project => (${expression})) };\n`,
             );
         },
-        removeDiagnosticProject(project: string) {
+        removeCIProject(project: string) {
             const document = parse(fs.readFileSync(workflow, "utf8"));
-            document.jobs["firefox-selection"].strategy.matrix.project = document.jobs["firefox-selection"].strategy
+            document.jobs["e2e-test"].strategy.matrix.project = document.jobs["e2e-test"].strategy
                 .matrix.project
                 .filter(
                     (value: string) => value !== project,
                 );
+            fs.writeFileSync(workflow, stringify(document));
+        },
+        excludeCIProject(project: string) {
+            const document = parse(fs.readFileSync(workflow, "utf8"));
+            document.jobs["e2e-test"].strategy.matrix.exclude = [{ project }];
             fs.writeFileSync(workflow, stringify(document));
         },
         dispose() {

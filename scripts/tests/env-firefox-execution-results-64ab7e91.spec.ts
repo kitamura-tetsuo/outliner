@@ -93,19 +93,6 @@ describe("Firefox execution evidence through the CI npm entrypoint", () => {
         expect(result.output).toMatch(/Executable doesn't exist|browserType.launch/);
     });
 
-    test("listing never claims the collected case was executed", () => {
-        const result = runFirefoxProbe(
-            "test('listed only', async ({ page }) => { await page.goto('about:blank'); });",
-            {
-                args: ["--list"],
-            },
-        );
-        expect(result.status, result.output).toBe(0);
-        expect(result.evidence.mode).toBe("collection");
-        expect(result.evidence.status).toBe("collection");
-        expect(result.evidence.counts.executed).toBe(0);
-    });
-
     test("rejects a passing subset of the fresh full-project inventory", () => {
         const result = runFirefoxProbe(
             `

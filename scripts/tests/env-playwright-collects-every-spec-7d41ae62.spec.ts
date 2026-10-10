@@ -20,7 +20,7 @@ describe("ENV-7d41ae62: Playwright project coverage", () => {
         expect(uncollected, "Spec files not collected by any Playwright project").toEqual([]);
         verifySelectionCoverage(
             CLIENT,
-            path.join(ROOT, ".github/workflows/firefox-selection-diagnostic.yml"),
+            path.join(ROOT, ".github/workflows/ci-test-e2e.yml"),
             actual,
         );
     }, 300_000);

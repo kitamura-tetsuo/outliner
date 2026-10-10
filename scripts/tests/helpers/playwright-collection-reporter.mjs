@@ -8,7 +8,7 @@ export default class PlaywrightCollectionReporter {
     }
 
     onBegin(config, suite) {
-        const e2eDir = process.env.PLAYWRIGHT_COLLECTION_E2E_DIR;
+        const e2eDir = process.env.PLAYWRIGHT_COLLECTION_E2E_DIR ?? config.rootDir;
         const reportPath = process.env.PLAYWRIGHT_COLLECTION_OUTPUT;
         if (!e2eDir || !reportPath) throw new Error("Collection reporter output and E2E directory are required");
         const projects = config.projects.map(project => ({
