@@ -20,6 +20,7 @@ import {
     listGrids,
 } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
+import { assertStructuralEnumCompatibility, captureStructuralSqlSnapshot } from "./structuralEnumGuard";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
 import type { TableDocConnection } from "./tableEngine";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
@@ -178,6 +179,10 @@ export async function materializeDuplicationPlan(
      */
     existingIdMap?: ReadonlyMap<string, string>,
 ): Promise<MaterializedDuplication> {
+    // Capture dependency authority before the first await. The guard compiles
+    // actual schemas/queries and rechecks these snapshots immediately before
+    // any registry, subdoc, placement or history-visible effect.
+    const sqlSnapshot = captureStructuralSqlSnapshot(source);
     const tableObjects = objects.filter(object => object.type === "table");
     const connections: TableDocConnection[] = [];
 
@@ -212,6 +217,12 @@ export async function materializeDuplicationPlan(
             throw error;
         }
     }
+    await assertStructuralEnumCompatibility(
+        source,
+        destination,
+        sqlSnapshot,
+        new Set(objects.map(object => object.id)),
+    );
     const idMap = new Map<string, string>(existingIdMap);
     for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 
