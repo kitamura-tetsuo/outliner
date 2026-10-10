@@ -214,6 +214,43 @@ describe("Kanban validation and missing identities", () => {
         expect(getKanban(doc, kanbanId)).toEqual(before);
     });
 
+    it("rejects creation with an occupied explicit id without replacing the definition", () => {
+        globalUndoRouter.clear();
+        const { doc, tableId } = tasksProject();
+        const kanbanId = createKanban(doc, tableId, {
+            kanbanId: "board-1",
+            name: "Original",
+            query: "SELECT id FROM tasks",
+            groupField: "status",
+            titleField: "id",
+            detailFields: ["status"],
+            laneOrder: ["open"],
+        });
+        const handles = getKanbanHandles(doc, kanbanId)!;
+        const entryBefore = getKanbanRegistry(doc).get("board-1");
+        const settingsBefore = getKanban(doc, "board-1");
+        let updates = 0;
+        const countUpdate = (): void => {
+            updates++;
+        };
+        doc.on("update", countUpdate);
+
+        expect(() => createKanban(doc, tableId, { kanbanId: "board-1", name: "Replacement" })).toThrow(
+            /already exists/,
+        );
+
+        expect(updates).toBe(0);
+        expect(getKanbanRegistry(doc).size).toBe(1);
+        expect(getKanban(doc, "board-1")).toEqual(settingsBefore);
+        expect(getKanbanRegistry(doc).get("board-1")).toBe(entryBefore);
+        expect(getKanbanHandles(doc, "board-1")!.entry).toBe(handles.entry);
+        expect(getKanbanHandles(doc, "board-1")!.undo).toBe(handles.undo);
+
+        doc.off("update", countUpdate);
+        destroyKanbanUndoManager(handles.entry);
+        globalUndoRouter.clear();
+    });
+
     it("reports a missing target instead of recreating it, and never falls back to a Grid", () => {
         const { doc, tableId } = tasksProject();
         const kanbanId = createKanban(doc, tableId, { name: "Board" });
@@ -303,6 +340,37 @@ describe("Kanban consumer lifetime", () => {
         expect(getKanban(doc, kanbanId)?.name).toBe("Again");
 
         destroyKanbanUndoManager(reopened.entry);
+        globalUndoRouter.clear();
+    });
+
+    it("removing a definition disposes its undo manager despite retained consumers", () => {
+        const { doc, tableId } = tasksProject();
+        const kanbanId = createKanban(doc, tableId, { name: "Board", query: "SELECT id FROM tasks" });
+        // Clear after setup: Table creation records its own router history,
+        // so the empty baseline starts once the board under test exists.
+        globalUndoRouter.clear();
+        const first = getKanbanHandles(doc, kanbanId)!;
+        const second = getKanbanHandles(doc, kanbanId)!;
+        expect(first.undo).toBe(second.undo);
+
+        retainKanbanUndoManager(first.entry);
+        retainKanbanUndoManager(first.entry);
+
+        updateKanban(doc, kanbanId, { name: "Edited" });
+        expect(globalUndoRouter.canUndo()).toBe(true);
+
+        // Removal disposes the manager and unregisters its history at once,
+        // before either retained consumer is released.
+        expect(removeKanban(doc, kanbanId)).toBe(true);
+        expect(globalUndoRouter.canUndo()).toBe(false);
+        expect(globalUndoRouter.canRedo()).toBe(false);
+        expect(getKanban(doc, kanbanId)).toBeUndefined();
+        expect(listKanbans(doc)).toEqual([]);
+
+        // Later consumer releases remain harmless; source data is unchanged.
+        destroyKanbanUndoManager(first.entry);
+        destroyKanbanUndoManager(first.entry);
+        expect(getTableHandles(doc, tableId)!.data.size).toBe(2);
         globalUndoRouter.clear();
     });
 });

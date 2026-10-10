@@ -143,8 +143,14 @@ export function createKanbanEntry(
     sourceTableId: string,
     options: KanbanDefinitionSeed = {},
 ): void {
+    if (typeof kanbanId !== "string" || kanbanId.length === 0) {
+        throw new Error("Kanban id must be a non-empty string");
+    }
     assertKanbanSourceTableId(sourceTableId);
     validateKanbanFields(options);
+    if (getKanbanRegistry(projectDoc).has(kanbanId)) {
+        throw new Error(`Kanban with id ${kanbanId} already exists`);
+    }
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
         entry.set("sourceTableId", sourceTableId);

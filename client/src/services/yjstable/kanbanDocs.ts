@@ -146,6 +146,12 @@ export function createKanban(
     assertSourceTableExists(projectDoc, sourceTableId);
     const { kanbanId, ...seed } = options;
     const newId = kanbanId ?? uuidv4();
+    if (typeof newId !== "string" || newId.length === 0) {
+        throw new Error("Kanban id must be a non-empty string");
+    }
+    if (getKanbanRegistry(projectDoc).has(newId)) {
+        throw new Error(`Kanban with id ${newId} already exists`);
+    }
     createKanbanEntry(projectDoc, newId, sourceTableId, seed);
     return newId;
 }
@@ -199,7 +205,10 @@ export function removeKanban(projectDoc: Y.Doc, kanbanId: string): boolean {
     const registry = getKanbanRegistry(projectDoc);
     const entry = registry.get(kanbanId);
     if (!entry) return false;
-    destroyKanbanUndoManager(entry);
+    // Forced teardown: deleting the definition must dispose its undo manager
+    // and unregister its history even while consumers still retain it. Later
+    // consumer releases against the detached entry remain harmless no-ops.
+    destroyKanbanUndoManager(entry, true);
     projectDoc.transact(() => registry.delete(kanbanId));
     return true;
 }
@@ -229,14 +238,16 @@ export function retainKanbanUndoManager(entry: Y.Map<unknown>): void {
 /**
  * Release a consumer's reference to the Kanban's UndoManager. The manager is
  * destroyed only when the last referencing consumer releases it; a call with
- * no outstanding references (e.g. from `removeKanban`) tears it down
- * immediately so a deleted Kanban never leaves a manager registered on the
- * global router.
+ * no outstanding references tears it down immediately so a deleted Kanban
+ * never leaves a manager registered on the global router. `removeKanban`
+ * passes `force` so definition deletion always disposes the manager and
+ * unregisters its history regardless of retained consumer references.
  */
-export function destroyKanbanUndoManager(entry: Y.Map<unknown>): void {
+export function destroyKanbanUndoManager(entry: Y.Map<unknown>, force = false): void {
     const managed = kanbanUndoManagers.get(entry);
     if (!managed) return;
-    if (managed.refs > 0) managed.refs--;
+    if (force) managed.refs = 0;
+    else if (managed.refs > 0) managed.refs--;
     if (managed.refs > 0) return;
     globalUndoRouter.unregister(managed.undo);
     managed.undo.destroy();
