@@ -1172,8 +1172,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
-        const deepest = getDeepestDescendant(root);
+        const deepest = getDeepestDescendant(root as unknown as Item);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
         this.updateSelectionAfterMove(startItemId, startOffset);
@@ -1187,8 +1186,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
-        const deepest = getDeepestDescendant(root);
+        const deepest = getDeepestDescendant(root as unknown as Item);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
         // This clears existing selection when moving without shift
@@ -1283,7 +1281,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        const deepest = getDeepestDescendant(root);
+        const deepest = getDeepestDescendant(root as unknown as Item);
         const endText = deepest.text || "";
 
         // Clear existing selection for the same user before setting new range
