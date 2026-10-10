@@ -43,7 +43,13 @@ export class CatalogRuntime {
     ) {
         this.lastObserved = this.readDescriptor();
         this.projectDoc.on("update", this.updateObserver);
-        this.currentBuild = this.rebuild();
+        const initial = readSqlCatalog(this.projectId, this.catalogDoc());
+        if (initial.status === "ready" && initial.snapshot.objects.length === 0) {
+            this.state = { status: "ready", snapshot: initial.snapshot, generation: ++this.readyGeneration };
+            this.currentBuild = Promise.resolve(this.state);
+        } else {
+            this.currentBuild = this.rebuild();
+        }
     }
 
     subscribe(listener: Listener): () => void {
@@ -62,7 +68,9 @@ export class CatalogRuntime {
 
     registerTable(handles: TableHandles): () => void {
         if (this.tables.has(handles.tableId)) return () => {};
-        const changed = () => this.startBuild();
+        const changed = () => {
+            if (this.hasCatalogObjects()) this.startBuild();
+        };
         handles.schemaText.observe(changed);
         handles.data.observeDeep(changed);
         this.tables.set(handles.tableId, {
@@ -72,13 +80,18 @@ export class CatalogRuntime {
                 handles.data.unobserveDeep(changed);
             },
         });
-        this.startBuild();
+        if (this.hasCatalogObjects()) this.startBuild();
         return () => {
             const registered = this.tables.get(handles.tableId);
             if (registered?.handles !== handles) return;
             registered.unobserve();
             this.tables.delete(handles.tableId);
         };
+    }
+
+    private hasCatalogObjects(): boolean {
+        const catalog = readSqlCatalog(this.projectId, this.catalogDoc());
+        return catalog.status === "ready" && catalog.snapshot.objects.length > 0;
     }
 
     private startBuild(): void {

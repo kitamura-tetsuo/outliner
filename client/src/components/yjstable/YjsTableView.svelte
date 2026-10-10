@@ -290,6 +290,9 @@ onMount(() => {
             onError: (message) => {
                 queryError = message;
             },
+            onInvalidated: () => {
+                queryExecution = undefined;
+            },
         });
         runner.start();
         adapterReady = true;

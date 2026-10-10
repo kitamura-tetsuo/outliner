@@ -31,6 +31,7 @@ const logger = getLogger("tableQueryRunner");
 export interface TableRunnerCallbacks {
     onResult?: (result: TableQueryResult, execution?: TableQueryExecution) => void;
     onError?: (message: string | undefined) => void;
+    onInvalidated?: () => void;
 }
 
 export interface TableQueryExecution {
@@ -172,7 +173,7 @@ export abstract class TableQueryRunnerBase {
         if (this.disposed) return;
         this.onInputsInvalidated();
         this.lastExecution = undefined;
-        for (const listener of this.listeners) listener.onResult?.(this.lastResult, undefined);
+        for (const listener of this.listeners) listener.onInvalidated?.();
         // Invalidate an execution that is already in flight immediately. The
         // replacement remains debounced, but an old completion must not be
         // published during that debounce window after query/schema/data input

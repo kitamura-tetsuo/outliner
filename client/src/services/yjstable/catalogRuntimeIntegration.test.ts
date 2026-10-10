@@ -99,17 +99,25 @@ describe("browser catalog generations", { timeout: 30_000 }, () => {
         const gridId = createGrid(projectDoc, tableId, { query: "SELECT id, priority FROM tasks ORDER BY priority" });
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
         let execution: TableQueryExecution | undefined;
+        let invalidated = false;
         try {
             const acquired = await session.acquire(tableId);
             const runner = new GridQueryRunner({
                 sourceAdapter: acquired!.adapter,
                 grid: getGridHandles(projectDoc, gridId)!,
             });
-            runner.subscribe({ onResult: (_result, next) => execution = next });
+            runner.subscribe({
+                onResult: (_result, next) => execution = next,
+                onInvalidated: () => {
+                    invalidated = true;
+                    execution = undefined;
+                },
+            });
             runner.start();
             await expect.poll(() => execution?.status).toBe("completed");
 
             replaceSqlCatalogSource(catalogDoc, catalogId, "CREATE TYPE priority AS ENUM ('High', 'Low')");
+            expect(invalidated).toBe(true);
             expect(execution).toBeUndefined();
             runner.dispose();
         } finally {

@@ -15,6 +15,7 @@ import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospect
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
     addRecord,
+    setRecordValue,
     type TableHandles,
     type TableRecordValue,
 } from "../../services/yjstable/tableDocs";
@@ -61,7 +62,7 @@ interface Props {
     onColumnOrderChange?: (order: string[]) => void;
     /** Source Table handles: writes for editable cells go here. */
     handles: TableHandles;
-    adapter: TableSyncAdapter;
+    adapter?: TableSyncAdapter;
     schema: ParsedTableSchema | undefined;
     query: string;
     result: TableQueryResult;
@@ -307,7 +308,9 @@ const commandContext = $derived<GridCommandContext>({
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
     canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
     writeBareCell: (recordId, columnId, value) =>
-        adapter.commitRecordValue(recordId, columnId, value, adapter.writeAuthorityToken),
+        adapter
+            ? adapter.commitRecordValue(recordId, columnId, value, adapter.writeAuthorityToken)
+            : setRecordValue(handles, recordId, columnId, value),
 });
 
 const selectionSummary = $derived.by(() => {
@@ -710,7 +713,11 @@ function commitCell(row: Record<string, unknown>, column: string, value: TableRe
     }
     const recordId = recordIdOf(row);
     if (recordId !== undefined) {
-        adapter.commitRecordValue(recordId, column, value, editingAuthorityToken ?? adapter.writeAuthorityToken);
+        if (adapter) {
+            adapter.commitRecordValue(recordId, column, value, editingAuthorityToken ?? adapter.writeAuthorityToken);
+        } else {
+            setRecordValue(handles, recordId, column, value);
+        }
         return;
     }
     const source = sourceOf(row);
@@ -1335,7 +1342,7 @@ function handleCancelDelete() {
                                                 selection.select(logicalCell);
                                                 selectionRevision++;
                                                 editingCell = logicalCell;
-                                                editingAuthorityToken = adapter.writeAuthorityToken;
+                                                editingAuthorityToken = adapter?.writeAuthorityToken;
                                             } else if (cellEditing(logicalCell)) {
                                                 editingCell = undefined;
                                                 editingAuthorityToken = undefined;
