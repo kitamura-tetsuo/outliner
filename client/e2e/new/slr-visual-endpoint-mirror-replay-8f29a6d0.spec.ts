@@ -107,26 +107,34 @@ for (const kind of ["yjstable", "calendar", "layout"] as VisualKind[]) {
             expect(await fragmentsForItem(page, visual)).toHaveLength(0);
             expect(await model(page)).toEqual(before);
 
-            const click = await pointForOffset(page, omega, 2);
+            // A plain Text click is the semantic boundary that releases the visual
+            // range. Use the unambiguous leading edge, then drive the caret with real
+            // keys so the test independently proves both release and caret movement.
+            const click = await pointForOffset(page, omega, 0);
             await page.mouse.click(click.x, click.y);
             await page.waitForTimeout(400);
             await replaySelectionNotification(page);
             expect(await localSelectionEndpoints(page)).toBeUndefined();
             expect(await fragmentsForItem(page, alpha)).toHaveLength(0);
-            const caret = await page.evaluate(() =>
-                Object.values(
-                    (globalThis as unknown as {
-                        editorOverlayStore: {
-                            cursors: Record<
-                                string,
-                                { userId?: string; itemId: string; offset: number; isActive: boolean; }
-                            >;
-                        };
-                    }).editorOverlayStore.cursors,
-                ).filter(c => (c.userId ?? "local") === "local" && c.isActive)
-                    .map(c => ({ itemId: c.itemId, offset: c.offset }))
-            );
-            expect(caret).toEqual([{ itemId: omega, offset: 2 }]);
+            const caret = () =>
+                page.evaluate(() =>
+                    Object.values(
+                        (globalThis as unknown as {
+                            editorOverlayStore: {
+                                cursors: Record<
+                                    string,
+                                    { userId?: string; itemId: string; offset: number; isActive: boolean; }
+                                >;
+                            };
+                        }).editorOverlayStore.cursors,
+                    ).filter(c => (c.userId ?? "local") === "local" && c.isActive)
+                        .map(c => ({ itemId: c.itemId, offset: c.offset }))
+                );
+            expect(await caret()).toEqual([{ itemId: omega, offset: 0 }]);
+            await page.keyboard.press("ArrowRight");
+            await page.keyboard.press("ArrowRight");
+            await replaySelectionNotification(page);
+            expect(await caret()).toEqual([{ itemId: omega, offset: 2 }]);
             expect(await model(page)).toEqual(before);
         },
     );
