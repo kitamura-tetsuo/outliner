@@ -90,10 +90,26 @@ export abstract class TableQueryRunnerBase {
     private started = false;
 
     private unsubscribeSource: (() => void) | undefined;
+    private readonly dependencyUnsubscribes = new Map<object, () => void>();
 
     constructor(options: TableRunnerOptions) {
         this.sourceAdapter = options.sourceAdapter;
-        this.registry = options.registry ?? options.sourceAdapter.relationRegistry;
+        const registry = options.registry ?? options.sourceAdapter.relationRegistry;
+        this.registry = registry?.resolveRelation
+            ? {
+                ...registry,
+                resolveRelation: async sqlName => {
+                    const provider = await registry.resolveRelation!(sqlName);
+                    if (provider?.subscribeInvalidation && !this.dependencyUnsubscribes.has(provider)) {
+                        this.dependencyUnsubscribes.set(
+                            provider,
+                            provider.subscribeInvalidation(() => this.scheduleRequery()),
+                        );
+                    }
+                    return provider;
+                },
+            }
+            : registry;
     }
 
     /** The SELECT to execute right now. */
@@ -142,6 +158,8 @@ export abstract class TableQueryRunnerBase {
             this.unobserveQuerySource();
             this.unsubscribeSource?.();
         }
+        for (const unsubscribe of this.dependencyUnsubscribes.values()) unsubscribe();
+        this.dependencyUnsubscribes.clear();
     }
 
     /** Called by a subclass when its query text changed. */
@@ -152,6 +170,7 @@ export abstract class TableQueryRunnerBase {
     /** Debounced re-run of the query. */
     scheduleRequery(): void {
         if (this.disposed) return;
+        this.onInputsInvalidated();
         // Invalidate an execution that is already in flight immediately. The
         // replacement remains debounced, but an old completion must not be
         // published during that debounce window after query/schema/data input
@@ -163,6 +182,9 @@ export abstract class TableQueryRunnerBase {
             void this.runQueryNow();
         }, REQUERY_DEBOUNCE_MS);
     }
+
+    /** Let a view invalidate displayed execution evidence before debounce. */
+    protected onInputsInvalidated(): void {}
 
     async runQueryNow(): Promise<TableQueryResult | undefined> {
         const generation = ++this.queryGeneration;

@@ -1,5 +1,5 @@
 import type * as Y from "yjs";
-import { getKanban, type KanbanHandles, type KanbanLaneValue } from "./kanbanDocs";
+import { getKanban, getKanbanRegistry, type KanbanHandles, type KanbanLaneValue } from "./kanbanDocs";
 import { resolveBareIdMutationAuthority } from "./queryAnalysis";
 import { getTableRegistry, getTableSqlName } from "./tableDocs";
 import { type TableQueryExecution, TableQueryRunnerBase, type TableRunnerOptions } from "./tableQueryRunner";
@@ -66,8 +66,14 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
         this.invalidateQuery();
     };
     private readonly tableRegistryObserver = () => {
-        this.markNonCurrent();
         this.invalidateQuery();
+    };
+    private readonly kanbanRegistryObserver = (event: Y.YMapEvent<Y.Map<unknown>>) => {
+        if (!event.changes.keys.has(this.kanbanId)) return;
+        this.markNonCurrent();
+        if (!getKanban(this.projectDoc, this.kanbanId)) {
+            this.publish(this.failure("unavailable", "Kanban definition is missing"));
+        } else this.invalidateQuery();
     };
 
     constructor(options: KanbanRunnerOptions) {
@@ -84,11 +90,13 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
 
     protected observeQuerySource(): void {
         this.kanban.entry.observeDeep(this.definitionObserver);
+        getKanbanRegistry(this.projectDoc).observe(this.kanbanRegistryObserver);
         getTableRegistry(this.projectDoc).observeDeep(this.tableRegistryObserver);
     }
 
     protected unobserveQuerySource(): void {
         this.kanban.entry.unobserveDeep(this.definitionObserver);
+        getKanbanRegistry(this.projectDoc).unobserve(this.kanbanRegistryObserver);
         getTableRegistry(this.projectDoc).unobserveDeep(this.tableRegistryObserver);
     }
 
@@ -118,6 +126,10 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
 
     private markNonCurrent(): void {
         if (this.projection.current) this.publish({ ...this.projection, current: false });
+    }
+
+    protected onInputsInvalidated(): void {
+        this.markNonCurrent();
     }
 
     private projectResult(result: TableQueryResult, execution?: TableQueryExecution): void {
