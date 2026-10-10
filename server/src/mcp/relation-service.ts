@@ -111,19 +111,29 @@ export async function validateProjectTableCandidate(
         schema: string;
         records?: readonly { id: string; values: Readonly<Record<string, unknown>>; }[];
     },
+    options: { acquireSharedDb?: boolean; } = {},
 ): Promise<{ catalogRevision: string; enums: readonly SqlEnumMetadata[]; tableName?: string; columnCount?: number; }> {
     const catalog = readSqlCatalog(projectId, doc as never);
     if (catalog.status !== "ready") {
         throw new McpReadError("validation_failed", `Project SQL catalog is ${catalog.status}: ${catalog.reason}`);
     }
-    const compiled = await compileSqlEnvironment({
-        catalog: catalog.snapshot,
-        tables: [{ ...table, records: table.records ?? [] }],
-        inspections: [],
-    });
+    const compiled = await compileSqlEnvironment(
+        {
+            catalog: catalog.snapshot,
+            tables: [{ ...table, records: table.records ?? [] }],
+            inspections: [],
+        },
+        options.acquireSharedDb
+            ? {
+                acquire: async () => {
+                    const lease = await acquireDb();
+                    return { db: lease.db, release: lease.release };
+                },
+            }
+            : {},
+    );
     if (compiled.status === "failed" && compiled.diagnostics.some(diagnostic => diagnostic.kind !== "record")) {
         throw new McpReadError("validation_failed", "Table schema is not supported by the project SQL catalog", {
-            code: "invalid_schema",
             catalogRevision: catalog.snapshot.revision,
             diagnostics: compiled.diagnostics,
         });

@@ -147,13 +147,18 @@ export class OutlinerTableCreationService {
             }
             const syntaxError = checkCreateTableShape(schemaSql);
             if (syntaxError) throw this.schemaRejection(syntaxError);
-            const declaredSqlName = createTableName(schemaSql);
-            if (!declaredSqlName) throw this.schemaRejection("Table name could not be resolved");
-            this.assertNameUnclaimed(project, declaredSqlName);
-            const candidateValidation = await validateProjectTableCandidate(projectId, project, {
-                id: "create-table-candidate",
-                schema: schemaSql,
-            });
+            let candidateValidation: Awaited<ReturnType<typeof validateProjectTableCandidate>>;
+            try {
+                candidateValidation = await validateProjectTableCandidate(projectId, project, {
+                    id: "create-table-candidate",
+                    schema: schemaSql,
+                }, { acquireSharedDb: true });
+            } catch (error) {
+                if (error instanceof McpReadError && error.code === "validation_failed") {
+                    throw this.schemaRejection(error.message, error.debug);
+                }
+                throw error;
+            }
             const sqlName = candidateValidation.tableName;
             if ((candidateValidation.columnCount ?? 0) < 1) {
                 throw this.schemaRejection("Table must define at least one column");
@@ -392,8 +397,9 @@ export class OutlinerTableCreationService {
         }
     }
 
-    private schemaRejection(message: string): McpReadError {
+    private schemaRejection(message: string, diagnostics: Record<string, unknown> = {}): McpReadError {
         return new McpReadError("validation_failed", "Table schema validation failed", {
+            ...diagnostics,
             code: "invalid_schema",
             message,
             outcome: "not_published",
@@ -474,13 +480,6 @@ export function maskSqlNoise(sql: string): string | undefined {
         }
     }
     return out;
-}
-
-/** Extract the name after checkCreateTableShape has established one CREATE TABLE declaration. */
-function createTableName(sql: string): string | undefined {
-    const match = /^\s*create\s+table\s+(?:if\s+not\s+exists\s+)?(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))/i
-        .exec(sql);
-    return match?.[1]?.replace(/""/g, '"') ?? match?.[2]?.toLowerCase();
 }
 
 /**
