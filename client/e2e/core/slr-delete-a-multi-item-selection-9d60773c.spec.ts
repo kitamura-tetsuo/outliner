@@ -194,8 +194,8 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
             console.log("Debug mode enabled in test");
         });
 
-        // Get the second item
-        const secondItem = page.locator(".outliner-item").nth(1);
+        // The title is the first outliner item, so the second body item is at index 2.
+        const secondItem = page.locator(".outliner-item").nth(2);
 
         // Click the second item to select it
         await secondItem.locator(".item-content").click({ force: true });
@@ -208,10 +208,10 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
 
             // Select the second and third items (partial selection)
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 3) throw new Error("Required selection fixture items are missing");
+            if (items.length < 4) throw new Error("Required selection fixture items are missing");
 
-            const secondItemId = items[1].getAttribute("data-item-id");
-            const thirdItemId = items[2].getAttribute("data-item-id");
+            const secondItemId = items[2].getAttribute("data-item-id");
+            const thirdItemId = items[3].getAttribute("data-item-id");
 
             if (!secondItemId || !thirdItemId) throw new Error("Required selection endpoint IDs are missing");
 
