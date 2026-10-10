@@ -114,6 +114,7 @@ let queryInput = $state("");
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
 let writeError = $state<string | undefined>(undefined);
+let catalogResultCurrent = $state(false);
 let anchorUtcMs = $state(Date.now());
 let optimisticOverrides = $state<OptimisticOverrides>(createOptimisticOverrides());
 let showCreateDialog = $state(false);
@@ -225,10 +226,10 @@ const monthCells = $derived(
 );
 
 function isStartWritable(entry: CalendarEntry): boolean {
-    return resolveCalendarEntryWritability(entry, settings, writableColumns).startWritable;
+    return catalogResultCurrent && resolveCalendarEntryWritability(entry, settings, writableColumns).startWritable;
 }
 function isDurationWritable(entry: CalendarEntry): boolean {
-    return resolveCalendarEntryWritability(entry, settings, writableColumns).durationWritable;
+    return catalogResultCurrent && resolveCalendarEntryWritability(entry, settings, writableColumns).durationWritable;
 }
 /**
  * Whether a delete affordance should show at all for `entry` — addressability
@@ -236,11 +237,11 @@ function isDurationWritable(entry: CalendarEntry): boolean {
  * makes the final call once the user actually chooses a disposition.
  */
 function isDeletable(entry: CalendarEntry): boolean {
-    return Boolean(entry.sourceKind && entry.sourceId);
+    return catalogResultCurrent && Boolean(entry.sourceKind && entry.sourceId);
 }
 
 function isLaneWritable(entry: CalendarEntry): boolean {
-    return isLaneDropWritable(entry, groupAxis, writableColumns);
+    return catalogResultCurrent && isLaneDropWritable(entry, groupAxis, writableColumns);
 }
 
 /**
@@ -324,16 +325,19 @@ async function runQuery() {
     if (outcome.result) {
         result = outcome.result;
         queryError = undefined;
+        catalogResultCurrent = true;
         // The query result is authoritative: drop any optimistic placement
         // whose row has now come back, whether or not it agrees with the
         // local guess (a concurrent remote move wins either way).
         optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, currentSettings, currentTimeZone, project, currentRangeBounds));
     } else {
+        catalogResultCurrent = false;
         queryError = outcome.error;
     }
 }
 
 function scheduleRequery() {
+    catalogResultCurrent = false;
     if (requeryTimer !== undefined) clearTimeout(requeryTimer);
     requeryTimer = setTimeout(() => {
         requeryTimer = undefined;
@@ -427,6 +431,7 @@ function previewDuration(entry: CalendarEntry, newDurationMs: number) {
 }
 
 async function commitStart(entry: CalendarEntry, newStartMs: number) {
+    if (!catalogResultCurrent) return;
     previewStart(entry, newStartMs);
     const column = startColumn();
     if (!column) return;
@@ -440,6 +445,7 @@ async function commitStart(entry: CalendarEntry, newStartMs: number) {
 }
 
 async function commitDuration(entry: CalendarEntry, newDurationMs: number) {
+    if (!catalogResultCurrent) return;
     previewDuration(entry, newDurationMs);
     const column = durationColumn();
     if (!column) return;
@@ -466,6 +472,7 @@ function subtreeShiftAnalysis(row: GanttRow): GanttSubtreeShiftAnalysis {
 }
 
 function commitSubtreeShift(_row: GanttRow, deltaMs: number, analysis: GanttSubtreeShiftAnalysis) {
+    if (!catalogResultCurrent) return;
     let next = optimisticOverrides;
     for (const member of analysis.members) {
         next = setOptimisticOverride(next, member.key, { startMs: member.startMs + deltaMs });
@@ -498,6 +505,7 @@ function onCreateCancelled() {
 }
 
 function requestDelete(entry: CalendarEntry) {
+    if (!catalogResultCurrent) return;
     deletingEntry = entry;
 }
 function openEntryContextMenu(entry: CalendarEntry, event: MouseEvent | KeyboardEvent) {
@@ -541,6 +549,7 @@ function onDeleteCancelled() {
  * old lane. The next authoritative query result reconciles the mirror.
  */
 async function commitLaneDrop(entry: CalendarEntry, laneValue: string | undefined, mode: "replace" | "add") {
+    if (!catalogResultCurrent) return;
     if (!groupAxis) return;
     const column = writableColumns.get(groupAxis);
     if (!column) return;
@@ -577,6 +586,7 @@ onMount(() => {
             return;
         }
         queryGeneration++;
+        catalogResultCurrent = false;
         if (state.status === "building") {
             queryError = "SQL catalog is rebuilding";
         } else if (state.status === "error") {
@@ -676,6 +686,9 @@ onDestroy(() => {
 
     {#if queryError}
         <p class="error" data-testid="calendar-query-error">{queryError}</p>
+    {/if}
+    {#if !catalogResultCurrent && result.rows.length > 0}
+        <p class="hint read-only-banner" data-testid="calendar-stale-result">Showing stale calendar data; editing is unavailable.</p>
     {/if}
     {#if writeError}
         <p class="error" data-testid="calendar-write-error">{writeError}</p>
@@ -848,6 +861,7 @@ onDestroy(() => {
         {project}
         resolver={session}
         entry={deletingEntry}
+        writable={catalogResultCurrent}
         onDeleted={onEntryDeleted}
         onCancel={onDeleteCancelled}
     />

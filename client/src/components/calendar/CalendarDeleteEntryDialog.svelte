@@ -20,11 +20,12 @@ interface Props {
     project: Project;
     resolver: RelationResolver;
     entry: CalendarEntry;
+    writable?: boolean;
     onDeleted: () => void;
     onCancel: () => void;
 }
 
-let { project, resolver, entry, onDeleted, onCancel }: Props = $props();
+let { project, resolver, entry, writable = true, onDeleted, onCancel }: Props = $props();
 
 let error = $state<string | undefined>(undefined);
 let busy = $state(false);
@@ -42,6 +43,10 @@ $effect(() => {
 const isOccurrence = isRecurrenceOverrideEntry(entry);
 
 async function run(action: () => Promise<void> | void) {
+    if (!writable) {
+        error = "Calendar data is stale; wait for the current catalog generation";
+        return;
+    }
     busy = true;
     error = undefined;
     try {
@@ -76,7 +81,7 @@ async function run(action: () => Promise<void> | void) {
                     type="button"
                     class="destructive"
                     data-testid="calendar-delete-occurrence"
-                    disabled={busy}
+                    disabled={busy || !writable}
                     onclick={() => run(() => deleteCalendarRecurrenceOccurrence(project, entry))}
                 >
                     Delete this occurrence
@@ -89,7 +94,7 @@ async function run(action: () => Promise<void> | void) {
                 <button
                     type="button"
                     data-testid="calendar-delete-clear-field"
-                    disabled={busy}
+                    disabled={busy || !writable}
                     onclick={() => run(() => deleteCalendarEntry(resolver, entry, "clear-projected-field"))}
                 >
                     Clear date only
@@ -98,7 +103,7 @@ async function run(action: () => Promise<void> | void) {
                     type="button"
                     class="destructive"
                     data-testid="calendar-delete-source"
-                    disabled={busy}
+                    disabled={busy || !writable}
                     onclick={() => run(() => deleteCalendarEntry(resolver, entry, "delete-source"))}
                 >
                     Delete item

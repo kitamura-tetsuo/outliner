@@ -152,6 +152,10 @@ export class TableSyncAdapter {
 
     private readonly schemaObserver = (_event: Y.YTextEvent, tr: Y.Transaction) => {
         if (tr.origin === ADAPTER_ORIGIN) return;
+        this.rebuildEpoch++;
+        this.writeAuthorityGeneration++;
+        this.schema = undefined;
+        this.emitSchema(undefined, "Table schema is rebuilding");
         void this.rebuildFromSchemaText();
     };
 
