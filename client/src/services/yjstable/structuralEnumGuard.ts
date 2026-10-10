@@ -33,6 +33,51 @@ function declaredEnumNames(snapshot: StructuralSqlSnapshot): string[] {
     });
 }
 
+function enumDeclaration(source: string): { name: string; labels: string[]; } | undefined {
+    const match = /^\s*CREATE\s+TYPE\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))\s+AS\s+ENUM\s*\((.*)\)\s*;?\s*$/is
+        .exec(source);
+    if (!match) return undefined;
+    const labels: string[] = [];
+    const body = match[3];
+    const token = /\s*'((?:[^']|'')*)'\s*(?:,|$)/gy;
+    let offset = 0;
+    while (offset < body.length) {
+        token.lastIndex = offset;
+        const value = token.exec(body);
+        if (!value) return undefined;
+        labels.push(value[1].replaceAll("''", "'"));
+        offset = token.lastIndex;
+    }
+    return { name: match[1]?.replaceAll('""', '"') ?? match[2], labels };
+}
+
+/** Synchronous replay admission after the original compiler-backed paste admission. */
+export function portableStructuralEnumsStillCompatible(
+    destinationDoc: Y.Doc,
+    snapshots: Readonly<Record<string, import("../clipboard/itemClipboard").GridTableSnapshot>>,
+): boolean {
+    const first = Object.values(snapshots)[0];
+    if (!first?.catalog) return true;
+    const sql = Object.values(snapshots).flatMap(snapshot => [snapshot.schemaSql, snapshot.ui.query]).join("\n")
+        .toLowerCase();
+    const required = first.catalog.objects.map(object => enumDeclaration(object.source)).filter(value =>
+        value !== undefined
+        && new RegExp(
+            `(^|[^a-z0-9_$])${value.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9_$]|$)`,
+        )
+            .test(sql)
+    );
+    if (required.length === 0) return true;
+    const destination = readSqlCatalog(destinationDoc.guid, destinationDoc);
+    if (destination.status !== "ready") return false;
+    const actual = destination.snapshot.objects.map(object => enumDeclaration(object.source));
+    return required.every(expected => {
+        const found = actual.find(candidate => candidate?.name === expected.name);
+        return found !== undefined && found.labels.length === expected.labels.length
+            && found.labels.every((label, index) => label === expected.labels[index]);
+    });
+}
+
 function relevantSql(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): string[] {
     return [
         ...snapshot.tables.filter(table => relevantIds.has(table.id)).map(table => table.schema),

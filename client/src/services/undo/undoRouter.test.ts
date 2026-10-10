@@ -490,6 +490,35 @@ describe("UndoRouter", () => {
             expect(restoredSubdoc.getText("schema").toString()).toBe("CREATE TABLE t1");
         });
 
+        it("does not consume or restore a composite paste when replay admission refuses", () => {
+            const router = new UndoRouter();
+            const projectDoc = new Y.Doc();
+            const treeMap = projectDoc.getMap<number>("orderedTree");
+            const manager = new Y.UndoManager(treeMap);
+            router.register(manager);
+            const registry = projectDoc.getMap<unknown>("yjsTables");
+            const entry = new Y.Map<unknown>();
+            entry.set("name", "Typed");
+            entry.set("sqlName", "typed");
+            entry.set("doc", new Y.Doc());
+            registry.set("typed", entry);
+            treeMap.set("item", 1);
+            let compatible = true;
+            router.captureCrossProjectPaste(manager, projectDoc, ["typed"], [], () => compatible);
+            router.undo();
+            expect(registry.has("typed")).toBe(false);
+            const undoDepth = router.undoDepth;
+            const redoDepth = router.redoDepth;
+
+            compatible = false;
+            router.redo();
+            expect(router.lastAsyncOutcome?.status).toBe("refused");
+            expect(router.undoDepth).toBe(undoDepth);
+            expect(router.redoDepth).toBe(redoDepth);
+            expect(registry.has("typed")).toBe(false);
+            expect(treeMap.has("item")).toBe(false);
+        });
+
         it("keeps chronological ordering when the pasted grid is edited before undo", () => {
             const router = new UndoRouter();
             const projectDoc = new Y.Doc();

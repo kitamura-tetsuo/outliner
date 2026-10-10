@@ -3269,11 +3269,18 @@ export class KeyEventHandler {
                         && generalStore.undoManager
                     ) {
                         const { globalUndoRouter } = await import("../services/undo/undoRouter.svelte");
+                        const { portableStructuralEnumsStillCompatible } = await import(
+                            "../services/yjstable/structuralEnumGuard"
+                        );
+                        const pastedSnapshots = structured && "tables" in structured ? structured.tables : undefined;
                         globalUndoRouter.captureCrossProjectPaste(
                             generalStore.undoManager,
                             destinationDoc,
                             Object.values(pastedTableIdMap),
                             pastedRuleIds,
+                            pastedSnapshots
+                                ? () => portableStructuralEnumsStillCompatible(destinationDoc, pastedSnapshots)
+                                : undefined,
                         );
                     }
                     if (

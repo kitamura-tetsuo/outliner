@@ -2,7 +2,9 @@ import { Project } from "$shared/app-schema";
 import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { createCalendar } from "../calendar/calendarService";
 import { duplicateSelectedObjects, getObjects } from "../objectManager/objectManagerController";
+import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid } from "./gridDocs";
 import { duplicateObjects } from "./objectDuplication";
@@ -110,5 +112,51 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
         });
         expect(listTables(plain)).toHaveLength(2);
         expect(getTableHandles(plain, result.primaryId)?.data.get("one")?.get("body")).toBe("unchanged");
+    });
+
+    it("preserves typed values in same-Project structural duplication", async () => {
+        const source = typedProject("same-project-typed", ["Open", "Closed"]);
+        const result = await duplicateObjects(
+            source.doc,
+            source.doc,
+            { type: "table", id: source.tableId },
+            "item-only",
+            {
+                copyTableData: true,
+            },
+        );
+        expect(getTableHandles(source.doc, result.primaryId)?.data.get("one")?.get("state")).toBe("Open");
+        expect(listTables(source.doc)).toHaveLength(2);
+    });
+
+    it("finds cast-only Grid, Calendar and Schedule dependencies over a TEXT table", async () => {
+        const source = new Y.Doc({ guid: "cast-carriers" });
+        createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+        const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state TEXT)");
+        });
+        const gridId = createGrid(source, tableId, { query: "SELECT * FROM tasks ORDER BY state::task_state" });
+        const project = Project.fromDoc(source);
+        const calendarId = createCalendar(project, {
+            name: "Typed calendar",
+            query: "SELECT id, state::task_state AS typed_state FROM tasks",
+        });
+        const scheduleId = createScheduleRule(project, {
+            targetTableId: tableId,
+            sql: "SELECT id FROM tasks ORDER BY state::task_state",
+            rrule: "RRULE:FREQ=DAILY",
+        });
+        const destination = new Y.Doc({ guid: "cast-carriers-destination" });
+        for (
+            const object of [
+                { type: "grid" as const, id: gridId },
+                { type: "calendar" as const, id: calendarId },
+                { type: "schedule" as const, id: scheduleId },
+            ]
+        ) {
+            await expect(duplicateObjects(source, destination, object, "item-only"))
+                .rejects.toThrow('Required ENUM type "task_state" is missing or incompatible');
+        }
+        expect(listTables(destination)).toEqual([]);
     });
 });
