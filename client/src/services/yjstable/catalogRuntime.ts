@@ -132,6 +132,11 @@ export class CatalogRuntime {
                 }
                 await compiled.environment.dispose();
             }
+            const beforeInstall = readSqlCatalog(this.projectId, this.catalogDoc());
+            if (
+                this.disposed || token !== this.buildGeneration || beforeInstall.status !== "ready"
+                || JSON.stringify([beforeInstall.snapshot.revision, this.tableSnapshots()]) !== inputIdentity
+            ) return this.state;
             await enqueueWrite(async db => {
                 try {
                     await db.exec(
