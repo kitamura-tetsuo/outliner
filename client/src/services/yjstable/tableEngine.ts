@@ -25,7 +25,7 @@
 
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
-import { CatalogRuntime } from "./catalogRuntime";
+import { CatalogRuntime, type CatalogRuntimeState } from "./catalogRuntime";
 import { ITEMS_RELATION_NAME, ItemsRelationProvider } from "./itemsRelation";
 import { enqueueWrite } from "./pgliteService";
 import type { RelationProvider } from "./relationProvider";
