@@ -87,6 +87,7 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
                     ariaLabel="Kanban SELECT query"
                     testId="kanban-query-editor"
                     onChange={value => draft.query = value}
+                    onBlur={value => draft.query = value}
                 />
             </label>
             <label>Grouping column <input bind:value={draft.groupField} list="kanban-columns" disabled={isReadOnly} /></label>

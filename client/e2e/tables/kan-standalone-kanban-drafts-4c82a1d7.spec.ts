@@ -17,6 +17,7 @@ async function editQueryWithoutApplying(page: Page, query: string): Promise<void
     const editor = new SqlEditorHelper(page.getByTestId("kanban-query-editor"));
     await editor.waitForReady();
     await editor.setValue(page, query);
+    await editor.commit(page);
 }
 
 test("Cancel is inert and a same-setting peer update rejects the stale draft", async ({ page, context }, testInfo) => {

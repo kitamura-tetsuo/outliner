@@ -70,12 +70,14 @@ export async function configureKanbanThroughUi(
     const editor = new SqlEditorHelper(panel.getByTestId("kanban-query-editor"));
     await editor.waitForReady();
     await editor.setValue(page, values.query);
+    await editor.commit(page);
     await panel.getByLabel("Grouping column").fill(values.group);
     await panel.getByLabel("Title column").fill(values.title ?? "");
     await panel.getByLabel("Detail columns (one per line)").fill((values.details ?? []).join("\n"));
     if (values.lanes) await panel.getByLabel(/Lane preference/).fill(values.lanes.join("\n"));
     await panel.getByRole("button", { name: "Apply" }).click();
     await expect(panel).toHaveCount(0);
+    await expect.poll(async () => (await readKanbans(page)).at(-1)?.query).toBe(values.query);
 }
 
 export async function readKanbans(page: Page): Promise<KanbanState[]> {
