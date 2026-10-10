@@ -52,6 +52,7 @@ export class CatalogRuntime {
         private readonly projectDoc: Y.Doc,
         private readonly projectId: string,
         private readonly pgSchema: string,
+        private readonly restoreLiveRelations: () => Promise<void> = async () => {},
     ) {
         this.lastObserved = this.readDescriptor();
         const initial = readSqlCatalog(this.projectId, this.catalogDoc());
@@ -89,7 +90,12 @@ export class CatalogRuntime {
             if (this.hasCatalogObjects()) this.startBuild();
         };
         const dataChanged = () => {
-            if (this.dependentTableIds.has(handles.tableId)) this.startBuild();
+            if (
+                this.dependentTableIds.has(handles.tableId)
+                || (this.state.status === "error" && this.hasCatalogObjects())
+            ) {
+                this.startBuild();
+            }
         };
         handles.schemaText.observe(schemaChanged);
         handles.data.observeDeep(dataChanged);
@@ -161,14 +167,22 @@ export class CatalogRuntime {
         try {
             if (snapshot.objects.length > 0) {
                 const compiled = await compileSqlEnvironment({ catalog: snapshot, tables, inspections: [] });
-                if (compiled.status === "failed") {
-                    throw new Error(compiled.diagnostics.map(diagnostic => diagnostic.message).join("; "));
-                }
+                const dependencies = compiled.status === "ready"
+                    ? compiled.environment.dependencies
+                    : compiled.dependencies;
                 dependentTableIds = new Set(
-                    compiled.environment.dependencies
+                    dependencies
                         .filter(dependency => dependency.requiredEnums.length > 0)
                         .map(dependency => dependency.referencingId),
                 );
+                if (compiled.status === "failed") {
+                    // A record correction must be able to recover the first
+                    // failed build. Dependency discovery is authoritative even
+                    // when validation fails, so retain it before reporting the
+                    // diagnostic and keep observing those Table records.
+                    if (token === this.buildGeneration) this.dependentTableIds = dependentTableIds;
+                    throw new Error(compiled.diagnostics.map(diagnostic => diagnostic.message).join("; "));
+                }
                 await compiled.environment.dispose();
             }
             const beforeInstall = readSqlCatalog(this.projectId, this.catalogDoc());
@@ -213,6 +227,7 @@ export class CatalogRuntime {
                     throw error;
                 }
             });
+            if (!this.disposed && token === this.buildGeneration) await this.restoreLiveRelations();
         } catch (error) {
             const state: CatalogRuntimeState = {
                 status: "error",

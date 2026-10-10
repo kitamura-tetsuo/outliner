@@ -147,6 +147,7 @@ export abstract class TableQueryRunnerBase {
         this.unsubscribeSource = this.sourceAdapter.subscribe({
             onSchemaChanged: () => this.scheduleRequery(true),
             onDataApplied: () => this.scheduleRequery(),
+            onCatalogChanged: () => this.scheduleRequery(true),
         });
         this.scheduleRequery();
     }
@@ -219,6 +220,8 @@ export abstract class TableQueryRunnerBase {
             return empty;
         }
         try {
+            await this.sourceAdapter.catalogReady();
+            if (isStale()) return undefined;
             const result = await executeGridQuery(query, {
                 pgSchema: this.sourceAdapter.sharedPgSchema,
                 registry: this.registry,

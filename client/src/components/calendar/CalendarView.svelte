@@ -293,6 +293,7 @@ function readSettingsFromMap(): CalendarSettings | undefined {
 
 let queryGeneration = 0;
 let requeryTimer: ReturnType<typeof setTimeout> | undefined;
+let unsubscribeCatalog: (() => void) | undefined;
 // project/projectId/calendarId are static within the component lifecycle due
 // to `{#key}` (a prop change remounts the whole view, per AGENTS.md §11).
 // svelte-ignore state_referenced_locally
@@ -568,12 +569,29 @@ onMount(() => {
     void runQuery();
     const map = getCalendarMap(project, calendarId);
     map?.observeDeep(mirrorObserver);
+    let initialCatalogState = true;
+    unsubscribeCatalog = session.subscribeCatalog(state => {
+        // The first replay is already covered by the initial run above.
+        if (initialCatalogState) {
+            initialCatalogState = false;
+            return;
+        }
+        queryGeneration++;
+        if (state.status === "building") {
+            queryError = "SQL catalog is rebuilding";
+        } else if (state.status === "error") {
+            queryError = state.message;
+        } else {
+            scheduleRequery();
+        }
+    });
 });
 
 onDestroy(() => {
     if (requeryTimer !== undefined) clearTimeout(requeryTimer);
     const map = getCalendarMap(project, calendarId);
     map?.unobserveDeep(mirrorObserver);
+    unsubscribeCatalog?.();
     session.dispose();
     destroyCalendarUndoManager(project.ydoc);
 });

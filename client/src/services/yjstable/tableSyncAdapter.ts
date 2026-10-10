@@ -64,6 +64,8 @@ export interface TableSyncCallbacks {
      * subscribe to this to know when to re-run their SELECT.
      */
     onDataApplied?: () => void;
+    /** Fired for every project catalog lifecycle change, including queries whose source Table is scalar. */
+    onCatalogChanged?: (state: CatalogRuntimeState) => void;
     /**
      * Legacy: query results used to be emitted by the adapter itself. Grids
      * now own their SELECT via `GridQueryRunner`; these fields are accepted
@@ -177,6 +179,14 @@ export class TableSyncAdapter {
         return this.writeAuthorityGeneration;
     }
 
+    /** Wait for the project catalog generation that a saved query will use. */
+    async catalogReady(): Promise<void> {
+        const state = await this.catalogRuntime?.ready();
+        if (state && state.status !== "ready") {
+            throw new Error(state.status === "error" ? state.message : "SQL catalog is rebuilding");
+        }
+    }
+
     commitRecordValue(recordId: string, columnName: string, value: TableRecordValue, expectedToken: number): void {
         const catalogIsRebuildingThisTable = this.catalogRuntime?.current.status === "building"
             && this.catalogRuntime.dependsOnTable(this.handles.tableId);
@@ -259,6 +269,7 @@ export class TableSyncAdapter {
 
     private onCatalogState(state: CatalogRuntimeState): void {
         if (!this.started || this.disposed) return;
+        for (const listener of this.listeners) listener.onCatalogChanged?.(state);
         if (state.status !== "ready") {
             if (!this.catalogRuntime?.dependsOnTable(this.handles.tableId)) return;
             this.rebuildEpoch++;
@@ -269,7 +280,7 @@ export class TableSyncAdapter {
         }
         if (state.generation === this.catalogGeneration) return;
         this.catalogGeneration = state.generation;
-        if (!this.catalogRuntime?.dependsOnTable(this.handles.tableId)) return;
+        if (!this.catalogRuntime?.dependsOnTable(this.handles.tableId) && this.schema !== undefined) return;
         void this.rebuildFromSchemaText();
     }
 

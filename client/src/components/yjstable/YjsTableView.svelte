@@ -89,6 +89,7 @@ let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tabl
 let schema = $state<ParsedTableSchema | undefined>(undefined);
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
+let schemaError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
 let gridQuery = $state("");
 let columnOrder = $state<string[]>([]);
@@ -272,8 +273,9 @@ onMount(() => {
         isInitialSyncDone = acquired.remoteSynced;
         adapter = acquired.adapter;
         unsubscribeAdapter = acquired.adapter.subscribe({
-            onSchemaChanged: (parsed) => {
+            onSchemaChanged: (parsed, error) => {
                 schema = parsed;
+                schemaError = error;
             },
             onRecordErrors: (errors) => {
                 recordErrors = errors;
@@ -404,8 +406,8 @@ function stateVectorRevision(doc: Y.Doc): string {
         </section>
     {/if}
 
-    {#if queryError}
-        <p class="error" data-testid="yjs-table-query-error">{queryError}</p>
+    {#if schemaError || queryError}
+        <p class="error" data-testid="yjs-table-query-error">{schemaError ?? queryError}</p>
     {/if}
 
     {#if recordErrors.length > 0}

@@ -97,6 +97,8 @@ export interface AcquiredTable {
 export interface TableEngineSession {
     /** Wait until this Project's catalog generation is executable. */
     catalogReady: () => Promise<void>;
+    /** Observe catalog replacement so mounted query surfaces can re-run. */
+    subscribeCatalog: (listener: (state: CatalogRuntimeState) => void) => () => void;
     /** Materialize a table and keep it alive until the session is disposed. */
     acquire: (tableId: string) => Promise<AcquiredTable | undefined>;
     /**
@@ -159,7 +161,12 @@ function catalogRuntimeFor(projectDoc: Y.Doc, projectId: string | undefined, pgS
     const current = catalogRuntimes.get(pgSchema);
     if (current?.projectDoc === projectDoc) return current.runtime;
     current?.runtime.dispose();
-    const runtime = new CatalogRuntime(projectDoc, projectId ?? pgSchema, pgSchema);
+    const runtime = new CatalogRuntime(projectDoc, projectId ?? pgSchema, pgSchema, async () => {
+        const items = entries.get(entryKey(pgSchema, ITEMS_ENTRY_ID))?.provider;
+        if (items instanceof ItemsRelationProvider && !(await items.rematerialize())) {
+            throw new Error("The live items relation could not be reconstructed");
+        }
+    });
     catalogRuntimes.set(pgSchema, { runtime, projectDoc });
     return runtime;
 }
@@ -507,6 +514,7 @@ export function createTableEngineSession(options: {
                 throw new Error(state.status === "error" ? state.message : "SQL catalog is rebuilding");
             }
         },
+        subscribeCatalog: listener => catalogRuntime.subscribe(listener),
         acquire: async (tableId: string) => {
             if (disposed) return undefined;
             const key = entryKey(pgSchema, tableId);
