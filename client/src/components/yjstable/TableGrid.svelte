@@ -15,14 +15,13 @@ import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospect
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
     addRecord,
-    setRecordValue,
     type TableHandles,
     type TableRecordValue,
 } from "../../services/yjstable/tableDocs";
 import type { GridHandles } from "../../services/yjstable/gridDocs";
 import { isValidGridColumnWidth } from "../../services/yjstable/gridDocs";
 import { ColumnResizeGesture } from "../../services/yjstable/columnResize";
-import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import type { TableQueryResult, TableSyncAdapter } from "../../services/yjstable/tableSyncAdapter";
 import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import {
@@ -62,6 +61,7 @@ interface Props {
     onColumnOrderChange?: (order: string[]) => void;
     /** Source Table handles: writes for editable cells go here. */
     handles: TableHandles;
+    adapter: TableSyncAdapter;
     schema: ParsedTableSchema | undefined;
     query: string;
     result: TableQueryResult;
@@ -119,6 +119,7 @@ let {
     pageTitle,
     onColumnOrderChange,
     handles,
+    adapter,
     schema,
     query,
     result,
@@ -154,6 +155,7 @@ let unregisterSearch: (() => void) | undefined;
  * active cell instead of a foreign editor's cursor/selection.
  */
 let editingCell: GridCellAddress | undefined = $state();
+let editingAuthorityToken: number | undefined = $state();
 /**
  * Initial text for the cell named by `editingCell`, set once when a
  * printable keystroke opens the editor. Stays referentially stable for the
@@ -304,6 +306,8 @@ const commandContext = $derived<GridCommandContext>({
     checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
     canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
+    writeBareCell: (recordId, columnId, value) =>
+        adapter.commitRecordValue(recordId, columnId, value, adapter.writeAuthorityToken),
 });
 
 const selectionSummary = $derived.by(() => {
@@ -706,7 +710,7 @@ function commitCell(row: Record<string, unknown>, column: string, value: TableRe
     }
     const recordId = recordIdOf(row);
     if (recordId !== undefined) {
-        setRecordValue(handles, recordId, column, value);
+        adapter.commitRecordValue(recordId, column, value, editingAuthorityToken ?? adapter.writeAuthorityToken);
         return;
     }
     const source = sourceOf(row);
@@ -1331,8 +1335,10 @@ function handleCancelDelete() {
                                                 selection.select(logicalCell);
                                                 selectionRevision++;
                                                 editingCell = logicalCell;
+                                                editingAuthorityToken = adapter.writeAuthorityToken;
                                             } else if (cellEditing(logicalCell)) {
                                                 editingCell = undefined;
+                                                editingAuthorityToken = undefined;
                                                 pendingEditSeed = undefined;
                                             }
                                         }

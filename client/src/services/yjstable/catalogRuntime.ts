@@ -1,8 +1,10 @@
 import type * as Y from "yjs";
 
 import { readSqlCatalog, type SqlCatalogSnapshot } from "$shared/services/sqlCatalog";
+import { compileSqlEnvironment, type SqlTableSnapshot } from "$shared/services/sqlEnvironmentCompiler";
 import { enqueueWrite } from "./pgliteService";
 import { quoteIdent } from "./sqlNames";
+import type { TableHandles } from "./tableDocs";
 
 export type CatalogRuntimeState =
     | { status: "building"; revision?: string; }
@@ -25,6 +27,7 @@ export class CatalogRuntime {
     private disposed = false;
     private lastObserved = "";
     private currentBuild: Promise<CatalogRuntimeState>;
+    private readonly tables = new Map<string, { handles: TableHandles; unobserve: () => void; }>();
 
     private readonly updateObserver = () => {
         const descriptor = this.readDescriptor();
@@ -57,6 +60,42 @@ export class CatalogRuntime {
         return this.state;
     }
 
+    registerTable(handles: TableHandles): () => void {
+        if (this.tables.has(handles.tableId)) return () => {};
+        const changed = () => this.startBuild();
+        handles.schemaText.observe(changed);
+        handles.data.observeDeep(changed);
+        this.tables.set(handles.tableId, {
+            handles,
+            unobserve: () => {
+                handles.schemaText.unobserve(changed);
+                handles.data.unobserveDeep(changed);
+            },
+        });
+        this.startBuild();
+        return () => {
+            const registered = this.tables.get(handles.tableId);
+            if (registered?.handles !== handles) return;
+            registered.unobserve();
+            this.tables.delete(handles.tableId);
+        };
+    }
+
+    private startBuild(): void {
+        this.currentBuild = this.rebuild();
+    }
+
+    private tableSnapshots(): SqlTableSnapshot[] {
+        return [...this.tables.values()].map(({ handles }) => ({
+            id: handles.tableId,
+            schema: handles.schemaText.toString(),
+            records: [...handles.data.entries()].map(([id, record]) => ({
+                id,
+                values: Object.fromEntries(record.entries()),
+            })),
+        }));
+    }
+
     private readDescriptor(): string {
         const result = readSqlCatalog(this.projectId, this.catalogDoc());
         return result.status === "ready" ? `ready:${result.snapshot.revision}` : JSON.stringify(result);
@@ -83,7 +122,16 @@ export class CatalogRuntime {
         }
 
         const snapshot = result.snapshot;
+        const tables = this.tableSnapshots();
+        const inputIdentity = JSON.stringify([snapshot.revision, tables]);
         try {
+            if (snapshot.objects.length > 0) {
+                const compiled = await compileSqlEnvironment({ catalog: snapshot, tables, inspections: [] });
+                if (compiled.status === "failed") {
+                    throw new Error(compiled.diagnostics.map(diagnostic => diagnostic.message).join("; "));
+                }
+                await compiled.environment.dispose();
+            }
             await enqueueWrite(async db => {
                 try {
                     await db.exec(
@@ -117,6 +165,7 @@ export class CatalogRuntime {
         if (
             this.disposed || token !== this.buildGeneration || latest.status !== "ready"
             || latest.snapshot.revision !== snapshot.revision
+            || JSON.stringify([latest.snapshot.revision, this.tableSnapshots()]) !== inputIdentity
         ) return this.state;
         const state: CatalogRuntimeState = {
             status: "ready",
@@ -136,6 +185,8 @@ export class CatalogRuntime {
         this.disposed = true;
         this.buildGeneration++;
         this.projectDoc.off("update", this.updateObserver);
+        for (const table of this.tables.values()) table.unobserve();
+        this.tables.clear();
         this.listeners.clear();
     }
 }

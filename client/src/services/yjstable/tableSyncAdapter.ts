@@ -27,9 +27,18 @@ import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery, missingRelationName } from "./queryAnalysis";
 import { formatQueryDateFields } from "./queryResultFormatting";
 import type { RelationProvider } from "./relationProvider";
+import { RelationWriteError } from "./relationProvider";
 import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff } from "./schemaIntrospection";
 import { quoteIdent, reservedRelationNameError } from "./sqlNames";
-import { ADAPTER_ORIGIN, deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
+import {
+    ADAPTER_ORIGIN,
+    deleteColumnData,
+    setRecordValue,
+    setSchemaText,
+    type TableHandles,
+    type TableRecord,
+    type TableRecordValue,
+} from "./tableDocs";
 import { castValueForColumn } from "./valueCasting";
 
 const logger = getLogger("tableSyncAdapter");
@@ -107,8 +116,10 @@ export class TableSyncAdapter {
     private readonly registry: RelationRegistryPort | undefined;
     private readonly catalogRuntime: CatalogRuntime | undefined;
     private unsubscribeCatalog: (() => void) | undefined;
+    private unregisterCatalogTable: (() => void) | undefined;
     private catalogGeneration = 0;
     private rebuildEpoch = 0;
+    private writeAuthorityGeneration = 0;
     // Last emitted state, replayed to late subscribers so a view mounted after
     // the adapter started still renders the current result.
     private lastSchemaError: string | undefined;
@@ -147,6 +158,7 @@ export class TableSyncAdapter {
         this.pgSchema = options.pgSchema;
         this.registry = options.registry;
         this.catalogRuntime = options.catalogRuntime;
+        this.unregisterCatalogTable = this.catalogRuntime?.registerTable(handles);
     }
 
     get appliedSchema(): ParsedTableSchema | undefined {
@@ -159,6 +171,21 @@ export class TableSyncAdapter {
 
     get relationRegistry(): RelationRegistryPort | undefined {
         return this.registry;
+    }
+
+    get writeAuthorityToken(): number {
+        return this.writeAuthorityGeneration;
+    }
+
+    commitRecordValue(recordId: string, columnName: string, value: TableRecordValue, expectedToken: number): void {
+        if (expectedToken !== this.writeAuthorityGeneration || this.catalogRuntime?.current.status === "building") {
+            throw new RelationWriteError("Table write authority changed while the edit was open");
+        }
+        const column = this.schema?.columns.find(candidate => candidate.name === columnName);
+        if (!column) throw new RelationWriteError(`Column "${columnName}" is not writable in the current schema`);
+        if (!this.handles.data.has(recordId)) throw new RelationWriteError(`Record "${recordId}" does not exist`);
+        castValueForColumn(value, column);
+        setRecordValue(this.handles, recordId, columnName, value);
     }
 
     // Kept only so the legacy `runQueryNow` shim can replay the last result to
@@ -221,6 +248,7 @@ export class TableSyncAdapter {
     dispose(): void {
         this.disposed = true;
         this.unsubscribeCatalog?.();
+        this.unregisterCatalogTable?.();
         if (this.started) {
             this.handles.data.unobserveDeep(this.dataObserver);
             this.handles.schemaText.unobserve(this.schemaObserver);
@@ -231,6 +259,7 @@ export class TableSyncAdapter {
         if (!this.started || this.disposed) return;
         if (state.status !== "ready") {
             this.rebuildEpoch++;
+            this.writeAuthorityGeneration++;
             this.schema = undefined;
             this.emitSchema(undefined, state.status === "error" ? state.message : "SQL catalog is rebuilding");
             return;
@@ -410,7 +439,6 @@ export class TableSyncAdapter {
         });
 
         if (this.disposed || epoch !== this.rebuildEpoch) {
-            this.schema = undefined;
             return;
         }
         if (rebuildError) {

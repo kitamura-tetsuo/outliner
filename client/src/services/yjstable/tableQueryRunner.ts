@@ -171,6 +171,8 @@ export abstract class TableQueryRunnerBase {
     scheduleRequery(): void {
         if (this.disposed) return;
         this.onInputsInvalidated();
+        this.lastExecution = undefined;
+        for (const listener of this.listeners) listener.onResult?.(this.lastResult, undefined);
         // Invalidate an execution that is already in flight immediately. The
         // replacement remains debounced, but an old completion must not be
         // published during that debounce window after query/schema/data input

@@ -425,6 +425,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {pageId}
                     {pageTitle}
                     {handles}
+                    {adapter}
                     {schema}
                     query={gridQuery}
                     {result}
