@@ -9,6 +9,8 @@ import { duplicateSelectedObjects, getObjects } from "../objectManager/objectMan
 import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid } from "./gridDocs";
+import { getGridSourceTableId, listGrids } from "./gridDocs";
+import { appendGridPlacement } from "./gridPlacement";
 import { duplicateObjects } from "./objectDuplication";
 import { createTable, getTableHandles, listTables } from "./tableDocs";
 
@@ -180,5 +182,34 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
         expect(serializeGridToHtml(config).html).toContain("<td>Open</td>");
         expect(exportProjectToMarkdown(project)).toContain("Open");
         expect(exportProjectToOpml(project)).toContain('text="Open"');
+    });
+
+    it("refuses an unresolved typed schema instead of treating it as catalog-independent", async () => {
+        for (const malformedCatalog of [false, true]) {
+            const source = new Y.Doc({ guid: `unresolved-${String(malformedCatalog)}` });
+            if (malformedCatalog) createSqlCatalogObject(source, "enum", "not a CREATE TYPE declaration");
+            const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
+                handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
+            });
+            const destination = new Y.Doc({ guid: `unresolved-destination-${String(malformedCatalog)}` });
+            await expect(duplicateObjects(source, destination, { type: "table", id: tableId }, "item-only"))
+                .rejects.toThrow('Required ENUM type "task_state" dependency evidence is unresolved');
+            expect(listTables(destination)).toEqual([]);
+        }
+    });
+
+    it("places another live same-Project view without cloning Table, Grid or catalog identity", () => {
+        const source = typedProject("live-reference", ["Open", "Closed"]);
+        const project = Project.fromDoc(source.doc);
+        const first = project.addPage("First", "test");
+        const second = project.addPage("Second", "test");
+        appendGridPlacement(source.doc, first.id, source.gridId, "test");
+        appendGridPlacement(source.doc, second.id, source.gridId, "test");
+
+        expect(listTables(source.doc).map(table => table.tableId)).toEqual([source.tableId]);
+        expect(listGrids(source.doc).map(grid => grid.gridId)).toEqual([source.gridId]);
+        expect(getGridSourceTableId(source.doc, source.gridId)).toBe(source.tableId);
+        expect(first.items.at(0)?.yjsGridId).toBe(source.gridId);
+        expect(second.items.at(0)?.yjsGridId).toBe(source.gridId);
     });
 });

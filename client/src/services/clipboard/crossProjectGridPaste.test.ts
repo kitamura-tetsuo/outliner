@@ -91,6 +91,27 @@ describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
         expect(listTables(compatible)).toHaveLength(1);
     });
 
+    it("refuses an unresolved typed clipboard schema before creating destination state", async () => {
+        const source = new Y.Doc({ guid: "unresolved-enum-source" });
+        createSqlCatalogObject(source, "enum", "this is not a CREATE TYPE declaration");
+        const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
+        });
+        createGrid(source, tableId, { query: "SELECT * FROM tasks" });
+        const destination = new Y.Doc({ guid: "unresolved-enum-destination" });
+
+        await expect(cloneGridTablesAcrossProjects({
+            destinationDoc: destination,
+            destinationProject: Project.fromDoc(destination),
+            sourceProjectId: source.guid,
+            snapshots: { [tableId]: exportTableStructure(source, tableId) },
+            requestedSourceTableIds: [tableId],
+            copyData: false,
+            isDestinationCurrent: () => true,
+        })).rejects.toThrow('Required ENUM type "task_state" dependency evidence is unresolved');
+        expect(listTables(destination)).toEqual([]);
+    });
+
     it("rechecks a compatible destination changed while clipboard planning is in flight", async () => {
         const source = new Y.Doc({ guid: "held-enum-source" });
         createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
@@ -119,13 +140,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
             "CREATE TYPE task_state AS ENUM ('Closed', 'Open')",
         );
 
-        const refused = await pending;
-        expect(refused?.outcomes).toEqual(expect.arrayContaining([
-            expect.objectContaining({
-                type: "failed-group",
-                reason: expect.stringContaining('Required ENUM type "task_state" is missing or incompatible'),
-            }),
-        ]));
+        await expect(pending).rejects.toThrow("Destination SQL catalog changed during structural transfer planning");
         expect(listTables(destination)).toEqual([]);
     });
     it("creates nothing at all when the destination refuses writes", async () => {

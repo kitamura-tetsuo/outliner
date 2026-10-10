@@ -93,6 +93,66 @@ function referencesCapturedEnum(snapshot: StructuralSqlSnapshot, relevantIds: Re
     );
 }
 
+const BUILTIN_TYPES = new Set([
+    "bigint",
+    "boolean",
+    "bytea",
+    "char",
+    "character",
+    "date",
+    "decimal",
+    "double",
+    "integer",
+    "int",
+    "int2",
+    "int4",
+    "int8",
+    "interval",
+    "json",
+    "jsonb",
+    "numeric",
+    "real",
+    "smallint",
+    "serial",
+    "bigserial",
+    "text",
+    "time",
+    "timestamp",
+    "timestamptz",
+    "timetz",
+    "uuid",
+    "varchar",
+]);
+
+function unresolvedCustomType(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): string | undefined {
+    const declared = new Set(declaredEnumNames(snapshot));
+    for (const sql of relevantSql(snapshot, relevantIds)) {
+        const candidates = [...sql.matchAll(/::\s*"?([A-Za-z_][A-Za-z0-9_$]*)"?/g)].map(match => match[1]);
+        const tableBody = /CREATE\s+TABLE\s+[^()]+\((.*)\)/is.exec(sql)?.[1];
+        if (tableBody) {
+            for (const column of tableBody.split(",")) {
+                const type = /^\s*(?:"(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*)\s+"?([A-Za-z_][A-Za-z0-9_$]*)"?/i
+                    .exec(column)?.[1];
+                if (type) candidates.push(type);
+            }
+        }
+        for (const candidate of candidates) {
+            const name = candidate.toLowerCase();
+            if (name && !BUILTIN_TYPES.has(name) && !declared.has(name)) return name;
+        }
+    }
+    return undefined;
+}
+
+function assertResolvableCustomTypes(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): void {
+    const unresolved = unresolvedCustomType(snapshot, relevantIds);
+    if (unresolved) {
+        throw new StructuralEnumCompatibilityError(
+            `Required ENUM type "${unresolved}" dependency evidence is unresolved.`,
+        );
+    }
+}
+
 function records(doc: Y.Doc, tableId: string): SqlTableSnapshot["records"] {
     const handles = getTableHandles(doc, tableId);
     if (!handles) throw new StructuralEnumCompatibilityError(`Table "${tableId}" dependency evidence is unavailable.`);
@@ -152,7 +212,8 @@ export async function assertStructuralEnumCompatibility(
     // Catalog-independent transfers must not become coupled to unrelated
     // catalog/runtime work (REQ-006). With no source declarations there is no
     // portable custom type whose meaning can be lost.
-    if (source.catalog.objects.length === 0 || !referencesCapturedEnum(source, relevantIds)) return;
+    assertResolvableCustomTypes(source, relevantIds);
+    if (!referencesCapturedEnum(source, relevantIds)) return;
     const destination = captureStructuralSqlSnapshot(destinationDoc);
     const sourceResult = await compileSqlEnvironment(source as SqlEnvironmentInput);
     if (sourceResult.status !== "ready") {
@@ -214,7 +275,8 @@ export async function assertPortableStructuralEnumCompatibility(
     source: StructuralSqlSnapshot,
     relevantIds: ReadonlySet<string>,
 ): Promise<void> {
-    if (source.catalog.objects.length === 0 || !referencesCapturedEnum(source, relevantIds)) return;
+    assertResolvableCustomTypes(source, relevantIds);
+    if (!referencesCapturedEnum(source, relevantIds)) return;
     const destination = captureStructuralSqlSnapshot(destinationDoc);
     const sourceResult = await compileSqlEnvironment(source as SqlEnvironmentInput);
     if (sourceResult.status !== "ready") {
@@ -244,5 +306,11 @@ export async function assertPortableStructuralEnumCompatibility(
     } finally {
         await sourceResult.environment.dispose();
         if (destinationResult.status === "ready") await destinationResult.environment.dispose();
+    }
+    const latestDestination = captureStructuralSqlSnapshot(destinationDoc);
+    if (latestDestination.catalog.revision !== destination.catalog.revision) {
+        throw new StructuralEnumCompatibilityError(
+            "Destination SQL catalog changed during structural transfer planning.",
+        );
     }
 }
