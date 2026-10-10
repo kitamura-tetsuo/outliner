@@ -113,6 +113,75 @@ describe("TableGrid", () => {
         expect(storedOrder.indexOf("col_b")).toBe(2);
     });
 
+    it("preserves row DOM nodes and focus when bare-id authority resolves after mount", async () => {
+        // A saved Grid renders before its mutation authority is verified: the
+        // async verdict flips `editability` from read-only to writable once
+        // the query execution completes. Row DOM identity must not follow that
+        // flip, or every `<tr>` is destroyed and recreated — dropping DOM
+        // focus in the middle of keyboard navigation.
+        const doc = new (await import("yjs")).Doc();
+        const tableId = createTable(doc, "test_table", "test_table");
+        const gridId = createGrid(doc, tableId, {
+            name: "G",
+            query: "SELECT id, col_a FROM test",
+            columnOrder: ["col_a"],
+        });
+        const handles = getTableHandles(doc, tableId)!;
+        const grid = getGridHandles(doc, gridId)!;
+
+        const schema: ParsedTableSchema = {
+            tableName: "test_table",
+            createSql: "CREATE TABLE test_table (id uuid, col_a text);",
+            columns: [
+                { name: "id", dataType: "uuid", isNullable: false, isPrimaryKey: true, kind: "text", checkOptions: [] },
+                {
+                    name: "col_a",
+                    dataType: "text",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
+            ],
+        };
+
+        const result: TableQueryResult = {
+            columns: ["id", "col_a"],
+            rows: [
+                { id: "1", col_a: "A1" },
+            ],
+        };
+
+        const baseProps = {
+            grid,
+            handles,
+            schema,
+            query: "SELECT id, col_a FROM test",
+            result,
+            bareIdAuthority: undefined,
+            componentTypes: {},
+            columnLabels: {},
+            hiddenColumns: {},
+            columnOrder: ["col_a"],
+            session: mockSession,
+        };
+        const { container, rerender } = render(TableGrid, { props: baseProps });
+
+        const row = container.querySelector("tbody tr")!;
+        const button = container.querySelector<HTMLButtonElement>('tbody tr td[data-col="col_a"] button')!;
+        button.focus();
+        expect(document.activeElement).toBe(button);
+
+        // Authority resolves: the grid becomes writable without touching rows.
+        await rerender({
+            ...baseProps,
+            bareIdAuthority: { status: "compatible", editableColumns: new Set(["col_a"]) },
+        });
+
+        expect(container.querySelector("tbody tr")).toBe(row);
+        expect(document.activeElement).toBe(button);
+    });
+
     describe("rowCreationMode", () => {
         it("renders '+ Add row' in table mode when schema is present, even with empty result", async () => {
             const doc = new (await import("yjs")).Doc();
