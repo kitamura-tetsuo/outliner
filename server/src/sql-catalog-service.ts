@@ -16,7 +16,13 @@ import {
     type SqlInspectionTarget,
     type SqlTableSnapshot,
 } from "../../shared/src/services/sqlEnvironmentCompiler.js";
-import { closeLiveRoom, type DirectConnection, isLiveRoom, openLiveRoom } from "./mcp/live-room.js";
+import {
+    closeLiveRoom,
+    type DirectConnection,
+    isLiveRoom,
+    openLiveRoom,
+    releaseWithoutStore,
+} from "./mcp/live-room.js";
 import { McpReadError } from "./mcp/mcp-error.js";
 import type { DocumentStore } from "./persistence.js";
 
@@ -196,7 +202,7 @@ export class SqlCatalogMutationService {
     ): Promise<SqlCatalogApplyResult> {
         this.validateRequest(projectId, request);
         await this.authorize(uid, projectId);
-        const connection = await this.open(projectId, uid);
+        let connection = await this.open(projectId, uid);
         try {
             let doc = connection.document as unknown as Y.Doc;
             this.assertExisting(doc);
@@ -209,9 +215,21 @@ export class SqlCatalogMutationService {
             const validation = await this.preview(initiallyCaptured, request);
             if (validation.status === "refused") return validation;
             await this.options.beforePublication?.();
-            await this.authorize(uid, projectId);
-            if (!isLiveRoom(this.hocuspocus, `projects/${projectId}`, doc)) {
-                throw new McpReadError("internal_failure", "Project room changed during catalog preparation");
+            const room = `projects/${projectId}`;
+            // A delayed unload may orphan a held Hocuspocus Document while
+            // validation is running. Re-authorize and reacquire the room's
+            // actual live Document rather than either mutating the orphan or
+            // treating this storage lifecycle race as a catalog conflict.
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                await this.authorize(uid, projectId);
+                doc = connection.document as unknown as Y.Doc;
+                if (isLiveRoom(this.hocuspocus, room, doc)) break;
+                releaseWithoutStore(connection);
+                connection = await this.open(projectId, uid);
+            }
+            doc = connection.document as unknown as Y.Doc;
+            if (!isLiveRoom(this.hocuspocus, room, doc)) {
+                throw new McpReadError("internal_failure", "Project room could not be held for catalog publication");
             }
             let current: CapturedInput;
             try {
