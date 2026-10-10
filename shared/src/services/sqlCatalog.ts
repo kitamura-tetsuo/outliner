@@ -3,6 +3,10 @@
 // Version 1 deliberately stores only an object's stable application identity,
 // kind and exact committed source. SQL names and enum labels are properties of
 // that source; they are not duplicated as independently editable metadata.
+// The `sqlCatalog` Y.Map contains the reserved `format` key; every other key is
+// a stable object ID whose value is a Y.Map containing `kind` and `source`.
+// Keeping the collection in the shared root (rather than assigning a nested
+// map) lets two catalog-free clients concurrently add their first objects.
 
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
@@ -33,7 +37,8 @@ export type SqlCatalogReadResult =
     | { readonly status: "unsupported"; readonly reason: "format" | "kind"; readonly value: unknown; };
 
 type CatalogRoot = Y.Map<unknown>;
-type CatalogObjects = Y.Map<Y.Map<unknown>>;
+
+const FORMAT_KEY = "format";
 
 function existingRoot(doc: Y.Doc): unknown {
     // Y.Doc#getMap registers a top-level type even on a read. Looking directly
@@ -49,29 +54,20 @@ function existingRoot(doc: Y.Doc): unknown {
     return root;
 }
 
-function rootForWrite(doc: Y.Doc): { root: CatalogRoot; objects: CatalogObjects; } {
+function rootForWrite(doc: Y.Doc): CatalogRoot {
     const current = existingRoot(doc);
     if (current !== undefined && !(current instanceof Y.Map)) {
         throw new Error("Invalid sqlCatalog: root must be a Y.Map");
     }
     const root = (current as CatalogRoot | undefined) ?? doc.getMap<unknown>(SQL_CATALOG_KEY);
-    const format = root.get("format");
-    const currentObjects = root.get("objects");
+    const format = root.get(FORMAT_KEY);
     if (format !== undefined && format !== SQL_CATALOG_FORMAT) {
         throw new Error(`Unsupported sqlCatalog format: ${String(format)}`);
     }
-    if (currentObjects !== undefined && !(currentObjects instanceof Y.Map)) {
-        throw new Error("Invalid sqlCatalog: objects must be a Y.Map");
-    }
-    let objects = currentObjects as CatalogObjects | undefined;
     doc.transact(() => {
-        if (format === undefined) root.set("format", SQL_CATALOG_FORMAT);
-        if (!objects) {
-            objects = new Y.Map<Y.Map<unknown>>();
-            root.set("objects", objects);
-        }
+        if (format === undefined) root.set(FORMAT_KEY, SQL_CATALOG_FORMAT);
     });
-    return { root, objects: objects! };
+    return root;
 }
 
 function assertObjectId(id: string): void {
@@ -102,24 +98,23 @@ export function restoreSqlCatalogObject(doc: Y.Doc, object: SqlCatalogSourceObje
     assertObjectId(object.id);
     assertKind(object.kind);
     doc.transact(() => {
-        const { objects } = rootForWrite(doc);
-        if (objects.has(object.id)) throw new Error(`SQL catalog object already exists: ${object.id}`);
+        const root = rootForWrite(doc);
+        if (object.id === FORMAT_KEY) throw new Error(`SQL catalog object ID is reserved: ${object.id}`);
+        if (root.has(object.id)) throw new Error(`SQL catalog object already exists: ${object.id}`);
         const entry = new Y.Map<unknown>();
         entry.set("kind", object.kind);
         entry.set("source", object.source);
-        objects.set(object.id, entry);
+        root.set(object.id, entry);
     });
 }
 
 /** Replace one committed source atomically while retaining its identity. */
 export function replaceSqlCatalogSource(doc: Y.Doc, id: string, source: string): void {
     const root = existingRoot(doc);
-    if (!(root instanceof Y.Map) || root.get("format") !== SQL_CATALOG_FORMAT) {
+    if (!(root instanceof Y.Map) || root.get(FORMAT_KEY) !== SQL_CATALOG_FORMAT) {
         throw new Error("SQL catalog is not a writable version 1 catalog");
     }
-    const objects = root.get("objects");
-    if (!(objects instanceof Y.Map)) throw new Error("Invalid sqlCatalog: objects must be a Y.Map");
-    const entry = objects.get(id);
+    const entry = root.get(id);
     if (!(entry instanceof Y.Map)) throw new Error(`SQL catalog object does not exist: ${id}`);
     const current = entry.get("source");
     if (typeof current !== "string") throw new Error(`Invalid SQL catalog source: ${id}`);
@@ -130,10 +125,8 @@ export function replaceSqlCatalogSource(doc: Y.Doc, id: string, source: string):
 /** Remove one source object without touching any other project-owned state. */
 export function removeSqlCatalogObject(doc: Y.Doc, id: string): boolean {
     const root = existingRoot(doc);
-    if (!(root instanceof Y.Map) || root.get("format") !== SQL_CATALOG_FORMAT) return false;
-    const objects = root.get("objects");
-    if (!(objects instanceof Y.Map) || !objects.has(id)) return false;
-    objects.delete(id);
+    if (!(root instanceof Y.Map) || root.get(FORMAT_KEY) !== SQL_CATALOG_FORMAT || !root.has(id)) return false;
+    root.delete(id);
     return true;
 }
 
@@ -287,18 +280,15 @@ export function readSqlCatalog(projectId: string, doc: Y.Doc | undefined): SqlCa
     const root = existingRoot(doc);
     if (root === undefined) return { status: "ready", snapshot: snapshot(projectId, []) };
     if (!(root instanceof Y.Map)) return { status: "invalid", reason: "sqlCatalog root is not a Y.Map" };
-    const format = root.get("format");
+    const format = root.get(FORMAT_KEY);
     if (format !== SQL_CATALOG_FORMAT) {
         return typeof format === "number" && format > SQL_CATALOG_FORMAT
             ? { status: "unsupported", reason: "format", value: format }
             : { status: "invalid", reason: "sqlCatalog format is missing or malformed" };
     }
-    const storedObjects = root.get("objects");
-    if (!(storedObjects instanceof Y.Map)) {
-        return { status: "invalid", reason: "sqlCatalog objects is not a Y.Map" };
-    }
     const objects: SqlCatalogSourceObject[] = [];
-    for (const [id, value] of storedObjects.entries()) {
+    for (const [id, value] of root.entries()) {
+        if (id === FORMAT_KEY) continue;
         if (!(value instanceof Y.Map)) return { status: "invalid", reason: `Object ${id} is not a Y.Map` };
         const kind = value.get("kind");
         if (kind !== "enum") return { status: "unsupported", reason: "kind", value: kind };

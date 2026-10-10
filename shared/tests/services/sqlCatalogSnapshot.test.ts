@@ -58,11 +58,11 @@ describe("SQL catalog snapshots", () => {
         const malformed = new Y.Doc();
         const malformedRoot = malformed.getMap<unknown>(SQL_CATALOG_KEY);
         malformedRoot.set("format", 1);
-        malformedRoot.set("objects", "original malformed bytes");
+        malformedRoot.set("malformed-object", "original malformed bytes");
         const malformedBefore = Y.encodeStateAsUpdate(malformed);
         expect(readSqlCatalog("project", malformed)).toMatchObject({ status: "invalid" });
         expect(Y.encodeStateAsUpdate(malformed)).toEqual(malformedBefore);
-        expect(malformedRoot.get("objects")).toBe("original malformed bytes");
+        expect(malformedRoot.get("malformed-object")).toBe("original malformed bytes");
 
         const future = new Y.Doc();
         future.getMap(SQL_CATALOG_KEY).set("format", 2);
@@ -71,12 +71,10 @@ describe("SQL catalog snapshots", () => {
         const unknown = new Y.Doc();
         const root = unknown.getMap<unknown>(SQL_CATALOG_KEY);
         root.set("format", 1);
-        const objects = new Y.Map<Y.Map<unknown>>();
         const entry = new Y.Map<unknown>();
         entry.set("kind", "domain");
         entry.set("source", "CREATE DOMAIN positive AS integer CHECK (VALUE > 0);");
-        objects.set("future-object", entry);
-        root.set("objects", objects);
+        root.set("future-object", entry);
         const unknownBefore = Y.encodeStateAsUpdate(unknown);
         expect(readSqlCatalog("project", unknown)).toEqual({ status: "unsupported", reason: "kind", value: "domain" });
         expect(Y.encodeStateAsUpdate(unknown)).toEqual(unknownBefore);

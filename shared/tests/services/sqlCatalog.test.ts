@@ -54,8 +54,9 @@ describe("SQL catalog source storage", () => {
         restoreSqlCatalogObject(doc, { id: "one", kind: "enum", source: "CREATE TYPE one AS ENUM ('a');" });
         restoreSqlCatalogObject(doc, { id: "two", kind: "enum", source: "CREATE TYPE two AS ENUM ('b');" });
         const root = doc.getMap<unknown>(SQL_CATALOG_KEY);
-        const objects = root.get("objects") as Y.Map<Y.Map<unknown>>;
-        objects.get("one")!.set("futureField", "preserve me");
+        const first = root.get("one") as Y.Map<unknown>;
+        const second = root.get("two") as Y.Map<unknown>;
+        first.set("futureField", "preserve me");
         const updates: Uint8Array[] = [];
         doc.on("update", (update) => updates.push(update));
 
@@ -64,8 +65,37 @@ describe("SQL catalog source storage", () => {
         replaceSqlCatalogSource(doc, "one", "  CREATE TYPE one AS ENUM ('a', 'c'); -- exact\n");
 
         expect(updates).toHaveLength(1);
-        expect(objects.get("one")!.get("futureField")).toBe("preserve me");
-        expect(objects.get("two")!.get("source")).toBe("CREATE TYPE two AS ENUM ('b');");
+        expect(first.get("futureField")).toBe("preserve me");
+        expect(second.get("source")).toBe("CREATE TYPE two AS ENUM ('b');");
+    });
+
+    it("preserves concurrent first objects created from a catalog-free project", () => {
+        const legacy = new Y.Doc();
+        legacy.getMap("pages").set("page-id", "legacy page");
+        const left = clone(legacy);
+        const right = clone(legacy);
+        expect(left.share.has(SQL_CATALOG_KEY)).toBe(false);
+        expect(right.share.has(SQL_CATALOG_KEY)).toBe(false);
+        const leftUpdates: Uint8Array[] = [];
+        const rightUpdates: Uint8Array[] = [];
+        left.on("update", (update) => leftUpdates.push(update));
+        right.on("update", (update) => rightUpdates.push(update));
+        const leftSource = "-- left\nCREATE TYPE left_status AS ENUM ('open');";
+        const rightSource = "-- right\nCREATE TYPE right_status AS ENUM ('closed');";
+
+        const leftId = createSqlCatalogObject(left, "enum", leftSource);
+        const rightId = createSqlCatalogObject(right, "enum", rightSource);
+        [...rightUpdates].reverse().forEach((update) => Y.applyUpdate(left, update));
+        leftUpdates.forEach((update) => Y.applyUpdate(right, update));
+
+        const expected = [
+            { id: leftId, kind: "enum", source: leftSource },
+            { id: rightId, kind: "enum", source: rightSource },
+        ].sort((a, b) => a.id.localeCompare(b.id));
+        expect(readySnapshot("legacy-project", left).objects).toEqual(expected);
+        expect(readySnapshot("legacy-project", right).objects).toEqual(expected);
+        expect(readySnapshot("legacy-project", clone(left)).objects).toEqual(expected);
+        expect(readySnapshot("legacy-project", clone(right)).objects).toEqual(expected);
     });
 
     it("merges disjoint client edits and converges whole-source conflicts", () => {
