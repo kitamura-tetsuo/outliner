@@ -16,6 +16,7 @@ export type ColumnKind =
     | "boolean"
     | "date"
     | "timestamp"
+    | "enum"
     | "other";
 
 export interface TableColumnSchema {
@@ -32,6 +33,8 @@ export interface TableColumnSchema {
      * UI Definition.
      */
     checkOptions?: string[];
+    /** Exact pg_enum declaration-order labels for a scalar ENUM column. */
+    enumLabels?: string[];
 }
 
 export interface ParsedTableSchema {
@@ -162,7 +165,7 @@ interface PgliteLike {
     exec: (sql: string) => Promise<unknown>;
 }
 
-async function introspectTable(
+export async function introspectTable(
     db: PgliteLike,
     schema: string,
     createSql: string,
@@ -183,9 +186,14 @@ async function introspectTable(
         column_name: string;
         data_type: string;
         is_nullable: string;
+        typtype: string;
+        enum_labels: string[];
     }>(
-        "SELECT column_name, data_type, is_nullable FROM information_schema.columns "
-            + "WHERE table_schema = $1 AND table_name = $2 ORDER BY ordinal_position",
+        "SELECT c.column_name, c.data_type, c.is_nullable, t.typtype, "
+            + "ARRAY(SELECT e.enumlabel FROM pg_enum e WHERE e.enumtypid=t.oid ORDER BY e.enumsortorder) AS enum_labels "
+            + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.udt_schema "
+            + "JOIN pg_type t ON t.typnamespace=n.oid AND t.typname=c.udt_name "
+            + "WHERE c.table_schema = $1 AND c.table_name = $2 ORDER BY c.ordinal_position",
         [schema, tableName],
     );
     if (columns.rows.length === 0) {
@@ -220,10 +228,11 @@ async function introspectTable(
         columns: columns.rows.map((row) => ({
             name: row.column_name,
             dataType: row.data_type,
-            kind: columnKindFromDataType(row.data_type),
+            kind: row.typtype === "e" ? "enum" : columnKindFromDataType(row.data_type),
             isNullable: row.is_nullable !== "NO",
             isPrimaryKey: pkColumns.has(row.column_name),
             checkOptions: optionsByColumn.get(row.column_name),
+            enumLabels: row.typtype === "e" ? row.enum_labels : undefined,
         })),
     };
 }
