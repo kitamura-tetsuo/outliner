@@ -38,12 +38,10 @@ export const sveltekitOptions = {
         strict: true,
     }),
 
-
-
     alias: {
-        '$lib': 'src/lib',
-        '$stores': 'src/stores',
-        '$shared': '../shared/src'
+        "$lib": "src/lib",
+        "$stores": "src/stores",
+        "$shared": "../shared/src",
     },
     serviceWorker: {
         register: false, // Disabled to register Service Worker manually
