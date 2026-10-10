@@ -39,6 +39,7 @@ import {
 import type {
     RecordSyncError,
     TableQueryResult,
+    TableSyncAdapter,
 } from "../../services/yjstable/tableSyncAdapter";
 import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
@@ -101,6 +102,7 @@ let widthPreview = $state<{ column: string; width: number; } | undefined>(undefi
 let showAddRowButton = $state(true);
 let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
+let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
 // Authority is revoked only by material changes from the authoritative Yjs
@@ -268,6 +270,7 @@ onMount(() => {
             return;
         }
         isInitialSyncDone = acquired.remoteSynced;
+        adapter = acquired.adapter;
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed) => {
                 schema = parsed;
@@ -418,7 +421,7 @@ function stateVectorRevision(doc: Y.Doc): string {
 
     {#if showGrid}
         <section class="panel">
-            {#if adapterReady}
+            {#if adapterReady && adapter}
                 <TableGrid
                     {grid}
                     {placementId}
