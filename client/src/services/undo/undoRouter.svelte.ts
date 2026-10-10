@@ -53,6 +53,7 @@ export interface CompositeUndoEntry {
     /** Schedule rules the paste copied, and enough of each to put it back. */
     createdRuleIds: string[];
     savedRules: Record<string, Record<string, ScheduleRuleValueType>>;
+    authorizeRedo?: () => boolean;
 }
 
 /**
@@ -321,6 +322,7 @@ export class UndoRouter {
         projectDoc: Y.Doc,
         createdTableIds: string[],
         createdRuleIds: string[] = [],
+        authorizeRedo?: () => boolean,
     ): void {
         if (this.undoStack.length === 0) return;
         const top = this.undoStack[this.undoStack.length - 1];
@@ -359,6 +361,7 @@ export class UndoRouter {
                 savedSubdocStates,
                 createdRuleIds,
                 savedRules: captureClonedScheduleRules(projectDoc, createdRuleIds),
+                authorizeRedo,
             };
         }
     }
@@ -464,7 +467,10 @@ export class UndoRouter {
      * during it is purged (via `runAsyncWithoutAutoCapture`) and replaced by
      * exactly one `entry` this caller fully controls.
      */
-    public async captureManualAsync(mutate: () => Promise<void>, entry: ManualUndoEntry): Promise<void> {
+    public async captureManualAsync(
+        mutate: () => Promise<void>,
+        entry: ManualUndoEntry | AsyncUndoEntry,
+    ): Promise<void> {
         await this.runAsyncWithoutAutoCapture(mutate);
         this.undoStack.push(entry);
         this.clearRedoForNewCapture();
@@ -607,6 +613,11 @@ export class UndoRouter {
                 }
 
                 if ("type" in entry && entry.type === "composite") {
+                    if (!isUndo && entry.authorizeRedo && !entry.authorizeRedo()) {
+                        from.push(entry);
+                        this._lastAsyncOutcome = { status: "refused", reason: "Structural ENUM compatibility changed" };
+                        return;
+                    }
                     if (apply(entry.mainManager)) {
                         if (isUndo) {
                             rollbackClonedScheduleRules(entry.projectDoc, entry.createdRuleIds);

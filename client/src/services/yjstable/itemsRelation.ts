@@ -247,6 +247,13 @@ export class ItemsRelationProvider implements RelationProvider {
         return true;
     }
 
+    /** Recreate the projection after its owning project schema was replaced. */
+    async rematerialize(): Promise<boolean> {
+        if (this.disposed) return false;
+        this.materialized = false;
+        return await this.materialize();
+    }
+
     dispose(): void {
         this.disposed = true;
         this.materialized = false;

@@ -18,7 +18,6 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-9c3f5ad1: Reverse drag selection matches forward drag", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
-        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First item of the reverse drag scenario",
             "Second item stays fully selected",
@@ -39,7 +38,9 @@ test.describe("SLR-9c3f5ad1: Reverse drag selection matches forward drag", () =>
         await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
         const forwardGeometry = await selectionFragmentBoxes(page);
         const forwardText = await selectedText(page);
+        await page.evaluate(() => navigator.clipboard.writeText("SLR-9c3f5ad1: forward copy has not executed"));
         await page.keyboard.press("Control+c");
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(forwardText);
         const forwardClipboard = await page.evaluate(() => navigator.clipboard.readText());
 
         // The first and last item must really be partially covered: that is where the
@@ -53,13 +54,7 @@ test.describe("SLR-9c3f5ad1: Reverse drag selection matches forward drag", () =>
         expect(forwardOffsets.endOffset).toBeLessThan(forwardOffsets.endTextLength);
         expect(forwardText).toContain("Second item stays fully selected");
 
-        // Ensure a clean slate before reversing
-        await page.evaluate(() => {
-            const selection = globalThis.getSelection();
-            if (selection) selection.removeAllRanges();
-            // Try to notify the app's selection handler
-            document.dispatchEvent(new Event("selectionchange"));
-        });
+        // Clear through the real keyboard path before reversing the gesture.
         await page.keyboard.press("ArrowRight");
         await expect(page.locator(".editor-overlay .selection")).toBeHidden();
 
@@ -68,7 +63,10 @@ test.describe("SLR-9c3f5ad1: Reverse drag selection matches forward drag", () =>
         await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
         const reverseGeometry = await selectionFragmentBoxes(page);
         const reverseText = await selectedText(page);
+        // A new sentinel also rejects a reverse copy that leaves the old forward copy untouched.
+        await page.evaluate(() => navigator.clipboard.writeText("SLR-9c3f5ad1: reverse copy has not executed"));
         await page.keyboard.press("Control+c");
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(reverseText);
         const reverseClipboard = await page.evaluate(() => navigator.clipboard.readText());
 
         expect(reverseText).toBe(forwardText);

@@ -1,6 +1,8 @@
 import { Project } from "$shared/app-schema";
+import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { createGrid } from "../yjstable/gridDocs";
 import { resetPgliteForTests } from "../yjstable/pgliteService";
 import { exportTableStructure } from "../yjstable/tableClone";
 import { addRecord, createTable, getTableHandles, listTables, setSchemaText } from "../yjstable/tableDocs";
@@ -43,7 +45,104 @@ afterAll(async () => {
     await resetPgliteForTests();
 });
 
-describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
+describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
+    it("carries ENUM authority through real capture and refuses missing or reversed labels before effects", async () => {
+        const source = new Y.Doc({ guid: SOURCE_PROJECT_ID });
+        createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', ' Done ')");
+        const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
+        });
+        createGrid(source, tableId, { query: "SELECT * FROM tasks ORDER BY state::task_state" });
+        const snapshots = { [tableId]: exportTableStructure(source, tableId) };
+
+        for (const labels of [undefined, [" Done ", "Open"]] as const) {
+            const destination = new Y.Doc({ guid: `enum-destination-${String(labels)}` });
+            if (labels) {
+                createSqlCatalogObject(
+                    destination,
+                    "enum",
+                    `CREATE TYPE task_state AS ENUM (${labels.map(label => `'${label}'`).join(", ")})`,
+                );
+            }
+            await expect(cloneGridTablesAcrossProjects({
+                destinationDoc: destination,
+                destinationProject: Project.fromDoc(destination),
+                sourceProjectId: SOURCE_PROJECT_ID,
+                snapshots,
+                requestedSourceTableIds: [tableId],
+                copyData: false,
+                isDestinationCurrent: () => true,
+            })).rejects.toThrow('Required ENUM type "task_state" is missing or incompatible');
+            expect(listTables(destination)).toEqual([]);
+        }
+
+        const compatible = new Y.Doc({ guid: "enum-compatible" });
+        createSqlCatalogObject(compatible, "enum", "CREATE TYPE task_state AS ENUM ('Open', ' Done ')");
+        const result = await cloneGridTablesAcrossProjects({
+            destinationDoc: compatible,
+            destinationProject: Project.fromDoc(compatible),
+            sourceProjectId: SOURCE_PROJECT_ID,
+            snapshots,
+            requestedSourceTableIds: [tableId],
+            copyData: false,
+            isDestinationCurrent: () => true,
+        });
+        expect(Object.keys(result?.tableIdMap ?? {})).toEqual([tableId]);
+        expect(listTables(compatible)).toHaveLength(1);
+    });
+
+    it("refuses an unresolved typed clipboard schema before creating destination state", async () => {
+        const source = new Y.Doc({ guid: "unresolved-enum-source" });
+        createSqlCatalogObject(source, "enum", "this is not a CREATE TYPE declaration");
+        const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
+        });
+        createGrid(source, tableId, { query: "SELECT * FROM tasks" });
+        const destination = new Y.Doc({ guid: "unresolved-enum-destination" });
+
+        await expect(cloneGridTablesAcrossProjects({
+            destinationDoc: destination,
+            destinationProject: Project.fromDoc(destination),
+            sourceProjectId: source.guid,
+            snapshots: { [tableId]: exportTableStructure(source, tableId) },
+            requestedSourceTableIds: [tableId],
+            copyData: false,
+            isDestinationCurrent: () => true,
+        })).rejects.toThrow('Required ENUM type "task_state" dependency evidence is unresolved');
+        expect(listTables(destination)).toEqual([]);
+    });
+
+    it("rechecks a compatible destination changed while clipboard planning is in flight", async () => {
+        const source = new Y.Doc({ guid: "held-enum-source" });
+        createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+        const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
+        });
+        createGrid(source, tableId, { query: "SELECT * FROM tasks ORDER BY state" });
+        const destination = new Y.Doc({ guid: "held-enum-destination" });
+        const destinationEnum = createSqlCatalogObject(
+            destination,
+            "enum",
+            "CREATE TYPE task_state AS ENUM ('Open', 'Closed')",
+        );
+        const pending = cloneGridTablesAcrossProjects({
+            destinationDoc: destination,
+            destinationProject: Project.fromDoc(destination),
+            sourceProjectId: source.guid,
+            snapshots: { [tableId]: exportTableStructure(source, tableId) },
+            requestedSourceTableIds: [tableId],
+            copyData: false,
+            isDestinationCurrent: () => true,
+        });
+        replaceSqlCatalogSource(
+            destination,
+            destinationEnum,
+            "CREATE TYPE task_state AS ENUM ('Closed', 'Open')",
+        );
+
+        await expect(pending).rejects.toThrow("Destination SQL catalog changed during structural transfer planning");
+        expect(listTables(destination)).toEqual([]);
+    });
     it("creates nothing at all when the destination refuses writes", async () => {
         const { doc: source, ordersId } = sourceProject();
         const destination = new Y.Doc({ guid: "read-only-destination" });
@@ -114,6 +213,31 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
         const destinationTableId = cloneResult!.tableIdMap[ordersId];
         expect(destinationTableId).not.toBe(ordersId);
         expect(getTableHandles(doc, destinationTableId)!.data.size).toBe(1);
+    });
+
+    it("refuses same-project copy-with-data when a retained value no longer fits the current ENUM", async () => {
+        const source = new Y.Doc({ guid: "same-project-invalid-enum-row" });
+        const enumId = createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+        const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
+        });
+        addRecord(getTableHandles(source, tableId)!, { state: "Closed" }, "one");
+        createGrid(source, tableId, { query: "SELECT * FROM tasks" });
+        const snapshots = { [tableId]: exportTableStructure(source, tableId) };
+        replaceSqlCatalogSource(source, enumId, "CREATE TYPE task_state AS ENUM ('Open')");
+
+        await expect(cloneGridTablesAcrossProjects({
+            destinationDoc: source,
+            destinationProject: Project.fromDoc(source),
+            sourceProjectId: source.guid,
+            snapshots,
+            requestedSourceTableIds: [tableId],
+            allowProvenanceReuse: false,
+            requestedVariant: "copy-with-data",
+            isDestinationCurrent: () => true,
+        })).rejects.toThrow();
+        expect(listTables(source)).toHaveLength(1);
+        expect(getTableHandles(source, tableId)?.data.get("one")?.get("state")).toBe("Closed");
     });
 
     it("creates an independent structure without rows when data is opted out", async () => {

@@ -4,10 +4,24 @@ interface Props {
     editable: boolean;
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    onEditStart?: () => void;
+    onEditEnd?: () => void;
     onRequestFocus?: () => void;
 }
 
-let { value, editable, ariaLabel, onCommit, onRequestFocus: _ }: Props = $props();
+let { value, editable, ariaLabel, onCommit, onEditStart, onEditEnd, onRequestFocus: _ }: Props = $props();
+let interactionActive = false;
+
+function beginEdit(): void {
+    if (!editable || interactionActive) return;
+    interactionActive = true;
+    onEditStart?.();
+}
+
+function endEdit(): void {
+    interactionActive = false;
+    onEditEnd?.();
+}
 
 const current = $derived(value === null || value === undefined ? "" : String(value).slice(0, 10));
 </script>
@@ -18,9 +32,17 @@ const current = $derived(value === null || value === undefined ? "" : String(val
     aria-label={ariaLabel || "Edit date"}
     value={current}
     disabled={!editable}
+    onfocus={beginEdit}
+    onblur={endEdit}
+    onpointerdown={beginEdit}
+    onkeydown={beginEdit}
     onchange={(e) => {
         const v = (e.target as HTMLInputElement).value;
-        onCommit(v === "" ? null : v);
+        try {
+            onCommit(v === "" ? null : v);
+        } finally {
+            endEdit();
+        }
     }}
 />
 

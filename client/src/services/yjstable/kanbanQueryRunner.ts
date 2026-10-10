@@ -205,7 +205,7 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
         const sqlName = getTableSqlName(this.projectDoc, settings.sourceTableId) ?? "";
         const authority = resolveBareIdMutationAuthority(settings.query, sqlName, schema, result.columns);
         const groupSchema = schema.columns.find(column => column.name === settings.groupField);
-        const declared = authority.status === "compatible"
+        const declared: KanbanLaneValue[] = authority.status === "compatible"
                 && authority.editableColumns.has(settings.groupField)
                 && groupSchema?.kind === "text"
                 && groupSchema.checkOptions

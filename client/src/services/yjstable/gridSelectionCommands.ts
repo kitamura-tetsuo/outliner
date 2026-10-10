@@ -77,6 +77,7 @@ export interface GridCommandContext {
     isNullableOf: (columnId: string) => boolean;
     /** Revalidated at the final write boundary for delayed bare-id actions. */
     canMutateBareId?: () => boolean;
+    writeBareCell?: (recordId: string, columnId: string, value: TableRecordValue) => void;
 }
 
 export interface GridWritableCellTarget {
@@ -201,14 +202,15 @@ export function convertReplacementText(
 
 /** Writes one resolved target cell through its row's addressing (`recordId` or `source`). Shared with `gridClipboard.ts`'s paste commit, which validates a whole target rectangle up front the same way a bulk command validates a whole selection. */
 export function writeWritableCell(
-    ctx: Pick<GridCommandContext, "handles" | "session" | "canMutateBareId">,
+    ctx: Pick<GridCommandContext, "handles" | "session" | "canMutateBareId" | "writeBareCell">,
     target: GridWritableCellTarget,
     value: TableRecordValue,
 ): void {
     const { rowTarget, columnId } = target;
     if (rowTarget.recordId !== undefined) {
         if (ctx.canMutateBareId?.() === false || !ctx.handles.data.has(rowTarget.recordId)) return;
-        setRecordValue(ctx.handles, rowTarget.recordId, columnId, value);
+        if (ctx.writeBareCell) ctx.writeBareCell(rowTarget.recordId, columnId, value);
+        else setRecordValue(ctx.handles, rowTarget.recordId, columnId, value);
         return;
     }
     if (rowTarget.source) {

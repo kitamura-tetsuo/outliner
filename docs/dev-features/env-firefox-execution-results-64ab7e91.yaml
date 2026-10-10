@@ -1,0 +1,20 @@
+id: ENV-64ab7e91
+title: Firefox E2E execution results preserve failures and browser evidence
+title-ja: Firefox E2E の実行結果で失敗とブラウザーの検証情報を保持する
+description: The Firefox selection execution reporter requires actual passing Firefox results and, when supplied, complete agreement with a fresh expected-case inventory. Real CLI tests exercise the production npm entrypoint, browser configuration, coverage-hook integration, and reporters. They verify actual Firefox and Playwright version evidence, deliberate assertion failures with initial-attempt trace/screenshot/console files, skip/fixme/expected-failure rejection, zero collection, missing Firefox, collection-only results, omitted cases, missing inventories, late teardown console capture, and report-write failures. Setup and test errors retain non-success through the shell and the manually invoked diagnostic workflow without changing ordinary PR CI.
+category: environment
+status: implemented
+components:
+- .github/workflows/firefox-selection-diagnostic.yml
+- client/e2e/reporters/firefox-execution-evidence.ts
+- client/e2e/reporters/firefox-selection-reporter.ts
+- client/e2e/utils/registerBrowserEvidenceHooks.ts
+- client/e2e/utils/registerCoverageHooks.ts
+- client/playwright.config.ts
+- docs/firefox-selection-e2e.md
+- scripts/tests/helpers/firefox-execution-fixture.ts
+tests:
+- scripts/tests/env-firefox-execution-results-64ab7e91.spec.ts
+commands:
+- E2E_BROWSER=firefox bash scripts/setup.sh
+- cd scripts/tests && npx vitest run env-firefox-execution-results-64ab7e91.spec.ts

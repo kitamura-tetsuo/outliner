@@ -485,10 +485,14 @@ install_os_utilities() {
     fi
   fi
 
-  ensure_playwright_browsers
+  # setup.sh installs OS libraries before npm dependencies. Its first pass is
+  # OS-only; browser preparation follows installation of the client CLI.
+  if [ "${1:-}" != "--os-only" ]; then
+    ensure_playwright_browsers
+  fi
 }
 
-# Make a Chromium build available to Playwright.
+# Make the requested browser available to Playwright (Chromium by default).
 #
 # Normally this is just `playwright install chromium`. When the browser CDN is
 # unreachable (sandboxes commonly allow only the npm registry), fall back to a
@@ -497,6 +501,7 @@ install_os_utilities() {
 # as launchOptions.executablePath. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH overrides
 # both.
 PLAYWRIGHT_BROWSERS_RESOLVED=""
+PLAYWRIGHT_FIREFOX_RESOLVED=""
 
 # The @playwright/test version resolved in client/package-lock.json, i.e. the
 # one the E2E suite runs with. Empty when it cannot be read.
@@ -505,6 +510,19 @@ playwright_pinned_version() {
 }
 
 ensure_playwright_browsers() {
+  local browser="${1:-${E2E_BROWSER:-chromium}}"
+  case "$browser" in
+    firefox)
+      ensure_playwright_firefox
+      return
+      ;;
+    chromium) ;;
+    *)
+      echo "Error: unsupported E2E browser '${browser}' (expected chromium or firefox)." >&2
+      return 1
+      ;;
+  esac
+
   local marker="${ROOT_DIR}/.playwright-chromium-path"
 
   # setup.sh reaches this through both install_os_utilities and its own explicit
@@ -566,6 +584,96 @@ ensure_playwright_browsers() {
   printf '%s\n' "$candidate" > "$marker"
   PLAYWRIGHT_BROWSERS_RESOLVED="preinstalled"
   return 0
+}
+
+# Firefox must use the browser revision belonging to the installed client
+# Playwright. A Chromium cache hit, executable override or fallback marker is
+# never evidence of Firefox availability. Check the real launch after every
+# setup process; do not silently replace Firefox with another browser.
+ensure_playwright_firefox() {
+  if [ -n "$PLAYWRIGHT_FIREFOX_RESOLVED" ]; then
+    return 0
+  fi
+
+  local pinned installed runtime_version core_version
+  pinned="$(playwright_pinned_version)"
+  if [ -z "$pinned" ]; then
+    echo "Error: cannot resolve Firefox's Playwright version from client/package-lock.json." >&2
+    return 1
+  fi
+  if ! installed=$(node -p "require('${ROOT_DIR}/client/node_modules/@playwright/test/package.json').version") \
+    || ! runtime_version=$(node -p "require('${ROOT_DIR}/client/node_modules/playwright/package.json').version") \
+    || ! core_version=$(node -p "require('${ROOT_DIR}/client/node_modules/playwright-core/package.json').version"); then
+    echo "Error: install the locked client dependencies with 'npm ci --prefix client' before preparing Firefox." >&2
+    return 1
+  fi
+  if [ "$installed" != "$pinned" ] || [ "$runtime_version" != "$pinned" ] || [ "$core_version" != "$pinned" ]; then
+    echo "Error: client Playwright versions do not match the lockfile (lock=${pinned}, test=${installed}, runtime=${runtime_version}, core=${core_version}). Run 'npm ci --prefix client'." >&2
+    return 1
+  fi
+
+  local cli="${ROOT_DIR}/client/node_modules/playwright/cli.js"
+  echo "Installing Playwright Firefox (${pinned})..."
+  if ! PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 node "$cli" install firefox; then
+    echo "Error: failed to install Playwright Firefox ${pinned}; Firefox execution cannot continue." >&2
+    return 1
+  fi
+  if apt_is_available; then
+    echo "Installing Firefox system dependencies..."
+    if ! node "$cli" install-deps firefox; then
+      echo "Error: failed to install Firefox system dependencies." >&2
+      return 1
+    fi
+  else
+    echo "Checking Firefox with the system libraries already installed."
+  fi
+
+  echo "Verifying an actual headless Firefox launch..."
+  if ! ROOT_DIR="$ROOT_DIR" node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const { firefox } = require(`${process.env.ROOT_DIR}/client/node_modules/playwright`);
+const { version } = require(`${process.env.ROOT_DIR}/client/node_modules/playwright/package.json`);
+const evidence = {
+  browserEngine: 'firefox',
+  browserVersion: null,
+  playwrightVersion: version,
+  executablePath: firefox.executablePath(),
+  project: process.env.E2E_PROJECT ?? null,
+  executionId: process.env.E2E_EXECUTION_ID ?? null,
+  status: 'launching',
+};
+function record() {
+  console.log(JSON.stringify(evidence));
+  if (process.env.E2E_BROWSER_RUNTIME_REPORT) {
+    const file = path.resolve(process.env.E2E_BROWSER_RUNTIME_REPORT);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${JSON.stringify(evidence, null, 2)}\n`);
+  }
+}
+(async () => {
+  let browser;
+  try {
+    browser = await firefox.launch({ headless: true });
+    evidence.browserEngine = browser.browserType().name();
+    evidence.browserVersion = browser.version();
+    await browser.close();
+    evidence.status = 'launched';
+    record();
+  } catch (error) {
+    evidence.status = 'failed';
+    evidence.error = error.stack ?? String(error);
+    record();
+    console.error(error);
+    process.exitCode = 1;
+  }
+})();
+NODE
+  then
+    echo "Error: Playwright Firefox could not launch; no Chromium fallback is allowed." >&2
+    return 1
+  fi
+  PLAYWRIGHT_FIREFOX_RESOLVED="$pinned"
 }
 
 # Re-run later to enforce node-canvas system requirements even if the main

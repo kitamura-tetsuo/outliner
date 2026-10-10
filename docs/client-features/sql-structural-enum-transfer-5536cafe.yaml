@@ -1,0 +1,17 @@
+id: SQL-5536cafe
+title: Safe structural transfers of ENUM-dependent objects
+title-ja: ENUM 依存オブジェクトの安全な構造転送
+description: Object Manager duplication compiles source-bound Table and query evidence before publishing and refuses cross-Project transfers when the destination lacks an exactly compatible ordered ENUM definition.
+category: client
+status: implemented
+components:
+- client/src/services/yjstable/structuralEnumGuard.ts
+- client/src/services/yjstable/objectDuplication.ts
+acceptance:
+- Structural duplication derives ENUM dependencies from actual Table schemas and saved queries
+- Cross-Project duplication accepts independently identified ENUMs only when SQL names and exact ordered labels match
+- Missing, incompatible, invalid, or stale evidence refuses the operation before destination objects are published
+- Catalog-independent duplication remains independent of unrelated catalog entries
+tests:
+- client/src/services/yjstable/structuralEnumGuard.test.ts
+- client/src/services/yjstable/objectDuplication.test.ts

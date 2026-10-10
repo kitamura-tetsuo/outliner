@@ -41,7 +41,7 @@ export interface CalendarQueryOutcome {
 }
 
 export async function runCalendarQuery(
-    session: Pick<TableEngineSession, "resolveRelation">,
+    session: Pick<TableEngineSession, "resolveRelation"> & Partial<Pick<TableEngineSession, "catalogReady">>,
     pgSchema: string,
     query: string,
     range?: CalendarRange,
@@ -52,6 +52,7 @@ export async function runCalendarQuery(
     if (!trimmed) return { result: { columns: [], rows: [] } };
 
     try {
+        await session.catalogReady?.();
         const selectSql = assertSelectQuery(trimmed, requireExplicitAliases);
         let result: TableQueryResult | undefined;
         for (let round = 0;; round++) {

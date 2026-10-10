@@ -156,8 +156,11 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             setSchemaText(handlesA, SCHEMA_A.replace("title TEXT", "title TEXT, note TEXT"));
             await waitFor(() => expect(queryByTestId("grid-readonly-reason")).not.toBeNull(), { timeout: 30000 });
             setSchemaText(handlesA, SCHEMA_A);
-            await waitFor(() => expect(queryByTestId("grid-readonly-reason")).toBeNull(), { timeout: 30000 });
-            expect(titleButton()?.textContent).toBe("Fresh edit");
+            await waitFor(() => {
+                expect(queryByTestId("yjs-table-query-error")).toBeNull();
+                expect(queryByTestId("grid-readonly-reason")).toBeNull();
+                expect(titleButton()?.textContent).toBe("Fresh edit");
+            }, { timeout: 30000 });
         } finally {
             unmount();
             await waitForTableEngineIdle();

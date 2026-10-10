@@ -2,16 +2,35 @@
 interface Props {
     value: unknown;
     editable: boolean;
-    /** Allowed values, read from the schema's CHECK (col IN (...)) constraint. */
+    /** Allowed values, read from CHECK metadata or scalar ENUM labels. */
     options?: string[];
     ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    onEditStart?: () => void;
+    onEditEnd?: () => void;
     onRequestFocus?: () => void;
 }
 
-let { value, editable, options = [], ariaLabel, onCommit, onRequestFocus: _ }: Props = $props();
+let { value, editable, options = [], ariaLabel, onCommit, onEditStart, onEditEnd, onRequestFocus: _ }: Props = $props();
+let interactionActive = false;
 
-const current = $derived(value === null || value === undefined ? "" : String(value));
+function beginEdit(): void {
+    if (!editable || interactionActive) return;
+    interactionActive = true;
+    onEditStart?.();
+}
+
+function endEdit(): void {
+    interactionActive = false;
+    onEditEnd?.();
+}
+
+const nullOption = $derived.by(() => {
+    let candidate = "__outliner_sql_null__";
+    while (options.includes(candidate)) candidate += "_";
+    return candidate;
+});
+const current = $derived(value === null || value === undefined ? nullOption : String(value));
 </script>
 
 <select
@@ -19,7 +38,13 @@ const current = $derived(value === null || value === undefined ? "" : String(val
     aria-label={ariaLabel || "Select value"}
     value={current}
     disabled={!editable}
-    onpointerdown={(e: Event) => e.stopPropagation()}
+    onfocus={beginEdit}
+    onblur={endEdit}
+    onkeydown={beginEdit}
+    onpointerdown={(e: Event) => {
+        beginEdit();
+        e.stopPropagation();
+    }}
     onmousedown={(e: Event) => e.stopPropagation()}
     onmouseup={(e: Event) => e.stopPropagation()}
     onclick={(e: Event) => {
@@ -28,14 +53,18 @@ const current = $derived(value === null || value === undefined ? "" : String(val
     }}
     onchange={(e) => {
         const v = (e.target as HTMLSelectElement).value;
-        onCommit(v === "" ? null : v);
+        try {
+            onCommit(v === nullOption ? null : v);
+        } finally {
+            endEdit();
+        }
     }}
 >
-    <option value=""></option>
+    <option value={nullOption}></option>
     {#each options as option (option)}
         <option value={option}>{option}</option>
     {/each}
-    {#if current !== "" && !options.includes(current)}
+    {#if current !== nullOption && !options.includes(current)}
         <option value={current}>{current}</option>
     {/if}
 </select>
