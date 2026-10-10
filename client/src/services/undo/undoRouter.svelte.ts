@@ -79,6 +79,27 @@ export interface ManualUndoEntry {
     redo: () => void;
 }
 
+export type AsyncUndoOutcome =
+    | { status: "applied"; }
+    | { status: "refused" | "unconfirmed" | "conflict" | "inactive"; reason: string; };
+
+/**
+ * A history entry whose authority lives behind an asynchronous service.
+ * Returning `applied` is the only outcome that consumes the entry. The entry
+ * itself owns all validation and reconciliation; the router only provides the
+ * pending barrier and atomic cursor movement.
+ */
+export interface AsyncUndoEntry {
+    type: "async";
+    label?: string;
+    projectId: string;
+    affectedObjectIds: readonly string[];
+    beforeSource: readonly unknown[];
+    afterSource: readonly unknown[];
+    isActive: () => boolean;
+    replay: (direction: "undo" | "redo") => Promise<AsyncUndoOutcome>;
+}
+
 /**
  * One user command that edited several scopes at once — a multi-cursor
  * command spanning outline Text and Diagram source (#5311, REQ-009). Its
@@ -103,7 +124,7 @@ export interface UndoScopeOptions {
     authorize?: () => boolean;
 }
 
-export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry | GroupUndoEntry;
+export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry | AsyncUndoEntry | GroupUndoEntry;
 
 export class UndoRouter {
     private undoStack: UndoRouterEntry[] = $state([]);
@@ -136,6 +157,8 @@ export class UndoRouter {
      * cancels its own increment.
      */
     private routingDepth = 0;
+    private pendingEntry: AsyncUndoEntry | undefined = $state();
+    private _lastAsyncOutcome: AsyncUndoOutcome | undefined = $state();
 
     public register(um: Y.UndoManager, options: UndoScopeOptions = {}): void {
         if (this.registered.has(um)) return;
@@ -269,12 +292,20 @@ export class UndoRouter {
     /** Reverse the most recent operation, whichever scope it belongs to. */
     public undo(): void {
         this.notifyBeforeHistory();
+        if (this.pendingEntry) {
+            this._lastAsyncOutcome = { status: "refused", reason: "A history operation is already pending" };
+            return;
+        }
         this.run(this.undoStack, this.redoStack, (um) => um.undo(), true);
     }
 
     /** Restore the most recently undone operation. */
     public redo(): void {
         this.notifyBeforeHistory();
+        if (this.pendingEntry) {
+            this._lastAsyncOutcome = { status: "refused", reason: "A history operation is already pending" };
+            return;
+        }
         this.run(this.redoStack, this.undoStack, (um) => um.redo(), false);
     }
 
@@ -436,6 +467,21 @@ export class UndoRouter {
         this.redoStack = [];
     }
 
+    /** Record an already-confirmed, effectful service mutation as one step. */
+    public captureAsync(entry: AsyncUndoEntry): void {
+        if (entry.affectedObjectIds.length === 0) return;
+        this.undoStack.push(entry);
+        this.redoStack = [];
+    }
+
+    public get isPending(): boolean {
+        return this.pendingEntry !== undefined;
+    }
+
+    public get lastAsyncOutcome(): AsyncUndoOutcome | undefined {
+        return this._lastAsyncOutcome;
+    }
+
     /** Combine several already-safe manual operations into one user-visible step. */
     public captureManualGroup(label: string, transact: () => boolean): boolean {
         const start = this.undoStack.length;
@@ -481,6 +527,8 @@ export class UndoRouter {
     public clear(): void {
         this.undoStack = [];
         this.redoStack = [];
+        // An in-flight entry is deliberately not cancelled. Its completion
+        // will see that it is no longer present and cannot repopulate history.
     }
 
     private authorizeEntry(entry: UndoRouterEntry): boolean {
@@ -539,6 +587,15 @@ export class UndoRouter {
                     return;
                 }
 
+                if ("type" in entry && entry.type === "async") {
+                    // Put it back until the service confirms the requested
+                    // source. New ordinary captures remain observable while it
+                    // waits because routingDepth is not held across the await.
+                    from.push(entry);
+                    this.startAsyncReplay(entry, from, to, isUndo ? "undo" : "redo");
+                    return;
+                }
+
                 if ("type" in entry && entry.type === "composite") {
                     if (apply(entry.mainManager)) {
                         if (isUndo) {
@@ -586,6 +643,47 @@ export class UndoRouter {
         } finally {
             this.routingDepth--;
         }
+    }
+
+    private startAsyncReplay(
+        entry: AsyncUndoEntry,
+        from: UndoRouterEntry[],
+        to: UndoRouterEntry[],
+        direction: "undo" | "redo",
+    ): void {
+        if (!entry.isActive()) {
+            this._lastAsyncOutcome = { status: "inactive", reason: "The Project session is no longer active" };
+            return;
+        }
+        this.pendingEntry = entry;
+        this._lastAsyncOutcome = undefined;
+        void entry.replay(direction).then(
+            outcome => {
+                if (!entry.isActive()) {
+                    this._lastAsyncOutcome = {
+                        status: "inactive",
+                        reason: "The Project session ended before history replay completed",
+                    };
+                    return;
+                }
+                this._lastAsyncOutcome = outcome;
+                if (outcome.status !== "applied") return;
+                const index = from.lastIndexOf(entry);
+                // clear()/unregister-style lifecycle teardown may have removed
+                // the captured entry while the request was in flight.
+                if (index === -1) return;
+                from.splice(index, 1);
+                to.push(entry);
+            },
+            error => {
+                this._lastAsyncOutcome = {
+                    status: "unconfirmed",
+                    reason: error instanceof Error ? error.message : String(error),
+                };
+            },
+        ).finally(() => {
+            if (this.pendingEntry === entry) this.pendingEntry = undefined;
+        });
     }
 }
 

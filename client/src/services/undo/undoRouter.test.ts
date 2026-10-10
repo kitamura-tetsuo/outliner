@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import type { AsyncUndoOutcome } from "./undoRouter.svelte";
 import { UndoRouter } from "./undoRouter.svelte";
+
+function deferredOutcome() {
+    let settle!: (outcome: AsyncUndoOutcome) => void;
+    const promise = new Promise<AsyncUndoOutcome>(resolve => settle = resolve);
+    return { promise, settle };
+}
 
 /** A scope: one doc, one map, one manager, registered with the router. */
 function scope(router: UndoRouter, name: string, trackedOrigins?: Set<unknown>) {
@@ -15,6 +22,90 @@ function scope(router: UndoRouter, name: string, trackedOrigins?: Set<unknown>) 
 }
 
 describe("UndoRouter", () => {
+    it("retains an asynchronous entry until confirmed and blocks repeated commands", async () => {
+        const router = new UndoRouter();
+        const pending = deferredOutcome();
+        let calls = 0;
+        router.captureAsync({
+            type: "async",
+            projectId: "project-a",
+            affectedObjectIds: ["enum-a"],
+            beforeSource: [],
+            afterSource: [{ id: "enum-a", source: "CREATE TYPE mood AS ENUM ('ok')" }],
+            isActive: () => true,
+            replay: () => {
+                calls++;
+                return pending.promise;
+            },
+        });
+
+        router.undo();
+        router.undo();
+        router.redo();
+        expect(calls).toBe(1);
+        expect(router.isPending).toBe(true);
+        expect(router.undoDepth).toBe(1);
+        expect(router.redoDepth).toBe(0);
+
+        pending.settle({ status: "applied" });
+        await pending.promise;
+        await Promise.resolve();
+        expect(router.isPending).toBe(false);
+        expect(router.undoDepth).toBe(0);
+        expect(router.redoDepth).toBe(1);
+    });
+
+    it("keeps refused asynchronous history and unrelated edits recorded while pending", async () => {
+        const router = new UndoRouter();
+        const pending = deferredOutcome();
+        const outline = scope(router, "outline");
+        router.captureAsync({
+            type: "async",
+            projectId: "project-a",
+            affectedObjectIds: ["enum-a"],
+            beforeSource: [],
+            afterSource: [{ id: "enum-a" }],
+            isActive: () => true,
+            replay: () => pending.promise,
+        });
+
+        router.undo();
+        outline.edit("unrelated", 1);
+        pending.settle({ status: "refused", reason: "referenced" });
+        await pending.promise;
+        await Promise.resolve();
+
+        expect(router.undoDepth).toBe(2);
+        expect(router.redoDepth).toBe(0);
+        expect(outline.map.get("unrelated")).toBe(1);
+        expect(router.lastAsyncOutcome).toEqual({ status: "refused", reason: "referenced" });
+    });
+
+    it("does not advance a captured entry after its Project lifecycle ends", async () => {
+        const router = new UndoRouter();
+        const pending = deferredOutcome();
+        let active = true;
+        router.captureAsync({
+            type: "async",
+            projectId: "project-a",
+            affectedObjectIds: ["enum-a"],
+            beforeSource: [],
+            afterSource: [{ id: "enum-a" }],
+            isActive: () => active,
+            replay: () => pending.promise,
+        });
+
+        router.undo();
+        active = false;
+        pending.settle({ status: "applied" });
+        await pending.promise;
+        await Promise.resolve();
+
+        expect(router.undoDepth).toBe(1);
+        expect(router.redoDepth).toBe(0);
+        expect(router.lastAsyncOutcome?.status).toBe("inactive");
+    });
+
     it("undoes across scopes in strict reverse chronological order", () => {
         const router = new UndoRouter();
         const outline = scope(router, "outline");
