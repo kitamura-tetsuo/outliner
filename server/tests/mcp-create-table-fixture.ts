@@ -6,6 +6,7 @@ import * as Y from "yjs";
 import { CreateTableTool } from "../src/mcp/create-table-tool.js";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
 import { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
+import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import {
     type CreateTableOptions,
     type CreateTableOutcome,
@@ -57,6 +58,7 @@ export interface Seams {
     now?: () => number;
     /** A delivery seam: rewrites the outcome after the real domain call established it. */
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
+    beforeRecordBatchPublication?: () => Promise<void>;
 }
 
 export async function startMcpTestServer() {
@@ -99,7 +101,10 @@ export async function startMcpTestServer() {
     app.use(express.json());
     app.use((req, _res, next) => context.run(req.header("x-request-id") ?? "", next));
     const reads = new OutlinerReadService(server.hocuspocus, gatedAccess, async () => []);
-    app.use(createMcpRouter(reads, undefined, undefined, server.mcpRelations, undefined, tool));
+    const relations = new OutlinerRelationService(server.hocuspocus, gatedAccess, {
+        beforeRecordBatchPublication: () => seams.beforeRecordBatchPublication?.() ?? Promise.resolve(),
+    });
+    app.use(createMcpRouter(reads, undefined, undefined, relations, undefined, tool));
     const mcp = rpcClient(app);
     return {
         acl,
