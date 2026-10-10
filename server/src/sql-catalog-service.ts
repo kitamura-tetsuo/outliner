@@ -45,6 +45,7 @@ export type SqlCatalogRefusalReason =
     | "occupied-id"
     | "missing-object"
     | "invalid-candidate"
+    | "referenced"
     | "reference-unknown";
 
 export interface SqlCatalogRefusal {
@@ -83,6 +84,7 @@ export type SqlCatalogApplyResult = SqlCatalogRefusal | {
 
 export type SqlCatalogReconciliation = {
     readonly status: "durable-match" | "live-only-match" | "conflict" | "unavailable";
+    readonly objectId: string;
     readonly desired: SqlCatalogSourceObject | undefined;
     readonly live?: SqlCatalogSnapshot;
     readonly durable?: SqlCatalogSnapshot;
@@ -98,6 +100,8 @@ export interface SqlCatalogServiceOptions {
     readonly loadStoredDocument?: (room: string) => Promise<Y.Doc | undefined>;
     /** Observable barrier after validation and before final authorization/capture. */
     readonly beforePublication?: () => Promise<void>;
+    /** Observable boundary after the source transaction and before durable acknowledgement. */
+    readonly afterMutationBeforeStore?: () => Promise<void>;
 }
 
 function messageOf(error: unknown): string {
@@ -277,6 +281,7 @@ export class SqlCatalogMutationService {
             }
             try {
                 if (observerError) throw observerError;
+                await this.options.afterMutationBeforeStore?.();
                 await this.storeDocument?.(`projects/${projectId}`, doc);
                 return {
                     status: "applied",
@@ -303,41 +308,43 @@ export class SqlCatalogMutationService {
     async reconcile(
         uid: string,
         projectId: string,
-        desired: SqlCatalogSourceObject | undefined,
+        intended: SqlCatalogSourceObject | { readonly objectId: string; readonly object?: SqlCatalogSourceObject; },
     ): Promise<SqlCatalogReconciliation> {
         this.assertProjectId(projectId);
+        const desired = "objectId" in intended ? intended.object : intended;
+        const objectId = "objectId" in intended ? intended.objectId : intended.id;
+        if (!OBJECT_ID.test(objectId) || desired && desired.id !== objectId) {
+            throw new McpReadError("invalid_argument", "Invalid reconciliation object identity");
+        }
         if (desired) this.assertObject(desired);
         await this.authorize(uid, projectId);
         let live: SqlCatalogSnapshot;
         try {
             live = await this.read(uid, projectId);
         } catch {
-            return { status: "unavailable", desired };
+            return { status: "unavailable", objectId, desired };
         }
-        const id = desired?.id;
-        const liveMatch = id
-            ? stable(objectFor(live, id)) === stable(desired)
-            : false;
+        const matches = (snapshot: SqlCatalogSnapshot) =>
+            desired
+                ? stable(objectFor(snapshot, objectId)) === stable(desired)
+                : objectFor(snapshot, objectId) === undefined;
+        const liveMatch = matches(live);
         if (!this.options.loadStoredDocument) {
-            return { status: liveMatch ? "live-only-match" : "unavailable", desired, live };
+            return { status: liveMatch ? "live-only-match" : "unavailable", objectId, desired, live };
         }
         let durable: SqlCatalogSnapshot;
         try {
             const stored = await this.options.loadStoredDocument(`projects/${projectId}`);
-            if (!stored) return { status: "unavailable", desired, live };
+            if (!stored) return { status: "unavailable", objectId, desired, live };
             durable = catalogOrThrow(projectId, stored);
         } catch {
-            return { status: "unavailable", desired, live };
+            return { status: "unavailable", objectId, desired, live };
         }
-        const matches = (snapshot: SqlCatalogSnapshot) =>
-            desired
-                ? stable(objectFor(snapshot, desired.id)) === stable(desired)
-                : snapshot.objects.length === 0;
         if (matches(live) && matches(durable) && live.revision === durable.revision) {
-            return { status: "durable-match", desired, live, durable };
+            return { status: "durable-match", objectId, desired, live, durable };
         }
-        if (matches(live)) return { status: "live-only-match", desired, live, durable };
-        return { status: "conflict", desired, live, durable };
+        if (matches(live)) return { status: "live-only-match", objectId, desired, live, durable };
+        return { status: "conflict", objectId, desired, live, durable };
     }
 
     private async preview(
@@ -365,8 +372,19 @@ export class SqlCatalogMutationService {
                 affected,
             );
         }
+        const currentCompiled = await compileSqlEnvironment(captured.input);
+        if (currentCompiled.status === "failed") {
+            const unknown = currentCompiled.dependencies.some(dependency => dependency.status === "incomplete");
+            return this.refusal(
+                before,
+                unknown ? "reference-unknown" : "invalid-candidate",
+                currentCompiled.diagnostics,
+                affected,
+            );
+        }
         const compiled = await compileSqlEnvironment({ ...captured.input, catalog: after });
         if (compiled.status === "failed") {
+            await currentCompiled.environment.dispose();
             const unknown = compiled.dependencies.some(dependency => dependency.status === "incomplete");
             return this.refusal(
                 before,
@@ -376,6 +394,27 @@ export class SqlCatalogMutationService {
             );
         }
         try {
+            const previousEnum = currentCompiled.environment.enums.find(metadata => metadata.objectId === affected[0]);
+            const candidateEnum = compiled.environment.enums.find(metadata => metadata.objectId === affected[0]);
+            const removesLabels = previousEnum !== undefined && candidateEnum !== undefined
+                && previousEnum.labels.some(label => !candidateEnum.labels.includes(label));
+            const previousReferences = currentCompiled.environment.dependencies
+                .filter(dependency => dependency.requiredEnums.some(required => required.objectId === affected[0]))
+                .map(dependency => dependency.referencingId);
+            if (removesLabels && previousReferences.length > 0) {
+                return this.refusal(
+                    before,
+                    "referenced",
+                    [{
+                        kind: "dependency",
+                        objectId: affected[0],
+                        message: `Referenced ENUM labels cannot be removed; referenced by ${
+                            previousReferences.join(", ")
+                        }`,
+                    }],
+                    affected,
+                );
+            }
             const references = compiled.environment.dependencies
                 .filter(dependency => dependency.requiredEnums.some(required => affected.includes(required.objectId)))
                 .map(dependency => dependency.referencingId);
@@ -389,6 +428,7 @@ export class SqlCatalogMutationService {
                 referenceObjectIds: [...new Set(references)].sort(),
             };
         } finally {
+            await currentCompiled.environment.dispose();
             await compiled.environment.dispose();
         }
     }
