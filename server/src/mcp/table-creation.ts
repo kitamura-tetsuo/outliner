@@ -5,7 +5,7 @@ import * as Y from "yjs";
 import type { DocumentStore } from "../persistence.js";
 import { closeLiveRoom, type DirectConnection, isLiveRoom, openLiveRoom, releaseWithoutStore } from "./live-room.js";
 import { McpReadError } from "./mcp-error.js";
-import { acquireDb, tableContentRevision } from "./relation-service.js";
+import { acquireDb, materializeProjectCatalog, tableContentRevision } from "./relation-service.js";
 
 /**
  * Authoritative server-side creation of one standalone, empty, project-owned
@@ -145,7 +145,7 @@ export class OutlinerTableCreationService {
             if (Y.encodeStateVector(project).length <= 1) {
                 throw new McpReadError("not_found", "Project not found", { outcome: "not_published" });
             }
-            const sqlName = await this.resolveSqlName(schemaSql);
+            const sqlName = await this.resolveSqlName(schemaSql, projectId, project);
             this.assertNameUnclaimed(project, sqlName);
             const candidate: CandidateMetadata = { displayName: name, sqlName, schemaSql };
 
@@ -356,11 +356,12 @@ export class OutlinerTableCreationService {
      * must run in an otherwise empty isolated PGlite database and leave
      * exactly one ordinary, permanent, empty base table in `public`.
      */
-    private async resolveSqlName(schemaSql: string): Promise<string> {
+    private async resolveSqlName(schemaSql: string, projectId: string, project: Y.Doc): Promise<string> {
         const syntaxError = checkCreateTableShape(schemaSql);
         if (syntaxError) throw this.schemaRejection(syntaxError);
         const lease = await acquireDb();
         try {
+            await materializeProjectCatalog(lease.db, projectId, project);
             if ((await userRelations(lease.db)).length > 0) {
                 throw new McpReadError("internal_failure", "Schema validation database is not isolated", {
                     outcome: "not_published",
