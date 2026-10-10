@@ -241,10 +241,11 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
         }
     });
 
-    it("keeps the standalone surface readable, copyable, and non-writable for a nested-comment comma query", async () => {
-        // The standalone `/-/grids/[gridId]` route renders this same
-        // YjsTableView through GridDetailView; this second mount exercises
-        // that boundary with the nested-comment variant (issue #5547 REQ-001).
+    it("keeps the embedded surface readable, copyable, and non-writable for a nested-comment comma query", async () => {
+        // This mount exercises the embedded YjsTableView boundary directly
+        // with the nested-comment variant (issue #5547 REQ-001). Standalone
+        // `/-/grids/[gridId]` (GridDetailView) refusal is covered by the
+        // dedicated route spec alongside it.
         const { projectDoc, tableA, handlesA, handlesB } = seedTables("proj-comma-view-standalone");
         const { gridId, grid, view } = mountEmbedded(projectDoc, tableA, handlesA, BASE_A);
         const surface = () => view.getByTestId("yjs-table-view");
@@ -294,6 +295,91 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
             expect(getGridQuery(grid)).toBe(NESTED_COMMA_QUERY);
+            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+        } finally {
+            view.unmount();
+            await waitForTableEngineIdle();
+        }
+    });
+
+    it("copies each duplicate cross-join occurrence independently while refusing writes", async () => {
+        // Both result occurrences share the bare id r1, but their
+        // other_title values differ per joined B row. Selection and copy
+        // must address occurrences, not the shared logical id, or every
+        // occurrence would copy the last row's value (issue #5547 REQ-002).
+        const projectDoc = new Y.Doc({ guid: "proj-comma-view-duplicate-copy" });
+        const tableA = createTable(projectDoc, "Table A", "tasks_a");
+        const tableB = createTable(projectDoc, "Table B", "tasks_b");
+        const handlesA = getTableHandles(projectDoc, tableA)!;
+        const handlesB = getTableHandles(projectDoc, tableB)!;
+        setSchemaText(handlesA, SCHEMA_A);
+        setSchemaText(handlesB, SCHEMA_B);
+        addRecord(handlesA, { title: "Value in A" }, "r1");
+        addRecord(handlesB, { title: "First" }, "b1");
+        addRecord(handlesB, { title: "Second" }, "b2");
+        const query = "SELECT a.id, a.title, b.title AS other_title FROM tasks_a AS a, tasks_b AS b ORDER BY b.id";
+        const { gridId, grid, view } = mountEmbedded(projectDoc, tableA, handlesA, BASE_A);
+        const surface = () => view.getByTestId("yjs-table-view");
+        const otherCells = () =>
+            Array.from(
+                surface().querySelectorAll('tbody tr td[data-col="other_title"]'),
+            ) as HTMLElement[];
+        try {
+            setGridQuery(grid, query);
+            expect(getGridQuery(grid)).toBe(query);
+            const completedId = await awaitCompletedQuery(gridId, query);
+            const render = renderStageFor(gridId, completedId);
+            if (render?.stage !== "render") throw new Error("expected a render stage");
+            expect(render.rowCount).toBe(2);
+            expect(render.sample.map((row) => row.id)).toEqual(["r1", "r1"]);
+            await waitFor(
+                () =>
+                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toMatch(
+                        /multiple sources|several tables/,
+                    ),
+                { timeout: 30000 },
+            );
+            await waitFor(() => expect(otherCells()).toHaveLength(2), { timeout: 30000 });
+            expect(otherCells()[0]?.textContent).toContain("First");
+            expect(otherCells()[1]?.textContent).toContain("Second");
+            const undoBefore = undoDepths(handlesA, handlesB);
+
+            const write = vi.fn().mockResolvedValue(undefined);
+            vi.stubGlobal("ClipboardItem", StubClipboardItem);
+            Object.defineProperty(navigator, "clipboard", {
+                value: { write, readText: vi.fn().mockResolvedValue("") },
+                configurable: true,
+            });
+            const payloadText = async () => {
+                await waitFor(() => expect(write).toHaveBeenCalled(), { timeout: 10000 });
+                const item = write.mock.calls[write.mock.calls.length - 1][0][0] as ClipboardItem;
+                return await (await item.getType("text/plain")).text();
+            };
+
+            // First occurrence copies First only.
+            await fireEvent.click(otherCells()[0]!);
+            await fireEvent.keyDown(otherCells()[0]!.querySelector("button")!, { key: "c", ctrlKey: true });
+            expect(await payloadText()).toBe("First");
+            write.mockClear();
+
+            // Second occurrence copies Second only.
+            await fireEvent.click(otherCells()[1]!);
+            await fireEvent.keyDown(otherCells()[1]!.querySelector("button")!, { key: "c", ctrlKey: true });
+            expect(await payloadText()).toBe("Second");
+            write.mockClear();
+
+            // A range over both occurrences preserves order and values.
+            await fireEvent.click(otherCells()[0]!);
+            await fireEvent.click(otherCells()[1]!, { shiftKey: true });
+            await fireEvent.keyDown(otherCells()[1]!.querySelector("button")!, { key: "c", ctrlKey: true });
+            expect(await payloadText()).toBe("First\nSecond");
+
+            // Nothing was written through the refused result.
+            expect(handlesA.data.get("r1")?.get("title")).toBe("Value in A");
+            expect(handlesB.data.get("b1")?.get("title")).toBe("First");
+            expect(handlesB.data.get("b2")?.get("title")).toBe("Second");
+            expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
+            expect(getGridQuery(grid)).toBe(query);
             expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
         } finally {
             view.unmount();

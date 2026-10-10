@@ -204,6 +204,57 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
         }
     });
 
+    it("refuses a comma join hidden behind a CR-terminated line comment", async () => {
+        const projectId = "proj-comma-join-cr-comment";
+        const { projectDoc, tableA, tableB, handlesA, handlesB } = seedTables(projectId);
+        const schema = await parseCreateTable(SCHEMA_SQL);
+        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const grid = getGridHandles(projectDoc, gridId)!;
+
+        const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+        try {
+            const acquired = await session.acquire(tableA);
+            await session.acquire(tableB);
+            // PostgreSQL ends a `--` comment at CR, so the comma on the next
+            // visual line still joins tasks_b even though the noise scanner
+            // used to swallow it while searching only for LF (issue #5547).
+            for (
+                const query of [
+                    "SELECT a.id, a.title FROM tasks_a AS a -- comment\r, tasks_b AS b LIMIT 1",
+                    "SELECT a.id, a.title FROM tasks_a AS a -- comment\n, tasks_b AS b LIMIT 1",
+                ]
+            ) {
+                const { result, execution } = await runSavedQuery(grid, acquired!, query);
+                expect(getGridQuery(grid), query).toBe(query);
+                expect(result.rows.length, query).toBeGreaterThan(0);
+
+                const authority = resolveBareIdMutationAuthority(
+                    execution.query,
+                    "tasks_a",
+                    schema,
+                    result.columns,
+                );
+                expect(authority.status, query).toBe("unavailable");
+                expect(authority.reason, query).toMatch(/multiple sources|several tables/);
+                const editability = analyzeQueryEditability(getGridQuery(grid), schema, result.columns, authority);
+                expect(editability.editable, query).toBe(false);
+
+                const before = snapshotOf(handlesA, handlesB);
+                const ctx = commandContextFor(handlesA, result, editability, []);
+                const titleSelection = new GridSelection();
+                titleSelection.select({ rowId: "row-0", columnId: "title" });
+                expect(applyValueToSelection(titleSelection, ctx, "Hacked").applied, query).toBe(false);
+                removeRowTargets(ctx, [...ctx.rowTargets.values()]);
+                expect(snapshotOf(handlesA, handlesB), query).toEqual(before);
+                expect(getGridQuery(grid), query).toBe(query);
+                expect(getGridSourceTableId(projectDoc, gridId), query).toBe(tableA);
+            }
+        } finally {
+            session.dispose();
+            await waitForTableEngineIdle();
+        }
+    });
+
     it("refuses checkbox/select/clear/paste/delete on a refused comma result", async () => {
         const projectId = "proj-comma-join-variants";
         const { projectDoc, tableA, tableB, handlesA, handlesB } = seedTables(projectId);

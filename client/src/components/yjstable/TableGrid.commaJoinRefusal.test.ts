@@ -224,6 +224,79 @@ describe("TableGrid comma-join refusal (issue #5547)", () => {
         }
     });
 
+    it("copies each duplicate cross-join occurrence independently", async () => {
+        // Both combined rows share the bare id r1 with different joined
+        // values. Occurrence-aware selection identity must keep them
+        // distinct, or every occurrence would copy the last row (issue #5547).
+        const { handlesA, grid } = seedTables();
+        const columns = ["id", "title", "other_title"];
+        const query = "SELECT a.id, a.title, b.title AS other_title FROM tasks_a AS a, tasks_b AS b ORDER BY b.id";
+        const bareIdAuthority = resolveBareIdMutationAuthority(query, "tasks_a", schema, columns);
+        expect(bareIdAuthority.status).toBe("unavailable");
+        const view = render(TableGrid, {
+            props: {
+                grid,
+                handles: handlesA,
+                schema,
+                query,
+                result: {
+                    columns,
+                    rows: [
+                        { id: "r1", title: "Value in A", other_title: "First" },
+                        { id: "r1", title: "Value in A", other_title: "Second" },
+                    ],
+                },
+                bareIdAuthority,
+                componentTypes: {},
+                columnLabels: {},
+                hiddenColumns: {},
+                columnOrder: ["title", "other_title"],
+                session,
+                placementId: "comma-duplicate-copy",
+                pageId: "comma-page",
+            },
+        });
+        try {
+            expect(view.queryByTestId("grid-readonly-reason")?.textContent).toMatch(/multiple sources|several tables/);
+            const write = vi.fn().mockResolvedValue(undefined);
+            vi.stubGlobal(
+                "ClipboardItem",
+                class {
+                    constructor(private readonly parts: Record<string, Blob>) {}
+                    getType(mime: string): Promise<Blob> {
+                        return Promise.resolve(this.parts[mime]);
+                    }
+                },
+            );
+            Object.defineProperty(navigator, "clipboard", {
+                value: { write, readText: vi.fn().mockResolvedValue("") },
+                configurable: true,
+            });
+            const cells = () => Array.from(view.container.querySelectorAll<HTMLElement>('td[data-col="other_title"]'));
+            expect(cells()).toHaveLength(2);
+            const payloadText = async () => {
+                await vi.waitFor(() => expect(write).toHaveBeenCalled());
+                const item = write.mock.calls[write.mock.calls.length - 1][0][0] as ClipboardItem;
+                return await (await item.getType("text/plain")).text();
+            };
+            await fireEvent.click(cells()[0]!);
+            await fireEvent.keyDown(cells()[0]!.querySelector("button")!, { key: "c", ctrlKey: true });
+            expect(await payloadText()).toBe("First");
+            write.mockClear();
+            await fireEvent.click(cells()[1]!);
+            await fireEvent.keyDown(cells()[1]!.querySelector("button")!, { key: "c", ctrlKey: true });
+            expect(await payloadText()).toBe("Second");
+            write.mockClear();
+            await fireEvent.click(cells()[0]!);
+            await fireEvent.click(cells()[1]!, { shiftKey: true });
+            await fireEvent.keyDown(cells()[1]!.querySelector("button")!, { key: "c", ctrlKey: true });
+            expect(await payloadText()).toBe("First\nSecond");
+        } finally {
+            vi.unstubAllGlobals();
+            view.unmount();
+        }
+    });
+
     it("keeps the refused result selectable and copyable", async () => {
         const { handlesA, grid } = seedTables();
         const view = await mountRefused(handlesA, grid);

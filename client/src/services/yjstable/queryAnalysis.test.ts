@@ -50,6 +50,11 @@ describe("resolveBareIdMutationAuthority", () => {
             // comma after the second terminator still joins a second source.
             "SELECT a.id, a.title FROM tasks AS a /* outer /* inner */ WHERE ignored */ , other_tasks AS b LIMIT 1",
             "SELECT a.id, a.title FROM tasks AS a /* outer /* inner /* deep */ still outer */ , other_tasks AS b",
+            // PostgreSQL ends a `--` line comment at CR as well as LF, so a
+            // comma after a CR-terminated comment still joins a second source
+            // (issue #5547: the noise scanner must not swallow it).
+            "SELECT a.id, a.title FROM tasks AS a -- comment\r, other_tasks AS b LIMIT 1",
+            "SELECT a.id, a.title FROM tasks AS a -- comment\r\n, other_tasks AS b LIMIT 1",
         ];
         for (const query of cases) {
             const authority = resolveBareIdMutationAuthority(query, "tasks", schema, ["id", "title"]);

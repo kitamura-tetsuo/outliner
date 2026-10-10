@@ -16,7 +16,11 @@ function scanSqlNoise(sql: string, keepDoubleQuoted: boolean): string {
         const char = sql[index]!;
         const next = sql[index + 1];
         if (char === "-" && next === "-") {
-            const end = sql.indexOf("\n", index + 2);
+            // PostgreSQL ends a `--` line comment at a newline, where CR
+            // counts: `-- c\r, b` hides nothing from the engine (issue #5547).
+            const lf = sql.indexOf("\n", index + 2);
+            const cr = sql.indexOf("\r", index + 2);
+            const end = lf < 0 ? cr : cr < 0 ? lf : Math.min(lf, cr);
             out += " ";
             index = end < 0 ? sql.length : end;
             continue;
@@ -117,7 +121,9 @@ export function parseTopLevelInsertTarget(sql: string): string | undefined {
             continue;
         }
         if (current === "-" && next === "-") {
-            index = sql.indexOf("\n", index + 2);
+            const lf = sql.indexOf("\n", index + 2);
+            const cr = sql.indexOf("\r", index + 2);
+            index = lf < 0 ? cr : cr < 0 ? lf : Math.min(lf, cr);
             if (index < 0) return undefined;
             continue;
         }
