@@ -145,7 +145,7 @@ export abstract class TableQueryRunnerBase {
         this.started = true;
         this.observeQuerySource();
         this.unsubscribeSource = this.sourceAdapter.subscribe({
-            onSchemaChanged: () => this.scheduleRequery(),
+            onSchemaChanged: () => this.scheduleRequery(true),
             onDataApplied: () => this.scheduleRequery(),
         });
         this.scheduleRequery();
@@ -165,15 +165,24 @@ export abstract class TableQueryRunnerBase {
 
     /** Called by a subclass when its query text changed. */
     protected invalidateQuery(): void {
-        this.scheduleRequery();
+        this.scheduleRequery(true);
     }
 
     /** Debounced re-run of the query. */
-    scheduleRequery(): void {
+    scheduleRequery(invalidateCompletedExecution = false): void {
         if (this.disposed) return;
         this.onInputsInvalidated();
-        this.lastExecution = undefined;
-        for (const listener of this.listeners) listener.onInvalidated?.();
+        // A schema/catalog or query-definition change revokes the provenance
+        // of the completed execution immediately. A data notification does
+        // not: bulk writes intentionally apply several fields in one Yjs
+        // transaction, and revoking row/column authority after the first
+        // field would leave that transaction partially applied. The
+        // generation below still prevents an older in-flight data query from
+        // publishing after any kind of invalidation.
+        if (invalidateCompletedExecution) {
+            this.lastExecution = undefined;
+            for (const listener of this.listeners) listener.onInvalidated?.();
+        }
         // Invalidate an execution that is already in flight immediately. The
         // replacement remains debounced, but an old completion must not be
         // published during that debounce window after query/schema/data input
