@@ -464,7 +464,10 @@ export class UndoRouter {
      * during it is purged (via `runAsyncWithoutAutoCapture`) and replaced by
      * exactly one `entry` this caller fully controls.
      */
-    public async captureManualAsync(mutate: () => Promise<void>, entry: ManualUndoEntry): Promise<void> {
+    public async captureManualAsync(
+        mutate: () => Promise<void>,
+        entry: ManualUndoEntry | AsyncUndoEntry,
+    ): Promise<void> {
         await this.runAsyncWithoutAutoCapture(mutate);
         this.undoStack.push(entry);
         this.clearRedoForNewCapture();

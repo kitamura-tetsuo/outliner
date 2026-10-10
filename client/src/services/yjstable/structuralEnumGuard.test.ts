@@ -1,6 +1,9 @@
+import { Project } from "$shared/app-schema";
 import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { duplicateSelectedObjects, getObjects } from "../objectManager/objectManagerController";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid } from "./gridDocs";
 import { duplicateObjects } from "./objectDuplication";
 import { createTable, getTableHandles, listTables } from "./tableDocs";
@@ -62,5 +65,50 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
         );
         await expect(duplicateObjects(source.doc, destination.doc, { type: "table", id: source.tableId }, "item-only"))
             .rejects.toThrow('Required ENUM type "task_state" is missing or incompatible');
+    });
+
+    it("does not consume guarded redo when destination meaning changed", async () => {
+        globalUndoRouter.clear();
+        const source = typedProject("enum-redo-source", ["Open", "Closed"]);
+        const destination = typedProject("enum-redo-destination", ["Open", "Closed"]);
+        const selected = getObjects(Project.fromDoc(source.doc)).filter(object => object.id === source.tableId);
+        const result = await duplicateSelectedObjects(source.doc, destination.doc, selected, { copyTableData: true });
+        expect(result).not.toBeNull();
+
+        globalUndoRouter.undo();
+        await expect.poll(() => globalUndoRouter.isPending, { timeout: 30_000 }).toBe(false);
+        expect(listTables(destination.doc)).toHaveLength(1);
+        const redoDepth = globalUndoRouter.redoDepth;
+        const undoDepth = globalUndoRouter.undoDepth;
+        replaceSqlCatalogSource(
+            destination.doc,
+            destination.enumId,
+            "CREATE TYPE task_state AS ENUM ('Closed', 'Open')",
+        );
+
+        globalUndoRouter.redo();
+        await expect.poll(() => globalUndoRouter.isPending, { timeout: 30_000 }).toBe(false);
+        expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("refused");
+        expect(globalUndoRouter.redoDepth).toBe(redoDepth);
+        expect(globalUndoRouter.undoDepth).toBe(undoDepth);
+        expect(listTables(destination.doc)).toHaveLength(1);
+    });
+
+    it("keeps plain TEXT duplication independent of unrelated invalid catalog source", async () => {
+        const plain = new Y.Doc({ guid: "plain-with-unrelated-catalog" });
+        createSqlCatalogObject(plain, "enum", "this is not a catalog declaration");
+        const tableId = createTable(plain, "Notes", "notes", undefined, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT)");
+            const row = new Y.Map<string>();
+            row.set("id", "one");
+            row.set("body", "unchanged");
+            handles.data.set("one", row);
+        });
+
+        const result = await duplicateObjects(plain, plain, { type: "table", id: tableId }, "item-only", {
+            copyTableData: true,
+        });
+        expect(listTables(plain)).toHaveLength(2);
+        expect(getTableHandles(plain, result.primaryId)?.data.get("one")?.get("body")).toBe("unchanged");
     });
 });

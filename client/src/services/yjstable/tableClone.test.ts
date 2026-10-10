@@ -84,7 +84,7 @@ describe("table structure export", () => {
         const { doc, ordersId } = sourceProject();
         const snapshot = exportTableStructure(doc, ordersId);
 
-        expect(snapshot).toEqual({
+        expect(snapshot).toMatchObject({
             sourceTableId: ordersId,
             name: "受注",
             sqlName: "orders",
@@ -97,6 +97,7 @@ describe("table structure export", () => {
                 showAddRowButton: true,
             },
         });
+        expect(snapshot.catalog).toMatchObject({ projectId: "source-project", format: 1, objects: [] });
         expect("data" in snapshot).toBe(false);
         expect(snapshot.ui.components).not.toBeInstanceOf(Y.Map);
         expect(Array.isArray(snapshot.ui.columnOrder)).toBe(true);

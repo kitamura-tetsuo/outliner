@@ -25,6 +25,29 @@ export interface StructuralSqlSnapshot {
     inspections: readonly SqlInspectionTarget[];
 }
 
+function declaredEnumNames(snapshot: StructuralSqlSnapshot): string[] {
+    return snapshot.catalog.objects.flatMap(object => {
+        const match = /^\s*CREATE\s+TYPE\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))\s+AS\s+ENUM\b/i
+            .exec(object.source);
+        return match ? [(match[1]?.replaceAll('""', '"') ?? match[2]).toLowerCase()] : [];
+    });
+}
+
+function relevantSql(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): string[] {
+    return [
+        ...snapshot.tables.filter(table => relevantIds.has(table.id)).map(table => table.schema),
+        ...snapshot.inspections.filter(item => relevantIds.has(item.id)).map(item => item.sql),
+    ];
+}
+
+/** Fast negative proof: unrelated catalog entries cannot affect plain SQL. */
+function referencesCapturedEnum(snapshot: StructuralSqlSnapshot, relevantIds: ReadonlySet<string>): boolean {
+    const sql = relevantSql(snapshot, relevantIds).join("\n").toLowerCase();
+    return declaredEnumNames(snapshot).some(name =>
+        new RegExp(`(^|[^a-z0-9_$])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9_$]|$)`).test(sql)
+    );
+}
+
 function records(doc: Y.Doc, tableId: string): SqlTableSnapshot["records"] {
     const handles = getTableHandles(doc, tableId);
     if (!handles) throw new StructuralEnumCompatibilityError(`Table "${tableId}" dependency evidence is unavailable.`);
@@ -84,7 +107,7 @@ export async function assertStructuralEnumCompatibility(
     // Catalog-independent transfers must not become coupled to unrelated
     // catalog/runtime work (REQ-006). With no source declarations there is no
     // portable custom type whose meaning can be lost.
-    if (source.catalog.objects.length === 0) return;
+    if (source.catalog.objects.length === 0 || !referencesCapturedEnum(source, relevantIds)) return;
     const destination = captureStructuralSqlSnapshot(destinationDoc);
     const sourceResult = await compileSqlEnvironment(source as SqlEnvironmentInput);
     if (sourceResult.status !== "ready") {
@@ -137,5 +160,44 @@ export async function assertStructuralEnumCompatibility(
         throw new StructuralEnumCompatibilityError(
             "SQL dependency evidence changed while the structural transfer was being planned.",
         );
+    }
+}
+
+/** Guard a portable clipboard plan using the catalog captured at Copy time. */
+export async function assertPortableStructuralEnumCompatibility(
+    destinationDoc: Y.Doc,
+    source: StructuralSqlSnapshot,
+    relevantIds: ReadonlySet<string>,
+): Promise<void> {
+    if (source.catalog.objects.length === 0 || !referencesCapturedEnum(source, relevantIds)) return;
+    const destination = captureStructuralSqlSnapshot(destinationDoc);
+    const sourceResult = await compileSqlEnvironment(source as SqlEnvironmentInput);
+    if (sourceResult.status !== "ready") {
+        throw new StructuralEnumCompatibilityError("Structural transfer dependency evidence is unresolved or invalid.");
+    }
+    const destinationResult = await compileSqlEnvironment(destination as SqlEnvironmentInput);
+    try {
+        if (destinationResult.status !== "ready") {
+            throw new StructuralEnumCompatibilityError("Destination SQL catalog dependency evidence is unavailable.");
+        }
+        const relevant = evidenceFor(sourceResult.environment.dependencies, relevantIds);
+        if (relevant.some(item => item.status !== "complete")) {
+            throw new StructuralEnumCompatibilityError("Structural transfer dependency evidence is incomplete.");
+        }
+        const ids = new Set(relevant.flatMap(item => item.requiredEnums.map(required => required.objectId)));
+        for (const expected of sourceResult.environment.enums.filter(item => ids.has(item.objectId))) {
+            const actual = destinationResult.environment.enums.find(item => item.name === expected.name);
+            if (
+                !actual || actual.labels.length !== expected.labels.length
+                || actual.labels.some((label, index) => label !== expected.labels[index])
+            ) {
+                throw new StructuralEnumCompatibilityError(
+                    `Required ENUM type "${expected.name}" is missing or incompatible in the destination Project.`,
+                );
+            }
+        }
+    } finally {
+        await sourceResult.environment.dispose();
+        if (destinationResult.status === "ready") await destinationResult.environment.dispose();
     }
 }

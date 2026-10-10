@@ -1,4 +1,5 @@
 import { isValidGridColumnWidth } from "$shared/services/gridDefinition";
+import type { SqlCatalogSnapshot } from "$shared/services/sqlCatalog";
 import type { CalendarSettings } from "../calendar/calendarService";
 import {
     canAcceptChild,
@@ -74,6 +75,8 @@ export interface GridTableSnapshot {
     sqlName: string;
     schemaSql: string;
     ui: GridUiDefinitionDto;
+    /** Immutable project-bound type authority captured with structural clipboard data. */
+    catalog?: SqlCatalogSnapshot;
 }
 
 export interface ItemClipboardPayloadV1 {
@@ -216,7 +219,7 @@ const ITEM_KEYS = new Set([
     "diagramId",
     "columnSpan",
 ]);
-const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
+const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui", "catalog"]);
 const UI_KEYS = new Set(["query", "components", "columnOrder", "showAddRowButton"]);
 const COMPONENT_KEYS = new Set(["type", "label", "hidden", "widthPx"]);
 const CELL_COMPONENT_TYPES = new Set(["text", "number", "checkbox", "select", "date"]);
@@ -337,6 +340,18 @@ export function isGridTableSnapshot(value: unknown, sourceTableId?: string): val
         || typeof value.schemaSql !== "string" || value.schemaSql.trim().length === 0
     ) {
         return false;
+    }
+    if (value.catalog !== undefined) {
+        if (
+            !isRecord(value.catalog) || value.catalog.format !== 1 || typeof value.catalog.projectId !== "string"
+            || typeof value.catalog.revision !== "string" || !Array.isArray(value.catalog.objects)
+        ) return false;
+        if (
+            !value.catalog.objects.every(object =>
+                isRecord(object) && typeof object.id === "string"
+                && object.kind === "enum" && typeof object.source === "string"
+            )
+        ) return false;
     }
     return isGridUiDefinitionDto(value.ui);
 }
