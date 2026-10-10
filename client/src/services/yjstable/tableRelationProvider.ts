@@ -64,7 +64,12 @@ export class TableRelationProvider implements RelationProvider {
                 if (!this.handles.data.has(write.rowId)) {
                     throw new RelationWriteError(`Record "${write.rowId}" does not exist in this table`);
                 }
-                setRecordValue(this.handles, write.rowId, write.column, write.value as TableRecordValue);
+                this.adapter.commitRecordValue(
+                    write.rowId,
+                    write.column,
+                    write.value as TableRecordValue,
+                    this.adapter.writeAuthorityToken,
+                );
                 return;
             }
             case "UPDATE_APPEND": {

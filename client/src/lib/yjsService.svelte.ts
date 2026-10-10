@@ -2,6 +2,7 @@
 import { isDemoProjectSlug } from "$shared/demoProjects";
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
+import type * as Y from "yjs";
 import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { createProjectDescriptor, resolveProject } from "../services/projectDirectoryService";
@@ -212,6 +213,14 @@ export interface AcquiredProjectClient {
     client: YjsClient;
     /** Disposes the connection only when this acquisition is the one that opened it. */
     release: () => void;
+}
+
+/** Return an already-authorized live project document without opening a connection. */
+export function getLoadedProjectDocById(projectId: string): Y.Doc | undefined {
+    for (const [, [client]] of registry.entries()) {
+        if (!client.isDestroyed && client.project.ydoc.guid === projectId) return client.project.ydoc;
+    }
+    return undefined;
 }
 
 /**

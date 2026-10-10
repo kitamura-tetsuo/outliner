@@ -1,5 +1,13 @@
+import {
+    createSqlCatalogObject,
+    readSqlCatalog,
+    removeSqlCatalogObject,
+    replaceSqlCatalogSource,
+} from "$shared/services/sqlCatalog";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import type { GridTableSnapshot } from "../clipboard/itemClipboard";
+import { portableStructuralEnumsStillCompatible } from "../yjstable/structuralEnumGuard";
 import type { AsyncUndoOutcome } from "./undoRouter.svelte";
 import { UndoRouter } from "./undoRouter.svelte";
 
@@ -488,6 +496,114 @@ describe("UndoRouter", () => {
             expect(restoredEntry.get("sqlName")).toBe("t1_sql");
             const restoredSubdoc = restoredEntry.get("doc") as Y.Doc;
             expect(restoredSubdoc.getText("schema").toString()).toBe("CREATE TABLE t1");
+        });
+
+        it("does not consume or restore a composite paste when replay admission refuses", () => {
+            const router = new UndoRouter();
+            const projectDoc = new Y.Doc();
+            const treeMap = projectDoc.getMap<number>("orderedTree");
+            const manager = new Y.UndoManager(treeMap);
+            router.register(manager);
+            const registry = projectDoc.getMap<unknown>("yjsTables");
+            const entry = new Y.Map<unknown>();
+            entry.set("name", "Typed");
+            entry.set("sqlName", "typed");
+            entry.set("doc", new Y.Doc());
+            registry.set("typed", entry);
+            treeMap.set("item", 1);
+            const enumId = createSqlCatalogObject(
+                projectDoc,
+                "enum",
+                "CREATE TYPE task_state AS ENUM ('Open', 'Closed')",
+            );
+            const captured = readSqlCatalog(projectDoc.guid, projectDoc);
+            if (captured.status !== "ready") throw new Error("Expected catalog");
+            const snapshots: Record<string, GridTableSnapshot> = {
+                typed: {
+                    sourceTableId: "typed",
+                    name: "Typed",
+                    sqlName: "typed",
+                    schemaSql: "CREATE TABLE typed (id TEXT, state task_state)",
+                    ui: { query: "SELECT * FROM typed", components: {}, columnOrder: [] },
+                    catalog: captured.snapshot,
+                },
+            };
+            router.captureCrossProjectPaste(
+                manager,
+                projectDoc,
+                ["typed"],
+                [],
+                () => portableStructuralEnumsStillCompatible(projectDoc, snapshots),
+            );
+            router.undo();
+            expect(registry.has("typed")).toBe(false);
+            const undoDepth = router.undoDepth;
+            const redoDepth = router.redoDepth;
+
+            replaceSqlCatalogSource(
+                projectDoc,
+                enumId,
+                "CREATE TYPE task_state AS ENUM ('Closed', 'Open')",
+            );
+            router.redo();
+            expect(router.lastAsyncOutcome?.status).toBe("refused");
+            expect(router.undoDepth).toBe(undoDepth);
+            expect(router.redoDepth).toBe(redoDepth);
+            expect(registry.has("typed")).toBe(false);
+            expect(treeMap.has("item")).toBe(false);
+        });
+
+        it("does not restore a composite paste after its captured source ENUM disappears", () => {
+            const router = new UndoRouter();
+            const sourceDoc = new Y.Doc({ guid: "redo-source" });
+            const sourceEnum = createSqlCatalogObject(
+                sourceDoc,
+                "enum",
+                "CREATE TYPE task_state AS ENUM ('Open', 'Closed')",
+            );
+            const captured = readSqlCatalog(sourceDoc.guid, sourceDoc);
+            if (captured.status !== "ready") throw new Error("Expected source catalog");
+            const projectDoc = new Y.Doc({ guid: "redo-destination" });
+            createSqlCatalogObject(projectDoc, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+            const treeMap = projectDoc.getMap<number>("orderedTree");
+            const manager = new Y.UndoManager(treeMap);
+            router.register(manager);
+            const registry = projectDoc.getMap<unknown>("yjsTables");
+            const entry = new Y.Map<unknown>();
+            entry.set("name", "Typed");
+            entry.set("sqlName", "typed");
+            entry.set("doc", new Y.Doc());
+            registry.set("typed", entry);
+            treeMap.set("item", 1);
+            const snapshots: Record<string, GridTableSnapshot> = {
+                typed: {
+                    sourceTableId: "typed",
+                    name: "Typed",
+                    sqlName: "typed",
+                    schemaSql: "CREATE TABLE typed (id TEXT, state task_state)",
+                    ui: { query: "SELECT * FROM typed", components: {}, columnOrder: [] },
+                    catalog: captured.snapshot,
+                },
+            };
+            router.captureCrossProjectPaste(
+                manager,
+                projectDoc,
+                ["typed"],
+                [],
+                () => portableStructuralEnumsStillCompatible(projectDoc, snapshots, sourceDoc),
+            );
+            router.undo();
+            const undoDepth = router.undoDepth;
+            const redoDepth = router.redoDepth;
+            removeSqlCatalogObject(sourceDoc, sourceEnum);
+
+            router.redo();
+
+            expect(router.lastAsyncOutcome?.status).toBe("refused");
+            expect(router.undoDepth).toBe(undoDepth);
+            expect(router.redoDepth).toBe(redoDepth);
+            expect(registry.has("typed")).toBe(false);
+            expect(treeMap.has("item")).toBe(false);
         });
 
         it("keeps chronological ordering when the pasted grid is edited before undo", () => {

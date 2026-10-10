@@ -1,0 +1,27 @@
+id: SQL-5533cafe
+title: Current SQL catalog generations in browser views
+title-ja: ブラウザービューでの現行 SQL カタログ世代の利用
+description: Table, Grid and Calendar routes reconstruct project-owned scalar ENUM definitions from synchronized source. Replacements preserve record values and exact labels, recover in the same mounted session, and reject edits whose catalog authority expired before commit.
+category: client
+status: implemented
+components:
+- client/src/components/yjstable/TableGrid.svelte
+- client/src/services/yjstable/catalogRuntime.ts
+- client/src/services/yjstable/tableEngine.ts
+- client/src/services/yjstable/tableSyncAdapter.ts
+- server/src/sql-catalog-service.ts
+acceptance:
+- Adding a missing ENUM label can validate preserved inconsistent records without permitting referenced label removal
+- Captured scalar edits and cache eviction during reconstruction trigger a successor without reloading the mounted view
+- Cell commits retain their original catalog authority and refuse stale writes
+- Delayed cleanup does not unregister a reopened Table or invalidate its successor
+- ENUM labels retain declaration order, case and whitespace, including a distinction between an empty label and SQL NULL
+- Fresh Table, saved Grid and Calendar routes consume catalog source published by the validated production service
+tests:
+- client/e2e/tables/sql-catalog-production-routes-5533cafe.spec.ts
+- client/src/components/yjstable/TableGrid.catalogDateAuthority.test.ts
+- client/src/components/yjstable/TableGrid.catalogEditAuthority.test.ts
+- client/src/services/yjstable/catalogRuntimeEviction.test.ts
+- client/src/services/yjstable/catalogRuntimeInputChanges.test.ts
+- client/src/services/yjstable/catalogRuntimeReopen.test.ts
+- server/tests/sql-catalog-service-repair.test.ts

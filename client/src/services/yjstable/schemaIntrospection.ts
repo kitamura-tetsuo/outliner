@@ -123,7 +123,10 @@ let validationCounter = 0;
  * schema, then introspect the created table. The scratch schema is always
  * dropped, so the shared engine state used by live tables is never affected.
  */
-export async function parseCreateTable(sql: string): Promise<ParsedTableSchema> {
+export async function parseCreateTable(
+    sql: string,
+    catalogSources: readonly string[] = [],
+): Promise<ParsedTableSchema> {
     const createSql = assertSingleCreateTable(sql);
     const scratchSchema = `__yjstable_validate_${++validationCounter}__`;
 
@@ -135,7 +138,8 @@ export async function parseCreateTable(sql: string): Promise<ParsedTableSchema> 
             );
             try {
                 await db.exec(
-                    `BEGIN; SET LOCAL search_path TO "${scratchSchema}"; ${createSql}; COMMIT;`,
+                    `BEGIN; SET LOCAL search_path TO "${scratchSchema}"; `
+                        + catalogSources.join(";\n") + `;\n${createSql}; COMMIT;`,
                 );
             } catch (err) {
                 // A failed statement leaves the session in an aborted

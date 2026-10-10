@@ -19,3 +19,6 @@ tests:
 - client/src/components/yjstable/TableGrid.keyboardNav.test.ts
 - client/src/services/yjstable/gridKeyboardNav.test.ts
 - client/src/services/yjstable/gridSelection.test.ts
+notes:
+- Keyboard E2E specs create private task Grids per test, ordered by immutable record id; shared demo edits cannot change the expected adjacent rows.
+- Shift+Enter assertions cover active selection, restored button focus, and remaining in navigation mode.

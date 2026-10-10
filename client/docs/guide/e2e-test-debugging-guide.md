@@ -2,6 +2,22 @@
 
 Essential knowledge for debugging flaky E2E tests and common pitfalls.
 
+## Shared Demo Data and Keyboard Navigation
+
+The `/demo` project is shared across browser contexts and spec files. An edit
+to a task's status or due date can reorder its Grid, whose query sorts by those
+fields. A fixed record id does not guarantee a fixed row position: after the
+overdue task is marked done, the today task can become the first row, where
+Shift+Enter correctly stays at the upper boundary.
+
+For keyboard navigation and editing tests, seed a private project in
+`beforeEach` with `TestHelpers.seedProjectAndNavigate`. Use
+`prepareKeyboardGrid` from `e2e/utils/gridKeyboardFixture.ts` to create two
+private task rows ordered by immutable id and address cells by their record
+ids. Wait for the editor or display button to be focused before sending keys;
+after navigation, assert both the active cell and DOM focus. Use these state
+assertions instead of fixed sleeps or forced clicks.
+
 ## Common Issues and Solutions
 
 ### 1. Firestore Permission Errors
