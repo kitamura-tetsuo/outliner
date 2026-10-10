@@ -1,4 +1,3 @@
-import type { PGlite } from "@electric-sql/pglite";
 import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
@@ -6,12 +5,7 @@ import { readSqlCatalog } from "../../../shared/src/services/sqlCatalog.js";
 import type { DocumentStore } from "../persistence.js";
 import { closeLiveRoom, type DirectConnection, isLiveRoom, openLiveRoom, releaseWithoutStore } from "./live-room.js";
 import { McpReadError } from "./mcp-error.js";
-import {
-    acquireDb,
-    materializeProjectCatalog,
-    tableContentRevision,
-    validateProjectTableCandidate,
-} from "./relation-service.js";
+import { tableContentRevision, validateProjectTableCandidate } from "./relation-service.js";
 
 /**
  * Authoritative server-side creation of one standalone, empty, project-owned
@@ -151,11 +145,29 @@ export class OutlinerTableCreationService {
             if (Y.encodeStateVector(project).length <= 1) {
                 throw new McpReadError("not_found", "Project not found", { outcome: "not_published" });
             }
+            const syntaxError = checkCreateTableShape(schemaSql);
+            if (syntaxError) throw this.schemaRejection(syntaxError);
+            const declaredSqlName = createTableName(schemaSql);
+            if (!declaredSqlName) throw this.schemaRejection("Table name could not be resolved");
+            this.assertNameUnclaimed(project, declaredSqlName);
             const candidateValidation = await validateProjectTableCandidate(projectId, project, {
                 id: "create-table-candidate",
                 schema: schemaSql,
             });
-            const sqlName = await this.resolveSqlName(schemaSql, projectId, project);
+            const sqlName = candidateValidation.tableName;
+            if ((candidateValidation.columnCount ?? 0) < 1) {
+                throw this.schemaRejection("Table must define at least one column");
+            }
+            if (!sqlName || !SQL_NAME.test(sqlName)) {
+                throw this.schemaRejection("Table name must match [A-Za-z_][A-Za-z0-9_]*");
+            }
+            if (RESERVED_SQL_NAMES.has(sqlName)) {
+                throw new McpReadError("validation_failed", `Table name "${sqlName}" is reserved`, {
+                    code: "relation_name_unavailable",
+                    sqlName,
+                    outcome: "not_published",
+                });
+            }
             this.assertNameUnclaimed(project, sqlName);
             const candidate: CandidateMetadata = { displayName: name, sqlName, schemaSql };
 
@@ -369,72 +381,6 @@ export class OutlinerTableCreationService {
         }
     }
 
-    /**
-     * Resolve the declaration's SQL name through the executable oracle: it
-     * must run in an otherwise empty isolated PGlite database and leave
-     * exactly one ordinary, permanent, empty base table in `public`.
-     */
-    private async resolveSqlName(schemaSql: string, projectId: string, project: Y.Doc): Promise<string> {
-        const syntaxError = checkCreateTableShape(schemaSql);
-        if (syntaxError) throw this.schemaRejection(syntaxError);
-        const lease = await acquireDb();
-        try {
-            await materializeProjectCatalog(lease.db, projectId, project);
-            if ((await userRelations(lease.db)).length > 0) {
-                throw new McpReadError("internal_failure", "Schema validation database is not isolated", {
-                    outcome: "not_published",
-                });
-            }
-            try {
-                await lease.db.exec(schemaSql);
-            } catch (error) {
-                throw this.schemaRejection(error instanceof Error ? error.message : String(error));
-            }
-            const relations = await userRelations(lease.db);
-            if (relations.length !== 1) {
-                throw this.schemaRejection("Schema definition must create exactly one table");
-            }
-            const [relation] = relations;
-            if (relation.schema !== "public") {
-                throw this.schemaRejection("Schema-qualified or temporary tables are not supported");
-            }
-            if (relation.kind !== "r" || relation.persistence !== "p") {
-                throw this.schemaRejection("Only ordinary, permanent tables are supported");
-            }
-            const sqlName = relation.name;
-            const quoted = `"${sqlName.replace(/"/g, '""')}"`;
-            const columns = await lease.db.query<{ count: number; }>(
-                "SELECT count(*)::int AS count FROM pg_attribute WHERE attrelid = $1::regclass "
-                    + "AND attnum > 0 AND NOT attisdropped",
-                [quoted],
-            );
-            if ((columns.rows[0]?.count ?? 0) < 1) {
-                throw this.schemaRejection("Table must define at least one column");
-            }
-            const records = await lease.db.query<{ count: number; }>(`SELECT count(*)::int AS count FROM ${quoted}`);
-            if ((records.rows[0]?.count ?? 0) !== 0) {
-                throw this.schemaRejection("Schema definition must create an empty table");
-            }
-            if (!SQL_NAME.test(sqlName)) {
-                throw this.schemaRejection(`Table name "${sqlName}" must match [A-Za-z_][A-Za-z0-9_]*`);
-            }
-            if (RESERVED_SQL_NAMES.has(sqlName)) {
-                throw new McpReadError("validation_failed", `Table name "${sqlName}" is reserved`, {
-                    code: "relation_name_unavailable",
-                    sqlName,
-                    outcome: "not_published",
-                });
-            }
-            return sqlName;
-        } finally {
-            try {
-                await clearUserRelations(lease.db);
-            } finally {
-                lease.release();
-            }
-        }
-    }
-
     private assertCatalogRevision(projectId: string, project: Y.Doc, expectedRevision: string): void {
         const catalog = readSqlCatalog(projectId, project as never);
         if (catalog.status !== "ready" || catalog.snapshot.revision !== expectedRevision) {
@@ -452,32 +398,6 @@ export class OutlinerTableCreationService {
             message,
             outcome: "not_published",
         });
-    }
-}
-
-interface UserRelation {
-    schema: string;
-    name: string;
-    kind: string;
-    persistence: string;
-}
-
-/** Every table-like relation outside the system catalogs, temporary schemas included. */
-async function userRelations(db: PGlite): Promise<UserRelation[]> {
-    const result = await db.query<UserRelation>(
-        "SELECT n.nspname AS schema, c.relname AS name, c.relkind AS kind, c.relpersistence AS persistence "
-            + "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-            + "WHERE c.relkind IN ('r', 'p', 'f', 'v', 'm') "
-            + "AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%'",
-    );
-    return result.rows;
-}
-
-async function clearUserRelations(db: PGlite): Promise<void> {
-    for (const relation of await userRelations(db)) {
-        const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
-        const kind = relation.kind === "v" ? "VIEW" : relation.kind === "m" ? "MATERIALIZED VIEW" : "TABLE";
-        await db.exec(`DROP ${kind} IF EXISTS ${quote(relation.schema)}.${quote(relation.name)} CASCADE`);
     }
 }
 
@@ -554,6 +474,13 @@ export function maskSqlNoise(sql: string): string | undefined {
         }
     }
     return out;
+}
+
+/** Extract the name after checkCreateTableShape has established one CREATE TABLE declaration. */
+function createTableName(sql: string): string | undefined {
+    const match = /^\s*create\s+table\s+(?:if\s+not\s+exists\s+)?(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))/i
+        .exec(sql);
+    return match?.[1]?.replace(/""/g, '"') ?? match?.[2]?.toLowerCase();
 }
 
 /**

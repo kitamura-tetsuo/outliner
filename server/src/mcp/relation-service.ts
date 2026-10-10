@@ -111,7 +111,7 @@ export async function validateProjectTableCandidate(
         schema: string;
         records?: readonly { id: string; values: Readonly<Record<string, unknown>>; }[];
     },
-): Promise<{ catalogRevision: string; enums: readonly SqlEnumMetadata[]; }> {
+): Promise<{ catalogRevision: string; enums: readonly SqlEnumMetadata[]; tableName?: string; columnCount?: number; }> {
     const catalog = readSqlCatalog(projectId, doc as never);
     if (catalog.status !== "ready") {
         throw new McpReadError("validation_failed", `Project SQL catalog is ${catalog.status}: ${catalog.reason}`);
@@ -121,15 +121,32 @@ export async function validateProjectTableCandidate(
         tables: [{ ...table, records: table.records ?? [] }],
         inspections: [],
     });
-    if (compiled.status === "failed") {
+    if (compiled.status === "failed" && compiled.diagnostics.some(diagnostic => diagnostic.kind !== "record")) {
         throw new McpReadError("validation_failed", "Table schema is not supported by the project SQL catalog", {
+            code: "invalid_schema",
             catalogRevision: catalog.snapshot.revision,
             diagnostics: compiled.diagnostics,
         });
     }
+    // Schema migration validation reports incompatible existing records using
+    // its established per-record diagnostics below. The compiler still sees
+    // those records (and therefore validates ENUM membership), but record-only
+    // failures do not hide the migration diff behind a top-level exception.
+    if (compiled.status === "failed") return { catalogRevision: catalog.snapshot.revision, enums: [] };
     const enums = compiled.environment.enums;
+    const relations = await compiled.environment.query<{ name: string; column_count: number; }>(
+        "SELECT c.relname AS name, count(a.attnum)::int AS column_count FROM pg_class c "
+            + "JOIN pg_namespace n ON n.oid=c.relnamespace LEFT JOIN pg_attribute a "
+            + "ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped "
+            + "WHERE n.nspname='public' AND c.relkind='r' GROUP BY c.relname",
+    );
     await compiled.environment.dispose();
-    return { catalogRevision: catalog.snapshot.revision, enums };
+    return {
+        catalogRevision: catalog.snapshot.revision,
+        enums,
+        tableName: relations.rows[0]?.name,
+        columnCount: relations.rows[0]?.column_count,
+    };
 }
 
 async function resultColumnMetadata(
@@ -848,14 +865,6 @@ export class OutlinerRelationService {
             const lease = await acquireDb();
             try {
                 await materializeProjectCatalog(lease.db, projectId, doc);
-                await validateProjectTableCandidate(projectId, doc, {
-                    id: tableId,
-                    schema: schemaSql,
-                    records: [...source.data.entries()].map(([id, record]) => ({
-                        id,
-                        values: Object.fromEntries(record.entries()),
-                    })),
-                });
                 const current = await this.inspectTableSchema(lease.db, source.schema);
                 await this.clearScratchDatabase(lease.db);
                 const parsedSchema = await this.inspectTableSchema(lease.db, schemaSql);
@@ -869,6 +878,14 @@ export class OutlinerRelationService {
                         errors: [this.schemaDiagnostic(parsedSchema.error)],
                     };
                 }
+                await validateProjectTableCandidate(projectId, doc, {
+                    id: tableId,
+                    schema: schemaSql,
+                    records: [...source.data.entries()].map(([id, record]) => ({
+                        id,
+                        values: Object.fromEntries(record.entries()),
+                    })),
+                });
                 const nameError = parsedSchema.tableName === "outline_items"
                     ? `Table name "${parsedSchema.tableName}" is reserved`
                     : [...doc.getMap<Y.Map<unknown>>("yjsTables").entries()].some(([id, entry]) =>
@@ -1346,7 +1363,16 @@ export class OutlinerRelationService {
                     name: request.name,
                 }, { dryRun: request.dryRun, beforePublication: authorize });
                 const { validation, ...configuration } = created;
-                return { ...configuration, applied: !request.dryRun, revision: revisionOf(created.query) };
+                const catalogRevision = await this.withProject(
+                    uid,
+                    projectId,
+                    doc => this.catalogRevision(projectId, doc),
+                );
+                return {
+                    ...configuration,
+                    applied: !request.dryRun,
+                    revision: revisionOf({ query: created.query, catalogRevision }),
+                };
             } catch (error) {
                 if (error instanceof McpReadError && error.code === "kind_mismatch") {
                     throw new McpReadError("invalid_argument", "Destination item is not a top-level Page");

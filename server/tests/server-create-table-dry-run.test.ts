@@ -71,7 +71,12 @@ describe("standalone Table creation dry run (#5411 AS-004)", function() {
             expect(undo.undoStack).to.have.length(0);
             expect(projectState(project)).to.deep.equal(state);
             expect(storedRooms(dir)).to.deep.equal(rooms);
-            expect([...server.hocuspocus.documents.keys()].sort()).to.deep.equal(loaded);
+            const loadedAfter = [...server.hocuspocus.documents.keys()].sort();
+            // Compiler startup may outlive Hocuspocus's idle-room timer. That
+            // lifecycle unload is allowed; a dry run must not load a new Table
+            // room or disturb any other room that remains live.
+            expect(loadedAfter.every(room => loaded.includes(room))).to.equal(true);
+            expect(loadedAfter.some(room => room.startsWith("projects/proj-a/tables/"))).to.equal(false);
 
             // Same refusals as an apply.
             const taken = await rejection(server.tableCreation.createTable(UID, "proj-a", {
