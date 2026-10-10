@@ -46,6 +46,10 @@ describe("resolveBareIdMutationAuthority", () => {
             "SELECT a.id, a.title FROM tasks AS a /* join */ , -- line\n other_tasks AS b",
             "SELECT a.id, a.title FROM tasks AS a, other_tasks AS b LIMIT 1",
             "SELECT a.id, a.title FROM tasks AS a, other_tasks AS b WHERE a.title <> ''",
+            // PostgreSQL parses nested block comments as one comment, so the
+            // comma after the second terminator still joins a second source.
+            "SELECT a.id, a.title FROM tasks AS a /* outer /* inner */ WHERE ignored */ , other_tasks AS b LIMIT 1",
+            "SELECT a.id, a.title FROM tasks AS a /* outer /* inner /* deep */ still outer */ , other_tasks AS b",
         ];
         for (const query of cases) {
             const authority = resolveBareIdMutationAuthority(query, "tasks", schema, ["id", "title"]);
@@ -153,6 +157,14 @@ describe("analyzeQueryEditability", () => {
             schema,
             ["id", "title"],
         );
+        expect(res.editable).toBe(false);
+        expect(res.readOnlyReason).toMatch(/several tables|multiple sources/);
+    });
+
+    it("is read-only for a comma join hidden behind a nested block comment", async () => {
+        const schema = await schemaPromise;
+        const query = "SELECT a.id, a.title FROM tasks AS a /* outer /* inner */ WHERE ignored */ , tasks AS b LIMIT 1";
+        const res = analyzeQueryEditability(query, schema, ["id", "title"]);
         expect(res.editable).toBe(false);
         expect(res.readOnlyReason).toMatch(/several tables|multiple sources/);
     });
