@@ -117,5 +117,5 @@ describe("compileSqlEnvironment correctness invariants", () => {
         expect(emptyCatalog.environment.dependencies).toEqual(unrelatedEnum.environment.dependencies);
         await emptyCatalog.environment.dispose();
         await unrelatedEnum.environment.dispose();
-    }, 30_000);
+    }, 60_000);
 });

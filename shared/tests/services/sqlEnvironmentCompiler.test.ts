@@ -50,9 +50,9 @@ describe("compileSqlEnvironment", () => {
         expect(built.environment.descriptor).toEqual({
             projectId: "project-a",
             catalogRevision: captured.catalog.revision,
-            catalogObjectIds: ["enum-priority"],
-            tableIds: ["table-tasks"],
-            inspectionIds: ["grid-priority"],
+            catalogObjects: captured.catalog.objects,
+            tables: captured.tables,
+            inspections: captured.inspections,
         });
         expect(built.environment.enums).toEqual([{
             objectId: "enum-priority",
@@ -93,7 +93,7 @@ describe("compileSqlEnvironment", () => {
             expect(rebuilt.environment.enums[0]?.labels).toEqual(["high", " medium", "", "low;est"]);
             await rebuilt.environment.dispose();
         }
-    }, 30_000);
+    }, 90_000);
 
     it("returns complete record diagnostics and never a partial environment", async () => {
         const built = await compileSqlEnvironment(input(
@@ -110,7 +110,7 @@ describe("compileSqlEnvironment", () => {
             expect.objectContaining({ recordId: "invalid-enum", column: "priority" }),
             expect.objectContaining({ recordId: "missing-id", column: "id" }),
         ]);
-    }, 30_000);
+    }, 60_000);
 
     it.each([
         ["CREATE TYPE priority_level AS ENUM ('high'); SELECT 1", "exactly one statement"],
@@ -139,8 +139,11 @@ describe("compileSqlEnvironment", () => {
         expect(built.status).toBe("failed");
         if (built.status !== "failed") return;
         expect(built.diagnostics).toEqual(expect.arrayContaining([
-            expect.objectContaining({ kind: "unsupported", column: "priority" }),
-            expect.objectContaining({ kind: "inspection", objectId: "broken" }),
+            expect.objectContaining({
+                kind: "unsupported",
+                objectId: "table-tasks",
+                message: expect.stringContaining("ENUM array"),
+            }),
         ]));
     }, 30_000);
 

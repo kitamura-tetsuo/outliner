@@ -2,6 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { loadModule, parseSync } from "libpg-query";
 
 import type { SqlCatalogSnapshot } from "./sqlCatalog.js";
+import { serializeSqlEnumValue } from "./sqlEnumValue.js";
 
 await loadModule();
 
@@ -63,9 +64,9 @@ export interface SqlDependencyEvidence {
 export interface SqlEnvironmentDescriptor {
     readonly projectId: string;
     readonly catalogRevision: string;
-    readonly catalogObjectIds: readonly string[];
-    readonly tableIds: readonly string[];
-    readonly inspectionIds: readonly string[];
+    readonly catalogObjects: readonly Readonly<{ id: string; kind: string; source: string; }>[];
+    readonly tables: readonly Readonly<SqlTableSnapshot>[];
+    readonly inspections: readonly Readonly<SqlInspectionTarget>[];
 }
 
 export interface SqlExecutableEnvironment {
@@ -114,9 +115,9 @@ function descriptorFor(input: SqlEnvironmentInput): SqlEnvironmentDescriptor {
     return Object.freeze({
         projectId: input.catalog.projectId,
         catalogRevision: input.catalog.revision,
-        catalogObjectIds: Object.freeze(input.catalog.objects.map(object => object.id)),
-        tableIds: Object.freeze(input.tables.map(table => table.id)),
-        inspectionIds: Object.freeze(input.inspections.map(target => target.id)),
+        catalogObjects: input.catalog.objects,
+        tables: input.tables,
+        inspections: input.inspections,
     });
 }
 
@@ -177,8 +178,13 @@ function parseEnum(source: string): { name: string; labels: string[]; } {
     return { name: names[0], labels };
 }
 
-function collectTypeNames(statement: AstNode): string[][] {
-    const names: string[][] = [];
+interface TypeReference {
+    names: string[];
+    isArray: boolean;
+}
+
+function collectTypeNames(statement: AstNode): TypeReference[] {
+    const names: TypeReference[] = [];
     const walk = (value: unknown): void => {
         if (Array.isArray(value)) {
             value.forEach(walk);
@@ -188,13 +194,60 @@ function collectTypeNames(statement: AstNode): string[][] {
         for (const [key, child] of Object.entries(value)) {
             if (key.toLowerCase() === "typename" && isNode(child)) {
                 const parsed = stringNodes(child.names);
-                if (parsed) names.push(parsed);
+                if (parsed) names.push({ names: parsed, isArray: Array.isArray(child.arrayBounds) });
             }
         }
         Object.values(value).forEach(walk);
     };
     walk(statement);
     return names;
+}
+
+function collectReferencedTables(statement: AstNode): [name: string, alias: string | undefined][] {
+    const tables: [string, string | undefined][] = [];
+    const walk = (value: unknown): void => {
+        if (Array.isArray(value)) {
+            value.forEach(walk);
+            return;
+        }
+        if (!isNode(value)) return;
+        if (isNode(value.RangeVar) && typeof value.RangeVar.relname === "string") {
+            const alias = isNode(value.RangeVar.alias) && typeof value.RangeVar.alias.aliasname === "string"
+                ? value.RangeVar.alias.aliasname
+                : undefined;
+            tables.push([value.RangeVar.relname, alias]);
+        }
+        Object.values(value).forEach(walk);
+    };
+    walk(statement);
+    return tables;
+}
+
+function collectReferencedColumns(statement: AstNode): { name: string; qualifier?: string; }[] {
+    const columns: { name: string; qualifier?: string; }[] = [];
+    const walk = (value: unknown): void => {
+        if (Array.isArray(value)) {
+            value.forEach(walk);
+            return;
+        }
+        if (!isNode(value)) return;
+        if (isNode(value.ColumnRef) && Array.isArray(value.ColumnRef.fields)) {
+            const fields = value.ColumnRef.fields;
+            const names = fields.map(field => {
+                if (isNode(field) && isNode(field.String) && typeof field.String.sval === "string") {
+                    return field.String.sval;
+                }
+                return isNode(field) && field.A_Star !== undefined ? "*" : undefined;
+            });
+            if (names.length === 1 && names[0]) columns.push({ name: names[0] });
+            else if (names.length === 2 && names[0] && names[1]) {
+                columns.push({ qualifier: names[0], name: names[1] });
+            }
+        }
+        Object.values(value).forEach(walk);
+    };
+    walk(statement);
+    return columns;
 }
 
 async function resetDatabase(db: PGlite): Promise<void> {
@@ -225,6 +278,7 @@ async function defaultLease(): Promise<SqlEnvironmentLease> {
 function dependencyEvidence(
     input: SqlEnvironmentInput,
     enumsByName: ReadonlyMap<string, { objectId: string; identity: string; }>,
+    enumColumnsByTable: ReadonlyMap<string, ReadonlyMap<string, { objectId: string; identity: string; }>>,
 ): { evidence: SqlDependencyEvidence[]; diagnostics: SqlEnvironmentDiagnostic[]; } {
     const evidence: SqlDependencyEvidence[] = [];
     const diagnostics: SqlEnvironmentDiagnostic[] = [];
@@ -247,14 +301,35 @@ function dependencyEvidence(
                 );
             }
             const matches = new Map<string, { objectId: string; identity: string; }>();
-            for (const parts of collectTypeNames(statement)) {
+            for (const reference of collectTypeNames(statement)) {
+                const parts = reference.names;
                 const name = parts.length === 1
                     ? parts[0]
                     : parts.length === 2 && parts[0] === "public"
                     ? parts[1]
                     : undefined;
                 const match = name ? enumsByName.get(name) : undefined;
+                if (match && reference.isArray) {
+                    throw new Error(`ENUM array usage is not supported: ${name}[]`);
+                }
                 if (match) matches.set(match.objectId, match);
+            }
+            if (source.kind !== "table") {
+                const referencedTables = collectReferencedTables(statement);
+                const referencedColumns = collectReferencedColumns(statement);
+                for (const [tableName, alias] of referencedTables) {
+                    const enumColumns = enumColumnsByTable.get(tableName);
+                    if (!enumColumns) continue;
+                    for (const column of referencedColumns) {
+                        if (column.qualifier && column.qualifier !== tableName && column.qualifier !== alias) continue;
+                        if (column.name === "*") {
+                            for (const metadata of enumColumns.values()) matches.set(metadata.objectId, metadata);
+                        } else {
+                            const metadata = enumColumns.get(column.name);
+                            if (metadata) matches.set(metadata.objectId, metadata);
+                        }
+                    }
+                }
             }
             evidence.push(Object.freeze({
                 referencingId: source.id,
@@ -271,7 +346,11 @@ function dependencyEvidence(
                 requiredEnums: Object.freeze([]),
                 diagnostic,
             }));
-            diagnostics.push({ kind: "dependency", objectId: source.id, message: diagnostic });
+            diagnostics.push({
+                kind: diagnostic.includes("ENUM array usage") ? "unsupported" : "dependency",
+                objectId: source.id,
+                message: diagnostic,
+            });
         }
     }
     return { evidence, diagnostics };
@@ -351,16 +430,46 @@ async function insertRecords(
     tableName: string,
 ): Promise<SqlEnvironmentDiagnostic[]> {
     const diagnostics: SqlEnvironmentDiagnostic[] = [];
-    const columnTypes = await db.query<{ column_name: string; type_identity: string; }>(
-        "SELECT a.attname AS column_name, format_type(a.atttypid, a.atttypmod) AS type_identity "
+    const columnTypes = await db.query<{
+        column_name: string;
+        type_identity: string;
+        typtype: string;
+        enum_labels: string[];
+    }>(
+        "SELECT a.attname AS column_name, format_type(a.atttypid, a.atttypmod) AS type_identity, t.typtype, "
+            + "ARRAY(SELECT e.enumlabel FROM pg_enum e WHERE e.enumtypid=t.oid ORDER BY e.enumsortorder) AS enum_labels "
             + "FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace "
+            + "JOIN pg_type t ON t.oid=a.atttypid "
             + "WHERE n.nspname='public' AND c.relname=$1 AND a.attnum>0 AND NOT a.attisdropped",
         [tableName],
     );
     const typeByColumn = new Map(columnTypes.rows.map(row => [row.column_name, row.type_identity]));
+    const enumLabelsByColumn = new Map(
+        columnTypes.rows.filter(row => row.typtype === "e").map(row => [row.column_name, row.enum_labels]),
+    );
     for (const record of table.records) {
         const columns = Object.keys(record.values);
-        const values = columns.map(column => record.values[column]);
+        let invalidEnumColumn: string | undefined;
+        const values = columns.map(column => {
+            const labels = enumLabelsByColumn.get(column);
+            if (!labels) return record.values[column];
+            try {
+                return serializeSqlEnumValue(record.values[column], { labels });
+            } catch {
+                invalidEnumColumn = column;
+                return record.values[column];
+            }
+        });
+        if (invalidEnumColumn) {
+            diagnostics.push({
+                kind: "record",
+                objectId: table.id,
+                recordId: record.id,
+                column: invalidEnumColumn,
+                message: `Invalid ENUM label for column "${invalidEnumColumn}"`,
+            });
+            continue;
+        }
         const sql = columns.length === 0
             ? `INSERT INTO ${quotedIdentifier(tableName)} DEFAULT VALUES`
             : `INSERT INTO ${quotedIdentifier(tableName)} (${columns.map(quotedIdentifier).join(",")}) VALUES (${
@@ -448,7 +557,39 @@ export async function compileSqlEnvironment(
         name,
         { objectId, identity: `"public".${quotedIdentifier(name)}` },
     ]));
-    const dependencies = dependencyEvidence(captured, enumIdentities);
+    const enumColumnsByTable = new Map<string, Map<string, { objectId: string; identity: string; }>>();
+    const tableOwnerByName = new Map<string, string>();
+    for (const table of captured.tables) {
+        try {
+            const statement = parseOne(table.schema);
+            const create = statement.CreateStmt;
+            if (!isNode(create) || !isNode(create.relation) || typeof create.relation.relname !== "string") {
+                throw new Error("Table schema must be one CREATE TABLE statement");
+            }
+            const tableName = create.relation.relname;
+            const owner = tableOwnerByName.get(tableName);
+            if (owner) throw new Error(`Duplicate requested Table SQL name "${tableName}" (${owner}, ${table.id})`);
+            if (create.if_not_exists === true) throw new Error("CREATE TABLE IF NOT EXISTS is not supported");
+            tableOwnerByName.set(tableName, table.id);
+            const enumColumns = new Map<string, { objectId: string; identity: string; }>();
+            const elements = Array.isArray(create.tableElts) ? create.tableElts : [];
+            for (const element of elements) {
+                if (!isNode(element) || !isNode(element.ColumnDef) || typeof element.ColumnDef.colname !== "string") {
+                    continue;
+                }
+                const references = collectTypeNames(element.ColumnDef);
+                for (const reference of references) {
+                    const typeName = reference.names.length === 1 ? reference.names[0] : undefined;
+                    const metadata = typeName ? enumIdentities.get(typeName) : undefined;
+                    if (metadata && !reference.isArray) enumColumns.set(element.ColumnDef.colname, metadata);
+                }
+            }
+            enumColumnsByTable.set(tableName, enumColumns);
+        } catch (error) {
+            diagnostics.push({ kind: "schema", objectId: table.id, message: messageOf(error) });
+        }
+    }
+    const dependencies = dependencyEvidence(captured, enumIdentities, enumColumnsByTable);
     diagnostics.push(...dependencies.diagnostics);
     if (diagnostics.length > 0) {
         return {
