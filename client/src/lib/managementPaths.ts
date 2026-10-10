@@ -59,6 +59,16 @@ export function projectGridPath(projectName: string, gridId: string): string {
     return `${projectGridsPath(projectName)}/${encodeURIComponent(gridId)}`;
 }
 
+/** The Kanban list: `/:project/-/kanbans`. */
+export function projectKanbansPath(projectName: string): string {
+    return `${projectManagementPath(projectName)}/kanbans`;
+}
+
+/** One standalone Kanban page, addressed by stable definition identity. */
+export function projectKanbanPath(projectName: string, kanbanId: string): string {
+    return `${projectKanbansPath(projectName)}/${encodeURIComponent(kanbanId)}`;
+}
+
 /** The Calendar list: `/:project/-/calendars`. */
 export function projectCalendarsPath(projectName: string): string {
     return `${projectManagementPath(projectName)}/calendars`;

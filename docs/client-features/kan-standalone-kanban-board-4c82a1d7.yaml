@@ -1,0 +1,16 @@
+id: KAN-4c82a1d7
+title: Standalone Kanban boards
+title-ja: スタンドアロン Kanban ボード
+description: Users can create a named Kanban over an existing Table, configure its SELECT and result-column roles, and view the live grouped result at a stable identity-based route.
+category: tables
+status: implemented
+acceptance:
+- Project management lists every Kanban by stable identity and creates a definition without cloning its source Table or creating a Grid or Page placement
+- Configuration drafts change nothing until Apply, Cancel discards the draft, and a peer change to the same dirty setting produces a conflict instead of being overwritten
+- The board preserves SQL result order, distinguishes SQL NULL, empty strings and literal labels, and renders configured title and detail values as inert text
+- Loading, incomplete, invalid, missing and successful empty states remain distinct
+- A Kanban links to its source Table instead of embedding Table schema management
+tests:
+- client/src/lib/managementPaths.test.ts
+- client/src/services/yjstable/kanbanQueryRunner.test.ts
+- client/e2e/tables/kan-standalone-kanban-board-4c82a1d7.spec.ts
