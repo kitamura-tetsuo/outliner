@@ -70,6 +70,19 @@ describe("MCP ENUM catalog dispatch (#5534 REQ-008)", function() {
                 { state: "second" },
                 { state: null },
             ]);
+            expect(ordered.payload.columns[0].enum).to.deep.include({
+                objectId: "enum-dispatch-state",
+                sqlType: '"public"."dispatch_state"',
+                labels: ["first", "", "second"],
+            });
+            const cast = await fixture.production.call("query_sql", {
+                projectId: PROJECT,
+                sql: "SELECT 'first'::TEXT::dispatch_state AS state",
+            });
+            expect(cast.payload.columns[0].enum).to.deep.include({
+                objectId: "enum-dispatch-state",
+                labels: ["first", "", "second"],
+            });
             const records = await fixture.production.call("get_table", {
                 projectId: PROJECT,
                 tableId,
@@ -79,6 +92,24 @@ describe("MCP ENUM catalog dispatch (#5534 REQ-008)", function() {
                 .to.equal("");
             expect(records.payload.records.find((row: { recordId: string; }) => row.recordId === "nil").values.state)
                 .to.equal(null);
+            expect(records.payload.schema.columns.find((column: { name: string; }) => column.name === "state").enum)
+                .to.deep.include({ objectId: "enum-dispatch-state", labels: ["first", "", "second"] });
+
+            const unsupported = await fixture.production.call("create_table", {
+                projectId: PROJECT,
+                name: "Unsupported enum array",
+                schemaSql: "CREATE TABLE enum_arrays (id TEXT PRIMARY KEY, states dispatch_state[])",
+                operationId: "enum-array-refusal",
+            });
+            expect(unsupported.payload.code).to.equal("validation_failed");
+            expect((await fixture.production.call("list_relations", { projectId: PROJECT })).payload.relations)
+                .not.to.deep.include({ relation: "enum_arrays", kind: "table" });
+            const unsupportedMigration = await fixture.production.call("validate_table_schema", {
+                projectId: PROJECT,
+                tableId,
+                schemaSql: "CREATE TABLE dispatch_rows (id TEXT PRIMARY KEY, states dispatch_state[])",
+            });
+            expect(unsupportedMigration.payload.code).to.equal("validation_failed");
 
             await withRoom(fixture.server.hocuspocus, `projects/${PROJECT}/tables/${tableId}`, doc => {
                 doc.getMap<Y.Map<string>>("data").get("last")!.set("state", "invalid-synchronized-label");
@@ -99,6 +130,27 @@ describe("MCP ENUM catalog dispatch (#5534 REQ-008)", function() {
                 changes: [{ recordId: "last", values: { state: "still-invalid" } }],
             });
             expect(refused.payload.code).to.equal("validation_failed");
+            const catalogBeforeReorder = await catalog.read(UID, PROJECT);
+            expect(
+                (await catalog.apply(UID, PROJECT, {
+                    expectedRevision: catalogBeforeReorder.revision,
+                    intent: {
+                        operation: "replace",
+                        object: {
+                            id: "enum-dispatch-state",
+                            kind: "enum",
+                            source: "CREATE TYPE dispatch_state AS ENUM ('second', '', 'first')",
+                        },
+                    },
+                })).status,
+            ).to.equal("applied");
+            const staleEvidence = await fixture.production.call("update_table_records", {
+                projectId: PROJECT,
+                tableId,
+                expectedRevision: current.payload.revision,
+                changes: [{ recordId: "last", values: { state: "first" } }],
+            });
+            expect(staleEvidence.payload.code).to.equal("stale_revision");
 
             const projectB = "proj-b";
             fixture.acl.grant("projectUsers", projectB, UID);

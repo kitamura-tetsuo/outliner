@@ -133,7 +133,8 @@ export const toolOutputSchemas = {
         capabilities: jsonObject,
     }),
     query_sql: z.looseObject({
-        columns: z.array(z.object({ name: z.string(), type: z.string() })),
+        // Catalog-backed result types carry additive ENUM provenance.
+        columns: z.array(z.looseObject({ name: z.string(), type: z.string() })),
         rows: z.array(jsonObject),
         rowCount: z.number().int().nonnegative(),
         truncated: z.boolean(),

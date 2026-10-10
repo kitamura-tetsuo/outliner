@@ -2,10 +2,16 @@ import type { PGlite } from "@electric-sql/pglite";
 import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
+import { readSqlCatalog } from "../../../shared/src/services/sqlCatalog.js";
 import type { DocumentStore } from "../persistence.js";
 import { closeLiveRoom, type DirectConnection, isLiveRoom, openLiveRoom, releaseWithoutStore } from "./live-room.js";
 import { McpReadError } from "./mcp-error.js";
-import { acquireDb, materializeProjectCatalog, tableContentRevision } from "./relation-service.js";
+import {
+    acquireDb,
+    materializeProjectCatalog,
+    tableContentRevision,
+    validateProjectTableCandidate,
+} from "./relation-service.js";
 
 /**
  * Authoritative server-side creation of one standalone, empty, project-owned
@@ -145,6 +151,10 @@ export class OutlinerTableCreationService {
             if (Y.encodeStateVector(project).length <= 1) {
                 throw new McpReadError("not_found", "Project not found", { outcome: "not_published" });
             }
+            const candidateValidation = await validateProjectTableCandidate(projectId, project, {
+                id: "create-table-candidate",
+                schema: schemaSql,
+            });
             const sqlName = await this.resolveSqlName(schemaSql, projectId, project);
             this.assertNameUnclaimed(project, sqlName);
             const candidate: CandidateMetadata = { displayName: name, sqlName, schemaSql };
@@ -153,6 +163,7 @@ export class OutlinerTableCreationService {
                 // Same final decisions as an apply, then nothing is written.
                 await options.beforePublication?.();
                 project = await publicationTarget();
+                this.assertCatalogRevision(projectId, project, candidateValidation.catalogRevision);
                 this.assertNameUnclaimed(project, sqlName);
                 return { status: "preview", applied: false, dryRun: true, ...candidate };
             }
@@ -177,6 +188,7 @@ export class OutlinerTableCreationService {
 
             await options.beforePublication?.();
             project = await publicationTarget();
+            this.assertCatalogRevision(projectId, project, candidateValidation.catalogRevision);
             if (!this.isLive(projectRoom, project)) {
                 throw new McpReadError("internal_failure", "Project room was unloaded before publication", {
                     outcome: "not_published",
@@ -200,7 +212,13 @@ export class OutlinerTableCreationService {
             // (verified empty above, with no await since). Taken now, because
             // peers may edit the Table as soon as the entry is visible, before
             // storage below confirms the publication.
-            const revision = tableContentRevision(tableId, name, sqlName, table);
+            const revision = tableContentRevision(
+                tableId,
+                name,
+                sqlName,
+                table,
+                candidateValidation.catalogRevision,
+            );
             let publicationError: unknown;
             try {
                 project.transact(() => {
@@ -414,6 +432,17 @@ export class OutlinerTableCreationService {
             } finally {
                 lease.release();
             }
+        }
+    }
+
+    private assertCatalogRevision(projectId: string, project: Y.Doc, expectedRevision: string): void {
+        const catalog = readSqlCatalog(projectId, project as never);
+        if (catalog.status !== "ready" || catalog.snapshot.revision !== expectedRevision) {
+            throw new McpReadError("stale_revision", "SQL catalog changed after Table validation", {
+                expectedCatalogRevision: expectedRevision,
+                actualCatalogRevision: catalog.status === "ready" ? catalog.snapshot.revision : undefined,
+                outcome: "not_published",
+            });
         }
     }
 
