@@ -95,6 +95,11 @@ interface CapturedInput {
     readonly fingerprint: string;
 }
 
+interface PublicationCapture {
+    snapshot(): CapturedInput;
+    close(): Promise<void>;
+}
+
 export interface SqlCatalogServiceOptions {
     /** Production persistence read seam used to distinguish durable reconciliation. */
     readonly loadStoredDocument?: (room: string) => Promise<Y.Doc | undefined>;
@@ -102,6 +107,8 @@ export interface SqlCatalogServiceOptions {
     readonly beforePublication?: () => Promise<void>;
     /** Observable boundary after the source transaction and before durable acknowledgement. */
     readonly afterMutationBeforeStore?: () => Promise<void>;
+    /** Observable room-load boundary used by integration callers and deterministic race tests. */
+    readonly beforeTableOpen?: (phase: "initial" | "publication", tableId: string, index: number) => Promise<void>;
 }
 
 function messageOf(error: unknown): string {
@@ -207,9 +214,26 @@ export class SqlCatalogMutationService {
         this.validateRequest(projectId, request);
         await this.authorize(uid, projectId);
         let connection = await this.open(projectId, uid);
+        let publicationCapture: PublicationCapture | undefined;
         try {
             let doc = connection.document as unknown as Y.Doc;
             this.assertExisting(doc);
+            const catalog = catalogOrThrow(projectId, doc);
+            if (request.expectedRevision === catalog.revision && request.intent.operation === "replace") {
+                const currentObject = objectFor(catalog, request.intent.object.id);
+                if (
+                    currentObject?.kind === request.intent.object.kind
+                    && currentObject.source === request.intent.object.source
+                ) {
+                    return {
+                        status: "no-op",
+                        applied: false,
+                        objectIds: this.affected(request.intent),
+                        before: catalog,
+                        after: catalog,
+                    };
+                }
+            }
             let initiallyCaptured: CapturedInput;
             try {
                 initiallyCaptured = await this.capture(uid, projectId, doc);
@@ -237,7 +261,16 @@ export class SqlCatalogMutationService {
             }
             let current: CapturedInput;
             try {
-                current = await this.capture(uid, projectId, doc);
+                publicationCapture = await this.captureForPublication(uid, projectId, doc);
+            } catch (error) {
+                return this.unknownEvidence(doc, projectId, request, error);
+            }
+            await this.authorize(uid, projectId);
+            try {
+                // All Project and Table reads below are synchronous against
+                // the held live documents. No authorization or room I/O can
+                // interleave between this snapshot and publication.
+                current = publicationCapture.snapshot();
             } catch (error) {
                 return this.unknownEvidence(doc, projectId, request, error);
             }
@@ -283,6 +316,17 @@ export class SqlCatalogMutationService {
                 if (observerError) throw observerError;
                 await this.options.afterMutationBeforeStore?.();
                 await this.storeDocument?.(`projects/${projectId}`, doc);
+                const storedLive = catalogOrThrow(projectId, doc);
+                if (storedLive.revision !== liveAfter.revision) {
+                    return {
+                        status: "unconfirmed",
+                        applied: false,
+                        objectIds: this.affected(request.intent),
+                        before,
+                        liveAfter: storedLive,
+                        reason: "Stored Project source changed before persistence acknowledgement",
+                    };
+                }
                 return {
                     status: "applied",
                     applied: true,
@@ -301,6 +345,7 @@ export class SqlCatalogMutationService {
                 };
             }
         } finally {
+            await publicationCapture?.close().catch(() => {});
             await closeLiveRoom(this.hocuspocus, connection);
         }
     }
@@ -434,11 +479,14 @@ export class SqlCatalogMutationService {
     }
 
     private async capture(uid: string, projectId: string, project: Y.Doc): Promise<CapturedInput> {
-        const tables: SqlTableSnapshot[] = [];
         const connections: DirectConnection[] = [];
+        const tableDocs = new Map<string, Y.Doc>();
         try {
-            for (const [id, entry] of [...project.getMap<Y.Map<unknown>>("yjsTables").entries()].sort()) {
+            const entries = [...project.getMap<Y.Map<unknown>>("yjsTables").entries()].sort();
+            for (let index = 0; index < entries.length; index++) {
+                const [id, entry] = entries[index];
                 if (!(entry instanceof Y.Map)) throw new Error(`Table registry entry is unavailable: ${id}`);
+                await this.options.beforeTableOpen?.("initial", id, index);
                 const connection = await openLiveRoom(
                     this.hocuspocus,
                     `projects/${projectId}/tables/${id}`,
@@ -446,13 +494,9 @@ export class SqlCatalogMutationService {
                     { outcome: "not_applied" },
                 );
                 connections.push(connection);
-                const doc = connection.document as unknown as Y.Doc;
-                const records = [...doc.getMap<Y.Map<unknown>>("data").entries()].map(([recordId, record]) => ({
-                    id: recordId,
-                    values: Object.fromEntries(record.entries()),
-                }));
-                tables.push({ id, schema: doc.getText("schema").toString(), records });
+                tableDocs.set(id, connection.document as unknown as Y.Doc);
             }
+            return this.snapshotInput(projectId, project, tableDocs);
         } catch (error) {
             throw new McpReadError("internal_failure", "Catalog reference evidence is unavailable", {
                 outcome: "not_applied",
@@ -461,6 +505,59 @@ export class SqlCatalogMutationService {
         } finally {
             for (const connection of connections) await closeLiveRoom(this.hocuspocus, connection).catch(() => {});
         }
+    }
+
+    private async captureForPublication(
+        uid: string,
+        projectId: string,
+        project: Y.Doc,
+    ): Promise<PublicationCapture> {
+        const connections: DirectConnection[] = [];
+        const tableDocs = new Map<string, Y.Doc>();
+        try {
+            const entries = [...project.getMap<Y.Map<unknown>>("yjsTables").entries()].sort();
+            for (let index = 0; index < entries.length; index++) {
+                const [id, entry] = entries[index];
+                if (!(entry instanceof Y.Map)) throw new Error(`Table registry entry is unavailable: ${id}`);
+                await this.options.beforeTableOpen?.("publication", id, index);
+                const room = `projects/${projectId}/tables/${id}`;
+                const connection = await openLiveRoom(this.hocuspocus, room, uid, { outcome: "not_applied" });
+                connections.push(connection);
+                tableDocs.set(id, connection.document as unknown as Y.Doc);
+            }
+            return {
+                snapshot: () => {
+                    for (const [id, table] of tableDocs) {
+                        if (!isLiveRoom(this.hocuspocus, `projects/${projectId}/tables/${id}`, table)) {
+                            throw new Error(`Table room changed during catalog preparation: ${id}`);
+                        }
+                    }
+                    return this.snapshotInput(projectId, project, tableDocs);
+                },
+                close: async () => {
+                    for (const connection of connections) {
+                        await closeLiveRoom(this.hocuspocus, connection).catch(() => {});
+                    }
+                },
+            };
+        } catch (error) {
+            for (const connection of connections) await closeLiveRoom(this.hocuspocus, connection).catch(() => {});
+            throw error;
+        }
+    }
+
+    private snapshotInput(projectId: string, project: Y.Doc, tableDocs: ReadonlyMap<string, Y.Doc>): CapturedInput {
+        const registeredIds = [...project.getMap<Y.Map<unknown>>("yjsTables").keys()].sort();
+        const capturedIds = [...tableDocs.keys()].sort();
+        if (stable(registeredIds) !== stable(capturedIds)) throw new Error("Table registry changed during capture");
+        const tables: SqlTableSnapshot[] = capturedIds.map(id => {
+            const doc = tableDocs.get(id)!;
+            const records = [...doc.getMap<Y.Map<unknown>>("data").entries()].map(([recordId, record]) => ({
+                id: recordId,
+                values: Object.fromEntries(record.entries()),
+            }));
+            return { id, schema: doc.getText("schema").toString(), records };
+        });
         const inspections: SqlInspectionTarget[] = [];
         const collect = (mapName: string, kind: SqlInspectionTarget["kind"], field: string) => {
             project.getMap<Y.Map<unknown>>(mapName).forEach((entry, id) => {
