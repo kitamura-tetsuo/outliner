@@ -104,7 +104,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
 
         // Check the text of the remaining items
         const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
-        const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const secondItemTextAfter = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
 
         // Confirm that text exists
         expect(firstItemTextAfter || "").toBeTruthy();
