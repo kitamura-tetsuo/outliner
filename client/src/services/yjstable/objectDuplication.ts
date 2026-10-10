@@ -217,12 +217,19 @@ export async function materializeDuplicationPlan(
             throw error;
         }
     }
-    await assertStructuralEnumCompatibility(
-        source,
-        destination,
-        sqlSnapshot,
-        new Set(objects.map(object => object.id)),
-    );
+    // Preserve the synchronous portion of catalog-independent replay. The
+    // undo router's existing redo contract relies on ordinary duplication
+    // materializing before its synchronous `redo()` call returns; awaiting an
+    // already-resolved guard would unnecessarily defer those effects by one
+    // microtask. ENUM-bearing projects take the guarded asynchronous path.
+    if (sqlSnapshot.catalog.objects.length > 0) {
+        await assertStructuralEnumCompatibility(
+            source,
+            destination,
+            sqlSnapshot,
+            new Set(objects.map(object => object.id)),
+        );
+    }
     const idMap = new Map<string, string>(existingIdMap);
     for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 
