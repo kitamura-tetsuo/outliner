@@ -1,0 +1,20 @@
+id: SLR-8f29a6d0
+title: Visual endpoint ranges survive character mirror notifications
+title-ja: 文字ミラーの通知後も視覚ノード境界の選択範囲を保持する
+description: A selection with a visual-node endpoint cannot be represented by character offsets in the hidden textarea. Native readback preserves that outline range while its caret remains on a Text row. Ordinary caret placement ends the range, after which valid Text mirror selection and collapse remain effective.
+category: selection-range
+status: implemented
+services:
+- client/src/stores/EditorOverlayStore.svelte.ts
+acceptance:
+- Real Shift+Down, Shift+Down and Shift+Up retain the expected Text and visual-node boundaries for Grid, Calendar and Layout
+- Delayed and repeated character-mirror notifications cannot overwrite a visual endpoint range
+- Text pointer placement clears the range and stale notifications cannot restore it
+- Text-only single-item and cross-item native selection and collapse remain effective
+- Selection gestures and mirror notifications preserve outline text, identity, ordering and visual bindings
+- Firefox and Chromium use the same logical endpoints and document outcomes
+tests:
+- client/e2e/new/slr-visual-endpoint-mirror-replay-8f29a6d0.spec.ts
+- client/e2e/new/slr-text-mirror-native-readback-8f29a6d0.spec.ts
+- client/src/tests/unit/stores/editorOverlayVisualEndpointMirror.spec.ts
+- client/src/tests/unit/stores/editorOverlayCrossItemMirror.spec.ts
