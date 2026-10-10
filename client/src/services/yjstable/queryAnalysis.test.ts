@@ -55,6 +55,11 @@ describe("resolveBareIdMutationAuthority", () => {
             // (issue #5547: the noise scanner must not swallow it).
             "SELECT a.id, a.title FROM tasks AS a -- comment\r, other_tasks AS b LIMIT 1",
             "SELECT a.id, a.title FROM tasks AS a -- comment\r\n, other_tasks AS b LIMIT 1",
+            // A dollar-quoted literal can spoof the outer FROM: its inner
+            // FROM/WHERE must not hide the real comma-joined FROM list
+            // (issue #5547).
+            "SELECT tasks.id, tasks.title, $$ FROM tasks WHERE $$ AS note FROM tasks, other_tasks LIMIT 1",
+            "SELECT tasks.id, tasks.title, $note$ FROM tasks WHERE $note$ AS note FROM tasks, other_tasks LIMIT 1",
         ];
         for (const query of cases) {
             const authority = resolveBareIdMutationAuthority(query, "tasks", schema, ["id", "title"]);
@@ -78,6 +83,9 @@ describe("resolveBareIdMutationAuthority", () => {
             },
             { query: "SELECT * FROM tasks", columns: ["id", "title", "題名", "points"] },
             { query: "  SELECT id, title FROM tasks  ", columns: ["id", "title"] },
+            // A comma inside a dollar-quoted literal is not a second FROM
+            // source, so the single-table result stays writable.
+            { query: "SELECT id, title FROM tasks WHERE title <> $$a,b$$", columns: ["id", "title"] },
         ];
         for (const { query, columns } of cases) {
             const authority = resolveBareIdMutationAuthority(query, "tasks", schema, columns);

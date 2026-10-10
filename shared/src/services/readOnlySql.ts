@@ -53,6 +53,24 @@ function scanSqlNoise(sql: string, keepDoubleQuoted: boolean): string {
             }
             continue;
         }
+        const dollarOpen = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(index));
+        if (dollarOpen) {
+            // PostgreSQL dollar-quoted string (`$$...$$`, `$tag$...$tag$`).
+            // The literal can hide keywords such as FROM/WHERE plus a comma
+            // joining a second FROM source (issue #5547): without stripping
+            // it, provenance parsing mistakes the literal's FROM for the
+            // outer FROM and stops at the literal's WHERE.
+            const tag = dollarOpen[0];
+            const close = sql.indexOf(tag, index + tag.length);
+            if (close < 0) {
+                out += sql.slice(index);
+                index = sql.length;
+            } else {
+                out += "''";
+                index = close + tag.length;
+            }
+            continue;
+        }
         if (char === "'" || char === '"') {
             let cursor = index + 1;
             let closed = false;
