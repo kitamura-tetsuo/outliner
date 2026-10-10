@@ -1,34 +1,22 @@
 import { expect, test } from "@playwright/test";
+import {
+    keyboardTaskRow as taskRow,
+    prepareKeyboardGrid,
+    selectAndFocusCell as selectAndFocus,
+} from "../utils/gridKeyboardFixture";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 test.describe("Grid keyboard navigation mode (#5188)", () => {
-    test.beforeEach(async ({ page }) => {
-        await page.goto("/demo/-/grids/demo-table-tasks-grid");
-        const gridView = page.getByTestId("yjs-table-view");
-        await expect(gridView).toBeVisible({ timeout: 30000 });
-        await taskRow(page, "demo-task-overdue").waitFor({ state: "visible", timeout: 30000 });
+    let firstRowId: string;
+    let secondRowId: string;
+
+    test.beforeEach(async ({ page }, testInfo) => {
+        [firstRowId, secondRowId] = await prepareKeyboardGrid(page, testInfo);
     });
 
-    function taskRow(page: import("@playwright/test").Page, recordId: string) {
-        return page.getByTestId("yjs-table-grid").locator(`tbody tr[data-record-id='${recordId}']`);
-    }
-
-    /**
-     * Selects a text cell and focuses it without leaving it in edit mode: a
-     * plain click on the display button opens the editor (see TextCell), so
-     * this clicks then immediately cancels with Escape, landing exactly on
-     * Grid's navigation-mode contract (selected, focused, not editing).
-     */
-    async function selectAndFocus(cell: import("@playwright/test").Locator) {
-        await cell.locator("button").click();
-        await expect(cell.locator("input")).toBeVisible();
-        await cell.locator("input").press("Escape");
-        await expect(cell.locator("button")).toBeFocused();
-    }
-
     test("arrow keys move the active cell in all four directions", async ({ page }) => {
-        const firstRow = taskRow(page, "demo-task-overdue");
+        const firstRow = taskRow(page, firstRowId);
         const titleCell = firstRow.locator("td[data-col='title']");
         await selectAndFocus(titleCell);
         await expect(titleCell).toHaveClass(/grid-active/);
@@ -42,7 +30,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await expect(titleCell).not.toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowDown");
-        const secondRow = taskRow(page, "demo-task-today");
+        const secondRow = taskRow(page, secondRowId);
         await expect(secondRow.locator("td[data-col='id']")).toHaveClass(/grid-active/);
 
         await page.keyboard.press("ArrowRight");
@@ -54,7 +42,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Shift+Arrow extends a rectangular selection from the anchor", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = taskRow(page, "demo-task-overdue");
+        const firstRow = taskRow(page, firstRowId);
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
@@ -67,7 +55,7 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
 
     test("Escape reduces an extended range to its active cell", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
-        const firstRow = taskRow(page, "demo-task-overdue");
+        const firstRow = taskRow(page, firstRowId);
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.down("Shift");
@@ -77,13 +65,13 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await page.keyboard.press("Escape");
 
         await expect(grid.locator("td.grid-selected")).toHaveCount(1);
-        await expect(taskRow(page, "demo-task-today").locator("td[data-col='status']")).toHaveClass(
+        await expect(taskRow(page, secondRowId).locator("td[data-col='status']")).toHaveClass(
             /grid-active/,
         );
     });
 
     test("Tab moves right and wraps to the next row at the edge", async ({ page }) => {
-        const firstRow = taskRow(page, "demo-task-overdue");
+        const firstRow = taskRow(page, firstRowId);
         await selectAndFocus(firstRow.locator("td[data-col='title']"));
 
         await page.keyboard.press("Tab");
@@ -94,13 +82,14 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
     });
 
     test("Shift+Enter moves the active cell up", async ({ page }) => {
-        const firstRow = taskRow(page, "demo-task-overdue");
-        const secondRow = taskRow(page, "demo-task-today");
+        const firstRow = taskRow(page, firstRowId);
+        const secondRow = taskRow(page, secondRowId);
         await selectAndFocus(secondRow.locator("td[data-col='title']"));
 
-        await page.keyboard.down("Shift");
-        await page.keyboard.press("Enter");
-        await page.keyboard.up("Shift");
+        await page.keyboard.press("Shift+Enter");
         await expect(firstRow.locator("td[data-col='title']")).toHaveClass(/grid-active/);
+        await expect(firstRow.locator("td[data-col='title'] button")).toBeFocused();
+        await expect(secondRow.locator("td[data-col='title']")).not.toHaveClass(/grid-active/);
+        await expect(page.getByTestId("yjs-table-grid").locator("input.cell-input")).toHaveCount(0);
     });
 });
