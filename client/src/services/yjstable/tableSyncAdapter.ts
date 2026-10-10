@@ -22,6 +22,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
+import type { CatalogRuntime, CatalogRuntimeState } from "./catalogRuntime";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery, missingRelationName } from "./queryAnalysis";
 import { formatQueryDateFields } from "./queryResultFormatting";
@@ -96,6 +97,7 @@ export interface TableSyncOptions {
     /** Shared Postgres schema holding every table of the project. */
     pgSchema: string;
     registry?: RelationRegistryPort;
+    catalogRuntime?: CatalogRuntime;
 }
 
 export class TableSyncAdapter {
@@ -103,6 +105,10 @@ export class TableSyncAdapter {
     private readonly listeners = new Set<TableSyncCallbacks>();
     private readonly pgSchema: string;
     private readonly registry: RelationRegistryPort | undefined;
+    private readonly catalogRuntime: CatalogRuntime | undefined;
+    private unsubscribeCatalog: (() => void) | undefined;
+    private catalogGeneration = 0;
+    private rebuildEpoch = 0;
     // Last emitted state, replayed to late subscribers so a view mounted after
     // the adapter started still renders the current result.
     private lastSchemaError: string | undefined;
@@ -140,6 +146,7 @@ export class TableSyncAdapter {
         this.handles = handles;
         this.pgSchema = options.pgSchema;
         this.registry = options.registry;
+        this.catalogRuntime = options.catalogRuntime;
     }
 
     get appliedSchema(): ParsedTableSchema | undefined {
@@ -199,15 +206,43 @@ export class TableSyncAdapter {
         this.started = true;
         this.handles.data.observeDeep(this.dataObserver);
         this.handles.schemaText.observe(this.schemaObserver);
-        await this.rebuildFromSchemaText();
+        const catalog = await this.catalogRuntime?.ready();
+        if (catalog && catalog.status !== "ready") {
+            this.emitSchema(undefined, catalog.status === "error" ? catalog.message : "SQL catalog is unavailable");
+        } else if (catalog?.status === "ready") {
+            this.catalogGeneration = catalog.generation;
+            await this.rebuildFromSchemaText();
+        } else {
+            await this.rebuildFromSchemaText();
+        }
+        this.unsubscribeCatalog = this.catalogRuntime?.subscribe(state => this.onCatalogState(state));
     }
 
     dispose(): void {
         this.disposed = true;
+        this.unsubscribeCatalog?.();
         if (this.started) {
             this.handles.data.unobserveDeep(this.dataObserver);
             this.handles.schemaText.unobserve(this.schemaObserver);
         }
+    }
+
+    private onCatalogState(state: CatalogRuntimeState): void {
+        if (!this.started || this.disposed) return;
+        if (state.status !== "ready") {
+            this.rebuildEpoch++;
+            this.schema = undefined;
+            this.emitSchema(undefined, state.status === "error" ? state.message : "SQL catalog is rebuilding");
+            return;
+        }
+        if (state.generation === this.catalogGeneration) return;
+        this.catalogGeneration = state.generation;
+        void this.rebuildFromSchemaText();
+    }
+
+    private catalogSources(): readonly string[] {
+        const state = this.catalogRuntime?.current;
+        return state?.status === "ready" ? state.snapshot.objects.map(object => object.source) : [];
     }
 
     private queryGeneration = 0;
@@ -273,7 +308,7 @@ export class TableSyncAdapter {
      * types; nothing is written yet.
      */
     async prepareSchemaChange(sql: string): Promise<{ parsed: ParsedTableSchema; diff: SchemaDiff; }> {
-        const parsed = await parseCreateTable(sql);
+        const parsed = await parseCreateTable(sql, this.catalogSources());
         this.assertNameAvailable(parsed.tableName);
         return { parsed, diff: diffSchemas(this.schema, parsed) };
     }
@@ -316,7 +351,7 @@ export class TableSyncAdapter {
             return;
         }
         try {
-            const parsed = await parseCreateTable(sql);
+            const parsed = await parseCreateTable(sql, this.catalogSources());
             // Also checked here, not only on apply: the schema text may arrive
             // from another client, and a reserved name must never shadow the
             // system relation of the same name.
@@ -331,6 +366,7 @@ export class TableSyncAdapter {
     }
 
     private async rebuild(parsed: ParsedTableSchema): Promise<void> {
+        const epoch = ++this.rebuildEpoch;
         // Only this table's relation is dropped: the schema is shared with
         // every other table of the project. A renamed table also drops the
         // relation it used to own, so the old name stops resolving.
@@ -342,6 +378,7 @@ export class TableSyncAdapter {
             recordIds.push(recordId);
         });
 
+        let rebuildError: unknown;
         await enqueueWrite(async (db) => {
             await db.exec(`CREATE SCHEMA IF NOT EXISTS ${quoteIdent(this.pgSchema)};`);
             if (previousTableName && previousTableName !== parsed.tableName) {
@@ -368,10 +405,20 @@ export class TableSyncAdapter {
                 await this.applyRecordToDb(db, recordId);
             }
         }).catch(err => {
+            rebuildError = err;
             logger.warn({ err }, "[tableSyncAdapter] Rebuild write queue operation failed");
         });
 
-        if (this.disposed) return;
+        if (this.disposed || epoch !== this.rebuildEpoch) {
+            this.schema = undefined;
+            return;
+        }
+        if (rebuildError) {
+            this.schema = undefined;
+            this.emitSchema(undefined, rebuildError instanceof Error ? rebuildError.message : String(rebuildError));
+            this.emitRecordErrors();
+            return;
+        }
         this.registry?.recordSqlName?.(this.handles.tableId, parsed.tableName);
         this.emitSchema(parsed);
         this.emitRecordErrors();
