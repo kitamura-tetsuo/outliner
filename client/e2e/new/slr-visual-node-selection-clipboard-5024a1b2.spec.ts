@@ -33,12 +33,21 @@ test.describe("SLR-5024a1b2: copying a selection that spans a visual node", () =
         await page.getByTestId("calendar-create").click();
         await expect(page.getByTestId("calendar-create-panel")).toHaveCount(0, { timeout: 15000 });
         await waitForStableGeometry(page);
+        const viewport = page.viewportSize()!;
+        const omega = await page.locator(`[data-item-id="${omegaId}"] .item-text`).boundingBox();
+        expect(omega, "the seeded drag endpoint must be rendered").not.toBeNull();
+        // Firefox's bound Calendar is taller than Chromium's. Fit the real endpoint
+        // before measuring mouse coordinates; keep the same drag and assertions.
+        if (omega!.y + omega!.height + 100 > viewport.height) {
+            await page.setViewportSize({ width: viewport.width, height: Math.ceil(omega!.y + omega!.height + 100) });
+            await waitForStableGeometry(page);
+        }
 
         await dragBetweenTextOffsets(page, { itemId: alphaId, offset: 6 }, { itemId: omegaId, offset: 5 });
         await page.keyboard.press("Control+c");
         await page.waitForTimeout(500);
 
-        const copied = await page.evaluate(() => {
+        const copied = await page.evaluate(async () => {
             // The private payload is only readable from the copy the editor
             // mirrors onto the page for tests; the plain flavor comes with it.
             // eslint-disable-next-line no-restricted-globals
@@ -51,9 +60,12 @@ test.describe("SLR-5024a1b2: copying a selection that spans a visual node", () =
                 items: encoded
                     ? (JSON.parse(encoded) as { items: Array<{ text: string; componentType?: string; }>; }).items
                     : [],
-                plainText: copiedByEditor.lastCopiedText ?? "",
+                plainText: await navigator.clipboard.readText(),
+                editorText: copiedByEditor.lastCopiedText ?? "",
             };
         });
+
+        expect(copied.plainText).toBe(copied.editorText);
 
         // The structured flavor carries the block itself...
         expect(copied.items.map(item => item.componentType)).toEqual([undefined, "calendar", undefined]);
