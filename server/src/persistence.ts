@@ -40,6 +40,19 @@ export async function createPersistence(config: Config): Promise<InstanceType<ty
  * save mutex and rejects on any storage failure.
  */
 export type DocumentStore = (documentName: string, document: Y.Doc) => Promise<void>;
+export type DocumentLoader = (documentName: string) => Promise<Y.Doc | undefined>;
+
+/** Load an independent snapshot through the configured production persistence adapter. */
+export function createDocumentLoader(persistence: InstanceType<typeof SQLite>): DocumentLoader {
+    return async documentName => {
+        if (!persistence.db) throw new Error("Persistence database is not open");
+        const stored = await persistence.configuration.fetch({ documentName } as unknown as fetchPayload);
+        if (!stored) return undefined;
+        const document = new Y.Doc();
+        Y.applyUpdate(document, new Uint8Array(stored));
+        return document;
+    };
+}
 
 export function createDocumentStore(persistence: InstanceType<typeof SQLite>): DocumentStore {
     return async (documentName, document) => {
