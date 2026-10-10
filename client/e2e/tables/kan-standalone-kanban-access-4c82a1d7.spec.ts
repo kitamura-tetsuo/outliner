@@ -30,7 +30,7 @@ test("a principal without the resource-side grant cannot disclose a private boar
     await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
     await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
-    await expect(page.getByText(/Project not found|Kanban not found|Failed|denied|unavailable/i).first()).toBeVisible({
-        timeout: 30000,
-    });
+    await expect.poll(() => page.evaluate(() => (globalThis as any).__USER_MANAGER__?.auth?.currentUser?.email))
+        .toBe(stranger);
+    await expect(page.getByTestId("kanban-source-table-link")).toHaveCount(0);
 });

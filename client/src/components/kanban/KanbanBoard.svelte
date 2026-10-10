@@ -22,6 +22,7 @@ let committed = $state<KanbanSettings>(getKanban(projectDoc, kanban.kanbanId)!);
 let draft = $state<KanbanSettings>({ ...committed, detailFields: [...committed.detailFields], laneOrder: [...committed.laneOrder] });
 // svelte-ignore state_referenced_locally
 let baseline = $state<KanbanSettings>({ ...draft, detailFields: [...draft.detailFields], laneOrder: [...draft.laneOrder] });
+let queryDraft = $state(committed.query);
 let projection = $state<KanbanProjection>({ status: "loading", lanes: [], columns: [], current: false });
 let editing = $state(false);
 let conflict = $state<string | undefined>();
@@ -38,17 +39,18 @@ function refresh() {
     if (next) committed = copy(next);
 }
 const observer = () => refresh();
-function beginEdit() { baseline = copy(committed); draft = copy(committed); conflict = undefined; editing = true; }
-function cancel() { draft = copy(committed); conflict = undefined; editing = false; }
+function beginEdit() { baseline = copy(committed); draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = true; }
+function cancel() { draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = false; }
 function apply() {
     if (isReadOnly) { conflict = "This presentation is read-only."; return; }
     const current = getKanban(projectDoc, kanban.kanbanId);
     if (!current) { conflict = "This Kanban was deleted or replaced. Your draft was preserved."; return; }
+    const candidate = { ...draft, query: queryDraft };
     const keys = ["name", "query", "groupField", "titleField", "detailFields", "laneOrder"] as const;
-    const dirty = keys.filter(key => !same(draft[key], baseline[key]));
+    const dirty = keys.filter(key => !same(candidate[key], baseline[key]));
     const stale = dirty.filter(key => !same(current[key], baseline[key]));
     if (stale.length) { conflict = `A peer changed ${stale.join(", ")}. Your draft was not saved.`; return; }
-    const updates = Object.fromEntries(dirty.map(key => [key, draft[key] ?? ""]));
+    const updates = Object.fromEntries(dirty.map(key => [key, candidate[key] ?? ""]));
     updateKanban(projectDoc, kanban.kanbanId, updates);
     refresh(); editing = false; conflict = undefined;
 }
@@ -82,12 +84,12 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
             <label>Name <input bind:value={draft.name} disabled={isReadOnly} /></label>
             <label>SELECT query
                 <SqlEditor
-                    value={draft.query}
+                    value={queryDraft}
                     readOnly={isReadOnly}
                     ariaLabel="Kanban SELECT query"
                     testId="kanban-query-editor"
-                    onChange={value => draft.query = value}
-                    onBlur={value => draft.query = value}
+                    onChange={value => queryDraft = value}
+                    onBlur={value => queryDraft = value}
                 />
             </label>
             <label>Grouping column <input bind:value={draft.groupField} list="kanban-columns" disabled={isReadOnly} /></label>
