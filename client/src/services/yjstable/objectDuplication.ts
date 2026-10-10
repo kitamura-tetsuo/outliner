@@ -20,7 +20,11 @@ import {
     listGrids,
 } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
-import { assertStructuralEnumCompatibility, captureStructuralSqlSnapshot } from "./structuralEnumGuard";
+import {
+    assertStructuralEnumCompatibility,
+    captureStructuralSqlSnapshot,
+    structuralSqlSnapshotRequiresGuard,
+} from "./structuralEnumGuard";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
 import type { TableDocConnection } from "./tableEngine";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
@@ -220,12 +224,10 @@ export async function materializeDuplicationPlan(
     // Always admit the captured SQL, even when the catalog is empty: a typed
     // schema with unavailable declarations is unresolved evidence, not proof
     // that the transfer is catalog-independent.
-    await assertStructuralEnumCompatibility(
-        source,
-        destination,
-        sqlSnapshot,
-        new Set(objects.map(object => object.id)),
-    );
+    const relevantSqlIds = new Set(objects.map(object => object.id));
+    if (structuralSqlSnapshotRequiresGuard(sqlSnapshot, relevantSqlIds)) {
+        await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
+    }
     const idMap = new Map<string, string>(existingIdMap);
     for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 

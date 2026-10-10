@@ -153,6 +153,14 @@ function assertResolvableCustomTypes(snapshot: StructuralSqlSnapshot, relevantId
     }
 }
 
+/** Whether admission needs compiler work (or must reject unresolved custom-type syntax). */
+export function structuralSqlSnapshotRequiresGuard(
+    snapshot: StructuralSqlSnapshot,
+    relevantIds: ReadonlySet<string>,
+): boolean {
+    return unresolvedCustomType(snapshot, relevantIds) !== undefined || referencesCapturedEnum(snapshot, relevantIds);
+}
+
 function records(doc: Y.Doc, tableId: string): SqlTableSnapshot["records"] {
     const handles = getTableHandles(doc, tableId);
     if (!handles) throw new StructuralEnumCompatibilityError(`Table "${tableId}" dependency evidence is unavailable.`);
