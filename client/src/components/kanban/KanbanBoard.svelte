@@ -5,7 +5,6 @@ import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import {
     destroyKanbanUndoManager,
     getKanban,
-    getKanbanRegistry,
     retainKanbanUndoManager,
     type KanbanHandles,
     type KanbanSettings,
@@ -94,7 +93,7 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
             <label>Title column <input bind:value={draft.titleField} list="kanban-columns" disabled={isReadOnly} /></label>
             <label>Detail columns (one per line)<textarea value={draft.detailFields.join("\n")} oninput={e => draft.detailFields = e.currentTarget.value.split("\n").filter(Boolean)} disabled={isReadOnly}></textarea></label>
             <label>Lane preference (one per line; &lt;NULL&gt; for SQL NULL)<textarea value={draft.laneOrder.map(v => v === null ? "<NULL>" : v).join("\n")} oninput={e => draft.laneOrder = e.currentTarget.value.split("\n").filter(v => v !== "").map(v => v === "<NULL>" ? null : v)} disabled={isReadOnly}></textarea></label>
-            <datalist id="kanban-columns">{#each projection.columns as column}<option value={column}></option>{/each}</datalist>
+            <datalist id="kanban-columns">{#each projection.columns as column (column)}<option value={column}></option>{/each}</datalist>
             {#if conflict}<p class="error" role="alert" data-testid="kanban-draft-conflict">{conflict}</p>{/if}
             <button type="button" onclick={apply} disabled={isReadOnly}>Apply</button>
             <button type="button" onclick={cancel}>Cancel</button>
@@ -116,7 +115,7 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
                     {#each lane.cards as card (card.occurrenceKey)}
                         <article class="card">
                             <h3>{display(committed.titleField ? card.row[committed.titleField] : undefined) || "Untitled"}</h3>
-                            {#each committed.detailFields as field}
+                            {#each committed.detailFields as field (field)}
                                 <div class="detail"><strong>{field}</strong>: {display(card.row[field])}</div>
                             {/each}
                         </article>
