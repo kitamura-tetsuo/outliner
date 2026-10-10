@@ -155,6 +155,13 @@ export class OutlinerTableCreationService {
                 }, { acquireSharedDb: true });
             } catch (error) {
                 if (error instanceof McpReadError && error.code === "validation_failed") {
+                    // The shared compiler deliberately rejects IF NOT EXISTS,
+                    // but an already-claimed declaration has the older and
+                    // more specific namespace outcome. Do this only after the
+                    // awaited compiler boundary so revocation still withholds
+                    // the conflicting Table identity.
+                    const declaredName = simpleCreateTableName(schemaSql);
+                    if (declaredName) this.assertNameUnclaimed(project, declaredName);
                     throw this.schemaRejection(error.message, error.debug);
                 }
                 throw error;
@@ -405,6 +412,13 @@ export class OutlinerTableCreationService {
             outcome: "not_published",
         });
     }
+}
+
+/** Best-effort name recovery for a compiler-refused, syntactically shaped declaration. */
+function simpleCreateTableName(sql: string): string | undefined {
+    const match = /^\s*create\s+table\s+(?:if\s+not\s+exists\s+)?(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))/i
+        .exec(sql);
+    return match?.[1]?.replace(/""/g, '"') ?? match?.[2]?.toLowerCase();
 }
 
 /**
