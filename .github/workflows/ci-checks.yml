@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}:latest
       credentials:
@@ -45,7 +45,7 @@ jobs:
   firebase-validation:
     needs: lint
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}:latest
       credentials:

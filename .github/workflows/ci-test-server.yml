@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   server-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}:latest
       credentials:
@@ -62,7 +62,7 @@ jobs:
           retention-days: 2
 
   project-directory-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}:latest
       credentials:

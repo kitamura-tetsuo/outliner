@@ -28,7 +28,7 @@ on:
 jobs:
   detect-promotion-candidates:
     name: Detect and Promote ESLint Rules
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
 
     steps:
