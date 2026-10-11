@@ -5,13 +5,13 @@ description: Object Manager duplication compiles source-bound Table and query ev
 category: client
 status: implemented
 components:
-- client/src/services/yjstable/structuralEnumGuard.ts
 - client/src/services/yjstable/objectDuplication.ts
+- client/src/services/yjstable/structuralEnumGuard.ts
 acceptance:
-- Structural duplication derives ENUM dependencies from actual Table schemas and saved queries
+- Catalog-independent duplication remains independent of unrelated catalog entries
 - Cross-Project duplication accepts independently identified ENUMs only when SQL names and exact ordered labels match
 - Missing, incompatible, invalid, or stale evidence refuses the operation before destination objects are published
-- Catalog-independent duplication remains independent of unrelated catalog entries
+- Structural duplication derives ENUM dependencies from actual Table schemas and saved queries
 tests:
-- client/src/services/yjstable/structuralEnumGuard.test.ts
 - client/src/services/yjstable/objectDuplication.test.ts
+- client/src/services/yjstable/structuralEnumGuard.test.ts
