@@ -12,6 +12,7 @@ acceptance:
 - The board preserves SQL result order, distinguishes SQL NULL, empty strings and literal labels, and renders configured title and detail values as inert text
 tests:
 - client/e2e/tables/kan-standalone-kanban-access-4c82a1d7.spec.ts
+- client/e2e/tables/kan-standalone-kanban-binding-lifecycle-4c82a1d7.spec.ts
 - client/e2e/tables/kan-standalone-kanban-creation-4c82a1d7.spec.ts
 - client/e2e/tables/kan-standalone-kanban-drafts-4c82a1d7.spec.ts
 - client/e2e/tables/kan-standalone-kanban-states-4c82a1d7.spec.ts

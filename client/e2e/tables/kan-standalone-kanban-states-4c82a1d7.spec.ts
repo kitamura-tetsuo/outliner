@@ -10,23 +10,53 @@ import {
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-test("distinguishes NULL/empty/literal lanes and renders a readonly projection", async ({ page }, testInfo) => {
-    test.setTimeout(180000);
-    const fixture = await createSourceThroughUi(page, testInfo);
-    await openKanbanList(page, fixture.projectName);
-    await createKanbanThroughUi(page, "Labels", fixture.tableId);
-    const query =
-        "SELECT title, detail, CASE WHEN title = 'Alpha' THEN NULL WHEN title = 'Beta' THEN '' ELSE 'NULL' END AS lane FROM tasks ORDER BY title";
-    await configureKanbanThroughUi(page, { query, group: "lane", title: "title", details: ["detail"] });
-    await expect(page.locator("section.lane")).toHaveCount(3, { timeout: 30000 });
-    await expect(page.locator("section.lane h2")).toHaveText(["SQL NULL", "Empty string", "NULL"]);
-    expect(
-        await page.locator("section.lane").evaluateAll(lanes => lanes.map(lane => lane.getAttribute("data-lane-kind"))),
-    )
-        .toEqual(["null", "empty", "string"]);
-    await expect(page.locator("article.card h3")).toHaveText(["Alpha", "Beta", "Gamma"]);
-    expect((await readKanbans(page))[0]).toMatchObject({ query, groupField: "lane", titleField: "title" });
-});
+test(
+    "distinguishes NULL/empty/literal lanes and renders a readonly projection",
+    async ({ page, context }, testInfo) => {
+        test.setTimeout(180000);
+        const fixture = await createSourceThroughUi(page, testInfo);
+        await openKanbanList(page, fixture.projectName);
+        await createKanbanThroughUi(page, "Labels", fixture.tableId);
+        const query = "SELECT title, detail, lane FROM (VALUES "
+            + "('Alpha', 'detail-1', NULL::TEXT, 1), "
+            + "('Beta', 'detail-2', '', 2), "
+            + "('Gamma', 'detail-3', 'SQL NULL', 3), "
+            + "('Delta', 'detail-4', 'Empty string', 4)) AS lanes(title, detail, lane, position) ORDER BY position";
+        await configureKanbanThroughUi(page, { query, group: "lane", title: "title", details: ["detail"] });
+        await expect(page.locator("section.lane")).toHaveCount(4, { timeout: 30000 });
+        await expect(page.locator("section.lane h2 > span:first-child")).toHaveText([
+            "SQL NULL",
+            "Empty string",
+            "SQL NULL",
+            "Empty string",
+        ]);
+        await expect(page.locator("section.lane .lane-kind")).toHaveText([
+            "SQL NULL value",
+            "Empty string value",
+            "Text value",
+            "Text value",
+        ]);
+        expect(
+            await page.locator("section.lane").evaluateAll(lanes =>
+                lanes.map(lane => lane.getAttribute("data-lane-kind"))
+            ),
+        )
+            .toEqual(["null", "empty", "string", "string"]);
+        await expect(page.locator("article.card h3")).toHaveText(["Alpha", "Beta", "Gamma", "Delta"]);
+        expect((await readKanbans(page))[0]).toMatchObject({ query, groupField: "lane", titleField: "title" });
+        await page.reload();
+        await expect(page.locator("section.lane .lane-kind")).toHaveText(
+            ["SQL NULL value", "Empty string value", "Text value", "Text value"],
+            { timeout: 30000 },
+        );
+        const peer = await context.newPage();
+        await peer.goto(page.url());
+        await expect(peer.locator("section.lane .lane-kind")).toHaveText(
+            ["SQL NULL value", "Empty string value", "Text value", "Text value"],
+            { timeout: 30000 },
+        );
+    },
+);
 
 test(
     "shows missing-field, zero-row, and missing-source states without rewriting settings",

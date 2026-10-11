@@ -67,6 +67,11 @@ function laneLabel(value: string | null): string {
     if (/^\s+$/.test(value)) return `Whitespace (${value.length})`;
     return value;
 }
+function laneKindLabel(value: string | null): string {
+    if (value === null) return "SQL NULL value";
+    if (value === "") return "Empty string value";
+    return "Text value";
+}
 function display(value: unknown): string { return value === null ? "NULL" : value === undefined ? "" : String(value); }
 
 onMount(() => {
@@ -123,7 +128,7 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
         <div class="lanes" data-testid="kanban-lanes">
             {#each projection.lanes as lane, laneIndex (`${lane.key === null ? "null" : `string:${lane.key}`}:${laneIndex}`)}
                 <section class="lane" data-lane-kind={lane.key === null ? "null" : lane.key === "" ? "empty" : "string"}>
-                    <h2>{laneLabel(lane.key)}</h2>
+                    <h2><span>{laneLabel(lane.key)}</span><span class="lane-kind">{laneKindLabel(lane.key)}</span></h2>
                     {#each lane.cards as card (card.occurrenceKey)}
                         <article class="card">
                             <h3>{display(committed.titleField ? card.row[committed.titleField] : undefined) || "Untitled"}</h3>
@@ -139,5 +144,5 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
 </div>
 
 <style>
-.toolbar{display:flex;justify-content:flex-end;margin-bottom:.75rem}.editor{display:grid;gap:.75rem;border:1px solid #d1d5db;padding:1rem;margin-bottom:1rem}.editor label,.editor-field{display:grid;gap:.25rem}.editor textarea,.editor input{border:1px solid #9ca3af;border-radius:.25rem;padding:.45rem}.error,.diagnostic{color:#991b1b}.lanes{display:flex;gap:1rem;overflow-x:auto;align-items:flex-start}.lane{min-width:16rem;max-width:22rem;background:#f3f4f6;border-radius:.5rem;padding:.75rem}.lane h2{font-weight:700;margin-bottom:.5rem}.card{background:white;border:1px solid #d1d5db;border-radius:.4rem;padding:.65rem;margin:.5rem 0;overflow-wrap:anywhere}.card h3{font-weight:600}.detail{font-size:.85rem;color:#4b5563}
+.toolbar{display:flex;justify-content:flex-end;margin-bottom:.75rem}.editor{display:grid;gap:.75rem;border:1px solid #d1d5db;padding:1rem;margin-bottom:1rem}.editor label,.editor-field{display:grid;gap:.25rem}.editor textarea,.editor input{border:1px solid #9ca3af;border-radius:.25rem;padding:.45rem}.error,.diagnostic{color:#991b1b}.lanes{display:flex;gap:1rem;overflow-x:auto;align-items:flex-start}.lane{min-width:16rem;max-width:22rem;background:#f3f4f6;border-radius:.5rem;padding:.75rem}.lane h2{font-weight:700;margin-bottom:.5rem;display:flex;gap:.4rem;align-items:center}.lane-kind{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:.1rem .3rem;border:1px solid #64748b;border-radius:.25rem;background:#fff;color:#334155}.card{background:white;border:1px solid #d1d5db;border-radius:.4rem;padding:.65rem;margin:.5rem 0;overflow-wrap:anywhere}.card h3{font-weight:600}.detail{font-size:.85rem;color:#4b5563}
 </style>

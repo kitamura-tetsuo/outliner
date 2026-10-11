@@ -215,6 +215,76 @@ export interface AcquiredProjectClient {
     release: () => void;
 }
 
+interface RouteClientEntry {
+    client: YjsClient;
+    refs: number;
+}
+
+/* eslint-disable svelte/prefer-svelte-reactivity -- Principal-scoped connection ownership bookkeeping. */
+const routeClients = new Map<string, RouteClientEntry>();
+const routeClientPromises = new Map<string, Promise<YjsClient | undefined>>();
+/* eslint-enable svelte/prefer-svelte-reactivity */
+
+/**
+ * Acquire a private route connection scoped to the current authenticated
+ * principal. Unlike the general workspace registry, this cache can never
+ * reuse a Project connection opened by a previous principal.
+ */
+export async function acquireRouteClientByProjectTitle(
+    projectTitle: string,
+    signal?: AbortSignal,
+): Promise<AcquiredProjectClient | undefined> {
+    const userId = userManager.getCurrentUser()?.id;
+    if (!userId || signal?.aborted) return undefined;
+    const projectId = await resolveProjectId(projectTitle);
+    if (!projectId || signal?.aborted) return undefined;
+    const key = `${userId}:${projectId}`;
+    let entry = routeClients.get(key);
+    if (!entry || entry.client.isDestroyed) {
+        let pending = routeClientPromises.get(key);
+        if (!pending) {
+            pending = (async () => {
+                try {
+                    const project = Project.createInstance(projectTitle);
+                    return await YjsClient.connect(projectId, project);
+                } catch (error) {
+                    logger.warn({ error, projectId, userId }, "[acquireRouteClientByProjectTitle] Project unavailable");
+                    return undefined;
+                }
+            })().finally(() => routeClientPromises.delete(key));
+            routeClientPromises.set(key, pending);
+        }
+        const client = await pending;
+        if (!client) return undefined;
+        if (signal?.aborted) {
+            queueMicrotask(() => {
+                if (!routeClients.has(key) && !client.isDestroyed) client.dispose();
+            });
+            return undefined;
+        }
+        entry = routeClients.get(key);
+        if (!entry || entry.client !== client) {
+            entry = { client, refs: 0 };
+            routeClients.set(key, entry);
+        }
+    }
+    entry.refs++;
+    let released = false;
+    return {
+        client: entry.client,
+        release: () => {
+            if (released) return;
+            released = true;
+            const current = routeClients.get(key);
+            if (!current || current.client !== entry?.client) return;
+            current.refs--;
+            if (current.refs > 0) return;
+            current.client.dispose();
+            routeClients.delete(key);
+        },
+    };
+}
+
 /** Return an already-authorized live project document without opening a connection. */
 export function getLoadedProjectDocById(projectId: string): Y.Doc | undefined {
     for (const [, [client]] of registry.entries()) {

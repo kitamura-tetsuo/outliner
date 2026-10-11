@@ -5,6 +5,7 @@ import {
     createKanbanThroughUi,
     createSourceThroughUi,
     openKanbanList,
+    readKanbanPurityState,
     readKanbans,
     TASK_QUERY,
 } from "../utils/kanbanTestHelpers";
@@ -16,6 +17,7 @@ test(
     async ({ page, context }, testInfo) => {
         test.setTimeout(180000);
         const fixture = await createSourceThroughUi(page, testInfo);
+        const nonKanbanBaseline = await readKanbanPurityState(page);
         await openKanbanList(page, fixture.projectName);
         const id = await createKanbanThroughUi(page, "Work board", fixture.tableId);
         await configureKanbanThroughUi(page, {
@@ -25,7 +27,7 @@ test(
             details: ["detail"],
             lanes: ["done", "open"],
         });
-        await expect(page.locator('[data-lane-kind="string"] h2')).toHaveText(["done", "open"]);
+        await expect(page.locator('[data-lane-kind="string"] h2 > span:first-child')).toHaveText(["done", "open"]);
         await expect(page.locator("article.card h3")).toHaveText(["Beta", "Alpha", "Gamma"]);
         expect(await readKanbans(page)).toEqual([{
             id,
@@ -37,14 +39,22 @@ test(
             detailFields: ["detail"],
             laneOrder: ["done", "open"],
         }]);
+        expect(await readKanbanPurityState(page)).toEqual(nonKanbanBaseline);
+
+        await page.getByRole("button", { name: "Configure" }).click();
+        await page.getByLabel("Name").fill("Discarded draft");
+        await page.getByTestId("kanban-config").getByRole("button", { name: "Cancel" }).click();
+        expect(await readKanbanPurityState(page)).toEqual(nonKanbanBaseline);
 
         await page.reload();
         await expect(page.getByTestId("kanban-board")).toHaveAttribute("data-kanban-id", id, { timeout: 30000 });
         await expect(page.locator("article.card h3")).toHaveText(["Beta", "Alpha", "Gamma"], { timeout: 30000 });
+        expect(await readKanbanPurityState(page)).toEqual(nonKanbanBaseline);
         const peer = await context.newPage();
         await peer.goto(page.url());
         await expect(peer.getByTestId("kanban-board")).toHaveAttribute("data-kanban-id", id, { timeout: 30000 });
         await expect(peer.locator("article.card")).toHaveCount(3, { timeout: 30000 });
+        expect(await readKanbanPurityState(peer)).toEqual(nonKanbanBaseline);
     },
 );
 

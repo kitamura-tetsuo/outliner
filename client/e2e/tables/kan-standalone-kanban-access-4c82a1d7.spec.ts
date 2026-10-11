@@ -21,6 +21,8 @@ test("a principal without the resource-side grant cannot disclose a private boar
     const fixture = await createSourceThroughUi(page, testInfo);
     await openKanbanList(page, fixture.projectName);
     const id = await createKanbanThroughUi(page, "Private board", fixture.tableId);
+    await page.getByRole("link", { name: "Kanbans" }).click();
+    await expect(page.getByTestId("project-kanban-list")).toContainText("Private board");
     await page.locator("button.logout-btn").click();
     await expect(page.locator(".email-login-form")).toBeVisible({ timeout: 10000 });
     const stranger = `kanban-stranger-${Date.now()}@example.com`;
@@ -29,10 +31,21 @@ test("a principal without the resource-side grant cannot disclose a private boar
     await page.locator("button.email-login-btn").click();
     await expect.poll(() => page.evaluate(() => (globalThis as any).__USER_MANAGER__?.auth?.currentUser?.email))
         .toBe(stranger);
-    // Authentication changes are handled in-place by the loaded route. A hard
-    // reload would intentionally run the E2E bootstrap login and replace the
-    // ungranted principal with test@example.com before exercising access.
+    await expect(page.getByTestId("project-kanban-list")).toHaveCount(0);
+    await expect(page.getByTestId("kanban-create-form")).toHaveCount(0);
+    await expect(page.getByLabel("Source table")).toHaveCount(0);
+
+    // History navigation is handled by SvelteKit and mounts the detail route
+    // under the same ungranted principal without an E2E bootstrap reload.
+    await page.goBack();
     await expect(page).toHaveURL(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
     await expect(page.getByTestId("kanban-source-table-link")).toHaveCount(0);
+
+    await page.locator("button.logout-btn").click();
+    await expect(page.locator(".email-login-form")).toBeVisible();
+    await page.locator("#email").fill("test@example.com");
+    await page.locator("#password").fill("password");
+    await page.locator("button.email-login-btn").click();
+    await expect(page.getByTestId("kanban-board")).toBeVisible({ timeout: 30000 });
 });

@@ -28,6 +28,11 @@ export interface KanbanState {
     detailFields: string[];
     laneOrder: Array<string | null>;
 }
+export interface KanbanPurityState {
+    tables: Array<{ id: string; name: string; sqlName: string; schema: string; data: unknown; }>;
+    grids: Array<{ id: string; value: unknown; }>;
+    pageTree: unknown[];
+}
 
 export async function createSourceThroughUi(page: Page, testInfo: TestInfo): Promise<KanbanFixture> {
     const seeded = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Kanban fixture"]);
@@ -102,5 +107,45 @@ export async function readKanbans(page: Page): Promise<KanbanState[]> {
             })
         );
         return result;
+    });
+}
+
+/** Snapshot every non-Kanban object that Kanban read/configuration actions must leave untouched. */
+export async function readKanbanPurityState(page: Page): Promise<KanbanPurityState> {
+    return page.evaluate(() => {
+        const project = (globalThis as any).__YJS_STORE__?.yjsClient?.getProject();
+        if (!project?.ydoc) throw new Error("Project unavailable");
+        const tables: KanbanPurityState["tables"] = [];
+        project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
+            const doc = entry.get("doc");
+            tables.push({
+                id,
+                name: String(entry.get("name") ?? ""),
+                sqlName: String(entry.get("sqlName") ?? ""),
+                schema: doc.getText("schema").toString(),
+                data: doc.getMap("data").toJSON(),
+            });
+        });
+        const grids: KanbanPurityState["grids"] = [];
+        project.ydoc.getMap("yjsGrids").forEach((entry: any, id: string) => {
+            grids.push({ id, value: entry.toJSON() });
+        });
+        const snapshotItems = (items: any): unknown[] => {
+            const result: unknown[] = [];
+            for (let index = 0; index < items.length; index++) {
+                const item = items.at(index);
+                result.push({
+                    id: String(item.id),
+                    text: String(item.text ?? ""),
+                    componentType: item.componentType ?? undefined,
+                    yjsTableId: item.yjsTableId ?? undefined,
+                    items: snapshotItems(item.items),
+                });
+            }
+            return result;
+        };
+        tables.sort((left, right) => left.id.localeCompare(right.id));
+        grids.sort((left, right) => left.id.localeCompare(right.id));
+        return { tables, grids, pageTree: snapshotItems(project.items) };
     });
 }
