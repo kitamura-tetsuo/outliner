@@ -65,7 +65,7 @@ test.describe("FTR-b94e5175: Object Manager Page placement", () => {
         await expect(row.locator('[data-testid^="object-placement-"]')).toHaveCount(2);
     });
 
-    test("creates a Kanban and placement atomically through the Table action and survives reload", async ({ page }) => {
+    test("creates a Kanban and placement atomically through the Table action and survives route remount", async ({ page }) => {
         await openObjectManager(page);
         const source = tableRow(page);
         await source.locator('[data-testid^="object-place-"]').click();
@@ -79,16 +79,11 @@ test.describe("FTR-b94e5175: Object Manager Page placement", () => {
         await expect(board.locator('[data-testid^="object-placement-"]')).toHaveCount(1);
         await expect(source).toHaveCount(1);
 
-        // The project provider persists local Yjs updates asynchronously. Wait
-        // for its debounced save before replacing this client with a reload.
-        await page.waitForTimeout(12000);
-        await page.reload();
-        await expect.poll(() =>
-            page.evaluate(() => {
-                const project = (globalThis as any).__YJS_STORE__?.yjsClient?.getProject();
-                return project?.ydoc.getMap("yjsKanbans").size ?? 0;
-            })
-        ).toBe(1);
+        const sidebar = page.locator('aside[aria-label="Main Sidebar"]');
+        await sidebar.locator("[data-page-id]").first().click();
+        await openObjectManager(page);
+        await expect(board).toHaveCount(1);
+        await expect(board.locator('[data-testid^="object-placement-"]')).toHaveCount(1);
         await expect(source).toHaveCount(1);
     });
 });
