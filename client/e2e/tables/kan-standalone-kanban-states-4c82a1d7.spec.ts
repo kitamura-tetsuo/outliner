@@ -20,7 +20,10 @@ test("distinguishes NULL/empty/literal lanes and renders a readonly projection",
     await configureKanbanThroughUi(page, { query, group: "lane", title: "title", details: ["detail"] });
     await expect(page.locator("section.lane")).toHaveCount(3, { timeout: 30000 });
     await expect(page.locator("section.lane h2")).toHaveText(["SQL NULL", "Empty string", "NULL"]);
-    await expect(page.locator("section.lane")).toHaveAttribute("data-lane-kind", /null|empty|string/);
+    expect(
+        await page.locator("section.lane").evaluateAll(lanes => lanes.map(lane => lane.getAttribute("data-lane-kind"))),
+    )
+        .toEqual(["null", "empty", "string"]);
     await expect(page.locator("article.card h3")).toHaveText(["Alpha", "Beta", "Gamma"]);
     expect((await readKanbans(page))[0]).toMatchObject({ query, groupField: "lane", titleField: "title" });
 });
@@ -53,9 +56,9 @@ test(
         });
         await expect(page.getByTestId("kanban-empty")).toBeVisible({ timeout: 30000 });
 
-        await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/objects`);
-        await page.getByTestId(`object-delete-${fixture.tableId}`).click();
-        await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
+        await page.getByTestId("kanban-source-table-link").click();
+        await page.getByRole("button", { name: "Delete table", exact: true }).click();
+        await page.getByRole("dialog").getByRole("button", { name: "Delete table", exact: true }).click();
         await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
         await expect(page.getByTestId("kanban-missing-source")).toBeVisible({ timeout: 30000 });
         expect((await readKanbans(page))[0].sourceTableId).toBe(fixture.tableId);
