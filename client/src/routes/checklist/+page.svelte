@@ -1,5 +1,5 @@
 <script lang="ts">
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 import Checklist from "../../components/Checklist.svelte";
 
 let mode: "shopping" | "packing" | "habit" | "custom" = $state("shopping");

@@ -1,60 +1,41 @@
 id: SQL-9e7f2a1b
 title: Project SQL catalog with executable ENUM types
 title-ja: 実行可能な ENUM 型を持つプロジェクト SQL カタログ
-description: 'Projects own a SQL catalog of shared ENUM types, authored through
-  the existing shared Monaco SQL editor (SqlEditor.svelte) on the project''s
-  Types management pages (/:project/-/types and /:project/-/types/:catalogId).
+description: 'Projects own a SQL catalog of shared ENUM types, authored through the existing shared Monaco SQL editor (SqlEditor.svelte) on the project''s Types management pages (/:project/-/types and /:project/-/types/:catalogId).
 
-  Each catalog entry owns exactly one declarative SQL source: a single
-  unqualified CREATE TYPE ... AS ENUM (...) statement. TYPE definitions belong
-  to the Project while Table schemas/records and Grid/Calendar queries remain
-  separate -- a table schema never declares a type inline and a query never
-  creates one. Typing only moves a local draft; "Apply type" is the only
-  commit: the draft is validated in a throwaway PGlite schema (labels read
-  back from pg_enum, so the accepted grammar is what Postgres accepts) and,
-  when valid, written to the project doc under its own undo scope on the
-  shared project history.
+  Each catalog entry owns exactly one declarative SQL source: a single unqualified CREATE TYPE ... AS ENUM (...) statement. TYPE definitions belong to the Project while Table schemas/records and Grid/Calendar queries remain separate -- a table schema never declares a type inline and a query never creates one. Typing only moves a local draft; "Apply type" is the only commit: the draft is validated in a throwaway PGlite schema (labels read back from pg_enum, so the accepted grammar is what Postgres accepts) and, when valid, written to the project doc under its own undo scope on the shared project history.
 
-  The table engine materializes the catalog into the project''s shared
-  Postgres schema before building any table, so a table schema may reference
-  a catalog type by plain name; schema validation runs against the same
-  catalog, and a catalog change rebuilds affected table relations. A table
-  name colliding with a catalog type name (or vice versa) is rejected, and
-  one broken catalog draft never takes down the other tables -- dependents
-  keep failing with the engine''s own "type does not exist" error until the
-  draft is fixed.
+  The table engine materializes the catalog into the project''s shared Postgres schema before building any table, so a table schema may reference a catalog type by plain name; schema validation runs against the same catalog, and a catalog change rebuilds affected table relations. A table name colliding with a catalog type name (or vice versa) is rejected, and one broken catalog draft never takes down the other tables -- dependents keep failing with the engine''s own "type does not exist" error until the draft is fixed.
 
-  The public demo seeds an executable example: the feedback_sentiment ENUM in
-  the demo''s own catalog and the Feedback table whose sentiment column uses
-  it, demonstrated on the SQL Catalog demo page in /demo and /demo-ja.
+  The public demo seeds an executable example: the feedback_sentiment ENUM in the demo''s own catalog and the Feedback table whose sentiment column uses it, demonstrated on the SQL Catalog demo page in /demo and /demo-ja.
 
   '
 category: table
 status: implemented
 components:
+- client/src/components/management/ManagementLanding.svelte
 - client/src/components/management/SqlCatalogDetailView.svelte
 - client/src/components/management/SqlCatalogListView.svelte
-- client/src/components/management/ManagementLanding.svelte
 - client/src/components/yjstable/SqlEditor.svelte
 - client/src/lib/managementPaths.ts
 - client/src/routes/[project]/-/types/+page.svelte
 - client/src/routes/[project]/-/types/[typeId]/+page.svelte
-- client/src/services/yjstable/sqlCatalog.ts
-- client/src/services/yjstable/tableSyncAdapter.ts
-- client/src/services/yjstable/tableEngine.ts
 - client/src/services/yjstable/schemaIntrospection.ts
+- client/src/services/yjstable/sqlCatalog.ts
+- client/src/services/yjstable/tableEngine.ts
+- client/src/services/yjstable/tableSyncAdapter.ts
 services:
 - server/src/demo-content.ts
 - server/src/demo-content.en.ts
 - server/src/demo-content.ja.ts
 - server/src/demo-api.ts
 acceptance:
-- The Types list creates entries whose source is one CREATE TYPE AS ENUM statement; multi-statement, qualified, non-ENUM, and empty sources are rejected with an explanation.
-- Applying a valid type reports its labels; a type name taken by a table or another entry is rejected.
-- A table schema referencing a catalog ENUM validates and applies; its rows store declared labels and reject unknown labels.
 - A broken catalog draft leaves the other tables working; dependents report the missing type until the draft is fixed.
+- A table schema referencing a catalog ENUM validates and applies; its rows store declared labels and reject unknown labels.
+- Applying a valid type reports its labels; a type name taken by a table or another entry is rejected.
 - The /demo and /demo-ja projects seed the feedback_sentiment type and the Feedback grid, and the SQL Catalog page renders them.
+- The Types list creates entries whose source is one CREATE TYPE AS ENUM statement; multi-statement, qualified, non-ENUM, and empty sources are rejected with an explanation.
 tests:
-- client/src/services/yjstable/sqlCatalog.test.ts
 - client/e2e/tables/tbl-sql-catalog-enum-demo-9e7f2a1b.spec.ts
+- client/src/services/yjstable/sqlCatalog.test.ts
 - server/tests/demo-sql-catalog-enum.test.ts

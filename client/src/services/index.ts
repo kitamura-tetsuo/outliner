@@ -15,6 +15,7 @@ export {
     cleanupClient as cleanupYjsClient,
     createClient as createYjsClient,
     createNewProject as createNewYjsProject,
+    getAuthorizedClientByProjectTitle as getAuthorizedYjsClientByProjectTitle,
     getClientByProjectTitle as getYjsClientByProjectTitle,
     releaseDemoClient,
     removeClientByProjectId as removeYjsClientByProjectId,

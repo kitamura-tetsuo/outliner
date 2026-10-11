@@ -5,7 +5,6 @@ registerCoverageHooks();
 
 test.describe("Ctrl+C copies cross-item selection", () => {
     test("copies exact selected text via mouse drag", async ({ page }) => {
-        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
         const items = ["Line 1", "Line 2", "Line 3"];
         await TestHelpers.seedProjectAndNavigate(page, test.info(), items);
 
@@ -24,7 +23,6 @@ test.describe("Ctrl+C copies cross-item selection", () => {
     });
 
     test("copies exact selected text via Shift+ArrowDown", async ({ page }) => {
-        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
         const items = ["Line 1", "Line 2", "Line 3"];
         await TestHelpers.seedProjectAndNavigate(page, test.info(), items);
 

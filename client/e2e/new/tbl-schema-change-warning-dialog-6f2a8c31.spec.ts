@@ -35,9 +35,12 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
         await expect(grid.locator("th", { hasText: "title" })).toBeVisible({ timeout: 30000 });
         await expect(grid.locator("th", { hasText: "done" })).toBeVisible();
 
-        // Open the schema editor
-        await page.getByTestId("yjs-table-toggle-schema").first().click();
-        const editor = page.getByTestId("yjs-table-schema-editor").first();
+        // Schema editing belongs to the source Table page.
+        await view.getByTestId("yjs-grid-source-table-link").click();
+        const tableView = page.getByTestId("table-entity-view");
+        await expect(tableView).toBeVisible({ timeout: 30000 });
+        await tableView.getByTestId("table-entity-toggle-schema").click();
+        const editor = tableView.getByTestId("yjs-table-schema-editor");
         await expect(editor).toBeVisible({ timeout: 10000 });
         return editor;
     }
@@ -62,7 +65,8 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
         // Cancel: the warning disappears and the "done" column stays in the grid.
         await editor.getByTestId("yjs-table-schema-cancel").click();
         await expect(warning).toBeHidden();
-        await expect(grid.locator("th", { hasText: "done" })).toBeVisible({ timeout: 10000 });
+        await page.goBack();
+        await expect(grid.locator("th", { hasText: "done" })).toBeVisible({ timeout: 30000 });
     });
 
     test("confirming the destructive change applies the schema and drops the column", async ({ page }) => {
@@ -81,15 +85,14 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
 
         await editor.getByTestId("yjs-table-schema-confirm").click();
         await expect(warning).toBeHidden({ timeout: 10000 });
+        const schemaValue = await new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input")).value();
+        expect(schemaValue).not.toContain("done");
 
+        await page.goBack();
         // The stale UI query still selects the removed "done" column, so it
         // now fails against the applied schema -- proof the schema change
         // (not just the dialog) actually took effect.
         await expect(page.getByTestId("yjs-table-query-error")).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId("yjs-table-query-error")).toContainText("done");
-
-        // The schema text itself reflects the applied (destructive) change.
-        const schemaValue = await new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input")).value();
-        expect(schemaValue).not.toContain("done");
     });
 });

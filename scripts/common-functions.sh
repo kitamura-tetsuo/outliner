@@ -128,16 +128,142 @@ wait_for_port() {
   return 1  # Return error instead of exit to allow script to continue
 }
 
-# Quick check: is a port open without waiting (no dependency on nc)
+# Ceiling (seconds) for any single readiness observation inside
+# start_and_wait_for_services. Individual probes must never hold the gate
+# past its wall-clock deadline when an endpoint accepts a connection and
+# then never responds (issue #5486).
+E2E_PROBE_TIMEOUT_SECONDS=5
+
+# Remaining seconds before the readiness deadline timestamp $1.
+_readiness_remaining() {
+  local deadline="$1"
+  local now
+  now=$(date +%s)
+  echo $((deadline - now))
+}
+
+# Per-probe timeout clamped to the remaining budget: at least 1s so a
+# nearly-expired deadline still fails fast instead of skipping the probe,
+# at most E2E_PROBE_TIMEOUT_SECONDS so a hung endpoint cannot overrun it.
+_probe_timeout() {
+  local deadline="$1"
+  if [ "$deadline" -le 0 ]; then
+    echo "${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+    return
+  fi
+  local remaining
+  remaining=$(_readiness_remaining "$deadline")
+  if [ "$remaining" -lt 1 ]; then
+    echo 1
+  elif [ "$remaining" -gt "${E2E_PROBE_TIMEOUT_SECONDS:-5}" ]; then
+    echo "${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+  else
+    echo "$remaining"
+  fi
+}
+
+# True when the wall-clock timestamp $1 (seconds since epoch) has reached
+# the readiness deadline. Every observation consults this first so an
+# already-expired phase fails immediately instead of consuming another
+# probe interval past the budget (issue #5486).
+_deadline_expired() {
+  [ "$(date +%s)" -ge "$1" ]
+}
+
+# Run "$@" bounded by $1 seconds (issue #5486, REQ-002). Prefers GNU timeout
+# with a forced kill shortly after the limit so a command that ignores
+# SIGTERM still returns. A non-positive limit means the budget is already
+# exhausted: fail immediately without running the command (a zero duration
+# would mean "no limit" to GNU timeout). Without GNU timeout the same hard
+# bound is enforced with a watchdog that escalates TERM to KILL, so no
+# observation can hold the gate indefinitely. E2E_FORCE_NO_TIMEOUT=1 forces
+# the watchdog path (test hook for images without timeout support).
+# E2E_BOUND_WITHOUT_GRACE=1 uses KILL at the limit for recovery commands
+# and deadline-bound port observations: forced termination must fit inside
+# the remaining startup budget.
+_run_bounded() {
+  local limit="$1"
+  shift
+  if ! [[ "$limit" =~ ^[0-9]+$ ]] || [ "$limit" -le 0 ]; then
+    return 124
+  fi
+  if [ "${E2E_FORCE_NO_TIMEOUT:-0}" != "1" ] && command -v timeout >/dev/null 2>&1; then
+    if [ "${E2E_BOUND_WITHOUT_GRACE:-0}" = "1" ]; then
+      timeout --signal=KILL "$limit" "$@"
+    else
+      timeout --kill-after=2 "$limit" "$@"
+    fi
+    return
+  fi
+  "$@" &
+  local _pid=$!
+  (
+    sleep "$limit"
+    if [ "${E2E_BOUND_WITHOUT_GRACE:-0}" != "1" ]; then
+      kill -TERM "$_pid" 2>/dev/null || true
+      sleep 2
+    fi
+    kill -KILL "$_pid" 2>/dev/null || true
+  ) &
+  local _watch=$!
+  wait "$_pid"
+  local _rc=$?
+  kill "$_watch" 2>/dev/null || true
+  wait "$_watch" 2>/dev/null || true
+  return "$_rc"
+}
+
+# Recompute each fallback's limit from the remaining startup budget.
+# Deadline-bound port observations use KILL at the limit, with no extra
+# termination grace, including when only one second remains (REQ-005).
+_fallback_probe_limit() {
+  _probe_timeout "$1"
+}
+
+# Quick check: is a port open without waiting (no dependency on nc).
+# Pass the readiness deadline timestamp as $2 when called from the
+# startup gate so each probe stays within the remaining budget. The
+# deadline is re-checked before every fallback probe and each fallback
+# timeout is recomputed from the time still left, so once the deadline
+# expires no further fallback may start (issue #5487, REQ-005).
 port_is_open() {
   local port="$1"
-  if nc -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
+  local deadline="${2:-0}"
+  local probe_timeout="${E2E_PROBE_TIMEOUT_SECONDS:-5}"
+  local E2E_BOUND_WITHOUT_GRACE="${E2E_BOUND_WITHOUT_GRACE:-0}"
+  if [ "$deadline" -gt 0 ]; then
+    E2E_BOUND_WITHOUT_GRACE=1
+    # Already past the deadline: report unready at once instead of spending
+    # another probe interval (which would carry the gate past its budget).
+    if _deadline_expired "$deadline"; then
+      return 1
+    fi
+    probe_timeout=$(_fallback_probe_limit "$deadline")
+  fi
+  if _run_bounded "$probe_timeout" nc -w 2 -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
     return 0
   fi
-  if curl -s --connect-timeout 2 "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
+  # The curl fallback must not start past the deadline: the nc probe above
+  # may have consumed the rest of the budget.
+  if [ "$deadline" -gt 0 ]; then
+    if _deadline_expired "$deadline"; then
+      return 1
+    fi
+    probe_timeout=$(_fallback_probe_limit "$deadline")
+  fi
+  if _run_bounded "$probe_timeout" curl -s --connect-timeout 2 --max-time "$probe_timeout" "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
     return 0
   fi
-  if command -v lsof >/dev/null 2>&1 && lsof -i ":${port}" >/dev/null 2>&1; then
+  # The lsof fallback is an observation like the others: it runs inside a
+  # hard bound so a wedged lsof cannot hold the gate (issue #5486), and it
+  # never starts once the deadline has expired (issue #5487, REQ-005).
+  if [ "$deadline" -gt 0 ] && _deadline_expired "$deadline"; then
+    return 1
+  fi
+  if [ "$deadline" -gt 0 ]; then
+    probe_timeout=$(_fallback_probe_limit "$deadline")
+  fi
+  if command -v lsof >/dev/null 2>&1 && _run_bounded "$probe_timeout" lsof -i ":${port}" >/dev/null 2>&1; then
     return 0
   fi
   return 1
@@ -359,10 +485,14 @@ install_os_utilities() {
     fi
   fi
 
-  ensure_playwright_browsers
+  # setup.sh installs OS libraries before npm dependencies. Its first pass is
+  # OS-only; browser preparation follows installation of the client CLI.
+  if [ "${1:-}" != "--os-only" ]; then
+    ensure_playwright_browsers
+  fi
 }
 
-# Make a Chromium build available to Playwright.
+# Make the requested browser available to Playwright (Chromium by default).
 #
 # Normally this is just `playwright install chromium`. When the browser CDN is
 # unreachable (sandboxes commonly allow only the npm registry), fall back to a
@@ -371,6 +501,7 @@ install_os_utilities() {
 # as launchOptions.executablePath. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH overrides
 # both.
 PLAYWRIGHT_BROWSERS_RESOLVED=""
+PLAYWRIGHT_FIREFOX_RESOLVED=""
 
 # The @playwright/test version resolved in client/package-lock.json, i.e. the
 # one the E2E suite runs with. Empty when it cannot be read.
@@ -379,6 +510,19 @@ playwright_pinned_version() {
 }
 
 ensure_playwright_browsers() {
+  local browser="${1:-${E2E_BROWSER:-chromium}}"
+  case "$browser" in
+    firefox)
+      ensure_playwright_firefox
+      return
+      ;;
+    chromium) ;;
+    *)
+      echo "Error: unsupported E2E browser '${browser}' (expected chromium or firefox)." >&2
+      return 1
+      ;;
+  esac
+
   local marker="${ROOT_DIR}/.playwright-chromium-path"
 
   # setup.sh reaches this through both install_os_utilities and its own explicit
@@ -440,6 +584,96 @@ ensure_playwright_browsers() {
   printf '%s\n' "$candidate" > "$marker"
   PLAYWRIGHT_BROWSERS_RESOLVED="preinstalled"
   return 0
+}
+
+# Firefox must use the browser revision belonging to the installed client
+# Playwright. A Chromium cache hit, executable override or fallback marker is
+# never evidence of Firefox availability. Check the real launch after every
+# setup process; do not silently replace Firefox with another browser.
+ensure_playwright_firefox() {
+  if [ -n "$PLAYWRIGHT_FIREFOX_RESOLVED" ]; then
+    return 0
+  fi
+
+  local pinned installed runtime_version core_version
+  pinned="$(playwright_pinned_version)"
+  if [ -z "$pinned" ]; then
+    echo "Error: cannot resolve Firefox's Playwright version from client/package-lock.json." >&2
+    return 1
+  fi
+  if ! installed=$(node -p "require('${ROOT_DIR}/client/node_modules/@playwright/test/package.json').version") \
+    || ! runtime_version=$(node -p "require('${ROOT_DIR}/client/node_modules/playwright/package.json').version") \
+    || ! core_version=$(node -p "require('${ROOT_DIR}/client/node_modules/playwright-core/package.json').version"); then
+    echo "Error: install the locked client dependencies with 'npm ci --prefix client' before preparing Firefox." >&2
+    return 1
+  fi
+  if [ "$installed" != "$pinned" ] || [ "$runtime_version" != "$pinned" ] || [ "$core_version" != "$pinned" ]; then
+    echo "Error: client Playwright versions do not match the lockfile (lock=${pinned}, test=${installed}, runtime=${runtime_version}, core=${core_version}). Run 'npm ci --prefix client'." >&2
+    return 1
+  fi
+
+  local cli="${ROOT_DIR}/client/node_modules/playwright/cli.js"
+  echo "Installing Playwright Firefox (${pinned})..."
+  if ! PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 node "$cli" install firefox; then
+    echo "Error: failed to install Playwright Firefox ${pinned}; Firefox execution cannot continue." >&2
+    return 1
+  fi
+  if apt_is_available; then
+    echo "Installing Firefox system dependencies..."
+    if ! node "$cli" install-deps firefox; then
+      echo "Error: failed to install Firefox system dependencies." >&2
+      return 1
+    fi
+  else
+    echo "Checking Firefox with the system libraries already installed."
+  fi
+
+  echo "Verifying an actual headless Firefox launch..."
+  if ! ROOT_DIR="$ROOT_DIR" node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const { firefox } = require(`${process.env.ROOT_DIR}/client/node_modules/playwright`);
+const { version } = require(`${process.env.ROOT_DIR}/client/node_modules/playwright/package.json`);
+const evidence = {
+  browserEngine: 'firefox',
+  browserVersion: null,
+  playwrightVersion: version,
+  executablePath: firefox.executablePath(),
+  project: process.env.E2E_PROJECT ?? null,
+  executionId: process.env.E2E_EXECUTION_ID ?? null,
+  status: 'launching',
+};
+function record() {
+  console.log(JSON.stringify(evidence));
+  if (process.env.E2E_BROWSER_RUNTIME_REPORT) {
+    const file = path.resolve(process.env.E2E_BROWSER_RUNTIME_REPORT);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${JSON.stringify(evidence, null, 2)}\n`);
+  }
+}
+(async () => {
+  let browser;
+  try {
+    browser = await firefox.launch({ headless: true });
+    evidence.browserEngine = browser.browserType().name();
+    evidence.browserVersion = browser.version();
+    await browser.close();
+    evidence.status = 'launched';
+    record();
+  } catch (error) {
+    evidence.status = 'failed';
+    evidence.error = error.stack ?? String(error);
+    record();
+    console.error(error);
+    process.exitCode = 1;
+  }
+})();
+NODE
+  then
+    echo "Error: Playwright Firefox could not launch; no Chromium fallback is allowed." >&2
+    return 1
+  fi
+  PLAYWRIGHT_FIREFOX_RESOLVED="$pinned"
 }
 
 # Re-run later to enforce node-canvas system requirements even if the main
@@ -607,7 +841,7 @@ install_all_dependencies() {
   cd "${ROOT_DIR}"
 }
 
-# Start the PM2-managed test services (yjs-server, vite-server,
+# Start the PM2-managed test services (yjs-server, log-service, vite-server,
 # firebase-emulators) and block until they report ready, then initialize the
 # Firebase emulator (test users, etc.). Shared by scripts/setup.sh (developer
 # machines / the container-image bake) and scripts/ci-e2e-start.sh (the
@@ -619,103 +853,392 @@ start_and_wait_for_services() {
     return 0
   fi
 
-  echo "Starting PM2-managed services (yjs-server, vite-server, firebase-emulators)..."
-  pm2 start "${ROOT_DIR}/ecosystem.config.cjs"
+  # Single wall-clock budget for one startup attempt (issue #5486): 180s
+  # preserves the observed successful envelope (slowest success 151s on
+  # 2026-10-07, which recovered via the hosting-stall retry below) with
+  # margin. Overridable for tests via E2E_SERVICE_READINESS_TIMEOUT_SECONDS;
+  # nothing inside this phase may extend or reset it. The clock starts before
+  # supervision (pm2 start) so a wedged daemon cannot hold the phase outside
+  # the budget.
+  local MAX_WAIT_SECONDS="${E2E_SERVICE_READINESS_TIMEOUT_SECONDS:-180}"
+  local START_TIME
+  START_TIME=$(date +%s)
+  local DEADLINE=$((START_TIME + MAX_WAIT_SECONDS))
+  # Last unsatisfied-check summary, refreshed by every readiness evaluation
+  # so the deadline failure can identify them without re-probing past it.
+  # Per-owner missing-check summaries (OWNER_MISSING_<KEY> below) feed the
+  # stall tracker and the deadline diagnostics with the same evaluation.
+  LAST_READINESS_MISSING=""
+  OWNER_MISSING_YJS=""
+  OWNER_MISSING_LOG=""
+  OWNER_MISSING_VITE=""
+  OWNER_MISSING_EMU=""
+  # Automatic recovery state for crashed or stalled services (issue #5487).
+  # A required PM2 service that is positively observed in a terminal or
+  # non-starting state, or that stays online/launching while its owned
+  # readiness checks remain continuously unsatisfied for STALL_THRESHOLD
+  # seconds, is restarted once. The threshold is overridable for tests via
+  # E2E_SERVICE_STALL_SECONDS (default 60s — substantial margin above the
+  # observed normal startup envelope, clustered below 30s). Restarts never
+  # extend or reset DEADLINE, and each owning service restarts at most once
+  # per startup attempt. The legacy Hosting-only retry (issue #5453) is
+  # generalized by this single restart path, so one recovery episode can
+  # never trigger both an old and a new restart for firebase-emulators.
+  local STALL_THRESHOLD="${E2E_SERVICE_STALL_SECONDS:-60}"
+  case "$STALL_THRESHOLD" in
+    ''|*[!0-9]*|0) STALL_THRESHOLD=60 ;;
+  esac
+  local RESTARTED_YJS=0 RESTARTED_LOG=0 RESTARTED_VITE=0 RESTARTED_EMU=0
+  local STALL_SINCE_YJS=0 STALL_SINCE_LOG=0 STALL_SINCE_VITE=0 STALL_SINCE_EMU=0
+  local RECOVERY_FAILED=false
+
+  echo "Starting PM2-managed services (yjs-server, log-service, vite-server, firebase-emulators)..."
+  # Bounded so a wedged pm2 daemon cannot hold supervision start past the
+  # deadline; a start that cannot be confirmed is a startup failure, never
+  # silent success.
+  if ! _run_bounded "$MAX_WAIT_SECONDS" pm2 start "${ROOT_DIR}/ecosystem.config.cjs"; then
+    echo "Failed to start PM2-managed services (pm2 start did not complete within ${MAX_WAIT_SECONDS}s)."
+    echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-PM2 supervision start (pm2 start unsuccessful)}"
+    if _deadline_expired "$DEADLINE"; then
+      echo "Post-deadline process diagnostics skipped: the single ${MAX_WAIT_SECONDS}s wall-clock budget is already exhausted."
+    else
+      echo "State of services:"
+      _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 list || true
+      echo "--- PM2 Logs (tail) ---"
+      _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 logs --lines 50 --nostream || true
+    fi
+    exit 1
+  fi
 
   # Loop to check services and ports in parallel
   echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
-  local MAX_WAIT_SECONDS=600
-  local START_TIME
-  START_TIME=$(date +%s)
-  # Stall tracking for the Firebase Hosting emulator retry below (issue #5453).
-  local HOSTING_STALL_START=0
-  local HOSTING_RESTART_DONE=0
 
-  _check_pm2_status() {
-    # Check if key PM2 processes are running
-    # Returns 0 if all good, 1 if any failed
-    node -e '
+  # PM2 process-state snapshot (issues #5486 REQ-003, #5487 REQ-001/REQ-003).
+  # Returns 0 only when every required process is positively observed in
+  # an acceptable state (online/launching). Returns 1 when at least one
+  # required process is positively observed missing or in a terminal /
+  # non-starting state; those are listed in PM2_BAD_SERVICES as
+  # "name:status" lines ("missing" when the process is absent). Returns 2
+  # for any unavailable observation (pm2 failure, malformed JSON, timeout,
+  # or an already-expired deadline) so unavailable process-state evidence
+  # can never satisfy the gate — and, per REQ-001, can never trigger a
+  # restart either, since only positive evidence names a service to
+  # restart. Bounded so a wedged pm2 daemon cannot hold the gate past
+  # DEADLINE.
+  PM2_BAD_SERVICES=""
+  _pm2_status_snapshot() {
+    PM2_BAD_SERVICES=""
+    if _deadline_expired "$DEADLINE"; then
+      return 2
+    fi
+    local _pm2_probe
+    _pm2_probe=$(_probe_timeout "$DEADLINE")
+    local _out=""
+
+    # The command substitution deliberately swallows the probe body: only
+    # BAD: lines count as positive evidence, and the caller reports them.
+    # Diagnostics from other output are echoed by the failure handlers.
+    if ! _out=$(PM2_JLIST_TIMEOUT_MS=$((_pm2_probe * 1000)) _run_bounded "$_pm2_probe" node -e '
       try {
         const exec = require("child_process").execSync;
-        const list = JSON.parse(exec("pm2 jlist").toString());
-        const apps = ["yjs-server", "vite-server", "firebase-emulators"];
-        const failed = list.filter(p => apps.includes(p.name) &&
-                                     p.pm2_env.status !== "online" &&
-                                     p.pm2_env.status !== "launching");
-        if (failed.length > 0) {
-          console.log("Error: One or more PM2 services are not running:");
-          failed.forEach(p => console.log(`- ${p.name}: ${p.pm2_env.status}`));
+        const ms = parseInt(process.env.PM2_JLIST_TIMEOUT_MS || "4000", 10);
+        const list = JSON.parse(exec("pm2 jlist", { timeout: ms }).toString());
+        if (!Array.isArray(list)) {
+          console.log("Error: pm2 jlist did not return a process list");
           process.exit(1);
         }
+        const apps = ["yjs-server", "log-service", "vite-server", "firebase-emulators"];
+        const byName = new Map();
+        for (const p of list) {
+          if (p && typeof p.name === "string") byName.set(p.name, p);
+        }
+        let failed = false;
+        for (const name of apps) {
+          const p = byName.get(name);
+          if (!p) {
+            console.log(`BAD:${name}:missing`);
+            failed = true;
+          } else {
+            const st = p.pm2_env && p.pm2_env.status;
+            if (st !== "online" && st !== "launching") {
+              console.log(`BAD:${name}:${st}`);
+              failed = true;
+            }
+          }
+        }
+        if (failed) process.exit(1);
       } catch (e) {
-        console.error("Failed to check PM2 status:", e.message);
-        // If we cant check PM2, we process to port check assuming it might be fine or we fail later
-        // But if pm2 command failed, likely something is wrong.
+        console.error("Failed to check PM2 status:", e && e.message);
+        process.exit(1);
       }
-    '
+    ' 2>&1); then
+      PM2_BAD_SERVICES=$(printf '%s\n' "$_out" | grep '^BAD:' | sed 's/^BAD://' || true)
+      if [ -n "$PM2_BAD_SERVICES" ]; then
+        printf '%s\n' "$_out" | grep -v '^BAD:' || true
+        return 1
+      fi
+      if [ -n "$_out" ]; then
+        printf '%s\n' "$_out"
+      fi
+      return 2
+    fi
+    return 0
   }
 
-  # True when every required port except the Firebase Hosting emulator port
-  # is already open. Matches the observed CI failure mode (issue #5453): the
-  # firebase-emulators process stays online serving auth/firestore/functions/
-  # storage while hosting alone never binds its port, so no test can run.
-  _only_hosting_missing() {
-    if port_is_open "${FIREBASE_HOSTING_PORT}"; then
-      return 1
+  # The single explicit table from readiness responsibility to owning PM2
+  # service (issue #5487, REQ-003). Owner keys: yjs (yjs-server, including
+  # the Yjs WebSocket check on its port), log (log-service), vite
+  # (vite-server), emu (firebase-emulators, including every emulator port
+  # and the Firebase Functions health check). No required readiness check
+  # is restart-ineligible: every port maps to exactly one owner.
+  _owner_of_port() {
+    local _p="$1"
+    if [ -n "${TEST_YJS_PORT:-}" ] && [ "$_p" = "$TEST_YJS_PORT" ]; then echo yjs; return; fi
+    if [ -n "${TEST_API_PORT:-}" ] && [ "$_p" = "$TEST_API_PORT" ]; then echo log; return; fi
+    if [ -n "${VITE_PORT:-}" ] && [ "$_p" = "$VITE_PORT" ]; then echo vite; return; fi
+    echo emu
+  }
+
+  _owner_pm2_name() {
+    case "$1" in
+      yjs) echo "yjs-server" ;;
+      log) echo "log-service" ;;
+      vite) echo "vite-server" ;;
+      emu) echo "firebase-emulators" ;;
+    esac
+  }
+
+  _pm2_owner_key() {
+    case "$1" in
+      yjs-server) echo yjs ;;
+      log-service) echo log ;;
+      vite-server) echo vite ;;
+      firebase-emulators) echo emu ;;
+    esac
+  }
+
+  _owner_restarted() {
+    case "$1" in
+      yjs) [ "$RESTARTED_YJS" -eq 1 ] ;;
+      log) [ "$RESTARTED_LOG" -eq 1 ] ;;
+      vite) [ "$RESTARTED_VITE" -eq 1 ] ;;
+      emu) [ "$RESTARTED_EMU" -eq 1 ] ;;
+    esac
+  }
+
+  _mark_owner_restarted() {
+    # A restart also resets the service's stall clock: the stall policy
+    # measures continuous un-readiness after the service was started or
+    # last restarted (REQ-002).
+    case "$1" in
+      yjs) RESTARTED_YJS=1; STALL_SINCE_YJS=-1 ;;
+      log) RESTARTED_LOG=1; STALL_SINCE_LOG=-1 ;;
+      vite) RESTARTED_VITE=1; STALL_SINCE_VITE=-1 ;;
+      emu) RESTARTED_EMU=1; STALL_SINCE_EMU=-1 ;;
+    esac
+  }
+
+  # Restart one owning PM2 service exactly once per startup attempt and
+  # continue readiness evaluation within the same DEADLINE (REQ-004). The
+  # restart itself is bounded by the remaining budget so a wedged pm2
+  # daemon cannot hold recovery past the deadline (AS-007); a restart that
+  # hangs or fails is a warning, not a loop — the gate keeps evaluating
+  # and still fails at DEADLINE when the service stays unready (REQ-005).
+  _restart_owner_service() {
+    local _owner="$1"
+    local _reason="$2"
+    local _svc
+    _svc=$(_owner_pm2_name "$_owner")
+    if _deadline_expired "$DEADLINE"; then
+      _fail_deadline
     fi
-    local port
-    for port in "${REQUIRED_PORTS[@]}"; do
-      if [ -n "$port" ] && [ "$port" != "${FIREBASE_HOSTING_PORT}" ]; then
-        if ! port_is_open "$port"; then
-          return 1
+    echo "${_reason} Restarting ${_svc} once..."
+    # Recovery gets no extra termination grace: even with one second left,
+    # a TERM-ignoring PM2 command must be killed within that second.
+    if E2E_BOUND_WITHOUT_GRACE=1 _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 restart "$_svc"; then
+      echo "Restarted ${_svc} (automatic recovery); continuing readiness evaluation within the same ${MAX_WAIT_SECONDS}s deadline."
+    else
+      echo "Warning: pm2 restart ${_svc} failed; startup cannot succeed in this attempt."
+      RECOVERY_FAILED=true
+    fi
+    _mark_owner_restarted "$_owner"
+  }
+
+  # Generic stall recovery (REQ-002, REQ-007): for every owner whose checks
+  # from the latest readiness evaluation remain unsatisfied, track how
+  # long they have been continuously unsatisfied (stall requires
+  # continuity — a satisfied evaluation resets the clock). Restart only
+  # owners continuously unready for STALL_THRESHOLD seconds; owners whose
+  # checks are satisfied are never restarted.
+  _evaluate_owner_stalls() {
+    local _elapsed="$1"
+    local _owner _missing _since
+    for _owner in yjs log vite emu; do
+      case "$_owner" in
+        yjs) _missing="$OWNER_MISSING_YJS" ;;
+        log) _missing="$OWNER_MISSING_LOG" ;;
+        vite) _missing="$OWNER_MISSING_VITE" ;;
+        emu) _missing="$OWNER_MISSING_EMU" ;;
+      esac
+      if [ -z "$_missing" ]; then
+        case "$_owner" in
+          yjs) STALL_SINCE_YJS=-1 ;;
+          log) STALL_SINCE_LOG=-1 ;;
+          vite) STALL_SINCE_VITE=-1 ;;
+          emu) STALL_SINCE_EMU=-1 ;;
+        esac
+        continue
+      fi
+      case "$_owner" in
+        yjs) _since="$STALL_SINCE_YJS" ;;
+        log) _since="$STALL_SINCE_LOG" ;;
+        vite) _since="$STALL_SINCE_VITE" ;;
+        emu) _since="$STALL_SINCE_EMU" ;;
+      esac
+      if [ "$_since" -lt 0 ]; then
+        case "$_owner" in
+          yjs) STALL_SINCE_YJS="$_elapsed" ;;
+          log) STALL_SINCE_LOG="$_elapsed" ;;
+          vite) STALL_SINCE_VITE="$_elapsed" ;;
+          emu) STALL_SINCE_EMU="$_elapsed" ;;
+        esac
+      elif ! _owner_restarted "$_owner" && [ $((_elapsed - _since)) -ge "$STALL_THRESHOLD" ]; then
+        if _deadline_expired "$DEADLINE"; then
+          _fail_deadline
         fi
+        _restart_owner_service "$_owner" "Service $(_owner_pm2_name "$_owner") still unready after $((_elapsed - _since))s (missing: ${_missing})."
       fi
     done
-    return 0
   }
 
   _is_service_ready() {
     local verbose="${1:-false}"
+    local deadline="${2:-0}"
     local all_ready=true
     local missing_services=()
+    # Fresh per-owner attribution for this evaluation (issue #5487,
+    # REQ-002/REQ-003): every unsatisfied check names its owning service so
+    # stall recovery restarts exactly the affected owner.
+    OWNER_MISSING_YJS=""
+    OWNER_MISSING_LOG=""
+    OWNER_MISSING_VITE=""
+    OWNER_MISSING_EMU=""
+    _record_owner_missing() {
+      case "$1" in
+        yjs) OWNER_MISSING_YJS="${OWNER_MISSING_YJS}${OWNER_MISSING_YJS:+ }${2}" ;;
+        log) OWNER_MISSING_LOG="${OWNER_MISSING_LOG}${OWNER_MISSING_LOG:+ }${2}" ;;
+        vite) OWNER_MISSING_VITE="${OWNER_MISSING_VITE}${OWNER_MISSING_VITE:+ }${2}" ;;
+        emu) OWNER_MISSING_EMU="${OWNER_MISSING_EMU}${OWNER_MISSING_EMU:+ }${2}" ;;
+      esac
+    }
 
-    # Check all required ports
+    # Check all required ports. The deadline is re-checked before every
+    # probe and each probe timeout is recomputed from the time still left,
+    # so a long port list cannot accumulate stale per-probe budgets past it.
     for port in "${REQUIRED_PORTS[@]}"; do
-      if ! port_is_open "${port}"; then
+      if [ "$deadline" -gt 0 ] && _deadline_expired "$deadline"; then
+        all_ready=false
+        missing_services+=("Readiness deadline exceeded during port checks")
+        break
+      fi
+      if ! port_is_open "${port}" "$deadline"; then
         all_ready=false
         missing_services+=("Port ${port}")
+        _record_owner_missing "$(_owner_of_port "${port}")" "Port ${port}"
       fi
     done
 
     # Check Firebase Functions API Health (Directly via Functions Emulator)
     # Checks http://127.0.0.1:57070/outliner-d57b0/us-central1/health
     # We use direct URL because Hosting Emulator rewrite sometimes duplicates paths causing 404
-    if port_is_open "${FIREBASE_FUNCTIONS_PORT}"; then
-       # Default project ID if not set
-       local PROJECT_ID="${FIREBASE_PROJECT_ID:-outliner-d57b0}"
-       local FUNC_URL="http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/health"
+    # Bounded: the health endpoint may accept the connection and then never
+    # respond, which previously wedged the whole gate inside this iteration.
+    # The curl exit status is decisive: curl can still print a 200 status
+    # code captured before a body-transfer timeout, so a timed-out health
+    # observation must never count as ready (issue #5486, REQ-003).
+    if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+      if port_is_open "${FIREBASE_FUNCTIONS_PORT}" "$deadline"; then
+         # Default project ID if not set
+         local PROJECT_ID="${FIREBASE_PROJECT_ID:-outliner-d57b0}"
+         local FUNC_URL="http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/health"
 
-       local HTTP_CODE
-       HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null || echo "000")
-       if [ "$HTTP_CODE" != "200" ]; then
-         all_ready=false
-         local MSG="Firebase Function Health [Code: $HTTP_CODE] (URL: $FUNC_URL)"
-         if [ "$verbose" = "true" ]; then
-            # Capture start of body for debugging
-            local BODY
-            BODY=$(curl -s "$FUNC_URL" | head -c 200)
-            MSG="$MSG [Body: $BODY]"
+         local HTTP_CODE
+         local _fn_probe
+         _fn_probe=$(_probe_timeout "$deadline")
+         if HTTP_CODE=$(_run_bounded "$_fn_probe" curl -s --connect-timeout 2 --max-time "$_fn_probe" -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null); then
+           if [ -z "$HTTP_CODE" ]; then
+             HTTP_CODE="000"
+           fi
+         else
+           HTTP_CODE="000"
          fi
-         missing_services+=("$MSG")
-       fi
+         if [ "$HTTP_CODE" != "200" ]; then
+           all_ready=false
+           local MSG="Firebase Function Health [Code: $HTTP_CODE] (URL: $FUNC_URL)"
+           _record_owner_missing "emu" "Firebase Function Health [Code: $HTTP_CODE]"
+           if [ "$verbose" = "true" ]; then
+              # Capture start of body for debugging
+              local BODY
+              local _body_probe
+              _body_probe=$(_probe_timeout "$deadline")
+              BODY=$(_run_bounded "$_body_probe" curl -s --connect-timeout 2 --max-time "$_body_probe" "$FUNC_URL" 2>/dev/null | head -c 200 || true)
+              MSG="$MSG [Body: $BODY]"
+           fi
+           missing_services+=("$MSG")
+         fi
+      else
+        # The pre-health port probe is a required observation: when the
+        # Functions listener is unavailable here, its health check has not
+        # positively succeeded, so readiness must stay unsatisfied until a
+        # later evaluation observes a completed healthy response
+        # (issue #5487, REQ-005). Without this branch the evaluation could
+        # return success without any positive Functions health response.
+        all_ready=false
+        _record_owner_missing "emu" "Firebase Function Health (Functions port ${FIREBASE_FUNCTIONS_PORT} unavailable)"
+        missing_services+=("Firebase Function Health (Functions port ${FIREBASE_FUNCTIONS_PORT} unavailable)")
+      fi
+    else
+      all_ready=false
+      missing_services+=("Readiness deadline exceeded before Functions health check")
     fi
 
-    # Check Yjs WebSocket (if port is open)
-    if port_is_open "${TEST_YJS_PORT}"; then
-       if ! curl -s --connect-timeout 2 --max-time 5 "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
-          all_ready=false
-          missing_services+=("Yjs WebSocket")
-       fi
+    # Check Yjs WebSocket; a listener lost since the port sweep is unready.
+    if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+      if port_is_open "${TEST_YJS_PORT}" "$deadline"; then
+         local _yjs_probe
+         _yjs_probe=$(_probe_timeout "$deadline")
+         if ! _run_bounded "$_yjs_probe" curl -s --connect-timeout 2 --max-time "$_yjs_probe" "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1; then
+            # The nc fallback must not start past the deadline: the curl
+            # probe above may have consumed the rest of the budget
+            # (issue #5487, REQ-005).
+            local _yjs_nc_ok=false
+            if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+              if _run_bounded "$(_probe_timeout "$deadline")" nc -w 2 -z 127.0.0.1 "${TEST_YJS_PORT}" >/dev/null 2>&1; then
+                _yjs_nc_ok=true
+              fi
+            fi
+            if [ "$_yjs_nc_ok" = false ]; then
+              all_ready=false
+              missing_services+=("Yjs WebSocket")
+              _record_owner_missing "yjs" "Yjs WebSocket"
+            fi
+         fi
+      else
+        all_ready=false
+        missing_services+=("Yjs WebSocket (port ${TEST_YJS_PORT} unavailable)")
+        _record_owner_missing "yjs" "Yjs WebSocket (port ${TEST_YJS_PORT} unavailable)"
+      fi
+    else
+      all_ready=false
+      missing_services+=("Readiness deadline exceeded before Yjs check")
+    fi
+
+    # A timeout, probe failure, or otherwise unobservable service is never
+    # ready: only positively observed checks satisfy the gate.
+    if [ ${#missing_services[@]} -gt 0 ]; then
+      LAST_READINESS_MISSING="${missing_services[*]}"
+    else
+      LAST_READINESS_MISSING=""
     fi
 
     if [ "$all_ready" = true ]; then
@@ -728,31 +1251,85 @@ start_and_wait_for_services() {
     fi
   }
 
+  # Fail the startup phase once the single wall-clock budget is exhausted.
+  # Post-deadline subprocess diagnostics are skipped on purpose: they cannot
+  # complete inside an already-exhausted budget, and running them would carry
+  # the failure exit past the advertised deadline (issue #5486, REQ-001 and
+  # REQ-005). The still-unsatisfied checks were recorded by the last
+  # in-budget readiness evaluation (LAST_READINESS_MISSING); the Firebase
+  # emulator startup log is a local file read that cannot block, so it is
+  # still printed to preserve that diagnostic surface (REQ-004).
+  _fail_deadline() {
+    local _elapsed=$(( $(date +%s) - START_TIME ))
+    echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds (deadline exceeded at ${_elapsed}s elapsed)."
+    echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-unknown (no readiness evaluation completed)}"
+    # Name the owning service(s) behind the unsatisfied checks and the
+    # automatic restarts already attempted, so a persistently broken
+    # service is diagnosable without re-probing past the budget (REQ-005).
+    local _affected=""
+    [ -n "$OWNER_MISSING_YJS" ] && _affected="${_affected}${_affected:+ }yjs-server"
+    [ -n "$OWNER_MISSING_LOG" ] && _affected="${_affected}${_affected:+ }log-service"
+    [ -n "$OWNER_MISSING_VITE" ] && _affected="${_affected}${_affected:+ }vite-server"
+    [ -n "$OWNER_MISSING_EMU" ] && _affected="${_affected}${_affected:+ }firebase-emulators"
+    echo "Affected owning service(s): ${_affected:-unknown}"
+    local _restarts=""
+    [ "$RESTARTED_YJS" -eq 1 ] && _restarts="${_restarts}${_restarts:+ }yjs-server"
+    [ "$RESTARTED_LOG" -eq 1 ] && _restarts="${_restarts}${_restarts:+ }log-service"
+    [ "$RESTARTED_VITE" -eq 1 ] && _restarts="${_restarts}${_restarts:+ }vite-server"
+    [ "$RESTARTED_EMU" -eq 1 ] && _restarts="${_restarts}${_restarts:+ }firebase-emulators"
+    echo "Automatic restarts attempted: ${_restarts:-none}"
+    echo "Post-deadline process diagnostics skipped: the single ${MAX_WAIT_SECONDS}s wall-clock budget is already exhausted."
+    # The tail above is usually drowned by Functions health checks; the
+    # emulator startup section (versions, emulator list, bind errors) is
+    # what diagnoses a missing emulator (issue #5453).
+    if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
+      echo "--- logs/firebase-emulators.log (head: emulator startup) ---"
+      head -n 80 "${ROOT_DIR}/logs/firebase-emulators.log" || true
+    fi
+    exit 1
+  }
+
+  # Cap the poll pause so the sleep itself cannot carry the gate past the
+  # deadline; the next iteration's deadline check then fails in budget.
+  _capped_sleep() {
+    local _sleep_for=2
+    local _sleep_remaining
+    _sleep_remaining=$(_readiness_remaining "$DEADLINE")
+    if [ "$_sleep_remaining" -le 0 ]; then
+      return 0
+    fi
+    if [ "$_sleep_remaining" -lt "$_sleep_for" ]; then
+      _sleep_for="$_sleep_remaining"
+    fi
+    sleep "$_sleep_for"
+  }
+
   while true; do
-    local CURRENT_TIME ELAPSED
+    local CURRENT_TIME ELAPSED REMAINING
     CURRENT_TIME=$(date +%s)
     ELAPSED=$((CURRENT_TIME - START_TIME))
+    REMAINING=$((DEADLINE - CURRENT_TIME))
 
-    if [ $ELAPSED -gt $MAX_WAIT_SECONDS ]; then
-      echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds."
-      echo "State of services:"
-      pm2 list
-      echo "--- PM2 Logs (tail) ---"
-      pm2 logs --lines 50 --nostream
-      # The tail above is usually drowned by Functions health checks; the
-      # emulator startup section (versions, emulator list, bind errors) is
-      # what diagnoses a missing emulator (issue #5453).
-      if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
-        echo "--- logs/firebase-emulators.log (head: emulator startup) ---"
-        head -n 80 "${ROOT_DIR}/logs/firebase-emulators.log" || true
-      fi
-      exit 1
+    if [ "$REMAINING" -le 0 ]; then
+      _fail_deadline
     fi
 
-    # 1. Check PM2 status - Fail fast if crashed
-    if ! _check_pm2_status; then
+    # 1. PM2 process-state snapshot.
+    local _pm2_rc=0
+    _pm2_status_snapshot || _pm2_rc=$?
+    if [ "$_pm2_rc" -eq 2 ]; then
+      # Unobservable daemon: fail fast without recovery. Only positive
+      # evidence names a service to restart (REQ-001), and unavailable
+      # evidence must fail closed (issue #5486, REQ-003). A failed
+      # observation at (or carried past) the deadline is a deadline
+      # failure, not a crash report with fresh diagnostic budgets.
+      if _deadline_expired "$DEADLINE"; then
+        _fail_deadline
+      fi
       echo "Detected crashed services via PM2. Exiting setup."
-      pm2 logs --lines 50 --nostream
+      # Diagnostics are capped at the remaining budget so they cannot carry
+      # this failure exit past DEADLINE; local log tails cannot block.
+      _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 logs --lines 50 --nostream || true
       # Force log dumping specifically for server applications
       echo "[TAILING] Tailing last 50 lines for [all] processes (change the value with --lines option)"
       if [ -f "${ROOT_DIR}/server/logs/yjs-server.log" ]; then
@@ -764,6 +1341,45 @@ start_and_wait_for_services() {
          tail -n 50 "${ROOT_DIR}/server/logs/log-service.log" || true
       fi
       exit 1
+    elif [ "$_pm2_rc" -eq 1 ]; then
+      # Positively observed terminal/non-starting services (REQ-001):
+      # restart each affected owning service once and keep evaluating
+      # within the same deadline. A service that is bad again after its
+      # one restart ends the attempt here with diagnostics instead of
+      # looping (REQ-004, REQ-005).
+      if _deadline_expired "$DEADLINE"; then
+        _fail_deadline
+      fi
+      local _restarted_any=false
+      local _repeat_offender=""
+      local _bad_line _bad_name _bad_state _bad_owner
+      while IFS= read -r _bad_line; do
+        [ -z "$_bad_line" ] && continue
+        _bad_name=${_bad_line%%:*}
+        _bad_state=${_bad_line#*:}
+        _bad_owner=$(_pm2_owner_key "$_bad_name")
+        [ -z "$_bad_owner" ] && continue
+        if _owner_restarted "$_bad_owner"; then
+          _repeat_offender="${_repeat_offender}${_repeat_offender:+ }${_bad_name}(${_bad_state})"
+        else
+          _restart_owner_service "$_bad_owner" "PM2 service ${_bad_name} is in state '${_bad_state}' before readiness."
+          _restarted_any=true
+        fi
+      done <<< "$PM2_BAD_SERVICES"
+      if [ "$_restarted_any" = false ]; then
+        echo "PM2 service(s) still in a terminal/non-starting state after automatic restart: ${_repeat_offender}. No further restarts; failing within the startup deadline."
+        echo "Readiness checks still unsatisfied: ${LAST_READINESS_MISSING:-unknown (no readiness evaluation completed)}"
+        echo "Affected owning service(s): ${_repeat_offender}"
+        _run_bounded "$(_probe_timeout "$DEADLINE")" pm2 logs --lines 50 --nostream || true
+        exit 1
+      fi
+      # Recovery consumed part of the budget; re-check before re-polling
+      # so the restart cannot spend an expired budget.
+      if _deadline_expired "$DEADLINE"; then
+        _fail_deadline
+      fi
+      _capped_sleep
+      continue
     fi
 
     # 2. Check if services are ready
@@ -774,33 +1390,47 @@ start_and_wait_for_services() {
        log_status=true
     fi
 
-    if _is_service_ready "$log_status"; then
+    if _is_service_ready "$log_status" "$DEADLINE"; then
+      # A readiness evaluation that only completes after the deadline is a
+      # deadline failure, never a success (issue #5486, REQ-001/REQ-005).
+      if _deadline_expired "$DEADLINE"; then
+        _fail_deadline
+      fi
+      if [ "$RECOVERY_FAILED" = true ]; then
+        echo "Startup failed: an automatic PM2 restart failed; readiness cannot override recovery failure."
+        exit 1
+      fi
       echo "=== All test services are ready! ==="
       break
     fi
 
-    # Self-heal a selectively stalled Hosting emulator (issue #5453): when
-    # every other required port has been open for a sustained period while
-    # hosting alone never binds, the emulator process is wedged — restart it
-    # once and keep waiting within the same overall deadline. Restarting is
-    # safe before any test runs: the auth emulator holds no test state yet
-    # (TestHelpers.getTestAuthToken self-provisions the test user on demand
-    # and init-firebase-emulator.js runs after this gate), and yjs/vite are
-    # untouched by the emulator restart.
-    if _only_hosting_missing; then
-      if [ "$HOSTING_STALL_START" -eq 0 ]; then
-        HOSTING_STALL_START=$ELAPSED
-      elif [ "$HOSTING_RESTART_DONE" -eq 0 ] && [ $((ELAPSED - HOSTING_STALL_START)) -ge 120 ]; then
-        echo "Firebase Hosting emulator (port ${FIREBASE_HOSTING_PORT}) has not started after $((ELAPSED - HOSTING_STALL_START))s while all other services are ready. Restarting firebase-emulators once..."
-        pm2 restart firebase-emulators || echo "Warning: pm2 restart firebase-emulators failed"
-        HOSTING_RESTART_DONE=1
-        HOSTING_STALL_START=0
-      fi
-    else
-      HOSTING_STALL_START=0
+    # The evaluation above may have consumed the rest of the budget (a probe
+    # started just before expiry). Recovery and re-polling must not run past
+    # the deadline, so re-check before touching the process manager again.
+    if _deadline_expired "$DEADLINE"; then
+      _fail_deadline
     fi
 
-    sleep 2
+    # Generic stall recovery (issue #5487, REQ-002/REQ-007): restart only
+    # the owning service(s) whose checks have been continuously unsatisfied
+    # for STALL_THRESHOLD seconds. This generalizes the legacy
+    # Hosting-only retry (issue #5453) — the firebase-emulators stall it
+    # covered is now one case of the same policy, so a single recovery
+    # episode performs exactly one restart (REQ-006). Restarting before any
+    # test runs is safe: the auth emulator holds no test state yet
+    # (TestHelpers.getTestAuthToken self-provisions the test user on demand
+    # and init-firebase-emulator.js runs after this gate), and unrelated
+    # services are untouched by another owner's restart.
+    _evaluate_owner_stalls "$(($(date +%s) - START_TIME))"
+
+    # The evaluation and any recovery above may have consumed the rest of
+    # the budget; re-check before sleeping so recovery cannot spend an
+    # expired budget.
+    if _deadline_expired "$DEADLINE"; then
+      _fail_deadline
+    fi
+
+    _capped_sleep
   done
 
   # Initialize Firebase emulator (creates test users, etc.)

@@ -29,11 +29,26 @@
  */
 
 // Bare specifiers that must resolve to a single instance per process.
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 const PINNED_SPECIFIERS = new Set(["yjs"]);
+const CLIENT_SOURCE = new URL("../../../client/src/", import.meta.url);
+const SHARED_SOURCE = new URL("../../../shared/src/", import.meta.url);
 
 export async function resolve(specifier, context, nextResolve) {
     if (PINNED_SPECIFIERS.has(specifier)) {
         return nextResolve(specifier, { ...context, parentURL: import.meta.url });
+    }
+    if (specifier.startsWith("$shared/")) {
+        return nextResolve(new URL(`${specifier.slice("$shared/".length)}.ts`, SHARED_SOURCE).href, context);
+    }
+    if (specifier.startsWith("./") || specifier.startsWith("../")) {
+        const parent = context.parentURL;
+        if (parent?.startsWith(CLIENT_SOURCE.href)) {
+            const candidate = new URL(`${specifier}.ts`, parent);
+            if (existsSync(fileURLToPath(candidate))) return nextResolve(candidate.href, context);
+        }
     }
     return nextResolve(specifier, context);
 }

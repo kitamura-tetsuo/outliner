@@ -100,6 +100,8 @@ export interface RelationProvider {
      * false when it cannot be built (no valid schema, for example).
      */
     materialize(): Promise<boolean>;
+    /** Notify query consumers after this materialized relation changes. */
+    subscribeInvalidation?(listener: () => void): () => void;
     /** Apply a write back to the Yjs structure that owns the row. */
     applyWrite(write: RelationWrite): Promise<void>;
     /** Detach observers. Dropping the Postgres relation is the engine's job. */

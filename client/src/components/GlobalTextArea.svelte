@@ -90,6 +90,24 @@ onDestroy(() => {
     try { generalStore.textareaRef = null; } catch (_e) { /* ignore */ }
 });
 
+// Offset in the mirrored value where the current composition starts.
+let compositionStartOffset = 0;
+
+/**
+ * Scroll the non-wrapping proxy so the composition start sits at its left edge.
+ *
+ * The proxy mirrors the whole item but is only as wide as the composition, so the browser
+ * scrolls it to keep the caret visible. EditorOverlay places the proxy's left edge at the
+ * displayed composition start, and the native IME anchors its candidate window to the
+ * composition inside the proxy, so that text must start exactly at the edge (#5501).
+ */
+function alignCompositionStart() {
+    if (!textareaRef || !measureCtx) return;
+    const style = getComputedStyle(textareaRef);
+    measureCtx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    textareaRef.scrollLeft = measureCtx.measureText(textareaRef.value.slice(0, compositionStartOffset)).width;
+}
+
 function updateCompositionWidth(text: string) {
     if (!textareaRef || !measureCtx) {
         // Fallback: Set fixed width if measureCtx is unavailable
@@ -101,7 +119,9 @@ function updateCompositionWidth(text: string) {
     const style = getComputedStyle(textareaRef);
     measureCtx.font = `${style.fontSize} ${style.fontFamily}`;
     const metrics = measureCtx.measureText(text);
-    textareaRef.style.width = `${metrics.width + 4}px`;
+    // Room for the caret after the composition is padding-right, not extra width: the proxy
+    // can then scroll the whole mirrored prefix out of view (see alignCompositionStart).
+    textareaRef.style.width = `${metrics.width}px`;
 }
 
 function handleCompositionStart(event: CompositionEvent) {
@@ -125,6 +145,7 @@ function handleCompositionStart(event: CompositionEvent) {
             }
         }
     }
+    compositionStartOffset = textareaRef?.selectionStart ?? 0;
     updateCompositionWidth(event.data || "");
     KeyEventHandler.handleCompositionStart(event);
 }
@@ -154,6 +175,8 @@ function handleInput(event: Event) {
 
 
     KeyEventHandler.handleInput(event);
+    // The composition text has now been written into the mirror; keep its start at the edge.
+    if (store.isComposing) alignCompositionStart();
 }
 function handleBeforeInput(event: Event) {
     KeyEventHandler.handleBeforeInput(event);
@@ -166,6 +189,10 @@ function handleCompositionEnd(event: CompositionEvent) {
 
     store.setIsComposing(false);
     if (textareaRef) {
+        // The model already placed every local caret. Re-applying the mirror's own range arms
+        // the selection-resync suppression, so the browser's post-commit selectionchange is not
+        // read back as a single caret that would drop the other local carets (#5501, REQ-005).
+        store.applyTextareaSelectionRange(textareaRef, textareaRef.selectionStart, textareaRef.selectionEnd);
         textareaRef.classList.remove("ime-input");
         textareaRef.style.opacity = "0";
         textareaRef.style.width = "1px";
@@ -177,6 +204,7 @@ function handleCompositionEnd(event: CompositionEvent) {
 function handleCompositionUpdate(event: CompositionEvent) {
     updateCompositionWidth(event.data || "");
     KeyEventHandler.handleCompositionUpdate(event);
+    alignCompositionStart();
 }
 
 // Delegate copy event to KeyEventHandler
@@ -274,10 +302,15 @@ function handleBlur(event: FocusEvent) {
 }
 </script>
 
+<!--
+    wrap="off": the textarea is only an input proxy; the rendered item does the visual wrapping.
+    Soft wrapping inside the proxy makes Firefox + Fcitx5 (GTK IM module) compute the native
+    candidate anchor from a wrapped internal line, displacing it or covering inline preedit (#5501).
+-->
 <textarea
-
     bind:this={textareaRef}
     class="global-textarea"
+    wrap="off"
     aria-label="Edit item text"
     role={commandPaletteStore.isVisible ? "combobox" : undefined}
     aria-expanded={commandPaletteStore.isVisible ? "true" : undefined}
@@ -325,6 +358,12 @@ function handleBlur(event: FocusEvent) {
     height: 1px;
     opacity: 0;
     pointer-events: none;
+    /* The native IME anchors its candidate window to the caret inside this textarea. Without
+       left/top padding or a border, that caret starts exactly at the left/top where
+       EditorOverlay places the textarea, i.e. at the displayed composition start (#5501).
+       The right padding leaves room for the caret after the composition. */
+    padding: 0 4px 0 0;
+    border: 0;
     /* Prevent the hidden textarea from extending the document width and causing horizontal scrollbars */
     contain: layout;
 }

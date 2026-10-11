@@ -175,6 +175,8 @@ export function demoUtcWeekStart(weeksAgo: number): string {
 
 export const DEMO_SALES_TABLE_ID = "demo-table-sales";
 export const DEMO_TASKS_TABLE_ID = "demo-table-tasks";
+/** Stable additional Grid demonstrating semantic ordering of text priorities. */
+export const DEMO_TASKS_PRIORITY_GRID_ID = "demo-table-tasks-priority-grid";
 export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
 export const DEMO_FEEDBACK_TABLE_ID = "demo-table-feedback";
 export const DEMO_ROUTINE_TEMPLATES_TABLE_ID = "demo-table-routine-templates";
@@ -342,6 +344,24 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                         repeat_days: null,
                         created_at: `${demoDate(-2)}T10:00:00`,
                         completed_at: `${demoDate(-1)}T16:45:00`,
+                    },
+                },
+            ],
+            extraGrids: [
+                {
+                    gridId: DEMO_TASKS_PRIORITY_GRID_ID,
+                    name: "Tasks · semantic priority order",
+                    query: "SELECT id, title, priority\n"
+                        + "FROM tasks\n"
+                        + "ORDER BY CASE priority\n"
+                        + "  WHEN 'high' THEN 0\n"
+                        + "  WHEN 'medium' THEN 1\n"
+                        + "  WHEN 'low' THEN 2\n"
+                        + "  ELSE 3\n"
+                        + "END, id",
+                    components: {
+                        title: "text",
+                        priority: "select",
                     },
                 },
             ],
@@ -873,6 +893,7 @@ export function registerDemoTables(
 ): void {
     const registry = projectDoc.getMap<Y.Map<unknown>>("yjsTables");
     const gridRegistry = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
+    const kanbanRegistry = projectDoc.getMap<Y.Map<unknown>>("yjsKanbans");
     for (const template of demoTablesFor(locale)) {
         const entry = new Y.Map<unknown>();
         registry.set(template.tableId, entry);
@@ -901,6 +922,20 @@ export function registerDemoTables(
         }
         gridEntry.set("components", components);
         gridRegistry.set(gridId, gridEntry);
+
+        // The Tasks board makes the public demo exercise the standalone
+        // Kanban surface with the same real Table records and SQL engine.
+        if (template.sqlName === "tasks") {
+            const kanban = new Y.Map<unknown>();
+            kanban.set("sourceTableId", template.tableId);
+            kanban.set("name", "Tasks by status");
+            kanban.set("query", "SELECT id, title, status, priority, due_date FROM tasks ORDER BY priority, id");
+            kanban.set("groupField", "status");
+            kanban.set("titleField", "title");
+            kanban.set("detailFields", ["priority", "due_date"]);
+            kanban.set("laneOrder", ["open", "done"]);
+            kanbanRegistry.set("demo-tasks-kanban", kanban);
+        }
 
         for (const extra of template.extraGrids ?? []) {
             const extraEntry = new Y.Map<unknown>();
@@ -1273,7 +1308,7 @@ function persistedDemoStructure(locale: DemoLocale, slug: string): {
     registerDemoDiagrams(projectDoc);
 
     const registries = Object.fromEntries(
-        ["sqlCatalog", "yjsTables", "yjsGrids", "schedules", "calendars", "diagrams"].map(name => [
+        ["sqlCatalog", "yjsTables", "yjsGrids", "yjsKanbans", "schedules", "calendars", "diagrams"].map(name => [
             name,
             persistedYValue(projectDoc.getMap(name)),
         ]),

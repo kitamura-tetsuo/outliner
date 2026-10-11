@@ -1,5 +1,7 @@
 # Reproducible E2E Environment Setup
 
+For the required outline-selection suite in desktop Firefox, follow [Firefox selection E2E](firefox-selection-e2e.md). It uses the same local services with browser-specific preparation and execution; the Chromium fallback described below does not apply to Firefox.
+
 `scripts/bootstrap-e2e.sh` takes a fresh clone (or a fresh cloud container) to a
 state where Playwright E2E tests pass, and then proves it by running a spec.
 

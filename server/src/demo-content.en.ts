@@ -325,6 +325,12 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "Column widths: drag the boundary at a column header's right edge to resize it — the Grid previews the "
+                            + "width while you drag and saves it once on release as a single Undo step (Escape cancels). The UI panel's "
+                            + "Width (px) field sets the same saved width from the keyboard; clear it to return the column to automatic sizing.",
+                    },
+                    {
+                        text:
                             "Cell clipboard: select a cell or range and press Ctrl/Cmd+C to copy it as tab/newline text (rows), "
                             + "no header row; row and column selections copy every cell they cover. Ctrl/Cmd+V pastes: a single "
                             + "copied cell repeats across a larger selection, a rectangle pasted at one active cell fills the "
@@ -437,6 +443,10 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         componentType: "yjstable",
                         yjsTableId: DEMO_TASKS_TABLE_ID,
+                    },
+                    {
+                        text:
+                            "Semantic priority ordering: ordinary ORDER BY priority sorts text lexically (high, low, medium), not by its intended meaning. Open the live CASE-ordered Grid at [/demo/-/grids/demo-table-tasks-priority-grid] to see high, medium, then low and inspect its saved SELECT in the UI.",
                     },
                     {
                         text:

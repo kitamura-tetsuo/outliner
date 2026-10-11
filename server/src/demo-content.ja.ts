@@ -357,6 +357,12 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "列幅: 列見出しの右端の境界をドラッグすると列幅を変更できます。ドラッグ中はプレビューだけが表示され、"
+                            + "指を離したときに一度だけ保存されます（元に戻すは 1 ステップ、Escape で取り消し）。UI パネルの Width (px) "
+                            + "欄からキーボードで同じ保存幅を設定でき、空にすると自動幅に戻ります。",
+                    },
+                    {
+                        text:
                             "セルのクリップボード: セルまたは範囲を選択して Ctrl/Cmd+C を押すと、タブ／改行区切りのテキスト（行）として"
                             + "コピーされます（見出し行なし）。行や列の選択は、そこに含まれるすべてのセルをコピーします。Ctrl/Cmd+V で"
                             + "貼り付けると、コピーしたセルが1つだけなら選択範囲全体に繰り返し貼り付けられ、矩形のデータをアクティブセルに"
@@ -468,6 +474,10 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         componentType: "yjstable",
                         yjsTableId: DEMO_TASKS_TABLE_ID,
+                    },
+                    {
+                        text:
+                            "優先度の意味順: 通常の ORDER BY priority は文字列を辞書順（high, low, medium）に並べ、意図した優先順位にはなりません。[/demo-ja/-/grids/demo-table-tasks-priority-grid] で稼働中の CASE 順 Grid を開き、high, medium, low の順序と保存済み SELECT を UI で確認できます。",
                     },
                     {
                         text:

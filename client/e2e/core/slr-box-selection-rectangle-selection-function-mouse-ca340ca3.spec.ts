@@ -62,15 +62,13 @@ test.describe("Box Selection Test via Mouse", () => {
         // Get the position of the first item
         const firstItemBounds = await page.locator(".outliner-item").first().boundingBox();
         if (!firstItemBounds) {
-            console.log("Could not get the position of the first item.");
-            return;
+            throw new Error("Could not get the position of the first item.");
         }
 
         // Get the position of the second item
         const secondItemBounds = await page.locator(".outliner-item").nth(1).boundingBox();
         if (!secondItemBounds) {
-            console.log("Could not get the position of the second item.");
-            return;
+            throw new Error("Could not get the position of the second item.");
         }
 
         // Mouse drag while holding Alt+Shift keys
@@ -90,8 +88,7 @@ test.describe("Box Selection Test via Mouse", () => {
         // Verify that box selection is created
         const boxSelectionCount = await page.evaluate(() => {
             if (!(globalThis as any).editorOverlayStore) {
-                console.log("editorOverlayStore not found");
-                return 0;
+                throw new Error("editorOverlayStore not found");
             }
             const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
@@ -156,33 +153,13 @@ test.describe("Box Selection Test via Mouse", () => {
         // 6. Cancel box selection with Esc key
         await page.keyboard.press("Escape");
 
-        // Explicitly call cancelBoxSelection
-        await page.evaluate(() => {
-            if (
-                (globalThis as any).KeyEventHandler
-                && typeof (globalThis as any).KeyEventHandler.cancelBoxSelection === "function"
-            ) {
-                (globalThis as any).KeyEventHandler.cancelBoxSelection();
-                console.log("Explicitly called KeyEventHandler.cancelBoxSelection()");
-            } else {
-                console.log("KeyEventHandler.cancelBoxSelection not available");
-            }
-
-            // Force clear selection range
-            if ((globalThis as any).editorOverlayStore) {
-                (globalThis as any).editorOverlayStore.clearSelections();
-                console.log("Explicitly called editorOverlayStore.clearSelections()");
-            }
-        });
-
         // Wait a bit to ensure selection clear
         await page.waitForTimeout(100);
 
         // Verify that box selection is cancelled
         const boxSelectionCount2 = await page.evaluate(() => {
             if (!(globalThis as any).editorOverlayStore) {
-                console.log("editorOverlayStore not found");
-                return 0;
+                throw new Error("editorOverlayStore not found");
             }
             const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);

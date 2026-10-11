@@ -6,10 +6,12 @@
 
 import {
     analyzeQueryEditability,
+    type BareIdMutationAuthority,
     SOURCE_ID_COLUMN,
     SOURCE_KIND_COLUMN,
 } from "../../services/yjstable/queryAnalysis";
 import { applyUnionedRowEdit, type RelationResolver } from "../../services/yjstable/relationRowWrite";
+import { RelationWriteError } from "../../services/yjstable/relationProvider";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
@@ -19,7 +21,9 @@ import {
     type TableRecordValue,
 } from "../../services/yjstable/tableDocs";
 import type { GridHandles } from "../../services/yjstable/gridDocs";
-import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import { isValidGridColumnWidth } from "../../services/yjstable/gridDocs";
+import { ColumnResizeGesture } from "../../services/yjstable/columnResize";
+import type { TableQueryResult, TableSyncAdapter } from "../../services/yjstable/tableSyncAdapter";
 import { GridSelection, type GridCellAddress } from "../../services/yjstable/gridSelection";
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import {
@@ -37,6 +41,7 @@ import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePla
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { onDestroy, onMount, untrack } from "svelte";
+import { SvelteMap } from "svelte/reactivity";
 import {
     type GridCellReplaceOutcome,
     type GridCellReplacement,
@@ -59,9 +64,12 @@ interface Props {
     onColumnOrderChange?: (order: string[]) => void;
     /** Source Table handles: writes for editable cells go here. */
     handles: TableHandles;
+    adapter?: TableSyncAdapter;
     schema: ParsedTableSchema | undefined;
     query: string;
     result: TableQueryResult;
+    /** Result-bound proof for bare-id writes. Undefined fails closed on saved Grids. */
+    bareIdAuthority?: BareIdMutationAuthority;
     /** Component type per column from the Grid Definition mirror. */
     componentTypes: Record<string, string | undefined>;
     /** The column order stored in the Grid Definition. */
@@ -70,6 +78,14 @@ interface Props {
     columnLabels: Record<string, string | undefined>;
     /** Columns hidden by the Grid Definition. */
     hiddenColumns: Record<string, boolean>;
+    /**
+     * Saved per-column width overrides from the Grid Definition mirror, keyed
+     * by exact result-column name. A finite integer 32..4096 is a fixed
+     * CSS-pixel border-box column width; anything absent or malformed renders
+     * as automatic sizing without repairing the stored document (issue #5457).
+     * The raw Table browser passes nothing and stays fully automatic.
+     */
+    columnWidths?: Record<string, number | undefined>;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
     /**
@@ -83,6 +99,18 @@ interface Props {
     session: RelationResolver;
     /** Whether deleting a row requires confirmation (default false). */
     confirmRowDelete?: boolean;
+    /**
+     * Host surface restriction (outline read-only state). A read-only host
+     * offers no header resize handle; cell writes keep their SQL-derived
+     * eligibility either way.
+     */
+    isReadOnly?: boolean;
+    /**
+     * Receives this placement's transient header-resize preview (exact
+     * result-column name and candidate px), or undefined when no preview is
+     * shown. The preview is never saved state (issue #5459).
+     */
+    onColumnWidthPreview?: (preview: { column: string; width: number; } | undefined) => void;
 }
 
 let gridContainer: HTMLElement | undefined = $state();
@@ -94,18 +122,23 @@ let {
     pageTitle,
     onColumnOrderChange,
     handles,
+    adapter,
     schema,
     query,
     result,
+    bareIdAuthority,
     componentTypes,
     columnOrder,
     columnLabels,
     hiddenColumns,
+    columnWidths = {},
     showAddRowButton = true,
     rowCreationMode = "query",
     loading = false,
     session,
     confirmRowDelete = false,
+    isReadOnly = false,
+    onColumnWidthPreview,
 }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
@@ -116,6 +149,7 @@ const selection = new GridSelection();
 let selectionRevision = $state(0);
 /** Feedback for a paste this Grid rejected (shape mismatch, incompatible value, ...); see `pasteClipboardIntoSelection`. */
 let pasteStatus: string | undefined = $state();
+let cellEditStatus: string | undefined = $state();
 let findMatch: GridCellSearchMatch | undefined = $state();
 let unregisterSearch: (() => void) | undefined;
 
@@ -125,6 +159,17 @@ let unregisterSearch: (() => void) | undefined;
  * active cell instead of a foreign editor's cursor/selection.
  */
 let editingCell: GridCellAddress | undefined = $state();
+interface CellWriteAuthority {
+    readonly cell: GridCellAddress;
+    readonly handles: TableHandles;
+    readonly adapter: TableSyncAdapter | undefined;
+    readonly token: number | undefined;
+    readonly catalogBound: boolean;
+    readonly record: unknown;
+}
+// Pointer-down on the next control can precede blur/commit on the old one.
+// Keep each origin until its own interaction finishes.
+const cellWriteAuthorities = new SvelteMap<string, CellWriteAuthority>();
 /**
  * Initial text for the cell named by `editingCell`, set once when a
  * printable keystroke opens the editor. Stays referentially stable for the
@@ -149,15 +194,161 @@ let suppressClickUntil = 0;
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
-const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
+const editability = $derived(analyzeQueryEditability(
+    query,
+    schema,
+    result.columns,
+    grid ? bareIdAuthority ?? {
+        status: "unavailable",
+        editableColumns: new Set<string>(),
+        reason: "Read-only view: query provenance has not been validated",
+    } : undefined,
+));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
 const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
 
+function commitBareRecordValue(
+    recordId: string,
+    columnId: string,
+    value: TableRecordValue,
+    authority?: CellWriteAuthority,
+): void {
+    if (adapter && (authority?.catalogBound || columnByName.get(columnId)?.enumLabels !== undefined)) {
+        // Immediate selection commands capture at this synchronous write boundary.
+        // Delayed cell editors must keep the authority captured when editing began.
+        const token = authority === undefined ? adapter.writeAuthorityToken : authority.token;
+        if (token === undefined) throw new RelationWriteError("This cell has no current write authority");
+        adapter.commitRecordValue(recordId, columnId, value, token);
+    } else {
+        setRecordValue(handles, recordId, columnId, value);
+    }
+}
+
+function captureCellWriteAuthority(cell: GridCellAddress): void {
+    cellWriteAuthorities.set(JSON.stringify([cell.rowId, cell.columnId]), {
+        cell,
+        handles,
+        adapter,
+        token: adapter?.writeAuthorityToken,
+        catalogBound: columnByName.get(cell.columnId)?.enumLabels !== undefined,
+        record: handles.data.get(cell.rowId),
+    });
+    cellEditStatus = undefined;
+}
+
+function releaseCellWriteAuthority(cell: GridCellAddress): void {
+    cellWriteAuthorities.delete(JSON.stringify([cell.rowId, cell.columnId]));
+}
+
+function checkCellWriteAuthority(cell: GridCellAddress, authority: CellWriteAuthority | undefined): void {
+    if (!authority?.catalogBound && columnByName.get(cell.columnId)?.enumLabels === undefined) return;
+    if (
+        !authority || authority.handles !== handles || authority.adapter !== adapter || !adapter
+        || authority.token !== adapter.writeAuthorityToken || authority.record !== handles.data.get(cell.rowId)
+    ) {
+        throw new RelationWriteError("This cell changed while you were editing. Please edit it again.");
+    }
+}
+
+/**
+ * Fixed border-box width for a visible data column, resolved by exact
+ * result-column name. Malformed stored values render as automatic sizing and
+ * never write back (issue #5457 REQ-001/REQ-004).
+ */
+function fixedWidthOf(column: string): number | undefined {
+    // An in-progress header resize previews its candidate on this placement
+    // only; it is local state, never written until release (issue #5459).
+    if (resizePreview?.column === column) return resizePreview.width;
+    const width = columnWidths[column];
+    return isValidGridColumnWidth(width) ? width : undefined;
+}
+
+// --- Header resize (issue #5459) -------------------------------------------
+
+/**
+ * The latest header-resize gesture. Kept after it ends so a new gesture or
+ * unmount can dispose any residual release/click guard it still owns.
+ */
+let resizeGesture: ColumnResizeGesture | undefined;
+/** Column whose resize handle currently owns the pointer. */
+let resizingColumn = $state<string | undefined>();
+/** Local, unsaved preview of the active gesture's candidate width. */
+let resizePreview = $state<{ column: string; width: number; } | undefined>();
+/**
+ * Scroll extent held while a gesture runs on an overflowing Grid. Without it,
+ * shrinking a column while scrolled to the end makes the browser clamp the
+ * scroll offset, which (in content coordinates) reads as further pointer
+ * movement and would shrink the column again.
+ */
+let resizeScrollExtent = $state<number | undefined>();
+
+/** Resizing needs a Grid to persist into and an editable host surface. */
+const canResizeColumns = $derived(grid !== undefined && !isReadOnly);
+
+function startColumnResize(event: PointerEvent, column: string): void {
+    if (!grid || !gridContainer || isReadOnly) return;
+    if (!event.isPrimary || event.button !== 0) return;
+    const handle = event.currentTarget as HTMLElement;
+    const header = handle.closest("th");
+    if (!header) return;
+    // The handle owns this pointer: no text selection, focus move, native
+    // drag, compatibility mouse events or host outline gesture.
+    event.preventDefault();
+    event.stopPropagation();
+    resizeGesture?.dispose();
+    const scroller = gridContainer;
+    const overflowing = scroller.scrollWidth > scroller.clientWidth;
+    resizingColumn = column;
+    resizeScrollExtent = overflowing ? scroller.scrollWidth : undefined;
+    const gesture = new ColumnResizeGesture({
+        grid,
+        column,
+        handle,
+        scroller,
+        startWidth: header.getBoundingClientRect().width,
+        canContinue: () => !isReadOnly && displayColumns.includes(column),
+        onPreview: (width) => {
+            resizePreview = width === undefined ? undefined : { column, width };
+            onColumnWidthPreview?.(resizePreview);
+        },
+        onEnd: () => {
+            resizingColumn = undefined;
+            resizeScrollExtent = undefined;
+        },
+    }, event);
+    resizeGesture = gesture;
+}
+
+// Prop-driven invalidation: the target stopping being rendered (hidden,
+// removed from the result) or the host turning read-only ends the gesture
+// without a write. Yjs-observed invalidations live in the gesture itself.
+$effect(() => {
+    void displayColumns;
+    void isReadOnly;
+    untrack(() => resizeGesture?.revalidate());
+});
+
+onDestroy(() => resizeGesture?.dispose());
+
+/** Whether any visible data column pins a fixed width. */
+const hasFixedColumns = $derived(displayColumns.some(column => fixedWidthOf(column) !== undefined));
+/** Whether any visible data column sizes automatically. */
+const hasAutoColumns = $derived(displayColumns.some(column => fixedWidthOf(column) === undefined));
+/** All visible data columns fixed: surplus container space stays outside the tracks. */
+const allColumnsFixed = $derived(displayColumns.length > 0 && !hasAutoColumns);
+// An intrinsic table width disables fixed layout in browsers. Give all-fixed
+// tables a definite width, including both utility tracks and the collapsed border.
+const fixedTableWidth = $derived(
+    `calc(${displayColumns.reduce((sum, column) => sum + (fixedWidthOf(column) ?? 0), 0) + 1}px + ${
+        editability.editable && editability.rowIdentity === "id" ? 4.5 : 2.5
+    }rem)`,
+);
+
 /** One row target per query result row, for the selection command layer (`gridSelectionCommands.ts`). */
 const rowTargetEntries = $derived(
-    result.rows.flatMap((row): Array<[string, GridCommandRowTarget]> => {
-        const rowId = selectableRowId(row);
+    result.rows.flatMap((row, rowIndex): Array<[string, GridCommandRowTarget]> => {
+        const rowId = selectionRowId(row, rowIndex);
         return rowId === undefined ? [] : [[rowId, { row, recordId: recordIdOf(row), source: sourceOf(row) }]];
     }),
 );
@@ -169,8 +360,13 @@ const commandContext = $derived<GridCommandContext>({
     columnOrder: displayColumns,
     editableColumns: editability.editableColumns,
     valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
-    checkOptionsOf: (columnId) => columnByName.get(columnId)?.checkOptions,
+    checkOptionsOf: (columnId) => {
+        const column = columnByName.get(columnId);
+        return column?.enumLabels ?? column?.checkOptions;
+    },
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
+    canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
+    writeBareCell: (recordId, columnId, value) => commitBareRecordValue(recordId, columnId, value),
 });
 
 const selectionSummary = $derived.by(() => {
@@ -215,17 +411,39 @@ function sourceOf(row: Record<string, unknown>): { sourceKind: string; sourceId:
     return { sourceKind, sourceId };
 }
 
-function rowKey(row: Record<string, unknown>, rowIndex: number): string {
-    const recordId = recordIdOf(row);
-    if (recordId !== undefined) return recordId;
-    const source = sourceOf(row);
-    if (source) return `${source.sourceKind}:${source.sourceId}`;
+function rowKeyBase(row: Record<string, unknown>, rowIndex: number): string {
+    const sourceKind = row.source_kind;
+    const sourceId = row.source_id;
+    if (typeof sourceKind === "string" && typeof sourceId === "string") {
+        return `${sourceKind}:${sourceId}`;
+    }
+    if (typeof row.id === "string") return row.id;
     return `row-${rowIndex}`;
+}
+
+function rowKey(row: Record<string, unknown>, rowIndex: number): string {
+    // DOM identity, not write authority: this keys Svelte's `<tr>` nodes, so
+    // it must not consult the async `editability` verdict. Resolving or
+    // revoking bare-id mutation authority flips `rowIdentity`, which used to
+    // destroy and recreate every row — dropping DOM focus in the middle of
+    // keyboard navigation. Derive it from the result data alone, preferring
+    // the same durable identity `selectableRowId` uses; write routing keeps
+    // using the gated `recordIdOf`/`sourceOf` above.
+    const base = rowKeyBase(row, rowIndex);
+    // A cross join (or any non-unique projection) can repeat the same durable
+    // identity across rows, but Svelte keyed each blocks require unique keys
+    // (`each_key_duplicate` throws otherwise). Disambiguate repeats by
+    // occurrence, keeping the first occurrence's key exactly as before so DOM
+    // identity stays stable for the common unique-identity case.
+    const repeatsBefore = result.rows.slice(0, rowIndex).filter((candidate, candidateIndex) =>
+        rowKeyBase(candidate, candidateIndex) === base
+    ).length;
+    return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
 }
 
 /** Search/navigation identity for read-only projections that have no writable record identity. */
 function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
-    const durableId = selectableRowId(row);
+    const durableId = selectionRowId(row, rowIndex);
     if (durableId !== undefined) return durableId;
     const value = JSON.stringify(row);
     const duplicateIndex = result.rows.slice(0, rowIndex).filter(candidate => JSON.stringify(candidate) === value).length;
@@ -234,6 +452,14 @@ function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
 
 /** Rows without a durable query identity are intentionally not selectable. */
 function selectableRowId(row: Record<string, unknown>): string | undefined {
+    return durableRowIdBase(row);
+}
+
+/**
+ * Durable query identity without write gating (see `selectableRowId`).
+ * Split out so occurrence disambiguation below can compare bases.
+ */
+function durableRowIdBase(row: Record<string, unknown>): string | undefined {
     // Query editability is a write concern. Read-only DISTINCT/aggregate
     // results may still expose durable identity columns suitable for local
     // selection, so do not gate identity on editability.rowIdentity.
@@ -241,6 +467,23 @@ function selectableRowId(row: Record<string, unknown>): string | undefined {
         return `${row.source_kind}:${row.source_id}`;
     }
     return typeof row.id === "string" ? row.id : undefined;
+}
+
+/**
+ * Occurrence-aware selection identity (issue #5547): a cross join repeats
+ * the same bare `id` across result rows, and keying selection/copy targets
+ * by that bare id collapses every occurrence onto the last row's values.
+ * Disambiguate repeats by occurrence with the same `#N` scheme `rowKey`
+ * uses for Svelte DOM keys, keeping the first occurrence exactly as before
+ * so unique-identity results behave identically.
+ */
+function selectionRowId(row: Record<string, unknown>, rowIndex: number): string | undefined {
+    const base = durableRowIdBase(row);
+    if (base === undefined) return undefined;
+    const repeatsBefore = result.rows.slice(0, rowIndex).filter(candidate =>
+        durableRowIdBase(candidate) === base
+    ).length;
+    return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
 }
 
 onMount(() => {
@@ -312,8 +555,8 @@ onMount(() => {
 onDestroy(() => unregisterSearch?.());
 
 function rowIdsOf(rows: TableQueryResult["rows"]): string[] {
-    return rows.flatMap(row => {
-        const id = selectableRowId(row);
+    return rows.flatMap((row, rowIndex) => {
+        const id = selectionRowId(row, rowIndex);
         return id === undefined ? [] : [id];
     });
 }
@@ -552,22 +795,33 @@ $effect.pre(() => {
 const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
 
 function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
-    const rowId = selectableRowId(row);
+    if (!editability.editable || !editability.editableColumns.has(column)) return;
+    const rowIndex = result.rows.indexOf(row);
+    const rowId = rowIndex < 0 ? selectableRowId(row) : selectionRowId(row, rowIndex);
     const cell: GridCellAddress | undefined = rowId !== undefined ? { rowId, columnId: column } : undefined;
-    if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
-        const summary = summarizeSelection(selection, commandContext);
-        if (summary.writableTargets.length > 1) {
-            applyValueToSelection(selection, commandContext, value);
+    const authority = cell ? cellWriteAuthorities.get(JSON.stringify([cell.rowId, cell.columnId])) : undefined;
+    try {
+        if (cell) checkCellWriteAuthority(cell, authority);
+        if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
+            const summary = summarizeSelection(selection, commandContext);
+            if (summary.writableTargets.length > 1) {
+                // The captured origin is checked before the synchronous batch can write any target.
+                applyValueToSelection(selection, commandContext, value);
+                return;
+            }
+        }
+        const recordId = recordIdOf(row);
+        if (recordId !== undefined) {
+            commitBareRecordValue(recordId, column, value, authority);
             return;
         }
+        const source = sourceOf(row);
+        if (source) void applyUnionedRowEdit(session, source.sourceKind, source.sourceId, column, value);
+    } catch (error) {
+        cellEditStatus = error instanceof Error ? error.message : String(error);
+    } finally {
+        if (cell) releaseCellWriteAuthority(cell);
     }
-    const recordId = recordIdOf(row);
-    if (recordId !== undefined) {
-        setRecordValue(handles, recordId, column, value);
-        return;
-    }
-    const source = sourceOf(row);
-    if (source) void applyUnionedRowEdit(session, source.sourceKind, source.sourceId, column, value);
 }
 
 /** Focuses `cell`'s control right now if its DOM already exists. Returns whether it did. */
@@ -845,6 +1099,7 @@ function handleGridKeyDown(event: KeyboardEvent) {
         selection.select(cell);
         selectionRevision++;
         editingCell = cell;
+        captureCellWriteAuthority(cell);
         pendingEditSeed = event.key;
     }
 }
@@ -865,10 +1120,12 @@ function newRecordDefaults(): Record<string, TableRecordValue> {
 }
 
 function addRow() {
+    if (rowCreationMode === "query" && (!editability.editable || editability.rowIdentity !== "id")) return;
     addRecord(handles, newRecordDefaults());
 }
 
 function deleteRow(recordId: string) {
+    if (!editability.editable || editability.rowIdentity !== "id") return;
     if (confirmRowDelete) {
         rowToDelete = recordId;
         isConfirmDialogOpen = true;
@@ -949,6 +1206,7 @@ function handleCancelDelete() {
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
     data-foreign-editor="grid"
+    data-column-resizing={resizingColumn !== undefined ? "true" : undefined}
     bind:this={gridContainer}
 >
     {#if loading}
@@ -962,7 +1220,32 @@ function handleCancelDelete() {
         {#if pasteStatus}
             <p class="grid-paste-status" data-testid="grid-paste-status" role="status">{pasteStatus}</p>
         {/if}
-        <table role="grid" onkeydown={handleGridKeyDown}>
+        {#if cellEditStatus}
+            <p class="grid-paste-status" data-testid="grid-edit-status" role="status">{cellEditStatus}</p>
+        {/if}
+        <table
+            role="grid"
+            onkeydown={handleGridKeyDown}
+            class:grid-fixed-layout={hasFixedColumns}
+            class:grid-all-fixed={allColumnsFixed}
+            style:width={allColumnsFixed ? fixedTableWidth : undefined}
+        >
+            {#if hasFixedColumns}
+                <colgroup>
+                    <col class="utility-col" style="width:2.5rem;min-width:2.5rem;max-width:2.5rem;" />
+                    {#each displayColumns as column (column)}
+                        {@const fixedWidth = fixedWidthOf(column)}
+                        {#if fixedWidth !== undefined}
+                            <col data-col={column} style={`width:${fixedWidth}px;min-width:${fixedWidth}px;max-width:${fixedWidth}px;`} />
+                        {:else}
+                            <col data-col={column} />
+                        {/if}
+                    {/each}
+                    {#if editability.editable && editability.rowIdentity === "id"}
+                        <col class="utility-col" style="width:2rem;min-width:2rem;max-width:2rem;" />
+                    {/if}
+                </colgroup>
+            {/if}
             <thead>
                 <tr>
                     <th
@@ -984,8 +1267,9 @@ function handleCancelDelete() {
                             data-col={column}
                             aria-selected={columnSelected(column)}
                             class:header-selected={columnSelected(column)}
+                            class:col-fixed={fixedWidthOf(column) !== undefined}
                             onclick={(event) => {
-                                if (!(event.target as HTMLElement).closest(".column-drag-handle")) {
+                                if (!(event.target as HTMLElement).closest(".column-drag-handle, .column-resize-handle")) {
                                     selectColumnHeader(event, column);
                                 }
                             }}
@@ -1073,6 +1357,25 @@ function handleCancelDelete() {
                                     </svg>
                                 </div>
                             </div>
+                            {#if canResizeColumns}
+                                <!-- Dedicated resize boundary: separate gesture ownership from
+                                     the reorder handle; numeric settings are the keyboard
+                                     alternative (issue #5459). -->
+                                <div
+                                    class="column-resize-handle"
+                                    class:resizing={resizingColumn === column}
+                                    role="separator"
+                                    aria-orientation="vertical"
+                                    aria-label={`Resize ${column}`}
+                                    data-testid="yjs-table-column-resize-handle"
+                                    data-col={column}
+                                    onpointerdown={(event) => startColumnResize(event, column)}
+                                    ondragstart={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                    }}
+                                ></div>
+                            {/if}
                         </th>
                     {/each}
                     {#if editability.editable && editability.rowIdentity === "id"}
@@ -1084,11 +1387,11 @@ function handleCancelDelete() {
                 {#each result.rows as row, rowIndex (rowKey(row, rowIndex))}
                     {@const recordId = recordIdOf(row)}
                     {@const source = sourceOf(row)}
-                    {@const logicalRowId = selectableRowId(row)}
+                    {@const logicalRowId = selectionRowId(row, rowIndex)}
                     {@const navigationRowId = searchRowId(row, rowIndex)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         <th
-                            class="selection-header row-header"
+                            class="row-header"
                             class:header-selected={logicalRowId !== undefined && rowSelected(logicalRowId)}
                             scope="row"
                             role="rowheader"
@@ -1108,6 +1411,7 @@ function handleCancelDelete() {
                                 data-record-id={recordId}
                                 data-row-id={navigationRowId}
                                 data-col={column}
+                                class:col-fixed={fixedWidthOf(column) !== undefined}
                                 class:grid-selected={logicalCell !== undefined && cellSelected(logicalCell)}
                                 class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
                                 class:grid-find-match={findMatch?.rowId === navigationRowId
@@ -1131,7 +1435,7 @@ function handleCancelDelete() {
                                     editable={editability.editable
                                     && (recordId !== undefined || source !== undefined)
                                     && editability.editableColumns.has(column)}
-                                    options={schemaColumn?.checkOptions}
+                                    options={schemaColumn?.enumLabels ?? schemaColumn?.checkOptions}
                                     ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
                                     editSeed={logicalCell !== undefined && cellEditing(logicalCell) ? pendingEditSeed : undefined}
                                     bind:editing={
@@ -1142,12 +1446,16 @@ function handleCancelDelete() {
                                                 selection.select(logicalCell);
                                                 selectionRevision++;
                                                 editingCell = logicalCell;
+                                                captureCellWriteAuthority(logicalCell);
                                             } else if (cellEditing(logicalCell)) {
                                                 editingCell = undefined;
+                                                releaseCellWriteAuthority(logicalCell);
                                                 pendingEditSeed = undefined;
                                             }
                                         }
                                     }
+                                    onEditStart={() => logicalCell && captureCellWriteAuthority(logicalCell)}
+                                    onEditEnd={() => logicalCell && releaseCellWriteAuthority(logicalCell)}
                                     onCommit={(value) => {
                                         if (recordId !== undefined || source !== undefined) commitCell(row, column, value);
                                     }}
@@ -1190,6 +1498,9 @@ function handleCancelDelete() {
                 {/each}
             </tbody>
         </table>
+        {#if resizeScrollExtent !== undefined}
+            <div class="resize-scroll-extent" aria-hidden="true" style:width={`${resizeScrollExtent}px`}></div>
+        {/if}
         {#if touchSelectionMode}
             <div class="touch-selection-toolbar" role="toolbar" aria-label="Grid selection actions">
                 <button
@@ -1266,6 +1577,7 @@ function handleCancelDelete() {
     }
 .yjs-table-grid {
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-x: contain;
 }
@@ -1276,12 +1588,87 @@ table {
     border: 1px solid #d1d5db;
 }
 
+/*
+ * Fixed column widths (issue #5457). With at least one fixed column the
+ * table uses fixed layout so content, padding and editors can never move a
+ * pinned column: each fixed track is pinned once on its `<col>` element and
+ * keeps its exact border-box width while only automatic data columns absorb
+ * spare container space. Headers and body cells carry no inline width of
+ * their own, so clearing an override returns the column to automatic sizing
+ * with no style residue. With every data column fixed the table shrinks to
+ * a definite sum of its tracks so surplus stays outside instead of stretching
+ * fixed or utility columns. Narrower containers scroll locally inside
+ * `.yjs-table-grid` without widening the page or the surrounding Layout.
+ */
+table.grid-fixed-layout {
+    table-layout: fixed;
+}
+
+table.grid-all-fixed {
+    max-width: none;
+}
+
 th,
 td {
     border: 1px solid #d1d5db;
     padding: 2px 4px;
     text-align: left;
     font-size: 0.875rem;
+    box-sizing: border-box;
+}
+
+th.col-fixed,
+td.col-fixed {
+    overflow: hidden;
+}
+
+th.col-fixed .th-content {
+    min-width: 0;
+    overflow: hidden;
+}
+
+th.col-fixed .th-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Fixed-column body text wraps within its pinned width instead of clipping
+ * with an ellipsis; rows grow to fit it (issue #5502). Headers keep their
+ * separate ellipsis policy above. */
+td.col-fixed > :global(.cell-value) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+td.col-fixed > :global(.cell-input),
+td.col-fixed > :global(.cell-select),
+td.col-fixed > :global(.cell-date) {
+    max-width: 100%;
+}
+
+/*
+ * Automatic sizing (issue #5457). With no fixed width pinned, a column must
+ * still shrink to its Grid container in narrow viewports instead of forcing
+ * local overflow: headers clip with an ellipsis and long unbreakable values
+ * may break anywhere. Intrinsic minimum widths can still exceed the available
+ * space; that overflow scrolls locally inside `.yjs-table-grid`.
+ */
+th .th-content {
+    min-width: 0;
+}
+
+th .th-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+td > :global(.cell-value) {
+    overflow-wrap: anywhere;
 }
 
 td.grid-selected {
@@ -1293,7 +1680,8 @@ td.grid-selected:not(.grid-active) {
     box-shadow: inset 0 0 0 1px rgb(37 99 235 / 35%);
 }
 
-.selection-header {
+.selection-header,
+.row-header {
     width: 2.5rem;
     min-width: 2.5rem;
     text-align: center;
@@ -1398,6 +1786,48 @@ th.drop-target-right {
 
 .th-label {
     flex-grow: 1;
+}
+
+th[role="columnheader"] {
+    position: relative;
+}
+
+/*
+ * Header resize boundary (issue #5459). It sits inside the header's right
+ * edge so fixed headers' overflow clipping keeps it reachable, and claims
+ * touch/pen pointers outright (`touch-action: none`) so a resize is never
+ * turned into a scroll; swipes elsewhere in the Grid keep scrolling.
+ */
+.column-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 7px;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+    z-index: 2;
+}
+
+.column-resize-handle:hover,
+.column-resize-handle.resizing {
+    background: rgb(37 99 235 / 45%);
+}
+
+@media (pointer: coarse) {
+    .column-resize-handle {
+        width: 14px;
+    }
+}
+
+.yjs-table-grid[data-column-resizing="true"] {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.resize-scroll-extent {
+    height: 0;
 }
 
 .column-drag-handle {

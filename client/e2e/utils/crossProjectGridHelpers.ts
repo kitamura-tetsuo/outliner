@@ -1,4 +1,4 @@
-import { expect, type Page, type TestInfo } from "@playwright/test";
+import { expect, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { SeedClient } from "./seedClient";
 import { SqlEditorHelper } from "./sqlEditorHelpers";
 import { TestHelpers } from "./testHelpers";
@@ -213,6 +213,17 @@ export async function createBlankGrid(page: Page, name: string, sqlName: string)
     }, { timeout: 30000 }).toBe(true);
 }
 
+/** Open the Table-owned schema editor for a Grid's stable source reference. */
+export async function openGridSourceSchema(page: Page, view: Locator): Promise<Locator> {
+    await view.getByTestId("yjs-grid-source-table-link").click();
+    const tableView = page.getByTestId("table-entity-view");
+    await expect(tableView).toBeVisible({ timeout: 30000 });
+    await tableView.getByTestId("table-entity-toggle-schema").click();
+    const editor = tableView.getByTestId("yjs-table-schema-editor");
+    await expect(editor).toBeVisible({ timeout: 30000 });
+    return editor;
+}
+
 /** Give a Grid a non-default schema/UI so structure copying is verifiable. */
 export async function configureGrid(
     page: Page,
@@ -223,16 +234,19 @@ export async function configureGrid(
 ): Promise<void> {
     const view = page.getByTestId("yjs-table-view").nth(viewIndex);
 
-    if (!await view.getByTestId("yjs-table-schema-input").isVisible().catch(() => false)) {
-        await view.getByTestId("yjs-table-toggle-schema").click();
-    }
-    const schemaEditor = new SqlEditorHelper(view.getByTestId("yjs-table-schema-input"));
+    const returnUrl = page.url();
+    const schemaHost = await openGridSourceSchema(page, view);
+    const schemaEditor = new SqlEditorHelper(schemaHost.getByTestId("yjs-table-schema-input"));
     await schemaEditor.waitForReady();
     await schemaEditor.setValue(page, schema);
-    await view.getByTestId("yjs-table-schema-apply").click();
-    const warning = view.getByTestId("yjs-table-schema-warning");
-    if (await warning.isVisible().catch(() => false)) await view.getByTestId("yjs-table-schema-confirm").click();
+    await schemaHost.getByTestId("yjs-table-schema-apply").click();
+    const warning = schemaHost.getByTestId("yjs-table-schema-warning");
+    if (await warning.isVisible().catch(() => false)) {
+        await schemaHost.getByTestId("yjs-table-schema-confirm").click();
+    }
     await expect.poll(async () => await schemaEditor.value(), { timeout: 30000 }).toBe(schema);
+    await page.goto(returnUrl);
+    await expect(view).toBeVisible({ timeout: 30000 });
 
     if (!await view.getByTestId("yjs-table-query-input").isVisible().catch(() => false)) {
         await view.getByTestId("yjs-table-toggle-ui").click();
@@ -243,8 +257,10 @@ export async function configureGrid(
     await expect(titleInput).toBeVisible({ timeout: 30000 });
     await titleInput.fill(titleLabel);
     await titleInput.press("Tab");
-    await view.getByTestId("yjs-table-component-quantity").selectOption("number");
-    await view.getByTestId("yjs-table-hidden-done").uncheck();
+    const quantityComponent = view.getByTestId("yjs-table-component-quantity");
+    if (await quantityComponent.count() > 0) await quantityComponent.selectOption("number");
+    const doneVisibility = view.getByTestId("yjs-table-hidden-done");
+    if (await doneVisibility.count() > 0) await doneVisibility.uncheck();
     await expect(view.getByTestId("yjs-table-grid").locator("th", { hasText: titleLabel })).toBeVisible({
         timeout: 30000,
     });

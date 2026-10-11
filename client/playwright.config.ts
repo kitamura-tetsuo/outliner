@@ -1,9 +1,10 @@
 // Do not add webServer.
 
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type Project } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { firefoxSelectionProjects, retainedSelectionMatches } from "./playwright-selection-suite";
 
 // Configuration to use __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -104,6 +105,44 @@ const debugArgs = isSingleSpecRun
     ? [`--remote-debugging-port=${process.env.CDP_PORT ?? 9222 + workerIdx}`]
     : [];
 
+function withFirefoxSelectionProjects(chromiumProjects: Project[]): Project[] {
+    const chromiumUse: Project["use"] = {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        launchOptions: {
+            args: [...commonArgs, ...debugArgs],
+            ...(chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : {}),
+        },
+        permissions: ["clipboard-read", "clipboard-write"],
+    };
+
+    return [
+        ...chromiumProjects.map(project => ({
+            ...project,
+            use: { ...chromiumUse, ...project.use },
+        })),
+        ...firefoxSelectionProjects.map(project => ({
+            ...project,
+            use: {
+                ...devices["Desktop Firefox"],
+                browserName: "firefox" as const,
+                launchOptions: {
+                    firefoxUserPrefs: {
+                        // Firefox's native test permission keeps real clipboard contents
+                        // observable without Chromium-only permission grants or API mocks.
+                        // https://searchfox.org/firefox-main/source/modules/libpref/init/StaticPrefList.yaml
+                        "dom.events.testing.asyncClipboard": true,
+                    },
+                },
+                // Keep every attempt: Playwright's expected-failure status and
+                // later teardown/reporter failures must not discard evidence.
+                trace: "on" as const,
+                screenshot: "on" as const,
+            },
+        })),
+    ];
+}
+
 // console.log(`workerIdx: ${workerIdx}`);
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
@@ -118,6 +157,7 @@ export default defineConfig({
     maxFailures: process.env.CI ? 3 : 5,
 
     reporter: [
+        ["./e2e/reporters/firefox-selection-reporter.ts"],
         ["html", { open: "never" }],
         ["list"],
         ...(process.env.PLAYWRIGHT_JSON_OUTPUT_NAME
@@ -134,20 +174,11 @@ export default defineConfig({
 
     use: {
         headless: true,
-        ...devices["Desktop Chrome"],
-        // Extend timeout setting for Chromium
-        launchOptions: {
-            // Option to avoid shared memory issues
-            args: [...commonArgs, ...debugArgs],
-            ...(chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : {}),
-        },
         // Use localhost to enable Clipboard API
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
-        // Allow clipboard access
-        permissions: ["clipboard-read", "clipboard-write"],
     },
 
-    projects: [
+    projects: withFirefoxSelectionProjects([
         {
             // Tables tests
             name: "tables",
@@ -166,7 +197,8 @@ export default defineConfig({
         {
             // Basic tests: For environment check and minimal configuration verification
             name: "basic",
-            testDir: "./e2e/basic",
+            testDir: "./e2e",
+            testMatch: ["**/basic/**/*.spec.ts", ...retainedSelectionMatches],
         },
         {
             // Core tests 1: a-c (excl clm), f
@@ -291,5 +323,5 @@ export default defineConfig({
             name: "env",
             testDir: "./e2e/env",
         },
-    ],
+    ]),
 });

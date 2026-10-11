@@ -64,9 +64,25 @@ export function getSqlCatalogRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> 
     return projectDoc.getMap<Y.Map<unknown>>(SQL_CATALOG_REGISTRY_KEY);
 }
 
+/**
+ * The catalog registry map when it already exists, without creating it.
+ * Reading through `getMap` materializes an empty map as a document update,
+ * which the revision-bound catalog reader reports as malformed instead of
+ * empty — so every read path below must go through this lookup and treat an
+ * absent registry as "no catalog entries".
+ */
+export function getExistingSqlCatalogRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> | undefined {
+    const existing = projectDoc.share.get(SQL_CATALOG_REGISTRY_KEY);
+    return existing instanceof Y.Map ? existing as Y.Map<Y.Map<unknown>> : undefined;
+}
+
 export function listCatalogEntries(projectDoc: Y.Doc): SqlCatalogEntry[] {
     const entries: SqlCatalogEntry[] = [];
-    getSqlCatalogRegistry(projectDoc).forEach((entry, catalogId) => {
+    getExistingSqlCatalogRegistry(projectDoc)?.forEach((entry, catalogId) => {
+        // The revision-bound catalog format reserves non-entry values under
+        // the same map (such as the `format` key). Only Y.Map values declare
+        // a catalog source; anything else carries no name or source.
+        if (!(entry instanceof Y.Map)) return;
         entries.push({
             catalogId,
             name: String(entry.get("name") ?? ""),
@@ -85,14 +101,14 @@ export function readCatalogSources(projectDoc: Y.Doc | undefined): string[] {
 }
 
 export function getCatalogSource(projectDoc: Y.Doc, catalogId: string): string | undefined {
-    const entry = getSqlCatalogRegistry(projectDoc).get(catalogId);
-    if (!entry) return undefined;
+    const entry = getExistingSqlCatalogRegistry(projectDoc)?.get(catalogId);
+    if (!(entry instanceof Y.Map)) return undefined;
     return String(entry.get("source") ?? "");
 }
 
 export function getCatalogName(projectDoc: Y.Doc, catalogId: string): string | undefined {
-    const entry = getSqlCatalogRegistry(projectDoc).get(catalogId);
-    if (!entry) return undefined;
+    const entry = getExistingSqlCatalogRegistry(projectDoc)?.get(catalogId);
+    if (!(entry instanceof Y.Map)) return undefined;
     return String(entry.get("name") ?? "");
 }
 
@@ -119,19 +135,21 @@ export function createCatalogEntry(
 
 /** Replace the SQL source of a catalog entry. No-op when it does not exist. */
 export function setCatalogSource(projectDoc: Y.Doc, catalogId: string, source: string): void {
-    getSqlCatalogRegistry(projectDoc).get(catalogId)?.set("source", source);
+    const entry = getExistingSqlCatalogRegistry(projectDoc)?.get(catalogId);
+    if (entry instanceof Y.Map) entry.set("source", source);
 }
 
 /** Rename a catalog entry's display label. No-op when it does not exist. */
 export function renameCatalogEntry(projectDoc: Y.Doc, catalogId: string, name: string): void {
-    getSqlCatalogRegistry(projectDoc).get(catalogId)?.set("name", name);
+    const entry = getExistingSqlCatalogRegistry(projectDoc)?.get(catalogId);
+    if (entry instanceof Y.Map) entry.set("name", name);
 }
 
 /** Remove a catalog entry from the registry and dispose its undo manager. */
 export function removeCatalogEntry(projectDoc: Y.Doc, catalogId: string): boolean {
-    const registry = getSqlCatalogRegistry(projectDoc);
-    const entry = registry.get(catalogId);
-    if (!entry) return false;
+    const registry = getExistingSqlCatalogRegistry(projectDoc);
+    const entry = registry?.get(catalogId);
+    if (!registry || !(entry instanceof Y.Map)) return false;
     destroyCatalogUndoManager(entry);
     projectDoc.transact(() => registry.delete(catalogId));
     return true;
@@ -184,8 +202,8 @@ export function catalogTypeNameError(
 }
 
 export function getCatalogHandles(projectDoc: Y.Doc, catalogId: string): CatalogHandles | undefined {
-    const entry = getSqlCatalogRegistry(projectDoc).get(catalogId);
-    if (!entry) return undefined;
+    const entry = getExistingSqlCatalogRegistry(projectDoc)?.get(catalogId);
+    if (!(entry instanceof Y.Map)) return undefined;
 
     let managed = catalogUndoManagers.get(entry);
     if (!managed) {
@@ -383,7 +401,7 @@ async function introspectEnumType(
 export async function ensureCatalogTypes(
     db: PgliteLike,
     pgSchema: string,
-    sources: string[],
+    sources: readonly string[],
 ): Promise<void> {
     for (const source of sources) {
         let createSql: string;

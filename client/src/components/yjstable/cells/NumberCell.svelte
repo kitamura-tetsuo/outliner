@@ -17,16 +17,21 @@ interface Props {
 let { value, editable, ariaLabel, editing = $bindable(false), editSeed, onCommit, onRequestFocus }: Props = $props();
 
 function commit(e: Event) {
-    editing = false;
+    if (!editing) return;
     const raw = (e.target as HTMLInputElement).value.trim();
-    if (raw === "") {
-        onCommit(null);
-        return;
+    try {
+        if (raw === "") {
+            onCommit(null);
+            return;
+        }
+        const parsed = Number(raw);
+        // Non-numeric input is stored as-is; the sync adapter reports it as a
+        // cast error for this record instead of silently dropping it.
+        onCommit(Number.isFinite(parsed) ? parsed : raw);
+    } finally {
+        // The parent keeps the captured write authority until onCommit returns.
+        editing = false;
     }
-    const parsed = Number(raw);
-    // Non-numeric input is stored as-is; the sync adapter reports it as a
-    // cast error for this record instead of silently dropping it.
-    onCommit(Number.isFinite(parsed) ? parsed : raw);
 }
 
 function focusNode(node: HTMLElement) {
@@ -74,6 +79,8 @@ function focusNode(node: HTMLElement) {
 <style>
 .cell-input {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     border: none;
     padding: 2px 4px;
     outline: 2px solid #2563eb;
@@ -83,6 +90,8 @@ function focusNode(node: HTMLElement) {
 .cell-value {
     display: block;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     text-align: right;
     background: transparent;
     border: none;
