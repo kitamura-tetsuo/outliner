@@ -24,12 +24,13 @@ let committed = $state<KanbanSettings>(getKanban(projectDoc, kanban.kanbanId)!);
 let draft = $state<KanbanSettings>({ ...committed, detailFields: [...committed.detailFields], laneOrder: [...committed.laneOrder] });
 // svelte-ignore state_referenced_locally
 let baseline = $state<KanbanSettings>({ ...draft, detailFields: [...draft.detailFields], laneOrder: [...draft.laneOrder] });
+// svelte-ignore state_referenced_locally
 let queryDraft = $state(committed.query);
 let projection = $state<KanbanProjection>({ status: "loading", lanes: [], columns: [], current: false });
 let editing = $state(false);
 let conflict = $state<string | undefined>();
 let runner: KanbanQueryRunner | undefined;
-let queryEditor: SqlEditorHandle | undefined;
+let queryEditor = $state<SqlEditorHandle | undefined>();
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
 
@@ -91,7 +92,7 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
             <label>SELECT query
                 <SqlEditor
                     bind:this={queryEditor}
-                    value={queryDraft}
+                    bind:value={queryDraft}
                     readOnly={isReadOnly}
                     ariaLabel="Kanban SELECT query"
                     testId="kanban-query-editor"

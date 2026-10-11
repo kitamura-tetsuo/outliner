@@ -42,7 +42,7 @@ interface Props {
 }
 
 let {
-    value,
+    value = $bindable(),
     readOnly = false,
     ariaLabel,
     testId,
@@ -111,6 +111,7 @@ export function getValue(): string {
 function emitChange(text: string) {
     lastSyncedValue = text;
     dirty = true;
+    value = text;
     onChange?.(text);
 }
 

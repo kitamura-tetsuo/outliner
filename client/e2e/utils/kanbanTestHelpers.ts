@@ -65,6 +65,8 @@ export async function configureKanbanThroughUi(
     page: Page,
     values: { query: string; group: string; title?: string; details?: string[]; lanes?: string[]; },
 ): Promise<void> {
+    const kanbanId = await page.getByTestId("kanban-board").getAttribute("data-kanban-id");
+    if (!kanbanId) throw new Error("Current Kanban has no stable identity");
     await page.getByRole("button", { name: "Configure" }).click();
     const panel = page.getByTestId("kanban-config");
     const editor = new SqlEditorHelper(panel.getByTestId("kanban-query-editor"));
@@ -77,7 +79,8 @@ export async function configureKanbanThroughUi(
     if (values.lanes) await panel.getByLabel(/Lane preference/).fill(values.lanes.join("\n"));
     await panel.getByRole("button", { name: "Apply" }).click();
     await expect(panel).toHaveCount(0);
-    await expect.poll(async () => (await readKanbans(page)).at(-1)?.query).toBe(values.query);
+    await expect.poll(async () => (await readKanbans(page)).find(board => board.id === kanbanId)?.query)
+        .toBe(values.query);
 }
 
 export async function readKanbans(page: Page): Promise<KanbanState[]> {

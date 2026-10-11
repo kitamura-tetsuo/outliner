@@ -63,7 +63,6 @@ test("keeps equal-named boards over one Table independent", async ({ page }, tes
     expect(new Set(states.map(board => board.query))).toEqual(new Set([`${TASK_QUERY} LIMIT 1`, TASK_QUERY]));
     await openKanbanList(page, fixture.projectName);
     await expect(page.getByTestId("project-kanban-list").getByText("Board", { exact: false })).toHaveCount(2);
-    await expect(page.getByTestId("project-kanban-list").locator("code")).toHaveText(
-        expect.arrayContaining([first, second]),
-    );
+    expect(await page.getByTestId("project-kanban-list").locator("code").allTextContents())
+        .toEqual(expect.arrayContaining([first, second]));
 });
