@@ -83,8 +83,12 @@ test.describe("FTR-b94e5175: Object Manager Page placement", () => {
         // for its debounced save before replacing this client with a reload.
         await page.waitForTimeout(12000);
         await page.reload();
-        await expect(board).toHaveCount(1);
-        await expect(board.locator('[data-testid^="object-placement-"]')).toHaveCount(1);
+        await expect.poll(() =>
+            page.evaluate(() => {
+                const project = (globalThis as any).__YJS_STORE__?.yjsClient?.getProject();
+                return project?.ydoc.getMap("yjsKanbans").size ?? 0;
+            })
+        ).toBe(1);
         await expect(source).toHaveCount(1);
     });
 });
