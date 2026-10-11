@@ -187,14 +187,6 @@ export function demoContentJa(): DemoLocaleContent {
                 title: "スケジュールルール",
                 items: [
                     {
-                        text:
-                            "Kanban 配置はプロジェクトのボードを参照し、この配置を削除しても元のテーブルやレコードは削除しません。",
-                    },
-                    {
-                        componentType: "kanban",
-                        kanbanId: "demo-tasks-kanban",
-                    },
-                    {
                         text: "ページは、指定した時刻に公開されるよう予約できます。",
                     },
                     {
@@ -347,6 +339,14 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         componentType: "yjstable",
                         yjsTableId: DEMO_SALES_TABLE_ID,
+                    },
+                    {
+                        text:
+                            "Kanban 配置はプロジェクトのボードを参照し、この配置を削除しても元のテーブルやレコードは削除しません。",
+                    },
+                    {
+                        componentType: "kanban",
+                        kanbanId: "demo-tasks-kanban",
                     },
                     {
                         text:
