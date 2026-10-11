@@ -89,7 +89,8 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
     {#if editing}
         <section class="editor" data-testid="kanban-config">
             <label>Name <input bind:value={draft.name} disabled={isReadOnly} /></label>
-            <label>SELECT query
+            <div class="editor-field">
+                <span>SELECT query</span>
                 <SqlEditor
                     bind:this={queryEditor}
                     bind:value={queryDraft}
@@ -99,7 +100,7 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
                     onChange={value => queryDraft = value}
                     onBlur={value => queryDraft = value}
                 />
-            </label>
+            </div>
             <label>Grouping column <input bind:value={draft.groupField} list="kanban-columns" disabled={isReadOnly} /></label>
             <label>Title column <input bind:value={draft.titleField} list="kanban-columns" disabled={isReadOnly} /></label>
             <label>Detail columns (one per line)<textarea value={draft.detailFields.join("\n")} oninput={e => draft.detailFields = e.currentTarget.value.split("\n").filter(Boolean)} disabled={isReadOnly}></textarea></label>
@@ -138,5 +139,5 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
 </div>
 
 <style>
-.toolbar{display:flex;justify-content:flex-end;margin-bottom:.75rem}.editor{display:grid;gap:.75rem;border:1px solid #d1d5db;padding:1rem;margin-bottom:1rem}.editor label{display:grid;gap:.25rem}.editor textarea,.editor input{border:1px solid #9ca3af;border-radius:.25rem;padding:.45rem}.error,.diagnostic{color:#991b1b}.lanes{display:flex;gap:1rem;overflow-x:auto;align-items:flex-start}.lane{min-width:16rem;max-width:22rem;background:#f3f4f6;border-radius:.5rem;padding:.75rem}.lane h2{font-weight:700;margin-bottom:.5rem}.card{background:white;border:1px solid #d1d5db;border-radius:.4rem;padding:.65rem;margin:.5rem 0;overflow-wrap:anywhere}.card h3{font-weight:600}.detail{font-size:.85rem;color:#4b5563}
+.toolbar{display:flex;justify-content:flex-end;margin-bottom:.75rem}.editor{display:grid;gap:.75rem;border:1px solid #d1d5db;padding:1rem;margin-bottom:1rem}.editor label,.editor-field{display:grid;gap:.25rem}.editor textarea,.editor input{border:1px solid #9ca3af;border-radius:.25rem;padding:.45rem}.error,.diagnostic{color:#991b1b}.lanes{display:flex;gap:1rem;overflow-x:auto;align-items:flex-start}.lane{min-width:16rem;max-width:22rem;background:#f3f4f6;border-radius:.5rem;padding:.75rem}.lane h2{font-weight:700;margin-bottom:.5rem}.card{background:white;border:1px solid #d1d5db;border-radius:.4rem;padding:.65rem;margin:.5rem 0;overflow-wrap:anywhere}.card h3{font-weight:600}.detail{font-size:.85rem;color:#4b5563}
 </style>
