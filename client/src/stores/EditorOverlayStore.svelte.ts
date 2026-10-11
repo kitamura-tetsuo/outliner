@@ -2090,6 +2090,19 @@ export class EditorOverlayStore {
         // made it active (#5026). The gestures that select blocks own that state instead.
         if (isVisualRow(activeId)) return;
 
+        // A visual endpoint also has no character representation when its caret
+        // stays on a Text row. Clearing the previous cross-item mirror during
+        // Shift+Up can deliver selectionchange after suppression expires; neither
+        // an empty nor an older mirror owns the newly accepted outline range.
+        // Normal pointer/caret placement clears this range, and Text-only ranges
+        // remain readable through the native mirror paths below.
+        if (
+            Object.values(this.selections).some(selection =>
+                (selection.userId ?? "local") === "local"
+                && !selection.isBoxSelection && !textSelectionEndpoints(selection)
+            )
+        ) return;
+
         const currentStart = textarea.selectionStart;
         const currentEnd = textarea.selectionEnd;
 
