@@ -16,6 +16,7 @@
         projectSchedulesPath,
         projectSettingsPath,
         projectTablesPath,
+        projectTypesPath,
     } from "../../lib/managementPaths";
 
     interface Props {
@@ -39,6 +40,7 @@
         const items: Tool[] = [
             { label: "Objects", description: "Browse, rename and delete Tables, Grids, Calendars and Schedules.", href: resolvePath(projectObjectsPath(projectName)) },
             { label: "Tables", description: "Structured data tables.", href: resolvePath(projectTablesPath(projectName)) },
+            { label: "Types", description: "Project SQL catalog: shared ENUM types your tables can use.", href: resolvePath(projectTypesPath(projectName)) },
             { label: "Grids", description: "Saved queries over your tables.", href: resolvePath(projectGridsPath(projectName)) },
             { label: "Calendars", description: "Calendar views over your data.", href: resolvePath(projectCalendarsPath(projectName)) },
             { label: "Schedules", description: "Scheduled SQL that runs on a recurring rule.", href: resolvePath(projectSchedulesPath(projectName)) },

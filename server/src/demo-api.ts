@@ -389,6 +389,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                     calendars.delete(key);
                                 });
 
+                                // Same for the SQL catalog: the template's own
+                                // types are re-registered by populateDemoProject.
+                                const sqlCatalog = ydoc.getMap("sqlCatalog");
+                                Array.from(sqlCatalog.keys()).forEach(key => {
+                                    sqlCatalog.delete(key);
+                                });
+
                                 // Re-initialize metadata
                                 const meta = ydoc.getMap("metadata");
                                 // The title is the slug, which is also the room

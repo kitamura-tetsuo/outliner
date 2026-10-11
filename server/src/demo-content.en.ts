@@ -15,6 +15,7 @@ import {
     DEMO_ATTACHMENT_IMAGE,
     DEMO_CALENDAR_ID,
     DEMO_DIAGRAM_ID,
+    DEMO_FEEDBACK_TABLE_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_HOUR_MAP_CALENDAR_ID,
@@ -57,6 +58,7 @@ export function demoContentEn(): DemoLocaleContent {
                     "  [Layout]: arrange visual blocks side by side on a 12-column grid.",
                     "  [Remote MCP Access]: securely inspect semantic outline data from compatible AI clients.",
                     "  [Mermaid Diagrams]: a project-owned Mermaid diagram you can transclude onto any page.",
+                    "  [SQL Catalog]: project SQL types shared by every table, with a working ENUM example.",
                     "Give it a try! Everything in this project is editable.",
                 ],
             },
@@ -721,6 +723,45 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text:
                             'Node kinds are fixed at creation (#5015). A Text node owns text and children; Grid and Calendar are leaf blocks; Layout only arranges blocks. None of them can be turned into another, so there is no "Change to ..." action: press Enter for a new empty item and type /Grid, /Calendar or /Layout, and the block is created in exactly that position. A heading for a block is an ordinary Text node placed above it, as with the two blocks below.',
+                    },
+                ],
+            },
+            {
+                key: "sql catalog",
+                title: "SQL Catalog",
+                items: [
+                    {
+                        text:
+                            "A project can share ENUM types between its tables: the type is declared once in the project's SQL catalog, and every table schema references it by plain name.",
+                    },
+                    {
+                        text: "How it works:",
+                        children: [
+                            {
+                                text:
+                                    "Types belong to the project, not to a table: open Types on the project's Manage page to author one with the SQL editor.",
+                            },
+                            {
+                                text:
+                                    "Each type is one unqualified CREATE TYPE ... AS ENUM (...) statement; applying it validates the statement without touching any table.",
+                            },
+                            {
+                                text:
+                                    "Tables that reference the type keep working: the engine materializes the catalog before building any table, and rebuilds a table's relation when the catalog changes.",
+                            },
+                        ],
+                    },
+                    {
+                        text:
+                            "A live ENUM example: every row below stores a feedback_sentiment value declared in this demo's own catalog. Try an unknown label in the sentiment column — the engine rejects it instead of storing it.",
+                    },
+                    {
+                        componentType: "yjstable",
+                        yjsTableId: DEMO_FEEDBACK_TABLE_ID,
+                    },
+                    {
+                        text:
+                            "Open Types on the project's Manage page to read the feedback_sentiment declaration this grid runs on.",
                     },
                 ],
             },

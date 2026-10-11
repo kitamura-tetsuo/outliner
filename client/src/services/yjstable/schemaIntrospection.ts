@@ -7,6 +7,7 @@
 // grammar is exactly what Postgres accepts.
 
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
+import { ensureCatalogTypes } from "./sqlCatalog";
 
 /** Normalized column value kind used for strict casting of Yjs record values. */
 export type ColumnKind =
@@ -119,8 +120,12 @@ let validationCounter = 0;
  * Validate a CREATE TABLE statement by executing it in a throwaway PGlite
  * schema, then introspect the created table. The scratch schema is always
  * dropped, so the shared engine state used by live tables is never affected.
+ *
+ * `catalogSources` are the project's SQL catalog entries: they are
+ * materialized into the scratch schema first (best-effort, like the live
+ * engine does), so a schema that references a catalog ENUM type validates.
  */
-export async function parseCreateTable(sql: string): Promise<ParsedTableSchema> {
+export async function parseCreateTable(sql: string, catalogSources: string[] = []): Promise<ParsedTableSchema> {
     const createSql = assertSingleCreateTable(sql);
     const scratchSchema = `__yjstable_validate_${++validationCounter}__`;
 
@@ -130,6 +135,7 @@ export async function parseCreateTable(sql: string): Promise<ParsedTableSchema> 
                 `DROP SCHEMA IF EXISTS "${scratchSchema}" CASCADE;`
                     + `CREATE SCHEMA "${scratchSchema}";`,
             );
+            await ensureCatalogTypes(db, scratchSchema, catalogSources);
             try {
                 await db.exec(
                     `BEGIN; SET LOCAL search_path TO "${scratchSchema}"; ${createSql}; COMMIT;`,

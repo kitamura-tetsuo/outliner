@@ -27,6 +27,7 @@ import { assertSelectQuery, missingRelationName } from "./queryAnalysis";
 import { formatQueryDateFields } from "./queryResultFormatting";
 import type { RelationProvider } from "./relationProvider";
 import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff } from "./schemaIntrospection";
+import { ensureCatalogTypes, findCatalogTypeConflict, getSqlCatalogRegistry, readCatalogSources } from "./sqlCatalog";
 import { quoteIdent, reservedRelationNameError } from "./sqlNames";
 import { ADAPTER_ORIGIN, deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
 import { castValueForColumn } from "./valueCasting";
@@ -96,6 +97,13 @@ export interface TableSyncOptions {
     /** Shared Postgres schema holding every table of the project. */
     pgSchema: string;
     registry?: RelationRegistryPort;
+    /**
+     * The project document holding the SQL catalog (`sqlCatalog` map).
+     * Catalog ENUM types are materialized into the shared schema before any
+     * table is built, and a catalog change rebuilds this table's relation.
+     * Undefined for standalone (local-only) adapters without a project.
+     */
+    projectDoc?: Y.Doc;
 }
 
 export class TableSyncAdapter {
@@ -103,6 +111,7 @@ export class TableSyncAdapter {
     private readonly listeners = new Set<TableSyncCallbacks>();
     private readonly pgSchema: string;
     private readonly registry: RelationRegistryPort | undefined;
+    private readonly projectDoc: Y.Doc | undefined;
     // Last emitted state, replayed to late subscribers so a view mounted after
     // the adapter started still renders the current result.
     private lastSchemaError: string | undefined;
@@ -136,10 +145,22 @@ export class TableSyncAdapter {
         void this.rebuildFromSchemaText();
     };
 
+    // A catalog change rebuilds the relation against the new types: a renamed
+    // or extended ENUM must be visible to this table's schema without the
+    // table's own text changing.
+    private readonly catalogObserver = (
+        _events: Y.YEvent<Y.AbstractType<unknown>>[],
+        tr: Y.Transaction,
+    ) => {
+        if (tr.origin === ADAPTER_ORIGIN) return;
+        void this.rebuildFromSchemaText();
+    };
+
     constructor(handles: TableHandles, options: TableSyncOptions) {
         this.handles = handles;
         this.pgSchema = options.pgSchema;
         this.registry = options.registry;
+        this.projectDoc = options.projectDoc;
     }
 
     get appliedSchema(): ParsedTableSchema | undefined {
@@ -199,6 +220,7 @@ export class TableSyncAdapter {
         this.started = true;
         this.handles.data.observeDeep(this.dataObserver);
         this.handles.schemaText.observe(this.schemaObserver);
+        if (this.projectDoc) getSqlCatalogRegistry(this.projectDoc).observeDeep(this.catalogObserver);
         await this.rebuildFromSchemaText();
     }
 
@@ -207,6 +229,7 @@ export class TableSyncAdapter {
         if (this.started) {
             this.handles.data.unobserveDeep(this.dataObserver);
             this.handles.schemaText.unobserve(this.schemaObserver);
+            if (this.projectDoc) getSqlCatalogRegistry(this.projectDoc).unobserveDeep(this.catalogObserver);
         }
     }
 
@@ -273,22 +296,27 @@ export class TableSyncAdapter {
      * types; nothing is written yet.
      */
     async prepareSchemaChange(sql: string): Promise<{ parsed: ParsedTableSchema; diff: SchemaDiff; }> {
-        const parsed = await parseCreateTable(sql);
+        const parsed = await parseCreateTable(sql, readCatalogSources(this.projectDoc));
         this.assertNameAvailable(parsed.tableName);
         return { parsed, diff: diffSchemas(this.schema, parsed) };
     }
 
     /**
-     * A table name must be free of both kinds of clash: another table of the
-     * project, and a system-defined relation nobody authors. The reserved
-     * check does not go through the registry — it holds for every adapter,
-     * with or without a project context.
+     * A table name must be free of every kind of clash: another table of the
+     * project, a catalog ENUM type of the project, and a system-defined
+     * relation nobody authors. The reserved check does not go through the
+     * registry — it holds for every adapter, with or without a project
+     * context.
      */
     private assertNameAvailable(tableName: string): void {
         const reserved = reservedRelationNameError(tableName);
         if (reserved) throw new TableSqlError("schema", reserved);
         const conflict = this.registry?.checkSqlNameConflict?.(this.handles.tableId, tableName);
         if (conflict) throw new TableSqlError("schema", conflict);
+        if (this.projectDoc) {
+            const catalogConflict = findCatalogTypeConflict(this.projectDoc, this.handles.tableId, tableName);
+            if (catalogConflict) throw new TableSqlError("schema", catalogConflict);
+        }
     }
 
     /**
@@ -316,7 +344,7 @@ export class TableSyncAdapter {
             return;
         }
         try {
-            const parsed = await parseCreateTable(sql);
+            const parsed = await parseCreateTable(sql, readCatalogSources(this.projectDoc));
             // Also checked here, not only on apply: the schema text may arrive
             // from another client, and a reserved name must never shadow the
             // system relation of the same name.
@@ -344,6 +372,10 @@ export class TableSyncAdapter {
 
         await enqueueWrite(async (db) => {
             await db.exec(`CREATE SCHEMA IF NOT EXISTS ${quoteIdent(this.pgSchema)};`);
+            // Catalog ENUM types come first: this table's schema may reference
+            // them by plain name, and Postgres resolves the CREATE TABLE only
+            // when they already exist in the shared schema.
+            await ensureCatalogTypes(db, this.pgSchema, readCatalogSources(this.projectDoc));
             if (previousTableName && previousTableName !== parsed.tableName) {
                 await db.exec(
                     `DROP TABLE IF EXISTS ${quoteIdent(this.pgSchema)}.${quoteIdent(previousTableName)} CASCADE;`,

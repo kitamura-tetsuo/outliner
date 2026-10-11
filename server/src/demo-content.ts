@@ -176,6 +176,7 @@ export function demoUtcWeekStart(weeksAgo: number): string {
 export const DEMO_SALES_TABLE_ID = "demo-table-sales";
 export const DEMO_TASKS_TABLE_ID = "demo-table-tasks";
 export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
+export const DEMO_FEEDBACK_TABLE_ID = "demo-table-feedback";
 export const DEMO_ROUTINE_TEMPLATES_TABLE_ID = "demo-table-routine-templates";
 export const DEMO_ROUTINE_OCCURRENCES_TABLE_ID = "demo-table-routine-occurrences";
 export const DEMO_SALES_TARGETS_TABLE_ID = "demo-table-sales-targets";
@@ -343,6 +344,34 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                         completed_at: `${demoDate(-1)}T16:45:00`,
                     },
                 },
+            ],
+        },
+        {
+            // Executable ENUM demo: the `sentiment` column is a project SQL
+            // catalog type (`feedback_sentiment`, see demoCatalogTypesEn), not
+            // a CHECK constraint. The engine materializes the catalog before
+            // building any table, so this schema only resolves because the
+            // demo seeds the catalog entry too.
+            tableId: DEMO_FEEDBACK_TABLE_ID,
+            name: "Feedback",
+            sqlName: "feedback",
+            schemaSql: "CREATE TABLE feedback (\n"
+                + "  id TEXT PRIMARY KEY,\n"
+                + "  note TEXT NOT NULL,\n"
+                + "  sentiment feedback_sentiment NOT NULL\n"
+                + ")",
+            query: "SELECT id, note, sentiment FROM feedback ORDER BY id",
+            components: {
+                note: "text",
+                sentiment: "text",
+            },
+            records: [
+                {
+                    id: "demo-feedback-1",
+                    values: { note: "Sync across two windows is instant", sentiment: "positive" },
+                },
+                { id: "demo-feedback-2", values: { note: "Chart colors are hard to read", sentiment: "negative" } },
+                { id: "demo-feedback-3", values: { note: "More keyboard shortcuts", sentiment: "neutral" } },
             ],
         },
         {
@@ -514,6 +543,52 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
             ],
         },
     ];
+}
+
+// ---------------------------------------------------------------------------
+// Demo SQL catalog (the project-owned TYPE registry: one unqualified
+// CREATE TYPE AS ENUM statement per entry, shared by every table of the
+// project). Unlike a table, a catalog type has no subdoc, so it is written
+// straight into the project doc's `sqlCatalog` map, in the same id -> Y.Map
+// shape `schedules` already uses.
+// ---------------------------------------------------------------------------
+
+export interface DemoCatalogTypeTemplate {
+    // Fixed id so a reseed replaces the entry instead of adding a copy.
+    catalogId: string;
+    name: string;
+    // Exactly one unqualified CREATE TYPE AS ENUM statement. SQL is never
+    // localized — only the strings a visitor reads are.
+    source: string;
+}
+
+export const DEMO_FEEDBACK_SENTIMENT_CATALOG_ID = "demo-type-feedback-sentiment";
+export const DEMO_FEEDBACK_SENTIMENT_TYPE_NAME = "feedback_sentiment";
+export const DEMO_FEEDBACK_SENTIMENT_SOURCE =
+    "CREATE TYPE feedback_sentiment AS ENUM ('positive', 'neutral', 'negative')";
+
+const demoCatalogTypesEn: DemoCatalogTypeTemplate[] = [
+    {
+        catalogId: DEMO_FEEDBACK_SENTIMENT_CATALOG_ID,
+        name: "Feedback Sentiment",
+        source: DEMO_FEEDBACK_SENTIMENT_SOURCE,
+    },
+];
+
+/** Write the demo's catalog types into the project doc's `sqlCatalog` map. */
+export function registerDemoCatalogTypes(projectDoc: Y.Doc): void {
+    const catalog = projectDoc.getMap<Y.Map<unknown>>("sqlCatalog");
+    for (const template of demoCatalogTypesEn) {
+        const entry = new Y.Map<unknown>();
+        catalog.set(template.catalogId, entry);
+        entry.set("name", template.name);
+        entry.set("source", template.source);
+    }
+}
+
+/** The catalog types of one locale. Sources are never localized. */
+export function demoCatalogTypesFor(_locale: DemoLocale): DemoCatalogTypeTemplate[] {
+    return demoCatalogTypesEn;
 }
 
 // ---------------------------------------------------------------------------
@@ -902,6 +977,12 @@ export function populateDemoProject(
     const refs = new Map<string, Item>();
     const pendingAliases: { item: Item; aliasTo: string; }[] = [];
 
+    // The project SQL catalog (shared ENUM types). Registered before the
+    // tables: the Feedback table's schema references `feedback_sentiment`,
+    // and the client engine materializes the catalog before building any
+    // table for the same reason.
+    registerDemoCatalogTypes(project.ydoc);
+
     // Register the demo tables (registry entries + subdoc references) in the
     // project doc. The table contents live in their own rooms and are seeded
     // separately by the demo API.
@@ -1155,6 +1236,7 @@ export interface EffectiveDemoTemplate {
         locale: DemoLocale;
         pages: DemoPageTemplate[];
         tables: DemoTableTemplate[];
+        catalogTypes: DemoCatalogTypeTemplate[];
         calendars: DemoCalendarTemplate[];
         scheduleRules: DemoScheduleRuleTemplate[];
         /** Values produced by the same registration functions used by seeding. */
@@ -1184,13 +1266,14 @@ function persistedDemoStructure(locale: DemoLocale, slug: string): {
     tableDocuments: Record<string, unknown>;
 } {
     const projectDoc = new Y.Doc();
+    registerDemoCatalogTypes(projectDoc);
     registerDemoTables(projectDoc, slug, locale);
     registerDemoScheduleRules(projectDoc, locale);
     registerDemoCalendars(projectDoc, locale);
     registerDemoDiagrams(projectDoc);
 
     const registries = Object.fromEntries(
-        ["yjsTables", "yjsGrids", "schedules", "calendars", "diagrams"].map(name => [
+        ["sqlCatalog", "yjsTables", "yjsGrids", "schedules", "calendars", "diagrams"].map(name => [
             name,
             persistedYValue(projectDoc.getMap(name)),
         ]),
@@ -1249,6 +1332,7 @@ export function effectiveDemoTemplate(): EffectiveDemoTemplate {
                     locale,
                     pages: demoPagesFor(locale),
                     tables: demoTablesFor(locale),
+                    catalogTypes: demoCatalogTypesFor(locale),
                     calendars: demoCalendarsFor(locale),
                     scheduleRules: buildDemoScheduleRulesFor(locale),
                     ...structure,

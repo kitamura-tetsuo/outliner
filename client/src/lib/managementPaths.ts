@@ -49,6 +49,16 @@ export function projectTablePath(projectName: string, tableId: string): string {
     return `${projectTablesPath(projectName)}/${encodeURIComponent(tableId)}`;
 }
 
+/** The project SQL catalog (shared ENUM types): `/:project/-/types`. */
+export function projectTypesPath(projectName: string): string {
+    return `${projectManagementPath(projectName)}/types`;
+}
+
+/** One standalone catalog type editor: `/:project/-/types/:catalogId`. */
+export function projectTypePath(projectName: string, catalogId: string): string {
+    return `${projectTypesPath(projectName)}/${encodeURIComponent(catalogId)}`;
+}
+
 /** The Grid list: `/:project/-/grids`. */
 export function projectGridsPath(projectName: string): string {
     return `${projectManagementPath(projectName)}/grids`;

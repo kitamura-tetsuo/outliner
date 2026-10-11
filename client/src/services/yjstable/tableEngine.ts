@@ -215,7 +215,7 @@ function createTableEntry(
         },
     };
 
-    const adapter = new TableSyncAdapter(handles, { pgSchema, registry });
+    const adapter = new TableSyncAdapter(handles, { pgSchema, registry, projectDoc });
     let remoteSynced = false;
     // Deferred so the connection callback can write back onto `entry`.
     let resolveReady: (value: AcquiredTable) => void = () => {};
