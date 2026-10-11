@@ -348,6 +348,10 @@ export class OutlinerRelationService {
             const tableRevisions: Record<string, string> = {};
             let targetSource: TableDoc | undefined;
             try {
+                // Catalog validation and reconstruction uses the same isolated
+                // compiler as execution. The lease was reset before this
+                // preview, so no type can be inherited from an earlier call.
+                const catalog = await materializeProjectCatalog(lease.db, projectId, doc);
                 const identifiers = parseSqlIdentifiers(candidate.sql);
                 const requiredTables = this.tables(doc).filter(table =>
                     table.tableId === candidate.targetTableId
@@ -438,6 +442,7 @@ export class OutlinerRelationService {
                         )
                         : undefined,
                     tableRevisions,
+                    catalogRevision: catalog.snapshot.revision,
                 };
             } catch (error) {
                 return {

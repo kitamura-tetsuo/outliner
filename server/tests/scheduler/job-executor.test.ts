@@ -57,6 +57,56 @@ describe("Job executor", function() {
         expect(result.rows).to.deep.equal([{ id: "a", label: "from the other table" }]);
     });
 
+    it("reconstructs each captured ENUM catalog without leaking worker state", async function() {
+        const run = (labels: string) =>
+            executor.executeJob({
+                ruleId: "catalog-isolation",
+                schemaSql: "CREATE TABLE target (id text, value int_like_state);",
+                ruleSql: "INSERT INTO target VALUES ('row', 'second') RETURNING *;",
+                catalog: {
+                    projectId: labels,
+                    format: 1,
+                    revision: labels,
+                    objects: [{ id: "state", kind: "enum", source: `CREATE TYPE int_like_state AS ENUM (${labels})` }],
+                },
+                tableSnapshots: [{
+                    id: "target",
+                    schema: "CREATE TABLE target (id text, value int_like_state);",
+                    records: [],
+                }],
+                targetTableId: "target",
+                timezone: "UTC",
+                occurrenceUtcIso: "2023-01-01T00:00:00Z",
+            });
+
+        const first = await run("'first', 'second'");
+        const second = await run("'second', 'first'");
+        expect(first.success, first.error).to.equal(true);
+        expect(second.success, second.error).to.equal(true);
+        expect(first.rows).to.deep.equal([{ id: "row", value: "second" }]);
+        expect(second.enumColumns).to.deep.equal({ value: ["second", "first"] });
+    });
+
+    it("fails the complete job when a captured catalog dependency is unavailable", async function() {
+        const result = await executor.executeJob({
+            ruleId: "missing-enum",
+            schemaSql: "CREATE TABLE target (id text, value missing_state);",
+            ruleSql: "SELECT * FROM target;",
+            catalog: { projectId: "missing", format: 1, revision: "missing", objects: [] },
+            tableSnapshots: [{
+                id: "target",
+                schema: "CREATE TABLE target (id text, value missing_state);",
+                records: [],
+            }],
+            targetTableId: "target",
+            timezone: "UTC",
+            occurrenceUtcIso: "2023-01-01T00:00:00Z",
+        });
+        expect(result.success).to.equal(false);
+        expect(result.error).to.contain("Schedule environment unavailable");
+        expect(result.rows).to.equal(undefined);
+    });
+
     it("should correctly handle heterogeneous records based on schema", async function() {
         const result = await executor.executeJob({
             ruleId: "test-rule-hetero",
