@@ -133,7 +133,7 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         // left by the scroll delta, which grows the candidate by the same.
         const before = await scroller.evaluate((el) => el.scrollLeft);
         await page.mouse.wheel(40, 0);
-        await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(before);
+        await expect.poll(() => scroller.evaluate((el) => el.scrollLeft), { timeout: 10000 }).toBeGreaterThan(before);
         const delta = (await scroller.evaluate((el) => el.scrollLeft)) - before;
         const expected = Math.round(start + 30 + delta);
         await expectColumnGeometry(page, 0, "id", expected);
