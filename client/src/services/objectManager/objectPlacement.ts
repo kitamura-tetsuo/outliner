@@ -5,8 +5,10 @@ import { getCalendar } from "../calendar/calendarService";
 import { getGridHandles } from "../yjstable/gridDocs";
 import { appendGridPlacement } from "../yjstable/gridPlacement";
 import { getKanban } from "../yjstable/kanbanDocs";
+import { createKanban } from "../yjstable/kanbanDocs";
+import { getTableRegistry } from "../yjstable/tableDocs";
 
-export type PlaceableObjectType = "grid" | "calendar" | "kanban";
+export type PlaceableObjectType = "grid" | "calendar" | "kanban" | "table";
 
 export interface ObjectPlacementDragData {
     kind: "object-placement";
@@ -15,6 +17,18 @@ export interface ObjectPlacementDragData {
 }
 
 export const OBJECT_PLACEMENT_MIME = "application/x-outliner-object-placement";
+
+export interface PlacementAuthorization {
+    /** The normal project session admitted this caller to the project. */
+    projectAccess: boolean;
+    /** The concrete Page/Layout surface permits structural edits. */
+    surfaceWritable: boolean;
+}
+
+function requirePlacementAuthorization(authorization: PlacementAuthorization): void {
+    if (!authorization.projectAccess) throw new Error("Project access is unavailable.");
+    if (!authorization.surfaceWritable) throw new Error("The destination is read-only.");
+}
 
 let activeDrag: ObjectPlacementDragData | undefined;
 
@@ -43,7 +57,8 @@ export function readObjectPlacementDrag(event: DragEvent): ObjectPlacementDragDa
             const data = JSON.parse(raw) as Partial<ObjectPlacementDragData>;
             if (
                 data.kind === "object-placement"
-                && (data.objectType === "grid" || data.objectType === "calendar" || data.objectType === "kanban")
+                && (data.objectType === "grid" || data.objectType === "calendar" || data.objectType === "kanban"
+                    || data.objectType === "table")
                 && typeof data.objectId === "string"
                 && data.objectId.length > 0
             ) return data as ObjectPlacementDragData;
@@ -61,7 +76,9 @@ export function placeObjectOnPage(
     objectType: PlaceableObjectType,
     objectId: string,
     author: string,
+    authorization: PlacementAuthorization,
 ): void {
+    requirePlacementAuthorization(authorization);
     const project = Project.fromDoc(doc);
     if (objectType === "grid") {
         if (!getGridHandles(doc, objectId)) throw new Error("The Grid no longer exists.");
@@ -81,6 +98,23 @@ export function placeObjectOnPage(
             const placement = page.items.addNode(author);
             placement.componentType = "kanban";
             placement.kanbanId = objectId;
+        });
+        return;
+    }
+    if (objectType === "table") {
+        const page = project.findPage(pageId);
+        if (!page) throw new Error("The destination Page no longer exists.");
+        if (!getTableRegistry(doc).has(objectId)) throw new Error("The source Table no longer exists.");
+        doc.transact(() => {
+            // Revalidate both authorities at the mutation boundary. Any throw
+            // aborts before either a definition or placement is published.
+            if (!project.findPage(pageId) || !getTableRegistry(doc).has(objectId)) {
+                throw new Error("The source Table or destination Page no longer exists.");
+            }
+            const kanbanId = createKanban(doc, objectId, { name: "Kanban" });
+            const placement = page.items.addNode(author);
+            placement.componentType = "kanban";
+            placement.kanbanId = kanbanId;
         });
         return;
     }

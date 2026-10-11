@@ -20,9 +20,17 @@ describe("Kanban placement and reference lifecycle", () => {
         const tableId = createTable(project.ydoc, "Tasks", "tasks");
         const board = createKanban(project.ydoc, tableId, { kanbanId: "board" });
         const page = project.addPage("Dashboard", "test");
-        placeObjectOnPage(project.ydoc, page.id, "kanban", board, "test");
+        placeObjectOnPage(project.ydoc, page.id, "kanban", board, "test", {
+            projectAccess: true,
+            surfaceWritable: true,
+        });
         expect(findKanbanPlacements(project, board)).toHaveLength(1);
-        expect(() => placeObjectOnPage(project.ydoc, "missing", "kanban", board, "test")).toThrow(/Page/);
+        expect(() =>
+            placeObjectOnPage(project.ydoc, "missing", "kanban", board, "test", {
+                projectAccess: true,
+                surfaceWritable: true,
+            })
+        ).toThrow(/Page/);
         expect(findKanbanPlacements(project, board)).toHaveLength(1);
     });
 

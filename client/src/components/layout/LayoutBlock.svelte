@@ -47,6 +47,8 @@ import { getProjectCapabilities } from "../../services/project/projectCapabiliti
 import { Project } from "$shared/app-schema";
 import { diagramChooserStore } from "../../stores/DiagramChooserStore.svelte";
 import { shouldYieldToNativeContextMenu } from "../../lib/nativeContextMenu";
+import { createKanban, listKanbans } from "../../services/yjstable/kanbanDocs";
+import { listTables } from "../../services/yjstable/tableDocs";
 
 /** `DataTransfer` type an OutlinerItem drag carries (OutlinerItem.handleDragStart). */
 const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
@@ -64,6 +66,10 @@ interface Props {
 }
 
 let { item, isReadOnly = false }: Props = $props();
+let kanbanDialogOpen = $state(false);
+let kanbanMode = $state<"new" | "existing">("new");
+let selectedTableId = $state("");
+let selectedKanbanId = $state("");
 
 // Bumped by the Yjs observer so the derived children/spans re-read the tree.
 // Structural moves and span writes both land in the "orderedTree" map, so one
@@ -410,6 +416,37 @@ function handleInsertExistingDiagram() {
     diagramChooserStore.showUnderParent(item, "local", { columnSpan: DEFAULT_COLUMN_SPAN });
 }
 
+function openKanbanDialog() {
+    if (isReadOnly) return;
+    const project = Project.fromDoc(item.ydoc);
+    selectedTableId = listTables(project.ydoc)[0]?.tableId ?? "";
+    selectedKanbanId = listKanbans(project.ydoc)[0]?.kanbanId ?? "";
+    kanbanDialogOpen = true;
+}
+
+function confirmKanbanPlacement() {
+    if (isReadOnly) return;
+    const project = Project.fromDoc(item.ydoc);
+    const tables = listTables(project.ydoc);
+    const boards = listKanbans(project.ydoc);
+    // Revalidate source and destination synchronously before publishing the
+    // definition and placement in one Project transaction.
+    if (item.componentType !== "layout") return;
+    if (kanbanMode === "new" && !tables.some(table => table.tableId === selectedTableId)) return;
+    if (kanbanMode === "existing" && !boards.some(board => board.kanbanId === selectedKanbanId)) return;
+    project.ydoc.transact(() => {
+        const kanbanId = kanbanMode === "new"
+            ? createKanban(project.ydoc, selectedTableId, { name: "Kanban" })
+            : selectedKanbanId;
+        const placement = createVisualNodeUnderParent(item, "kanban", "local", {
+            columnSpan: DEFAULT_COLUMN_SPAN,
+        });
+        if (!placement) throw new Error("The Layout destination is unavailable.");
+        placement.kanbanId = kanbanId;
+    });
+    kanbanDialogOpen = false;
+}
+
 </script>
 
 <!-- Bound 1:1 to this item's Y.Doc: keying the render body on the doc guid
@@ -577,7 +614,23 @@ function handleInsertExistingDiagram() {
             onClose={() => { isContextMenuOpen = false; }}
             onAction={handleContextMenuAction}
             onInsertExistingDiagram={handleInsertExistingDiagram}
+            onAddKanban={openKanbanDialog}
         />
+    {/if}
+    {#if kanbanDialogOpen}
+        <dialog open class="kanban-placement-dialog" data-testid="layout-kanban-dialog">
+            <h3>Add Kanban to Layout</h3>
+            <label><input type="radio" bind:group={kanbanMode} value="new" /> New board over Table</label>
+            <select bind:value={selectedTableId} disabled={kanbanMode !== "new"}>
+                {#each listTables(item.ydoc) as table (table.tableId)}<option value={table.tableId}>{table.name}</option>{/each}
+            </select>
+            <label><input type="radio" bind:group={kanbanMode} value="existing" /> Existing board</label>
+            <select bind:value={selectedKanbanId} disabled={kanbanMode !== "existing"}>
+                {#each listKanbans(item.ydoc) as board (board.kanbanId)}<option value={board.kanbanId}>{board.name}</option>{/each}
+            </select>
+            <button type="button" onclick={() => { kanbanDialogOpen = false; }}>Cancel</button>
+            <button type="button" data-testid="layout-kanban-confirm" onclick={confirmKanbanPlacement}>Add</button>
+        </dialog>
     {/if}
 </div>
 {/key}

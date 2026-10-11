@@ -448,6 +448,11 @@ export function serializeClipboardItems(
     diagramTransfer?: { diagrams?: Readonly<Record<string, DiagramSnapshot>>; transferId?: string; },
     catalog?: SqlCatalogSnapshot,
 ): string {
+    // Defense in depth for every structural-copy caller. Kanban placements
+    // are references whose transfer semantics are outside this release.
+    if (items.some(({ item }) => nodeValue(item)?.get?.("componentType") === "kanban")) {
+        throw new TypeError("Kanban structural transfer is not supported");
+    }
     const serialized = items.map(({ item, depth, text: textOverride }) => {
         const value = nodeValue(item);
         const rawType = value?.get?.("componentType");

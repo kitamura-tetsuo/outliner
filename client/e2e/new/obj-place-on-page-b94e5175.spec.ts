@@ -24,6 +24,12 @@ function gridRow(page: import("@playwright/test").Page) {
     });
 }
 
+function tableRow(page: import("@playwright/test").Page) {
+    return page.locator('[data-testid^="object-row-"]').filter({ hasText: "Placeable" }).filter({
+        has: page.locator(".type-badge.table"),
+    });
+}
+
 test.describe("FTR-b94e5175: Object Manager Page placement", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Page item"]);
@@ -57,5 +63,25 @@ test.describe("FTR-b94e5175: Object Manager Page placement", () => {
         });
         await expect(target).not.toHaveClass(/object-drop-target/);
         await expect(row.locator('[data-testid^="object-placement-"]')).toHaveCount(2);
+    });
+
+    test("creates a Kanban and placement atomically through the Table action and survives reload", async ({ page }) => {
+        await openObjectManager(page);
+        const source = tableRow(page);
+        await source.locator('[data-testid^="object-place-"]').click();
+        await expect(page.getByRole("heading", { name: /Create a Kanban over/ })).toBeVisible();
+        await page.getByTestId("object-placement-confirm").click();
+
+        const board = page.locator('[data-testid^="object-row-"]').filter({
+            has: page.locator(".type-badge.kanban"),
+        });
+        await expect(board).toHaveCount(1);
+        await expect(board.locator('[data-testid^="object-placement-"]')).toHaveCount(1);
+        await expect(source).toHaveCount(1);
+
+        await page.reload();
+        await expect(board).toHaveCount(1);
+        await expect(board.locator('[data-testid^="object-placement-"]')).toHaveCount(1);
+        await expect(source).toHaveCount(1);
     });
 });

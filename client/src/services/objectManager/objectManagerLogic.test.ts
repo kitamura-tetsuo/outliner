@@ -215,7 +215,7 @@ describe("Objects Manager Requirements", () => {
             const object = getObjects(project).find(o => o.id === calendarId) as NamedObject;
             expect(object.placements).toHaveLength(2);
 
-            const ok = deleteObject(project, object);
+            const ok = deleteObject(project, object, { projectAccess: true, surfaceWritable: true });
             expect(ok).toBe(true);
             expect(listCalendars(project).map(c => c.id)).not.toContain(calendarId);
             for (const item of [item1, item2]) {
@@ -236,7 +236,7 @@ describe("Objects Manager Requirements", () => {
             const impact = getDeleteImpact(project, table);
             expect(impact.tableDependencies?.dependentGridIds).toEqual([gridId]);
 
-            const ok = deleteObject(project, table);
+            const ok = deleteObject(project, table, { projectAccess: true, surfaceWritable: true });
             expect(ok).toBe(true);
             // Reused Table policy also removed the dependent Grid and detached the placement.
             expect(listGrids(project.ydoc).map(g => g.gridId)).not.toContain(gridId);
@@ -254,7 +254,7 @@ describe("Objects Manager Requirements", () => {
             });
             const schedule = getObjects(project).find(o => o.id === ruleId) as NamedObject;
 
-            const ok = deleteObject(project, schedule);
+            const ok = deleteObject(project, schedule, { projectAccess: true, surfaceWritable: true });
             expect(ok).toBe(true);
             expect(project.schedules.has(ruleId)).toBe(false);
         });
@@ -307,7 +307,7 @@ describe("Objects Manager Requirements", () => {
 
             const depthBefore = globalUndoRouter.undoDepth;
             const object = getObjects(project).find(o => o.id === calendarId) as NamedObject;
-            deleteObject(project, object);
+            deleteObject(project, object, { projectAccess: true, surfaceWritable: true });
             expect(globalUndoRouter.undoDepth).toBe(depthBefore + 1);
 
             globalUndoRouter.undo();
@@ -379,7 +379,7 @@ describe("Objects Manager Requirements", () => {
             ensureCalendarUndoManager(project).stopCapturing();
 
             const object = getObjects(project).find(o => o.id === calendarId) as NamedObject;
-            deleteObject(project, object);
+            deleteObject(project, object, { projectAccess: true, surfaceWritable: true });
             globalUndoRouter.undo();
             expect(listCalendars(project).map(c => c.id)).toContain(calendarId);
             ensureCalendarUndoManager(project).stopCapturing();

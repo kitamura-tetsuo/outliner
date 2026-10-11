@@ -41,6 +41,7 @@ import { DIAGRAM_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId } from "../services/yjstable/itemBinding";
+import { getItemKanbanId } from "../services/yjstable/kanbanBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
 import { listTables } from "../services/yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../services/yjstable/tableSqlRewrite";
@@ -275,6 +276,14 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     }).filter((entry, _index, all) => !entry.collapsed || all.some(other => isDiagramNode(other.item)));
     if (entries.length === 0) return undefined;
     if (!coversWholeRange && !hasComponent) return undefined;
+
+    // Kanban structural transfer is intentionally unsupported in this
+    // release. Refuse the entire capture before snapshots, clipboard writes,
+    // pending-cut state, or source deletion; never flatten the placement to
+    // Text or copy only its neighbouring Text nodes.
+    if (entries.some(entry => getItemKanbanId(entry.item) !== undefined)) {
+        return refusedCapture("unsupported-selection");
+    }
 
     // Whole Diagram transclusions travel as a Diagram transfer (#5314): a Copy
     // snapshots each referenced Diagram now, a Cut stages its live nodes.

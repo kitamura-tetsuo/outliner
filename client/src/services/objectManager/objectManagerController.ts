@@ -28,6 +28,7 @@ import {
     type ObjectKind,
     traverseObjectGraph,
 } from "./objectDependencyGraph";
+import type { PlacementAuthorization } from "./objectPlacement";
 import { collectAllPlacements, type ObjectPlacement } from "./objectPlacements";
 
 const logger = getLogger("objectManagerController");
@@ -261,7 +262,12 @@ export function getDeleteImpact(project: Project | null | undefined, object: Nam
  * behind. Table and Schedule reuse their own existing deletion semantics
  * (#5012/#5103) rather than a second, inconsistent path.
  */
-export function deleteObject(project: Project | null | undefined, object: NamedObject): boolean {
+export function deleteObject(
+    project: Project | null | undefined,
+    object: NamedObject,
+    authorization: PlacementAuthorization,
+): boolean {
+    if (!authorization.projectAccess || !authorization.surfaceWritable) return false;
     if (!project || !project.ydoc) return false;
 
     switch (object.type) {
@@ -279,13 +285,18 @@ export function deleteObject(project: Project | null | undefined, object: NamedO
 }
 
 /** Delete an exact, pre-snapshotted target set as one undo-router operation. */
-export function deleteObjects(project: Project | null | undefined, objects: NamedObject[]): boolean {
+export function deleteObjects(
+    project: Project | null | undefined,
+    objects: NamedObject[],
+    authorization: PlacementAuthorization,
+): boolean {
+    if (!authorization.projectAccess || !authorization.surfaceWritable) return false;
     if (!project?.ydoc || objects.length === 0) return false;
     const liveIds = new Set(getObjects(project).map(object => object.id));
     if (objects.some(object => !liveIds.has(object.id))) return false;
     return globalUndoRouter.captureManualGroup(`Delete ${objects.length} objects`, () => {
         for (const object of objects) {
-            if (!deleteObject(project, object)) return false;
+            if (!deleteObject(project, object, authorization)) return false;
         }
         return true;
     });

@@ -11,5 +11,6 @@ acceptance:
 - Keeping Table references preserves affected Kanbans, while removing direct references removes only primary-source Kanbans and their placements
 - Missing Kanban definitions render an unavailable state and are not recreated from placement data
 tests:
+- client/e2e/new/obj-place-on-page-b94e5175.spec.ts
 - client/src/services/objectManager/kanbanLifecycle.test.ts
 - shared/tests/services/outlineNodeKind.test.ts

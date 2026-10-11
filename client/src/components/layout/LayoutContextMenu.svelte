@@ -13,9 +13,10 @@
         onClose: () => void;
         onAction: (componentType: string) => void;
         onInsertExistingDiagram: () => void;
+        onAddKanban?: () => void;
     }
 
-    let { x, y, onClose, onAction, onInsertExistingDiagram }: Props = $props();
+    let { x, y, onClose, onAction, onInsertExistingDiagram, onAddKanban = () => {} }: Props = $props();
     let menuRef: HTMLDivElement | undefined = $state();
     let previousFocus: HTMLElement | null = null;
     let activeIndex = $state(0);
@@ -127,6 +128,9 @@
     <button type="button" role="menuitem" tabindex={activeIndex === 3 ? 0 : -1} data-testid="layout-insert-diagram" onclick={() => { onInsertExistingDiagram(); handleClose(); }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 2 17 12 22 22 17 22 7"></polygon></svg>
         Insert transclusion
+    </button>
+    <button type="button" role="menuitem" data-testid="layout-add-kanban" onclick={() => { onAddKanban(); handleClose(); }}>
+        New or existing Kanban…
     </button>
 </div>
 
