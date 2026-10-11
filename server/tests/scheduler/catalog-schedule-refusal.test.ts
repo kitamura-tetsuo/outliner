@@ -28,7 +28,8 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
         missing.set("name", "Missing source");
         missing.set("sqlName", "missing_source");
         connection.document.getMap("yjsTables").set("missing-table", missing);
-        const rule = connection.document.getMap<any>("schedules").get("typed-rule");
+        const rule = connection.document.getMap<Y.Map<unknown>>("schedules").get("typed-rule");
+        if (!rule) throw new Error("typed Schedule was not persisted");
         rule.set("sql", "INSERT INTO typed_output SELECT id, state FROM missing_source RETURNING *");
         connection.disconnect();
 
