@@ -13,6 +13,8 @@ import {
 import { type KanbanProjection, KanbanQueryRunner } from "../../services/yjstable/kanbanQueryRunner";
 import SqlEditor from "../yjstable/SqlEditor.svelte";
 
+interface SqlEditorHandle { getValue(): string; }
+
 interface Props { projectDoc: Y.Doc; projectId?: string; kanban: KanbanHandles; isReadOnly?: boolean; }
 let { projectDoc, projectId, kanban, isReadOnly = false }: Props = $props();
 // Props are immutable for this mounted lifetime: the parent keys by identity.
@@ -27,6 +29,7 @@ let projection = $state<KanbanProjection>({ status: "loading", lanes: [], column
 let editing = $state(false);
 let conflict = $state<string | undefined>();
 let runner: KanbanQueryRunner | undefined;
+let queryEditor: SqlEditorHandle | undefined;
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
 
@@ -45,6 +48,9 @@ function apply() {
     if (isReadOnly) { conflict = "This presentation is read-only."; return; }
     const current = getKanban(projectDoc, kanban.kanbanId);
     if (!current) { conflict = "This Kanban was deleted or replaced. Your draft was preserved."; return; }
+    // Monaco owns its buffer imperatively. Read it at the form's commit
+    // boundary so Apply cannot race a pending Svelte callback or editor blur.
+    queryDraft = queryEditor?.getValue() ?? queryDraft;
     const candidate = { ...draft, query: queryDraft };
     const keys = ["name", "query", "groupField", "titleField", "detailFields", "laneOrder"] as const;
     const dirty = keys.filter(key => !same(candidate[key], baseline[key]));
@@ -84,6 +90,7 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
             <label>Name <input bind:value={draft.name} disabled={isReadOnly} /></label>
             <label>SELECT query
                 <SqlEditor
+                    bind:this={queryEditor}
                     value={queryDraft}
                     readOnly={isReadOnly}
                     ariaLabel="Kanban SELECT query"

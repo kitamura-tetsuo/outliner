@@ -27,10 +27,12 @@ test("a principal without the resource-side grant cannot disclose a private boar
     await page.locator("#email").fill(stranger);
     await page.locator("#password").fill("password");
     await page.locator("button.email-login-btn").click();
-    await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
-    await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
-    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => (globalThis as any).__USER_MANAGER__?.auth?.currentUser?.email))
         .toBe(stranger);
+    // Authentication changes are handled in-place by the loaded route. A hard
+    // reload would intentionally run the E2E bootstrap login and replace the
+    // ungranted principal with test@example.com before exercising access.
+    await expect(page).toHaveURL(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
+    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
     await expect(page.getByTestId("kanban-source-table-link")).toHaveCount(0);
 });

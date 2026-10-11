@@ -103,6 +103,11 @@ function currentValue(): string {
     return model?.getValue() ?? lastSyncedValue;
 }
 
+/** Read the editor's authoritative buffer before a surrounding form commits. */
+export function getValue(): string {
+    return currentValue();
+}
+
 function emitChange(text: string) {
     lastSyncedValue = text;
     dirty = true;
