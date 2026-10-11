@@ -1,0 +1,23 @@
+id: ENV-a31f98d4
+title: Firefox CI requires complete execution evidence after a successful command
+title-ja: Firefox CI でコマンド成功後も全件の実行証拠を必須にする
+description: >-
+  The shared Firefox CI runner collects a fresh full-project inventory, runs
+  the production npm entrypoint, and verifies exact case identities and actual
+  Firefox execution evidence before returning success. Collection-only runs,
+  reporter overrides, stale passing reports, incomplete case selection, skipped
+  or expected-failure cases, and setup or assertion failures cannot produce a
+  successful CI command. Regression tests invoke real Playwright with a temporary
+  configuration derived from the production browser configuration.
+category: environment
+status: implemented
+components:
+  - scripts/run-firefox-selection.mjs
+  - scripts/ci/verify-firefox-execution.mjs
+  - scripts/tests/helpers/firefox-execution-fixture.ts
+  - .github/workflows/ci-test-e2e.yml
+tests:
+  - scripts/tests/env-firefox-ci-entrypoint-a31f98d4.spec.ts
+commands:
+  - cd scripts/tests && npx vitest run env-firefox-ci-entrypoint-a31f98d4.spec.ts
+  - node scripts/run-firefox-selection.mjs --project=firefox-selection-basic

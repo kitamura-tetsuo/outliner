@@ -1,0 +1,21 @@
+id: ENV-934d0f2a
+title: Ordinary E2E CI runs the complete Firefox selection suite
+title-ja: 通常 E2E CI で Firefox の選択範囲テストを全件実行する
+description: >-
+  Ordinary CI schedules Firefox and Chromium projects in one non-fail-fast
+  matrix under the same eligibility conditions. Firefox uses a strict shared
+  collection/execution command and retains successful and failed reports with
+  unique browser, project, workflow-run, and attempt identities. Chromium
+  project membership and table sharding are preserved. The manual diagnostic
+  remains available independently of normal CI.
+category: environment
+status: implemented
+components:
+  - .github/workflows/ci-test-e2e.yml
+  - .github/workflows/firefox-selection-diagnostic.yml
+  - scripts/run-firefox-selection.mjs
+  - scripts/ci/verify-firefox-execution.mjs
+tests:
+  - scripts/tests/env-firefox-ci-promotion-934d0f2a.spec.ts
+commands:
+  - cd scripts/tests && npx vitest run env-firefox-ci-promotion-934d0f2a.spec.ts

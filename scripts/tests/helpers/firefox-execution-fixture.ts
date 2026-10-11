@@ -9,6 +9,8 @@ interface ProbeOptions {
     args?: string[];
     inventory?: "collect" | "missing";
     unwritableReport?: boolean;
+    entrypoint?: "npm" | "ci";
+    previousPassingRun?: boolean;
 }
 
 /** Exercise the same npm/shell/config/reporter chain as CI using an isolated spec. */
@@ -56,7 +58,7 @@ export default defineConfig({
         E2E_PROJECT: "firefox-selection-basic",
         E2E_EXECUTION_ID: path.basename(directory),
         E2E_EXECUTION_REPORT: options.unwritableReport ? directory : report,
-        E2E_EXPECTED_COLLECTION: options.inventory ? inventory : "",
+        E2E_EXPECTED_COLLECTION: options.inventory || options.entrypoint === "ci" ? inventory : "",
         PLAYWRIGHT_JSON_OUTPUT_NAME: nativeReport,
         PLAYWRIGHT_HTML_OUTPUT_DIR: path.join(directory, "html"),
         E2E_DISABLE_COVERAGE: "1",
@@ -78,13 +80,32 @@ export default defineConfig({
             throw new Error(`The production inventory failed: ${collection.stdout}\n${collection.stderr}`);
         }
     }
-    const result = spawnSync("npm", [...args, ...(options.args ?? [])], {
-        cwd: client,
-        env: environment,
-        encoding: "utf8",
-        timeout: 40000,
-        maxBuffer: 4 * 1024 * 1024,
-    });
+    const command = options.entrypoint === "ci" ? process.execPath : "npm";
+    const invocation = options.entrypoint === "ci"
+        ? [
+            path.resolve(client, "../scripts/run-firefox-selection.mjs"),
+            `--config=${config}`,
+            "--project=firefox-selection-basic",
+        ]
+        : args;
+    const invoke = (extra: string[] = []) =>
+        spawnSync(command, [...invocation, ...extra], {
+            cwd: client,
+            env: environment,
+            encoding: "utf8",
+            timeout: 60000,
+            maxBuffer: 4 * 1024 * 1024,
+        });
+    let previousEvidence;
+    if (options.previousPassingRun) {
+        const previous = invoke();
+        if (previous.status !== 0) {
+            fs.rmSync(directory, { recursive: true, force: true });
+            throw new Error(`The preceding real Firefox execution failed: ${previous.stdout}\n${previous.stderr}`);
+        }
+        previousEvidence = JSON.parse(fs.readFileSync(report, "utf8"));
+    }
+    const result = invoke(options.args);
     const evidence = fs.existsSync(report) ? JSON.parse(fs.readFileSync(report, "utf8")) : undefined;
     const output = result.stdout + result.stderr;
     const nativeReportExists = fs.existsSync(nativeReport);
@@ -102,5 +123,5 @@ export default defineConfig({
         })
     );
     fs.rmSync(directory, { recursive: true, force: true });
-    return { ...result, output, evidence, nativeReportExists, retainedAttachments };
+    return { ...result, output, evidence, previousEvidence, nativeReportExists, retainedAttachments };
 }

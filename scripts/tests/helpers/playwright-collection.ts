@@ -129,7 +129,7 @@ function collectRequiredCases(client: string, files: string[]): CollectedCase[] 
 
 export function verifySelectionCoverage(
     client: string,
-    diagnosticWorkflow: string,
+    e2eWorkflow: string,
     actual = collectPlaywright(client),
 ): void {
     const files = requiredSelectionFiles(client);
@@ -140,7 +140,7 @@ export function verifySelectionCoverage(
     }
     if (!required.length) throw new Error("No required selection cases were collected");
 
-    // The diagnostic sets these variables per shard. Re-list the relevant projects with the
+    // CI sets these variables per shard. Re-list the relevant projects with the
     // same invocation context so an environment-conditional declaration cannot
     // disappear from both the execution and its expected collection catalog.
     const requiredFiles = new Set(files);
@@ -168,13 +168,40 @@ export function verifySelectionCoverage(
         }
     }
 
-    const document = parse(fs.readFileSync(diagnosticWorkflow, "utf8"));
-    const matrix = document.jobs?.["firefox-selection"]?.strategy?.matrix?.project;
-    if (!Array.isArray(matrix) || matrix.some(value => typeof value !== "string")) {
-        throw new Error("The Firefox diagnostic workflow must declare a project matrix");
+    const document = parse(fs.readFileSync(e2eWorkflow, "utf8"));
+    const matrix = document.jobs?.["e2e-test"]?.strategy?.matrix;
+    if (!Array.isArray(matrix?.project) || matrix.project.some((value: unknown) => typeof value !== "string")) {
+        throw new Error("Normal E2E CI must declare a project matrix");
+    }
+    // This workflow has one axis. Fail explicitly if its representation changes
+    // rather than treating an unevaluated matrix expression as scheduled work.
+    if (Object.keys(matrix).some(key => !["project", "include", "exclude"].includes(key))) {
+        throw new Error("Cannot verify normal CI coverage for a matrix with additional axes");
+    }
+    const excluded = matrix.exclude ?? [];
+    const included = matrix.include ?? [];
+    for (const entries of [excluded, included]) {
+        if (
+            !Array.isArray(entries) || entries.some(entry =>
+                !entry || typeof entry !== "object" || Array.isArray(entry)
+                || Object.keys(entry).some(key => key !== "project")
+                || ("project" in entry && typeof entry.project !== "string")
+            )
+        ) {
+            throw new Error("Cannot verify normal CI matrix include/exclude entries");
+        }
+    }
+    const scheduledProjects = new Set<string>(
+        matrix.project.filter((project: string) =>
+            !excluded.some((entry: { project?: string; }) => !entry.project || entry.project === project)
+        ),
+    );
+    // GitHub applies include after exclude; an explicit include can restore a row.
+    for (const entry of included) {
+        if (entry.project) scheduledProjects.add(entry.project);
     }
     const scheduled = new Set(
-        invoked.filter(test => test.browser === "firefox" && matrix.includes(test.project)).map(caseKey),
+        invoked.filter(test => test.browser === "firefox" && scheduledProjects.has(test.project)).map(caseKey),
     );
     const firefoxProjects = new Set(
         invoked.filter(test =>
@@ -183,7 +210,7 @@ export function verifySelectionCoverage(
             .map(test => test.project),
     );
     for (const project of firefoxProjects) {
-        if (!matrix.includes(project)) failures.push(`Firefox project missing from diagnostic matrix: ${project}`);
+        if (!scheduledProjects.has(project)) failures.push(`Firefox project missing from normal CI matrix: ${project}`);
     }
     if (failures.length) throw new Error(failures.join("\n"));
 }
