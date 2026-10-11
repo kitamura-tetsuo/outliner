@@ -217,6 +217,23 @@ export function getClientByProjectTitle(projectTitle: string, signal?: AbortSign
     return p;
 }
 
+/** Resolve the resource-side Project grant before consulting any live client cache. */
+export async function getAuthorizedClientByProjectTitle(
+    projectTitle: string,
+    signal?: AbortSignal,
+): Promise<YjsClient | undefined> {
+    if (isDemoProjectSlug(projectTitle)) return getClientByProjectTitle(projectTitle, signal);
+    if (!userManager.getCurrentUser() || signal?.aborted) return undefined;
+    try {
+        const descriptor = await resolveProject(projectTitle);
+        if (!descriptor || signal?.aborted) return undefined;
+        return resolveClientByProjectTitle(projectTitle, signal, descriptor.projectId);
+    } catch (error) {
+        logger.warn({ error, projectTitle }, "[getAuthorizedClientByProjectTitle] Project access denied");
+        return undefined;
+    }
+}
+
 export interface AcquiredProjectClient {
     client: YjsClient;
     /** Disposes the connection only when this acquisition is the one that opened it. */
@@ -302,7 +319,11 @@ async function resolveProjectId(projectTitle: string): Promise<string | undefine
     return (await resolveProject(projectTitle))?.projectId;
 }
 
-async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortSignal): Promise<YjsClient | undefined> {
+async function resolveClientByProjectTitle(
+    projectTitle: string,
+    signal?: AbortSignal,
+    authorizedProjectId?: string,
+): Promise<YjsClient | undefined> {
     logger.info(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
 
     if (signal?.aborted) return undefined;
@@ -339,7 +360,12 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
     // titles and room ids are not authorization credentials, and a prior
     // principal's live document must never cross an authentication boundary.
     for (const [key, [client, project]] of registry.entries()) {
-        if (key.startsWith(`container:${authenticatedUserId}:`) && project?.title === projectTitle && client) {
+        if (
+            key.startsWith(`container:${authenticatedUserId}:`)
+            && project?.title === projectTitle
+            && (!authorizedProjectId || client.containerId === authorizedProjectId)
+            && client
+        ) {
             if (!client.isDestroyed) {
                 logger.info(`[getClientByProjectTitle] Found existing client in registry`);
                 return client;
@@ -355,7 +381,7 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
     // If not in registry, try to find the projectId by title
     logger.info(`[getClientByProjectTitle] Called for title="${projectTitle}"`);
 
-    const projectId = await resolveProjectId(projectTitle);
+    const projectId = authorizedProjectId ?? await resolveProjectId(projectTitle);
 
     logger.info(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
     if (signal?.aborted) return undefined;
