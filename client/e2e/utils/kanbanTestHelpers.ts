@@ -72,6 +72,7 @@ export async function configureKanbanThroughUi(
     const editor = new SqlEditorHelper(panel.getByTestId("kanban-query-editor"));
     await editor.waitForReady();
     await editor.setValue(page, values.query);
+    await expect.poll(() => editor.value()).toBe(values.query);
     await editor.commit(page);
     await panel.getByLabel("Grouping column").fill(values.group);
     await panel.getByLabel("Title column").fill(values.title ?? "");
