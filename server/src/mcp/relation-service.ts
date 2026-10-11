@@ -236,7 +236,10 @@ export class OutlinerRelationService {
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
-        private readonly options: { beforeRecordBatchPublication?: () => Promise<void>; } = {},
+        private readonly options: {
+            beforeRecordBatchPublication?: () => Promise<void>;
+            beforeGridQueryPublication?: () => Promise<void>;
+        } = {},
     ) {}
 
     /** Release the shared scratch database when the owning server shuts down. */
@@ -2519,11 +2522,9 @@ export class OutlinerRelationService {
     }
 
     /**
-     * Repair a Grid query only after the same executable validation exposed by
-     * validate_grid_query succeeds. The final write still goes through
-     * setViewQuery, which rechecks the revision immediately before its single
-     * Yjs transaction; validation can therefore never overwrite a concurrent
-     * collaborator's edit.
+     * Repair a Grid query only after executable validation, retaining every
+     * opened dependency until its snapshot is rechecked immediately before
+     * the single Project transaction.
      */
     async updateGridQuery(
         uid: string,
@@ -2532,11 +2533,6 @@ export class OutlinerRelationService {
         query: string,
         precondition: MutationPrecondition & { expectedRevision: string; },
     ) {
-        const validatedCatalogRevision = await this.withProject(uid, projectId, doc => {
-            const catalog = readSqlCatalog(projectId, doc as never);
-            if (catalog.status !== "ready") throw new McpReadError("validation_failed", "SQL catalog unavailable");
-            return catalog.snapshot.revision;
-        });
         const cacheKey = this.idempotency.key(
             "update_grid_query",
             uid,
@@ -2545,54 +2541,91 @@ export class OutlinerRelationService {
             precondition.dryRun ? undefined : precondition.operationId,
         );
         const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
-            const validation = await this.validateGridQuery(uid, projectId, gridId, query);
-            if (!validation.accepted) {
-                throw new McpReadError("validation_failed", "Grid query validation failed", {
-                    validation,
-                });
-            }
-            const dependencies = new Set<string>(validation.dependencies);
-            const dependencyWarnings = (validation.warnings ?? []).filter(warning =>
-                dependencies.has(warning.relation)
-            );
-            if (dependencyWarnings.length > 0) {
-                throw new McpReadError(
-                    "validation_failed",
-                    "Grid query dependencies could not be safely materialized",
-                    { validation: { ...validation, warnings: dependencyWarnings } },
-                );
-            }
-
-            const currentCatalogRevision = await this.withProject(uid, projectId, doc => {
+            return this.withProject(uid, projectId, async doc => {
+                const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
+                if (!grid) throw new McpReadError("not_found", "Grid not found");
                 const catalog = readSqlCatalog(projectId, doc as never);
-                return catalog.status === "ready" ? catalog.snapshot.revision : undefined;
+                if (catalog.status !== "ready") {
+                    throw new McpReadError("validation_failed", "SQL catalog unavailable");
+                }
+                const sources = new Map<string, TableDoc>();
+                try {
+                    const { validation, snapshot } = await this.validateGridCandidate(
+                        uid,
+                        projectId,
+                        doc,
+                        query,
+                        grid.get("components"),
+                        25,
+                        sources,
+                    );
+                    if (!validation.accepted || !snapshot) {
+                        throw new McpReadError("validation_failed", "Grid query validation failed", { validation });
+                    }
+                    const dependencies = new Set<string>(validation.dependencies);
+                    const dependencyWarnings = (validation.warnings ?? []).filter(warning =>
+                        dependencies.has(warning.relation)
+                    );
+                    if (dependencyWarnings.length > 0) {
+                        throw new McpReadError(
+                            "validation_failed",
+                            "Grid query dependencies could not be safely materialized",
+                            { validation: { ...validation, warnings: dependencyWarnings } },
+                        );
+                    }
+                    await this.options.beforeGridQueryPublication?.();
+                    if (!await this.canAccess(uid, projectId)) {
+                        throw new McpReadError("forbidden", "Project is inaccessible");
+                    }
+                    const currentCatalog = readSqlCatalog(projectId, doc as never);
+                    const currentSnapshot = this.validationSnapshot(doc, sources);
+                    if (
+                        currentCatalog.status !== "ready"
+                        || currentCatalog.snapshot.revision !== catalog.snapshot.revision
+                        || currentSnapshot !== snapshot
+                    ) {
+                        throw new McpReadError("stale_revision", "Grid query inputs changed after validation", {
+                            expectedCatalogRevision: catalog.snapshot.revision,
+                            actualCatalogRevision: currentCatalog.status === "ready"
+                                ? currentCatalog.snapshot.revision
+                                : undefined,
+                        });
+                    }
+                    const previousQuery = String(grid.get("query") ?? "");
+                    const priorRevision = revisionOf({
+                        query: previousQuery,
+                        catalogRevision: catalog.snapshot.revision,
+                    });
+                    assertRevision(precondition.expectedRevision, priorRevision, { kind: "grid", viewId: gridId });
+                    const applied = !precondition.dryRun;
+                    if (applied) {
+                        doc.transact(() => {
+                            grid.set("query", query);
+                            if (query !== previousQuery) grid.set("sqlAliasPolicyVersion", 1);
+                        }, "mcp-view-query");
+                    }
+                    const revision = applied
+                        ? revisionOf({ query, catalogRevision: catalog.snapshot.revision })
+                        : priorRevision;
+                    return {
+                        gridId,
+                        applied,
+                        priorRevision,
+                        revision,
+                        before: { revision: priorRevision },
+                        after: { query, revision: applied ? revision : priorRevision },
+                        validation,
+                        ordering: {
+                            source: validation.inferredOrdering,
+                            columns: validation.resultColumns.map(column => column.name),
+                            sampleRows: validation.sampleRows,
+                            truncated: validation.truncated,
+                        },
+                    };
+                } finally {
+                    for (const source of sources.values()) await source.disconnect();
+                }
             });
-            if (currentCatalogRevision !== validatedCatalogRevision) {
-                throw new McpReadError("stale_revision", "SQL catalog changed after Grid validation", {
-                    expectedCatalogRevision: validatedCatalogRevision,
-                    actualCatalogRevision: currentCatalogRevision,
-                });
-            }
-
-            const mutation = await this.setViewQuery(uid, projectId, "grid", gridId, query, {
-                expectedRevision: precondition.expectedRevision,
-                dryRun: precondition.dryRun,
-            });
-            return {
-                gridId,
-                applied: mutation.applied,
-                priorRevision: mutation.priorRevision,
-                revision: mutation.revision,
-                before: { revision: mutation.priorRevision },
-                after: { query, revision: mutation.applied ? mutation.revision : mutation.priorRevision },
-                validation,
-                ordering: {
-                    source: validation.inferredOrdering,
-                    columns: validation.resultColumns.map(column => column.name),
-                    sampleRows: validation.sampleRows,
-                    truncated: validation.truncated,
-                },
-            };
         });
         return { ...result, replayed };
     }

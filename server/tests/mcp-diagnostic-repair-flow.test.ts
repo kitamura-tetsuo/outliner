@@ -25,7 +25,7 @@ const payload = (response: request.Response) => {
 
 describe("MCP diagnostic-to-repair flow", () => {
     it("diagnoses, dry-runs, applies, traces, and safely audits an ordering repair", async function() {
-        this.timeout(30_000);
+        this.timeout(60_000);
         if (fs.existsSync(mcpLogPath)) fs.truncateSync(mcpLogPath, 0);
         const project = Project.createInstance("Canonical");
         const tableDescriptor = new Y.Map<unknown>();
@@ -59,7 +59,10 @@ describe("MCP diagnostic-to-repair flow", () => {
             canAccess,
             async () => [{ projectId: "project-1", title: "Canonical" }],
         );
-        const relations = new OutlinerRelationService(hocuspocus, canAccess);
+        let beforeGridQueryPublication = () => Promise.resolve();
+        const relations = new OutlinerRelationService(hocuspocus, canAccess, {
+            beforeGridQueryPublication: () => beforeGridQueryPublication(),
+        });
         const app = express();
         app.use(express.json());
         app.use(createMcpRouter(
@@ -114,6 +117,32 @@ describe("MCP diagnostic-to-repair flow", () => {
         expect(dryRun.applied).to.equal(false);
         expect(grid.get("query")).to.equal("SELECT id, order FROM tasks ORDER BY order");
 
+        let resume!: () => void;
+        let paused!: () => void;
+        const reached = new Promise<void>(resolve => paused = resolve);
+        const barrier = new Promise<void>(resolve => resume = resolve);
+        beforeGridQueryPublication = async () => {
+            paused();
+            await barrier;
+        };
+        const staleUpdate = Promise.resolve(call("update_grid_query", {
+            projectId: "project-1",
+            gridId: "grid-1",
+            query: correctedQuery,
+            expectedRevision: revision,
+            operationId: "repair-grid-stale-dependency",
+        }));
+        await reached;
+        table.transact(() => {
+            const schema = table.getText("schema");
+            schema.delete(0, schema.length);
+            schema.insert(0, 'CREATE TABLE tasks (id TEXT PRIMARY KEY, "order" INTEGER, note TEXT)');
+        });
+        resume();
+        expect(payload(await staleUpdate).code).to.equal("stale_revision");
+        expect(grid.get("query")).to.equal("SELECT id, order FROM tasks ORDER BY order");
+        beforeGridQueryPublication = () => Promise.resolve();
+
         const applied = payload(
             await call("update_grid_query", {
                 projectId: "project-1",
@@ -138,8 +167,14 @@ describe("MCP diagnostic-to-repair flow", () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         const audits = fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean)
             .map(line => JSON.parse(line)).filter(line => line.event === "mcp_audit");
-        expect(audits.map(line => line.applied)).to.deep.equal([false, true]);
+        expect(audits.map(line => line.applied)).to.deep.equal([false, false, true]);
         expect(audits[1]).to.include({
+            tool: "update_grid_query",
+            entity: "grid:grid-1",
+            operationId: "repair-grid-stale-dependency",
+            outcome: "stale_revision",
+        });
+        expect(audits[2]).to.include({
             tool: "update_grid_query",
             entity: "grid:grid-1",
             operationId: "repair-grid-order-1",
