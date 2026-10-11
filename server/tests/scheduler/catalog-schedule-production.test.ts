@@ -2,6 +2,7 @@ import { expect } from "chai";
 import {
     type CatalogScheduleFixture,
     closeFixture,
+    configureTarget,
     fixture,
     records,
     seedCatalogSchedule,
@@ -59,4 +60,30 @@ describe("Schedule catalog production path (#5535 REQ-007)", function() {
         expect((await records(value, "schedule-catalog-a")).label.state).to.equal("second");
         expect((await records(value, "schedule-catalog-b")).label.state).to.equal("second");
     });
+
+    for (
+        const example of [
+            { name: "built-in", type: "INTEGER", defaultValue: "7" },
+            { name: "ENUM", type: TYPE_NAME, defaultValue: "'first'" },
+        ]
+    ) {
+        it(`keeps sparse ${example.name} records identical in preview and execution`, async () => {
+            const projectId = `schedule-sparse-${example.name.toLowerCase()}`;
+            await seedCatalogSchedule(value, projectId);
+            await configureTarget(
+                value,
+                projectId,
+                `CREATE TABLE typed_output (id TEXT PRIMARY KEY, state ${example.type} DEFAULT ${example.defaultValue})`,
+                "INSERT INTO typed_output (id,state) SELECT 'copy' AS id,state AS state FROM typed_output WHERE id='source' RETURNING *",
+                { id: "source" },
+            );
+            const stored = await value.schedules.getSchedule(UID, projectId, "typed-rule");
+            const preview = await value.schedules.validate(UID, projectId, stored.stored as never, "typed-rule");
+            expect(preview, JSON.stringify(preview)).to.include({ accepted: true });
+            expect(preview.candidateRows).to.deep.equal([{ id: "copy", state: null }]);
+            const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+            expect(run.success, run.error).to.equal(true);
+            expect((await records(value, projectId)).copy).to.deep.equal({ id: "copy", state: null });
+        });
+    }
 });

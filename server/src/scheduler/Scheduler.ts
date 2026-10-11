@@ -818,6 +818,7 @@ export class JobScheduler {
         return {
             id,
             schema: table.schemaSql,
+            missingFieldsAsNull: true,
             records: table.records.map((values, index) => ({ id: String(values.id ?? index), values })),
         };
     }
@@ -870,6 +871,22 @@ export class JobScheduler {
             const catalog = readSqlCatalog(rule.room.replace(/^projects\//, ""), connection.document as never);
             if (catalog.status !== "ready") throw new Error(`Project SQL catalog unavailable: ${catalog.reason}`);
             return catalog.snapshot;
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private async captureTargetBinding(room: string, tableId: string): Promise<{ name: string; sqlName: string; }> {
+        const connection = await this.hocuspocus.openDirectConnection(room);
+        try {
+            const entry = connection.document?.getMap("yjsTables").get(tableId);
+            if (!(entry instanceof Y.Map)) throw new Error(`Target Table binding is unavailable: ${tableId}`);
+            const name = entry.get("name");
+            const sqlName = entry.get("sqlName");
+            if (typeof name !== "string" || typeof sqlName !== "string") {
+                throw new Error(`Target Table binding is unavailable: ${tableId}`);
+            }
+            return { name, sqlName };
         } finally {
             connection.disconnect();
         }
@@ -1369,15 +1386,17 @@ export class JobScheduler {
         try {
             const dataMap = doc.getMap("data");
             const { schemaSql, records } = this.readTableDoc(doc);
-            if (!schemaSql) return { success: true };
+            if (!schemaSql) return { success: false, error: "Target Table schema is unavailable" };
 
             const catalog = await this.captureCatalog(rule);
+            const targetBinding = await this.captureTargetBinding(rule.room, targetTableId);
             const referenced = await this.loadReferencedTables(rule, ruleSql);
             const tableSnapshots: JobTableSnapshot[] = [this.tableSnapshot(targetTableId, doc)];
             for (const [index, table] of referenced.entries()) {
                 tableSnapshots.push({
                     id: `referenced-${index}`,
                     schema: table.schemaSql,
+                    missingFieldsAsNull: true,
                     records: table.records.map((values, recordIndex) => ({
                         id: String(values.id ?? recordIndex),
                         values,
@@ -1419,8 +1438,13 @@ export class JobScheduler {
 
             if (result.success && result.rows && result.rows.length > 0) {
                 const currentCatalog = await this.captureCatalog(rule);
+                const currentBinding = await this.captureTargetBinding(rule.room, targetTableId).catch(() => undefined);
                 const currentSchema = doc.getText("schema").toString();
-                if (currentCatalog.revision !== result.catalogRevision || currentSchema !== result.targetSchema) {
+                if (
+                    currentCatalog.revision !== result.catalogRevision
+                    || currentSchema !== result.targetSchema
+                    || JSON.stringify(currentBinding) !== JSON.stringify(targetBinding)
+                ) {
                     return { success: false, error: "stale-catalog/schema: Schedule inputs changed before write-back" };
                 }
                 const schemaDef = parseSchemaString(schemaSql);

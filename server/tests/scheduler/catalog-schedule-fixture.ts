@@ -124,3 +124,29 @@ export async function storedRule(value: CatalogScheduleFixture, projectId: strin
         doc => (doc.getMap<Y.Map<unknown>>("schedules").get("typed-rule")?.toJSON() ?? {}) as Record<string, unknown>,
     );
 }
+
+export async function configureTarget(
+    value: CatalogScheduleFixture,
+    projectId: string,
+    schema: string,
+    sql: string,
+    source: Record<string, unknown> = {},
+) {
+    await withRoom(value.server.hocuspocus, `projects/${projectId}`, doc => {
+        const rule = doc.getMap<Y.Map<unknown>>("schedules").get("typed-rule");
+        if (!rule) throw new Error("typed Schedule was not persisted");
+        rule.set("sql", sql);
+    });
+    await withRoom(value.server.hocuspocus, `projects/${projectId}/tables/typed-table`, doc => {
+        const text = doc.getText("schema");
+        text.delete(0, text.length);
+        if (schema) text.insert(0, schema);
+        const data = doc.getMap("data");
+        data.clear();
+        if (Object.keys(source).length > 0) {
+            const record = new Y.Map<unknown>();
+            for (const [key, child] of Object.entries(source)) record.set(key, child);
+            data.set(String(source.id), record);
+        }
+    });
+}

@@ -5,6 +5,7 @@ import {
     type CatalogScheduleFixture,
     catalogService,
     closeFixture,
+    configureTarget,
     fixture,
     records,
     seedCatalogSchedule,
@@ -37,6 +38,19 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
         expect(run.success).to.equal(false);
         expect(run.error).to.match(/missing_source|unavailable/i);
         expect(await records(value, projectId)).to.deep.equal({});
+    });
+
+    it("records an unavailable target schema as a failed run", async () => {
+        const projectId = "schedule-target-schema-unavailable";
+        await seedCatalogSchedule(value, projectId);
+        await configureTarget(value, projectId, "", "SELECT 1", { id: "unrelated", state: "first" });
+
+        const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+        expect(run).to.deep.include({ success: false, error: "Target Table schema is unavailable" });
+        expect(await records(value, projectId)).to.deep.equal({
+            unrelated: { id: "unrelated", state: "first" },
+        });
+        expect(await storedRule(value, projectId)).to.include({ lastRunStatus: "error" });
     });
 
     it("refuses the whole returned batch when one ENUM label is invalid", async () => {
@@ -104,5 +118,44 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
         const current = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
         expect(current.success, current.error).to.equal(true);
         expect((await records(value, projectId)).label.state).to.equal("second");
+    });
+
+    it("refuses write-back when the Project target binding disappears", async () => {
+        const projectId = "schedule-target-binding-stale";
+        await seedCatalogSchedule(value, projectId);
+        const hocuspocus = value.server.hocuspocus;
+        const open = hocuspocus.openDirectConnection.bind(hocuspocus);
+        let heldTarget: Y.Doc | undefined;
+        hocuspocus.openDirectConnection = (async (...args: Parameters<typeof open>) => {
+            const connection = await open(...args);
+            if (args[0] === `projects/${projectId}/tables/typed-table`) {
+                heldTarget = connection.document as unknown as Y.Doc;
+            }
+            return connection;
+        }) as typeof hocuspocus.openDirectConnection;
+        const executor = (value.scheduler as unknown as {
+            executor: { executeJob: (job: JobData) => Promise<JobResult>; };
+        }).executor;
+        const execute = executor.executeJob.bind(executor);
+        executor.executeJob = async job => {
+            const completed = await execute(job);
+            const project = await value.server.hocuspocus.openDirectConnection(`projects/${projectId}`);
+            project.document.getMap("yjsTables").delete("typed-table");
+            await project.disconnect();
+            if (!heldTarget) throw new Error("scheduler did not hold the target room");
+            const unrelated = new Y.Map<unknown>();
+            unrelated.set("id", "intervening");
+            unrelated.set("state", "first");
+            heldTarget.getMap("data").set("intervening", unrelated);
+            return completed;
+        };
+
+        const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+        expect(run.success).to.equal(false);
+        expect(run.error).to.match(/stale-catalog\/schema/);
+        expect(await records(value, projectId)).to.deep.equal({
+            intervening: { id: "intervening", state: "first" },
+        });
+        expect(await storedRule(value, projectId)).to.include({ lastRunStatus: "error" });
     });
 });

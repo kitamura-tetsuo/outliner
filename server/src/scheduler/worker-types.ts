@@ -4,6 +4,7 @@ export interface JobTableSnapshot {
     id: string;
     schema: string;
     records: { id: string; values: Record<string, unknown>; }[];
+    missingFieldsAsNull?: true;
 }
 
 export interface JobData {

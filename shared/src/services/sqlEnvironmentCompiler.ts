@@ -15,6 +15,8 @@ export interface SqlTableSnapshot {
     readonly id: string;
     readonly schema: string;
     readonly records: readonly Readonly<SqlTableRecordSnapshot>[];
+    /** Preserve Schedule's established absent-field-as-NULL materialization. */
+    readonly missingFieldsAsNull?: boolean;
 }
 
 export interface SqlInspectionTarget {
@@ -133,6 +135,7 @@ function captureInput(input: Readonly<SqlEnvironmentInput>): SqlEnvironmentInput
             Object.freeze({
                 id: table.id,
                 schema: table.schema,
+                missingFieldsAsNull: table.missingFieldsAsNull,
                 records: Object.freeze(table.records.map(record =>
                     Object.freeze({
                         id: record.id,
@@ -448,16 +451,21 @@ async function insertRecords(
         columnTypes.rows.filter(row => row.typtype === "e").map(row => [row.column_name, row.enum_labels]),
     );
     for (const record of table.records) {
-        const columns = Object.keys(record.values);
+        const columns = table.missingFieldsAsNull
+            ? columnTypes.rows.map(column => column.column_name)
+            : Object.keys(record.values);
         let invalidEnumColumn: string | undefined;
         const values = columns.map(column => {
+            const value = Object.prototype.hasOwnProperty.call(record.values, column)
+                ? record.values[column]
+                : null;
             const labels = enumLabelsByColumn.get(column);
-            if (!labels) return record.values[column];
+            if (!labels) return value;
             try {
-                return serializeSqlEnumValue(record.values[column], { labels });
+                return serializeSqlEnumValue(value, { labels });
             } catch {
                 invalidEnumColumn = column;
-                return record.values[column];
+                return value;
             }
         });
         if (invalidEnumColumn) {
