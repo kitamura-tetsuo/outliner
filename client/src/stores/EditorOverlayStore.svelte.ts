@@ -627,6 +627,25 @@ export class EditorOverlayStore {
     }
 
     /**
+     * Replace one user's selection without exposing an empty intermediate state.
+     *
+     * Keyboard range extension can move from a text-only range to a visual-node
+     * boundary. Clearing first would also clear the hidden textarea mirror; Firefox
+     * reports that native selection collapse during the same key event, before the
+     * replacement range can take ownership. Updating the reactive record in one turn
+     * keeps the old mirror intact until the new range is present.
+     */
+    replaceSelectionForUser(userId: string, input: SelectionRangeInput): string | undefined {
+        const selection = toSelectionRange({ ...input, userId });
+        if (!selection) return undefined;
+
+        this.selections = Object.fromEntries(
+            Object.entries(this.selections).filter(([, existing]) => (existing.userId ?? "local") !== userId),
+        );
+        return this.setSelection(selection);
+    }
+
+    /**
      * Set box selection (rectangular selection)
      * @param startItemId Start item ID
      * @param startOffset Start offset

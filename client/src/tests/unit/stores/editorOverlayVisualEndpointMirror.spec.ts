@@ -23,16 +23,15 @@ function textRange() {
 
 function visualRange() {
     textRange();
-    expect(textarea.value).toContain("\n");
-    // The same replacement boundary used by Shift+Up: clear the character mirror,
-    // then accept a range whose visual endpoint cannot be represented in it.
-    store.clearSelectionForUser("local");
-    store.setSelection({
+    const textMirror = textarea.value;
+    expect(textMirror).toContain("\n");
+    // The same replacement boundary used by Shift+Up: accept the visual range in one
+    // store transition, without making Firefox collapse the character mirror first.
+    store.replaceSelectionForUser("local", {
         start: textEndpoint("alpha", 0),
         end: nodeBoundaryEndpoint("visual", "before"),
-        userId: "local",
     });
-    expect(textarea.value).toBe("");
+    expect(textarea.value).toBe(textMirror);
 }
 
 describe("visual endpoint selection owns its range independently of the character mirror", () => {

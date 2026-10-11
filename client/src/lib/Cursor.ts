@@ -915,11 +915,9 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             next,
             store.itemOrderComparator(),
         );
-        store.clearSelectionForUser(this.userId);
-        store.setSelection({
+        store.replaceSelectionForUser(this.userId, {
             start: first,
             end: last,
-            userId: this.userId,
             isReversed: isVisuallyReversed,
         });
 
