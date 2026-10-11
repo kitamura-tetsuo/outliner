@@ -121,8 +121,10 @@ describe("yjsService", () => {
             const projTarget = { title: "TargetTitle" } as Project;
 
             type ClientTuple = [unknown, Project];
-            registry?.map.set("container:demo2", [undefined, projCollision] as ClientTuple);
-            registry?.map.set("container:demo", [undefined, projTarget] as ClientTuple);
+            // Registry keys are scoped to the authenticated principal so a
+            // cached Project can never be reused across an auth transition.
+            registry?.map.set("container:test-user-id:demo2", [undefined, projCollision] as ClientTuple);
+            registry?.map.set("container:test-user-id:demo", [undefined, projTarget] as ClientTuple);
 
             // For "demo", if we used includes, it would match "demo2" first because it was inserted first
             const title = getProjectTitle("demo");

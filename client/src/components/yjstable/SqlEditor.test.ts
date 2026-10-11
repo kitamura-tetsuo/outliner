@@ -71,6 +71,15 @@ describe("SqlEditor", () => {
         expect(onChange).toHaveBeenCalledWith(edited);
     });
 
+    it("exposes the authoritative model text to a surrounding Apply action", async () => {
+        const { component } = await renderEditor();
+        const edited = `${MULTILINE_SQL}\nLIMIT 3`;
+
+        fakeMonacoRegistry.lastModel().type(edited);
+
+        expect(component.getValue()).toBe(edited);
+    });
+
     it("commits the exact model text when the editor loses focus", async () => {
         const onBlur = vi.fn();
         await renderEditor({ onBlur });

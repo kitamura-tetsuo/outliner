@@ -818,6 +818,7 @@ export function registerDemoTables(
 ): void {
     const registry = projectDoc.getMap<Y.Map<unknown>>("yjsTables");
     const gridRegistry = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
+    const kanbanRegistry = projectDoc.getMap<Y.Map<unknown>>("yjsKanbans");
     for (const template of demoTablesFor(locale)) {
         const entry = new Y.Map<unknown>();
         registry.set(template.tableId, entry);
@@ -846,6 +847,20 @@ export function registerDemoTables(
         }
         gridEntry.set("components", components);
         gridRegistry.set(gridId, gridEntry);
+
+        // The Tasks board makes the public demo exercise the standalone
+        // Kanban surface with the same real Table records and SQL engine.
+        if (template.sqlName === "tasks") {
+            const kanban = new Y.Map<unknown>();
+            kanban.set("sourceTableId", template.tableId);
+            kanban.set("name", "Tasks by status");
+            kanban.set("query", "SELECT id, title, status, priority, due_date FROM tasks ORDER BY priority, id");
+            kanban.set("groupField", "status");
+            kanban.set("titleField", "title");
+            kanban.set("detailFields", ["priority", "due_date"]);
+            kanban.set("laneOrder", ["open", "done"]);
+            kanbanRegistry.set("demo-tasks-kanban", kanban);
+        }
 
         for (const extra of template.extraGrids ?? []) {
             const extraEntry = new Y.Map<unknown>();
@@ -1210,7 +1225,7 @@ function persistedDemoStructure(locale: DemoLocale, slug: string): {
     registerDemoDiagrams(projectDoc);
 
     const registries = Object.fromEntries(
-        ["yjsTables", "yjsGrids", "schedules", "calendars", "diagrams"].map(name => [
+        ["yjsTables", "yjsGrids", "yjsKanbans", "schedules", "calendars", "diagrams"].map(name => [
             name,
             persistedYValue(projectDoc.getMap(name)),
         ]),
