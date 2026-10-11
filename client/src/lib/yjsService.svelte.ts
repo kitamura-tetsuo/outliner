@@ -363,8 +363,8 @@ async function resolveClientByProjectTitle(
         if (
             key.startsWith(`container:${authenticatedUserId}:`)
             && project?.title === projectTitle
-            && (!authorizedProjectId || client.containerId === authorizedProjectId)
             && client
+            && (!authorizedProjectId || client.containerId === authorizedProjectId)
         ) {
             if (!client.isDestroyed) {
                 logger.info(`[getClientByProjectTitle] Found existing client in registry`);

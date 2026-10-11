@@ -79,7 +79,7 @@ onMount(() => {
     kanban.entry.observeDeep(observer);
     void session.acquire(committed.sourceTableId).then(acquired => {
         if (!acquired) { projection = { status: "unavailable", lanes: [], columns: [], current: false, message: "Kanban source Table is missing" }; return; }
-        runner = new KanbanQueryRunner({ projectDoc, projectId, kanbanId: kanban.kanbanId, kanban, sourceAdapter: acquired.adapter });
+        runner = new KanbanQueryRunner({ projectDoc, kanbanId: kanban.kanbanId, kanban, sourceAdapter: acquired.adapter });
         runner.subscribeProjection(value => projection = value);
         runner.start();
     });
