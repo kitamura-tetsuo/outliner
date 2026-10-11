@@ -9,6 +9,8 @@ import {
     stripSqlNoise,
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
+import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
+import { compileSqlEnvironment, type SqlEnumMetadata } from "../../../shared/src/services/sqlEnvironmentCompiler.js";
 import { validateScheduleRowIdentities } from "../scheduler/row-validation.js";
 import { materializeScheduleRecords } from "../scheduler/table-materialization.js";
 import { type Item, Project } from "../schema/app-schema.js";
@@ -57,13 +59,138 @@ export async function acquireDb(): Promise<{ db: PGlite; release: () => void; }>
     let release = () => {};
     dbTail = new Promise<void>(resolve => release = resolve);
     await previous;
-    const tables = await mcpDb.query<{ tablename: string; }>(
-        "SELECT tablename FROM pg_tables WHERE schemaname = 'public'",
-    );
-    for (const { tablename } of tables.rows) {
-        await mcpDb.exec(`DROP TABLE IF EXISTS "${tablename.replace(/"/g, '""')}" CASCADE`);
-    }
+    // Types are project-owned too. Recreating public prevents a previous
+    // request's ENUM (and its declaration order) from becoming input to the
+    // next request that happens to lease this engine.
+    await mcpDb.exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
     return { db: mcpDb, release };
+}
+
+interface MaterializedCatalog {
+    readonly snapshot: SqlCatalogSnapshot;
+    readonly enums: readonly SqlEnumMetadata[];
+}
+
+type QueryField = { name: string; dataTypeID: number; };
+
+const validatedCatalogs = new Map<string, readonly SqlEnumMetadata[]>();
+
+/** Validate through the shared compiler, then reproduce its catalog in an already-held MCP lease. */
+export async function materializeProjectCatalog(
+    db: PGlite,
+    projectId: string,
+    doc: Y.Doc,
+): Promise<MaterializedCatalog> {
+    const catalog = readSqlCatalog(projectId, doc as never);
+    if (catalog.status !== "ready") {
+        throw new McpReadError("validation_failed", `Project SQL catalog is ${catalog.status}: ${catalog.reason}`);
+    }
+    let enums = validatedCatalogs.get(catalog.snapshot.revision);
+    if (!enums) {
+        const compiled = await compileSqlEnvironment({ catalog: catalog.snapshot, tables: [], inspections: [] });
+        if (compiled.status === "failed") {
+            throw new McpReadError("validation_failed", "Project SQL catalog is not executable", {
+                catalogRevision: catalog.snapshot.revision,
+                diagnostics: compiled.diagnostics,
+            });
+        }
+        enums = compiled.environment.enums;
+        await compiled.environment.dispose();
+        validatedCatalogs.set(catalog.snapshot.revision, enums);
+    }
+    for (const object of catalog.snapshot.objects) await db.exec(object.source);
+    return { snapshot: catalog.snapshot, enums };
+}
+
+/** Validate a Table candidate and its records through the shared compiler. */
+export async function validateProjectTableCandidate(
+    projectId: string,
+    doc: Y.Doc,
+    table: {
+        id: string;
+        schema: string;
+        records?: readonly { id: string; values: Readonly<Record<string, unknown>>; }[];
+    },
+    options: { acquireSharedDb?: boolean; } = {},
+): Promise<{ catalogRevision: string; enums: readonly SqlEnumMetadata[]; tableName?: string; columnCount?: number; }> {
+    const catalog = readSqlCatalog(projectId, doc as never);
+    if (catalog.status !== "ready") {
+        throw new McpReadError("validation_failed", `Project SQL catalog is ${catalog.status}: ${catalog.reason}`);
+    }
+    const compiled = await compileSqlEnvironment(
+        {
+            catalog: catalog.snapshot,
+            tables: [{ ...table, records: table.records ?? [] }],
+            inspections: [],
+        },
+        options.acquireSharedDb
+            ? {
+                acquire: async () => {
+                    const lease = await acquireDb();
+                    return { db: lease.db, release: lease.release };
+                },
+            }
+            : {},
+    );
+    if (compiled.status === "failed" && compiled.diagnostics.some(diagnostic => diagnostic.kind !== "record")) {
+        throw new McpReadError("validation_failed", "Table schema is not supported by the project SQL catalog", {
+            catalogRevision: catalog.snapshot.revision,
+            diagnostics: compiled.diagnostics,
+        });
+    }
+    // Schema migration validation reports incompatible existing records using
+    // its established per-record diagnostics below. The compiler still sees
+    // those records (and therefore validates ENUM membership), but record-only
+    // failures do not hide the migration diff behind a top-level exception.
+    if (compiled.status === "failed") return { catalogRevision: catalog.snapshot.revision, enums: [] };
+    const enums = compiled.environment.enums;
+    const relations = await compiled.environment.query<{ name: string; column_count: number; }>(
+        "SELECT c.relname AS name, count(a.attnum)::int AS column_count FROM pg_class c "
+            + "JOIN pg_namespace n ON n.oid=c.relnamespace LEFT JOIN pg_attribute a "
+            + "ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped "
+            + "WHERE n.nspname='public' AND c.relkind='r' GROUP BY c.relname",
+    );
+    await compiled.environment.dispose();
+    return {
+        catalogRevision: catalog.snapshot.revision,
+        enums,
+        tableName: relations.rows[0]?.name,
+        columnCount: relations.rows[0]?.column_count,
+    };
+}
+
+async function resultColumnMetadata(
+    db: PGlite,
+    fields: readonly QueryField[],
+    catalog: MaterializedCatalog,
+) {
+    const result: { name: string; type: string; enum?: unknown; }[] = [];
+    for (const field of fields) {
+        const type = await db.query<{ typname: string; nspname: string; }>(
+            "SELECT t.typname, n.nspname FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace WHERE t.oid=$1",
+            [field.dataTypeID],
+        );
+        const row = type.rows[0];
+        // PGlite reports the result type by OID. Catalog SQL names are
+        // unqualified and compiler-enforced in public, so the stable name is
+        // sufficient even if the engine normalizes the namespace field.
+        const enumType = row ? catalog.enums.find(value => value.name === row.typname) : undefined;
+        result.push({
+            name: field.name,
+            type: enumType?.identity ?? row?.typname ?? String(field.dataTypeID),
+            ...(enumType
+                ? {
+                    enum: {
+                        objectId: enumType.objectId,
+                        sqlType: enumType.identity,
+                        labels: enumType.labels,
+                        source: catalog.snapshot.objects.find(value => value.id === enumType.objectId),
+                    },
+                }
+                : {}),
+        });
+    }
+    return result;
 }
 
 interface TableEntry {
@@ -86,13 +213,20 @@ interface TableDoc {
  * exported so standalone Table creation reports the same token get_table
  * later computes for the unchanged Table.
  */
-export function tableContentRevision(tableId: string, displayName: string, sqlName: string, doc: Y.Doc): string {
+export function tableContentRevision(
+    tableId: string,
+    displayName: string,
+    sqlName: string,
+    doc: Y.Doc,
+    catalogRevision?: string,
+): string {
     return revisionOf({
         tableId,
         displayName,
         sqlName,
         rawSchemaSql: doc.getText("schema").toString(),
         tableStateVector: Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
+        catalogRevision,
     });
 }
 
@@ -102,6 +236,10 @@ export class OutlinerRelationService {
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
+        private readonly options: {
+            beforeRecordBatchPublication?: () => Promise<void>;
+            beforeGridQueryPublication?: () => Promise<void>;
+        } = {},
     ) {}
 
     /** Release the shared scratch database when the owning server shuts down. */
@@ -120,6 +258,7 @@ export class OutlinerRelationService {
                     String(entry.get("name") ?? ""),
                     String(entry.get("sqlName") ?? ""),
                     source,
+                    this.catalogRevision(projectId, doc),
                 );
             } finally {
                 await source.disconnect();
@@ -354,7 +493,8 @@ export class OutlinerRelationService {
             const source = await this.openTable(uid, projectId, tableId);
             const lease = await acquireDb();
             try {
-                const schema = await this.inspectTableSchema(lease.db, source.schema);
+                const catalog = await materializeProjectCatalog(lease.db, projectId, doc);
+                const schema = await this.inspectTableSchema(lease.db, source.schema, catalog);
                 const recordIds = [...source.data.keys()].sort((a, b) => a.localeCompare(b));
                 const after = cursor === undefined ? undefined : this.decodeTableCursor(cursor);
                 const start = after === undefined ? 0 : recordIds.findIndex(id => id.localeCompare(after) > 0);
@@ -387,7 +527,13 @@ export class OutlinerRelationService {
                             },
                         }
                         : {}),
-                    revision: this.tableRevision(tableId, table.displayName, table.relation, source),
+                    revision: this.tableRevision(
+                        tableId,
+                        table.displayName,
+                        table.relation,
+                        source,
+                        catalog.snapshot.revision,
+                    ),
                     // Embed the write-target schedule's SQL and timing directly (issue
                     // #5253, REQ-001): a client correcting scheduled SQL must be able to
                     // read it from get_table alone, without a second get_schedule hop.
@@ -433,6 +579,7 @@ export class OutlinerRelationService {
                         sourceProjectId: table.sourceProjectId,
                         sourceTableId: table.sourceTableId,
                     },
+                    catalog: { revision: catalog.snapshot.revision, enums: catalog.enums },
                 };
             } finally {
                 lease.release();
@@ -538,7 +685,13 @@ export class OutlinerRelationService {
 
     private castRecordValue(value: unknown, column: { name: string; dataType: string; kind: string; }): unknown {
         if (value === null || value === undefined) return null;
-        if (typeof value === "string" && value === "" && column.kind !== "text") return null;
+        // Empty strings retain their literal meaning for text and user-defined
+        // scalar types. In particular, an ENUM may explicitly declare '' as a
+        // label; only built-in non-string scalars keep the legacy blank-as-NULL
+        // input behavior.
+        if (typeof value === "string" && value === "" && column.kind !== "text" && column.kind !== "other") {
+            return null;
+        }
         const invalid = (expected: string) => {
             throw new Error(
                 `Value ${
@@ -595,7 +748,7 @@ export class OutlinerRelationService {
         );
     }
 
-    private async inspectTableSchema(db: PGlite, rawSql: string) {
+    private async inspectTableSchema(db: PGlite, rawSql: string, catalog?: MaterializedCatalog) {
         const empty = {
             status: "invalid" as const,
             columns: [] as {
@@ -617,8 +770,10 @@ export class OutlinerRelationService {
             );
             if (tables.rows.length !== 1) throw new Error("Schema definition must create exactly one table");
             const tableName = tables.rows[0].table_name;
-            const columns = await db.query<{ column_name: string; data_type: string; is_nullable: string; }>(
-                "SELECT column_name, data_type, is_nullable FROM information_schema.columns "
+            const columns = await db.query<
+                { column_name: string; data_type: string; udt_name: string; is_nullable: string; }
+            >(
+                "SELECT column_name, data_type, udt_name, is_nullable FROM information_schema.columns "
                     + "WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position",
                 [tableName],
             );
@@ -648,14 +803,27 @@ export class OutlinerRelationService {
             return {
                 status: "valid" as const,
                 tableName,
-                columns: columns.rows.map(column => ({
-                    name: column.column_name,
-                    dataType: column.data_type,
-                    kind: this.columnKind(column.data_type),
-                    isNullable: column.is_nullable !== "NO",
-                    isPrimaryKey: pk.has(column.column_name),
-                    checkOptions: options.get(column.column_name),
-                })),
+                columns: columns.rows.map(column => {
+                    const enumType = catalog?.enums.find(value => value.name === column.udt_name);
+                    return {
+                        name: column.column_name,
+                        dataType: enumType?.identity ?? column.data_type,
+                        kind: this.columnKind(column.data_type),
+                        isNullable: column.is_nullable !== "NO",
+                        isPrimaryKey: pk.has(column.column_name),
+                        checkOptions: options.get(column.column_name),
+                        ...(enumType
+                            ? {
+                                enum: {
+                                    objectId: enumType.objectId,
+                                    sqlType: enumType.identity,
+                                    labels: enumType.labels,
+                                    source: catalog?.snapshot.objects.find(value => value.id === enumType.objectId),
+                                },
+                            }
+                            : {}),
+                    };
+                }),
             };
         } catch (error) {
             return {
@@ -709,6 +877,7 @@ export class OutlinerRelationService {
             const source = await this.openTable(uid, projectId, tableId);
             const lease = await acquireDb();
             try {
+                await materializeProjectCatalog(lease.db, projectId, doc);
                 const current = await this.inspectTableSchema(lease.db, source.schema);
                 await this.clearScratchDatabase(lease.db);
                 const parsedSchema = await this.inspectTableSchema(lease.db, schemaSql);
@@ -722,6 +891,14 @@ export class OutlinerRelationService {
                         errors: [this.schemaDiagnostic(parsedSchema.error)],
                     };
                 }
+                await validateProjectTableCandidate(projectId, doc, {
+                    id: tableId,
+                    schema: schemaSql,
+                    records: [...source.data.entries()].map(([id, record]) => ({
+                        id,
+                        values: Object.fromEntries(record.entries()),
+                    })),
+                });
                 const nameError = parsedSchema.tableName === "outline_items"
                     ? `Table name "${parsedSchema.tableName}" is reserved`
                     : [...doc.getMap<Y.Map<unknown>>("yjsTables").entries()].some(([id, entry]) =>
@@ -821,6 +998,11 @@ export class OutlinerRelationService {
         schemaSql: string,
         precondition: MutationPrecondition & { expectedRevision: string; acknowledgeDestructive?: boolean; },
     ) {
+        const validatedCatalogRevision = await this.withProject(uid, projectId, doc => {
+            const catalog = readSqlCatalog(projectId, doc as never);
+            if (catalog.status !== "ready") throw new McpReadError("validation_failed", "SQL catalog unavailable");
+            return catalog.snapshot.revision;
+        });
         const cacheKey = this.idempotency.key(
             "update_table_schema",
             uid,
@@ -843,13 +1025,43 @@ export class OutlinerRelationService {
                 );
             }
             return this.withProject(uid, projectId, async doc => {
+                const currentCatalog = readSqlCatalog(projectId, doc as never);
+                if (
+                    currentCatalog.status !== "ready"
+                    || currentCatalog.snapshot.revision !== validatedCatalogRevision
+                ) {
+                    throw new McpReadError("stale_revision", "SQL catalog changed after schema validation", {
+                        expectedCatalogRevision: validatedCatalogRevision,
+                        actualCatalogRevision: currentCatalog.status === "ready"
+                            ? currentCatalog.snapshot.revision
+                            : undefined,
+                    });
+                }
                 const entry = doc.getMap<Y.Map<unknown>>("yjsTables").get(tableId);
                 if (!entry) throw new McpReadError("not_found", "Table not found");
                 const displayName = String(entry.get("name") ?? "");
                 const priorSqlName = String(entry.get("sqlName") ?? "");
                 const source = await this.openTable(uid, projectId, tableId);
                 try {
-                    const priorRevision = this.tableRevision(tableId, displayName, priorSqlName, source);
+                    const finalCatalog = readSqlCatalog(projectId, doc as never);
+                    if (
+                        finalCatalog.status !== "ready"
+                        || finalCatalog.snapshot.revision !== validatedCatalogRevision
+                    ) {
+                        throw new McpReadError("stale_revision", "SQL catalog changed after schema validation", {
+                            expectedCatalogRevision: validatedCatalogRevision,
+                            actualCatalogRevision: finalCatalog.status === "ready"
+                                ? finalCatalog.snapshot.revision
+                                : undefined,
+                        });
+                    }
+                    const priorRevision = this.tableRevision(
+                        tableId,
+                        displayName,
+                        priorSqlName,
+                        source,
+                        validatedCatalogRevision,
+                    );
                     assertRevision(precondition.expectedRevision, priorRevision, { tableId });
                     if (precondition.dryRun) {
                         return {
@@ -909,7 +1121,13 @@ export class OutlinerRelationService {
                     if (entry.get("sqlName") !== newSqlName) {
                         doc.transact(() => entry.set("sqlName", newSqlName));
                     }
-                    const revision = this.tableRevision(tableId, displayName, newSqlName, source);
+                    const revision = this.tableRevision(
+                        tableId,
+                        displayName,
+                        newSqlName,
+                        source,
+                        validatedCatalogRevision,
+                    );
                     return { tableId, applied: true, destructive, priorRevision, revision, validation };
                 } finally {
                     await source.disconnect();
@@ -1007,6 +1225,7 @@ export class OutlinerRelationService {
         }));
         const lease = await acquireDb();
         try {
+            const catalog = await materializeProjectCatalog(lease.db, projectId, doc);
             await lease.db.exec(SYSTEM_SCHEMA);
             for (const row of outlineRows) {
                 await lease.db.query(
@@ -1038,10 +1257,9 @@ export class OutlinerRelationService {
                 gridColumnsWithVisibility(components, resultColumnNames)
                     .map(column => [column.name, column.shown]),
             );
-            const resultColumns = (result.fields ?? []).map(field => ({
-                name: field.name,
-                type: String(field.dataTypeID),
-                shown: visibility.get(field.name) ?? true,
+            const resultColumns = (await resultColumnMetadata(lease.db, result.fields ?? [], catalog)).map(column => ({
+                ...column,
+                shown: visibility.get(column.name) ?? true,
             }));
             const dependencies = await this.queryPlanDependencies(
                 lease.db,
@@ -1096,7 +1314,11 @@ export class OutlinerRelationService {
      * race-free with respect to collaborator updates.
      */
     private validationSnapshot(doc: Y.Doc, sources: Map<string, TableDoc>): string {
+        const catalog = readSqlCatalog("validation-snapshot", doc as never);
         return revisionOf({
+            catalog: catalog.status === "ready"
+                ? { revision: catalog.snapshot.revision, objects: catalog.snapshot.objects }
+                : { status: catalog.status, reason: catalog.reason },
             tables: this.tables(doc).map(table => {
                 const source = sources.get(table.tableId);
                 return {
@@ -1154,7 +1376,16 @@ export class OutlinerRelationService {
                     name: request.name,
                 }, { dryRun: request.dryRun, beforePublication: authorize });
                 const { validation, ...configuration } = created;
-                return { ...configuration, applied: !request.dryRun, revision: revisionOf(created.query) };
+                const catalogRevision = await this.withProject(
+                    uid,
+                    projectId,
+                    doc => this.catalogRevision(projectId, doc),
+                );
+                return {
+                    ...configuration,
+                    applied: !request.dryRun,
+                    revision: revisionOf({ query: created.query, catalogRevision }),
+                };
             } catch (error) {
                 if (error instanceof McpReadError && error.code === "kind_mismatch") {
                     throw new McpReadError("invalid_argument", "Destination item is not a top-level Page");
@@ -1218,6 +1449,10 @@ export class OutlinerRelationService {
             try {
                 for (let attempt = 1; attempt <= MAX_CREATE_GRID_VALIDATIONS; attempt++) {
                     this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                    const catalogBefore = readSqlCatalog(projectId, doc as never);
+                    if (catalogBefore.status !== "ready") {
+                        throw new McpReadError("validation_failed", "Project SQL catalog is unavailable");
+                    }
                     const { validation, snapshot } = await this.validateGridCandidate(
                         uid,
                         projectId,
@@ -1245,6 +1480,18 @@ export class OutlinerRelationService {
                     // Mutation boundary: nothing below awaits until publication
                     // has completed, so no collaborator update can interleave.
                     const { table, page } = this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                    const currentCatalog = readSqlCatalog(projectId, doc as never);
+                    if (
+                        currentCatalog.status !== "ready"
+                        || currentCatalog.snapshot.revision !== catalogBefore.snapshot.revision
+                    ) {
+                        throw new McpReadError("stale_revision", "SQL catalog changed after Grid validation", {
+                            expectedCatalogRevision: catalogBefore.snapshot.revision,
+                            actualCatalogRevision: currentCatalog.status === "ready"
+                                ? currentCatalog.snapshot.revision
+                                : undefined,
+                        });
+                    }
                     if (this.validationSnapshot(doc, sources) !== snapshot) continue;
                     const gridName = name ?? String(table.get("name") ?? "");
                     const created = options.dryRun
@@ -1439,12 +1686,15 @@ export class OutlinerRelationService {
             const db = lease.db;
             let opened: TableDoc | undefined;
             try {
+                const catalog = await materializeProjectCatalog(db, projectId, doc);
                 const schema = table
                     ? (opened = await this.openTable(uid, projectId, table.tableId)).schema
                     : SYSTEM_SCHEMA;
                 await db.exec(schema);
-                const rows = await db.query<{ column_name: string; data_type: string; is_nullable: string; }>(
-                    `SELECT column_name, data_type, is_nullable FROM information_schema.columns
+                const rows = await db.query<
+                    { column_name: string; data_type: string; udt_name: string; is_nullable: string; }
+                >(
+                    `SELECT column_name, data_type, udt_name, is_nullable FROM information_schema.columns
                      WHERE table_name = $1 ORDER BY ordinal_position`,
                     [relation],
                 );
@@ -1452,11 +1702,25 @@ export class OutlinerRelationService {
                     relation,
                     kind: table ? "table" : "system",
                     ...(table ? { tableId: table.tableId, displayName: table.displayName } : {}),
-                    columns: rows.rows.map(row => ({
-                        name: row.column_name,
-                        type: row.data_type,
-                        nullable: row.is_nullable === "YES",
-                    })),
+                    columns: rows.rows.map(row => {
+                        const enumType = catalog.enums.find(value => value.name === row.udt_name);
+                        return {
+                            name: row.column_name,
+                            type: enumType?.identity ?? row.data_type,
+                            nullable: row.is_nullable === "YES",
+                            ...(enumType
+                                ? {
+                                    enum: {
+                                        objectId: enumType.objectId,
+                                        sqlType: enumType.identity,
+                                        labels: enumType.labels,
+                                        source: catalog.snapshot.objects.find(value => value.id === enumType.objectId),
+                                    },
+                                }
+                                : {}),
+                        };
+                    }),
+                    catalogRevision: catalog.snapshot.revision,
                     capabilities: {
                         select: true,
                         update: true,
@@ -1488,6 +1752,7 @@ export class OutlinerRelationService {
             const db = lease.db;
             const opened: TableDoc[] = [];
             try {
+                const catalog = await materializeProjectCatalog(db, projectId, doc);
                 await db.exec(SYSTEM_SCHEMA);
                 await this.loadOutlineItems(db, Project.fromDoc(doc));
                 for (const table of this.tables(doc)) {
@@ -1503,7 +1768,7 @@ export class OutlinerRelationService {
                 );
                 const rows = result.rows.slice(0, maxRows);
                 return {
-                    columns: (result.fields ?? []).map(field => ({ name: field.name, type: String(field.dataTypeID) })),
+                    columns: await resultColumnMetadata(db, result.fields ?? [], catalog),
                     rows,
                     rowCount: rows.length,
                     truncated: result.rows.length > maxRows,
@@ -1577,6 +1842,7 @@ export class OutlinerRelationService {
             const lease = await acquireDb();
             const opened: TableDoc[] = [];
             try {
+                const catalog = await materializeProjectCatalog(lease.db, projectId, doc);
                 await lease.db.exec(SYSTEM_SCHEMA);
                 await this.loadOutlineItems(lease.db, Project.fromDoc(doc));
                 let sourceRevision = "";
@@ -1629,6 +1895,7 @@ export class OutlinerRelationService {
                     const result = await lease.db.query<Record<string, unknown>>(
                         `SELECT * FROM (${bounded}\n) AS mcp_grid_trace LIMIT ${maxRows + 1}`,
                     );
+                    const resultColumns = await resultColumnMetadata(lease.db, result.fields ?? [], catalog);
                     const columnNames = (result.fields ?? []).map(field => field.name).slice(0, MAX_TRACE_COLUMNS);
                     const columns = gridColumnsWithVisibility(components, columnNames)
                         .filter(column => columnNames.includes(column.name));
@@ -1653,6 +1920,7 @@ export class OutlinerRelationService {
                         status: "completed",
                         orderSource,
                         columns,
+                        resultColumns,
                         rows: rows.map((values, index) => ({
                             identity: this.rowIdentity(values, index),
                             values: this.boundedTraceRow(values, columnNames),
@@ -1798,8 +2066,20 @@ export class OutlinerRelationService {
      * rather than the TableDoc snapshot fields, so it reflects a mutation
      * already applied earlier in the same call.
      */
-    private tableRevision(tableId: string, displayName: string, sqlName: string, source: TableDoc): string {
-        return tableContentRevision(tableId, displayName, sqlName, source.doc);
+    private tableRevision(
+        tableId: string,
+        displayName: string,
+        sqlName: string,
+        source: TableDoc,
+        catalogRevision?: string,
+    ): string {
+        return tableContentRevision(tableId, displayName, sqlName, source.doc, catalogRevision);
+    }
+
+    private catalogRevision(projectId: string, doc: Y.Doc): string {
+        const catalog = readSqlCatalog(projectId, doc as never);
+        if (catalog.status !== "ready") throw new McpReadError("validation_failed", "Project SQL catalog unavailable");
+        return catalog.snapshot.revision;
     }
 
     writeRelation(
@@ -1822,7 +2102,7 @@ export class OutlinerRelationService {
                 const table = this.tables(doc).find(value => value.relation === relation);
                 if (!table && relation !== "outline_items") throw new McpReadError("not_found", "Relation not found");
                 if (!table) return this.writeOutline(Project.fromDoc(doc), write, precondition);
-                return this.writeTableRelation(uid, projectId, table, write, precondition);
+                return this.writeTableRelation(uid, projectId, doc, table, write, precondition);
             });
             return { ...result, replayed };
         });
@@ -1831,6 +2111,7 @@ export class OutlinerRelationService {
     private async writeTableRelation(
         uid: string,
         projectId: string,
+        project: Y.Doc,
         table: TableEntry,
         write: RelationWrite,
         precondition: MutationPrecondition,
@@ -1838,7 +2119,14 @@ export class OutlinerRelationService {
         const source = await this.openTable(uid, projectId, table.tableId);
         try {
             const rowId = "rowId" in write ? write.rowId : String(write.values.id ?? crypto.randomUUID());
-            await this.validateTableWrite(table.relation, source, write, rowId);
+            const catalogRevision = await this.validateTableWrite(
+                projectId,
+                project,
+                table.relation,
+                source,
+                write,
+                rowId,
+            );
             const existing = source.data.get(rowId);
             const priorRevision = this.rowRevision(existing);
             if (write.op !== "INSERT") {
@@ -1856,6 +2144,15 @@ export class OutlinerRelationService {
                     priorRevision,
                     revision: priorRevision,
                 };
+            }
+            const currentCatalog = readSqlCatalog(projectId, project as never);
+            if (currentCatalog.status !== "ready" || currentCatalog.snapshot.revision !== catalogRevision) {
+                throw new McpReadError("stale_revision", "SQL catalog changed after record validation", {
+                    expectedCatalogRevision: catalogRevision,
+                    actualCatalogRevision: currentCatalog.status === "ready"
+                        ? currentCatalog.snapshot.revision
+                        : undefined,
+                });
             }
             source.data.doc?.transact(() => {
                 if (write.op === "INSERT") {
@@ -1996,6 +2293,7 @@ export class OutlinerRelationService {
                 const source = await this.openTable(uid, projectId, tableId);
                 const lease = await acquireDb();
                 try {
+                    const validatedCatalog = await materializeProjectCatalog(lease.db, projectId, doc);
                     const schema = await this.inspectTableSchema(lease.db, source.schema);
                     if (schema.status !== "valid") {
                         throw new McpReadError("validation_failed", "Table has no valid applied schema", { tableId });
@@ -2077,7 +2375,13 @@ export class OutlinerRelationService {
                             recordErrors: blocking.map(([recordId, message]) => ({ recordId, message })),
                         });
                     }
-                    const priorRevision = this.tableRevision(tableId, displayName, sqlName, source);
+                    const priorRevision = this.tableRevision(
+                        tableId,
+                        displayName,
+                        sqlName,
+                        source,
+                        validatedCatalog.snapshot.revision,
+                    );
                     assertRevision(precondition.expectedRevision, priorRevision, { tableId });
                     if (precondition.dryRun) {
                         return {
@@ -2091,6 +2395,32 @@ export class OutlinerRelationService {
                             })),
                         };
                     }
+                    await this.options.beforeRecordBatchPublication?.();
+                    const currentCatalog = readSqlCatalog(projectId, doc as never);
+                    if (
+                        currentCatalog.status !== "ready"
+                        || currentCatalog.snapshot.revision !== validatedCatalog.snapshot.revision
+                    ) {
+                        throw new McpReadError("stale_revision", "SQL catalog changed after record validation", {
+                            expectedCatalogRevision: validatedCatalog.snapshot.revision,
+                            actualCatalogRevision: currentCatalog.status === "ready"
+                                ? currentCatalog.snapshot.revision
+                                : undefined,
+                        });
+                    }
+                    // The Table revision is re-read after the asynchronous
+                    // publication barrier as part of the same final boundary.
+                    assertRevision(
+                        precondition.expectedRevision,
+                        this.tableRevision(
+                            tableId,
+                            displayName,
+                            sqlName,
+                            source,
+                            currentCatalog.status === "ready" ? currentCatalog.snapshot.revision : undefined,
+                        ),
+                        { tableId },
+                    );
                     source.doc.transact(() => {
                         for (const change of changes) {
                             const record = source.data.get(change.recordId)!;
@@ -2104,7 +2434,13 @@ export class OutlinerRelationService {
                         tableId,
                         applied: true,
                         priorRevision,
-                        revision: this.tableRevision(tableId, displayName, sqlName, source),
+                        revision: this.tableRevision(
+                            tableId,
+                            displayName,
+                            sqlName,
+                            source,
+                            currentCatalog.status === "ready" ? currentCatalog.snapshot.revision : undefined,
+                        ),
                         records: changes.map(change => ({
                             recordId: change.recordId,
                             revision: this.rowRevision(source.data.get(change.recordId)),
@@ -2157,7 +2493,10 @@ export class OutlinerRelationService {
                         );
                     }
                 }
-                const priorRevision = revisionOf(String(view.get("query") ?? ""));
+                const previous = String(view.get("query") ?? "");
+                const priorRevision = kind === "grid"
+                    ? revisionOf({ query: previous, catalogRevision: this.catalogRevision(projectId, doc) })
+                    : revisionOf(previous);
                 if (precondition.expectedRevision !== undefined) {
                     assertRevision(precondition.expectedRevision, priorRevision, { kind, viewId });
                 }
@@ -2168,17 +2507,24 @@ export class OutlinerRelationService {
                     view.set("query", query);
                     if (query !== previousQuery) view.set("sqlAliasPolicyVersion", 1);
                 }, "mcp-view-query");
-                return { kind, viewId, query, applied: true, priorRevision, revision: revisionOf(query) };
+                return {
+                    kind,
+                    viewId,
+                    query,
+                    applied: true,
+                    priorRevision,
+                    revision: kind === "grid"
+                        ? revisionOf({ query, catalogRevision: this.catalogRevision(projectId, doc) })
+                        : revisionOf(query),
+                };
             }).then(({ result, replayed }) => ({ ...result, replayed }));
         });
     }
 
     /**
-     * Repair a Grid query only after the same executable validation exposed by
-     * validate_grid_query succeeds. The final write still goes through
-     * setViewQuery, which rechecks the revision immediately before its single
-     * Yjs transaction; validation can therefore never overwrite a concurrent
-     * collaborator's edit.
+     * Repair a Grid query only after executable validation, retaining every
+     * opened dependency until its snapshot is rechecked immediately before
+     * the single Project transaction.
      */
     async updateGridQuery(
         uid: string,
@@ -2195,43 +2541,91 @@ export class OutlinerRelationService {
             precondition.dryRun ? undefined : precondition.operationId,
         );
         const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
-            const validation = await this.validateGridQuery(uid, projectId, gridId, query);
-            if (!validation.accepted) {
-                throw new McpReadError("validation_failed", "Grid query validation failed", {
-                    validation,
-                });
-            }
-            const dependencies = new Set<string>(validation.dependencies);
-            const dependencyWarnings = (validation.warnings ?? []).filter(warning =>
-                dependencies.has(warning.relation)
-            );
-            if (dependencyWarnings.length > 0) {
-                throw new McpReadError(
-                    "validation_failed",
-                    "Grid query dependencies could not be safely materialized",
-                    { validation: { ...validation, warnings: dependencyWarnings } },
-                );
-            }
-
-            const mutation = await this.setViewQuery(uid, projectId, "grid", gridId, query, {
-                expectedRevision: precondition.expectedRevision,
-                dryRun: precondition.dryRun,
+            return this.withProject(uid, projectId, async doc => {
+                const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
+                if (!grid) throw new McpReadError("not_found", "Grid not found");
+                const catalog = readSqlCatalog(projectId, doc as never);
+                if (catalog.status !== "ready") {
+                    throw new McpReadError("validation_failed", "SQL catalog unavailable");
+                }
+                const sources = new Map<string, TableDoc>();
+                try {
+                    const { validation, snapshot } = await this.validateGridCandidate(
+                        uid,
+                        projectId,
+                        doc,
+                        query,
+                        grid.get("components"),
+                        25,
+                        sources,
+                    );
+                    if (!validation.accepted || !snapshot) {
+                        throw new McpReadError("validation_failed", "Grid query validation failed", { validation });
+                    }
+                    const dependencies = new Set<string>(validation.dependencies);
+                    const dependencyWarnings = (validation.warnings ?? []).filter(warning =>
+                        dependencies.has(warning.relation)
+                    );
+                    if (dependencyWarnings.length > 0) {
+                        throw new McpReadError(
+                            "validation_failed",
+                            "Grid query dependencies could not be safely materialized",
+                            { validation: { ...validation, warnings: dependencyWarnings } },
+                        );
+                    }
+                    await this.options.beforeGridQueryPublication?.();
+                    if (!await this.canAccess(uid, projectId)) {
+                        throw new McpReadError("forbidden", "Project is inaccessible");
+                    }
+                    const currentCatalog = readSqlCatalog(projectId, doc as never);
+                    const currentSnapshot = this.validationSnapshot(doc, sources);
+                    if (
+                        currentCatalog.status !== "ready"
+                        || currentCatalog.snapshot.revision !== catalog.snapshot.revision
+                        || currentSnapshot !== snapshot
+                    ) {
+                        throw new McpReadError("stale_revision", "Grid query inputs changed after validation", {
+                            expectedCatalogRevision: catalog.snapshot.revision,
+                            actualCatalogRevision: currentCatalog.status === "ready"
+                                ? currentCatalog.snapshot.revision
+                                : undefined,
+                        });
+                    }
+                    const previousQuery = String(grid.get("query") ?? "");
+                    const priorRevision = revisionOf({
+                        query: previousQuery,
+                        catalogRevision: catalog.snapshot.revision,
+                    });
+                    assertRevision(precondition.expectedRevision, priorRevision, { kind: "grid", viewId: gridId });
+                    const applied = !precondition.dryRun;
+                    if (applied) {
+                        doc.transact(() => {
+                            grid.set("query", query);
+                            if (query !== previousQuery) grid.set("sqlAliasPolicyVersion", 1);
+                        }, "mcp-view-query");
+                    }
+                    const revision = applied
+                        ? revisionOf({ query, catalogRevision: catalog.snapshot.revision })
+                        : priorRevision;
+                    return {
+                        gridId,
+                        applied,
+                        priorRevision,
+                        revision,
+                        before: { revision: priorRevision },
+                        after: { query, revision: applied ? revision : priorRevision },
+                        validation,
+                        ordering: {
+                            source: validation.inferredOrdering,
+                            columns: validation.resultColumns.map(column => column.name),
+                            sampleRows: validation.sampleRows,
+                            truncated: validation.truncated,
+                        },
+                    };
+                } finally {
+                    for (const source of sources.values()) await source.disconnect();
+                }
             });
-            return {
-                gridId,
-                applied: mutation.applied,
-                priorRevision: mutation.priorRevision,
-                revision: mutation.revision,
-                before: { revision: mutation.priorRevision },
-                after: { query, revision: mutation.applied ? mutation.revision : mutation.priorRevision },
-                validation,
-                ordering: {
-                    source: validation.inferredOrdering,
-                    columns: validation.resultColumns.map(column => column.name),
-                    sampleRows: validation.sampleRows,
-                    truncated: validation.truncated,
-                },
-            };
         });
         return { ...result, replayed };
     }
@@ -2262,9 +2656,17 @@ export class OutlinerRelationService {
         }
     }
 
-    private async validateTableWrite(relation: string, source: TableDoc, write: RelationWrite, rowId: string) {
+    private async validateTableWrite(
+        projectId: string,
+        project: Y.Doc,
+        relation: string,
+        source: TableDoc,
+        write: RelationWrite,
+        rowId: string,
+    ) {
         const lease = await acquireDb();
         try {
+            const catalog = await materializeProjectCatalog(lease.db, projectId, project);
             await lease.db.exec(source.schema);
             await this.loadRecords(lease.db, relation, source.data);
             if (write.op === "INSERT") {
@@ -2282,6 +2684,7 @@ export class OutlinerRelationService {
                     [write.value, rowId],
                 );
             }
+            return catalog.snapshot.revision;
         } catch (error) {
             throw this.sqlError(error, "validation_failed");
         } finally {
