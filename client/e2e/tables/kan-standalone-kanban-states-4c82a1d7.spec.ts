@@ -58,7 +58,7 @@ test(
 
         await page.getByTestId("kanban-source-table-link").click();
         await page.getByRole("button", { name: "Delete table", exact: true }).click();
-        await page.getByRole("dialog").getByRole("button", { name: "Delete table", exact: true }).click();
+        await page.getByRole("dialog").getByRole("button", { name: "Delete table and keep references" }).click();
         await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
         await expect(page.getByTestId("kanban-missing-source")).toBeVisible({ timeout: 30000 });
         expect((await readKanbans(page))[0].sourceTableId).toBe(fixture.tableId);
