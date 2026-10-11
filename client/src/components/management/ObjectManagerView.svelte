@@ -9,6 +9,7 @@ import { userPreferencesStore } from "../../stores/UserPreferencesStore.svelte";
 import { navigateToOutlineItem } from "../../services/navigation/outlineItemNavigation";
 import type { ObjectPlacement } from "../../services/objectManager/objectPlacements";
 import { GRID_REGISTRY_KEY } from "../../services/yjstable/gridDocs";
+import { KANBAN_REGISTRY_KEY } from "../../services/yjstable/kanbanDocs";
 import { TABLE_REGISTRY_KEY } from "../../services/yjstable/tableDocs";
 import { userManager } from "../../auth/UserManager";
 import Loader from "../Loader.svelte";
@@ -184,6 +185,7 @@ function attachObservers(p: typeof project) {
     if (!p?.ydoc) return;
     observedTargets = [
         p.ydoc.getMap(GRID_REGISTRY_KEY),
+        p.ydoc.getMap(KANBAN_REGISTRY_KEY),
         p.ydoc.getMap(TABLE_REGISTRY_KEY),
         p.schedules,
         p.calendars,
