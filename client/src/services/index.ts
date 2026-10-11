@@ -12,7 +12,6 @@ export {
 // Yjs Service functions (Fluid replacement)
 export {
     acquireDemoClient,
-    acquireRouteClientByProjectTitle,
     cleanupClient as cleanupYjsClient,
     createClient as createYjsClient,
     createNewProject as createNewYjsProject,

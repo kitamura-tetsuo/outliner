@@ -1,4 +1,4 @@
-import { acquireRouteClientByProjectTitle } from "../services";
+import { getYjsClientByProjectTitle } from "../services";
 import { store } from "../stores/store.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { initializeDemoProject, releaseDemoProject } from "./demoInit";
@@ -33,14 +33,13 @@ export async function openRouteProject(
         return { projectId: handle.client.containerId, release: () => releaseDemoProject(projectName) };
     }
 
-    const acquired = await acquireRouteClientByProjectTitle(projectName);
-    if (!acquired) return undefined;
-    const client = acquired.client;
+    const client = await getYjsClientByProjectTitle(projectName);
+    if (!client) return undefined;
 
     yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
     const projectDoc = client.getProject?.();
     if (projectDoc) {
         store.project = projectDoc as unknown as NonNullable<typeof store.project>;
     }
-    return { projectId: client.containerId, release: acquired.release };
+    return { projectId: client.containerId, release: () => {} };
 }

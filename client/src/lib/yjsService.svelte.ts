@@ -15,6 +15,7 @@ const logger = getLogger("yjsService");
 interface ClientKey {
     type: "container" | "user";
     id: string;
+    principalId?: string;
 }
 
 type Instances = [YjsClient | undefined, Project | undefined];
@@ -23,7 +24,7 @@ class Registry {
     map = new SvelteMap<string, Instances>();
 
     key(k: ClientKey) {
-        return `${k.type}:${k.id}`;
+        return `${k.type}:${k.principalId ?? "anonymous"}:${k.id}`;
     }
 
     has(k: ClientKey) {
@@ -50,6 +51,10 @@ class Registry {
 
     delete(k: ClientKey) {
         this.map.delete(this.key(k));
+    }
+
+    deleteSerialized(key: string) {
+        this.map.delete(key);
     }
 
     entries() {
@@ -81,8 +86,8 @@ if (
 
 function keyFor(userId?: string, containerId?: string): ClientKey {
     return containerId
-        ? { type: "container", id: containerId }
-        : { type: "user", id: userId || "anonymous" };
+        ? { type: "container", id: containerId, principalId: userId || "anonymous" }
+        : { type: "user", id: userId || "anonymous", principalId: userId || "anonymous" };
 }
 
 function isTestEnvironment(): boolean {
@@ -202,10 +207,13 @@ const inFlight = new Map<string, Promise<YjsClient | undefined>>();
 /* eslint-enable svelte/prefer-svelte-reactivity */
 
 export function getClientByProjectTitle(projectTitle: string, signal?: AbortSignal): Promise<YjsClient | undefined> {
-    const existing = inFlight.get(projectTitle);
+    const principalId = userManager.getCurrentUser()?.id
+        ?? (isDemoProjectSlug(projectTitle) ? "anonymous-demo" : "anonymous");
+    const requestKey = `${principalId}:${projectTitle}`;
+    const existing = inFlight.get(requestKey);
     if (existing) return existing;
-    const p = resolveClientByProjectTitle(projectTitle, signal).finally(() => inFlight.delete(projectTitle));
-    inFlight.set(projectTitle, p);
+    const p = resolveClientByProjectTitle(projectTitle, signal).finally(() => inFlight.delete(requestKey));
+    inFlight.set(requestKey, p);
     return p;
 }
 
@@ -213,76 +221,6 @@ export interface AcquiredProjectClient {
     client: YjsClient;
     /** Disposes the connection only when this acquisition is the one that opened it. */
     release: () => void;
-}
-
-interface RouteClientEntry {
-    client: YjsClient;
-    refs: number;
-}
-
-/* eslint-disable svelte/prefer-svelte-reactivity -- Principal-scoped connection ownership bookkeeping. */
-const routeClients = new Map<string, RouteClientEntry>();
-const routeClientPromises = new Map<string, Promise<YjsClient | undefined>>();
-/* eslint-enable svelte/prefer-svelte-reactivity */
-
-/**
- * Acquire a private route connection scoped to the current authenticated
- * principal. Unlike the general workspace registry, this cache can never
- * reuse a Project connection opened by a previous principal.
- */
-export async function acquireRouteClientByProjectTitle(
-    projectTitle: string,
-    signal?: AbortSignal,
-): Promise<AcquiredProjectClient | undefined> {
-    const userId = userManager.getCurrentUser()?.id;
-    if (!userId || signal?.aborted) return undefined;
-    const projectId = await resolveProjectId(projectTitle);
-    if (!projectId || signal?.aborted) return undefined;
-    const key = `${userId}:${projectId}`;
-    let entry = routeClients.get(key);
-    if (!entry || entry.client.isDestroyed) {
-        let pending = routeClientPromises.get(key);
-        if (!pending) {
-            pending = (async () => {
-                try {
-                    const project = Project.createInstance(projectTitle);
-                    return await YjsClient.connect(projectId, project);
-                } catch (error) {
-                    logger.warn({ error, projectId, userId }, "[acquireRouteClientByProjectTitle] Project unavailable");
-                    return undefined;
-                }
-            })().finally(() => routeClientPromises.delete(key));
-            routeClientPromises.set(key, pending);
-        }
-        const client = await pending;
-        if (!client) return undefined;
-        if (signal?.aborted) {
-            queueMicrotask(() => {
-                if (!routeClients.has(key) && !client.isDestroyed) client.dispose();
-            });
-            return undefined;
-        }
-        entry = routeClients.get(key);
-        if (!entry || entry.client !== client) {
-            entry = { client, refs: 0 };
-            routeClients.set(key, entry);
-        }
-    }
-    entry.refs++;
-    let released = false;
-    return {
-        client: entry.client,
-        release: () => {
-            if (released) return;
-            released = true;
-            const current = routeClients.get(key);
-            if (!current || current.client !== entry?.client) return;
-            current.refs--;
-            if (current.refs > 0) return;
-            current.client.dispose();
-            routeClients.delete(key);
-        },
-    };
 }
 
 /** Return an already-authorized live project document without opening a connection. */
@@ -393,16 +331,21 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
         return await connectAndRegister(projectId, projectTitle, userId);
     }
 
-    // First, check the registry for a matching client
+    let authenticatedUserId = userManager.getCurrentUser()?.id;
+    if (!authenticatedUserId && isTestEnvironment()) authenticatedUserId = "test-user-id";
+    if (!authenticatedUserId) return undefined;
+
+    // Reuse only a connection established by the current principal. Project
+    // titles and room ids are not authorization credentials, and a prior
+    // principal's live document must never cross an authentication boundary.
     for (const [key, [client, project]] of registry.entries()) {
-        if (project?.title === projectTitle && client) {
+        if (key.startsWith(`container:${authenticatedUserId}:`) && project?.title === projectTitle && client) {
             if (!client.isDestroyed) {
                 logger.info(`[getClientByProjectTitle] Found existing client in registry`);
                 return client;
             } else {
                 logger.info(`[getClientByProjectTitle] Found disposed client in registry; evicting it`);
-                const [type, id] = key.split(":");
-                registry.delete({ type: type as "container" | "user", id });
+                registry.deleteSerialized(key);
             }
         }
     }
@@ -418,15 +361,8 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
     if (signal?.aborted) return undefined;
 
     if (projectId) {
-        let userId = userManager.getCurrentUser()?.id;
+        const userId = authenticatedUserId;
         const isTest = isTestEnvironment();
-
-        if (!userId && isTest) userId = "test-user-id";
-        if (!userId) {
-            // Cannot create a new client without a user ID
-            logger.info(`[getClientByProjectTitle] No userId, returning undefined`);
-            return undefined;
-        }
 
         // Handle placeholder title for test ids or UUIDs so they don't get saved as title
         let resolvedTitle = projectTitle;
@@ -457,11 +393,10 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
 }
 
 export function getProjectTitle(containerId: string): string {
-    // First, try to get the title from the loaded project in registry by exact key match
-    const entry = registry.get({ type: "container", id: containerId })
-        ?? registry.get({ type: "user", id: containerId });
-    if (entry?.[1]?.title) {
-        return entry[1].title;
+    const principalId = userManager.getCurrentUser()?.id;
+    if (principalId) {
+        const entry = registry.get(keyFor(principalId, containerId));
+        if (entry?.[1]?.title) return entry[1].title;
     }
 
     // Final fallback: return empty string
