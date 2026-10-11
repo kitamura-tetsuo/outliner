@@ -4,8 +4,9 @@ import { setItemCalendarId } from "../calendar/calendarBinding";
 import { getCalendar } from "../calendar/calendarService";
 import { getGridHandles } from "../yjstable/gridDocs";
 import { appendGridPlacement } from "../yjstable/gridPlacement";
+import { getKanban } from "../yjstable/kanbanDocs";
 
-export type PlaceableObjectType = "grid" | "calendar";
+export type PlaceableObjectType = "grid" | "calendar" | "kanban";
 
 export interface ObjectPlacementDragData {
     kind: "object-placement";
@@ -42,7 +43,7 @@ export function readObjectPlacementDrag(event: DragEvent): ObjectPlacementDragDa
             const data = JSON.parse(raw) as Partial<ObjectPlacementDragData>;
             if (
                 data.kind === "object-placement"
-                && (data.objectType === "grid" || data.objectType === "calendar")
+                && (data.objectType === "grid" || data.objectType === "calendar" || data.objectType === "kanban")
                 && typeof data.objectId === "string"
                 && data.objectId.length > 0
             ) return data as ObjectPlacementDragData;
@@ -65,6 +66,22 @@ export function placeObjectOnPage(
     if (objectType === "grid") {
         if (!getGridHandles(doc, objectId)) throw new Error("The Grid no longer exists.");
         doc.transact(() => appendGridPlacement(doc, pageId, objectId, author));
+        return;
+    }
+    if (objectType === "kanban") {
+        if (!getKanban(doc, objectId)) throw new Error("The Kanban no longer exists.");
+        const page = project.findPage(pageId);
+        if (!page) throw new Error("The destination Page no longer exists.");
+        doc.transact(() => {
+            // Source and destination were both revalidated immediately before
+            // the single synchronous structural mutation.
+            if (!getKanban(doc, objectId) || !project.findPage(pageId)) {
+                throw new Error("The Kanban or destination Page no longer exists.");
+            }
+            const placement = page.items.addNode(author);
+            placement.componentType = "kanban";
+            placement.kanbanId = objectId;
+        });
         return;
     }
     if (!getCalendar(project, objectId)) throw new Error("The Calendar no longer exists.");

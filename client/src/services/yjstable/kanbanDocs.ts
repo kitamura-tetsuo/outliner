@@ -24,6 +24,7 @@
 //   laneOrder      (string|null)[]   - ordered preferred lane values; SQL NULL
 //                                     is a real null, distinct from ""/"NULL".
 
+import type { Project } from "$shared/app-schema";
 import {
     applyKanbanUpdates,
     createKanbanEntry,
@@ -38,6 +39,7 @@ import {
 } from "$shared/services/kanbanDefinition";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
+import { findKanbanPlacements } from "../objectManager/objectPlacements";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { getTableRegistry } from "./tableDocs";
 
@@ -210,6 +212,56 @@ export function removeKanban(projectDoc: Y.Doc, kanbanId: string): boolean {
     // consumer releases against the detached entry remain harmless no-ops.
     destroyKanbanUndoManager(entry, true);
     projectDoc.transact(() => registry.delete(kanbanId));
+    return true;
+}
+
+/**
+ * Delete a Kanban object and every placement that is still bound to it at the
+ * mutation boundary. A placement rebound after a confirmation preview is not
+ * touched. Source Tables and their records are never owned by this operation.
+ */
+export function removeKanbanWithPlacements(project: Project, kanbanId: string): boolean {
+    const registry = getKanbanRegistry(project.ydoc);
+    const entry = registry.get(kanbanId);
+    if (!entry) return false;
+    const settings = readKanbanSettings(entry);
+    const placements = findKanbanPlacements(project, kanbanId);
+
+    const applyDelete = () =>
+        project.ydoc.transact(() => {
+            for (const placement of placements) {
+                try {
+                    const node = project.tree.getNodeValueFromKey(placement.itemKey) as Y.Map<unknown> | undefined;
+                    // The preview is informative, never authority over a newer binding.
+                    if (node?.get("componentType") === "kanban" && node.get("kanbanId") === kanbanId) {
+                        node.set("componentType", undefined);
+                        node.delete("kanbanId");
+                    }
+                } catch (_error) { /* Concurrently removed placements need no cleanup. */ }
+            }
+            const current = registry.get(kanbanId);
+            if (current) destroyKanbanUndoManager(current, true);
+            registry.delete(kanbanId);
+        });
+    const applyRestore = () =>
+        project.ydoc.transact(() => {
+            if (!registry.has(kanbanId)) createKanbanEntry(project.ydoc, kanbanId, settings.sourceTableId, settings);
+            for (const placement of placements) {
+                try {
+                    const node = project.tree.getNodeValueFromKey(placement.itemKey) as Y.Map<unknown> | undefined;
+                    if (node && node.get("componentType") === undefined) {
+                        node.set("componentType", "kanban");
+                        node.set("kanbanId", kanbanId);
+                    }
+                } catch (_error) { /* A placement removed later is not resurrected. */ }
+            }
+        });
+    globalUndoRouter.captureManual(applyDelete, {
+        type: "manual",
+        label: `Delete Kanban "${settings.name}"`,
+        undo: applyRestore,
+        redo: applyDelete,
+    });
     return true;
 }
 

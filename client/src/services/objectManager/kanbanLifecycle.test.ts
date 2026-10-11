@@ -1,0 +1,76 @@
+import { Project } from "$shared/app-schema";
+import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
+import { createKanban, getKanban, listKanbans, removeKanbanWithPlacements } from "../yjstable/kanbanDocs";
+import { getTableDependencies, removeTableWithPolicy } from "../yjstable/tableDependencies";
+import { createTable, listTables } from "../yjstable/tableDocs";
+import { buildObjectDependencyGraph } from "./objectDependencyGraph";
+import { placeObjectOnPage } from "./objectPlacement";
+import { findKanbanPlacements } from "./objectPlacements";
+
+function bind(item: { tree: { getNodeValueFromKey(key: string): unknown; }; key: string; }, id: string) {
+    const node = item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
+    node.set("componentType", "kanban");
+    node.set("kanbanId", id);
+}
+
+describe("Kanban placement and reference lifecycle", () => {
+    it("adds a reference-only placement after validating its Page and definition", () => {
+        const project = Project.createInstance("kanban-place");
+        const tableId = createTable(project.ydoc, "Tasks", "tasks");
+        const board = createKanban(project.ydoc, tableId, { kanbanId: "board" });
+        const page = project.addPage("Dashboard", "test");
+        placeObjectOnPage(project.ydoc, page.id, "kanban", board, "test");
+        expect(findKanbanPlacements(project, board)).toHaveLength(1);
+        expect(() => placeObjectOnPage(project.ydoc, "missing", "kanban", board, "test")).toThrow(/Page/);
+        expect(findKanbanPlacements(project, board)).toHaveLength(1);
+    });
+
+    it("discovers multiple placements and deletes only bindings still targeting the board", () => {
+        const project = Project.createInstance("kanban-lifecycle");
+        const tableId = createTable(project.ydoc, "Tasks", "tasks");
+        const first = createKanban(project.ydoc, tableId, { kanbanId: "first", name: "First" });
+        const second = createKanban(project.ydoc, tableId, { kanbanId: "second", name: "Second" });
+        const page = project.addPage("Dashboard", "test");
+        const a = page.items.addNode("test");
+        const b = page.items.addNode("test");
+        bind(a, first);
+        bind(b, first);
+        expect(findKanbanPlacements(project, first)).toHaveLength(2);
+
+        // Simulate a peer rebinding after the confirmation inventory.
+        (b.tree.getNodeValueFromKey(b.key) as Y.Map<unknown>).set("kanbanId", second);
+        expect(removeKanbanWithPlacements(project, first)).toBe(true);
+        expect(getKanban(project.ydoc, first)).toBeUndefined();
+        expect((a.tree.getNodeValueFromKey(a.key) as Y.Map<unknown>).get("kanbanId")).toBeUndefined();
+        expect((b.tree.getNodeValueFromKey(b.key) as Y.Map<unknown>).get("kanbanId")).toBe(second);
+        expect(listTables(project.ydoc).map(table => table.tableId)).toContain(tableId);
+    });
+
+    it("tracks primary and parsed query dependencies and applies both Table policies", () => {
+        const project = Project.createInstance("kanban-table-policy");
+        const a = createTable(project.ydoc, "A", "table_a");
+        const b = createTable(project.ydoc, "B", "table_b");
+        const direct = createKanban(project.ydoc, a, { kanbanId: "direct" });
+        const indirect = createKanban(project.ydoc, b, {
+            kanbanId: "indirect",
+            query: "SELECT * FROM table_a -- table_b in a comment\nWHERE 'table_b' = 'table_b'",
+        });
+        const deps = getTableDependencies(project, a);
+        expect(deps.dependentKanbanIds).toEqual([direct]);
+        expect(deps.indirectSqlReferences).toContainEqual({ type: "kanban", name: "Kanban" });
+        expect(buildObjectDependencyGraph(project.ydoc).dependenciesOf({ type: "kanban", id: indirect }))
+            .toEqual(expect.arrayContaining([{ type: "table", id: a }, { type: "table", id: b }]));
+
+        expect(removeTableWithPolicy(project, a, "keep-references")).toBeDefined();
+        expect(listKanbans(project.ydoc).map(board => board.kanbanId)).toEqual(
+            expect.arrayContaining([direct, indirect]),
+        );
+
+        const project2 = Project.createInstance("kanban-table-remove");
+        const source = createTable(project2.ydoc, "A", "table_a");
+        const direct2 = createKanban(project2.ydoc, source, { kanbanId: "direct" });
+        expect(removeTableWithPolicy(project2, source, "remove-direct-references")).toBeDefined();
+        expect(getKanban(project2.ydoc, direct2)).toBeUndefined();
+    });
+});

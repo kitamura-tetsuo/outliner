@@ -309,6 +309,14 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "Kanban placements reference one project board; removing this occurrence does not delete its source Table or records.",
+                    },
+                    {
+                        componentType: "kanban",
+                        kanbanId: "demo-tasks-kanban",
+                    },
+                    {
+                        text:
                             "Unified Find: open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. "
                             + "Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own "
                             + "write path, while a computed or read-only cell stays searchable but is never overwritten. "

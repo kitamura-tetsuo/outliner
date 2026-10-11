@@ -1,0 +1,15 @@
+id: KAN-91b8f20c
+title: Kanban placement and reference lifecycle
+title-ja: Kanban の配置と参照ライフサイクル
+description: Users can place project Kanbans on Pages and in Layout-compatible outline positions while keeping the board definition and source Table independent.
+category: tables
+status: implemented
+acceptance:
+- Kanban is a visual leaf and stores only its project-owned Kanban identity in each placement
+- Object management discovers all Kanban placements and revalidates live bindings when deleting a board
+- Table dependency analysis includes primary and parsed SQL references without matching comments or literals
+- Keeping Table references preserves affected Kanbans, while removing direct references removes only primary-source Kanbans and their placements
+- Missing Kanban definitions render an unavailable state and are not recreated from placement data
+tests:
+- client/src/services/objectManager/kanbanLifecycle.test.ts
+- shared/tests/services/outlineNodeKind.test.ts
