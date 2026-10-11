@@ -115,6 +115,11 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
                 },
             });
         }
+        const settings = getKanban(this.projectDoc, this.kanbanId);
+        if (!settings) this.publish(this.failure("unavailable", "Kanban definition is missing"));
+        else if (!settings.query.trim() || !settings.groupField) {
+            this.publish(this.failure("incomplete", "Kanban query and grouping column are required"));
+        }
         super.start();
     }
 
@@ -159,7 +164,6 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
                     : `Grouping result column "${settings.groupField}" is duplicated`,
             ));
         }
-
         const cardsByKey = new Map<KanbanLaneValue, KanbanCard[]>();
         const observedOrder: KanbanLaneValue[] = [];
         for (let index = 0; index < result.rows.length; index++) {
@@ -180,6 +184,21 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
                 sourceIdentity: sourceIdentity(row),
                 row,
             });
+        }
+
+        const configuredFields = [settings.titleField, ...settings.detailFields].filter(
+            (field): field is string => field !== undefined,
+        );
+        for (const field of configuredFields) {
+            const roleMatches = result.columns.filter(column => column === field).length;
+            if (roleMatches !== 1) {
+                return this.publish(this.failure(
+                    "invalid",
+                    roleMatches === 0
+                        ? `Configured result column "${field}" is missing`
+                        : `Configured result column "${field}" is duplicated`,
+                ));
+            }
         }
 
         const schema = this.sourceAdapter.appliedSchema;

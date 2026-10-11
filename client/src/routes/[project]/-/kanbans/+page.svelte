@@ -1,0 +1,1 @@
+<script lang="ts">import {page} from "$app/state";import KanbanListView from "../../../../components/management/KanbanListView.svelte";let projectName=$derived(page.params.project??"");</script><KanbanListView {projectName}/>
