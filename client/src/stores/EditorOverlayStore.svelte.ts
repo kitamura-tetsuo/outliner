@@ -2194,6 +2194,10 @@ export class EditorOverlayStore {
 
         if (start === end) {
             this.clearSelectionForUser("local");
+            // Clearing the combined mirror queues another native selectionchange
+            // in Firefox. Restore the focused item's text and mapped caret now,
+            // before that readback can interpret the empty mirror as offset zero.
+            this.syncTextareaToActiveItem();
             return;
         }
 
