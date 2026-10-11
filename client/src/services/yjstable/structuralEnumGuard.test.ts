@@ -12,7 +12,7 @@ import { createGrid } from "./gridDocs";
 import { getGridSourceTableId, listGrids } from "./gridDocs";
 import { appendGridPlacement } from "./gridPlacement";
 import { duplicateObjects } from "./objectDuplication";
-import { createTable, getTableHandles, listTables } from "./tableDocs";
+import { createTable, getTableHandles, listTables, type TableRecordValue } from "./tableDocs";
 
 function typedProject(
     guid: string,
@@ -26,7 +26,7 @@ function typedProject(
     );
     const tableId = createTable(doc, "Tasks", "tasks", handles => {
         handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
-        const row = new Y.Map<string>();
+        const row = new Y.Map<TableRecordValue>();
         row.set("id", "one");
         row.set("state", labels[0]);
         handles.data.set("one", row);
@@ -105,7 +105,7 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
         createSqlCatalogObject(plain, "enum", "this is not a catalog declaration");
         const tableId = createTable(plain, "Notes", "notes", undefined, handles => {
             handles.schemaText.insert(0, "CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT)");
-            const row = new Y.Map<string>();
+            const row = new Y.Map<TableRecordValue>();
             row.set("id", "one");
             row.set("body", "unchanged");
             handles.data.set("one", row);

@@ -218,7 +218,7 @@ export interface AcquiredProjectClient {
 /** Return an already-authorized live project document without opening a connection. */
 export function getLoadedProjectDocById(projectId: string): Y.Doc | undefined {
     for (const [, [client]] of registry.entries()) {
-        if (!client.isDestroyed && client.project.ydoc.guid === projectId) return client.project.ydoc;
+        if (client && !client.isDestroyed && client.project.ydoc.guid === projectId) return client.project.ydoc;
     }
     return undefined;
 }
