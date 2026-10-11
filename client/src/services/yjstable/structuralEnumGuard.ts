@@ -77,6 +77,7 @@ export function portableStructuralEnumsStillCompatible(
     if (destination.status !== "ready") return false;
     const actual = destination.snapshot.objects.map(object => enumDeclaration(object.source));
     return required.every(expected => {
+        if (!expected) return true;
         const found = actual.find(candidate => candidate?.name === expected.name);
         return found !== undefined && found.labels.length === expected.labels.length
             && found.labels.every((label, index) => label === expected.labels[index]);
