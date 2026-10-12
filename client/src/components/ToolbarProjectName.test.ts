@@ -2,17 +2,11 @@ import { cleanup, render } from "@testing-library/svelte";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { Project } from "../schema/app-schema";
 import { isProvisionalProject, store } from "../stores/store.svelte";
+import { setPage } from "../tests/mocks/appState.svelte";
 import Toolbar from "./Toolbar.svelte";
 
-const mockPage = { params: { project: "" } };
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (run: (value: typeof mockPage) => void) => {
-            run(mockPage);
-            return () => {};
-        },
-    },
-}));
+vi.mock("$app/state", () => import("../tests/mocks/appState.svelte"));
+setPage({ params: { project: "" } });
 
 // Captured at import time, before any test clears the store: this is the
 // placeholder `store.svelte.ts` seeds from the URL at startup.
@@ -36,7 +30,7 @@ describe("Toolbar project name", () => {
         // `store` is a module-scoped singleton: a leftover project would leak
         // into the next test's "not loaded yet" assertion.
         store.project = undefined;
-        mockPage.params.project = "";
+        setPage({ params: { project: "" } });
     });
 
     test("renders no label while no project is loaded", () => {
@@ -56,7 +50,7 @@ describe("Toolbar project name", () => {
     });
 
     test("names the loaded project and links to its page list", async () => {
-        mockPage.params.project = "Alpha";
+        setPage({ params: { project: "Alpha" } });
         const project = Project.createInstance("stale Yjs title");
         const { findByTestId } = render(Toolbar, { props: { project } });
 
@@ -67,7 +61,7 @@ describe("Toolbar project name", () => {
     });
 
     test("falls back to the global store when no project prop is given", async () => {
-        mockPage.params.project = "From Directory";
+        setPage({ params: { project: "From Directory" } });
         store.project = Project.createInstance("stale Yjs title");
 
         const { findByTestId } = render(Toolbar, { props: {} });
@@ -77,7 +71,7 @@ describe("Toolbar project name", () => {
     });
 
     test("percent-encodes a title that is not URL-safe", async () => {
-        mockPage.params.project = "My Project/2";
+        setPage({ params: { project: "My Project/2" } });
         const project = Project.createInstance("stale Yjs title");
         const { findByTestId } = render(Toolbar, { props: { project } });
 

@@ -22,12 +22,12 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
         await page.waitForSelector("textarea.global-textarea:focus");
 
         // Wait for cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
     });
 
     test("Can select text within a single item by dragging the mouse", async ({ page }) => {
         // Wait for cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
@@ -62,7 +62,7 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
 
     test("Selection is displayed visually", async ({ page }) => {
         // Wait for cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
@@ -96,7 +96,7 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
 
     test("Can copy the text in the selection", async ({ page }) => {
         // Wait for cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);

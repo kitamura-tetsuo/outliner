@@ -17,7 +17,7 @@
     import { resolvePath } from "../../utils/pathUtils";
     import Breadcrumb from "../Breadcrumb.svelte";
     import YjsTableView from "../yjstable/YjsTableView.svelte";
-    import { getTableHandles, listTables } from "../../services/yjstable/tableDocs";
+    import { getTableHandles, getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
     // The mounted YjsTableView retains/releases the Grid's shared undo manager
     // and the Table's for its own lifetime, so this page only resolves handles.
     import { type GridHandles, getGridHandles, getGridSourceTableId } from "../../services/yjstable/gridDocs";
@@ -52,6 +52,40 @@
     let projectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
+    let observedTableRegistry: ReturnType<typeof getTableRegistry> | undefined;
+
+    function clearResolvedSource() {
+        tableHandles = undefined;
+        sourceTableName = undefined;
+        sourceTableSqlName = undefined;
+    }
+
+    function refreshSourceTable() {
+        if (!projectDoc || !gridHandles) return;
+        const resolvedSourceId = getGridSourceTableId(projectDoc, routeGridId);
+        sourceTableId = resolvedSourceId;
+        const entry = resolvedSourceId
+            ? listTables(projectDoc).find(t => t.tableId === resolvedSourceId)
+            : undefined;
+        const resolvedTable = resolvedSourceId ? getTableHandles(projectDoc, resolvedSourceId) : undefined;
+        clearResolvedSource();
+        if (!entry || !resolvedTable) {
+            missingSource = true;
+            return;
+        }
+        missingSource = false;
+        sourceTableId = entry.tableId;
+        sourceTableName = entry.name;
+        sourceTableSqlName = entry.sqlName || undefined;
+        tableHandles = resolvedTable;
+    }
+
+    const tableRegistryObserver = () => refreshSourceTable();
+
+    function stopObservingTableRegistry() {
+        observedTableRegistry?.unobserveDeep(tableRegistryObserver);
+        observedTableRegistry = undefined;
+    }
 
     // Public projects stay readable for anonymous visitors, matching the
     // standalone Table and Calendar routes.
@@ -86,6 +120,8 @@
         error = undefined;
         notFound = false;
         missingSource = false;
+        clearResolvedSource();
+        stopObservingTableRegistry();
 
         try {
             // Releases the previous reference before taking another, so a
@@ -114,24 +150,10 @@
             gridName = String(handles.entry.get("name") ?? "") || "Grid";
             projectDoc = store.project.ydoc;
 
-            const resolvedSourceId = getGridSourceTableId(store.project.ydoc, routeGridId);
-            const entry = resolvedSourceId
-                ? listTables(store.project.ydoc).find(t => t.tableId === resolvedSourceId)
-                : undefined;
-            const resolvedTable = resolvedSourceId
-                ? getTableHandles(store.project.ydoc, resolvedSourceId)
-                : undefined;
-            if (!entry || !resolvedTable) {
-                logger.warn(`Grid "${routeGridId}" has no resolvable source table`);
-                missingSource = true;
-                sourceTableId = resolvedSourceId;
-                return;
-            }
-
-            sourceTableId = entry.tableId;
-            sourceTableName = entry.name;
-            sourceTableSqlName = entry.sqlName || undefined;
-            tableHandles = resolvedTable;
+            observedTableRegistry = getTableRegistry(store.project.ydoc);
+            observedTableRegistry.observeDeep(tableRegistryObserver);
+            refreshSourceTable();
+            if (missingSource) logger.warn(`Grid "${routeGridId}" has no resolvable source table`);
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
             logger.error({ error: err }, "Failed to load grid page:");
@@ -154,6 +176,7 @@
 
         return () => {
             isDestroyed = true;
+            stopObservingTableRegistry();
             projectHandle?.release();
             projectHandle = undefined;
         };

@@ -33,7 +33,9 @@ test.describe("Paste Special in the source project", () => {
         expect(source.tables[0].dataSize).toBe(1);
 
         await openPasteSpecialAtAnchor(page);
+        await expect(page.getByTestId("paste-special-dialog")).toHaveJSProperty("open", true);
         await expect(page.getByTestId("paste-special-another-view")).toBeEnabled();
+        await expect(page.getByTestId("paste-special-another-view")).toBeFocused();
         await page.getByTestId("paste-special-another-view").click();
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
         let state = await readGridProjectState(page);

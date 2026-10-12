@@ -28,8 +28,13 @@ interface Props {
 let { value, editable, ariaLabel, editing = $bindable(false), editSeed, onCommit, onRequestFocus }: Props = $props();
 
 function commit(e: Event) {
-    editing = false;
-    onCommit((e.target as HTMLInputElement).value);
+    if (!editing) return;
+    try {
+        onCommit((e.target as HTMLInputElement).value);
+    } finally {
+        // The parent keeps the captured write authority until onCommit returns.
+        editing = false;
+    }
 }
 
 function focusNode(node: HTMLElement) {
@@ -76,6 +81,8 @@ function focusNode(node: HTMLElement) {
 <style>
 .cell-input {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     border: none;
     padding: 2px 4px;
     outline: 2px solid #2563eb;
@@ -85,6 +92,8 @@ function focusNode(node: HTMLElement) {
 .cell-value {
     display: block;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     text-align: left;
     background: transparent;
     border: none;

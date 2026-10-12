@@ -42,7 +42,7 @@ interface Props {
 }
 
 let {
-    value,
+    value = $bindable(),
     readOnly = false,
     ariaLabel,
     testId,
@@ -103,9 +103,15 @@ function currentValue(): string {
     return model?.getValue() ?? lastSyncedValue;
 }
 
+/** Read the editor's authoritative buffer before a surrounding form commits. */
+export function getValue(): string {
+    return currentValue();
+}
+
 function emitChange(text: string) {
     lastSyncedValue = text;
     dirty = true;
+    value = text;
     onChange?.(text);
 }
 

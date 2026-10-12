@@ -1,0 +1,84 @@
+name: PoC native Firefox Fcitx5 IME
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['poc/ubuntu-firefox-fcitx5-native-ime']
+    paths:
+      - '.github/workflows/poc-native-ime.yml'
+      - 'scripts/poc/native-ime/**'
+  pull_request:
+    paths:
+      - '.github/workflows/poc-native-ime.yml'
+      - 'scripts/poc/native-ime/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ime-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-ime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      IME_ARTIFACTS: ${{ github.workspace }}/job_logs/native-ime
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record execution identity before setup
+        run: |
+          mkdir -p "$IME_ARTIFACTS"
+          git rev-parse HEAD > "$IME_ARTIFACTS/tested-sha.txt"
+          echo "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > "$IME_ARTIFACTS/run-url.txt"
+          cat /etc/os-release > "$IME_ARTIFACTS/os-release.txt"
+      - name: Install native desktop experiment
+        id: desktop
+        run: bash scripts/poc/native-ime/setup.sh
+      - name: Test observation predicate
+        run: python3 -m unittest discover -s scripts/poc/native-ime -p 'test_*.py' -v
+      - name: Standalone native composition and controls
+        id: standalone
+        run: bash scripts/poc/native-ime/run.sh standalone
+      # Reuse the existing application startup only after native standalone success.
+      # Its Chromium installation is incidental; the PoC always launches /usr/bin/firefox.
+      - name: Prepare existing Outliner E2E runtime
+        id: dependencies
+        uses: ./.github/actions/setup-e2e-deps
+      - name: Build and start Outliner
+        id: application
+        env:
+          CI: 'true'
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISABLE_POSTHOG: 'true'
+          VITE_DISABLE_FLUID_TELEMETRY: 'true'
+        run: |
+          (cd server && npm run build)
+          bash scripts/ci-e2e-start.sh
+      - name: Observe native IME with the production textarea
+        id: outliner
+        run: bash scripts/poc/native-ime/run.sh outliner
+      - name: Generate execution report even on failure
+        if: always()
+        env:
+          IME_DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
+          IME_STANDALONE_OUTCOME: ${{ steps.standalone.outcome }}
+          IME_DEPENDENCIES_OUTCOME: ${{ steps.dependencies.outcome }}
+          IME_APPLICATION_OUTCOME: ${{ steps.application.outcome }}
+          IME_OUTLINER_OUTCOME: ${{ steps.outliner.outcome }}
+        run: |
+          python3 scripts/poc/native-ime/report.py
+          cat "$IME_ARTIFACTS/execution-report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload all evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-ime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            job_logs/native-ime/
+            server/logs/
+            client/logs/
+          if-no-files-found: error
+          retention-days: 14

@@ -1,11 +1,46 @@
 import { expect } from "chai";
 import fs from "node:fs";
-import { mcpLogger, mcpLogPath } from "../src/utils/log-manager.js";
+import { mcpLogPath, refreshMcpLogStream } from "../src/utils/log-manager.js";
 import { childKeys, gridIds, gridPlacements } from "./mcp-create-grid-fixture.js";
 import { httpGridFixture } from "./mcp-create-grid-http-fixture.js";
 
 describe("create_grid audit and publication failure (#5350)", function() {
     this.timeout(30000);
+
+    let logStream: fs.WriteStream;
+    before(() => {
+        logStream = refreshMcpLogStream();
+    });
+
+    async function readAuditRecords(operationIds: string[]) {
+        // Pino's multistream flush does not await fs.WriteStream writes. Queue a
+        // write callback on the actual destination before reading its file.
+        await new Promise<void>((resolve, reject) => {
+            logStream.write("", error => error ? reject(error) : resolve());
+        });
+        return fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean).map(line => JSON.parse(line))
+            .filter(record => record.event === "mcp_audit" && operationIds.includes(record.operationId));
+    }
+
+    it("waits for buffered audit writes before reading rejection records", async () => {
+        const f = httpGridFixture();
+        const operationId = `buffered-${crypto.randomUUID()}`;
+        logStream.cork();
+        try {
+            f.access.allowed = false;
+            expect((await f.call("create_grid", { ...f.args, operationId })).payload.code).to.equal("forbidden");
+            let uncorked = false;
+            setImmediate(() => {
+                uncorked = true;
+                logStream.uncork();
+            });
+            const records = await readAuditRecords([operationId]);
+            expect(uncorked).to.equal(true);
+            expect(records.map(record => record.outcome)).to.deep.equal(["forbidden"]);
+        } finally {
+            logStream.uncork();
+        }
+    });
 
     it("audits scope, schema and project authorization rejections", async () => {
         const f = httpGridFixture();
@@ -15,9 +50,7 @@ describe("create_grid audit and publication failure (#5350)", function() {
         expect((await f.call("create_grid", invalid)).payload.code).to.equal("invalid_argument");
         f.access.allowed = false;
         expect((await f.call("create_grid", { ...f.args, operationId })).payload.code).to.equal("forbidden");
-        await new Promise<void>((resolve, reject) => mcpLogger.flush(error => error ? reject(error) : resolve()));
-        const records = fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean).map(line => JSON.parse(line))
-            .filter(record => record.event === "mcp_audit" && record.operationId === operationId);
+        const records = await readAuditRecords([operationId]);
         expect(records.map(record => record.outcome)).to.deep.equal(["forbidden", "invalid_argument", "forbidden"]);
         for (const record of records) {
             expect(record).to.include({
@@ -61,9 +94,7 @@ describe("create_grid audit and publication failure (#5350)", function() {
         const subtree = (await f.call("get_subtree", { projectId: args.projectId, itemId: args.pageId })).payload;
         expect(subtree.root.children.map((child: { id: string; }) => child.id)).to.deep.equal(before.children);
 
-        await new Promise<void>((resolve, reject) => mcpLogger.flush(error => error ? reject(error) : resolve()));
-        const records = fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean).map(line => JSON.parse(line))
-            .filter(record => record.event === "mcp_audit" && [operationId, failedId].includes(record.operationId));
+        const records = await readAuditRecords([operationId, failedId]);
         expect(records).to.have.length(4);
         expect(records.map(({ dryRun, outcome, applied, replayed }) => ({ dryRun, outcome, applied, replayed }))).to
             .deep.equal([

@@ -18,7 +18,7 @@
 // but as project-parameterized functions rather than a singleton store,
 // since "per project" is a call argument here, not a fixed module scope.
 
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 
 export interface CalendarDestinationHistoryEntry {
     /** Tree key of the parent item the new entry would be created under. */

@@ -1,6 +1,6 @@
 <script lang="ts">
     import Loader from "../../../components/Loader.svelte";
-    import { page } from "$app/stores";
+    import { page } from "$app/state";
 import { goto } from "$app/navigation";
     import { resolvePath } from "../../../utils/pathUtils";
     import { onDestroy, untrack } from "svelte";
@@ -19,9 +19,9 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 
     const logger = getLogger("DemoPageView");
 
-    let pageName: string = $derived($page.params.page || "");
+    let pageName: string = $derived(page.params.page || "");
     // Which demo project this route is showing (`demo`, `demo-ja`, …).
-    let demoProject: string = $derived($page.params.demoProject as string);
+    let demoProject: string = $derived(page.params.demoProject as string);
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
@@ -180,9 +180,9 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             const newRoute = resolvePath(projectPagePath(demoProject, trimmedTitle));
             logger.info(`Title changed from "${decodedPageName}" to "${trimmedTitle}", updating URL to ${newRoute}`);
             // The visitor is typing in the title this route is following:
-            // `keepFocus`/`noScroll` stop SvelteKit's post-navigation focus and
+            // `reset: false` stops SvelteKit's post-navigation focus and
             // scroll reset from throwing the caret back to the start of it.
-            goto(newRoute, { replaceState: true, keepFocus: true, noScroll: true });
+            goto(newRoute, { replace: true, reset: false });
         }
     });
 

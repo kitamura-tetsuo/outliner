@@ -5,6 +5,7 @@
 // that cannot be represented in the column's type is a per-record sync error
 // (surfaced in the UI), never a silent coercion.
 
+import { serializeSqlEnumValue } from "$shared/services/sqlEnumValue";
 import { TableSqlError } from "./pgliteService";
 import type { ColumnKind, TableColumnSchema } from "./schemaIntrospection";
 
@@ -49,6 +50,13 @@ export function isValidDateString(value: string): boolean {
  */
 export function castValueForColumn(value: unknown, column: TableColumnSchema): unknown {
     if (value === null || value === undefined) return null;
+    if (column.kind === "enum") {
+        try {
+            return serializeSqlEnumValue(value, { labels: column.enumLabels ?? [] });
+        } catch {
+            throw castError(column, value, "ENUM label");
+        }
+    }
     if (typeof value === "string" && value === "" && column.kind !== "text") return null;
 
     const kind: ColumnKind = column.kind;

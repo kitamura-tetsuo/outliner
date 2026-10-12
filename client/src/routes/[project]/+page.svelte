@@ -1,6 +1,6 @@
 <script lang="ts">
     import Loader from "../../components/Loader.svelte";
-        import { page } from "$app/stores";
+        import { page } from "$app/state";
     import { onDestroy, onMount } from "svelte";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../../components/AuthComponent.svelte";
@@ -16,7 +16,7 @@
 
     // Get URL parameters (reactively)
     let projectName = $derived.by(() => {
-        return $page.params.project;
+        return page.params.project;
     });
 
     // Reactive page list (depends on store.pagesVersion)

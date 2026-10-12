@@ -1,3 +1,4 @@
+import { createSqlCatalogObject, readSqlCatalog } from "$shared/services/sqlCatalog";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { Project } from "../schema/app-schema";
@@ -819,6 +820,34 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             { text: "", depth: 0 },
             { text: "", depth: 0 },
         ]);
+    });
+
+    it("refuses a foreign Calendar cast when its captured ENUM is missing at the destination", async () => {
+        const source = new Y.Doc({ guid: "calendar-source" });
+        createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+        const captured = readSqlCatalog(source.guid, source);
+        if (captured.status !== "ready") throw new Error("catalog fixture unavailable");
+        const encoded = JSON.stringify({
+            version: 3,
+            sourceProjectId: source.guid,
+            items: [{ text: "", depth: 0, componentType: "calendar", calendarId: "calendar-1" }],
+            calendars: {
+                "calendar-1": {
+                    name: "Typed calendar",
+                    query: "SELECT id, text::task_state AS state FROM items",
+                    viewType: "month",
+                    groupAxes: [],
+                    laneOrder: [],
+                },
+            },
+            catalog: captured.snapshot,
+        });
+
+        const detail = await pasteAndCapture(encoded, "Calendar");
+
+        expect(detail).toBeUndefined();
+        expect(state.doc.getMap("calendars").size).toBe(0);
+        expect(listTables(state.doc)).toEqual([]);
     });
 
     it("keeps foreign version 1 and all-failed version 2 pastes on plain-text fallback without debris", async () => {

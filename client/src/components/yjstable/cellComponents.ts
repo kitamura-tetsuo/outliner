@@ -26,6 +26,9 @@ export interface CellProps {
     /** Initial text for an edit started by typing a printable character in Grid navigation mode. */
     editSeed?: string;
     onCommit: (value: string | number | boolean | null) => void;
+    /** Native select interactions retain their write authority until commit or blur. */
+    onEditStart?: () => void;
+    onEditEnd?: () => void;
     /** Grid navigation move after a keyboard commit/cancel; omitted means "stay on this cell". */
     onRequestFocus?: (direction?: GridNavDirection) => void;
 }
@@ -47,6 +50,7 @@ export function isCellComponentType(type: unknown): type is CellComponentType {
 /** Default component type derived from the schema column. */
 export function defaultCellType(column: TableColumnSchema | undefined): CellComponentType {
     if (!column) return "text";
+    if (column.kind === "enum") return "select";
     if (column.checkOptions && column.checkOptions.length > 0) return "select";
     switch (column.kind) {
         case "boolean":

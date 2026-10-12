@@ -1,8 +1,7 @@
 <script lang="ts">
     import Loader from "../../../components/Loader.svelte";
     import { resolvePath } from "../../../utils/pathUtils";
-    // Use SvelteKit page store from $app/stores (not $app/state)
-    import { page } from "$app/stores";
+    import { page } from "$app/state";
 import { goto } from "$app/navigation";
     import { onDestroy, onMount } from "svelte";
 
@@ -30,11 +29,10 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { pageViewStore } from "../../../stores/PageViewStore.svelte";
     import { store } from "../../../stores/store.svelte";
 
-    // Get URL parameters (follow SvelteKit page store)
-    // NOTE: Must reference the value of $page (not the store object).
-    // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
-    let projectName: string = $derived($page.params.project || "");
-    let pageName: string = $derived($page.params.page || "");
+    // Get URL parameters. `page` from $app/state is reactive, so these
+    // $derived values follow client-side navigation between pages.
+    let projectName: string = $derived(page.params.project || "");
+    let pageName: string = $derived(page.params.page || "");
 
     // Debug log
     // logger at init; avoid referencing derived vars outside reactive contexts to silence warnings
@@ -377,7 +375,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         // Svelte-managed navigation, replacing the entry so a rename does not
         // pile up history, and keeping focus so typing the next character is
         // not interrupted.
-        goto(newRoute, { replaceState: true, keepFocus: true, noScroll: true });
+        goto(newRoute, { replace: true, reset: false });
     });
 
     // Monitor route parameter changes reactively

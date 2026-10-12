@@ -3,13 +3,18 @@
 import { getLogger } from "./lib/logger";
 const logger = getLogger("ServiceWorker");
 
-import { build, files, version } from "$service-worker";
+import { version } from "$app/env";
+import { assets, immutable } from "$app/manifest";
+import { asset, resolve } from "$app/paths";
 
 const CACHE_NAME = `outliner-cache-${version}`;
+// App shell, Vite-built immutable files and the contents of `static/`.
+// `$app/manifest` paths are relative to the base path, so resolve them into
+// the same root-relative URLs the browser requests.
 const ASSETS = [
     "/",
-    ...build,
-    ...files,
+    ...immutable.map(file => resolve(file.path)),
+    ...assets.map(file => asset(file.path)),
 ];
 
 // Type definitions to avoid no-undef errors

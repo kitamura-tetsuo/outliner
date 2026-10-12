@@ -31,14 +31,14 @@ test.describe("SLR-0009: Item Drag and Drop", () => {
         await TestHelpers.insertText(page, firstId!, "First item text");
         await page.waitForTimeout(300);
         await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
         const secondItem = page.locator(".outliner-item").nth(1);
         const secondId = await secondItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, secondId!);
         await TestHelpers.insertText(page, secondId!, "Second item text");
         await page.waitForTimeout(300);
         await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
         const thirdItem = page.locator(".outliner-item").nth(2);
         const thirdId = await thirdItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, thirdId!);

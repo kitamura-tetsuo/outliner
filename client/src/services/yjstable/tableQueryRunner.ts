@@ -31,6 +31,7 @@ const logger = getLogger("tableQueryRunner");
 export interface TableRunnerCallbacks {
     onResult?: (result: TableQueryResult, execution?: TableQueryExecution) => void;
     onError?: (message: string | undefined) => void;
+    onInvalidated?: () => void;
 }
 
 export interface TableQueryExecution {
@@ -42,6 +43,26 @@ export interface TableQueryExecution {
     durationMs: number;
     rowCount: number;
     columnCount: number;
+}
+
+/**
+ * Consumer-side currency check for a saved Grid SELECT against its latest
+ * query execution (issue #5525).
+ *
+ * The producer (`runQueryNow`) executes `currentQuery().trim()` and records
+ * that trimmed string as `execution.query`, so a saved SELECT with leading or
+ * trailing whitespace that SQL execution ignores is current when trimmed
+ * equality holds. Only exact trimmed equality counts: differing SQL content,
+ * internal whitespace, comments, literals, or different query revisions are
+ * never equivalent. This checks currency only — callers keep their independent
+ * completed-execution, staleness/invalidation, and source-provenance checks.
+ */
+export function isCurrentExecutionForQuery(
+    execution: TableQueryExecution | undefined,
+    savedQuery: string,
+): boolean {
+    if (!execution || execution.status !== "completed") return false;
+    return execution.query === savedQuery.trim();
 }
 
 export interface TableRunnerOptions {
@@ -70,10 +91,26 @@ export abstract class TableQueryRunnerBase {
     private started = false;
 
     private unsubscribeSource: (() => void) | undefined;
+    private readonly dependencyUnsubscribes = new Map<object, () => void>();
 
     constructor(options: TableRunnerOptions) {
         this.sourceAdapter = options.sourceAdapter;
-        this.registry = options.registry ?? options.sourceAdapter.relationRegistry;
+        const registry = options.registry ?? options.sourceAdapter.relationRegistry;
+        this.registry = registry?.resolveRelation
+            ? {
+                ...registry,
+                resolveRelation: async sqlName => {
+                    const provider = await registry.resolveRelation!(sqlName);
+                    if (provider?.subscribeInvalidation && !this.dependencyUnsubscribes.has(provider)) {
+                        this.dependencyUnsubscribes.set(
+                            provider,
+                            provider.subscribeInvalidation(() => this.scheduleRequery()),
+                        );
+                    }
+                    return provider;
+                },
+            }
+            : registry;
     }
 
     /** The SELECT to execute right now. */
@@ -108,8 +145,9 @@ export abstract class TableQueryRunnerBase {
         this.started = true;
         this.observeQuerySource();
         this.unsubscribeSource = this.sourceAdapter.subscribe({
-            onSchemaChanged: () => this.scheduleRequery(),
+            onSchemaChanged: () => this.scheduleRequery(true),
             onDataApplied: () => this.scheduleRequery(),
+            onCatalogChanged: () => this.scheduleRequery(true),
         });
         this.scheduleRequery();
     }
@@ -122,22 +160,44 @@ export abstract class TableQueryRunnerBase {
             this.unobserveQuerySource();
             this.unsubscribeSource?.();
         }
+        for (const unsubscribe of this.dependencyUnsubscribes.values()) unsubscribe();
+        this.dependencyUnsubscribes.clear();
     }
 
     /** Called by a subclass when its query text changed. */
     protected invalidateQuery(): void {
-        this.scheduleRequery();
+        this.scheduleRequery(true);
     }
 
     /** Debounced re-run of the query. */
-    scheduleRequery(): void {
+    scheduleRequery(invalidateCompletedExecution = false): void {
         if (this.disposed) return;
+        this.onInputsInvalidated();
+        // A schema/catalog or query-definition change revokes the provenance
+        // of the completed execution immediately. A data notification does
+        // not: bulk writes intentionally apply several fields in one Yjs
+        // transaction, and revoking row/column authority after the first
+        // field would leave that transaction partially applied. The
+        // generation below still prevents an older in-flight data query from
+        // publishing after any kind of invalidation.
+        if (invalidateCompletedExecution) {
+            this.lastExecution = undefined;
+            for (const listener of this.listeners) listener.onInvalidated?.();
+        }
+        // Invalidate an execution that is already in flight immediately. The
+        // replacement remains debounced, but an old completion must not be
+        // published during that debounce window after query/schema/data input
+        // changed.
+        this.queryGeneration++;
         if (this.requeryTimer !== undefined) clearTimeout(this.requeryTimer);
         this.requeryTimer = setTimeout(() => {
             this.requeryTimer = undefined;
             void this.runQueryNow();
         }, REQUERY_DEBOUNCE_MS);
     }
+
+    /** Let a view invalidate displayed execution evidence before debounce. */
+    protected onInputsInvalidated(): void {}
 
     async runQueryNow(): Promise<TableQueryResult | undefined> {
         const generation = ++this.queryGeneration;
@@ -160,6 +220,8 @@ export abstract class TableQueryRunnerBase {
             return empty;
         }
         try {
+            await this.sourceAdapter.catalogReady();
+            if (isStale()) return undefined;
             const result = await executeGridQuery(query, {
                 pgSchema: this.sourceAdapter.sharedPgSchema,
                 registry: this.registry,

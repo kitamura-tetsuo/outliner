@@ -4,14 +4,14 @@ title-ja: MCPによる単独テーブルの作成
 status: implemented
 description: The create_table MCP mutation exposes authoritative server-side standalone Table creation. Its strict input is projectId, name, schemaSql, operationId, and optional dryRun; it creates one empty project-owned Table and no records, Grid, Page, or placement. Confirmed results return the Table ID, display and SQL names, exact schema, and creation revision that get_table, list_relations, query_sql, write_relation, and create_grid consume. Retries with the same operation ID join an in-flight attempt or replay the original typed outcome for five minutes after settlement, including an unknown publication outcome (internal_failure, creationOutcome unknown, applied null); confirmed pre-publication refusals are not retained. Dry runs validate against current state without creating, reserving, or consuming anything. Project authorization is checked before replay lookup, before publication, and before disclosure, and every dispatch is audited with its truthful effect without schema SQL, row values, tokens, or raw UIDs.
 tests:
-- server/tests/mcp-create-table-persistent.test.ts
-- server/tests/mcp-create-table-validation.test.ts
-- server/tests/mcp-create-table-dry-run.test.ts
-- server/tests/mcp-create-table-replay.test.ts
-- server/tests/mcp-create-table-history.test.ts
-- server/tests/mcp-create-table-outcomes.test.ts
+- server/tests/mcp-create-table-audit.test.ts
 - server/tests/mcp-create-table-authorization.test.ts
 - server/tests/mcp-create-table-contention.test.ts
 - server/tests/mcp-create-table-delivery.test.ts
-- server/tests/mcp-create-table-audit.test.ts
+- server/tests/mcp-create-table-dry-run.test.ts
+- server/tests/mcp-create-table-history.test.ts
 - server/tests/mcp-create-table-in-flight.test.ts
+- server/tests/mcp-create-table-outcomes.test.ts
+- server/tests/mcp-create-table-persistent.test.ts
+- server/tests/mcp-create-table-replay.test.ts
+- server/tests/mcp-create-table-validation.test.ts

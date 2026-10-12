@@ -7,6 +7,8 @@ import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
+import { collectAllItemIds, CursorNavigation, type CursorNavigationContext } from "./cursor/CursorNavigation";
+import { searchItem } from "./cursor/CursorNavigationUtils";
 import {
     getCurrentLineIndex,
     getDeepestDescendant,
@@ -17,9 +19,7 @@ import {
     hasSelection as storeHasSelection,
     resolveItemText,
     selectionSpansMultipleItems,
-} from "./cursor";
-import { collectAllItemIds, CursorNavigation, type CursorNavigationContext } from "./cursor/CursorNavigation";
-import { searchItem } from "./cursor/CursorNavigationUtils";
+} from "./cursor/index";
 
 import { diagramEditingTarget, isDiagramItem } from "../services/diagram/diagramEditing";
 import { nextCharacterOffset, previousCharacterOffset } from "../services/diagram/diagramSourceView";
@@ -1172,8 +1172,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
-        const deepest = getDeepestDescendant(root);
+        const deepest = getDeepestDescendant(root as unknown as Item);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
         this.updateSelectionAfterMove(startItemId, startOffset);
@@ -1187,8 +1186,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
-        const deepest = getDeepestDescendant(root);
+        const deepest = getDeepestDescendant(root as unknown as Item);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
         // This clears existing selection when moving without shift
@@ -1283,7 +1281,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        const deepest = getDeepestDescendant(root);
+        const deepest = getDeepestDescendant(root as unknown as Item);
         const endText = deepest.text || "";
 
         // Clear existing selection for the same user before setting new range

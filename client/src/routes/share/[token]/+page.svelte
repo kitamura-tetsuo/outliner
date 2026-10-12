@@ -1,12 +1,12 @@
 <script lang="ts">
-    import { page } from "$app/stores";
+    import { page } from "$app/state";
     import { getFirebaseFunctionUrl } from "$lib/firebaseFunctionsUrl";
     import { authStore } from "$stores/authStore.svelte";
     import { userManager } from "../../../auth/UserManager";
     import { goto } from "$app/navigation";
     import { resolvePath } from "../../../utils/pathUtils";
 
-    let token = $derived($page.params.token);
+    let token = $derived(page.params.token);
     let status = $state<"loading" | "success" | "error" | "unauthenticated">("loading");
     let message = $state<string>("Checking project invitation...");
 

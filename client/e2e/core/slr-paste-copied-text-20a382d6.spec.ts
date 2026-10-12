@@ -33,16 +33,16 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
         // Create selection manually
         await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            if (!store) return;
+            if (!store) throw new Error("editorOverlayStore is required for the selection fixture");
 
             // Select the second and third items
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 3) return;
+            if (items.length < 3) throw new Error("Required selection fixture items are missing");
 
             const secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!secondItemId || !thirdItemId) return;
+            if (!secondItemId || !thirdItemId) throw new Error("Required selection endpoint IDs are missing");
 
             // Set selection
             store.setSelection({

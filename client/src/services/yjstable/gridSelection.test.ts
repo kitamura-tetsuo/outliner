@@ -54,6 +54,19 @@ describe("GridSelection", () => {
         expect(selection.snapshot()).toEqual({ activeCell: undefined, anchorCell: undefined, regions: [] });
     });
 
+    it("preserves the active cell across a transient empty result while a query reloads", () => {
+        const selection = new GridSelection();
+        selection.select({ rowId: "row-b", columnId: "name" });
+        selection.reconcile([], []);
+        expect(selection.activeCell).toEqual({ rowId: "row-b", columnId: "name" });
+        expect(selection.anchorCell).toEqual({ rowId: "row-b", columnId: "name" });
+        expect(selection.contains({ rowId: "row-b", columnId: "name" })).toBe(true);
+        expect(selection.isActive({ rowId: "row-b", columnId: "name" })).toBe(true);
+        selection.reconcile(rows, columns);
+        expect(selection.activeCell).toEqual({ rowId: "row-b", columnId: "name" });
+        expect(selection.contains({ rowId: "row-b", columnId: "name" })).toBe(true);
+    });
+
     it("represents large ranges by axes rather than enumerating cells", () => {
         const manyRows = Array.from({ length: 10_000 }, (_, index) => `row-${index}`);
         const manyColumns = Array.from({ length: 100 }, (_, index) => `column-${index}`);

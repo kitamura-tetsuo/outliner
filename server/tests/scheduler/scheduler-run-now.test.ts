@@ -60,6 +60,10 @@ describe("Job Scheduler - runRuleNow", () => {
      */
     function seedRunnableRule(): Y.Map<unknown> {
         doc.getText("schema").insert(0, "CREATE TABLE t (id text primary key, title text);");
+        const table = new Y.Map<unknown>();
+        table.set("name", "Test table");
+        table.set("sqlName", "t");
+        doc.getMap("yjsTables").set("table1", table);
         const ruleMap = new Y.Map();
         ruleMap.set("sql", "SELECT 1;");
         ruleMap.set("targetTableId", "table1");

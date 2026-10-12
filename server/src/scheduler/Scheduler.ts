@@ -5,6 +5,8 @@ import { DateTime } from "luxon";
 import * as Y from "yjs";
 import { validateExplicitSelectAliases } from "../../../shared/src/services/explicitSelectAlias.js";
 import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
+import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
+import { serializeSqlEnumValue } from "../../../shared/src/services/sqlEnumValue.js";
 import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
 import { validateScheduleRowIdentities } from "./row-validation.js";
@@ -16,6 +18,7 @@ import {
     SCHEDULER_ORIGIN,
     type SchedulerCursor,
 } from "./schedule-status-publisher.js";
+import type { JobTableSnapshot } from "./worker-types.js";
 
 /** One generation a room still owes a published terminal state. */
 interface OwedRun {
@@ -810,6 +813,16 @@ export class JobScheduler {
         return { schemaSql, records };
     }
 
+    private tableSnapshot(id: string, doc: Y.Doc): JobTableSnapshot {
+        const table = this.readTableDoc(doc);
+        return {
+            id,
+            schema: table.schemaSql,
+            missingFieldsAsNull: true,
+            records: table.records.map((values, index) => ({ id: String(values.id ?? index), values })),
+        };
+    }
+
     /**
      * The other tables of the project the rule SQL reads from. A rule writes
      * into its target table only, but may query any table of the project (as
@@ -849,6 +862,34 @@ export class JobScheduler {
             }
         }
         return tables;
+    }
+
+    private async captureCatalog(rule: ScheduleIndexRow): Promise<SqlCatalogSnapshot> {
+        const connection = await this.hocuspocus.openDirectConnection(rule.room);
+        try {
+            if (!connection.document) throw new Error(`Project document unavailable: ${rule.room}`);
+            const catalog = readSqlCatalog(rule.room.replace(/^projects\//, ""), connection.document as never);
+            if (catalog.status !== "ready") throw new Error(`Project SQL catalog unavailable: ${catalog.reason}`);
+            return catalog.snapshot;
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private async captureTargetBinding(room: string, tableId: string): Promise<{ name: string; sqlName: string; }> {
+        const connection = await this.hocuspocus.openDirectConnection(room);
+        try {
+            const entry = connection.document?.getMap("yjsTables").get(tableId);
+            if (!(entry instanceof Y.Map)) throw new Error(`Target Table binding is unavailable: ${tableId}`);
+            const name = entry.get("name");
+            const sqlName = entry.get("sqlName");
+            if (typeof name !== "string" || typeof sqlName !== "string") {
+                throw new Error(`Target Table binding is unavailable: ${tableId}`);
+            }
+            return { name, sqlName };
+        } finally {
+            connection.disconnect();
+        }
     }
 
     /**
@@ -1329,9 +1370,11 @@ export class JobScheduler {
         occurrenceIso: string,
         ruleSql: string,
     ): Promise<{ success: boolean; error?: string; }> {
+        const targetTableId = rule.target_table_id;
+        if (!targetTableId) throw new Error("Schedule target Table is unavailable");
         // Table contents live in their own room (see client roomPath.ts:
         // `projects/<projectId>/tables/<tableId>`).
-        const docName = `${rule.room}/tables/${rule.target_table_id}`;
+        const docName = `${rule.room}/tables/${targetTableId}`;
         const directConnection = await this.hocuspocus.openDirectConnection(docName);
         const doc = directConnection.document;
 
@@ -1343,7 +1386,23 @@ export class JobScheduler {
         try {
             const dataMap = doc.getMap("data");
             const { schemaSql, records } = this.readTableDoc(doc);
-            if (!schemaSql) return { success: true };
+            if (!schemaSql) return { success: false, error: "Target Table schema is unavailable" };
+
+            const catalog = await this.captureCatalog(rule);
+            const targetBinding = await this.captureTargetBinding(rule.room, targetTableId);
+            const referenced = await this.loadReferencedTables(rule, ruleSql);
+            const tableSnapshots: JobTableSnapshot[] = [this.tableSnapshot(targetTableId, doc)];
+            for (const [index, table] of referenced.entries()) {
+                tableSnapshots.push({
+                    id: `referenced-${index}`,
+                    schema: table.schemaSql,
+                    missingFieldsAsNull: true,
+                    records: table.records.map((values, recordIndex) => ({
+                        id: String(values.id ?? recordIndex),
+                        values,
+                    })),
+                });
+            }
 
             const jobData = {
                 ruleId: rule.rule_id,
@@ -1353,8 +1412,11 @@ export class JobScheduler {
                 // The target table first, then the tables the SQL reads from.
                 tables: [
                     { schemaSql, records },
-                    ...await this.loadReferencedTables(rule, ruleSql),
+                    ...referenced,
                 ],
+                catalog,
+                tableSnapshots,
+                targetTableId,
                 timezone: rule.timezone,
                 occurrenceUtcIso: occurrenceIso,
             };
@@ -1375,16 +1437,42 @@ export class JobScheduler {
             }
 
             if (result.success && result.rows && result.rows.length > 0) {
+                const currentCatalog = await this.captureCatalog(rule);
+                const currentBinding = await this.captureTargetBinding(rule.room, targetTableId).catch(() => undefined);
+                const currentSchema = doc.getText("schema").toString();
+                if (
+                    currentCatalog.revision !== result.catalogRevision
+                    || currentSchema !== result.targetSchema
+                    || JSON.stringify(currentBinding) !== JSON.stringify(targetBinding)
+                ) {
+                    return { success: false, error: "stale-catalog/schema: Schedule inputs changed before write-back" };
+                }
                 const schemaDef = parseSchemaString(schemaSql);
 
+                let preparedRows: Record<string, unknown>[];
+                try {
+                    preparedRows = result.rows.map(row => {
+                        const validRow = { ...row };
+                        for (const [column, labels] of Object.entries(result.enumColumns ?? {})) {
+                            if (Object.prototype.hasOwnProperty.call(validRow, column)) {
+                                validRow[column] = serializeSqlEnumValue(validRow[column], { labels });
+                            }
+                        }
+                        return validRow;
+                    });
+                } catch {
+                    return { success: false, error: "Invalid ENUM label in Schedule result" };
+                }
+
                 doc.transact(() => {
-                    for (const row of result.rows!) {
+                    for (const row of preparedRows) {
                         // Identity validation above guarantees every successful
                         // row can be represented by the Yjs record map.
                         const id = row.id!;
 
                         let validRow = { ...row };
                         for (const col of schemaDef.columns) {
+                            if (result.enumColumns?.[col.name]) continue;
                             if (validRow[col.name] !== undefined && validRow[col.name] !== null) {
                                 try {
                                     validRow[col.name] = castValueForColumn(validRow[col.name], col.type);

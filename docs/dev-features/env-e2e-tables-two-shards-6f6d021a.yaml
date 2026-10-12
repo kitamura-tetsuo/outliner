@@ -1,0 +1,10 @@
+id: ENV-6f6d021a
+title: Tables E2E tests run in two CI shards
+title-ja: Tables E2E テストを CI の 2 シャードで実行
+description: The tables Playwright project is divided between two native Playwright shards in CI to reduce the duration of the slowest E2E job.
+category: environment
+status: implemented
+components:
+- .github/workflows/ci-test-e2e.yml
+tests:
+- scripts/tests/env-e2e-tables-two-shards-6f6d021a.spec.ts

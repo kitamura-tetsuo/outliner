@@ -35,7 +35,11 @@ test(
         await createTasksGrid(page, testInfo);
         const grid = page.getByTestId("yjs-table-view");
 
+        const sourceAction = grid.getByTestId("yjs-grid-source-table-link");
+        await expect(sourceAction).toHaveAttribute("href", /\/-\/tables\//);
+        const gridUrl = page.url();
         await dragSelectExactly(page, grid.getByTestId("yjs-table-name"), "Tasks");
+        expect(page.url()).toBe(gridUrl);
         await dragSelectExactly(page, grid.getByTestId("yjs-table-sql-name"), "tasks");
 
         const firstHeader = grid.locator(".th-label").first();

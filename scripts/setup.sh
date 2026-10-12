@@ -150,7 +150,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing global packages..."
   install_global_packages
   echo "Installing OS utilities..."
-  install_os_utilities
+  install_os_utilities --os-only
   echo "Installing Python packages..."
   if apt_is_available; then
     retry_apt_get -y install python3-venv python3-pip
@@ -234,8 +234,9 @@ else
     install_all_dependencies
   fi
   # A cached setup can still be missing the browser (fresh container, pruned
-  # cache). Skip the re-check only while a recorded fallback binary is valid.
-  if [ ! -s "${ROOT_DIR}/.playwright-chromium-path" ] \
+  # cache). A valid Chromium fallback never substitutes for the Firefox check.
+  if [ "${E2E_BROWSER:-chromium}" = "firefox" ] \
+    || [ ! -s "${ROOT_DIR}/.playwright-chromium-path" ] \
     || [ ! -x "$(head -n1 "${ROOT_DIR}/.playwright-chromium-path")" ]; then
     ensure_playwright_browsers
   fi

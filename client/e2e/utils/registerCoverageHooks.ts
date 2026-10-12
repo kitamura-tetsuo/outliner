@@ -1,6 +1,7 @@
 import { test } from "@playwright/test";
 import fs from "fs";
 import path from "path";
+import { registerBrowserEvidenceHooks } from "./registerBrowserEvidenceHooks";
 
 /**
  * Registers E2E test coverage collection hooks into the caller's scope (each spec file).
@@ -15,6 +16,7 @@ import path from "path";
  * - Default is Best-effort Coverage mode.
  */
 export function registerCoverageHooks(): void {
+    registerBrowserEvidenceHooks();
     if (process.env.E2E_DISABLE_COVERAGE === "1") {
         console.log("[Coverage] Disabled by E2E_DISABLE_COVERAGE environment variable");
         return;
@@ -37,7 +39,11 @@ export function registerCoverageHooks(): void {
  */
 function registerBestEffortCoverageHooks(): void {
     // Start coverage collection before each test
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, browserName }, testInfo) => {
+        if (browserName !== "chromium") {
+            testInfo.annotations.push({ type: "coverage", description: "V8 coverage is not collected in Firefox" });
+            return;
+        }
         try {
             console.log(`[Coverage] beforeEach start for: ${testInfo.title}`);
             await page.coverage.startJSCoverage({
@@ -45,12 +51,8 @@ function registerBestEffortCoverageHooks(): void {
                 reportAnonymousScripts: true,
             });
         } catch (error: unknown) {
-            if (
-                !error?.message
-                || !String(error instanceof Error ? error.message : String(error)).includes(
-                    "Coverage is already started",
-                )
-            ) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (!message.includes("Coverage is already started")) {
                 console.warn("[Coverage] Failed to start coverage collection:", error);
             } else {
                 console.log("[Coverage] already started");
@@ -59,7 +61,8 @@ function registerBestEffortCoverageHooks(): void {
     });
 
     // Save coverage after each test
-    test.afterEach(async ({ page }, testInfo) => {
+    test.afterEach(async ({ page, browserName }, testInfo) => {
+        if (browserName !== "chromium") return;
         try {
             console.log(`[Coverage] afterEach for: ${testInfo.title}, closed=${page.isClosed()}`);
             if (page.isClosed()) return;
@@ -101,7 +104,11 @@ function registerPreciseCoverageHooks(): void {
     let cdpSession: any = null;
 
     // Start Precise Coverage before each test
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, browserName }, testInfo) => {
+        if (browserName !== "chromium") {
+            testInfo.annotations.push({ type: "coverage", description: "CDP coverage is not collected in Firefox" });
+            return;
+        }
         try {
             console.log(`[PreciseCoverage] beforeEach start for: ${testInfo.title}`);
 
@@ -126,7 +133,8 @@ function registerPreciseCoverageHooks(): void {
     });
 
     // Save coverage after each test
-    test.afterEach(async ({ page }, testInfo) => {
+    test.afterEach(async ({ page, browserName }, testInfo) => {
+        if (browserName !== "chromium") return;
         try {
             console.log(`[PreciseCoverage] afterEach for: ${testInfo.title}, closed=${page.isClosed()}`);
             if (page.isClosed() || !cdpSession) return;

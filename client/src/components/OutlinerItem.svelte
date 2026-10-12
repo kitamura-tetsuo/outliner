@@ -1453,6 +1453,13 @@ function handleMouseDown(event: MouseEvent) {
         return;
     }
 
+    // Alt+Click adds a caret in handleClick. Starting editing on mousedown
+    // would clear the other row's caret before that additive handler runs.
+    if (event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        return;
+    }
+
     // Extend selection if Shift+Click
     if (event.shiftKey) {
         event.preventDefault();

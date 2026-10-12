@@ -8,6 +8,8 @@ import {
     projectGridPath,
     projectGridsPath,
     projectImportExportPath,
+    projectKanbanPath,
+    projectKanbansPath,
     projectManagementPath,
     projectObjectsPath,
     projectSchedulePath,
@@ -43,6 +45,7 @@ describe("managementPaths", () => {
         expect(projectGraphPath("acme")).toBe("/acme/-/graph");
         expect(projectTablesPath("acme")).toBe("/acme/-/tables");
         expect(projectGridsPath("acme")).toBe("/acme/-/grids");
+        expect(projectKanbansPath("acme")).toBe("/acme/-/kanbans");
         expect(projectCalendarsPath("acme")).toBe("/acme/-/calendars");
         expect(projectSchedulesPath("acme")).toBe("/acme/-/schedules");
     });
@@ -50,6 +53,7 @@ describe("managementPaths", () => {
     it("builds entity-detail paths nested under their list path", () => {
         expect(projectTablePath("acme", "tbl-1")).toBe("/acme/-/tables/tbl-1");
         expect(projectGridPath("acme", "grid-1")).toBe("/acme/-/grids/grid-1");
+        expect(projectKanbanPath("acme", "board-1")).toBe("/acme/-/kanbans/board-1");
         expect(projectCalendarPath("acme", "Team Calendar")).toBe("/acme/-/calendars/Team%20Calendar");
         expect(projectSchedulePath("acme", "rule-1")).toBe("/acme/-/schedules/rule-1");
     });
@@ -57,5 +61,6 @@ describe("managementPaths", () => {
     it("URL-encodes the project name and entity ids", () => {
         expect(projectObjectsPath("a/b")).toBe("/a%2Fb/-/objects");
         expect(projectTablePath("acme", "id with space")).toBe("/acme/-/tables/id%20with%20space");
+        expect(projectKanbanPath("acme", "board/id")).toBe("/acme/-/kanbans/board%2Fid");
     });
 });

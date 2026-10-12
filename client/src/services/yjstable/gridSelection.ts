@@ -249,6 +249,14 @@ export class GridSelection {
 
     /** Intersect logical identities with the refreshed query result. */
     reconcile(rowOrder: readonly string[], columnOrder: readonly string[]): void {
+        // A result with neither rows nor columns carries no information about
+        // what changed: the query runner publishes exactly this shape while a
+        // query is (re)loading or skipped for a missing schema, and the full
+        // result follows on the next emit. Clearing here would destroy the
+        // keyboard navigation state across that gap with no way to restore
+        // it, so an empty result preserves the selection untouched. Genuine
+        // removals still reconcile because they keep their result columns.
+        if (rowOrder.length === 0 && columnOrder.length === 0) return;
         const rows = new Set(rowOrder);
         const columns = new Set(columnOrder);
         this.regions = this.regions.flatMap<GridSelectionRegion>(region => {

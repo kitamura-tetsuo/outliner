@@ -7,7 +7,7 @@
     import { goto } from "$app/navigation";
 
 
-    import { page as pageStore } from "$app/stores";
+    import { page as pageState } from "$app/state";
     import { getTableRegistry, listTables, type TableRegistryEntry } from "../services/yjstable/tableDocs";
     import { createScheduleRule } from "../services/schedule/scheduleRuleService";
 import { onDestroy, onMount } from "svelte";
@@ -52,7 +52,7 @@ import { isPublicProject } from "../lib/publicProject";
     // pathname is what keeps `/demo-ja` from being mistaken for `/demo` —
     // `"/demo-ja/…".startsWith("/demo")` is true.
     let currentProjectName = $derived(
-        $pageStore.params.demoProject || $pageStore.params.project || "Untitled Project",
+        pageState.params.demoProject || pageState.params.project || "Untitled Project",
     );
 
     // Tables reactivity
@@ -320,8 +320,8 @@ import { isPublicProject } from "../lib/publicProject";
                                 <a
                                     href={`/${encodeURIComponent(project.name)}`}
                                     class="project-item"
-                                    aria-current={$pageStore.url.pathname === `/${encodeURIComponent(project.name)}` ? "page" : undefined}
-                                    class:active={$pageStore.url.pathname === `/${encodeURIComponent(project.name)}`}
+                                    aria-current={pageState.url.pathname === `/${encodeURIComponent(project.name)}` ? "page" : undefined}
+                                    class:active={pageState.url.pathname === `/${encodeURIComponent(project.name)}`}
                                 >
                                     <span class="item-content-wrapper">
                                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
@@ -407,8 +407,8 @@ import { isPublicProject } from "../lib/publicProject";
                                 <a
                                     class="page-item"
                                     href={pageHref}
-                                    aria-current={$pageStore.url.pathname === pageHref ? "page" : undefined}
-                                    class:active={$pageStore.url.pathname === pageHref}
+                                    aria-current={pageState.url.pathname === pageHref ? "page" : undefined}
+                                    class:active={pageState.url.pathname === pageHref}
                                     class:grid-drop-target={dragTargetPageId === page.id}
                                     class:object-drop-target={dragTargetPageId === page.id && !!draggedObject}
                                     ondragover={(event) => handlePageDragOver(event, page.id)}
@@ -484,8 +484,8 @@ import { isPublicProject } from "../lib/publicProject";
                                 <a
                                     href={resolvePath(projectTablePath(currentProjectName, table.tableId))}
                                     class="page-item table-link"
-                                    class:active={$pageStore.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId))}
-                                    aria-current={$pageStore.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId)) ? 'page' : undefined}
+                                    class:active={pageState.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId))}
+                                    aria-current={pageState.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId)) ? 'page' : undefined}
                                     data-table-id={table.tableId}
                                     onclick={closeSidebarIfMobile}
                                 >
@@ -575,8 +575,8 @@ import { isPublicProject } from "../lib/publicProject";
                                     class="page-item schedule-link"
                                     href={scheduleHref}
                                     data-schedule-id={schedule.id}
-                                    aria-current={$pageStore.url.pathname === scheduleHref ? "page" : undefined}
-                                    class:active={$pageStore.url.pathname === scheduleHref}
+                                    aria-current={pageState.url.pathname === scheduleHref ? "page" : undefined}
+                                    class:active={pageState.url.pathname === scheduleHref}
                                     onclick={closeSidebarIfMobile}
                                 >
                                     <span class="item-content-wrapper">
@@ -602,8 +602,8 @@ import { isPublicProject } from "../lib/publicProject";
             <a
                 class="settings-link"
                 href={resolvePath("/settings")}
-                aria-current={$pageStore.url.pathname === resolvePath("/settings") ? "page" : undefined}
-                class:active={$pageStore.url.pathname === resolvePath("/settings")}
+                aria-current={pageState.url.pathname === resolvePath("/settings") ? "page" : undefined}
+                class:active={pageState.url.pathname === resolvePath("/settings")}
             >
                 <span class="item-content-wrapper">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">

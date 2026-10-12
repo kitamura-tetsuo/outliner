@@ -40,6 +40,23 @@ export class TableRelationProvider implements RelationProvider {
         return this.adapter.appliedSchema !== undefined;
     }
 
+    subscribeInvalidation(listener: () => void): () => void {
+        // TableSyncAdapter replays its current schema on subscribe. That is
+        // establishment of the dependency, not a change after the query read
+        // it, so only subsequent schema notifications invalidate evidence.
+        let initialSchemaReplay = true;
+        return this.adapter.subscribe({
+            onSchemaChanged: () => {
+                if (initialSchemaReplay) {
+                    initialSchemaReplay = false;
+                    return;
+                }
+                listener();
+            },
+            onDataApplied: listener,
+        });
+    }
+
     async applyWrite(write: RelationWrite): Promise<void> {
         assertWriteAllowed(this.capabilities, write, this.sqlName || "table");
         switch (write.op) {
@@ -47,7 +64,12 @@ export class TableRelationProvider implements RelationProvider {
                 if (!this.handles.data.has(write.rowId)) {
                     throw new RelationWriteError(`Record "${write.rowId}" does not exist in this table`);
                 }
-                setRecordValue(this.handles, write.rowId, write.column, write.value as TableRecordValue);
+                this.adapter.commitRecordValue(
+                    write.rowId,
+                    write.column,
+                    write.value as TableRecordValue,
+                    this.adapter.writeAuthorityToken,
+                );
                 return;
             }
             case "UPDATE_APPEND": {

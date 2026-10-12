@@ -1,7 +1,7 @@
 <script lang="ts">
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import { onMount, onDestroy } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
 import Breadcrumb from "../../../../components/Breadcrumb.svelte";
@@ -57,7 +57,7 @@ async function loadLiveContent(proj: string, pTitle: string) {
 
 onMount(() => {
     try {
-        const params = $page.params as { project: string; page: string; };
+        const params = page.params as { project: string; page: string; };
         if (params) {
             project = params.project;
             pageTitle = params.page;

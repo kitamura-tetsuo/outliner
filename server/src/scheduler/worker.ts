@@ -1,5 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { parentPort } from "node:worker_threads";
+import { compileSqlEnvironment } from "../../../shared/src/services/sqlEnvironmentCompiler.js";
 import { logger } from "../logger.js";
 import { materializeScheduleRecords } from "./table-materialization.js";
 import { JobData } from "./worker-types.js";
@@ -108,6 +109,60 @@ async function executeJob(data: JobData) {
     }
 
     const db = await getDb();
+
+    if (data.catalog && data.tableSnapshots) {
+        const compiled = await compileSqlEnvironment({
+            catalog: data.catalog,
+            tables: data.tableSnapshots,
+            inspections: [{ id: data.ruleId, kind: "schedule", sql: data.ruleSql }],
+        }, { acquire: async () => ({ db, release: () => {} }) });
+        if (compiled.status === "failed") {
+            return {
+                success: false,
+                error: `Schedule environment unavailable: ${compiled.diagnostics.map(d => d.message).join("; ")}`,
+            };
+        }
+        try {
+            if (timezone) await compiled.environment.query(`SELECT set_config('timezone', $1, false)`, [timezone]);
+            if (occurrenceUtcIso) {
+                await compiled.environment.query(`SELECT set_config('job.occurrence', $1, false)`, [occurrenceUtcIso]);
+            }
+            const target = data.tableSnapshots.find(table => table.id === data.targetTableId);
+            const enumColumns: Record<string, readonly string[]> = {};
+            if (target) {
+                const relation = await compiled.environment.query<{ name: string; }>(
+                    "SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+                        + "WHERE n.nspname='public' AND c.relkind='r' ORDER BY c.oid",
+                );
+                const targetIndex = data.tableSnapshots.indexOf(target);
+                const tableName = relation.rows[targetIndex]?.name;
+                if (tableName) {
+                    const columns = await compiled.environment.query<{ column_name: string; enum_labels: string[]; }>(
+                        "SELECT a.attname AS column_name, ARRAY(SELECT e.enumlabel FROM pg_enum e "
+                            + "WHERE e.enumtypid=a.atttypid ORDER BY e.enumsortorder) AS enum_labels "
+                            + "FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace "
+                            + "WHERE n.nspname='public' AND c.relname=$1 AND a.attnum>0 AND NOT a.attisdropped",
+                        [tableName],
+                    );
+                    for (const column of columns.rows) {
+                        if (column.enum_labels.length) enumColumns[column.column_name] = column.enum_labels;
+                    }
+                }
+            }
+            const result = await compiled.environment.query<Record<string, unknown>>(ruleSql);
+            return {
+                success: true,
+                rows: result.rows,
+                catalogRevision: data.catalog.revision,
+                targetSchema: target?.schema,
+                enumColumns,
+            };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        } finally {
+            await compiled.environment.dispose();
+        }
+    }
 
     try {
         // Everything the job touches happens inside a transaction that is

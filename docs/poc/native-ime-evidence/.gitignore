@@ -1,0 +1,2 @@
+# Raw observation records belong in the native-ime CI artifact, not Git.
+*.json

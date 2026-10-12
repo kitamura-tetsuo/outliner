@@ -92,13 +92,39 @@ export async function dragBetweenTextOffsets(
     from: { itemId: string; offset: number; },
     to: { itemId: string; offset: number; },
 ): Promise<void> {
+    let viewport = page.viewportSize();
+    expect(viewport, "mouse selection requires a configured viewport").not.toBeNull();
+
+    const endpointBottoms = await Promise.all(
+        [from.itemId, to.itemId].map(async itemId => {
+            const box = await page.locator(`[data-item-id="${itemId}"] .item-text`).boundingBox();
+            expect(box, `the mouse endpoint ${itemId} must be rendered`).not.toBeNull();
+            return box!.y + box!.height;
+        }),
+    );
+    const requiredHeight = Math.ceil(Math.max(...endpointBottoms) + 100);
+    if (requiredHeight > viewport!.height) {
+        await page.setViewportSize({ width: viewport!.width, height: requiredHeight });
+        await waitForStableGeometry(page);
+        viewport = page.viewportSize();
+    }
+
+    const onScreen = (point: { x: number; y: number; }) => {
+        expect(point.x).toBeGreaterThanOrEqual(0);
+        expect(point.y).toBeGreaterThanOrEqual(0);
+        expect(point.x).toBeLessThan(viewport!.width);
+        expect(point.y).toBeLessThan(viewport!.height);
+    };
     const start = await pointForOffset(page, from.itemId, from.offset);
+    onScreen(start);
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
 
     const target = await pointForOffset(page, to.itemId, to.offset);
+    onScreen(target);
     await page.mouse.move(target.x, target.y, { steps: 12 });
     const settled = await pointForOffset(page, to.itemId, to.offset);
+    onScreen(settled);
     await page.mouse.move(settled.x, settled.y, { steps: 2 });
     await page.mouse.up();
     await page.waitForTimeout(500);

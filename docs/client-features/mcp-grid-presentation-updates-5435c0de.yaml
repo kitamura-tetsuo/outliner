@@ -4,11 +4,11 @@ title-ja: リビジョン検証付き・フィールド単位の Grid 表示設�
 status: implemented
 description: The server can read and update an existing Grid's saved presentation definition (name, stored column-order preference, per-column label/type/visibility keyed by exact SQL result-column name, Add row button and delete confirmation) without touching its Table, data, SQL query, source Table or placements. A read returns a detached snapshot and a grid-presentation-v1 content revision over the Grid identity, source Table, saved query and complete presentation; unrelated Table, Grid, Page and placement edits never change it, and the existing query-only Grid revision is a separate contract. An update validates the complete request first (strict keys, types, counts and UTF-8 byte limits), authorizes against the resource-side projectUsers/containerUsers ACL, re-authorizes and compares the revision against the live project room at the final mutation boundary, and applies only the changed top-level fields and component leaves in one Yjs transaction, so concurrent disjoint peer edits merge. Column settings are saved preferences that stay dormant while the query omits that name; nothing runs SQL. Dry runs return the current and a detached candidate presentation without any update. A confirmed apply is reported only after production storage acknowledges it; a storage failure after the write is reported as an unknown effect (internal_failure, applied null) and nothing is rolled back. The client's Grid writers now live in shared/src/services/gridDefinition.ts so the server regressions run the browser's exact creation/editing functions. MCP tool registration is a separate follow-up.
 tests:
-- server/tests/server-grid-presentation-labels.test.ts
-- server/tests/server-grid-presentation-fields.test.ts
-- server/tests/server-grid-presentation-validation.test.ts
-- server/tests/server-grid-presentation-stale.test.ts
-- server/tests/server-grid-presentation-preview.test.ts
-- server/tests/server-grid-presentation-dormant.test.ts
 - server/tests/server-grid-presentation-authorization.test.ts
+- server/tests/server-grid-presentation-dormant.test.ts
 - server/tests/server-grid-presentation-failures.test.ts
+- server/tests/server-grid-presentation-fields.test.ts
+- server/tests/server-grid-presentation-labels.test.ts
+- server/tests/server-grid-presentation-preview.test.ts
+- server/tests/server-grid-presentation-stale.test.ts
+- server/tests/server-grid-presentation-validation.test.ts

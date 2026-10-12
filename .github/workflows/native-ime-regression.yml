@@ -1,0 +1,138 @@
+name: Native IME regression
+
+# Issue #5501: native Japanese IME behavior of the shared editor input, verified with real
+# OS-level input against a freshly built copy of the revision under test (never the archived
+# PoC application pin). Ubuntu covers Firefox + Fcitx5 candidate placement (AS-002); Windows
+# covers Firefox + Microsoft Japanese IME editing outcomes (AS-003).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/native-ime-regression.yml'
+      - 'scripts/native-ime-regression/**'
+      - 'scripts/poc/native-ime/**'
+      - 'scripts/poc/windows-native-ime/**'
+      - 'scripts/poc/windows-linux-backend/**'
+      - 'client/src/components/GlobalTextArea.svelte'
+      - 'client/src/components/EditorOverlay.svelte'
+      - 'client/src/lib/KeyEventHandler.ts'
+      - 'client/src/stores/EditorOverlayStore.svelte.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu-firefox-fcitx5:
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: native-ime-ubuntu-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: true
+    timeout-minutes: 60
+    env:
+      IME_ARTIFACTS: ${{ github.workspace }}/job_logs/native-ime-regression/ubuntu
+      IME_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record execution identity
+        run: |
+          mkdir -p "$IME_ARTIFACTS"
+          git rev-parse HEAD > "$IME_ARTIFACTS/checkout-sha.txt"
+          echo "$IME_RUN_URL" > "$IME_ARTIFACTS/run-url.txt"
+          cat /etc/os-release > "$IME_ARTIFACTS/os-release.txt"
+      - name: Verdict unit controls
+        working-directory: scripts/native-ime-regression/ubuntu
+        run: python3 -m unittest discover -p 'test_*.py' -v
+      - name: Install native Firefox, Fcitx5 and Mozc
+        run: bash scripts/poc/native-ime/setup.sh
+      - name: Install native observer build dependencies
+        run: sudo apt-get install -y g++ pkg-config libfcitx5core-dev nlohmann-json3-dev
+      - name: Verify native selection observer and live controls
+        run: IME_ARTIFACTS="$IME_ARTIFACTS/selection-preflight" bash scripts/native-ime-regression/ubuntu/run.sh --check-selection
+      - name: Prepare application runtime
+        uses: ./.github/actions/setup-e2e-deps
+      - name: Build and start the application under test
+        env:
+          CI: 'true'
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISABLE_POSTHOG: 'true'
+          VITE_DISABLE_FLUID_TELEMETRY: 'true'
+        run: |
+          (cd server && npm run build)
+          bash scripts/ci-e2e-start.sh
+      - name: Verify the served application revision
+        run: node scripts/native-ime-regression/verify-served-revision.mjs . http://127.0.0.1:7090 "$IME_ARTIFACTS/application-identity.json"
+      - name: Native Firefox/Fcitx5 placement regression
+        run: bash scripts/native-ime-regression/ubuntu/run.sh
+      - name: Verdict and report
+        if: always()
+        run: python3 scripts/native-ime-regression/report.py ubuntu "$IME_ARTIFACTS"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-ime-ubuntu-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            job_logs/native-ime-regression/
+            server/logs/
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-firefox-microsoft-ime:
+    runs-on: windows-2025
+    # A long native run is queued rather than cancelled by a newer push, so its evidence completes.
+    concurrency:
+      group: native-ime-windows-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: false
+    timeout-minutes: 90
+    env:
+      NATIVE_IME_APPLICATION_SHA: ${{ github.sha }}
+      # Forward the evaluated revision into WSL for Compose interpolation during collection.
+      WSLENV: NATIVE_IME_APPLICATION_SHA/u
+    steps:
+      - uses: actions/checkout@v5
+      # The application under test is checked out separately from the harness, at the
+      # revision this workflow run evaluates.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          path: work/native-ime-app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Provision WSL2 Ubuntu and native Linux Docker Engine
+        shell: powershell
+        run: ./scripts/poc/windows-linux-backend/provision-wsl2.ps1
+      - name: Build and start the application under test
+        timeout-minutes: 40
+        shell: powershell
+        run: ./scripts/native-ime-regression/windows/start-backend.ps1
+      - name: Native Firefox/Microsoft IME one- and two-caret regression
+        timeout-minutes: 25
+        shell: powershell
+        env:
+          OUTLINER_NATIVE_BACKEND: wsl2-linux
+        run: ./scripts/poc/windows-native-ime/run.ps1
+      - name: Collect Linux service diagnostics and stop Compose
+        if: always()
+        timeout-minutes: 3
+        shell: powershell
+        run: |
+          $root = (Get-Location).Path.Replace('\', '/')
+          $linuxRoot = '/mnt/' + $root.Substring(0,1).ToLower() + $root.Substring(2)
+          wsl.exe --distribution Ubuntu --user root --exec bash "$linuxRoot/scripts/poc/windows-linux-backend/collect-compose.sh" "$linuxRoot/artifacts/windows-linux-backend"
+      - name: Verdict and report
+        if: always()
+        shell: powershell
+        run: python scripts/native-ime-regression/report.py windows artifacts/windows-native-ime
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-ime-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/windows-linux-backend/
+            artifacts/windows-native-ime/
+            !artifacts/windows-native-ime/firefox-profile/**
+          if-no-files-found: error
+          retention-days: 30
