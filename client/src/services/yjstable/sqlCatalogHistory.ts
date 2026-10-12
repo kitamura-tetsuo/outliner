@@ -77,8 +77,9 @@ export function toReplayResult(result: unknown, before: SqlCatalogSnapshot): Cat
  * Every read and mutation travels the server router with the Firebase ID
  * token; callers never supply a client-declared UID. Reconciliation has no
  * separate durable view from the browser, so a live snapshot that already
- * holds the intended source counts as durable-match while any other live
- * state is a conflict and an unreadable service is unavailable.
+ * holds the intended source is only a live-only-match (never durable-match)
+ * while any other live state is a conflict and an unreadable service is
+ * unavailable.
  */
 export function createTransportCatalogReplayService(projectId: string): CatalogReplayService {
     return {
@@ -129,7 +130,11 @@ export function createTransportCatalogReplayService(projectId: string): CatalogR
                 return { status: "unavailable" };
             }
             const current = live.objects.find(object => object.id === objectId);
-            if (sameSourceObject(current, desired)) return { status: "durable-match" };
+            // The browser holds only the live snapshot; without a durable
+            // read it cannot confirm persistence. A live match stays
+            // live-only-match so the adapter preserves history as unconfirmed
+            // instead of consuming the step as applied.
+            if (sameSourceObject(current, desired)) return { status: "live-only-match" };
             return { status: "conflict" };
         },
     };

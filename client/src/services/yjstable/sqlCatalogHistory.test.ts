@@ -45,7 +45,7 @@ describe("sqlCatalogHistory transport mapping", () => {
         expect(router.undoDepth).toBe(1);
     });
 
-    it("reconciles a live match as durable without a second durable view", async () => {
+    it("reconciles a live match as live-only, never durable, without a durable view", async () => {
         const service = createTransportCatalogReplayService("demo-project");
         const fetchMock = vi.spyOn(await import("./sqlCatalogClient"), "fetchCatalogSnapshot");
         fetchMock.mockResolvedValueOnce(dtoSnapshot("rev-1", [{
@@ -57,7 +57,52 @@ describe("sqlCatalogHistory transport mapping", () => {
             kind: "enum",
             source: "CREATE TYPE t AS ENUM ('a')",
         });
-        expect(outcome.status).toBe("durable-match");
+        expect(outcome.status).toBe("live-only-match");
         fetchMock.mockRestore();
+    });
+
+    it("keeps history unconfirmed when an unconfirmed replay sees a live-matching source", async () => {
+        const { captureConfirmedCatalogEdit } = await import("../undo/sqlCatalogUndoAdapter");
+        const client = await import("./sqlCatalogClient");
+        const beforeSource = "CREATE TYPE t AS ENUM ('a')";
+        const afterSource = "CREATE TYPE t AS ENUM ('a', 'b')";
+        const liveHoldingAfter = dtoSnapshot("rev-1", [{ id: "enum-1", source: afterSource }]);
+        const liveMatchingIntended = dtoSnapshot("rev-1", [{ id: "enum-1", source: beforeSource }]);
+        const fetchMock = vi.spyOn(client, "fetchCatalogSnapshot");
+        fetchMock.mockResolvedValue(liveMatchingIntended as never);
+        fetchMock.mockResolvedValueOnce(liveHoldingAfter as never);
+        fetchMock.mockResolvedValueOnce(liveHoldingAfter as never);
+        const applyMock = vi.spyOn(client, "applyCatalogMutation");
+        applyMock.mockResolvedValue({ status: "unconfirmed", reason: "store unavailable" } as never);
+        try {
+            const service = createTransportCatalogReplayService("demo-project");
+            const router = new UndoRouter();
+            const beforeShared: SqlCatalogSnapshot = {
+                projectId: "demo-project",
+                format: 1,
+                objects: [{ id: "enum-1", kind: "enum", source: beforeSource }],
+                revision: "rev-0",
+            };
+            const afterShared: SqlCatalogSnapshot = {
+                projectId: "demo-project",
+                format: 1,
+                objects: [{ id: "enum-1", kind: "enum", source: afterSource }],
+                revision: "rev-1",
+            };
+            captureConfirmedCatalogEdit(
+                router,
+                { status: "applied", applied: true, objectIds: ["enum-1"], before: beforeShared, after: afterShared },
+                service,
+                () => true,
+            );
+            router.undo();
+            for (let turn = 0; turn < 20; turn++) await Promise.resolve();
+            expect(router.lastAsyncOutcome?.status).toBe("unconfirmed");
+            expect(router.undoDepth).toBe(1);
+            expect(router.redoDepth).toBe(0);
+        } finally {
+            fetchMock.mockRestore();
+            applyMock.mockRestore();
+        }
     });
 });
