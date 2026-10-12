@@ -5,6 +5,7 @@ import { KanbanCardOperationController } from "./kanbanCardOperations";
 import { createKanban, getKanban, getKanbanHandles, updateKanban } from "./kanbanDocs";
 import { type KanbanProjection, KanbanQueryRunner } from "./kanbanQueryRunner";
 import { resetPgliteForTests } from "./pgliteService";
+import { type RelationProvider, type RelationWrite, RelationWriteError } from "./relationProvider";
 import type { RelationResolver } from "./relationRowWrite";
 import { addRecord, createTable, getTableHandles, setRecordValue, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
@@ -161,6 +162,137 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         release();
         await expect(pending).resolves.toMatchObject({ ok: false });
         expect(c.table.data.get("one")?.get("title")).toBe("Peer");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("refuses incomplete, unknown, missing-row, and non-updatable source identities", async () => {
+        for (
+            const query of [
+                "SELECT 'tasks' AS source_kind, title, status FROM tasks",
+                "SELECT id AS source_id, title, status FROM tasks",
+            ]
+        ) {
+            const incomplete = await fixture(query);
+            const card = incomplete.projection.lanes.flatMap(lane => lane.cards)[0];
+            expect(card && incomplete.controller().begin(card, "title")).toBeFalsy();
+            incomplete.runner.dispose();
+            incomplete.session.dispose();
+        }
+
+        const c = await fixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title, status FROM tasks ORDER BY title",
+        );
+        const card = c.projection.lanes.flatMap(lane => lane.cards)[0];
+        const unknown = c.controller({ resolveRelation: async () => undefined });
+        expect(unknown.begin(card, "title")).toBe(true);
+        await expect(unknown.commit("Unknown")).resolves.toMatchObject({ ok: false, state: "error" });
+
+        const realProvider = await c.session.resolveRelation("tasks");
+        const readonly: RelationProvider = {
+            sqlName: realProvider!.sqlName,
+            capabilities: { update: false },
+            materialize: () => realProvider!.materialize(),
+            applyWrite: async () => {
+                throw new RelationWriteError("Relation does not accept UPDATE");
+            },
+            dispose() {},
+        };
+        const denied = c.controller({ resolveRelation: async () => readonly });
+        expect(denied.begin(card, "title")).toBe(true);
+        await expect(denied.commit("Denied")).resolves.toMatchObject({ ok: false, state: "error" });
+
+        const removed = c.controller();
+        expect(removed.begin(card, "title")).toBe(true);
+        c.table.data.delete(card.sourceIdentity!.id);
+        await c.refresh();
+        await expect(removed.commit("Missing")).resolves.toMatchObject({ ok: false });
+        expect(Array.from(c.table.data.values(), row => row.get("title"))).not.toContain("Missing");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("updates one source row for duplicate occurrences and preserves SQL-derived order and membership", async () => {
+        const c = await fixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title, status FROM tasks "
+                + "UNION ALL SELECT 'tasks', id, title, status FROM tasks ORDER BY title DESC",
+        );
+        const occurrences = c.projection.lanes.flatMap(lane => lane.cards).filter(card =>
+            card.sourceIdentity?.id === "one"
+        );
+        expect(occurrences).toHaveLength(2);
+        let writes = 0;
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                if (!provider) return undefined;
+                return {
+                    sqlName: provider.sqlName,
+                    capabilities: provider.capabilities,
+                    materialize: () => provider.materialize(),
+                    applyWrite: async (write: RelationWrite) => {
+                        writes++;
+                        await provider.applyWrite(write);
+                    },
+                    dispose() {},
+                };
+            },
+        };
+        const operation = c.controller(resolver);
+        expect(operation.begin(occurrences[0], "status", "")).toBe(true);
+        await expect(operation.commit("")).resolves.toMatchObject({ ok: true });
+        expect(writes).toBe(1);
+        await c.refresh();
+        expect(c.projection.lanes.find(lane => lane.key === "")!.cards.map(card => card.row.title)).toEqual([
+            "Beta",
+            "Beta",
+            "Alpha",
+            "Alpha",
+        ]);
+
+        updateKanban(c.projectDoc, c.kanbanId, {
+            query: "SELECT id, title, status FROM tasks WHERE status = 'todo' ORDER BY title DESC LIMIT 1",
+        });
+        setRecordValue(c.table, "one", "status", "todo");
+        await c.refresh();
+        const visible = c.projection.lanes.flatMap(lane => lane.cards).find(card => card.sourceIdentity?.id === "one")!;
+        const move = c.controller();
+        expect(move.begin(visible, "status", "done")).toBe(true);
+        await expect(move.commit("done")).resolves.toMatchObject({ ok: true });
+        await c.refresh();
+        expect(c.projection.lanes.flatMap(lane => lane.cards)).toEqual([]);
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("keeps SQL NULL, empty text, and the literal NULL label as distinct production lanes", async () => {
+        const c = await fixture();
+        setSchemaText(
+            c.table,
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT)",
+        );
+        addRecord(c.table, { title: "Literal label", status: "NULL" }, "four");
+        await c.refresh();
+        expect(c.projection.lanes.map(lane => lane.key)).toEqual(expect.arrayContaining([null, "", "NULL", "todo"]));
+
+        const todo = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        const unchanged = c.controller();
+        expect(unchanged.begin(todo, "status", "todo")).toBe(true);
+        await expect(unchanged.commit("todo")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.get("status")).toBe("todo");
+
+        for (const destination of [null, "", "NULL"] as const) {
+            await c.refresh();
+            const current = c.projection.lanes.flatMap(lane => lane.cards).find(card =>
+                card.sourceIdentity?.id === "one"
+            )!;
+            const operation = c.controller();
+            expect(operation.begin(current, "status", destination)).toBe(true);
+            await expect(operation.commit(destination)).resolves.toMatchObject({ ok: true });
+            expect(c.table.data.get("one")?.get("status")).toBe(destination);
+            await c.refresh();
+            expect(c.projection.lanes.some(lane => lane.key === "todo")).toBe(false);
+        }
         c.runner.dispose();
         c.session.dispose();
     });
