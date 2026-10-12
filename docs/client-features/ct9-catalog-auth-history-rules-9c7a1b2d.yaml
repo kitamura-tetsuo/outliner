@@ -1,0 +1,25 @@
+id: CT9-9c7a1b2d
+title: Enforced catalog authorization, single-step history and declarative rules
+title-ja: カタログ認可・単一履歴・宣言型ルールの強制
+description: Catalog reads and writes require the server-side projectUsers and containerUsers grant over the authenticated transport, offline drafting stays local with explicit unconfirmed failures, confirmed edits register exactly one guarded history step replayed through the shared Undo router, and the UI states the first-release declarative limits on referenced-type edits, migration scripts, cross-project transfer and stored declarations.
+category: client
+status: implemented
+components:
+- client/src/components/yjstable/SqlCatalogPanel.svelte
+- client/src/services/yjstable/sqlCatalogHistory.ts
+- client/src/services/yjstable/sqlCatalogClient.ts
+- client/src/services/undo/sqlCatalogUndoAdapter.ts
+- client/src/services/undo/undoRouter.svelte.ts
+- server/src/sql-catalog-routes.ts
+- server/src/sql-catalog-service.ts
+acceptance:
+- Private-project reads and writes are refused by the server for missing, denied or unavailable grants without trusting client-declared identity or UI disabled states
+- Offline drafting is allowed and an unavailable authenticated apply reports an explicit unconfirmed failure without queueing an implicit write
+- Confirmed effectful edits register exactly one history step while previews, no-ops and refusals register none, with Undo and Redo replayed through the guarded adapter that waits for confirmation and preserves history on refusal
+- UI explains that referenced-type delete, rename and label removal are refused before effects, no automatic migration or arbitrary ALTER and DROP scripts run, cross-project transfer needs compatible pre-existing types instead of TEXT conversion, and stored declarations do not prove dependent SQL rebuilt
+tests:
+- client/src/services/yjstable/sqlCatalogHistory.test.ts
+- client/src/components/yjstable/SqlCatalogPanel.rules.test.ts
+- client/src/components/yjstable/SqlCatalogPanel.test.ts
+- server/tests/sql-catalog-routes.test.ts
+- server/tests/sql-catalog-undo-production.test.ts
