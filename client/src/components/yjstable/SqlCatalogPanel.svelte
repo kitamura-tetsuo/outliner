@@ -67,6 +67,10 @@ function captureWhenApplied(before: SqlCatalogSnapshotDto, result: unknown, fall
     const id = appliedObjectId(result) ?? fallbackId;
     const after = snapshot;
     if (!after) return;
+    // The confirmed receipt carries the authoritative before/after snapshots:
+    // capture prefers them over this display refresh, so a failed refresh
+    // still registers exactly one step and a concurrent peer edit is never
+    // absorbed into this user's step.
     captureAppliedTransportEdit(
         globalUndoRouter,
         before,
@@ -74,6 +78,7 @@ function captureWhenApplied(before: SqlCatalogSnapshotDto, result: unknown, fall
         id,
         createTransportCatalogReplayService(projectId),
         isActiveProject,
+        result,
     );
 }
 

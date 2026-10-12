@@ -34,6 +34,36 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 }
 
 /**
+ * Parse a confirmed receipt snapshot field (`before`/`after`) into a shared
+ * snapshot. Returns undefined unless the field carries a usable revision and
+ * object list, so callers can fall back to the display snapshot for receipts
+ * that omit snapshots (older test doubles) without absorbing peer edits or
+ * losing history when the refresh fails.
+ */
+function receiptSnapshot(value: unknown, fallbackProjectId: string): SqlCatalogSnapshot | undefined {
+    const record = asRecord(value);
+    if (!record || typeof record["revision"] !== "string" || !Array.isArray(record["objects"])) {
+        return undefined;
+    }
+    const projectId = typeof record["projectId"] === "string" ? record["projectId"] : fallbackProjectId;
+    const objects: SqlCatalogSourceObject[] = [];
+    for (const entry of record["objects"]) {
+        const objectRecord = asRecord(entry);
+        if (!objectRecord || typeof objectRecord["id"] !== "string" || typeof objectRecord["source"] !== "string") {
+            return undefined;
+        }
+        if (objectRecord["kind"] !== "enum") return undefined;
+        objects.push({ id: objectRecord["id"], kind: "enum", source: objectRecord["source"] });
+    }
+    return {
+        projectId,
+        format: 1,
+        objects,
+        revision: record["revision"] as string,
+    };
+}
+
+/**
  * Map the authenticated apply receipt to the guarded history adapter's
  * replay vocabulary. Transport denials throw and are classified by the
  * caller; only the service's own unconfirmed/refused/no-op/applied verdicts
@@ -44,6 +74,7 @@ export function toReplayResult(result: unknown, before: SqlCatalogSnapshot): Cat
     if (!record) return { status: "unconfirmed", reason: "Catalog service returned an unknown receipt" };
     const status = record["status"];
     if (status === "applied") {
+        const confirmedBefore = receiptSnapshot(record["before"], before.projectId) ?? before;
         const afterRecord = asRecord(record["after"]);
         if (!afterRecord || typeof afterRecord["revision"] !== "string" || !Array.isArray(afterRecord["objects"])) {
             return { status: "unconfirmed", reason: "Catalog service returned no confirmed snapshot" };
@@ -51,9 +82,9 @@ export function toReplayResult(result: unknown, before: SqlCatalogSnapshot): Cat
         return {
             status: "applied",
             applied: true,
-            before,
+            before: confirmedBefore,
             after: toSharedSnapshot({
-                projectId: before.projectId,
+                projectId: confirmedBefore.projectId,
                 format: 1,
                 objects: afterRecord["objects"] as SqlCatalogSnapshotDto["objects"],
                 revision: afterRecord["revision"] as string,
@@ -153,15 +184,32 @@ export function captureAppliedTransportEdit(
     objectId: string,
     service: CatalogReplayService,
     isActive: (projectId: string) => boolean,
+    result?: unknown,
 ): boolean {
     const beforeShared = toSharedSnapshot(before);
-    const afterShared = toSharedSnapshot(after);
-    const beforeObject = beforeShared.objects.find(object => object.id === objectId);
+    // Prefer the server's confirmed receipt snapshots over the display
+    // refresh: a failed refresh leaves the display snapshot unchanged (zero
+    // steps despite a confirmed effect) and a concurrent peer edit replaces
+    // the display snapshot with unconfirmed third-party source (absorbing the
+    // peer edit into this user's step). Fall back to the display snapshot
+    // only when the receipt carries no usable snapshots.
+    const record = asRecord(result);
+    const confirmedAfter = record && record["status"] === "applied"
+        ? receiptSnapshot(record["after"], before.projectId)
+        : undefined;
+    const confirmedBefore = record && record["status"] === "applied"
+        ? receiptSnapshot(record["before"], before.projectId)
+        : undefined;
+    const effectiveBefore = confirmedAfter && confirmedBefore && confirmedBefore.projectId === confirmedAfter.projectId
+        ? confirmedBefore
+        : beforeShared;
+    const afterShared = confirmedAfter ?? toSharedSnapshot(after);
+    const beforeObject = effectiveBefore.objects.find(object => object.id === objectId);
     const afterObject = afterShared.objects.find(object => object.id === objectId);
     if (sameSourceObject(beforeObject, afterObject)) return false;
     captureConfirmedCatalogEdit(
         router,
-        { status: "applied", applied: true, objectIds: [objectId], before: beforeShared, after: afterShared },
+        { status: "applied", applied: true, objectIds: [objectId], before: effectiveBefore, after: afterShared },
         service,
         isActive,
     );
