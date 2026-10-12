@@ -43,6 +43,7 @@ test(
         const first = objectRow(page, "kanban");
         const firstId = (await first.getAttribute("data-testid"))!.replace("object-row-", "");
         await page.locator("aside [data-page-id]").first().click();
+        await expect(page).not.toHaveURL(/\/objects$/);
         const pageUrl = page.url();
         const layoutRow = await createBlockFromItem(
             page,
