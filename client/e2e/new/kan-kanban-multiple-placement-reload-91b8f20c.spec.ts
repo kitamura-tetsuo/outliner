@@ -53,7 +53,11 @@ test.describe("FTR-91b8f20c: synchronized multiple Kanban placements", () => {
         // Allow the normal debounced persistence path to publish the coherent project update.
         await page.waitForTimeout(4000);
         await page.reload();
-        await page.waitForFunction(() => (globalThis as any).__YJS_STORE__?.isConnected, undefined, { timeout: 30000 });
+        await page.waitForFunction(
+            () => (globalThis as any).__YJS_STORE__?.getIsConnected?.() === true,
+            undefined,
+            { timeout: 30000 },
+        );
         await openObjects(page);
 
         await expect(objectRow(page, "kanban")).toHaveCount(1);
