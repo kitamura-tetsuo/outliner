@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import * as Y from "yjs";
+import { replaceSqlCatalogSource, restoreSqlCatalogObject } from "../../shared/src/services/sqlCatalog.js";
 import { demoContentEn } from "./demo-content.en.js";
 import { demoContentJa } from "./demo-content.ja.js";
 import { DEFAULT_DEMO_SLUG, DEMO_PROJECTS, type DemoLocale, demoLocaleForSlug } from "./demo-projects.js";
@@ -184,6 +185,7 @@ export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
 export const DEMO_ROUTINE_TEMPLATES_TABLE_ID = "demo-table-routine-templates";
 export const DEMO_ROUTINE_OCCURRENCES_TABLE_ID = "demo-table-routine-occurrences";
 export const DEMO_SALES_TARGETS_TABLE_ID = "demo-table-sales-targets";
+export const DEMO_ENUM_PRIORITIES_TABLE_ID = "demo-table-enum-priorities";
 
 /**
  * Deterministic Grid id derived from a Table id. Each demo Table has one Grid
@@ -536,7 +538,82 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                 },
             ],
         },
+        {
+            // Executable ENUM demo (issue #5575): a Project-catalog TYPE gives
+            // text values a declaration order, so an ordinary ORDER BY on the
+            // column follows the CREATE TYPE label order instead of lexical
+            // text order. The labels are deliberately declared high, medium,
+            // low: lexical text order would put low before medium, which is
+            // what makes the live Grid's order visibly non-lexical.
+            tableId: DEMO_ENUM_PRIORITIES_TABLE_ID,
+            name: "ENUM Priorities",
+            sqlName: "enum_priorities",
+            schemaSql: "CREATE TABLE enum_priorities (\n"
+                + "  id TEXT PRIMARY KEY,\n"
+                + "  title TEXT NOT NULL,\n"
+                + "  priority demo_priority\n"
+                + ")",
+            query: "SELECT id, title, priority FROM enum_priorities ORDER BY priority, id",
+            components: {
+                title: "text",
+                priority: "select",
+            },
+            records: [
+                { id: "demo-enum-1", values: { title: "Fix the outage", priority: "high" } },
+                { id: "demo-enum-2", values: { title: "Tidy the docs", priority: "low" } },
+                { id: "demo-enum-3", values: { title: "Plan the sprint", priority: "medium" } },
+            ],
+        },
     ];
+}
+
+// ---------------------------------------------------------------------------
+// Demo SQL catalog (Project-owned TYPE declarations, issue #5575).
+//
+// The catalog lives in the project doc's `sqlCatalog` map and is shared by
+// every locale exactly like table SQL: declaration sources and enum labels
+// are never translated. The seeded ENUM's stable object identity is what
+// makes repeated reseeds converge instead of duplicating the definition.
+// ---------------------------------------------------------------------------
+
+export interface DemoCatalogTemplate {
+    // Stable application identity of the catalog object (see sqlCatalog.ts).
+    id: string;
+    kind: "enum";
+    source: string;
+}
+
+/** Stable identity of the seeded ENUM: reseeds reuse it, never duplicate it. */
+export const DEMO_ENUM_OBJECT_ID = "demo-enum-priority";
+
+/** SQL type name declared by the seeded ENUM source. Never translated. */
+export const DEMO_ENUM_TYPE_NAME = "demo_priority";
+
+/** Exact catalog source shared by every locale. Never translated. */
+export const DEMO_ENUM_SOURCE = "CREATE TYPE demo_priority AS ENUM ('high', 'medium', 'low')";
+
+/** The demo's Project-catalog sources. SQL is never localized. */
+export function demoCatalogFor(): DemoCatalogTemplate[] {
+    return [{ id: DEMO_ENUM_OBJECT_ID, kind: "enum", source: DEMO_ENUM_SOURCE }];
+}
+
+/**
+ * Seed the demo's Project-catalog sources with stable identity. Restoring an
+ * already-seeded object throws, so a reseed repairs a drifted source in place
+ * instead of adding a copy.
+ */
+export function registerDemoCatalog(projectDoc: Y.Doc): void {
+    for (const template of demoCatalogFor()) {
+        try {
+            restoreSqlCatalogObject(projectDoc as never, template);
+        } catch {
+            try {
+                replaceSqlCatalogSource(projectDoc as never, template.id, template.source);
+            } catch {
+                // Leave non-catalog visitor state untouched rather than fail seeding.
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -957,6 +1034,10 @@ export function populateDemoProject(
     // "Mermaid Diagrams" page).
     registerDemoDiagrams(project.ydoc);
 
+    // The Project SQL catalog (Project-owned TYPE declarations; see the
+    // "ENUM Ordering" page). Stable object identity keeps reseeds convergent.
+    registerDemoCatalog(project.ydoc);
+
     for (const pageTemplate of demoPagesFor(locale)) {
         const page = project.addPage(pageTemplate.title, author);
         // Locale-stable: the title is translated, the key is not. The seeding
@@ -1194,6 +1275,7 @@ export interface EffectiveDemoTemplate {
         locale: DemoLocale;
         pages: DemoPageTemplate[];
         tables: DemoTableTemplate[];
+        catalog: DemoCatalogTemplate[];
         calendars: DemoCalendarTemplate[];
         scheduleRules: DemoScheduleRuleTemplate[];
         /** Values produced by the same registration functions used by seeding. */
@@ -1227,9 +1309,10 @@ function persistedDemoStructure(locale: DemoLocale, slug: string): {
     registerDemoScheduleRules(projectDoc, locale);
     registerDemoCalendars(projectDoc, locale);
     registerDemoDiagrams(projectDoc);
+    registerDemoCatalog(projectDoc);
 
     const registries = Object.fromEntries(
-        ["yjsTables", "yjsGrids", "yjsKanbans", "schedules", "calendars", "diagrams"].map(name => [
+        ["yjsTables", "yjsGrids", "yjsKanbans", "schedules", "calendars", "diagrams", "sqlCatalog"].map(name => [
             name,
             persistedYValue(projectDoc.getMap(name)),
         ]),
@@ -1288,6 +1371,7 @@ export function effectiveDemoTemplate(): EffectiveDemoTemplate {
                     locale,
                     pages: demoPagesFor(locale),
                     tables: demoTablesFor(locale),
+                    catalog: demoCatalogFor(),
                     calendars: demoCalendarsFor(locale),
                     scheduleRules: buildDemoScheduleRulesFor(locale),
                     ...structure,

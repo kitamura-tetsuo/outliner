@@ -15,6 +15,7 @@ import {
     DEMO_ATTACHMENT_IMAGE,
     DEMO_CALENDAR_ID,
     DEMO_DIAGRAM_ID,
+    DEMO_ENUM_PRIORITIES_TABLE_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_HOUR_MAP_CALENDAR_ID,
@@ -57,6 +58,7 @@ export function demoContentEn(): DemoLocaleContent {
                     "  [Layout]: arrange visual blocks side by side on a 12-column grid.",
                     "  [Remote MCP Access]: securely inspect semantic outline data from compatible AI clients.",
                     "  [Mermaid Diagrams]: a project-owned Mermaid diagram you can transclude onto any page.",
+                    "  [ENUM Ordering]: declaration-order sorting of a Project-owned ENUM type.",
                     "Give it a try! Everything in this project is editable.",
                 ],
             },
@@ -784,6 +786,42 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text:
                             "Select a whole Diagram row together with its neighbours and Copy/Paste it to get an independent duplicate with its own source; Cut/Paste moves the same Diagram instead. /Insert transclusion stays the way to show this same Diagram in one more place.",
+                    },
+                ],
+            },
+            {
+                key: "enum ordering",
+                title: "ENUM Ordering",
+                items: [
+                    {
+                        text:
+                            "A Project-owned ENUM type gives text values a declaration order: sorting by the column follows the label order in CREATE TYPE, not alphabetical order.",
+                    },
+                    {
+                        text:
+                            "The TYPE lives in the Project catalog; the Grid below only sorts by it. Inspect both read-only — viewing this page needs no catalog-write access:",
+                        children: [
+                            {
+                                text:
+                                    "Catalog source (Project TYPE demo-enum-priority): CREATE TYPE demo_priority AS ENUM ('high', 'medium', 'low')",
+                            },
+                            {
+                                text:
+                                    "Grid query: SELECT id, title, priority FROM enum_priorities ORDER BY priority, id",
+                            },
+                        ],
+                    },
+                    {
+                        text:
+                            "Lexical text order would sort high, low, medium — but the live Grid below sorts high, medium, low, the declaration order. No CASE expression and no per-record rank: the type itself carries the order.",
+                    },
+                    {
+                        componentType: "yjstable",
+                        yjsTableId: DEMO_ENUM_PRIORITIES_TABLE_ID,
+                    },
+                    {
+                        text:
+                            "The [Tasks and Habits] page shows the same idea over plain text with a CASE expression; here the database type does the work, and the saved SELECT stays an ordinary ORDER BY.",
                     },
                 ],
             },

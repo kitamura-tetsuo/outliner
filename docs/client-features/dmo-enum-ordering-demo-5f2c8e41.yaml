@@ -1,0 +1,23 @@
+id: FTR-5f2c8e41
+title: ENUM Declaration-Order Demo
+title-ja: ENUM 宣言順デモ
+description: The public /demo and /demo-ja projects seed a Project-catalog ENUM type, a separate Table whose column uses that type, and a live Grid whose ordinary SQL ORDER BY follows declaration order instead of lexical text order, viewable with no catalog-write access.
+category: demo
+status: implemented
+components:
+- client/src/routes/[demoProject=demoProject]/+page.svelte
+services:
+- server/src/demo-api.ts
+- server/src/demo-content.ts
+- server/src/demo-content.en.ts
+- server/src/demo-content.ja.ts
+tests:
+- client/e2e/core/dmo-enum-ordering-demo-5f2c8e41.spec.ts
+- server/tests/demo-enum-catalog.test.ts
+acceptance:
+- /demo and /demo-ja seed a Project catalog ENUM with stable reseed identity plus a separate Table whose column uses that ENUM
+- Existing Tasks and Table records, default Grid queries, unrelated demo content and the CASE-based priority demo are preserved
+- The catalog source participates in the demo template fingerprint and reset lifecycle so reseeds converge without duplicating definitions, Tables or Grids
+- The example is reachable from the locale feature-tour navigation and shows the actual catalog source and Grid query with localized Project-TYPE-ownership versus Grid-sorting guidance
+- The seeded Grid query is an ordinary SQL ORDER BY on the ENUM column whose row order visibly differs from lexical text order
+- Viewing the example requires no anonymous catalog-write authority

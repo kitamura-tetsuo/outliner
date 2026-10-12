@@ -30,6 +30,7 @@ test.describe("Demo project feature tour", () => {
                 "Recurring Tasks",
                 "Calendars",
                 "Mermaid Diagrams",
+                "ENUM Ordering",
             ]
         ) {
             await expect(pageList.getByText(title, { exact: true }).first()).toBeVisible({ timeout: 15000 });
