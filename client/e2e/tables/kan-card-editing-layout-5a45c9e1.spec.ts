@@ -27,7 +27,11 @@ test("Page/Layout card controls and pointer drag update Grid, peer, and reload w
         details: ["detail"],
     });
 
-    await page.locator("aside [data-page-id]").first().click();
+    const showSidebar = page.getByRole("button", { name: "Show sidebar" });
+    if (await showSidebar.isVisible().catch(() => false)) await showSidebar.click();
+    const sourcePage = page.locator("aside [data-page-id]").first();
+    await expect(sourcePage).toBeVisible();
+    await sourcePage.click();
     const layoutRow = await createBlockFromItem(
         page,
         page.locator('.outliner-item[data-node-kind="text"]').filter({ hasText: "Kanban fixture" }),
