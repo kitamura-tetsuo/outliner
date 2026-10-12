@@ -64,9 +64,19 @@ if (@($ready.Values | Where-Object { -not $_ }).Count -gt 0) { throw 'Windows lo
 # The source Vite actually serves to Windows Firefox must be the evaluated checkout's.
 node "$PSScriptRoot/../verify-served-revision.mjs" $app 'http://127.0.0.1:7090' "$nativeOutput/application-identity.json"
 if ($LASTEXITCODE -ne 0) { throw 'Served application does not match the evaluated checkout' }
-# Running container labels, read without shell quoting (Windows PowerShell mangles embedded quotes).
-$labels = wsl.exe --distribution Ubuntu --user root --exec docker ps --format '{{.Labels}}'
-$label = ([regex]::Match("$labels", 'org\.opencontainers\.image\.revision=([0-9a-f]{40})')).Groups[1].Value
+# Read the running container metadata as JSON. Docker's Go-template format is
+# unreliable across the PowerShell -> wsl.exe argument boundary: on current
+# hosted Windows runners `docker ps --format '{{.Labels}}'` succeeds but emits
+# an empty value even though the image and container retain the revision label.
+$containerIds = @(wsl.exe --distribution Ubuntu --user root --exec docker ps --quiet)
+if ($LASTEXITCODE -ne 0 -or $containerIds.Count -eq 0) { throw 'No running backend container was found' }
+$containersJson = wsl.exe --distribution Ubuntu --user root --exec docker inspect @containerIds
+if ($LASTEXITCODE -ne 0) { throw 'Running backend container metadata could not be inspected' }
+$containers = @(($containersJson -join "`n") | ConvertFrom-Json)
+$labels = @($containers | ForEach-Object { $_.Config.Labels.'org.opencontainers.image.revision' } | Where-Object { $_ })
+$label = @($labels | Select-Object -Unique)
+if ($label.Count -ne 1) { throw "Expected one backend image revision label, found $($label.Count)" }
+$label = $label[0]
 if ($label -ne $sha) { throw "Running backend image label '$label' is not the evaluated revision $sha" }
 Invoke-WebRequest 'https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-win64.zip' -OutFile "$nativeOutput/geckodriver.zip" -UseBasicParsing
 Expand-Archive "$nativeOutput/geckodriver.zip" "$nativeOutput/geckodriver" -Force
