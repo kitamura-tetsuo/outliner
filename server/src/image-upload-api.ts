@@ -3,9 +3,9 @@ import { getStorage } from "firebase-admin/storage";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
-import { checkContainerAccess } from "./access-control.js";
 import { validateApiKey } from "./api-keys-api.js";
 import { logger } from "./logger.js";
+import { getDefaultProjectDirectoryProvider, type ProjectDirectoryProvider } from "./project-directory-provider.js";
 import { Items, Project } from "./schema/app-schema.js";
 
 // Use 'any' type for Hocuspocus to avoid ESM import issues
@@ -18,8 +18,12 @@ const upload = multer({
     },
 });
 
-export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
+export function createImageUploadRouter(
+    hocuspocus: HocuspocusInstance,
+    dependencies: { directory?: ProjectDirectoryProvider; } = {},
+) {
     const router = express.Router();
+    const directory = dependencies.directory ?? getDefaultProjectDirectoryProvider();
 
     router.post(
         "/projects/:projectId/upload-image",
@@ -45,7 +49,7 @@ export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
                 }
 
                 // SECURITY: Check if user has access to the project
-                const hasAccess = await checkContainerAccess(uid, projectId);
+                const hasAccess = await directory.checkAccess(uid, projectId);
                 if (!hasAccess) {
                     logger.warn({
                         event: "image_upload_forbidden",

@@ -134,6 +134,40 @@ export async function resolveAccessibleProjectTitle(
     return matches[0]!;
 }
 
+/**
+ * Best-effort normalization of an already-stored title. Stored titles
+ * predate strict validation (surrounding whitespace, decomposed Unicode),
+ * so a raw Firestore equality query cannot detect canonical duplicates.
+ * Returns undefined for malformed titles, which listing quarantines and
+ * which never count as a duplicate target.
+ */
+function tryNormalizeStoredTitle(value: unknown): string | undefined {
+    try {
+        return normalizeProjectTitle(value);
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Find another canonical document whose *normalized* title equals the
+ * requested normalized title. Compares client-side because Firestore can
+ * only match the raw stored value, which may carry padding or decomposed
+ * Unicode that normalizes to the same canonical title.
+ */
+async function findNormalizedTitleConflict(
+    transaction: FirebaseFirestore.Transaction,
+    collection: FirebaseFirestore.CollectionReference,
+    projectId: string,
+    title: string,
+): Promise<FirebaseFirestore.QueryDocumentSnapshot | undefined> {
+    const all = await transaction.get(collection);
+    return all.docs.find(document => {
+        if (document.id === projectId) return false;
+        return tryNormalizeStoredTitle(document.data()?.title) === title;
+    });
+}
+
 export async function renameProject(
     uid: string,
     projectId: string,
@@ -146,13 +180,9 @@ export async function renameProject(
     const ref = collection.doc(projectId);
 
     return await firestore.runTransaction(async transaction => {
-        const duplicateQuery = collection.where("title", "==", title).limit(2);
-        const [duplicates, snapshot] = await Promise.all([
-            transaction.get(duplicateQuery),
-            transaction.get(ref),
-        ]);
+        const snapshot = await transaction.get(ref);
         const descriptor = descriptorFromData(uid, projectId, snapshot.exists ? snapshot.data() : undefined);
-        const conflictingDocument = duplicates.docs.find(document => document.id !== projectId);
+        const conflictingDocument = await findNormalizedTitleConflict(transaction, collection, projectId, title);
         if (conflictingDocument) {
             throw new ProjectDirectoryError("duplicate_title", "Project title is already in use");
         }
@@ -181,15 +211,17 @@ export async function ensureProjectDescriptorForWrite(
     const ref = collection.doc(projectId);
 
     return await firestore.runTransaction(async transaction => {
-        const duplicateQuery = collection.where("title", "==", title).limit(2);
-        const [duplicates, snapshot] = await Promise.all([
-            transaction.get(duplicateQuery),
-            transaction.get(ref),
-        ]);
-        if (duplicates.docs.some(document => document.id !== projectId)) {
-            throw new ProjectDirectoryError("duplicate_title", "Project title is already in use");
-        }
+        const snapshot = await transaction.get(ref);
         if (!snapshot.exists) {
+            const conflictingDocument = await findNormalizedTitleConflict(
+                transaction,
+                collection,
+                projectId,
+                title,
+            );
+            if (conflictingDocument) {
+                throw new ProjectDirectoryError("duplicate_title", "Project title is already in use");
+            }
             transaction.set(ref, {
                 projectId,
                 title,
@@ -200,12 +232,23 @@ export async function ensureProjectDescriptorForWrite(
             return { projectId, title };
         }
 
+        // Authorization first: an inaccessible existing descriptor reports
+        // forbidden even when the requested title collides elsewhere.
         const existingTitle = descriptorFromData(uid, projectId, snapshot.data()).title;
         if (existingTitle !== title) {
             throw new ProjectDirectoryError(
                 "title_conflict",
                 "Requested project title does not match the canonical project title",
             );
+        }
+        const conflictingDocument = await findNormalizedTitleConflict(
+            transaction,
+            collection,
+            projectId,
+            title,
+        );
+        if (conflictingDocument) {
+            throw new ProjectDirectoryError("duplicate_title", "Project title is already in use");
         }
 
         return { projectId, title: existingTitle };

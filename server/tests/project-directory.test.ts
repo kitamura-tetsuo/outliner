@@ -27,6 +27,10 @@ describe("canonical project directory", () => {
         "directory-second",
         "duplicate-owner",
         "duplicate-candidate",
+        "unicode-first",
+        "unicode-second",
+        "reg-private",
+        "reg-reserved",
         "00000000-0000-0000-0000-000000000000",
         "valid-project",
     ];
@@ -195,6 +199,64 @@ describe("canonical project directory", () => {
             title: "Beta",
         });
         await expectDirectoryError(resolveAccessibleProjectTitle("owner", "Forged", db), "not_found");
+    });
+
+    it("rejects creation colliding with a padded decomposed Unicode title", async () => {
+        // Stored titles predate strict validation: surrounding spaces and a
+        // decomposed accent normalize to the same canonical title.
+        await db.collection("projectUsers").doc("unicode-first").set({
+            projectId: "unicode-first",
+            title: " Café ",
+            accessibleUserIds: ["owner"],
+        });
+
+        await expectDirectoryError(
+            ensureProjectDescriptorForWrite("owner", "unicode-second", "Café", db),
+            "duplicate_title",
+        );
+        expect((await db.collection("projectUsers").doc("unicode-second").get()).exists).to.equal(false);
+    });
+
+    it("rejects a rename colliding with a padded decomposed Unicode title", async () => {
+        await Promise.all([
+            db.collection("projectUsers").doc("unicode-first").set({
+                projectId: "unicode-first",
+                title: " Café ",
+                accessibleUserIds: ["owner"],
+            }),
+            db.collection("projectUsers").doc("unicode-second").set({
+                projectId: "unicode-second",
+                title: "Other",
+                accessibleUserIds: ["owner"],
+            }),
+        ]);
+
+        await expectDirectoryError(renameProject("owner", "unicode-second", "Café", db), "duplicate_title");
+        expect((await db.collection("projectUsers").doc("unicode-second").get()).data()?.title)
+            .to.equal("Other");
+    });
+
+    it("reports forbidden before duplicate_title for an inaccessible existing project", async () => {
+        await Promise.all([
+            db.collection("projectUsers").doc("reg-private").set({
+                projectId: "reg-private",
+                title: "Private",
+                accessibleUserIds: ["other-user"],
+            }),
+            db.collection("projectUsers").doc("reg-reserved").set({
+                projectId: "reg-reserved",
+                title: "Reserved",
+                accessibleUserIds: ["other-user"],
+            }),
+        ]);
+
+        await expectDirectoryError(
+            ensureProjectDescriptorForWrite("owner", "reg-private", "Reserved", db),
+            "forbidden",
+        );
+        const stored = (await db.collection("projectUsers").doc("reg-private").get()).data();
+        expect(stored?.title).to.equal("Private");
+        expect(stored?.accessibleUserIds).to.deep.equal(["other-user"]);
     });
 
     it("renames exactly one canonical resource title and rejects duplicates", async () => {
