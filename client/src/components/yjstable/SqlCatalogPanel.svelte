@@ -212,9 +212,14 @@ function describeResult(result: unknown): string | undefined {
     if (status === "applied") return "Saved.";
     if (status === "no-op") return "No changes to save.";
     if (status === "refused") {
-        const refusal = result as { reason?: unknown; diagnostics?: { message?: unknown; }[]; };
+        const refusal = result as { reason?: unknown; diagnostics?: { message?: unknown; objectId?: unknown; }[]; };
         const details = (refusal.diagnostics ?? [])
-            .map(diagnostic => typeof diagnostic.message === "string" ? diagnostic.message : undefined)
+            .map(diagnostic => {
+                const message = typeof diagnostic.message === "string" ? diagnostic.message : undefined;
+                const objectId = typeof diagnostic.objectId === "string" ? diagnostic.objectId : undefined;
+                if (!message) return undefined;
+                return objectId ? `${objectId}: ${message}` : message;
+            })
             .filter((message): message is string => message !== undefined);
         const reason = typeof refusal.reason === "string" ? refusal.reason : "refused";
         return `Refused (${reason})${details.length > 0 ? `: ${details.join("; ")}` : ""}.`;
@@ -516,15 +521,22 @@ async function submitDelete() {
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
+    unconfirmed = undefined;
     try {
         const result = await applyCatalogMutation(projectId, {
             expectedRevision: before.revision,
             intent: { operation: "delete", objectId: targetId },
         });
         const summary = describeResult(result);
+        if (noteUnconfirmedResult(result)) {
+            mutationInfo = summary;
+            mutationError = summary;
+            return;
+        }
         await load();
         if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, targetId);
         if (summary === "Saved.") {
+            noteConfirmedCommit(targetId, result);
             selectedId = undefined;
             editing = false;
             draft = "";
@@ -532,7 +544,11 @@ async function submitDelete() {
         mutationInfo = summary;
         if (summary !== "Saved.") mutationError = summary;
     } catch (error) {
+        unconfirmed = undefined;
         mutationError = describeApplyFailure(error);
+        if (mutationError.startsWith("Not confirmed")) {
+            unconfirmed = `${mutationError}`;
+        }
     } finally {
         busy = false;
         confirmDelete = false;
