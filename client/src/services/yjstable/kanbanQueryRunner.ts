@@ -84,6 +84,10 @@ export class KanbanQueryRunner extends TableQueryRunnerBase {
         this.sourceTableId = getKanban(this.projectDoc, this.kanbanId)?.sourceTableId ?? "";
     }
 
+    get sourceSchema() {
+        return this.sourceAdapter.appliedSchema;
+    }
+
     protected currentQuery(): string {
         return getKanban(this.projectDoc, this.kanbanId)?.query ?? "";
     }

@@ -10,7 +10,9 @@ import {
     type KanbanSettings,
     updateKanban,
 } from "../../services/yjstable/kanbanDocs";
-import { type KanbanProjection, KanbanQueryRunner } from "../../services/yjstable/kanbanQueryRunner";
+import { type KanbanCard, type KanbanProjection, KanbanQueryRunner } from "../../services/yjstable/kanbanQueryRunner";
+import { KanbanCardOperationController, type KanbanCardOperationState } from "../../services/yjstable/kanbanCardOperations";
+import type { TableRecordValue } from "../../services/yjstable/tableDocs";
 import SqlEditor from "../yjstable/SqlEditor.svelte";
 
 interface SqlEditorHandle { getValue(): string; }
@@ -31,6 +33,12 @@ let editing = $state(false);
 let conflict = $state<string | undefined>();
 let runner: KanbanQueryRunner | undefined;
 let queryEditor = $state<SqlEditorHandle | undefined>();
+let operations: KanbanCardOperationController | undefined;
+let operationState = $state<KanbanCardOperationState>("idle");
+let operationMessage = $state<string | undefined>();
+let editingCard = $state<{ occurrenceKey: string; field: string; value: string; } | undefined>();
+let dragged = $state<{ card: KanbanCard; source: string | null; } | undefined>();
+let committingDrop = false;
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
 
@@ -42,7 +50,7 @@ function refresh() {
     const next = getKanban(projectDoc, kanban.kanbanId);
     if (next) committed = copy(next);
 }
-const observer = () => refresh();
+const observer = () => { operations?.invalidateDefinition(); refresh(); };
 function beginEdit() { baseline = copy(committed); draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = true; }
 function cancel() { draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = false; }
 function apply() {
@@ -74,17 +82,66 @@ function laneKindLabel(value: string | null): string {
 }
 function display(value: unknown): string { return value === null ? "NULL" : value === undefined ? "" : String(value); }
 
+function fieldValue(text: string, field: string): TableRecordValue | undefined {
+    const column = runner?.sourceSchema?.columns.find(candidate => candidate.name === field);
+    if (!column) return undefined;
+    if (column.kind === "integer" || column.kind === "number") {
+        const value = Number(text);
+        return text.trim() && Number.isFinite(value) ? value : undefined;
+    }
+    if (column.kind === "boolean") return text === "true" ? true : text === "false" ? false : undefined;
+    return text;
+}
+function beginFieldEdit(card: KanbanCard, field: string) {
+    if (!operations?.begin(card, field)) return;
+    editingCard = { occurrenceKey: card.occurrenceKey, field, value: display(card.row[field]) };
+}
+async function commitFieldEdit() {
+    if (!editingCard || !operations) return;
+    const value = fieldValue(editingCard.value, editingCard.field);
+    if (value === undefined) { operationState = "refused"; operationMessage = "The value is invalid for this field."; return; }
+    const result = await operations.commit(value);
+    if (result.ok) editingCard = undefined;
+}
+function beginDrag(event: DragEvent, card: KanbanCard, source: string | null) {
+    event.stopPropagation();
+    if (!committed.groupField || !operations?.begin(card, committed.groupField)) { event.preventDefault(); return; }
+    dragged = { card, source };
+    event.dataTransfer?.setData("application/x-outliner-kanban-card", `${kanban.kanbanId}:${card.occurrenceKey}`);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+}
+async function dropCard(event: DragEvent, destination: string | null) {
+    event.preventDefault(); event.stopPropagation();
+    if (!dragged || !operations || Object.is(dragged.source, destination)) { operations?.cancel(); dragged = undefined; return; }
+    if (!operations.chooseDestination(destination)) { dragged = undefined; return; }
+    committingDrop = true;
+    const result = await operations.commit(destination);
+    committingDrop = false;
+    dragged = undefined;
+    if (!result.ok) event.dataTransfer!.dropEffect = "none";
+}
+function endDrag() { if (!committingDrop) operations?.cancel(); dragged = undefined; }
+function ownInput(event: Event) { event.stopPropagation(); }
+
 onMount(() => {
     retainKanbanUndoManager(kanban.entry);
     kanban.entry.observeDeep(observer);
     void session.acquire(committed.sourceTableId).then(acquired => {
         if (!acquired) { projection = { status: "unavailable", lanes: [], columns: [], current: false, message: "Kanban source Table is missing" }; return; }
         runner = new KanbanQueryRunner({ projectDoc, kanbanId: kanban.kanbanId, kanban, sourceAdapter: acquired.adapter });
+        operations = new KanbanCardOperationController({
+            resolver: session,
+            schema: () => runner?.sourceSchema,
+            settings: () => getKanban(projectDoc, kanban.kanbanId),
+            projection: () => projection,
+            canWrite: () => !isReadOnly && Boolean(projectDoc),
+            onState: (state, message) => { operationState = state; operationMessage = message; },
+        });
         runner.subscribeProjection(value => projection = value);
         runner.start();
     });
 });
-onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); session.dispose(); destroyKanbanUndoManager(kanban.entry); });
+onDestroy(() => { operations?.cancel(); kanban.entry.unobserveDeep(observer); runner?.dispose(); session.dispose(); destroyKanbanUndoManager(kanban.entry); });
 </script>
 
 <div class="kanban" data-testid="kanban-board" data-kanban-id={kanban.kanbanId}>
@@ -125,15 +182,38 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
     {:else if projection.lanes.every(lane => lane.cards.length === 0)}
         <p data-testid="kanban-empty">The query returned no cards.</p>
     {:else}
+        {#if operationState === "pending"}<p role="status">Card change pending…</p>{/if}
+        {#if operationMessage}<p class="error" role="alert" data-testid="kanban-operation-message">{operationMessage}</p>{/if}
         <div class="lanes" data-testid="kanban-lanes">
             {#each projection.lanes as lane, laneIndex (`${lane.key === null ? "null" : `string:${lane.key}`}:${laneIndex}`)}
-                <section class="lane" data-lane-kind={lane.key === null ? "null" : lane.key === "" ? "empty" : "string"}>
+                <section class="lane" role="list" data-lane-kind={lane.key === null ? "null" : lane.key === "" ? "empty" : "string"}
+                    ondragover={event => { if (dragged) { event.preventDefault(); event.stopPropagation(); } }}
+                    ondrop={event => dropCard(event, lane.key)}>
                     <h2><span>{laneLabel(lane.key)}</span><span class="lane-kind">{laneKindLabel(lane.key)}</span></h2>
                     {#each lane.cards as card (card.occurrenceKey)}
-                        <article class="card">
-                            <h3>{display(committed.titleField ? card.row[committed.titleField] : undefined) || "Untitled"}</h3>
+                        <article class="card" data-card-occurrence={card.occurrenceKey}>
+                            <button class="drag-handle" type="button" draggable={!isReadOnly} aria-label="Move card"
+                                ondragstart={event => beginDrag(event, card, lane.key)} ondragend={endDrag}>↕</button>
+                            {#if committed.titleField}
+                                <div class="card-field title-field">
+                                    <strong>{committed.titleField}</strong>
+                                    {#if editingCard?.occurrenceKey === card.occurrenceKey && editingCard.field === committed.titleField}
+                                        <input bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
+                                        <button type="button" onclick={() => void commitFieldEdit()}>Save</button>
+                                    {:else}
+                                        <button class="field-value" type="button" disabled={isReadOnly} onclick={() => beginFieldEdit(card, committed.titleField!)}>{display(card.row[committed.titleField]) || "Untitled"}</button>
+                                    {/if}
+                                </div>
+                            {:else}<h3>Untitled</h3>{/if}
                             {#each committed.detailFields as field (field)}
-                                <div class="detail"><strong>{field}</strong>: {display(card.row[field])}</div>
+                                <div class="detail"><strong>{field}</strong>:
+                                    {#if editingCard?.occurrenceKey === card.occurrenceKey && editingCard.field === field}
+                                        <input bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
+                                        <button type="button" onclick={() => void commitFieldEdit()}>Save</button>
+                                    {:else}
+                                        <button class="field-value" type="button" disabled={isReadOnly} onclick={() => beginFieldEdit(card, field)}>{display(card.row[field])}</button>
+                                    {/if}
+                                </div>
                             {/each}
                         </article>
                     {/each}
@@ -144,5 +224,5 @@ onDestroy(() => { kanban.entry.unobserveDeep(observer); runner?.dispose(); sessi
 </div>
 
 <style>
-.toolbar{display:flex;justify-content:flex-end;margin-bottom:.75rem}.editor{display:grid;gap:.75rem;border:1px solid #d1d5db;padding:1rem;margin-bottom:1rem}.editor label,.editor-field{display:grid;gap:.25rem}.editor textarea,.editor input{border:1px solid #9ca3af;border-radius:.25rem;padding:.45rem}.error,.diagnostic{color:#991b1b}.lanes{display:flex;gap:1rem;overflow-x:auto;align-items:flex-start}.lane{min-width:16rem;max-width:22rem;background:#f3f4f6;border-radius:.5rem;padding:.75rem}.lane h2{font-weight:700;margin-bottom:.5rem;display:flex;gap:.4rem;align-items:center}.lane-kind{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:.1rem .3rem;border:1px solid #64748b;border-radius:.25rem;background:#fff;color:#334155}.card{background:white;border:1px solid #d1d5db;border-radius:.4rem;padding:.65rem;margin:.5rem 0;overflow-wrap:anywhere}.card h3{font-weight:600}.detail{font-size:.85rem;color:#4b5563}
+.toolbar{display:flex;justify-content:flex-end;margin-bottom:.75rem}.editor{display:grid;gap:.75rem;border:1px solid #d1d5db;padding:1rem;margin-bottom:1rem}.editor label,.editor-field{display:grid;gap:.25rem}.editor textarea,.editor input{border:1px solid #9ca3af;border-radius:.25rem;padding:.45rem}.error,.diagnostic{color:#991b1b}.lanes{display:flex;gap:1rem;overflow-x:auto;align-items:flex-start}.lane{min-width:16rem;max-width:22rem;background:#f3f4f6;border-radius:.5rem;padding:.75rem}.lane h2{font-weight:700;margin-bottom:.5rem;display:flex;gap:.4rem;align-items:center}.lane-kind{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:.1rem .3rem;border:1px solid #64748b;border-radius:.25rem;background:#fff;color:#334155}.card{background:white;border:1px solid #d1d5db;border-radius:.4rem;padding:.65rem;margin:.5rem 0;overflow-wrap:anywhere}.card h3{font-weight:600}.detail{font-size:.85rem;color:#4b5563}.drag-handle{float:right;cursor:grab;touch-action:none}.card-field{display:flex;align-items:center;gap:.35rem}.title-field{font-weight:600}.field-value{background:transparent;text-align:left;padding:0;border:0}.card input{min-width:0;border:1px solid #9ca3af;border-radius:.2rem;padding:.2rem}
 </style>

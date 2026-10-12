@@ -852,7 +852,7 @@ export function registerDemoTables(
         gridRegistry.set(gridId, gridEntry);
 
         // The Tasks board makes the public demo exercise the standalone
-        // Kanban surface with the same real Table records and SQL engine.
+        // Kanban surface, editable card controls, and lane moves over the same real Table records and SQL engine.
         if (template.sqlName === "tasks") {
             const kanban = new Y.Map<unknown>();
             kanban.set("sourceTableId", template.tableId);

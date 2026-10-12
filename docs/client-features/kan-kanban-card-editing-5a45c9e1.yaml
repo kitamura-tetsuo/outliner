@@ -1,0 +1,15 @@
+id: KAN-5a45c9e1
+title: Kanban card field editing and lane moves
+title-ja: Kanbanカードのフィールド編集とレーン移動
+description: Users can edit eligible Kanban card fields and move cards between lanes through the same validated source-record write path used by Grid.
+category: tables
+status: implemented
+acceptance:
+- Card title and detail controls edit only query-proven writable source columns and preserve every other record field
+- Moving a card writes only the exact raw grouping value of the destination lane, including SQL NULL and the empty string
+- Invalid, cancelled, same-lane, stale, read-only and cross-board interactions write no source or presentation state
+- Provider-backed writes remain pending until confirmed and stale operations revalidate after provider resolution
+- Query results alone determine final membership and SQL order; Kanban stores no card copies or ranks
+tests:
+- client/src/services/yjstable/kanbanCardOperations.test.ts
+- client/src/services/yjstable/relationRowWrite.test.ts
