@@ -16,6 +16,7 @@
         projectSchedulesPath,
         projectSettingsPath,
         projectTablesPath,
+        projectTypesPath,
     } from "../../lib/managementPaths";
 
     interface Props {
@@ -42,6 +43,7 @@
             { label: "Grids", description: "Saved queries over your tables.", href: resolvePath(projectGridsPath(projectName)) },
             { label: "Calendars", description: "Calendar views over your data.", href: resolvePath(projectCalendarsPath(projectName)) },
             { label: "Schedules", description: "Scheduled SQL that runs on a recurring rule.", href: resolvePath(projectSchedulesPath(projectName)) },
+            { label: "Types", description: "Project SQL TYPE definitions (ENUM catalog).", href: resolvePath(projectTypesPath(projectName)) },
             { label: "Graph", description: "The link graph between this project's pages.", href: resolvePath(projectGraphPath(projectName)) },
         ];
         if (!isDemo) {

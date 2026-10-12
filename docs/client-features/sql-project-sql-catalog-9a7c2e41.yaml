@@ -1,0 +1,20 @@
+id: FTR-9a7c2e41
+title: 'Project SQL catalog on the existing SQL editor'
+title-ja: SQLエディター上のプロジェクトSQLカタログ
+description: 'A discoverable authorized Project-level SQL catalog surface that authors
+  TYPE source through the existing SQL editor. Declarations persist under a dedicated
+  `projectSqlCatalog` key on the project doc, disjoint from Table schema/record state
+  and Grid SELECT state, so TYPE source stays separate from the Table and Grid editors.
+  Every create, edit and delete travels the authenticated SqlCatalogService transport,
+  which requires a signed-in write grant and refuses missing or denied grants before
+  touching Yjs. Only one unqualified CREATE TYPE AS ENUM declaration per object is
+  executable, compared by exact labels in declaration order; any other DDL classifies
+  as unsupported and is reported as such rather than presented as working functionality.
+  The catalog is reachable at `/:project/-/types` and from the project management
+  landing page.
+
+  '
+category: client
+status: implemented
+tests:
+- client/src/services/yjstable/sqlCatalog.test.ts
