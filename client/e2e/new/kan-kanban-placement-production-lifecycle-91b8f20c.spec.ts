@@ -70,9 +70,26 @@ test.describe("FTR-91b8f20c: Kanban production placement lifecycle", () => {
     test("cancels object deletion, then removes only the board and current placement", async ({ page }) => {
         const before = await readGridProjectState(page);
         const board = await createBoardOnPage(page);
+        const boardId = (await board.getAttribute("data-testid"))!.replace("object-row-", "");
+        await page.locator("aside [data-page-id]").first().click();
+        const layout = (await createBlockFromItem(
+            page,
+            page.locator('.outliner-item[data-node-kind="text"]').filter({ hasText: "Dashboard" }),
+            "Layout",
+        )).getByTestId("layout-block");
+        await layout.click({ button: "right" });
+        await page.getByTestId("layout-add-kanban").click();
+        const placementDialog = page.getByTestId("layout-kanban-dialog");
+        await placementDialog.getByLabel("Existing board").check();
+        await placementDialog.locator("select").nth(1).selectOption(boardId);
+        await placementDialog.getByTestId("layout-kanban-confirm").click();
+        const placementIds = await page.locator(`[data-testid="kanban-board"][data-kanban-id="${boardId}"]`)
+            .evaluateAll(nodes => nodes.map(node => node.closest("[data-item-id]")!.getAttribute("data-item-id")));
+        const pageName = decodeURIComponent(new URL(page.url()).pathname.split("/").at(-1)!);
+        await openObjects(page);
         await board.locator('[data-testid^="object-delete-"]').click();
         const confirmation = page.getByRole("alertdialog");
-        await expect(confirmation).toContainText("1 Page placement");
+        await expect(confirmation).toContainText("2 Page placement");
         await confirmation.getByRole("button", { name: "Cancel" }).click();
         await expect(board).toHaveCount(1);
 
@@ -81,6 +98,16 @@ test.describe("FTR-91b8f20c: Kanban production placement lifecycle", () => {
         await expect(board).toHaveCount(0);
         await expect(objectRow(page, "table")).toHaveCount(1);
         expect(await readGridProjectState(page)).toEqual(before);
+        await page.locator("aside [data-page-id]").first().click();
+        for (const placementId of placementIds) {
+            await expect(page.locator(`[data-item-id="${placementId}"]`)).toHaveCount(0);
+        }
+        await page.reload();
+        await TestHelpers.waitForPageData(page, pageName, 30000);
+        for (const placementId of placementIds) {
+            await expect(page.locator(`[data-item-id="${placementId}"]`)).toHaveCount(0);
+        }
+        await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
     });
 
     for (const policy of ["keep references", "remove direct references"] as const) {
