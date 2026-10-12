@@ -44,7 +44,11 @@ test(
         const firstId = (await first.getAttribute("data-testid"))!.replace("object-row-", "");
         await page.locator("aside [data-page-id]").first().click();
         const pageUrl = page.url();
-        const layoutRow = await createBlockFromItem(page, page.getByText("Dashboard", { exact: true }), "Layout");
+        const layoutRow = await createBlockFromItem(
+            page,
+            page.locator('.outliner-item[data-node-kind="text"]').filter({ hasText: "Dashboard" }),
+            "Layout",
+        );
         await addExistingBoardToLayout(page, layoutRow.getByTestId("layout-block"), firstId);
 
         await openObjects(page);
