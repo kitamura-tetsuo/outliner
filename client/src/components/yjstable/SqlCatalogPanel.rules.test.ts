@@ -57,9 +57,15 @@ describe("SqlCatalogPanel authorization history rules", () => {
                     const body = JSON.parse(init?.body ?? "{}");
                     const intent = body.intent;
                     if (intent.operation === "create") objects.push({ ...intent.object });
+                    else if (intent.operation === "replace" && intent.object) {
+                        objects = objects.map((entry) => entry.id === intent.object.id ? { ...intent.object } : entry);
+                    } else if (intent.operation === "delete" && intent.objectId) {
+                        objects = objects.filter((entry) => entry.id !== intent.objectId);
+                    }
                     revision += 1;
+                    const appliedId = intent.operation === "delete" ? intent.objectId : intent.object?.id;
                     return jsonResponse(200, {
-                        result: { status: "applied", objectIds: [intent.object.id], before: {}, after: {} },
+                        result: { status: "applied", objectIds: [appliedId], before: {}, after: {} },
                     });
                 }
                 return jsonResponse(404, { error: "nf" });
@@ -127,6 +133,28 @@ describe("SqlCatalogPanel authorization history rules", () => {
             expect(view.getByTestId("sql-catalog-mutation-error").textContent).toMatch(/Access denied/)
         );
         expect(globalUndoRouter.undoDepth).toBe(1);
+        view.unmount();
+    });
+
+    it("registers exactly one history step each for confirmed create, edit and delete", async () => {
+        const view = render(SqlCatalogPanel, { props: { projectId: "demo-project" } });
+        await createOne(view);
+        expect(globalUndoRouter.undoDepth).toBe(1);
+
+        await fireEvent.click(view.getByTestId("sql-catalog-edit"));
+        await waitFor(() => expect(view.getByTestId("sql-catalog-save")).toBeTruthy());
+        await waitFor(() => expect(view.queryByTestId("sql-catalog-editor-loading")).toBeNull());
+        fakeMonacoRegistry.lastModel().type("CREATE TYPE mood AS ENUM ('bad', 'ok');");
+        await tick();
+        await fireEvent.click(view.getByTestId("sql-catalog-save"));
+        await waitFor(() => expect(view.getByTestId("sql-catalog-mutation-info").textContent).toMatch(/Saved/));
+        expect(globalUndoRouter.undoDepth).toBe(2);
+
+        await fireEvent.click(view.getByTestId("sql-catalog-delete"));
+        await fireEvent.click(view.getByTestId("sql-catalog-confirm-delete"));
+        await waitFor(() => expect(view.getByTestId("sql-catalog-empty")).toBeTruthy());
+        expect(globalUndoRouter.undoDepth).toBe(3);
+
         view.unmount();
     });
 });
