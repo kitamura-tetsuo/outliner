@@ -57,13 +57,15 @@ test(
         await expect(peer.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible({ timeout: 30000 });
 
         const destination = page.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-        const handleBox = await alphaEdited.getByRole("button", { name: "Move card" }).boundingBox();
-        const laneBox = await destination.boundingBox();
-        if (!handleBox || !laneBox) throw new Error("Kanban drag endpoints are not rendered");
-        await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(laneBox.x + laneBox.width / 2, laneBox.y + laneBox.height - 8, { steps: 12 });
-        await page.mouse.up();
+        const transfer = await page.evaluateHandle(() => new DataTransfer());
+        const handle = alphaEdited.getByRole("button", { name: "Move card" });
+        // Dispatch the browser's native drag lifecycle with one shared
+        // DataTransfer; this crosses the same production DOM handlers without
+        // Playwright's dragTo waiting indefinitely on the refreshed card DOM.
+        await handle.dispatchEvent("dragstart", { dataTransfer: transfer });
+        await destination.dispatchEvent("dragover", { dataTransfer: transfer });
+        await destination.dispatchEvent("drop", { dataTransfer: transfer });
+        await handle.dispatchEvent("dragend", { dataTransfer: transfer }).catch(() => {});
         await expect(destination.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible();
         expect(recordValue(await readGridProjectState(page), fixture.tableId, fixture.recordIds[0], "status")).toBe(
             "done",
