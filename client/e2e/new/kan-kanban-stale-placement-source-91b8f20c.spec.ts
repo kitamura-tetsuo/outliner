@@ -37,19 +37,24 @@ test(
         test.setTimeout(180000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Unaffected neighbour"]);
         await createBlankGrid(page, "Tasks", "tasks");
+        const pageUrl = page.url();
 
         const show = page.getByRole("button", { name: "Show sidebar" });
         if (await show.isVisible().catch(() => false)) await show.click();
         await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
         await expect(page).toHaveURL(/\/objects$/);
-        const objectsUrl = page.url();
-
         await objectRow(page, "table").locator('[data-testid^="object-place-"]').click();
         await expect(page.getByTestId("object-placement-confirm")).toBeVisible();
 
         const peerContext = await browser.newContext({ storageState: TestHelpers.createTestStorageState() as any });
         const peer = await peerContext.newPage();
-        await authenticatePeer(peer, objectsUrl);
+        await authenticatePeer(peer, pageUrl);
+        const pageName = decodeURIComponent(new URL(pageUrl).pathname.split("/").at(-1)!);
+        await TestHelpers.waitForPageData(peer, pageName, 30000);
+        const peerShow = peer.getByRole("button", { name: "Show sidebar" });
+        if (await peerShow.isVisible().catch(() => false)) await peerShow.click();
+        await peer.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+        await expect(peer).toHaveURL(/\/objects$/);
         await expect(objectRow(peer, "table")).toHaveCount(1, { timeout: 30000 });
         await objectRow(peer, "table").locator('[data-testid^="object-open-"]').click();
         await peer.getByRole("button", { name: "Delete table" }).click();
