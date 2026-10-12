@@ -12,6 +12,7 @@ import {
 } from "../../services/yjstable/kanbanDocs";
 import { type KanbanCard, type KanbanProjection, KanbanQueryRunner } from "../../services/yjstable/kanbanQueryRunner";
 import { KanbanCardOperationController, type KanbanCardOperationState } from "../../services/yjstable/kanbanCardOperations";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import type { TableRecordValue } from "../../services/yjstable/tableDocs";
 import SqlEditor from "../yjstable/SqlEditor.svelte";
 
@@ -36,7 +37,7 @@ let queryEditor = $state<SqlEditorHandle | undefined>();
 let operations: KanbanCardOperationController | undefined;
 let operationState = $state<KanbanCardOperationState>("idle");
 let operationMessage = $state<string | undefined>();
-let editingCard = $state<{ occurrenceKey: string; field: string; value: string; } | undefined>();
+let editingCard = $state<{ sourceKind?: string; sourceId: string; field: string; value: string; } | undefined>();
 let dragged = $state<{ card: KanbanCard; source: string | null; } | undefined>();
 let committingDrop = false;
 // svelte-ignore state_referenced_locally
@@ -94,7 +95,18 @@ function fieldValue(text: string, field: string): TableRecordValue | undefined {
 }
 function beginFieldEdit(card: KanbanCard, field: string) {
     if (!operations?.begin(card, field)) return;
-    editingCard = { occurrenceKey: card.occurrenceKey, field, value: display(card.row[field]) };
+    if (!card.sourceIdentity) return;
+    editingCard = {
+        sourceKind: card.sourceIdentity.kind,
+        sourceId: card.sourceIdentity.id,
+        field,
+        value: display(card.row[field]),
+    };
+}
+function isEditing(card: KanbanCard, field: string): boolean {
+    return editingCard?.field === field
+        && editingCard.sourceId === card.sourceIdentity?.id
+        && editingCard.sourceKind === card.sourceIdentity?.kind;
 }
 async function commitFieldEdit() {
     if (!editingCard || !operations) return;
@@ -135,16 +147,21 @@ onMount(() => {
             settings: () => getKanban(projectDoc, kanban.kanbanId),
             projection: () => projection,
             canWrite: () => !isReadOnly && Boolean(projectDoc),
+            beginHistoryAction: () => globalUndoRouter.stopCapturing(),
             onState: (state, message) => { operationState = state; operationMessage = message; },
         });
-        runner.subscribeProjection(value => projection = value);
+        runner.subscribeProjection(value => {
+            projection = value;
+            operations?.observeProjection(value);
+        });
         runner.start();
     });
 });
 onDestroy(() => { operations?.cancel(); kanban.entry.unobserveDeep(observer); runner?.dispose(); session.dispose(); destroyKanbanUndoManager(kanban.entry); });
 </script>
 
-<div class="kanban" data-testid="kanban-board" data-kanban-id={kanban.kanbanId}>
+<div class="kanban" data-testid="kanban-board" data-kanban-id={kanban.kanbanId}
+    data-block-dnd-owner="kanban" data-block-dnd-type="application/x-outliner-kanban-card">
     <div class="toolbar">
         <button type="button" onclick={() => editing ? cancel() : beginEdit()}>{editing ? "Cancel" : "Configure"}</button>
     </div>
@@ -196,7 +213,7 @@ onDestroy(() => { operations?.cancel(); kanban.entry.unobserveDeep(observer); ru
                                 ondragstart={event => beginDrag(event, card, lane.key)} ondragend={endDrag}>↕</button>
                             {#if committed.titleField}
                                 <h3 class="card-field title-field">
-                                    {#if editingCard?.occurrenceKey === card.occurrenceKey && editingCard.field === committed.titleField}
+                                    {#if isEditing(card, committed.titleField)}
                                         <input aria-label={`Edit ${committed.titleField}`} bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
                                         <button type="button" onclick={() => void commitFieldEdit()}>Save</button>
                                     {:else}
@@ -206,7 +223,7 @@ onDestroy(() => { operations?.cancel(); kanban.entry.unobserveDeep(observer); ru
                             {:else}<h3>Untitled</h3>{/if}
                             {#each committed.detailFields as field (field)}
                                 <div class="detail"><strong>{field}</strong>:
-                                    {#if editingCard?.occurrenceKey === card.occurrenceKey && editingCard.field === field}
+                                    {#if isEditing(card, field)}
                                         <input bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
                                         <button type="button" onclick={() => void commitFieldEdit()}>Save</button>
                                     {:else}

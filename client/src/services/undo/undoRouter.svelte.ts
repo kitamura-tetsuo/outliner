@@ -245,6 +245,15 @@ export class UndoRouter {
     }
 
     /**
+     * End every registered scope's current Yjs capture window. Call this at
+     * the write boundary of a user operation that must remain one independent
+     * history action even when it follows another edit in the capture timeout.
+     */
+    public stopCapturing(): void {
+        for (const um of this.registered) um.stopCapturing();
+    }
+
+    /**
      * Run one user command and record it as a single history step, even when
      * it edits several scopes (#5311, REQ-009). Capture windows are closed on
      * both sides so the command neither merges into the previous step nor
@@ -257,12 +266,12 @@ export class UndoRouter {
      * stays each scope's native Yjs selective undo/redo.
      */
     public captureCommand(command: () => void, options: { authorize?: () => boolean; } = {}): void {
-        for (const um of this.registered) um.stopCapturing();
+        this.stopCapturing();
         const start = this.undoStack.length;
         try {
             command();
         } finally {
-            for (const um of this.registered) um.stopCapturing();
+            this.stopCapturing();
             const added = this.undoStack.slice(start);
             const grouped = options.authorize ? added.length > 0 : added.length > 1;
             if (grouped && added.every(entry => !("type" in entry))) {

@@ -56,6 +56,7 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
             settings: () => getKanban(projectDoc, kanbanId),
             projection: () => projection,
             canWrite: () => true,
+            beginHistoryAction: () => globalUndoRouter.stopCapturing(),
         });
     return {
         projectDoc,
@@ -138,6 +139,29 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
+    it("captures consecutive card writes as separate Table history actions", async () => {
+        const c = await fixture();
+        globalUndoRouter.clear();
+        let card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        const title = c.controller();
+        expect(title.begin(card, "title")).toBe(true);
+        await expect(title.commit("Beta edited")).resolves.toMatchObject({ ok: true });
+        await c.refresh();
+
+        card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        const move = c.controller();
+        expect(move.begin(card, "status", "done")).toBe(true);
+        await expect(move.commit("done")).resolves.toMatchObject({ ok: true });
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta edited", status: "done" });
+
+        globalUndoRouter.undo();
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta edited", status: "todo" });
+        globalUndoRouter.redo();
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta edited", status: "done" });
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
     it("observes a held real-provider boundary and blocks stale intent", async () => {
         const c = await fixture();
         let release!: () => void;
@@ -162,6 +186,39 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         release();
         await expect(pending).resolves.toMatchObject({ ok: false });
         expect(c.table.data.get("one")?.get("title")).toBe("Peer");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("permanently cancels a held write after observing a field A-to-B-to-A cycle", async () => {
+        const c = await fixture();
+        globalUndoRouter.clear();
+        let release!: () => void;
+        let observed!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        const reached = new Promise<void>(resolve => observed = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observed();
+                await held;
+                return provider;
+            },
+        };
+        const op = c.controller(resolver);
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        expect(op.begin(card, "title")).toBe(true);
+        const pending = op.commit("Stale draft");
+        await reached;
+
+        setRecordValue(c.table, "one", "title", "Peer B");
+        op.observeProjection(await c.refresh());
+        setRecordValue(c.table, "one", "title", "Beta");
+        op.observeProjection(await c.refresh());
+        release();
+
+        await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.get("title")).toBe("Beta");
         c.runner.dispose();
         c.session.dispose();
     });

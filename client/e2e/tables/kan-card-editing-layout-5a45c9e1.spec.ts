@@ -12,7 +12,7 @@ import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-test("Page/Layout card controls and a cancelled pointer drag preserve blocks across peer and reload", async ({
+test("Page/Layout card drag and draft survive host capture and an unrelated peer refresh", async ({
     page,
     context,
 }, info) => {
@@ -51,39 +51,46 @@ test("Page/Layout card controls and a cancelled pointer drag preserve blocks acr
         cells.map(cell => ({ id: cell.getAttribute("data-item-id"), style: cell.getAttribute("style") }))
     );
 
-    // Exercise cancellation at the embedded board's production drag boundary.
-    // A successful cross-lane gesture is covered by the standalone scenario;
-    // here dragend proves the Layout wrapper neither moves the block nor turns
-    // an unfinished card gesture into a source write.
     const alpha = board.locator("article.card").filter({ hasText: "Alpha" });
-    const transfer = await page.evaluateHandle(() => new DataTransfer());
-    const moveHandle = alpha.getByRole("button", { name: "Move card" });
-    await moveHandle.dispatchEvent("dragstart", { dataTransfer: transfer });
-    await moveHandle.dispatchEvent("dragend", { dataTransfer: transfer });
-    expect(
-        (await readGridProjectState(page)).tables.find(table => table.id === fixture.tableId)
-            ?.data[fixture.recordIds[0]],
-    ).toMatchObject({ title: "Alpha", status: "open" });
+    const doneLane = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
+    await alpha.getByRole("button", { name: "Move card" }).dragTo(doneLane);
+    const movedAlpha = doneLane.locator("article.card").filter({ hasText: "Alpha" });
+    await expect(movedAlpha).toBeVisible();
 
-    await alpha.getByRole("button", { name: "Edit title" }).click();
+    await movedAlpha.getByRole("button", { name: "Edit title" }).click();
     // Opening the editor removes the title text used by `alpha`'s filter, so
     // reacquire the controls from the stable board boundary.
     const titleEditor = board.getByRole("textbox", { name: "Edit title" });
     await expect(titleEditor).toBeVisible();
     await titleEditor.fill("Alpha in layout");
+
+    const peer = await context.newPage();
+    await peer.goto(page.url());
+    const peerDetail = peer.getByTestId("yjs-table-view").getByRole("button", {
+        name: `detail-1, detail for ${fixture.recordIds[0]}`,
+    });
+    await peerDetail.click();
+    const peerDetailEditor = peer.getByRole("textbox", { name: `detail for ${fixture.recordIds[0]}` });
+    await peerDetailEditor.fill("peer detail");
+    await peerDetailEditor.press("Enter");
+    await expect(board.getByText("peer detail", { exact: true })).toBeVisible();
+    await expect(titleEditor).toBeVisible();
+    await expect(titleEditor).toHaveValue("Alpha in layout");
     await board.getByRole("button", { name: "Save" }).click();
     await expect(page.getByTestId("yjs-table-view").getByText("Alpha in layout", { exact: true })).toBeVisible();
 
     const source = (await readGridProjectState(page)).tables.find(table => table.id === fixture.tableId)!;
-    expect(source.data[fixture.recordIds[0]]).toMatchObject({ title: "Alpha in layout", status: "open" });
+    expect(source.data[fixture.recordIds[0]]).toMatchObject({
+        title: "Alpha in layout",
+        status: "done",
+        detail: "peer detail",
+    });
     expect(
         await layout.locator('[data-testid="layout-cell"]').evaluateAll(cells =>
             cells.map(cell => ({ id: cell.getAttribute("data-item-id"), style: cell.getAttribute("style") }))
         ),
     ).toEqual(before);
 
-    const peer = await context.newPage();
-    await peer.goto(page.url());
     await expect(peer.locator(`[data-kanban-id="${boardId}"]`).getByText("Alpha in layout", { exact: true }))
         .toBeVisible({ timeout: 30000 });
     await page.reload();

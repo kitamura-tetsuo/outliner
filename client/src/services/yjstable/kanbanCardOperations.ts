@@ -34,6 +34,7 @@ export interface KanbanCardOperationOptions {
     settings: () => KanbanSettings | undefined;
     projection: () => KanbanProjection;
     canWrite: () => boolean;
+    beginHistoryAction?: () => void;
     onState?: (state: KanbanCardOperationState, message?: string) => void;
 }
 
@@ -94,6 +95,14 @@ export class KanbanCardOperationController {
         if (this.pending) this.refuse("The Kanban changed during this interaction.");
     }
 
+    /** Permanently invalidate intent as soon as an authoritative refresh contradicts it. */
+    observeProjection(projection: KanbanProjection): void {
+        const operation = this.pending;
+        if (!operation || projection.status !== "success" || !projection.current) return;
+        const reason = this.validateCurrentProjection(operation, projection);
+        if (reason) this.refuse(reason);
+    }
+
     async commit(value: TableRecordValue): Promise<KanbanCardOperationResult> {
         const operation = this.pending;
         if (!operation) return this.result(false, "refused", "The card interaction is no longer active.");
@@ -113,6 +122,7 @@ export class KanbanCardOperationController {
                 () => {
                     const reason = this.validate(operation, value);
                     if (reason) throw new Error(reason);
+                    this.options.beginHistoryAction?.();
                 },
             );
             if (this.pending !== operation || operation.token !== this.sequence) {
@@ -141,17 +151,8 @@ export class KanbanCardOperationController {
         if (projection.status !== "success" || !projection.current || !projection.provenance || !schema) {
             return "Current query evidence is unavailable.";
         }
-        if (
-            operation.destination !== undefined
-            && !projection.lanes.some(lane => Object.is(lane.key, operation.destination))
-        ) {
-            return "That lane is no longer available.";
-        }
-        const card = findCard(projection, operation.identity);
-        if (!card) return "The source record is no longer in the current result.";
-        if (!Object.is(card.row[operation.field], operation.observedValue)) {
-            return "The field changed during this interaction.";
-        }
+        const projectionReason = this.validateCurrentProjection(operation, projection);
+        if (projectionReason) return projectionReason;
 
         const authority = resolveBareIdMutationAuthority(
             projection.provenance.query,
@@ -179,6 +180,22 @@ export class KanbanCardOperationController {
             isNullableOf: () => column.isNullable,
         };
         if (!isValueValidForCell(validation, operation.field, value)) return "The value is invalid for this field.";
+        return undefined;
+    }
+
+    private validateCurrentProjection(
+        operation: PendingOperation,
+        projection: KanbanProjection,
+    ): string | undefined {
+        if (
+            operation.destination !== undefined
+            && !projection.lanes.some(lane => Object.is(lane.key, operation.destination))
+        ) return "That lane is no longer available.";
+        const card = findCard(projection, operation.identity);
+        if (!card) return "The source record is no longer in the current result.";
+        if (!Object.is(card.row[operation.field], operation.observedValue)) {
+            return "The field changed during this interaction.";
+        }
         return undefined;
     }
 
