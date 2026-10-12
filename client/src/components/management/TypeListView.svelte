@@ -15,6 +15,7 @@
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
+    import { store } from "../../stores/store.svelte";
     import SqlCatalogPanel from "../yjstable/SqlCatalogPanel.svelte";
 
     const logger = getLogger("ProjectTypesPage");
@@ -141,7 +142,7 @@
         </div>
     {:else if projectId}
         <div data-testid="project-types-panel">
-            <SqlCatalogPanel {projectId} />
+            <SqlCatalogPanel {projectId} projectDoc={store.project?.ydoc} />
         </div>
     {/if}
 </main>

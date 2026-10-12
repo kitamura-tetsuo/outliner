@@ -6,6 +6,7 @@ import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
+import type { CatalogRuntimeState, SqlCatalogRuntimePort } from "../../services/yjstable/catalogRuntime";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import SqlCatalogPanel from "./SqlCatalogPanel.svelte";
 
@@ -26,6 +27,43 @@ function jsonResponse(status: number, payload: unknown) {
 
 const SOURCE_A = "CREATE TYPE mood AS ENUM ('a', 'b');";
 const SOURCE_B = "CREATE TYPE mood AS ENUM ('b', 'a');";
+
+// Controlled stand-in for the production runtime boundary: it replays real
+// installation states (building, ready with an installed revision, error
+// with diagnostics) and records rebuild requests without reporting ready.
+function createRuntimeHarness() {
+    const listeners = new Set<(state: CatalogRuntimeState) => void>();
+    let current: CatalogRuntimeState = { status: "building", revision: "doc-rev-0" };
+    let rebuilds = 0;
+    const port: SqlCatalogRuntimePort = {
+        subscribe: listener => {
+            listeners.add(listener);
+            listener(current);
+            return () => {
+                listeners.delete(listener);
+            };
+        },
+        rebuild: () => {
+            rebuilds += 1;
+        },
+    };
+    return {
+        port,
+        rebuildCount: () => rebuilds,
+        push: (state: CatalogRuntimeState) => {
+            current = state;
+            for (const listener of [...listeners]) listener(state);
+        },
+    };
+}
+
+function readyState(revision: string): CatalogRuntimeState {
+    return {
+        status: "ready",
+        snapshot: { projectId: "demo-project", format: 1, objects: [], revision },
+        generation: 1,
+    };
+}
 
 describe("SqlCatalogPanel separated apply and runtime states", () => {
     let objects: { id: string; kind: string; source: string; }[] = [];
@@ -91,39 +129,54 @@ describe("SqlCatalogPanel separated apply and runtime states", () => {
         vi.unstubAllGlobals();
     });
 
-    it("submission and commit alone never show runtime ready; rebuild does", async () => {
-        const view = render(SqlCatalogPanel, { props: { projectId: "demo-project" } });
+    it("readiness tracks the installed runtime revision; rebuild alone never reports ready", async () => {
+        const harness = createRuntimeHarness();
+        const view = render(SqlCatalogPanel, {
+            props: { projectId: "demo-project", runtimePort: harness.port },
+        });
         await waitFor(() => expect(view.getByTestId("sql-catalog-empty")).toBeTruthy());
-        await waitFor(() =>
-            expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(
-                /ready for persisted revision rev-0/,
-            )
-        );
+        // The persisted catalog is nonempty-capable but the runtime has not
+        // installed anything: readiness stays pending, never ready.
+        expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/building/);
+        expect(view.getByTestId("sql-catalog-runtime-status").textContent).not.toMatch(/Runtime ready/);
         await fireEvent.click(view.getByTestId("sql-catalog-new"));
         await waitFor(() => expect(view.queryByTestId("sql-catalog-editor-loading")).toBeNull());
         fakeMonacoRegistry.lastModel().type(SOURCE_A);
         await tick();
         await fireEvent.click(view.getByTestId("sql-catalog-validate"));
         await waitFor(() => expect(view.getByTestId("sql-catalog-validation").textContent).toMatch(/Not applied/));
-        expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/rev-0/);
         holdApply = true;
         await fireEvent.click(view.getByTestId("sql-catalog-create"));
         await waitFor(() =>
             expect(view.getByTestId("sql-catalog-apply-status").textContent).toMatch(/Applying source/)
         );
         expect(view.queryByTestId("sql-catalog-commit-status")).toBeNull();
-        expect(view.getByTestId("sql-catalog-runtime-status").textContent).not.toMatch(
-            /ready for persisted revision rev-1/,
-        );
+        expect(view.getByTestId("sql-catalog-runtime-status").textContent).not.toMatch(/Runtime ready/);
         releaseApply?.(undefined);
         await waitFor(() =>
             expect(view.getByTestId("sql-catalog-commit-status").textContent).toMatch(/Source committed/)
         );
+        // The confirmed source commit is not runtime readiness.
         expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/building/);
+        // Rebuild requests a real rebuild but establishes no readiness.
+        expect(harness.rebuildCount()).toBe(0);
         await fireEvent.click(view.getByTestId("sql-catalog-rebuild-runtime"));
+        expect(harness.rebuildCount()).toBe(1);
+        await tick();
+        expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/building/);
+        expect(view.getByTestId("sql-catalog-runtime-status").textContent).not.toMatch(/Runtime ready/);
+        // A failed installation surfaces error diagnostics, not readiness.
+        harness.push({ status: "error", revision: "doc-rev-1", message: 'relation "mood" does not exist' });
+        await waitFor(() =>
+            expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/Runtime error/)
+        );
+        expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/does not exist/);
+        // Only the successor's successful installation reports ready, and
+        // only for its installed revision.
+        harness.push(readyState("doc-rev-2"));
         await waitFor(() =>
             expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(
-                /ready for persisted revision rev-1/,
+                /ready for persisted revision doc-rev-2/,
             )
         );
         expect(view.getByTestId("sql-catalog-draft-status").textContent).toMatch(/No unsaved draft/);

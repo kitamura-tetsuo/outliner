@@ -1,7 +1,13 @@
 <script lang="ts">
 import { onDestroy } from "svelte";
+import type * as Y from "yjs";
 import SqlEditor from "./SqlEditor.svelte";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
+import { createTableEngineSession } from "../../services/yjstable/tableEngine";
+import type {
+    CatalogRuntimeState,
+    SqlCatalogRuntimePort,
+} from "../../services/yjstable/catalogRuntime";
 import {
     applyCatalogMutation,
     catalogKindLabel,
@@ -21,9 +27,17 @@ import {
 interface Props {
     /** Stable project id used by project-owned rooms. */
     projectId: string;
+    /**
+     * Live project document. When provided (and no explicit `runtimePort`
+     * is given), the panel subscribes to the project's actual catalog
+     * runtime and Rebuild runtime requests a real rebuild.
+     */
+    projectDoc?: Y.Doc;
+    /** Explicit runtime source; used by tests to drive the real boundary. */
+    runtimePort?: SqlCatalogRuntimePort;
 }
 
-let { projectId }: Props = $props();
+let { projectId, projectDoc = undefined, runtimePort = undefined }: Props = $props();
 
 let snapshot = $state<SqlCatalogSnapshotDto | undefined>(undefined);
 let loading = $state(true);
@@ -50,7 +64,10 @@ let unconfirmed = $state<string | undefined>(undefined);
 let runtime = $state<
     { status: "idle" | "building" | "ready" | "error"; revision?: string; message?: string; }
 >({ status: "idle" });
-let runtimeGeneration = 0;
+// The connected runtime source behind `runtime`, if any. Readiness is only
+// ever assigned from states this source publishes; without a source the
+// panel stays idle and never claims ready.
+let activePort = $state<SqlCatalogRuntimePort | undefined>(undefined);
 let mutationError = $state<string | undefined>(undefined);
 let mutationInfo = $state<string | undefined>(undefined);
 let confirmDelete = $state(false);
@@ -111,17 +128,17 @@ function describeRuntime(): string {
     return `Runtime error for persisted revision ${shortRevision(runtime.revision)}: ${runtime.message ?? "unknown"}.`;
 }
 
-function scheduleRuntimeRebuild(revision: string): void {
-    const generation = ++runtimeGeneration;
-    runtime = { status: "building", revision };
-    // A confirmed rebuild is a separate step after the source commit: neither
-    // submitting the apply nor receiving the confirmed receipt marks runtime
-    // ready. Only this rebuild of the re-read persisted source does.
-    void Promise.resolve().then(() => {
-        if (!destroyed && generation === runtimeGeneration) {
-            runtime = { status: "ready", revision };
-        }
-    });
+function applyRuntimeState(state: CatalogRuntimeState): void {
+    // Runtime readiness reflects a successful installation of the
+    // corresponding persisted inputs: pending builds stay building and
+    // failed builds surface error diagnostics. No other path assigns ready.
+    if (state.status === "building") {
+        runtime = { status: "building", revision: state.revision };
+    } else if (state.status === "ready") {
+        runtime = { status: "ready", revision: state.snapshot.revision };
+    } else {
+        runtime = { status: "error", revision: state.revision, message: state.message };
+    }
 }
 
 function refreshConflict(next: SqlCatalogSnapshotDto): void {
@@ -243,14 +260,9 @@ async function load() {
         snapshot = next;
         if (selectedId && !next.objects.some(object => object.id === selectedId)) selectedId = undefined;
         refreshConflict(next);
-        if (!isActiveProject(projectId)) return;
-        // The first persisted read establishes the runtime baseline. Later
-        // reads never move the runtime by themselves: a newer persisted
-        // revision (or a just-committed one) still needs its own confirmed
-        // rebuild before runtime may report ready for it.
-        if (runtime.status === "idle") {
-            scheduleRuntimeRebuild(next.revision);
-        }
+        // Reload reads persisted source only and never moves the runtime by
+        // itself: readiness arrives exclusively through the subscribed
+        // runtime source once it installs a revision.
     } catch (error) {
         loadError = describeError(error);
     } finally {
@@ -327,8 +339,12 @@ function handleDraftChange(next: string) {
 }
 
 function rebuildRuntime() {
+    // Rebuild requests a real rebuild from the connected runtime source and
+    // reports nothing by itself: readiness (or error diagnostics) arrives
+    // only through the subscription. Without a connected source there is no
+    // runtime to rebuild, so the panel never claims readiness.
     if (!snapshot || busy || validating) return;
-    scheduleRuntimeRebuild(snapshot.revision);
+    activePort?.rebuild();
 }
 
 function buildDraftIntent(): { operation: "create" | "replace"; object: SqlCatalogObjectDto; } | undefined {
@@ -344,6 +360,10 @@ async function submitValidate() {
     const intent = buildDraftIntent();
     if (!intent) return;
     const observedRevision = draftRevision ?? snapshot.revision;
+    // The request validates exactly this text. Edits typed while it is in
+    // flight must not inherit its outcome: the result below is recorded
+    // against the submitted text, so newer input renders it stale.
+    const submittedDraft = draft;
     validating = true;
     mutationError = undefined;
     try {
@@ -352,13 +372,13 @@ async function submitValidate() {
         if (record.status === "preview") {
             validation = {
                 kind: "preview",
-                text: "Valid preview for the current draft. Not applied: source, history and runtime are unchanged.",
-                draft,
+                text: "Valid preview for the submitted draft. Not applied: source, history and runtime are unchanged.",
+                draft: submittedDraft,
                 revision: observedRevision,
             };
         } else if (record.status === "refused") {
             const text = describeRefusal(record);
-            validation = { kind: "refused", text, draft, revision: observedRevision };
+            validation = { kind: "refused", text, draft: submittedDraft, revision: observedRevision };
             if (record.reason === "stale") {
                 conflict =
                     `Conflict: the draft was validated against observed ${shortRevision(observedRevision)}, which is stale. Draft preserved locally; nothing was overwritten.`;
@@ -411,8 +431,13 @@ function noteConfirmedCommit(objectId: string, result: unknown): void {
     if (revision) {
         commitInfo = { objectId, revision };
         // The commit confirms source only. Runtime still needs its own
-        // confirmed rebuild before it may report ready for this revision.
-        runtime = { status: "building", revision };
+        // confirmed rebuild before it may report ready for this revision;
+        // the subscribed source resolves this pending state. Without a
+        // connected source nothing is building, so the panel stays idle
+        // rather than claiming a build.
+        if (activePort) {
+            runtime = { status: "building", revision };
+        }
     }
 }
 
@@ -420,6 +445,11 @@ async function submitCreate() {
     if (!snapshot) return;
     const before = snapshot;
     const observedRevision = draftRevision ?? before.revision;
+    // The request commits exactly this text. Edits accepted while it is
+    // pending belong to a newer unsaved draft and must survive the confirmed
+    // receipt verbatim instead of being cleared with the submitted text.
+    const submitted = draft;
+    const submittedId = draftId;
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
@@ -427,7 +457,7 @@ async function submitCreate() {
     try {
         const result = await applyCatalogMutation(projectId, {
             expectedRevision: observedRevision,
-            intent: { operation: "create", object: { id: draftId, kind: "enum", source: draft } },
+            intent: { operation: "create", object: { id: submittedId, kind: "enum", source: submitted } },
         });
         const summary = describeResult(result);
         if (noteUnconfirmedResult(result)) {
@@ -439,16 +469,25 @@ async function submitCreate() {
         // Only a confirmed effectful receipt registers exactly one history
         // step; previews, no-ops, refusals and unconfirmed results register
         // none. Disabled/read-only controls never substitute for this gate.
-        if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, draftId);
+        if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, submittedId);
         if (summary === "Saved.") {
-            noteConfirmedCommit(draftId, result);
-            creating = false;
-            selectedId = draftId;
-            draft = "";
-            draftRevision = undefined;
-            draftBaseSource = undefined;
-            validation = undefined;
-            conflict = undefined;
+            noteConfirmedCommit(submittedId, result);
+            if (draft !== submitted) {
+                // Newer edits arrived while the request was pending: the
+                // confirmed source holds only the submitted text, so the
+                // current text stays an exact unsaved draft at its observed
+                // revision. The refresh above already re-derived the
+                // conflict; the submitted validation (if any) now reads
+                // stale for the current text.
+            } else {
+                creating = false;
+                selectedId = submittedId;
+                draft = "";
+                draftRevision = undefined;
+                draftBaseSource = undefined;
+                validation = undefined;
+                conflict = undefined;
+            }
         } else if (noteStaleConflict(result)) {
             // Draft preserved; expected revision stays at the observed value.
         }
@@ -470,6 +509,9 @@ async function submitEdit() {
     const before = snapshot;
     const targetId = selected.id;
     const observedRevision = draftRevision ?? before.revision;
+    // Same pending-edit rule as creation: the request replaces with exactly
+    // this text, and newer accepted edits must survive the receipt verbatim.
+    const submitted = draft;
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
@@ -477,7 +519,7 @@ async function submitEdit() {
     try {
         const result = await applyCatalogMutation(projectId, {
             expectedRevision: observedRevision,
-            intent: { operation: "replace", object: { id: targetId, kind: "enum", source: draft } },
+            intent: { operation: "replace", object: { id: targetId, kind: "enum", source: submitted } },
         });
         const summary = describeResult(result);
         if (noteUnconfirmedResult(result)) {
@@ -488,12 +530,20 @@ async function submitEdit() {
         await load();
         if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, targetId);
         if (summary === "Saved." || summary === "No changes to save.") {
-            if (summary === "Saved.") noteConfirmedCommit(targetId, result);
-            editing = false;
-            draftRevision = undefined;
-            draftBaseSource = undefined;
-            validation = undefined;
-            if (summary === "Saved.") conflict = undefined;
+            if (draft !== submitted) {
+                // Newer edits arrived while the request was pending: keep
+                // them as the exact unsaved draft at the observed revision.
+                // The refresh above already re-derived the conflict, and the
+                // submitted validation (if any) now reads stale.
+                if (summary === "Saved.") noteConfirmedCommit(targetId, result);
+            } else {
+                if (summary === "Saved.") noteConfirmedCommit(targetId, result);
+                editing = false;
+                draftRevision = undefined;
+                draftBaseSource = undefined;
+                validation = undefined;
+                if (summary === "Saved.") conflict = undefined;
+            }
         } else if (noteStaleConflict(result)) {
             // Draft preserved; expected revision stays at the observed value.
         }
@@ -584,6 +634,40 @@ $effect(() => {
     }
     void load();
 });
+
+$effect(() => {
+    // Connect the runtime status to its production source. An explicit port
+    // wins (tests); otherwise a live project document subscribes to the
+    // project's actual catalog runtime. Readiness and error diagnostics
+    // arrive exclusively through this subscription — neither the persisted
+    // read above nor the rebuild button assigns them.
+    const override = runtimePort;
+    const doc = projectDoc;
+    const pid = projectId;
+    let port: SqlCatalogRuntimePort | undefined = override;
+    let disposeSession: (() => void) | undefined;
+    if (!port && doc) {
+        const session = createTableEngineSession({ projectDoc: doc, projectId: pid });
+        disposeSession = () => session.dispose();
+        port = {
+            subscribe: listener => session.subscribeCatalog(listener),
+            rebuild: () => session.rebuildCatalog(),
+        };
+    }
+    activePort = port;
+    if (!port) {
+        runtime = { status: "idle" };
+        return;
+    }
+    const unsubscribe = port.subscribe(state => {
+        if (!isActiveProject(pid)) return;
+        applyRuntimeState(state);
+    });
+    return () => {
+        unsubscribe();
+        disposeSession?.();
+    };
+});
 </script>
 
 <div class="sql-catalog-panel" data-testid="sql-catalog-panel">
@@ -659,7 +743,8 @@ $effect(() => {
             <button
                 type="button"
                 data-testid="sql-catalog-rebuild-runtime"
-                disabled={loading || busy || validating || !snapshot}
+                disabled={loading || busy || validating || !snapshot || !activePort}
+                title={!activePort ? "No SQL runtime connected." : undefined}
                 onclick={rebuildRuntime}
             >
                 Rebuild runtime

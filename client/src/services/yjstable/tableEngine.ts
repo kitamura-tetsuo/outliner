@@ -99,6 +99,8 @@ export interface TableEngineSession {
     catalogReady: () => Promise<void>;
     /** Observe catalog replacement so mounted query surfaces can re-run. */
     subscribeCatalog: (listener: (state: CatalogRuntimeState) => void) => () => void;
+    /** Request a real rebuild of the installed SQL environment. */
+    rebuildCatalog: () => void;
     /** Materialize a table and keep it alive until the session is disposed. */
     acquire: (tableId: string) => Promise<AcquiredTable | undefined>;
     /**
@@ -515,6 +517,14 @@ export function createTableEngineSession(options: {
             }
         },
         subscribeCatalog: listener => catalogRuntime.subscribe(listener),
+        /**
+         * Request a real rebuild of the installed SQL environment (issue
+         * #5576 REQ-003). Readiness and diagnostics flow back through
+         * `subscribeCatalog`; this call alone never reports ready.
+         */
+        rebuildCatalog: () => {
+            catalogRuntime.requestRebuild();
+        },
         acquire: async (tableId: string) => {
             if (disposed) return undefined;
             const key = entryKey(pgSchema, tableId);

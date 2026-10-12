@@ -4,6 +4,7 @@
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
+import type { CatalogRuntimeState, SqlCatalogRuntimePort } from "../../services/yjstable/catalogRuntime";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import SqlCatalogPanel from "./SqlCatalogPanel.svelte";
 
@@ -23,6 +24,39 @@ function jsonResponse(status: number, payload: unknown) {
 }
 
 const SOURCE_A = "CREATE TYPE mood AS ENUM ('a', 'b');";
+
+// Minimal runtime source: replays the installed revision and records rebuild
+// requests, so the delete path proves the commit moves the runtime off the
+// old build instead of staying ready on it.
+function createRuntimeHarness(initial: CatalogRuntimeState) {
+    const listeners = new Set<(state: CatalogRuntimeState) => void>();
+    let current = initial;
+    const port: SqlCatalogRuntimePort = {
+        subscribe: listener => {
+            listeners.add(listener);
+            listener(current);
+            return () => {
+                listeners.delete(listener);
+            };
+        },
+        rebuild: () => {},
+    };
+    return {
+        port,
+        push: (state: CatalogRuntimeState) => {
+            current = state;
+            for (const listener of [...listeners]) listener(state);
+        },
+    };
+}
+
+function readyState(revision: string): CatalogRuntimeState {
+    return {
+        status: "ready",
+        snapshot: { projectId: "demo-project", format: 1, objects: [], revision },
+        generation: 1,
+    };
+}
 
 describe("SqlCatalogPanel apply refusal identity and delete commit", () => {
     let objects: { id: string; kind: string; source: string; }[] = [];
@@ -108,11 +142,14 @@ describe("SqlCatalogPanel apply refusal identity and delete commit", () => {
     });
 
     it("confirmed delete commits the new revision and rebuilds runtime", async () => {
-        const view = render(SqlCatalogPanel, { props: { projectId: "demo-project" } });
+        const harness = createRuntimeHarness(readyState("doc-rev-0"));
+        const view = render(SqlCatalogPanel, {
+            props: { projectId: "demo-project", runtimePort: harness.port },
+        });
         await waitFor(() => expect(view.getAllByTestId("sql-catalog-item")).toHaveLength(1));
         await waitFor(() =>
             expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(
-                /ready for persisted revision rev-0/,
+                /ready for persisted revision doc-rev-0/,
             )
         );
         await fireEvent.click(view.getByTestId("sql-catalog-item"));
@@ -122,7 +159,18 @@ describe("SqlCatalogPanel apply refusal identity and delete commit", () => {
         expect(view.getByTestId("sql-catalog-commit-status").textContent).toMatch(/rev-1/);
         expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/building/);
         expect(view.getByTestId("sql-catalog-runtime-status").textContent).not.toMatch(
-            /ready for persisted revision rev-0/,
+            /ready for persisted revision doc-rev-0/,
+        );
+        // The runtime observing the committed deletion rebuilds instead of
+        // staying ready on the old build; only its installed revision may
+        // report ready again.
+        harness.push({ status: "building", revision: "doc-rev-1" });
+        await waitFor(() => expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(/building/));
+        harness.push(readyState("doc-rev-1"));
+        await waitFor(() =>
+            expect(view.getByTestId("sql-catalog-runtime-status").textContent).toMatch(
+                /ready for persisted revision doc-rev-1/,
+            )
         );
         view.unmount();
     });

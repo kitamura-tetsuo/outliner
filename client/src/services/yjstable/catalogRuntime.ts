@@ -14,6 +14,18 @@ export type CatalogRuntimeState =
 type Listener = (state: CatalogRuntimeState) => void;
 
 /**
+ * The production boundary behind the SQL catalog panel's runtime status
+ * (issue #5576 REQ-003): `subscribe` replays the actual SQL runtime
+ * installation states (building, ready for an installed revision, error
+ * with diagnostics), and `rebuild` requests a real rebuild whose outcome
+ * arrives through `subscribe` — it never reports ready by itself.
+ */
+export interface SqlCatalogRuntimePort {
+    subscribe: (listener: (state: CatalogRuntimeState) => void) => () => void;
+    rebuild: () => void;
+}
+
+/**
  * Project-scoped owner of the catalog objects installed in the shared PGlite
  * schema. It deliberately publishes a generation only after the complete
  * replacement transaction succeeded and the captured catalog is still the
@@ -130,6 +142,16 @@ export class CatalogRuntime {
 
     private startBuild(): void {
         this.currentBuild = this.rebuild();
+    }
+
+    /**
+     * Request a fresh build of the current inputs (issue #5576 REQ-003). The
+     * build publishes `building` synchronously, then `ready` or `error` with
+     * diagnostics to subscribers once installation succeeds or fails — the
+     * only path that may report runtime readiness for an installed revision.
+     */
+    requestRebuild(): void {
+        if (!this.disposed) this.startBuild();
     }
 
     private tableSnapshots(): SqlTableSnapshot[] {
