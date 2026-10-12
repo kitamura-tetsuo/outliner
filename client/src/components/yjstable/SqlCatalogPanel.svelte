@@ -1,7 +1,13 @@
 <script lang="ts">
 import { onDestroy } from "svelte";
+import type * as Y from "yjs";
 import SqlEditor from "./SqlEditor.svelte";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
+import { createTableEngineSession } from "../../services/yjstable/tableEngine";
+import type {
+    CatalogRuntimeState,
+    SqlCatalogRuntimePort,
+} from "../../services/yjstable/catalogRuntime";
 import {
     applyCatalogMutation,
     catalogKindLabel,
@@ -9,6 +15,7 @@ import {
     isExecutableEnumSource,
     resolveCatalogTypeName,
     SqlCatalogTransportError,
+    validateCatalogMutation,
     type SqlCatalogObjectDto,
     type SqlCatalogSnapshotDto,
 } from "../../services/yjstable/sqlCatalogClient";
@@ -20,9 +27,17 @@ import {
 interface Props {
     /** Stable project id used by project-owned rooms. */
     projectId: string;
+    /**
+     * Live project document. When provided (and no explicit `runtimePort`
+     * is given), the panel subscribes to the project's actual catalog
+     * runtime and Rebuild runtime requests a real rebuild.
+     */
+    projectDoc?: Y.Doc;
+    /** Explicit runtime source; used by tests to drive the real boundary. */
+    runtimePort?: SqlCatalogRuntimePort;
 }
 
-let { projectId }: Props = $props();
+let { projectId, projectDoc = undefined, runtimePort = undefined }: Props = $props();
 
 let snapshot = $state<SqlCatalogSnapshotDto | undefined>(undefined);
 let loading = $state(true);
@@ -32,7 +47,27 @@ let creating = $state(false);
 let editing = $state(false);
 let draft = $state("");
 let draftId = $state("");
+// The source revision observed when the draft started. Apply submits this
+// revision — never the live snapshot revision — so a remote change that
+// lands while a draft exists is refused as stale instead of silently
+// rebasing the expected revision.
+let draftRevision = $state<string | undefined>(undefined);
+let draftBaseSource = $state<string | undefined>(undefined);
 let busy = $state(false);
+let validating = $state(false);
+let validation = $state<{ kind: "preview" | "refused"; text: string; draft: string; revision: string; } | undefined>(
+    undefined,
+);
+let conflict = $state<string | undefined>(undefined);
+let commitInfo = $state<{ objectId: string; revision: string; } | undefined>(undefined);
+let unconfirmed = $state<string | undefined>(undefined);
+let runtime = $state<
+    { status: "idle" | "building" | "ready" | "error"; revision?: string; message?: string; }
+>({ status: "idle" });
+// The connected runtime source behind `runtime`, if any. Readiness is only
+// ever assigned from states this source publishes; without a source the
+// panel stays idle and never claims ready.
+let activePort = $state<SqlCatalogRuntimePort | undefined>(undefined);
 let mutationError = $state<string | undefined>(undefined);
 let mutationInfo = $state<string | undefined>(undefined);
 let confirmDelete = $state(false);
@@ -43,6 +78,85 @@ onDestroy(() => {
 });
 
 const selected = $derived(snapshot?.objects.find(object => object.id === selectedId));
+const hasDraft = $derived(creating || editing);
+const draftModified = $derived(
+    !hasDraft ? false : creating ? draft.length > 0 : draft !== draftBaseSource,
+);
+// The draft is local-only state: its exact SQL is preserved verbatim until
+// Cancel discards it or a confirmed apply commits it. It is never written
+// into the persisted list, the history router, or the runtime.
+const draftStatus = $derived(
+    !hasDraft
+        ? "No unsaved draft."
+        : draftModified
+        ? `Unsaved draft (observed ${shortRevision(draftRevision)}). Not applied.`
+        : `Unsaved draft opened (observed ${shortRevision(draftRevision)}). No changes typed yet; nothing applied.`,
+);
+// A validation result belongs to one exact draft text and observed revision.
+// Editing the draft after validating leaves the previous result visible but
+// explicitly stale so it can never enable success for newer input.
+const validationStale = $derived(
+    validation !== undefined && (validation.draft !== draft || validation.revision !== draftRevision),
+);
+
+function shortRevision(revision: string | undefined): string {
+    return revision === undefined ? "unknown" : revision.slice(0, 12);
+}
+
+function describeRefusal(result: { reason?: unknown; diagnostics?: { message?: unknown; objectId?: unknown; }[]; }): string {
+    const details = (result.diagnostics ?? [])
+        .map(diagnostic => {
+            const message = typeof diagnostic.message === "string" ? diagnostic.message : undefined;
+            const objectId = typeof diagnostic.objectId === "string" ? diagnostic.objectId : undefined;
+            if (!message) return undefined;
+            return objectId ? `${objectId}: ${message}` : message;
+        })
+        .filter((message): message is string => message !== undefined);
+    const reason = typeof result.reason === "string" ? result.reason : "refused";
+    return `Refused (${reason})${details.length > 0 ? `: ${details.join("; ")}` : ""}.`;
+}
+
+function describeRuntime(): string {
+    if (runtime.status === "idle") return "Runtime has not built yet.";
+    if (runtime.status === "building") {
+        return `Runtime building for persisted revision ${shortRevision(runtime.revision)}… Not ready.`;
+    }
+    if (runtime.status === "ready") {
+        const qualifier = hasDraft ? " Covers persisted source only, not the unsaved draft." : "";
+        return `Runtime ready for persisted revision ${shortRevision(runtime.revision)}.${qualifier}`;
+    }
+    return `Runtime error for persisted revision ${shortRevision(runtime.revision)}: ${runtime.message ?? "unknown"}.`;
+}
+
+function applyRuntimeState(state: CatalogRuntimeState): void {
+    // Runtime readiness reflects a successful installation of the
+    // corresponding persisted inputs: pending builds stay building and
+    // failed builds surface error diagnostics. No other path assigns ready.
+    if (state.status === "building") {
+        runtime = { status: "building", revision: state.revision };
+    } else if (state.status === "ready") {
+        runtime = { status: "ready", revision: state.snapshot.revision };
+    } else {
+        runtime = { status: "error", revision: state.revision, message: state.message };
+    }
+}
+
+function refreshConflict(next: SqlCatalogSnapshotDto): void {
+    if (!hasDraft || !draftRevision) return;
+    if (next.revision === draftRevision) {
+        // The revision is unchanged but the target object itself may have
+        // been replaced under the same revision window; re-check identity.
+        if (editing && selectedId && !next.objects.some(object => object.id === selectedId)) {
+            conflict =
+                `Conflict: the edited declaration was removed remotely (observed ${shortRevision(draftRevision)}). Draft preserved locally; nothing was overwritten.`;
+        }
+        return;
+    }
+    conflict =
+        `Conflict: source changed remotely (observed ${shortRevision(draftRevision)}, now ${
+            shortRevision(next.revision)
+        }). Draft preserved locally; Apply will be refused as stale until the draft is rebased.`;
+}
 // History availability tracks the shared router so the panel's Undo/Redo
 // behave exactly like the toolbar and Ctrl+Z / Ctrl+Shift+Z.
 const canUndoHistory = $derived(globalUndoRouter.canUndo());
@@ -115,9 +229,14 @@ function describeResult(result: unknown): string | undefined {
     if (status === "applied") return "Saved.";
     if (status === "no-op") return "No changes to save.";
     if (status === "refused") {
-        const refusal = result as { reason?: unknown; diagnostics?: { message?: unknown; }[]; };
+        const refusal = result as { reason?: unknown; diagnostics?: { message?: unknown; objectId?: unknown; }[]; };
         const details = (refusal.diagnostics ?? [])
-            .map(diagnostic => typeof diagnostic.message === "string" ? diagnostic.message : undefined)
+            .map(diagnostic => {
+                const message = typeof diagnostic.message === "string" ? diagnostic.message : undefined;
+                const objectId = typeof diagnostic.objectId === "string" ? diagnostic.objectId : undefined;
+                if (!message) return undefined;
+                return objectId ? `${objectId}: ${message}` : message;
+            })
             .filter((message): message is string => message !== undefined);
         const reason = typeof refusal.reason === "string" ? refusal.reason : "refused";
         return `Refused (${reason})${details.length > 0 ? `: ${details.join("; ")}` : ""}.`;
@@ -134,8 +253,16 @@ async function load() {
     loading = true;
     loadError = undefined;
     try {
-        snapshot = await fetchCatalogSnapshot(projectId);
-        if (selectedId && !snapshot.objects.some(object => object.id === selectedId)) selectedId = undefined;
+        const next = await fetchCatalogSnapshot(projectId);
+        // Reload reads persisted source only. The local draft is preserved
+        // verbatim and never merged into the list; a remotely removed
+        // selection clears the detail view but keeps the draft text.
+        snapshot = next;
+        if (selectedId && !next.objects.some(object => object.id === selectedId)) selectedId = undefined;
+        refreshConflict(next);
+        // Reload reads persisted source only and never moves the runtime by
+        // itself: readiness arrives exclusively through the subscribed
+        // runtime source once it installs a revision.
     } catch (error) {
         loadError = describeError(error);
     } finally {
@@ -149,8 +276,13 @@ function startCreate() {
     confirmDelete = false;
     mutationError = undefined;
     mutationInfo = undefined;
+    validation = undefined;
+    conflict = undefined;
+    unconfirmed = undefined;
     draftId = crypto.randomUUID();
     draft = "CREATE TYPE new_type AS ENUM ('value1', 'value2');";
+    draftRevision = snapshot?.revision;
+    draftBaseSource = undefined;
     selectedId = undefined;
 }
 
@@ -160,6 +292,11 @@ function inspect(object: SqlCatalogObjectDto) {
     confirmDelete = false;
     mutationError = undefined;
     mutationInfo = undefined;
+    validation = undefined;
+    conflict = undefined;
+    unconfirmed = undefined;
+    draftRevision = undefined;
+    draftBaseSource = undefined;
     selectedId = object.id;
     draft = object.source;
 }
@@ -172,45 +309,196 @@ function startEdit() {
     confirmDelete = false;
     mutationError = undefined;
     mutationInfo = undefined;
+    validation = undefined;
+    conflict = undefined;
+    unconfirmed = undefined;
     draftId = current.id;
     draft = current.source;
+    draftRevision = snapshot?.revision;
+    draftBaseSource = current.source;
 }
 
 function cancel() {
+    // Cancel discards only the local draft: persisted source, history and the
+    // runtime are untouched.
     creating = false;
     editing = false;
     confirmDelete = false;
     mutationError = undefined;
     mutationInfo = undefined;
+    validation = undefined;
+    conflict = undefined;
+    unconfirmed = undefined;
+    draftRevision = undefined;
+    draftBaseSource = undefined;
     if (!selectedId) draft = "";
+}
+
+function handleDraftChange(next: string) {
+    draft = next;
+}
+
+function rebuildRuntime() {
+    // Rebuild requests a real rebuild from the connected runtime source and
+    // reports nothing by itself: readiness (or error diagnostics) arrives
+    // only through the subscription. Without a connected source there is no
+    // runtime to rebuild, so the panel never claims readiness.
+    if (!snapshot || busy || validating) return;
+    activePort?.rebuild();
+}
+
+function buildDraftIntent(): { operation: "create" | "replace"; object: SqlCatalogObjectDto; } | undefined {
+    if (creating) return { operation: "create", object: { id: draftId, kind: "enum", source: draft } };
+    if (editing && selected) {
+        return { operation: "replace", object: { id: selected.id, kind: "enum", source: draft } };
+    }
+    return undefined;
+}
+
+async function submitValidate() {
+    if (!snapshot) return;
+    const intent = buildDraftIntent();
+    if (!intent) return;
+    const observedRevision = draftRevision ?? snapshot.revision;
+    // The request validates exactly this text. Edits typed while it is in
+    // flight must not inherit its outcome: the result below is recorded
+    // against the submitted text, so newer input renders it stale.
+    const submittedDraft = draft;
+    validating = true;
+    mutationError = undefined;
+    try {
+        const result = await validateCatalogMutation(projectId, { expectedRevision: observedRevision, intent });
+        const record = (result ?? {}) as { status?: unknown; reason?: unknown; diagnostics?: { message?: unknown; objectId?: unknown; }[]; };
+        if (record.status === "preview") {
+            validation = {
+                kind: "preview",
+                text: "Valid preview for the submitted draft. Not applied: source, history and runtime are unchanged.",
+                draft: submittedDraft,
+                revision: observedRevision,
+            };
+        } else if (record.status === "refused") {
+            const text = describeRefusal(record);
+            validation = { kind: "refused", text, draft: submittedDraft, revision: observedRevision };
+            if (record.reason === "stale") {
+                conflict =
+                    `Conflict: the draft was validated against observed ${shortRevision(observedRevision)}, which is stale. Draft preserved locally; nothing was overwritten.`;
+            }
+        } else if (record.status === "unconfirmed") {
+            const reason = typeof record.reason === "string" ? record.reason : "unknown";
+            unconfirmed = `Validation not confirmed: ${reason}. No success recorded; draft preserved.`;
+        } else {
+            unconfirmed = "Validation not confirmed: unknown receipt. No success recorded; draft preserved.";
+        }
+    } catch (error) {
+        mutationError = describeError(error);
+    } finally {
+        validating = false;
+    }
+}
+
+function noteStaleConflict(result: unknown): boolean {
+    const record = (result ?? {}) as { status?: unknown; reason?: unknown; };
+    if (record.status === "refused" && record.reason === "stale") {
+        conflict =
+            `Conflict: source changed remotely (observed ${shortRevision(draftRevision)}). Draft preserved locally; Apply was refused as stale and nothing was overwritten.`;
+        return true;
+    }
+    if (record.status === "unconfirmed" && record.reason === "stale") {
+        conflict =
+            `Conflict: source changed remotely (observed ${shortRevision(draftRevision)}). Draft preserved locally; Apply was refused as stale and nothing was overwritten.`;
+        return true;
+    }
+    return false;
+}
+
+function noteUnconfirmedResult(result: unknown): boolean {
+    const record = (result ?? {}) as { status?: unknown; reason?: unknown; };
+    if (record.status !== "unconfirmed") return false;
+    const reason = typeof record.reason === "string" ? record.reason : "unknown";
+    unconfirmed =
+        `Apply not confirmed (${reason}). No success recorded, no history step, no duplicate allocation; draft preserved. Reload and retry.`;
+    if (reason === "stale") {
+        conflict =
+            `Conflict: source changed remotely (observed ${shortRevision(draftRevision)}). Draft preserved locally; Apply was refused as stale and nothing was overwritten.`;
+    }
+    return true;
+}
+
+function noteConfirmedCommit(objectId: string, result: unknown): void {
+    const record = (result ?? {}) as { after?: { revision?: unknown; }; };
+    const after = record.after as { revision?: unknown; } | undefined;
+    const revision = after && typeof after.revision === "string" ? after.revision : snapshot?.revision;
+    if (revision) {
+        commitInfo = { objectId, revision };
+        // The commit confirms source only. Runtime still needs its own
+        // confirmed rebuild before it may report ready for this revision;
+        // the subscribed source resolves this pending state. Without a
+        // connected source nothing is building, so the panel stays idle
+        // rather than claiming a build.
+        if (activePort) {
+            runtime = { status: "building", revision };
+        }
+    }
 }
 
 async function submitCreate() {
     if (!snapshot) return;
     const before = snapshot;
+    const observedRevision = draftRevision ?? before.revision;
+    // The request commits exactly this text. Edits accepted while it is
+    // pending belong to a newer unsaved draft and must survive the confirmed
+    // receipt verbatim instead of being cleared with the submitted text.
+    const submitted = draft;
+    const submittedId = draftId;
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
+    unconfirmed = undefined;
     try {
         const result = await applyCatalogMutation(projectId, {
-            expectedRevision: before.revision,
-            intent: { operation: "create", object: { id: draftId, kind: "enum", source: draft } },
+            expectedRevision: observedRevision,
+            intent: { operation: "create", object: { id: submittedId, kind: "enum", source: submitted } },
         });
         const summary = describeResult(result);
+        if (noteUnconfirmedResult(result)) {
+            mutationInfo = summary;
+            mutationError = summary;
+            return;
+        }
         await load();
         // Only a confirmed effectful receipt registers exactly one history
         // step; previews, no-ops, refusals and unconfirmed results register
         // none. Disabled/read-only controls never substitute for this gate.
-        if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, draftId);
+        if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, submittedId);
         if (summary === "Saved.") {
-            creating = false;
-            selectedId = draftId;
-            draft = "";
+            noteConfirmedCommit(submittedId, result);
+            if (draft !== submitted) {
+                // Newer edits arrived while the request was pending: the
+                // confirmed source holds only the submitted text, so the
+                // current text stays an exact unsaved draft at its observed
+                // revision. The refresh above already re-derived the
+                // conflict; the submitted validation (if any) now reads
+                // stale for the current text.
+            } else {
+                creating = false;
+                selectedId = submittedId;
+                draft = "";
+                draftRevision = undefined;
+                draftBaseSource = undefined;
+                validation = undefined;
+                conflict = undefined;
+            }
+        } else if (noteStaleConflict(result)) {
+            // Draft preserved; expected revision stays at the observed value.
         }
         mutationInfo = summary;
         if (summary !== "Saved." && summary !== "No changes to save.") mutationError = summary;
     } catch (error) {
+        unconfirmed = undefined;
         mutationError = describeApplyFailure(error);
+        if (mutationError.startsWith("Not confirmed")) {
+            unconfirmed = `${mutationError}`;
+        }
     } finally {
         busy = false;
     }
@@ -220,22 +508,53 @@ async function submitEdit() {
     if (!snapshot || !selected) return;
     const before = snapshot;
     const targetId = selected.id;
+    const observedRevision = draftRevision ?? before.revision;
+    // Same pending-edit rule as creation: the request replaces with exactly
+    // this text, and newer accepted edits must survive the receipt verbatim.
+    const submitted = draft;
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
+    unconfirmed = undefined;
     try {
         const result = await applyCatalogMutation(projectId, {
-            expectedRevision: before.revision,
-            intent: { operation: "replace", object: { id: targetId, kind: "enum", source: draft } },
+            expectedRevision: observedRevision,
+            intent: { operation: "replace", object: { id: targetId, kind: "enum", source: submitted } },
         });
         const summary = describeResult(result);
+        if (noteUnconfirmedResult(result)) {
+            mutationInfo = summary;
+            mutationError = summary;
+            return;
+        }
         await load();
         if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, targetId);
-        if (summary === "Saved." || summary === "No changes to save.") editing = false;
+        if (summary === "Saved." || summary === "No changes to save.") {
+            if (draft !== submitted) {
+                // Newer edits arrived while the request was pending: keep
+                // them as the exact unsaved draft at the observed revision.
+                // The refresh above already re-derived the conflict, and the
+                // submitted validation (if any) now reads stale.
+                if (summary === "Saved.") noteConfirmedCommit(targetId, result);
+            } else {
+                if (summary === "Saved.") noteConfirmedCommit(targetId, result);
+                editing = false;
+                draftRevision = undefined;
+                draftBaseSource = undefined;
+                validation = undefined;
+                if (summary === "Saved.") conflict = undefined;
+            }
+        } else if (noteStaleConflict(result)) {
+            // Draft preserved; expected revision stays at the observed value.
+        }
         mutationInfo = summary;
         if (summary !== "Saved." && summary !== "No changes to save.") mutationError = summary;
     } catch (error) {
+        unconfirmed = undefined;
         mutationError = describeApplyFailure(error);
+        if (mutationError.startsWith("Not confirmed")) {
+            unconfirmed = `${mutationError}`;
+        }
     } finally {
         busy = false;
     }
@@ -252,15 +571,22 @@ async function submitDelete() {
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
+    unconfirmed = undefined;
     try {
         const result = await applyCatalogMutation(projectId, {
             expectedRevision: before.revision,
             intent: { operation: "delete", objectId: targetId },
         });
         const summary = describeResult(result);
+        if (noteUnconfirmedResult(result)) {
+            mutationInfo = summary;
+            mutationError = summary;
+            return;
+        }
         await load();
         if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, targetId);
         if (summary === "Saved.") {
+            noteConfirmedCommit(targetId, result);
             selectedId = undefined;
             editing = false;
             draft = "";
@@ -268,7 +594,11 @@ async function submitDelete() {
         mutationInfo = summary;
         if (summary !== "Saved.") mutationError = summary;
     } catch (error) {
+        unconfirmed = undefined;
         mutationError = describeApplyFailure(error);
+        if (mutationError.startsWith("Not confirmed")) {
+            unconfirmed = `${mutationError}`;
+        }
     } finally {
         busy = false;
         confirmDelete = false;
@@ -283,9 +613,60 @@ function handleHistoryRedo() {
     globalUndoRouter.redo();
 }
 
+let observedProjectId = "";
+
 $effect(() => {
-    void projectId;
+    // Reload (and reconnect-remount) reads persisted source only: local
+    // editor state is never used to repair missing persisted definitions.
+    if (observedProjectId !== projectId) {
+        observedProjectId = projectId;
+        creating = false;
+        editing = false;
+        draft = "";
+        draftRevision = undefined;
+        draftBaseSource = undefined;
+        validation = undefined;
+        conflict = undefined;
+        commitInfo = undefined;
+        unconfirmed = undefined;
+        runtime = { status: "idle" };
+        selectedId = undefined;
+    }
     void load();
+});
+
+$effect(() => {
+    // Connect the runtime status to its production source. An explicit port
+    // wins (tests); otherwise a live project document subscribes to the
+    // project's actual catalog runtime. Readiness and error diagnostics
+    // arrive exclusively through this subscription — neither the persisted
+    // read above nor the rebuild button assigns them.
+    const override = runtimePort;
+    const doc = projectDoc;
+    const pid = projectId;
+    let port: SqlCatalogRuntimePort | undefined = override;
+    let disposeSession: (() => void) | undefined;
+    if (!port && doc) {
+        const session = createTableEngineSession({ projectDoc: doc, projectId: pid });
+        disposeSession = () => session.dispose();
+        port = {
+            subscribe: listener => session.subscribeCatalog(listener),
+            rebuild: () => session.rebuildCatalog(),
+        };
+    }
+    activePort = port;
+    if (!port) {
+        runtime = { status: "idle" };
+        return;
+    }
+    const unsubscribe = port.subscribe(state => {
+        if (!isActiveProject(pid)) return;
+        applyRuntimeState(state);
+    });
+    return () => {
+        unsubscribe();
+        disposeSession?.();
+    };
 });
 </script>
 
@@ -329,6 +710,50 @@ $effect(() => {
     {#if snapshot}
         <p class="revision" data-testid="sql-catalog-revision">Revision <code>{snapshot.revision.slice(0, 12)}</code></p>
     {/if}
+
+    <section class="states" data-testid="sql-catalog-states" aria-label="Draft, validation, apply, commit and runtime states">
+        <p class="state" data-testid="sql-catalog-draft-status">{draftStatus}</p>
+        {#if conflict}
+            <p class="warning" data-testid="sql-catalog-conflict">{conflict}</p>
+        {/if}
+        {#if validation && (creating || editing || validationStale)}
+            <p
+                class={validation.kind === "preview" ? "info" : "error"}
+                data-testid="sql-catalog-validation"
+            >
+                {validation.kind === "preview" ? "Validation preview: " : "Validation refused: "}{validation.text}
+                {#if validationStale}
+                    <span data-testid="sql-catalog-validation-stale"> Stale for the current draft; re-validate before Apply.</span>
+                {/if}
+            </p>
+        {/if}
+        {#if busy}
+            <p class="info" data-testid="sql-catalog-apply-status">
+                Applying source for observed revision {shortRevision(draftRevision ?? snapshot?.revision)}… Not ready.
+            </p>
+        {/if}
+        {#if commitInfo}
+            <p class="info" data-testid="sql-catalog-commit-status">
+                Source committed for {commitInfo.objectId.slice(0, 8)} at revision {shortRevision(commitInfo.revision)}.
+                Runtime readiness needs a separate confirmed rebuild.
+            </p>
+        {/if}
+        <div class="runtime-row">
+            <p class="state" data-testid="sql-catalog-runtime-status">{describeRuntime()}</p>
+            <button
+                type="button"
+                data-testid="sql-catalog-rebuild-runtime"
+                disabled={loading || busy || validating || !snapshot || !activePort}
+                title={!activePort ? "No SQL runtime connected." : undefined}
+                onclick={rebuildRuntime}
+            >
+                Rebuild runtime
+            </button>
+        </div>
+        {#if unconfirmed}
+            <p class="error" data-testid="sql-catalog-unconfirmed">{unconfirmed}</p>
+        {/if}
+    </section>
 
     <section class="rules" data-testid="sql-catalog-first-release-rules" aria-label="First-release declarative rules">
         <h3>First-release declarative rules</h3>
@@ -389,15 +814,23 @@ $effect(() => {
                 value={draft}
                 minHeight={140}
                 maxHeight={320}
-                onChange={(next) => {
-                    draft = next;
-                }}
+                onChange={handleDraftChange}
             />
             <div class="editor-actions">
-                <button type="button" data-testid="sql-catalog-create" disabled={busy} onclick={submitCreate}>
+                <button
+                    type="button"
+                    data-testid="sql-catalog-validate"
+                    disabled={busy || validating}
+                    onclick={submitValidate}
+                >
+                    {validating ? "Validating…" : "Validate"}
+                </button>
+                <button type="button" data-testid="sql-catalog-create" disabled={busy || validating} onclick={submitCreate}>
                     {busy ? "Creating…" : "Create type"}
                 </button>
-                <button type="button" data-testid="sql-catalog-cancel" disabled={busy} onclick={cancel}>Cancel</button>
+                <button type="button" data-testid="sql-catalog-cancel" disabled={busy || validating} onclick={cancel}>
+                    Cancel
+                </button>
             </div>
         </section>
     {:else if selected}
@@ -417,9 +850,7 @@ $effect(() => {
                     value={draft}
                     minHeight={140}
                     maxHeight={320}
-                    onChange={(next) => {
-                        draft = next;
-                    }}
+                    onChange={handleDraftChange}
                 />
             {:else}
                 <SqlEditor
@@ -433,10 +864,25 @@ $effect(() => {
             {/if}
             <div class="editor-actions">
                 {#if editing}
-                    <button type="button" data-testid="sql-catalog-save" disabled={busy} onclick={submitEdit}>
+                    <button
+                        type="button"
+                        data-testid="sql-catalog-validate"
+                        disabled={busy || validating}
+                        onclick={submitValidate}
+                    >
+                        {validating ? "Validating…" : "Validate"}
+                    </button>
+                    <button type="button" data-testid="sql-catalog-save" disabled={busy || validating} onclick={submitEdit}>
                         {busy ? "Saving…" : "Save changes"}
                     </button>
-                    <button type="button" data-testid="sql-catalog-cancel" disabled={busy} onclick={cancel}>Cancel</button>
+                    <button
+                        type="button"
+                        data-testid="sql-catalog-cancel"
+                        disabled={busy || validating}
+                        onclick={cancel}
+                    >
+                        Cancel
+                    </button>
                 {:else}
                     <button type="button" data-testid="sql-catalog-edit" disabled={busy} onclick={startEdit}>
                         Edit source
@@ -554,6 +1000,50 @@ $effect(() => {
     color: #6b7280;
     font-size: 0.85rem;
     margin: 0;
+}
+
+.states {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #f9fafb;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.state {
+    color: #374151;
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.warning {
+    color: #b45309;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.runtime-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.runtime-row button {
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.runtime-row button:disabled {
+    opacity: 0.5;
+    cursor: default;
 }
 
 .error {
