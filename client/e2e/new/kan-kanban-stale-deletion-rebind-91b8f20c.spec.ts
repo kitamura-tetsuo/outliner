@@ -31,7 +31,7 @@ async function addExistingBoardToLayout(page: Page, layout: ReturnType<Page["loc
 
 test(
     "FTR-91b8f20c: stale deletion keeps a peer replacement bound to another board",
-    async ({ page, context }, testInfo) => {
+    async ({ page, browser }, testInfo) => {
         test.setTimeout(180000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Dashboard"]);
         await createBlankGrid(page, "Tasks", "tasks");
@@ -56,8 +56,26 @@ test(
         const confirmation = page.getByRole("alertdialog");
         await expect(confirmation).toContainText("2 Page placement(s)");
 
-        const peer = await context.newPage();
+        const peerContext = await browser.newContext({ storageState: TestHelpers.createTestStorageState() as any });
+        const peer = await peerContext.newPage();
+        await peer.addInitScript(() => {
+            localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+            (globalThis as any).__E2E__ = true;
+        });
         await peer.goto(pageUrl);
+        await peer.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__, undefined, { timeout: 10000 });
+        await peer.evaluate(async () => {
+            const manager = (globalThis as any).__USER_MANAGER__;
+            if (manager?.loginWithEmailPassword) {
+                await manager.loginWithEmailPassword("test@example.com", "password");
+            }
+        });
+        await peer.waitForFunction(
+            () => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(),
+            undefined,
+            { timeout: 10000 },
+        );
         await peer.waitForFunction(
             () => (globalThis as any).__YJS_STORE__?.getIsConnected?.() === true,
             undefined,
@@ -90,5 +108,6 @@ test(
         await expect(page.locator(`[data-testid="object-row-${secondId}"]`)).toBeVisible();
         await peer.locator("aside [data-page-id]").first().click();
         await expect(peer.locator(`[data-testid="kanban-board"][data-kanban-id="${secondId}"]`)).toHaveCount(2);
+        await peerContext.close();
     },
 );
