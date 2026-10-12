@@ -12,7 +12,7 @@ import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-test("Page/Layout card controls update Grid, peer, and reload without moving blocks", async ({
+test("Page/Layout card controls and pointer drag update Grid, peer, and reload without moving blocks", async ({
     page,
     context,
 }, info) => {
@@ -50,8 +50,23 @@ test("Page/Layout card controls update Grid, peer, and reload without moving blo
     const before = await layout.locator('[data-testid="layout-cell"]').evaluateAll(cells =>
         cells.map(cell => ({ id: cell.getAttribute("data-item-id"), style: cell.getAttribute("style") }))
     );
+
+    // Exercise the embedded board's drag boundary before another write causes
+    // the saved SELECT to replace its result occurrences. This uses the same
+    // browser drag lifecycle as the standalone board while keeping every
+    // locator inside this Layout placement.
     const alpha = board.locator("article.card").filter({ hasText: "Alpha" });
-    await alpha.getByRole("button", { name: "Edit title" }).click();
+    const target = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    const moveHandle = alpha.getByRole("button", { name: "Move card" });
+    await moveHandle.dispatchEvent("dragstart", { dataTransfer: transfer });
+    await target.dispatchEvent("dragover", { dataTransfer: transfer });
+    await target.dispatchEvent("drop", { dataTransfer: transfer });
+    await moveHandle.dispatchEvent("dragend", { dataTransfer: transfer }).catch(() => {});
+    await expect(target.locator("article.card").filter({ hasText: "Alpha" })).toBeVisible();
+
+    const movedAlpha = target.locator("article.card").filter({ hasText: "Alpha" });
+    await movedAlpha.getByRole("button", { name: "Edit title" }).click();
     // Opening the editor removes the title text used by `alpha`'s filter, so
     // reacquire the controls from the stable board boundary.
     const titleEditor = board.getByRole("textbox", { name: "Edit title" });
@@ -61,7 +76,7 @@ test("Page/Layout card controls update Grid, peer, and reload without moving blo
     await expect(page.getByTestId("yjs-table-view").getByText("Alpha in layout", { exact: true })).toBeVisible();
 
     const source = (await readGridProjectState(page)).tables.find(table => table.id === fixture.tableId)!;
-    expect(source.data[fixture.recordIds[0]]).toMatchObject({ title: "Alpha in layout", status: "open" });
+    expect(source.data[fixture.recordIds[0]]).toMatchObject({ title: "Alpha in layout", status: "done" });
     expect(
         await layout.locator('[data-testid="layout-cell"]').evaluateAll(cells =>
             cells.map(cell => ({ id: cell.getAttribute("data-item-id"), style: cell.getAttribute("style") }))
