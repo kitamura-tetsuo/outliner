@@ -38,3 +38,17 @@ project name. It creates the canonical resource descriptor for a new project or
 requires the existing descriptor's ACL and title to match. A mismatch fails
 before the Yjs room is opened. Seeding removes a legacy Yjs title instead of
 creating another title authority.
+
+## Project-directory storage provider
+
+All server callers reach project-directory and project-access storage through
+the provider boundary in `server/src/project-directory-provider.ts`, which
+covers descriptor creation, lookup, listing, title resolution and rename plus
+the associated resource-side access checks and accessible-ID discovery. The
+Firestore implementation is selected by default and needs no local password,
+local database or new cloud configuration. The boundary performs no project-ID
+validation itself: the Firestore adapter treats IDs as opaque strings matching
+`^[A-Za-z0-9_-]{1,200}$`, and another producer may support a different ID
+domain. Canonical reads use `projectUsers/{projectId}` only; the Boolean and
+ID-list compatibility facades keep their denied/empty fallback on storage
+errors, which callers must not mistake for a successful empty directory.

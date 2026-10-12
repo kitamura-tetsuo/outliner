@@ -30,7 +30,7 @@ import { getOAuthFirebaseWebConfig } from "./oauth/authorize-page.js";
 import { createOAuthRouter } from "./oauth/oauth-api.js";
 import { createDocumentStore, createPersistence } from "./persistence.js";
 import { createProjectDirectoryRouter } from "./project-directory-api.js";
-import { listAccessibleProjectDescriptors } from "./project-directory.js";
+import { getProjectDirectoryProvider, type ProjectDirectoryProvider } from "./project-directory-provider.js";
 import { parseRoom } from "./room-validator.js";
 import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
 import { createScheduleRunRouter } from "./scheduler/schedule-run-api.js";
@@ -53,6 +53,7 @@ import { verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
 interface ServerOverrides {
     checkContainerAccess?: typeof defaultCheckAccess;
     verifyIdTokenCached?: typeof defaultVerifyToken;
+    directoryProvider?: ProjectDirectoryProvider;
 }
 
 export interface ConnectionContext {
@@ -104,7 +105,9 @@ export async function startServer(
         }
     }
 
-    const checkContainerAccess = overrides.checkContainerAccess || defaultCheckAccess;
+    const directoryProvider = overrides.directoryProvider ?? getProjectDirectoryProvider();
+    const checkContainerAccess = overrides.checkContainerAccess
+        ?? directoryProvider.checkAccess.bind(directoryProvider);
     const verifyIdTokenCached = overrides.verifyIdTokenCached || defaultVerifyToken;
 
     // Create Express app for API endpoints
@@ -425,7 +428,10 @@ export async function startServer(
     app.use("/api", createSeedRouter(hocuspocus));
 
     // Canonical resource-side project metadata used by both the web client and MCP.
-    app.use("/api", createProjectDirectoryRouter({ verifyToken: verifyIdTokenCached }));
+    app.use(
+        "/api",
+        createProjectDirectoryRouter({ verifyToken: verifyIdTokenCached, provider: directoryProvider }),
+    );
 
     // Demo API - anonymous access for the public demo page
     app.use("/api", createDemoRouter(hocuspocus, config));
@@ -469,7 +475,7 @@ export async function startServer(
             hocuspocus,
             checkContainerAccess,
             uid =>
-                listAccessibleProjectDescriptors(uid, undefined, error => {
+                directoryProvider.listDescriptors(uid, error => {
                     logger.warn(
                         {
                             event: "project_directory_descriptor_quarantined",

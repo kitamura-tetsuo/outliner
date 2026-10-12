@@ -3,6 +3,7 @@ import express from "express";
 import { z } from "zod";
 import { checkContainerAccess as defaultCheckAccess } from "../access-control.js";
 import { logger } from "../logger.js";
+import { getProjectDirectoryProvider } from "../project-directory-provider.js";
 import { verifyIdTokenCached as defaultVerifyToken } from "../websocket-auth.js";
 import { JobScheduler } from "./Scheduler.js";
 
@@ -19,7 +20,9 @@ export function createScheduleRunRouter(
         verifyIdTokenCached?: typeof defaultVerifyToken;
     },
 ) {
-    const checkContainerAccess = overrides?.checkContainerAccess || defaultCheckAccess;
+    const provider = getProjectDirectoryProvider();
+    const checkContainerAccess = overrides?.checkContainerAccess
+        ?? provider.checkAccess.bind(provider);
     const verifyIdTokenCached = overrides?.verifyIdTokenCached || defaultVerifyToken;
     const router = express.Router();
 

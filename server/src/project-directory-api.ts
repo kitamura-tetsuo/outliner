@@ -1,13 +1,10 @@
 import express from "express";
 import type { Firestore } from "firebase-admin/firestore";
 import {
-    ensureProjectDescriptorForWrite,
-    getAuthorizedProjectDescriptorForWrite,
-    listAccessibleProjectDescriptors,
-    ProjectDirectoryError,
-    renameProject,
-    resolveAccessibleProjectTitle,
-} from "./project-directory.js";
+    createFirestoreProjectDirectoryProvider,
+    type ProjectDirectoryProvider,
+} from "./project-directory-provider.js";
+import { ProjectDirectoryError } from "./project-directory.js";
 import { verifyIdTokenCached } from "./websocket-auth.js";
 
 type VerifyToken = typeof verifyIdTokenCached;
@@ -24,9 +21,11 @@ function errorStatus(error: ProjectDirectoryError): number {
 export function createProjectDirectoryRouter(options: {
     verifyToken?: VerifyToken;
     firestore?: Firestore;
+    provider?: ProjectDirectoryProvider;
 } = {}) {
     const router = express.Router();
     const verifyToken = options.verifyToken ?? verifyIdTokenCached;
+    const provider = options.provider ?? createFirestoreProjectDirectoryProvider(options.firestore);
 
     router.use("/projects", async (req, res, next) => {
         const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
@@ -45,10 +44,7 @@ export function createProjectDirectoryRouter(options: {
     router.get("/projects", async (_req, res) => {
         try {
             res.json({
-                projects: await listAccessibleProjectDescriptors(
-                    res.locals.projectDirectoryUid as string,
-                    options.firestore,
-                ),
+                projects: await provider.listDescriptors(res.locals.projectDirectoryUid as string),
             });
         } catch (error) {
             const status = error instanceof ProjectDirectoryError ? errorStatus(error) : 500;
@@ -61,11 +57,7 @@ export function createProjectDirectoryRouter(options: {
     router.get("/projects/resolve", async (req, res) => {
         try {
             res.json(
-                await resolveAccessibleProjectTitle(
-                    res.locals.projectDirectoryUid as string,
-                    req.query.title,
-                    options.firestore,
-                ),
+                await provider.resolveTitle(res.locals.projectDirectoryUid as string, req.query.title),
             );
         } catch (error) {
             const status = error instanceof ProjectDirectoryError ? errorStatus(error) : 500;
@@ -78,11 +70,7 @@ export function createProjectDirectoryRouter(options: {
     router.get("/projects/:projectId", async (req, res) => {
         try {
             res.json(
-                await getAuthorizedProjectDescriptorForWrite(
-                    res.locals.projectDirectoryUid as string,
-                    req.params.projectId,
-                    options.firestore,
-                ),
+                await provider.getDescriptor(res.locals.projectDirectoryUid as string, req.params.projectId),
             );
         } catch (error) {
             const status = error instanceof ProjectDirectoryError ? errorStatus(error) : 500;
@@ -95,11 +83,10 @@ export function createProjectDirectoryRouter(options: {
     router.post("/projects", async (req, res) => {
         try {
             res.status(201).json(
-                await ensureProjectDescriptorForWrite(
+                await provider.ensureDescriptor(
                     res.locals.projectDirectoryUid as string,
                     req.body?.projectId,
                     req.body?.title,
-                    options.firestore,
                 ),
             );
         } catch (error) {
@@ -113,11 +100,10 @@ export function createProjectDirectoryRouter(options: {
     router.post("/projects/:projectId/rename", async (req, res) => {
         try {
             res.json(
-                await renameProject(
+                await provider.renameProject(
                     res.locals.projectDirectoryUid as string,
                     req.params.projectId,
                     req.body?.title,
-                    options.firestore,
                 ),
             );
         } catch (error) {
