@@ -1,5 +1,5 @@
 /** @feature KAN-5a45c9e1 */
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { readGridProjectState } from "../utils/crossProjectGridHelpers";
 import {
     configureKanbanThroughUi,
@@ -11,6 +11,18 @@ import {
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
+
+async function dragCardToLane(
+    page: Page,
+    handle: Locator,
+    lane: Locator,
+) {
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    await handle.dispatchEvent("dragstart", { dataTransfer: transfer });
+    await lane.dispatchEvent("dragover", { dataTransfer: transfer });
+    await lane.dispatchEvent("drop", { dataTransfer: transfer });
+    await handle.dispatchEvent("dragend", { dataTransfer: transfer }).catch(() => {});
+}
 
 test("Page/Layout card drag and draft survive host capture and an unrelated peer refresh", async ({
     page,
@@ -60,11 +72,11 @@ test("Page/Layout card drag and draft survive host capture and an unrelated peer
 
     const pageAlpha = pageBoard.locator("article.card").filter({ hasText: "Alpha" });
     const pageDone = pageBoard.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-    await pageAlpha.getByRole("button", { name: "Move card" }).dragTo(pageDone);
+    await dragCardToLane(page, pageAlpha.getByRole("button", { name: "Move card" }), pageDone);
 
     const layoutBeta = board.locator("article.card").filter({ hasText: "Beta" });
     const layoutOpen = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "open" });
-    await layoutBeta.getByRole("button", { name: "Move card" }).dragTo(layoutOpen);
+    await dragCardToLane(page, layoutBeta.getByRole("button", { name: "Move card" }), layoutOpen);
 
     const doneLane = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
     const movedAlpha = doneLane.locator("article.card").filter({ hasText: "Alpha" });
