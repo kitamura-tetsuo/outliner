@@ -39,8 +39,11 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         await expect(view).toBeVisible({ timeout: 15000 });
         await expect(view.getByTestId("yjs-table-sql-name")).toHaveText("routine_occurrences");
 
-        await view.getByTestId("yjs-table-toggle-schema").click();
-        const editor = view.getByTestId("yjs-table-schema-editor");
+        await view.getByTestId("yjs-grid-source-table-link").click();
+        const tableView = page.getByTestId("table-entity-view");
+        await expect(tableView).toBeVisible({ timeout: 30000 });
+        await tableView.getByTestId("table-entity-toggle-schema").click();
+        const editor = tableView.getByTestId("yjs-table-schema-editor");
         const schemaEditor = new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input"));
         await schemaEditor.waitForReady();
         await schemaEditor.setValue(
@@ -50,6 +53,8 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         await editor.getByTestId("yjs-table-schema-apply").click();
         await editor.getByTestId("yjs-table-schema-warning").waitFor({ timeout: 20000 });
         await editor.getByTestId("yjs-table-schema-confirm").click();
+        await page.goBack();
+        await expect(view).toBeVisible({ timeout: 30000 });
 
         // Add one row through the table's own (bare-id) query first: the
         // union query below carries no add-row control, by design (#4273 -

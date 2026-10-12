@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { sveltekitOptions } from "./sveltekit.options.js";
 
 export default defineConfig(async ({ mode }) => {
     // Load environment variables with dotenvx (ES module support)
@@ -44,7 +45,7 @@ export default defineConfig(async ({ mode }) => {
                 },
             }),
             tailwindcss(),
-            sveltekit(),
+            sveltekit(sveltekitOptions),
             paraglideVitePlugin({
                 project: "./project.inlang",
                 outdir: "./src/lib/paraglide",
@@ -63,9 +64,18 @@ export default defineConfig(async ({ mode }) => {
             // is instead guaranteed by pointing shared/node_modules at the client
             // (scripts/common-functions.sh) so shared/src's yjs IS the client's.
             dedupe: ["yjs", "yjs-orderedtree", "uuid"],
-            alias: (mode === "test" || process.env.NODE_ENV === "test") ? {} : {
-                "yjs": fileURLToPath(new URL("./node_modules/yjs", import.meta.url)),
-            },
+            alias: (mode === "test" || process.env.NODE_ENV === "test")
+                ? {
+                    "$lib": fileURLToPath(new URL("./src/lib", import.meta.url)),
+                    "$stores": fileURLToPath(new URL("./src/stores", import.meta.url)),
+                    "$shared": fileURLToPath(new URL("../shared/src", import.meta.url)),
+                }
+                : {
+                    "$lib": fileURLToPath(new URL("./src/lib", import.meta.url)),
+                    "$stores": fileURLToPath(new URL("./src/stores", import.meta.url)),
+                    "$shared": fileURLToPath(new URL("../shared/src", import.meta.url)),
+                    "yjs": fileURLToPath(new URL("./node_modules/yjs", import.meta.url)),
+                },
         },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),

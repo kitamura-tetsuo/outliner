@@ -343,7 +343,7 @@ export function planGridPaste(
  * unioned/source rows are written individually through their own relation.
  */
 export function commitGridPaste(
-    ctx: Pick<GridCommandContext, "handles" | "session">,
+    ctx: Pick<GridCommandContext, "handles" | "session" | "canMutateBareId">,
     writes: readonly GridPasteWrite[],
 ): void {
     const idWrites = writes.filter(write => write.target.rowTarget.recordId !== undefined);

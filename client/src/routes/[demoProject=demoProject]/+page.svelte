@@ -1,6 +1,6 @@
 <script lang="ts">
     import Loader from "../../components/Loader.svelte";
-    import { page as pageStore } from "$app/stores";
+    import { page as pageState } from "$app/state";
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { SeedDemoError } from "../../lib/demoSeed";
@@ -14,8 +14,8 @@
     import ConfirmDialog from "../../components/ConfirmDialog.svelte";
 
     // Which demo project this route is showing (`demo`, `demo-ja`, …). The
-    // matcher in src/params/demoProject.ts guarantees it is a registered slug.
-    const demoProject = $derived($pageStore.params.demoProject as string);
+    // `demoProject` matcher in src/params.ts guarantees it is a registered slug.
+    const demoProject = $derived(pageState.params.demoProject as string);
 
     let isLoading = $state(true);
     let isResetting = $state(false);

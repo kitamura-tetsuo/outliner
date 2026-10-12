@@ -21,12 +21,12 @@ test.describe("SLR-0003: Select to the end of the line", () => {
         await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
     });
 
     test("Select from current position to end of line using Shift + End", async ({ page }) => {
         // Wait for the cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
@@ -71,7 +71,7 @@ test.describe("SLR-0003: Select to the end of the line", () => {
 
     test("In multi-line items, select to the end of the line where the cursor is located", async ({ page }) => {
         // Wait for the cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);

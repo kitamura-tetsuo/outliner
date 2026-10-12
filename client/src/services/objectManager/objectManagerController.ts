@@ -1,10 +1,11 @@
 import type { Project } from "$shared/app-schema";
+import { readSqlCatalog } from "$shared/services/sqlCatalog";
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { listCalendars, removeCalendarWithPlacements, renameCalendar } from "../calendar/calendarService";
 import { deleteScheduleRuleWithUndo, listSchedules, renameSchedule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import type { ManualUndoEntry } from "../undo/undoRouter.svelte";
+import type { AsyncUndoEntry, ManualUndoEntry } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
 import {
     type DuplicableObject,
@@ -349,6 +350,51 @@ export async function duplicateSelectedObjects(
     if (selected.length === 0) return null;
     let result: DuplicationSetResult | undefined;
     let sideEffect: DuplicationSideEffect | void;
+    const catalog = readSqlCatalog(sourceDoc.guid, sourceDoc);
+    const guardedReplay = catalog.status !== "ready" || catalog.snapshot.objects.length > 0;
+    const undo = () => {
+        sideEffect?.undo();
+        if (result) rollbackObjectDuplication(destinationDoc, result);
+    };
+    const redo = async (): Promise<void> => {
+        if (!result) return;
+        const created = result;
+        await globalUndoRouter.runAsyncWithoutAutoCapture(async () => {
+            await materializeDuplicationPlan(
+                sourceDoc,
+                destinationDoc,
+                created.sourceObjects,
+                { copyTableData: options.copyTableData },
+                created.idMap,
+            );
+            sideEffect?.redo();
+        });
+    };
+    const entry: ManualUndoEntry | AsyncUndoEntry = guardedReplay
+        ? {
+            type: "async",
+            label: `Duplicate ${selected.length} objects`,
+            projectId: destinationDoc.guid,
+            affectedObjectIds: selected.map(object => object.id),
+            beforeSource: [],
+            afterSource: [],
+            isActive: () => !sourceDoc.isDestroyed && !destinationDoc.isDestroyed,
+            replay: async direction => {
+                try {
+                    if (direction === "undo") undo();
+                    else await redo();
+                    return { status: "applied" };
+                } catch (error) {
+                    return { status: "refused", reason: error instanceof Error ? error.message : String(error) };
+                }
+            },
+        }
+        : {
+            type: "manual",
+            label: `Duplicate ${selected.length} objects`,
+            undo,
+            redo: () => void redo().catch(error => logger.error({ error }, "Redo of Duplicate selected failed")),
+        };
     await globalUndoRouter.captureManualAsync(
         async () => {
             result = await duplicateObjectSet(sourceDoc, destinationDoc, toDuplicableObjects(selected), options);
@@ -365,38 +411,7 @@ export async function duplicateSelectedObjects(
                 throw error;
             }
         },
-        {
-            type: "manual",
-            label: `Duplicate ${selected.length} objects`,
-            undo: () => {
-                sideEffect?.undo();
-                if (result) rollbackObjectDuplication(destinationDoc, result);
-            },
-            redo: () => {
-                if (!result) return;
-                const created = result;
-                // `runAsyncWithoutAutoCapture`, not a bare call: this redo
-                // re-runs Yjs transactions (materialization, then the
-                // placement side effect) after the router's own synchronous
-                // wrapper around `entry.redo()` has already returned, so
-                // without it every registered Y.UndoManager would auto-capture
-                // these as a second, untracked entry (issue #5153 §9 review).
-                void globalUndoRouter.runAsyncWithoutAutoCapture(async () => {
-                    await materializeDuplicationPlan(
-                        sourceDoc,
-                        destinationDoc,
-                        created.sourceObjects,
-                        // The destination Table rooms already contain the first
-                        // successful materialization. Reconnecting freshly seeded
-                        // subdocs here would merge duplicate CRDT content; normal
-                        // Table loading hydrates the recreated registry entries.
-                        { copyTableData: options.copyTableData },
-                        created.idMap,
-                    );
-                    sideEffect?.redo();
-                }).catch(error => logger.error({ error }, "Redo of Duplicate selected failed"));
-            },
-        } satisfies ManualUndoEntry,
+        entry,
     );
     return result ?? null;
 }

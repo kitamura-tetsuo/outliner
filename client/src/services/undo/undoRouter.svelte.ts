@@ -53,6 +53,7 @@ export interface CompositeUndoEntry {
     /** Schedule rules the paste copied, and enough of each to put it back. */
     createdRuleIds: string[];
     savedRules: Record<string, Record<string, ScheduleRuleValueType>>;
+    authorizeRedo?: () => boolean;
 }
 
 /**
@@ -79,6 +80,27 @@ export interface ManualUndoEntry {
     redo: () => void;
 }
 
+export type AsyncUndoOutcome =
+    | { status: "applied"; }
+    | { status: "refused" | "unconfirmed" | "conflict" | "inactive"; reason: string; };
+
+/**
+ * A history entry whose authority lives behind an asynchronous service.
+ * Returning `applied` is the only outcome that consumes the entry. The entry
+ * itself owns all validation and reconciliation; the router only provides the
+ * pending barrier and atomic cursor movement.
+ */
+export interface AsyncUndoEntry {
+    type: "async";
+    label?: string;
+    projectId: string;
+    affectedObjectIds: readonly string[];
+    beforeSource: readonly unknown[];
+    afterSource: readonly unknown[];
+    isActive: () => boolean;
+    replay: (direction: "undo" | "redo") => Promise<AsyncUndoOutcome>;
+}
+
 /**
  * One user command that edited several scopes at once — a multi-cursor
  * command spanning outline Text and Diagram source (#5311, REQ-009). Its
@@ -103,7 +125,7 @@ export interface UndoScopeOptions {
     authorize?: () => boolean;
 }
 
-export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry | GroupUndoEntry;
+export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry | AsyncUndoEntry | GroupUndoEntry;
 
 export class UndoRouter {
     private undoStack: UndoRouterEntry[] = $state([]);
@@ -136,6 +158,9 @@ export class UndoRouter {
      * cancels its own increment.
      */
     private routingDepth = 0;
+    private pendingEntry: AsyncUndoEntry | undefined = $state();
+    private pendingDirection: "undo" | "redo" | undefined;
+    private _lastAsyncOutcome: AsyncUndoOutcome | undefined = $state();
 
     public register(um: Y.UndoManager, options: UndoScopeOptions = {}): void {
         if (this.registered.has(um)) return;
@@ -161,8 +186,10 @@ export class UndoRouter {
                 }
                 this.undoStack.push(um);
                 // A new operation invalidates the redo history, exactly as it
-                // does inside a single Y.UndoManager.
-                this.redoStack = [];
+                // does inside a single Y.UndoManager. A catalog Redo already
+                // submitted to its service is retained until that exact
+                // request settles; it is not an executable second request.
+                this.clearRedoForNewCapture();
             } else {
                 // A scope pushed a redo item without the router asking for it,
                 // which means undo() was called on that scope directly. Repair
@@ -269,12 +296,20 @@ export class UndoRouter {
     /** Reverse the most recent operation, whichever scope it belongs to. */
     public undo(): void {
         this.notifyBeforeHistory();
+        if (this.pendingEntry) {
+            this._lastAsyncOutcome = { status: "refused", reason: "A history operation is already pending" };
+            return;
+        }
         this.run(this.undoStack, this.redoStack, (um) => um.undo(), true);
     }
 
     /** Restore the most recently undone operation. */
     public redo(): void {
         this.notifyBeforeHistory();
+        if (this.pendingEntry) {
+            this._lastAsyncOutcome = { status: "refused", reason: "A history operation is already pending" };
+            return;
+        }
         this.run(this.redoStack, this.undoStack, (um) => um.redo(), false);
     }
 
@@ -287,6 +322,7 @@ export class UndoRouter {
         projectDoc: Y.Doc,
         createdTableIds: string[],
         createdRuleIds: string[] = [],
+        authorizeRedo?: () => boolean,
     ): void {
         if (this.undoStack.length === 0) return;
         const top = this.undoStack[this.undoStack.length - 1];
@@ -325,6 +361,7 @@ export class UndoRouter {
                 savedSubdocStates,
                 createdRuleIds,
                 savedRules: captureClonedScheduleRules(projectDoc, createdRuleIds),
+                authorizeRedo,
             };
         }
     }
@@ -376,7 +413,7 @@ export class UndoRouter {
             this.undoStack.length = preTransactUndoDepth;
         }
         this.undoStack.push(entry);
-        this.redoStack = [];
+        this.clearRedoForNewCapture();
     }
 
     /**
@@ -430,10 +467,28 @@ export class UndoRouter {
      * during it is purged (via `runAsyncWithoutAutoCapture`) and replaced by
      * exactly one `entry` this caller fully controls.
      */
-    public async captureManualAsync(mutate: () => Promise<void>, entry: ManualUndoEntry): Promise<void> {
+    public async captureManualAsync(
+        mutate: () => Promise<void>,
+        entry: ManualUndoEntry | AsyncUndoEntry,
+    ): Promise<void> {
         await this.runAsyncWithoutAutoCapture(mutate);
         this.undoStack.push(entry);
-        this.redoStack = [];
+        this.clearRedoForNewCapture();
+    }
+
+    /** Record an already-confirmed, effectful service mutation as one step. */
+    public captureAsync(entry: AsyncUndoEntry): void {
+        if (entry.affectedObjectIds.length === 0) return;
+        this.undoStack.push(entry);
+        this.clearRedoForNewCapture();
+    }
+
+    public get isPending(): boolean {
+        return this.pendingEntry !== undefined;
+    }
+
+    public get lastAsyncOutcome(): AsyncUndoOutcome | undefined {
+        return this._lastAsyncOutcome;
     }
 
     /** Combine several already-safe manual operations into one user-visible step. */
@@ -456,8 +511,15 @@ export class UndoRouter {
                 for (const entry of entries) entry.redo();
             },
         });
-        this.redoStack = [];
+        this.clearRedoForNewCapture();
         return true;
+    }
+
+    /** Clear ordinary redo history without discarding an in-flight catalog Redo. */
+    private clearRedoForNewCapture(): void {
+        this.redoStack = this.pendingDirection === "redo" && this.pendingEntry
+            ? [this.pendingEntry]
+            : [];
     }
 
     public canUndo(): boolean {
@@ -481,6 +543,8 @@ export class UndoRouter {
     public clear(): void {
         this.undoStack = [];
         this.redoStack = [];
+        // An in-flight entry is deliberately not cancelled. Its completion
+        // will see that it is no longer present and cannot repopulate history.
     }
 
     private authorizeEntry(entry: UndoRouterEntry): boolean {
@@ -539,7 +603,21 @@ export class UndoRouter {
                     return;
                 }
 
+                if ("type" in entry && entry.type === "async") {
+                    // Put it back until the service confirms the requested
+                    // source. New ordinary captures remain observable while it
+                    // waits because routingDepth is not held across the await.
+                    from.push(entry);
+                    this.startAsyncReplay(entry, isUndo ? "undo" : "redo");
+                    return;
+                }
+
                 if ("type" in entry && entry.type === "composite") {
+                    if (!isUndo && entry.authorizeRedo && !entry.authorizeRedo()) {
+                        from.push(entry);
+                        this._lastAsyncOutcome = { status: "refused", reason: "Structural ENUM compatibility changed" };
+                        return;
+                    }
                     if (apply(entry.mainManager)) {
                         if (isUndo) {
                             rollbackClonedScheduleRules(entry.projectDoc, entry.createdRuleIds);
@@ -586,6 +664,53 @@ export class UndoRouter {
         } finally {
             this.routingDepth--;
         }
+    }
+
+    private startAsyncReplay(
+        entry: AsyncUndoEntry,
+        direction: "undo" | "redo",
+    ): void {
+        if (!entry.isActive()) {
+            this._lastAsyncOutcome = { status: "inactive", reason: "The Project session is no longer active" };
+            return;
+        }
+        this.pendingEntry = entry;
+        this.pendingDirection = direction;
+        this._lastAsyncOutcome = undefined;
+        void entry.replay(direction).then(
+            outcome => {
+                if (!entry.isActive()) {
+                    this._lastAsyncOutcome = {
+                        status: "inactive",
+                        reason: "The Project session ended before history replay completed",
+                    };
+                    return;
+                }
+                this._lastAsyncOutcome = outcome;
+                if (outcome.status !== "applied") return;
+                // A normal edit may replace redoStack while this request is
+                // pending. Resolve both stacks at settlement rather than
+                // retaining the array references passed to run().
+                const from = direction === "undo" ? this.undoStack : this.redoStack;
+                const to = direction === "undo" ? this.redoStack : this.undoStack;
+                const index = from.lastIndexOf(entry);
+                // clear() or lifecycle teardown may remove the captured entry.
+                if (index === -1) return;
+                from.splice(index, 1);
+                to.push(entry);
+            },
+            error => {
+                this._lastAsyncOutcome = {
+                    status: "unconfirmed",
+                    reason: error instanceof Error ? error.message : String(error),
+                };
+            },
+        ).finally(() => {
+            if (this.pendingEntry === entry) {
+                this.pendingEntry = undefined;
+                this.pendingDirection = undefined;
+            }
+        });
     }
 }
 

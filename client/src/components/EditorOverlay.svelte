@@ -263,9 +263,13 @@ function updateTextareaPosition() {
         if (!treeContainer) return;
         const treeContainerRect = treeContainer.getBoundingClientRect();
 
-        // Position the textarea using viewport coordinates
+        // Position the textarea using viewport coordinates. Its line must coincide with the
+        // displayed line holding the anchor: the native IME places its candidate window from
+        // the caret inside the textarea, so any vertical offset between the two lines moves the
+        // window onto or away from the displayed composition (#5501).
+        const lineTop = caretLineTop(itemInfo, anchorOffset);
         textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left + window.scrollX}px`, 'important');
-        textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top + window.scrollY}px`, 'important');
+        textareaRef.style.setProperty('top', `${(lineTop ?? treeContainerRect.top + pos.top) + window.scrollY}px`, 'important');
 
         // Scroll the cursor into view if it moved. Unlike the textarea position
         // above (anchored at composition start to keep the candidate window
@@ -446,6 +450,26 @@ function measureTextWidthCanvas(itemId: string, text: string): number {
 
 // Compensation for the .outliner-item's padding-top, shared by caret and selection geometry
 const SELECTION_TOP_ADJUST = 4;
+
+/**
+ * Viewport top of the line box that holds the caret at `offset`, or null without text layout.
+ *
+ * A collapsed Range reports the caret's own font box; with CSS half-leading that box sits
+ * (lineHeight - height) / 2 below the top of its line. Unlike the drawn caret, the hidden
+ * textarea takes no SELECTION_TOP_ADJUST nudge: it carries the same font and line height as
+ * the item, so its caret box matches the displayed text only when the two lines coincide.
+ */
+function caretLineTop(itemInfo: { textElement: HTMLElement; lineHeight: number }, offset: number): number | null {
+    const position = findTextPositionInElement(itemInfo.textElement, offset);
+    if (!position || !Number.isFinite(itemInfo.lineHeight)) return null;
+    const range = document.createRange();
+    const safeOffset = Math.max(0, Math.min(position.offset, position.node.textContent?.length || 0));
+    range.setStart(position.node, safeOffset);
+    range.setEnd(position.node, safeOffset);
+    const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+    if (!rect || rect.height <= 0) return null;
+    return rect.top - (itemInfo.lineHeight - rect.height) / 2;
+}
 
 // Function to calculate pixel position of selection range
 function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {

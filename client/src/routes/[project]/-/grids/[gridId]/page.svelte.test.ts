@@ -6,15 +6,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-const mockPageStore = { params: { project: "demo", gridId: "grid-a" } };
-vi.mock("$app/stores", () => ({
-    page: {
-        subscribe: (run: (value: typeof mockPageStore) => void) => {
-            run(mockPageStore);
-            return () => {};
-        },
-    },
-}));
+vi.mock("$app/state", () => import("../../../../../tests/mocks/appState.svelte"));
+setPage({ params: { project: "demo", gridId: "grid-a" } });
 
 vi.mock("../../../../../auth/UserManager", () => ({
     userManager: {
@@ -68,11 +61,13 @@ vi.mock("../../../../../components/yjstable/YjsTableView.svelte", async () => {
 });
 
 import { createGrid } from "../../../../../services/yjstable/gridDocs";
+import { getTableRegistry } from "../../../../../services/yjstable/tableDocs";
+import { setPage } from "../../../../../tests/mocks/appState.svelte";
 import GridStandalonePage from "./+page.svelte";
 
 describe("standalone grid route", () => {
     beforeEach(() => {
-        mockPageStore.params = { project: "demo", gridId: "grid-a" };
+        setPage({ params: { project: "demo", gridId: "grid-a" } });
         projectDoc = new Y.Doc();
         registeredTables = [{ tableId: "demo-table-sales", name: "Sales", sqlName: "sales" }];
     });
@@ -129,12 +124,34 @@ describe("standalone grid route", () => {
         expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Open sales");
         first.unmount();
 
-        mockPageStore.params = { project: "demo", gridId: "grid-b" };
+        setPage({ params: { project: "demo", gridId: "grid-b" } });
         render(GridStandalonePage);
         await waitFor(() => {
             expect(screen.getByTestId("grid-view-stub").getAttribute("data-grid-id")).toBe("grid-b");
         });
         expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Sales by month");
+    });
+
+    it("reacts when the resolved source Table is deleted while the Grid stays open", async () => {
+        createGrid(projectDoc, "demo-table-sales", {
+            gridId: "grid-a",
+            name: "Open sales",
+            query: "SELECT * FROM another_relation",
+        });
+
+        render(GridStandalonePage);
+        await waitFor(() => expect(screen.getByTestId("grid-view-stub")).toBeTruthy());
+        expect(screen.getByTestId("grid-source-table-link").getAttribute("href"))
+            .toBe("/demo/-/tables/demo-table-sales");
+
+        registeredTables = [];
+        // Mirror the production registry deletion notification. The mocked
+        // resolver now reports the referenced identity as absent.
+        getTableRegistry(projectDoc).set("registry-change", new Y.Map());
+
+        await waitFor(() => expect(screen.getByTestId("grid-missing-source")).toBeTruthy());
+        expect(screen.queryByTestId("grid-view-stub")).toBeNull();
+        expect(screen.queryByTestId("grid-source-table-link")).toBeNull();
     });
 
     it("shows an explicit missing-source state when the Table is gone", async () => {
@@ -159,7 +176,7 @@ describe("standalone grid route", () => {
 
     it("still gates a non-public project behind sign-in", async () => {
         createGrid(projectDoc, "demo-table-sales", { gridId: "grid-a", name: "Open sales" });
-        mockPageStore.params = { project: "private-project", gridId: "grid-a" };
+        setPage({ params: { project: "private-project", gridId: "grid-a" } });
 
         render(GridStandalonePage);
 

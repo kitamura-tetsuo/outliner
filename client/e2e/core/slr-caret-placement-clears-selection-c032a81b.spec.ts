@@ -44,7 +44,7 @@ test.describe("SLR-0004: ordinary caret placement", () => {
                     };
                 })
             ).toEqual({ localSelections: 0, localCursorItem: secondId });
-            await TestHelpers.waitForCursorVisible(page);
+            expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
         },
     );
 });

@@ -55,12 +55,14 @@ The top-right toolbar (above the page content) provides:
 - **Search:** Opens the "Search and Replace" (Unified Find) panel to search and replace text and grid cells within the current page.
 - **Graph View:** Opens a visual graph representation of page links.
 
-The editor toolbar (located at the top of the outline editor) provides:
+The page controls toolbar (located above the page title) provides:
 
 - **Add Item:** Adds a new item to the bottom of the page.
 - **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
 - **History / Diff:** Opens the history panel to view past edits and differences.
 - **Keyboard Shortcuts:** Opens a list of available keyboard shortcuts.
+
+When you focus on an outline item on a mobile device or a narrow screen, a floating action toolbar will appear at the bottom. It provides quick access to indentation controls (`Indent`, `Outdent`), item manipulation (`Add Above`, `Add Below`, `Add Child`, `Add Sibling`), and other quick actions.
 
 ### User Authentication
 
@@ -102,7 +104,7 @@ Powerful item manipulation features expected in an outliner.
 
 ### Adding New Items
 
-Press `Enter` to insert a new item below the current one, or click the **Add Item** button at the top right of the page.
+Press `Enter` to insert a new item below the current one, or click the **Add Item** button in the editor toolbar. On mobile devices, you can use the **Add Above**, **Add Below**, **Add Child**, or **Add Sibling** buttons in the floating action toolbar.
 
 ### Indenting Items
 
@@ -158,7 +160,7 @@ Paste any URL to automatically create an external link.
 Easily find content and execute actions within Outliner.
 
 - **Search pages:** Use the **Search pages** input in the top navigation bar to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Unified Find (Search and Replace):** Click the **Search** button on the page to open Find on this page. It searches outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
+- **Unified Find (Search and Replace):** Click the **Search** button on the page to open Find on this page. It searches outline text and every visible Grid result cell in one session. The search panel includes advanced options such as **Regex**, **Case Sensitive**, and **Whole Word**, as well as an option to **Include page titles**. Use the **Scope** dropdown to search across the entire **Project text**, the current **Page**, or choose **Selection** to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -261,7 +263,7 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-You can create a new database table by clicking the **Add Database** button in the top navigation bar, or by typing `/` on a new line to open the Command Palette and selecting **Grid**.
+You can create a new database table by clicking the **Add Database** button in the top navigation bar (available when editing a page), or by typing `/` on a new line to open the Command Palette and selecting **Grid**.
 
 A new database block will be inserted into the current page. Within this block, you can:
 
@@ -330,6 +332,9 @@ Here is a complete list of shortcuts. You can also view this list by clicking th
 | Action                  | Windows/Linux                    | Mac                            |
 | ----------------------- | -------------------------------- | ------------------------------ |
 | Add new item            | `Enter`                          | `Enter`                        |
+| Indent item             | `Tab`                            | `Tab`                          |
+| Outdent item            | `Shift + Tab`                    | `Shift + Tab`                  |
+| Move cursor             | `↑` / `↓`                        | `↑` / `↓`                      |
 | Select entire line      | `Ctrl + L`                       | `Cmd + L`                      |
 | Select to start of line | `Shift + Home`                   | `Shift + Home`                 |
 | Select to end of line   | `Shift + End`                    | `Shift + End`                  |

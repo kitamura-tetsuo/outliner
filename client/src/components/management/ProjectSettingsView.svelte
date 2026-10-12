@@ -57,7 +57,7 @@
         try {
             await renameProjectDescriptor(projectId, newTitle);
             await projectStore.refresh();
-            goto(resolvePath(projectSettingsPath(newTitle)), { replaceState: true });
+            goto(resolvePath(projectSettingsPath(newTitle)), { replace: true });
         } catch (e) {
             logger.error({ error: e }, "Error");
             error = "An error occurred while saving.";

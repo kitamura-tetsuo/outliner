@@ -73,16 +73,16 @@ test.describe("SLR-0006: Copy and paste selection across multiple items", () => 
         // Create selection manually
         await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            if (!store) return;
+            if (!store) throw new Error("editorOverlayStore is required for the selection fixture");
 
             // Select the first and second items
             const items = document.querySelectorAll("[data-item-id]");
-            if (items.length < 2) return;
+            if (items.length < 2) throw new Error("Required selection fixture items are missing");
 
             const firstItemId = items[0].getAttribute("data-item-id");
             const secondItemId = items[1].getAttribute("data-item-id");
 
-            if (!firstItemId || !secondItemId) return;
+            if (!firstItemId || !secondItemId) throw new Error("Required selection endpoint IDs are missing");
 
             // Set selection
             store.setSelection({

@@ -4,10 +4,9 @@
 // and lets the user switch/parallel-display the Grid Definition editor, grid
 // and chart.
 //
-// Grid-owned state only. Schedules belong to the project, not to a Grid or a
-// Table (issue #5012), so they are not edited here at all. The source Table's
-// schema is reachable through the "Table schema" panel, which is labelled and
-// linked as the *Table's* schema so it never reads as Grid state.
+// Grid-owned state only. Schedules and CREATE TABLE editing belong outside a
+// Grid (issue #5514). The source Table remains identified here, with a separate
+// navigation action to its Table-owned schema and raw-data surface.
 //
 // This component is always mounted under {#key} on both the Grid entry and
 // the source Table's Y.Doc guid (see YjsTableBlock), so switching either one
@@ -44,12 +43,15 @@ import type {
 } from "../../services/yjstable/tableSyncAdapter";
 import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
-import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import { registerWebMCPGridTools } from "../../mcp/WebMCP";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
 import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
-import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
+import {
+    isCurrentExecutionForQuery,
+    type TableQueryExecution,
+} from "../../services/yjstable/tableQueryRunner";
+import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
 
 const logger = getLogger("YjsTableView");
 
@@ -70,35 +72,58 @@ interface Props {
     sqlName?: string;
     /** Provenance info from whence this table was copied */
     sourceProjectId?: string;
-    /**
-     * Link to the source Table's own page, offered next to the schema it
-     * owns. Undefined when the host cannot resolve a project route.
-     */
+    /** Link to the source Table's own page. Undefined without a project route. */
     sourceTableHref?: string;
+    /**
+     * Host surface restriction (outline read-only state). Forwarded to the
+     * UI Definition editor's width controls and the Grid's header resize
+     * handles; it is not project authorization
+     * and never gates cell writes, which keep their SQL-derived eligibility.
+     */
+    isReadOnly?: boolean;
 }
 
-let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref }: Props = $props();
+let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref, isReadOnly = false }: Props = $props();
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
-let schemaError = $state<string | undefined>(undefined);
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
+let schemaError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
 let gridQuery = $state("");
 let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
 let hiddenColumns = $state<Record<string, boolean>>({});
+let columnWidths = $state<Record<string, number>>({});
+// This placement's transient header-resize preview (issue #5459). Local to
+// this view: other placements and clients keep showing the committed width.
+let widthPreview = $state<{ column: string; width: number; } | undefined>(undefined);
 let showAddRowButton = $state(true);
 let confirmRowDelete = $state(false);
 let adapterReady = $state(false);
+let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
+// Authority is revoked only by material changes from the authoritative Yjs
+// configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
+// grid/handles are static for this keyed component lifecycle.
+// svelte-ignore state_referenced_locally
+let observedQuery = getGridQuery(grid);
+// svelte-ignore state_referenced_locally
+let observedSchemaSql = handles.schemaText.toString();
+
+function revalidateMutationAuthority() {
+    // GridQueryRunner has already invalidated any older generation by the
+    // time this microtask runs. Execute the replacement immediately instead
+    // of leaving a visible result read-only while repeated sync notifications
+    // keep resetting the ordinary debounce timer.
+    queueMicrotask(() => void runner?.runQueryNow());
+}
 
 // View switching: panels can be toggled independently (parallel display).
-let showSchema = $state(false);
 let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
@@ -108,7 +133,6 @@ let chartPanel = $state<TableChartPanel | undefined>(undefined);
 // The adapter is owned by the engine, not by this component: several views of
 // the same table share one materialization, and sibling tables pulled in by a
 // cross-table query stay alive for as long as this session holds them.
-let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let runner = $state<GridQueryRunner | undefined>(undefined);
 
 function refreshGridMirror() {
@@ -123,11 +147,53 @@ function refreshGridMirror() {
     componentTypes = settings.types;
     columnLabels = settings.labels;
     hiddenColumns = settings.hidden;
+    // Saved fixed widths travel through the same mirror: every placement of
+    // this Grid re-renders from the committed definition, while a separate
+    // Grid over the same Table mirrors only its own entry (issue #5457).
+    columnWidths = settings.widths;
     showAddRowButton = getGridShowAddRowButton(grid);
     confirmRowDelete = getGridConfirmRowDelete(grid);
 }
 
-const gridMirrorObserver = () => refreshGridMirror();
+const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
+    if (events.some(event => event.target === grid.entry && event.changes.keys.has("query"))) {
+        const nextQuery = getGridQuery(grid);
+        // A same-value Yjs rewrite is not a configuration change. Distinct
+        // A -> B -> A transactions still advance twice and cannot revive an
+        // action captured against the first A.
+        if (nextQuery !== observedQuery) {
+            queryExecution = undefined;
+            revalidateMutationAuthority();
+        }
+        observedQuery = nextQuery;
+    }
+    refreshGridMirror();
+};
+
+const schemaTextObserver = () => {
+    const nextSchemaSql = handles.schemaText.toString();
+    // Schema application normalizes by replacing the Y.Text even when its
+    // final SQL is unchanged. Do not invalidate a completed result for that
+    // replay; an actual intervening schema value still revokes authority.
+    if (nextSchemaSql !== observedSchemaSql) {
+        queryExecution = undefined;
+        revalidateMutationAuthority();
+    }
+    observedSchemaSql = nextSchemaSql;
+};
+
+const bareIdAuthority = $derived.by(() => {
+    // `queryExecution.query` is the runner-trimmed text, while `gridQuery` is
+    // the untrimmed persisted SELECT: compare trimmed so leading/trailing
+    // whitespace the runner discards before execution does not revoke
+    // authority (issue #5525). The Grid-query observer above still revokes on
+    // any raw text change, so a stale execution never survives a rewrite.
+    const execution = queryExecution;
+    if (!schema || !sqlName || !execution || !isCurrentExecutionForQuery(execution, gridQuery)) {
+        return undefined;
+    }
+    return resolveBareIdMutationAuthority(execution.query, sqlName, schema, result.columns);
+});
 
 // What this view hands to the system clipboard when a copy crosses its host
 // item. The getters run at copy time, so they read whatever is on screen then.
@@ -178,6 +244,7 @@ onMount(() => {
     // bound to the same Grid keeps its manager when this one unmounts.
     retainGridUndoManager(grid.entry);
     grid.entry.observeDeep(gridMirrorObserver);
+    handles.schemaText.observe(schemaTextObserver);
     registerTableClipboardSource(handles.tableId, clipboardSource);
 
     cleanupWebMCP = registerWebMCPGridTools(
@@ -203,8 +270,8 @@ onMount(() => {
             logger.warn({ tableId: handles.tableId }, "[YjsTableView] table is not registered in this project");
             return;
         }
-        adapter = acquired.adapter;
         isInitialSyncDone = acquired.remoteSynced;
+        adapter = acquired.adapter;
         unsubscribeAdapter = acquired.adapter.subscribe({
             onSchemaChanged: (parsed, error) => {
                 schema = parsed;
@@ -225,6 +292,9 @@ onMount(() => {
             onError: (message) => {
                 queryError = message;
             },
+            onInvalidated: () => {
+                queryExecution = undefined;
+            },
         });
         runner.start();
         adapterReady = true;
@@ -233,6 +303,7 @@ onMount(() => {
 
 onDestroy(() => {
     grid.entry.unobserveDeep(gridMirrorObserver);
+    handles.schemaText.unobserve(schemaTextObserver);
     unsubscribeAdapter?.();
     unsubscribeRunner?.();
     runner?.dispose();
@@ -262,12 +333,8 @@ function stateVectorRevision(doc: Y.Doc): string {
     }}
 >
     <div class="view-toolbar">
-        <!-- The Table this Grid selects from. Deliberately plain text, never a
-             link: the name has to stay drag-selectable (guarded by
-             tbl-grid-text-is-selectable-4669a11e), and an anchor cannot be —
-             a drag across it either starts a native link drag or ends in a
-             click that navigates away. The link to the Table lives in the
-             schema panel below and in the Grid page header instead. -->
+        <!-- Keep the name plain text so drag-selection cannot navigate. The
+             adjacent action provides keyboard-accessible Table navigation. -->
         {#if tableName}
             <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
         {/if}
@@ -278,6 +345,15 @@ function stateVectorRevision(doc: Y.Doc): string {
         {/if}
         {#if sourceProjectId}
             <span class="table-provenance" data-testid="yjs-table-provenance">copied from project</span>
+        {/if}
+        {#if sourceTableHref && tableName}
+            <a
+                class="source-table-link"
+                href={sourceTableHref}
+                data-testid="yjs-grid-source-table-link"
+                aria-label={`Open Table ${tableName}`}
+                onkeydown={(event) => event.stopPropagation()}
+            >Open Table</a>
         {/if}
         <div class="view-toggles" role="group" aria-label="Table views">
             <button
@@ -300,15 +376,6 @@ function stateVectorRevision(doc: Y.Doc): string {
             >Chart</button>
             <button
                 type="button"
-                class:active={showSchema}
-                aria-pressed={showSchema}
-                data-testid="yjs-table-toggle-schema"
-                onclick={() => {
-                    showSchema = !showSchema;
-                }}
-            >Schema</button>
-            <button
-                type="button"
                 class:active={showUiDef}
                 aria-pressed={showUiDef}
                 data-testid="yjs-table-toggle-ui"
@@ -318,22 +385,6 @@ function stateVectorRevision(doc: Y.Doc): string {
             >UI</button>
         </div>
     </div>
-
-    {#if showSchema}
-        <section class="panel" data-testid="yjs-table-schema-panel">
-            <p class="panel-note">
-                Schema of the source table{tableName ? ` "${tableName}"` : ""} — shared by every grid over it.
-                {#if sourceTableHref}
-                    <a href={sourceTableHref}>Open the table page</a>
-                {/if}
-            </p>
-            {#if adapter}
-                <TableSchemaEditor {handles} {adapter} {schemaError} />
-            {:else}
-                <p class="loading">Loading table...</p>
-            {/if}
-        </section>
-    {/if}
 
     {#if showUiDef}
         <section class="panel">
@@ -348,12 +399,15 @@ function stateVectorRevision(doc: Y.Doc): string {
                 {columnOrder}
                 {showAddRowButton}
                 {confirmRowDelete}
+                {columnWidths}
+                {widthPreview}
+                {isReadOnly}
             />
         </section>
     {/if}
 
-    {#if queryError}
-        <p class="error" data-testid="yjs-table-query-error">{queryError}</p>
+    {#if schemaError || queryError}
+        <p class="error" data-testid="yjs-table-query-error">{schemaError ?? queryError}</p>
     {/if}
 
     {#if recordErrors.length > 0}
@@ -372,24 +426,31 @@ function stateVectorRevision(doc: Y.Doc): string {
 
     {#if showGrid}
         <section class="panel">
-            {#if adapterReady}
+            {#if adapterReady && adapter}
                 <TableGrid
                     {grid}
                     {placementId}
                     {pageId}
                     {pageTitle}
                     {handles}
+                    {adapter}
                     {schema}
                     query={gridQuery}
                     {result}
+                    {bareIdAuthority}
                     {componentTypes}
                     {columnOrder}
                     {columnLabels}
                     {hiddenColumns}
+                    {columnWidths}
                     {showAddRowButton}
                     {confirmRowDelete}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
+                    {isReadOnly}
+                    onColumnWidthPreview={(preview) => {
+                        widthPreview = preview;
+                    }}
                 />
             {:else}
                 <p class="loading">Loading table...</p>
@@ -424,10 +485,10 @@ function stateVectorRevision(doc: Y.Doc): string {
     color: #111827;
 }
 
-.panel-note {
-    margin: 0 0 6px;
-    font-size: 0.75rem;
-    color: #6b7280;
+.source-table-link {
+    font-size: 0.8rem;
+    color: #2563eb;
+    text-decoration: underline;
 }
 
 .table-sql-name {

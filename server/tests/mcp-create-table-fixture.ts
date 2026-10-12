@@ -1,11 +1,13 @@
 import express from "express";
 import fs from "fs-extra";
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { WriteStream } from "node:fs";
 import request from "supertest";
 import * as Y from "yjs";
 import { CreateTableTool } from "../src/mcp/create-table-tool.js";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
 import { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
+import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import {
     type CreateTableOptions,
     type CreateTableOutcome,
@@ -14,7 +16,7 @@ import {
 } from "../src/mcp/table-creation.js";
 import { signAccessToken } from "../src/oauth/tokens.js";
 import { createDocumentStore, type DocumentStore } from "../src/persistence.js";
-import { mcpLogger, mcpLogPath } from "../src/utils/log-manager.js";
+import { mcpLogger, mcpLogPath, refreshMcpLogStream } from "../src/utils/log-manager.js";
 import {
     AclStore,
     seedProject,
@@ -57,13 +59,26 @@ export interface Seams {
     now?: () => number;
     /** A delivery seam: rewrites the outcome after the real domain call established it. */
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
+    beforeRecordBatchPublication?: () => Promise<void>;
+    beforeGridQueryPublication?: () => Promise<void>;
 }
+
+/**
+ * Live destination of the MCP audit log for the most recently started
+ * fixture server. Pino's multistream flush does not await fs.WriteStream
+ * writes, so auditRecords queues a barrier write on this stream before
+ * reading the file (the same approach as the create_grid audit test's
+ * readAuditRecords); otherwise the trailing record can still be buffered
+ * and is missed by the read.
+ */
+let mcpLogStream: WriteStream | undefined;
 
 export async function startMcpTestServer() {
     const acl = new AclStore();
     acl.grant("projectUsers", PROJECT, UID);
     const dir = tempDir();
     const server = await startTestServer(dir, acl);
+    mcpLogStream = refreshMcpLogStream();
     await seedProject(server.hocuspocus, PROJECT);
     const context = new AsyncLocalStorage<string>();
     const checks = new Map<string, number>();
@@ -99,7 +114,11 @@ export async function startMcpTestServer() {
     app.use(express.json());
     app.use((req, _res, next) => context.run(req.header("x-request-id") ?? "", next));
     const reads = new OutlinerReadService(server.hocuspocus, gatedAccess, async () => []);
-    app.use(createMcpRouter(reads, undefined, undefined, server.mcpRelations, undefined, tool));
+    const relations = new OutlinerRelationService(server.hocuspocus, gatedAccess, {
+        beforeRecordBatchPublication: () => seams.beforeRecordBatchPublication?.() ?? Promise.resolve(),
+        beforeGridQueryPublication: () => seams.beforeGridQueryPublication?.() ?? Promise.resolve(),
+    });
+    app.use(createMcpRouter(reads, undefined, undefined, relations, undefined, tool));
     const mcp = rpcClient(app);
     return {
         acl,
@@ -164,7 +183,17 @@ export function registry(doc: Y.Doc) {
 
 /** Durable mcp_audit records for the given operation IDs, in order. */
 export async function auditRecords(operationIds: string[]) {
-    await new Promise<void>((resolve, reject) => mcpLogger.flush(error => error ? reject(error) : resolve()));
+    const stream = mcpLogStream;
+    if (stream) {
+        // Queue a barrier write on the actual log destination before reading
+        // its file, so every record written so far (including the trailing
+        // one) is visible. mcpLogger.flush alone does not await these writes.
+        await new Promise<void>((resolve, reject) => {
+            stream.write("", error => error ? reject(error) : resolve());
+        });
+    } else {
+        await new Promise<void>((resolve, reject) => mcpLogger.flush(error => error ? reject(error) : resolve()));
+    }
     return fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean)
         .map(line => JSON.parse(line))
         .filter(record => record.event === "mcp_audit" && operationIds.includes(record.operationId));

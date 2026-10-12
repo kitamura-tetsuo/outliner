@@ -50,6 +50,17 @@ export async function pointForOffset(page: Page, itemId: string, offset: number)
     return point!;
 }
 
+/** Point inside the left half of the rendered character at `offset`. */
+export async function pointInsideCharacter(page: Page, itemId: string, offset: number): Promise<Point> {
+    const [start, end] = await Promise.all([
+        pointForOffset(page, itemId, offset),
+        pointForOffset(page, itemId, offset + 1),
+    ]);
+    expect(Math.abs(end.y - start.y), `character at offset ${offset} wraps onto another line`).toBeLessThan(1);
+    expect(end.x, `character at offset ${offset} has no positive rendered width`).toBeGreaterThan(start.x);
+    return { x: start.x + (end.x - start.x) / 4, y: start.y };
+}
+
 /** Press, move and release the mouse between two viewport points, then let the overlay settle. */
 export async function dragBetween(page: Page, from: Point, to: Point): Promise<void> {
     await page.mouse.move(from.x, from.y);

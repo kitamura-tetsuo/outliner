@@ -1,4 +1,4 @@
-import { goto } from "$app/navigation";
+import { goto, type GotoOptions } from "$app/navigation";
 import { userManager } from "../auth/UserManager";
 import * as yjsHighService from "../lib/yjsService.svelte";
 import { Items } from "../schema/app-schema";
@@ -16,19 +16,11 @@ export function setupGlobalDebugFunctions() {
         if (process.env.NODE_ENV !== "test") {
             win.__SVELTE_GOTO__ = async (
                 url: string,
-                opts?: {
-                    replaceState?: boolean;
-                    noScroll?: boolean;
-                    keepFocus?: boolean;
-                    invalidateAll?: boolean;
-                    state?: Record<string, unknown>;
-                },
+                opts?: GotoOptions,
             ) => {
                 await Promise.resolve();
                 return new Promise<void>((resolve, reject) => {
-                    /* eslint-disable svelte/no-navigation-without-resolve */
                     goto(resolvePath(url), opts).then(() => resolve()).catch(reject);
-                    /* eslint-enable svelte/no-navigation-without-resolve */
                 });
             };
         } else {

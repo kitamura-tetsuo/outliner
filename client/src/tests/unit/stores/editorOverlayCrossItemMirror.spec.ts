@@ -135,5 +135,12 @@ describe("EditorOverlayStore.syncSelectionFromTextarea with a cross-item mirror"
         const cursor = Object.values(editorOverlayStore.cursors)[0];
         expect(cursor.itemId).toBe(ITEMS[1].id);
         expect(cursor.offset).toBe(7);
+        expect(textarea.value).toBe(ITEMS[1].text);
+        expect(textarea.selectionStart).toBe(7);
+        expect(textarea.selectionEnd).toBe(7);
+
+        // Firefox replays selectionchange after the combined mirror is cleared.
+        editorOverlayStore.syncSelectionFromTextarea();
+        expect(Object.values(editorOverlayStore.cursors)[0].offset).toBe(7);
     });
 });

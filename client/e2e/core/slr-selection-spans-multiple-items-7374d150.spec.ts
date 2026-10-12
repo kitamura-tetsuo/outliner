@@ -20,7 +20,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         await page.waitForSelector("textarea.global-textarea:focus");
 
         // Wait until the cursor is visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Enter test text
         await page.keyboard.type("First item text");
@@ -47,7 +47,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         });
 
         // Wait until the cursor is visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
@@ -162,7 +162,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         });
 
         // Wait until the cursor is visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Get the first item
         const firstItem = page.locator(".outliner-item").nth(0);

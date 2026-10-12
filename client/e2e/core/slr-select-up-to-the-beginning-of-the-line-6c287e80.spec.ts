@@ -20,7 +20,7 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
         await item.locator(".item-content").click({ force: true });
 
         // Wait for the cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
 
         // Wait for the global textarea to be focused
         await page.waitForSelector("textarea.global-textarea:focus", { timeout: 10000 });
@@ -94,7 +94,7 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
         // entire page (SLR a1b2c3d4), so it can no longer clear a single item.
         const lastItem = page.locator(".outliner-item").nth(2);
         await lastItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
+        expect(await TestHelpers.waitForCursorVisible(page)).toBe(true);
         await page.keyboard.press("End");
         await page.keyboard.type(" with more text");
         await page.waitForTimeout(100);

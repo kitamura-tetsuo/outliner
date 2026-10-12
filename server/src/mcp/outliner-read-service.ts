@@ -1,6 +1,7 @@
 import type { Hocuspocus } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { nodeKindOf, type OutlineNodeKind } from "../../../shared/src/services/outlineNodeKind.js";
+import { readSqlCatalog } from "../../../shared/src/services/sqlCatalog.js";
 import { type ProjectDescriptor, ProjectDirectoryError } from "../project-directory.js";
 import { type Item, type Items, Project } from "../schema/app-schema.js";
 import { readGridPresentation } from "./grid-presentation.js";
@@ -391,10 +392,13 @@ export class OutlinerReadService {
                 columnOrder,
                 columns: gridColumnsWithVisibility(components, orderedColumnNames),
                 components: mcpGridComponents(components),
-                // Matches OutlinerRelationService.setViewQuery's own
-                // revisionOf(query) formula exactly, so this can be passed
-                // straight back as set_view_query's expectedRevision.
-                revision: revisionOf(query),
+                revision: revisionOf({
+                    query,
+                    catalogRevision: (() => {
+                        const catalog = readSqlCatalog(projectId, project.ydoc as never);
+                        return catalog.status === "ready" ? catalog.snapshot.revision : undefined;
+                    })(),
+                }),
                 presentation,
                 presentationRevision,
             };

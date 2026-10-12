@@ -1,0 +1,20 @@
+id: ENV-3a8f6c21
+title: Ubuntu native IME selection observations match the reference
+title-ja: Ubuntu ネイティブ IME の選択候補を参照入力と照合する
+description: A test-only Fcitx5 addon observes the native candidate cursor, selected text and focused Mozc segment. Confirmation expectations use the native candidate, placement comparisons require identical reference selections, and live redraw and preedit/commit evidence mutation controls reject false positives.
+category: environment
+status: implemented
+components:
+- .github/workflows/native-ime-regression.yml
+- scripts/native-ime-regression/report.py
+- scripts/native-ime-regression/ubuntu/check-selection.py
+- scripts/native-ime-regression/ubuntu/regression.py
+- scripts/native-ime-regression/ubuntu/run.sh
+- scripts/native-ime-regression/ubuntu/selection-observer.cpp
+- scripts/native-ime-regression/ubuntu/selection.py
+- scripts/native-ime-regression/ubuntu/verdict.py
+tests:
+- scripts/native-ime-regression/ubuntu/check-selection.py
+- scripts/native-ime-regression/ubuntu/test_report.py
+- scripts/native-ime-regression/ubuntu/test_selection.py
+- scripts/native-ime-regression/ubuntu/test_verdict.py

@@ -1,0 +1,19 @@
+id: FTR-5527ca5e
+title: Demo semantic ordering of string categories
+title-ja: 文字列カテゴリの意味順を示すデモ
+description: The public demo includes an independent live Grid over the existing Tasks Table that uses SQL CASE to display string priorities in their semantic high, medium, low order.
+category: demo
+status: implemented
+components:
+- server/src/demo-content.en.ts
+- server/src/demo-content.ja.ts
+- server/src/demo-content.ts
+tests:
+- client/e2e/core/dmo-semantic-priority-order-5527ca5e.spec.ts
+- server/tests/demo-seed-content.test.ts
+acceptance:
+- English and Japanese Tasks and Habits pages explain semantic versus lexical ordering and link to the live Grid
+- The additional Grid reads the existing Tasks Table and preserves its schema, records, and primary Grid
+- The rendered Grid contains every seeded Task exactly once in high, medium, low priority order
+- The saved SELECT returns id, title, and priority and orders known priorities with CASE before unknown or NULL values, then breaks ties by id
+- Visitors can inspect the CASE-based SELECT in the existing Grid UI

@@ -107,6 +107,67 @@ test("a job cancelled long before the timeout is not re-queued", () => {
     expect(log).not.toMatch(/rerun/);
 });
 
+const steppedJob = (over: Record<string, unknown>) =>
+    job({
+        conclusion: "failure",
+        runner_name: "GitHub Actions 1000273556",
+        started_at: "2026-10-10T09:35:29Z",
+        completed_at: "2026-10-10T09:36:22Z",
+        ...over,
+    });
+
+const step = (name: string, status: string, conclusion: string | null) => ({
+    number: 1,
+    name,
+    status,
+    conclusion,
+});
+
+test("a job whose runner died mid-run, leaving steps frozen and no failed step, re-queues the run", () => {
+    // Run 38041845041, e2e core-3: startup frozen `in_progress`, the test step
+    // still `pending`, no step failed, job dead after ~1 minute with nothing
+    // executed. That shape carries no verdict, so it must not stay red.
+    const { stdout, log } = runScript({
+        jobs: [steppedJob({
+            steps: [
+                step("Set up job", "completed", "success"),
+                step("Run E2E-specific startup (services + readiness)", "in_progress", null),
+                step("Run E2E tests (core-3)", "pending", null),
+            ],
+        })],
+    });
+    expect(stdout).toMatch(/lost their runner/);
+    expect(log).toMatch(/-X POST repos\/owner\/repo\/actions\/runs\/123\/rerun-failed-jobs/);
+});
+
+test("a job that failed a step is a real failure and is not re-queued", () => {
+    const { stdout, log } = runScript({
+        jobs: [steppedJob({
+            steps: [
+                step("Set up job", "completed", "success"),
+                step("Run E2E tests (core-3)", "completed", "failure"),
+            ],
+        })],
+    });
+    expect(stdout).toMatch(/No job in run 123 was starved/);
+    expect(log).not.toMatch(/rerun/);
+});
+
+test("a failed job with all steps terminal but no failed step is left alone", () => {
+    // An unfamiliar shape must stay red for a human instead of being
+    // re-queued as presumed infrastructure loss.
+    const { stdout, log } = runScript({
+        jobs: [steppedJob({
+            steps: [
+                step("Set up job", "completed", "success"),
+                step("Upload Logs & Artifacts", "completed", "cancelled"),
+            ],
+        })],
+    });
+    expect(stdout).toMatch(/No job in run 123 was starved/);
+    expect(log).not.toMatch(/rerun/);
+});
+
 test("retrying stops once the attempt budget is spent", () => {
     const { stdout, log } = runScript({ jobs: [job({})] }, { RUN_ATTEMPT: "3" });
     expect(stdout).toMatch(/already used 3 of 3 attempts/);

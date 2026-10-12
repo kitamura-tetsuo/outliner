@@ -244,6 +244,7 @@ onDestroy(() => {
         {#if adapterReady}
             <TableGrid
                 {handles}
+                {adapter}
                 {schema}
                 query={rawQuery}
                 {result}

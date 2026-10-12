@@ -1,18 +1,118 @@
+/**
+ * Single-pass SQL noise scan shared by the helpers below. Line comments run
+ * to the newline, string/identifier quotes honor their doubled escapes, and
+ * block comments nest the way PostgreSQL parses them (`/* outer /* inner *\/`
+ * stays a comment through the second terminator). A regex-only strip stops
+ * at the inner terminator and leaks trailing comment text — such as a comma
+ * joining a second FROM source — back into the inspected SQL (issue #5547).
+ * Comment markers inside quotes never open a comment, and quotes inside a
+ * comment never open a quoted value. An unterminated opener is left in place,
+ * matching the previous behavior for SQL the engine itself would reject.
+ */
+function scanSqlNoise(sql: string, keepDoubleQuoted: boolean): string {
+    let out = "";
+    let index = 0;
+    while (index < sql.length) {
+        const char = sql[index]!;
+        const next = sql[index + 1];
+        if (char === "-" && next === "-") {
+            // PostgreSQL ends a `--` line comment at a newline, where CR
+            // counts: `-- c\r, b` hides nothing from the engine (issue #5547).
+            const lf = sql.indexOf("\n", index + 2);
+            const cr = sql.indexOf("\r", index + 2);
+            const end = lf < 0 ? cr : cr < 0 ? lf : Math.min(lf, cr);
+            out += " ";
+            index = end < 0 ? sql.length : end;
+            continue;
+        }
+        if (char === "/" && next === "*") {
+            let depth = 1;
+            let cursor = index + 2;
+            let closed = false;
+            while (cursor < sql.length) {
+                if (sql[cursor] === "/" && sql[cursor + 1] === "*") {
+                    depth++;
+                    cursor += 2;
+                } else if (sql[cursor] === "*" && sql[cursor + 1] === "/") {
+                    depth--;
+                    cursor += 2;
+                    if (depth === 0) {
+                        closed = true;
+                        break;
+                    }
+                } else {
+                    cursor++;
+                }
+            }
+            if (!closed) {
+                out += sql.slice(index);
+                index = sql.length;
+            } else {
+                out += " ";
+                index = cursor;
+            }
+            continue;
+        }
+        const dollarOpen = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(index));
+        if (dollarOpen) {
+            // PostgreSQL dollar-quoted string (`$$...$$`, `$tag$...$tag$`).
+            // The literal can hide keywords such as FROM/WHERE plus a comma
+            // joining a second FROM source (issue #5547): without stripping
+            // it, provenance parsing mistakes the literal's FROM for the
+            // outer FROM and stops at the literal's WHERE.
+            const tag = dollarOpen[0];
+            const close = sql.indexOf(tag, index + tag.length);
+            if (close < 0) {
+                out += sql.slice(index);
+                index = sql.length;
+            } else {
+                out += "''";
+                index = close + tag.length;
+            }
+            continue;
+        }
+        if (char === "'" || char === '"') {
+            let cursor = index + 1;
+            let closed = false;
+            while (cursor < sql.length) {
+                if (sql[cursor] === char) {
+                    if (sql[cursor + 1] === char) {
+                        cursor += 2;
+                    } else {
+                        closed = true;
+                        cursor++;
+                        break;
+                    }
+                } else {
+                    cursor++;
+                }
+            }
+            if (!closed) {
+                out += sql.slice(index);
+                index = sql.length;
+            } else if (keepDoubleQuoted && char === '"') {
+                out += sql.slice(index, cursor);
+                index = cursor;
+            } else {
+                out += char === "'" ? "''" : '""';
+                index = cursor;
+            }
+            continue;
+        }
+        out += char;
+        index++;
+    }
+    return out;
+}
+
 /** Remove comments and quoted values before inspecting SQL control words. */
 export function stripSqlNoise(sql: string): string {
-    return sql
-        .replace(/--[^\n]*/g, " ")
-        .replace(/\/\*[\s\S]*?\*\//g, " ")
-        .replace(/'(?:[^']|'')*'/g, "''")
-        .replace(/"(?:[^"]|"")*"/g, '""');
+    return scanSqlNoise(sql, false);
 }
 
 /** SQL identifiers, excluding comments and string literals. */
 export function parseSqlIdentifiers(sql: string): Set<string> {
-    const withoutNoise = sql
-        .replace(/--[^\n]*/g, " ")
-        .replace(/\/\*[\s\S]*?\*\//g, " ")
-        .replace(/'(?:[^']|'')*'/g, "''");
+    const withoutNoise = scanSqlNoise(sql, true);
     const identifiers = new Set<string>();
     const regex = /"((?:[^"]|"")+)"|\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
     let match: RegExpExecArray | null;
@@ -39,7 +139,9 @@ export function parseTopLevelInsertTarget(sql: string): string | undefined {
             continue;
         }
         if (current === "-" && next === "-") {
-            index = sql.indexOf("\n", index + 2);
+            const lf = sql.indexOf("\n", index + 2);
+            const cr = sql.indexOf("\r", index + 2);
+            index = lf < 0 ? cr : cr < 0 ? lf : Math.min(lf, cr);
             if (index < 0) return undefined;
             continue;
         }
