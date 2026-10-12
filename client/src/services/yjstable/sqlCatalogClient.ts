@@ -152,7 +152,7 @@ function matchKeyword(source: string, position: number, keyword: string): number
     const word = source.slice(cursor, cursor + keyword.length);
     if (word.toLowerCase() !== keyword) return undefined;
     const next = source[cursor + keyword.length];
-    if (next !== undefined && /[\w$]/.test(next)) return undefined;
+    if (next !== undefined && /[\p{L}\p{N}_$]/u.test(next)) return undefined;
     return cursor + keyword.length;
 }
 
@@ -179,7 +179,11 @@ function parseIdentifier(source: string, position: number): { name: string; end:
             return { name, end: close + 1 };
         }
     }
-    const match = /^[A-Za-z_][\w$]*/.exec(source.slice(cursor));
+    // PostgreSQL unquoted identifiers may start with any letter — including
+    // non-Latin letters — or an underscore, followed by letters, digits,
+    // underscores or dollar signs. The ASCII-only class rejected valid
+    // persisted names such as unquoted Japanese identifiers.
+    const match = /^[\p{L}_][\p{L}\p{N}_$]*/u.exec(source.slice(cursor));
     if (!match) return undefined;
     return { name: match[0].toLowerCase(), end: cursor + match[0].length };
 }

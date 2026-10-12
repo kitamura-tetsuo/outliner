@@ -30,6 +30,10 @@ describe("sqlCatalogClient naming", () => {
         // Quoted identifiers keep case and unescape doubled quotes.
         expect(resolveCatalogTypeName('CREATE TYPE "My ""Quoted"" Type" AS ENUM (\'a\');'))
             .toBe('My "Quoted" Type');
+        // Unquoted Unicode identifiers are valid PostgreSQL names and must
+        // resolve the same way the catalog compiler accepts them.
+        expect(resolveCatalogTypeName("CREATE TYPE 状態 AS ENUM ('open', 'closed');")).toBe("状態");
+        expect(isExecutableEnumSource("CREATE TYPE 状態 AS ENUM ('open', 'closed');")).toBe(true);
         // Comments between tokens and after the statement are trivia, not new shapes.
         expect(resolveCatalogTypeName("CREATE /* c */ TYPE task_state AS ENUM ('a');")).toBe("task_state");
         expect(resolveCatalogTypeName("CREATE TYPE task_state AS ENUM ('a'); /* done */")).toBe("task_state");
