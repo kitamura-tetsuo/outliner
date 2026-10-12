@@ -29,6 +29,11 @@ test("Page/Layout card drag and draft survive host capture and an unrelated peer
 
     const showSidebar = page.getByRole("button", { name: "Show sidebar" });
     if (await showSidebar.isVisible().catch(() => false)) await showSidebar.click();
+    await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+    const boardObject = page.getByTestId(`object-row-${boardId}`);
+    await boardObject.locator('[data-testid^="object-place-"]').click();
+    await page.getByTestId("object-placement-confirm").click();
+
     const sourcePage = page.locator("aside [data-page-id]").first();
     await expect(sourcePage).toBeVisible();
     await sourcePage.click();
@@ -47,13 +52,21 @@ test("Page/Layout card drag and draft survive host capture and an unrelated peer
 
     const board = layout.locator(`[data-testid="kanban-board"][data-kanban-id="${boardId}"]`);
     await expect(board).toBeVisible();
+    const pageBoard = page.locator(`.outliner-item[data-node-kind="kanban"] [data-kanban-id="${boardId}"]`);
+    await expect(pageBoard).toBeVisible();
     const before = await layout.locator('[data-testid="layout-cell"]').evaluateAll(cells =>
         cells.map(cell => ({ id: cell.getAttribute("data-item-id"), style: cell.getAttribute("style") }))
     );
 
-    const alpha = board.locator("article.card").filter({ hasText: "Alpha" });
+    const pageAlpha = pageBoard.locator("article.card").filter({ hasText: "Alpha" });
+    const pageDone = pageBoard.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
+    await pageAlpha.getByRole("button", { name: "Move card" }).dragTo(pageDone);
+
+    const layoutBeta = board.locator("article.card").filter({ hasText: "Beta" });
+    const layoutOpen = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "open" });
+    await layoutBeta.getByRole("button", { name: "Move card" }).dragTo(layoutOpen);
+
     const doneLane = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-    await alpha.getByRole("button", { name: "Move card" }).dragTo(doneLane);
     const movedAlpha = doneLane.locator("article.card").filter({ hasText: "Alpha" });
     await expect(movedAlpha).toBeVisible();
 
@@ -85,6 +98,7 @@ test("Page/Layout card drag and draft survive host capture and an unrelated peer
         status: "done",
         detail: "peer detail",
     });
+    expect(source.data[fixture.recordIds[1]]).toMatchObject({ title: "Beta", status: "open" });
     expect(
         await layout.locator('[data-testid="layout-cell"]').evaluateAll(cells =>
             cells.map(cell => ({ id: cell.getAttribute("data-item-id"), style: cell.getAttribute("style") }))
