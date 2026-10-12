@@ -68,12 +68,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Served application does not match the evaluate
 # unreliable across the PowerShell -> wsl.exe argument boundary: on current
 # hosted Windows runners `docker ps --format '{{.Labels}}'` succeeds but emits
 # an empty value even though the image and container retain the revision label.
-$containerIds = @(wsl.exe --distribution Ubuntu --user root --exec docker ps --quiet)
-if ($LASTEXITCODE -ne 0 -or $containerIds.Count -eq 0) { throw 'No running backend container was found' }
-$containersJson = wsl.exe --distribution Ubuntu --user root --exec docker inspect @containerIds
+$containersJson = wsl.exe --distribution Ubuntu --user root --exec docker inspect yjs-server
 if ($LASTEXITCODE -ne 0) { throw 'Running backend container metadata could not be inspected' }
 $containers = @(($containersJson -join "`n") | ConvertFrom-Json)
-$labels = @($containers | ForEach-Object { $_.Config.Labels.'org.opencontainers.image.revision' } | Where-Object { $_ })
+$running = @($containers | Where-Object { $_.State.Running -eq $true })
+if ($running.Count -ne 1) { throw "Expected one running backend container, found $($running.Count)" }
+$labels = @($running | ForEach-Object { $_.Config.Labels.'org.opencontainers.image.revision' } | Where-Object { $_ })
 $label = @($labels | Select-Object -Unique)
 if ($label.Count -ne 1) { throw "Expected one backend image revision label, found $($label.Count)" }
 $label = $label[0]
