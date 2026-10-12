@@ -117,7 +117,7 @@ test("Page/Layout card drag and draft survive host capture and an unrelated peer
         ),
     ).toEqual(before);
 
-    await expect(peer.locator(`[data-kanban-id="${boardId}"]`).getByText("Alpha in layout", { exact: true }))
+    await expect(peer.getByTestId("yjs-table-view").getByText("Alpha in layout", { exact: true }))
         .toBeVisible({ timeout: 30000 });
     await page.reload();
     await expect(page.locator(`[data-kanban-id="${boardId}"]`).getByText("Alpha in layout", { exact: true }))
