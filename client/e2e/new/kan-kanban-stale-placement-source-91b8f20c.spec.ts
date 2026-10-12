@@ -6,7 +6,9 @@ registerCoverageHooks();
  */
 import { expect, type Page, test } from "@playwright/test";
 import { createBlankGrid } from "../utils/crossProjectGridHelpers";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
+import { selectVisualNode } from "../utils/visualNodeSelectionHelpers";
 
 const objectRow = (page: Page, type: string) =>
     page.locator('[data-testid^="object-row-"]').filter({ has: page.locator(`.type-badge.${type}`) });
@@ -67,6 +69,50 @@ test(
         await page.locator("aside [data-page-id]").first().click();
         await expect(page.getByTestId("kanban-board")).toHaveCount(0);
         await expect(page.getByText("Unaffected neighbour", { exact: true })).toBeVisible();
+        await peerContext.close();
+    },
+);
+
+test(
+    "FTR-91b8f20c: deleting a Layout closes its pending placement without artifacts",
+    async ({ page, browser }, testInfo) => {
+        test.setTimeout(180000);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Destination", "Unaffected neighbour"]);
+        await createBlankGrid(page, "Tasks", "tasks");
+        const pageUrl = page.url();
+        const layoutRow = await createBlockFromItem(
+            page,
+            page.locator('.outliner-item[data-node-kind="text"]').filter({ hasText: "Destination" }),
+            "Layout",
+        );
+        const layoutId = await layoutRow.getAttribute("data-item-id");
+        expect(layoutId).toBeTruthy();
+
+        await layoutRow.getByTestId("layout-block").click({ button: "right" });
+        await page.getByTestId("layout-add-kanban").click();
+        await expect(page.getByTestId("layout-kanban-dialog")).toBeVisible();
+
+        const peerContext = await browser.newContext({ storageState: TestHelpers.createTestStorageState() as any });
+        const peer = await peerContext.newPage();
+        await authenticatePeer(peer, pageUrl);
+        const pageName = decodeURIComponent(new URL(pageUrl).pathname.split("/").at(-1)!);
+        await TestHelpers.waitForPageData(peer, pageName, 30000);
+        await expect(peer.locator(`[data-item-id="${layoutId}"]`).getByTestId("layout-block")).toBeVisible({
+            timeout: 30000,
+        });
+        await selectVisualNode(peer, layoutId!);
+        await peer.keyboard.press("Delete");
+
+        await expect(page.locator(`[data-item-id="${layoutId}"]`)).toHaveCount(0, { timeout: 30000 });
+        await expect(page.getByTestId("layout-kanban-dialog")).toHaveCount(0);
+        await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+        await expect(page.getByText("Unaffected neighbour", { exact: true })).toBeVisible();
+
+        const show = page.getByRole("button", { name: "Show sidebar" });
+        if (await show.isVisible().catch(() => false)) await show.click();
+        await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+        await expect(objectRow(page, "kanban")).toHaveCount(0);
+        await expect(objectRow(page, "table")).toHaveCount(1);
         await peerContext.close();
     },
 );

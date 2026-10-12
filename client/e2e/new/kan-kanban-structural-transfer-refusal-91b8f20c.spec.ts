@@ -53,6 +53,18 @@ test.describe("FTR-91b8f20c: unsupported Kanban structural transfer", () => {
             await expect(page.getByText("Omega neighbour", { exact: true })).toBeVisible();
         }
 
+        // The refused Copy must not leave an in-app Kanban payload for the
+        // exposed Paste shortcut to materialize or flatten.
+        await selectVisualNode(page, placementId!);
+        await page.keyboard.press("Control+v");
+        await page.waitForTimeout(500);
+        await expect(page.locator(`[data-item-id="${placementId}"]`).getByTestId("kanban-board"))
+            .toHaveAttribute("data-kanban-id", boardId);
+        await expect(page.getByTestId("kanban-board")).toHaveCount(1);
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("sentinel clipboard");
+        await expect(page.getByText("Alpha neighbour", { exact: true })).toBeVisible();
+        await expect(page.getByText("Omega neighbour", { exact: true })).toBeVisible();
+
         await openObjects(page);
         await expect(objectRow(page, "kanban")).toHaveCount(1);
         await expect(objectRow(page, "table")).toHaveCount(1);
