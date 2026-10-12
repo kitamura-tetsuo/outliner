@@ -21,6 +21,7 @@ export interface ObjectPlacement {
 export interface PlacementCollections {
     gridPlacements: Map<string, ObjectPlacement[]>;
     calendarPlacements: Map<string, ObjectPlacement[]>;
+    kanbanPlacements: Map<string, ObjectPlacement[]>;
 }
 
 function pushPlacement(map: Map<string, ObjectPlacement[]>, id: string, placement: ObjectPlacement): void {
@@ -37,7 +38,8 @@ function pushPlacement(map: Map<string, ObjectPlacement[]>, id: string, placemen
 export function collectAllPlacements(project: Project | null | undefined): PlacementCollections {
     const gridPlacements = new Map<string, ObjectPlacement[]>();
     const calendarPlacements = new Map<string, ObjectPlacement[]>();
-    if (!project) return { gridPlacements, calendarPlacements };
+    const kanbanPlacements = new Map<string, ObjectPlacement[]>();
+    if (!project) return { gridPlacements, calendarPlacements, kanbanPlacements };
 
     function traverseItem(item: Item, page: Item, pageTitle: string): void {
         try {
@@ -64,6 +66,16 @@ export function collectAllPlacements(project: Project | null | undefined): Place
                             itemKey: item.key!,
                         });
                     }
+                } else if (componentType === "kanban") {
+                    const kanbanId = nodeValue.get("kanbanId");
+                    if (typeof kanbanId === "string" && kanbanId) {
+                        pushPlacement(kanbanPlacements, kanbanId, {
+                            pageId: page.id!,
+                            pageTitle,
+                            itemId: item.id!,
+                            itemKey: item.key!,
+                        });
+                    }
                 }
             }
         } catch (_e) {
@@ -82,7 +94,11 @@ export function collectAllPlacements(project: Project | null | undefined): Place
         traverseItem(page, page, pageTitle);
     }
 
-    return { gridPlacements, calendarPlacements };
+    return { gridPlacements, calendarPlacements, kanbanPlacements };
+}
+
+export function findKanbanPlacements(project: Project | null | undefined, kanbanId: string): ObjectPlacement[] {
+    return collectAllPlacements(project).kanbanPlacements.get(kanbanId) ?? [];
 }
 
 export function findGridPlacements(project: Project | null | undefined, gridId: string): ObjectPlacement[] {

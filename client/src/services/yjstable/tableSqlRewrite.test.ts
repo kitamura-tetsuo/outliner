@@ -8,6 +8,7 @@ describe("rewriteCreateTableSql", () => {
         expect(rewriteCreateTableSql(sql, "sales", "sales_2")).toEqual({
             sql: `-- keep sales in this comment\nCREATE  TABLE  sales_2 (\n  sales TEXT DEFAULT 'sales',\n  note TEXT\n);`,
             relationDependencies: [],
+            actualRelationDependencies: [],
             reservedRelationDependencies: [],
         });
     });
@@ -40,7 +41,17 @@ describe("rewriteTableQuerySql", () => {
         const result = rewriteTableQuerySql("SELECT id, text FROM outline_items", new Map());
 
         expect(result.relationDependencies).toEqual([]);
+        expect(result.actualRelationDependencies).toEqual([]);
         expect(result.reservedRelationDependencies).toEqual(["outline_items"]);
+    });
+
+    it("separates source_kind labels from actual SQL relations", () => {
+        const result = rewriteTableQuerySql(
+            "SELECT 'unrelated' AS source_kind, status FROM tasks JOIN owners ON true",
+            new Map(),
+        );
+        expect(result.relationDependencies).toEqual(["unrelated", "tasks", "owners"]);
+        expect(result.actualRelationDependencies).toEqual(["tasks", "owners"]);
     });
 
     it("rewrites FROM and JOIN relations while preserving columns, aliases, comments, spacing, and unrelated literals", () => {

@@ -64,9 +64,14 @@ if (@($ready.Values | Where-Object { -not $_ }).Count -gt 0) { throw 'Windows lo
 # The source Vite actually serves to Windows Firefox must be the evaluated checkout's.
 node "$PSScriptRoot/../verify-served-revision.mjs" $app 'http://127.0.0.1:7090' "$nativeOutput/application-identity.json"
 if ($LASTEXITCODE -ne 0) { throw 'Served application does not match the evaluated checkout' }
-# Running container labels, read without shell quoting (Windows PowerShell mangles embedded quotes).
-$labels = wsl.exe --distribution Ubuntu --user root --exec docker ps --format '{{.Labels}}'
-$label = ([regex]::Match("$labels", 'org\.opencontainers\.image\.revision=([0-9a-f]{40})')).Groups[1].Value
+# `start-compose.sh` inspects the exact Compose container immediately after it
+# starts and emits its image id, platform and revision. Read that captured
+# evidence instead of opening a second WSL/Docker CLI session: current hosted
+# Windows runners isolate the later session from the daemon that built the
+# backend, even while the published localhost services remain reachable.
+$identityLines = @(Get-Content "$output/compose-build.stdout.txt" | Where-Object { $_ -match '^Image=.+ Source=[0-9a-f]{40}$' })
+if ($identityLines.Count -ne 1) { throw "Expected one backend image identity, found $($identityLines.Count)" }
+$label = ([regex]::Match($identityLines[0], ' Source=([0-9a-f]{40})$')).Groups[1].Value
 if ($label -ne $sha) { throw "Running backend image label '$label' is not the evaluated revision $sha" }
 Invoke-WebRequest 'https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-win64.zip' -OutFile "$nativeOutput/geckodriver.zip" -UseBasicParsing
 Expand-Archive "$nativeOutput/geckodriver.zip" "$nativeOutput/geckodriver" -Force

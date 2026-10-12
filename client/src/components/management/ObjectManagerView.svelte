@@ -9,6 +9,7 @@ import { userPreferencesStore } from "../../stores/UserPreferencesStore.svelte";
 import { navigateToOutlineItem } from "../../services/navigation/outlineItemNavigation";
 import type { ObjectPlacement } from "../../services/objectManager/objectPlacements";
 import { GRID_REGISTRY_KEY } from "../../services/yjstable/gridDocs";
+import { KANBAN_REGISTRY_KEY } from "../../services/yjstable/kanbanDocs";
 import { TABLE_REGISTRY_KEY } from "../../services/yjstable/tableDocs";
 import { userManager } from "../../auth/UserManager";
 import Loader from "../Loader.svelte";
@@ -184,6 +185,7 @@ function attachObservers(p: typeof project) {
     if (!p?.ydoc) return;
     observedTargets = [
         p.ydoc.getMap(GRID_REGISTRY_KEY),
+        p.ydoc.getMap(KANBAN_REGISTRY_KEY),
         p.ydoc.getMap(TABLE_REGISTRY_KEY),
         p.schedules,
         p.calendars,
@@ -406,7 +408,7 @@ function deleteMessage(): string {
 
 function executeDelete() {
     if (!deleteTarget || !project) return;
-    deleteObject(project, deleteTarget);
+    deleteObject(project, deleteTarget, { projectAccess: hasWriteAccess, surfaceWritable: hasWriteAccess });
     selectedObjectIds.delete(deleteTarget.id);
     deleteTarget = null;
 }
@@ -433,7 +435,13 @@ function bulkDeleteMessage(): string {
 }
 
 function executeBulkDelete() {
-    if (!project || !deleteObjects(project, bulkDeleteTargets)) return;
+    if (
+        !project
+        || !deleteObjects(project, bulkDeleteTargets, {
+            projectAccess: hasWriteAccess,
+            surfaceWritable: hasWriteAccess,
+        })
+    ) return;
     for (const target of bulkDeleteTargets) selectedObjectIds.delete(target.id);
     bulkDeleteTargets = [];
 }
@@ -765,7 +773,7 @@ function focusNode(node: HTMLElement) {
                         >
                             Open ↗
                         </a>
-                        {#if object.type === "Grid" || object.type === "Calendar"}
+                        {#if object.type === "Grid" || object.type === "Calendar" || object.type === "Kanban" || object.type === "Table"}
                             <button
                                 type="button"
                                 class="btn-small"
@@ -773,7 +781,7 @@ function focusNode(node: HTMLElement) {
                                 title={hasWriteAccess ? "Place this existing object on a Page" : "Read-only access"}
                                 onclick={() => { placementTarget = object; }}
                                 data-testid={`object-place-${object.id}`}
-                            >Place on Page…</button>
+                            >{object.type === "Table" ? "New Kanban on Page…" : "Place on Page…"}</button>
                         {/if}
                         <button
                             type="button"
@@ -804,12 +812,13 @@ function focusNode(node: HTMLElement) {
     </table>
 </div>
 
-{#if placementTarget && project && (placementTarget.type === "Grid" || placementTarget.type === "Calendar")}
+{#if placementTarget && project && (placementTarget.type === "Grid" || placementTarget.type === "Calendar" || placementTarget.type === "Kanban" || placementTarget.type === "Table")}
     <ObjectPlacementDialog
         {project}
         objectType={placementTarget.type.toLowerCase() as PlaceableObjectType}
         objectId={placementTarget.id}
         objectName={placementTarget.name}
+        canWrite={hasWriteAccess}
         onclose={() => { placementTarget = null; }}
     />
 {/if}

@@ -42,7 +42,7 @@ export interface DemoItem {
     // The item's plain text. Optional for component/alias items.
     text?: string;
     // Render this item as a live component instead of plain text.
-    componentType?: "yjstable" | "calendar" | "layout" | "diagram";
+    componentType?: "yjstable" | "calendar" | "layout" | "diagram" | "kanban";
     // For "layout" children (#4997): how many of the Layout's 12 columns this
     // item occupies. Order comes from the item's position among its siblings,
     // so this is the only placement value the template carries.
@@ -61,6 +61,9 @@ export interface DemoItem {
     // registerDemoDiagrams writes it straight into the project doc's
     // `diagrams` map.
     diagramId?: string;
+    // For "kanban" components: project-owned board identity. Placements do
+    // not contain a copy of its SELECT, settings, Table, or records.
+    kanbanId?: string;
     // Seed votes from these voter ids.
     votes?: string[];
     // Seed a comment thread.
@@ -1010,6 +1013,7 @@ function addDemoItems(
         }
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;
         if (def.diagramId !== undefined) node.diagramId = def.diagramId;
+        if (def.kanbanId !== undefined) node.kanbanId = def.kanbanId;
         if (def.columnSpan !== undefined) node.columnSpan = def.columnSpan;
         if (def.start !== undefined) node.start = def.start;
         if (def.allDay !== undefined) node.allDay = def.allDay;

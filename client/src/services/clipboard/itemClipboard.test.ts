@@ -34,6 +34,15 @@ function tableSnapshot(sourceTableId = "table-1"): GridTableSnapshot {
 }
 
 describe("item clipboard", () => {
+    it("refuses a Kanban-containing structural selection before serialization", () => {
+        expect(() =>
+            serializeClipboardItems("project-a", [
+                { item: item("kept text", {}), depth: 0 },
+                { item: item("", { componentType: "kanban", kanbanId: "board-1" }), depth: 0 },
+            ])
+        ).toThrow("Kanban structural transfer is not supported");
+    });
+
     it("round-trips version 1 text, table, and calendar items with their bindings", () => {
         const encoded = serializeClipboardItems("project-a", [
             { item: item("note", {}), depth: 0 },

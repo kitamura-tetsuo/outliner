@@ -556,6 +556,16 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    /** Project-owned Kanban definition rendered by this placement. */
+    get kanbanId(): string | undefined {
+        return this.value.get("kanbanId") as string | undefined;
+    }
+    set kanbanId(v: string | undefined) {
+        if (v === undefined) this.value.delete("kanbanId");
+        else this.value.set("kanbanId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     /**
      * How many columns of a Layout container's fixed 12-column track system
      * this item occupies (#4997). Persisted on the child, never on the Layout:

@@ -107,6 +107,10 @@ import { isPublicProject } from "../lib/publicProject";
                 objectData.objectType,
                 objectData.objectId,
                 userManager.getCurrentUser()?.id ?? "anonymous",
+                {
+                    projectAccess: authStore.isAuthenticated || isPublicProject(currentProjectName),
+                    surfaceWritable: authStore.isAuthenticated || isPublicProject(currentProjectName),
+                },
             );
             draggedObject = undefined;
         } else if (gridData && (isCopyDrag(event) || !gridData.sourceWritable)) {

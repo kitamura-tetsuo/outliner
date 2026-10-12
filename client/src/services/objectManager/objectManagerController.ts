@@ -7,6 +7,7 @@ import { deleteScheduleRuleWithUndo, listSchedules, renameSchedule } from "../sc
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import type { AsyncUndoEntry, ManualUndoEntry } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
+import { listKanbans, removeKanbanWithPlacements, updateKanban } from "../yjstable/kanbanDocs";
 import {
     type DuplicableObject,
     duplicateObjectSet,
@@ -27,13 +28,14 @@ import {
     type ObjectKind,
     traverseObjectGraph,
 } from "./objectDependencyGraph";
+import type { PlacementAuthorization } from "./objectPlacement";
 import { collectAllPlacements, type ObjectPlacement } from "./objectPlacements";
 
 const logger = getLogger("objectManagerController");
 
-export type ObjectType = "Table" | "Grid" | "Schedule" | "Calendar";
+export type ObjectType = "Table" | "Grid" | "Schedule" | "Calendar" | "Kanban";
 
-export const OBJECT_TYPES: ObjectType[] = ["Table", "Grid", "Calendar", "Schedule"];
+export const OBJECT_TYPES: ObjectType[] = ["Table", "Grid", "Kanban", "Calendar", "Schedule"];
 
 /** Object Manager's related-selection scope, matching duplication's directional semantics (issue #5135 §2). */
 export type RelatedSelectionScope = GraphDirection;
@@ -49,6 +51,7 @@ const OBJECT_TYPE_TO_KIND: Record<ObjectType, ObjectKind> = {
     Grid: "grid",
     Calendar: "calendar",
     Schedule: "schedule",
+    Kanban: "kanban",
 };
 
 export interface NamedObject {
@@ -71,7 +74,7 @@ export interface BulkPreviewItem extends NamedObject {
 export function getObjects(project: Project | null | undefined): NamedObject[] {
     if (!project || !project.ydoc) return [];
 
-    const { gridPlacements, calendarPlacements } = collectAllPlacements(project);
+    const { gridPlacements, calendarPlacements, kanbanPlacements } = collectAllPlacements(project);
 
     const tables = listTables(project.ydoc).map(t => ({
         id: t.tableId,
@@ -91,6 +94,12 @@ export function getObjects(project: Project | null | undefined): NamedObject[] {
         name: c.settings.name,
         placements: calendarPlacements.get(c.id) ?? [],
     }));
+    const kanbans = listKanbans(project.ydoc).map(board => ({
+        id: board.kanbanId,
+        type: "Kanban" as const,
+        name: board.name,
+        placements: kanbanPlacements.get(board.kanbanId) ?? [],
+    }));
     const schedules = listSchedules(project).map(s => ({
         id: s.id,
         type: "Schedule" as const,
@@ -98,7 +107,7 @@ export function getObjects(project: Project | null | undefined): NamedObject[] {
         placements: [],
     }));
 
-    return [...tables, ...grids, ...calendars, ...schedules];
+    return [...tables, ...grids, ...kanbans, ...calendars, ...schedules];
 }
 
 export function filterObjects(objects: NamedObject[], selectedTypes: Set<string>, searchQuery: string): NamedObject[] {
@@ -225,6 +234,8 @@ export function applyRename(project: Project | null | undefined, type: string, i
         renameCalendar(project, id, newName);
     } else if (type === "Schedule") {
         renameSchedule(project, id, newName);
+    } else if (type === "Kanban") {
+        updateKanban(project.ydoc, id, { name: newName });
     }
 }
 
@@ -251,7 +262,12 @@ export function getDeleteImpact(project: Project | null | undefined, object: Nam
  * behind. Table and Schedule reuse their own existing deletion semantics
  * (#5012/#5103) rather than a second, inconsistent path.
  */
-export function deleteObject(project: Project | null | undefined, object: NamedObject): boolean {
+export function deleteObject(
+    project: Project | null | undefined,
+    object: NamedObject,
+    authorization: PlacementAuthorization,
+): boolean {
+    if (!authorization.projectAccess || !authorization.surfaceWritable) return false;
     if (!project || !project.ydoc) return false;
 
     switch (object.type) {
@@ -259,6 +275,8 @@ export function deleteObject(project: Project | null | undefined, object: NamedO
             return removeGridWithPlacements(project, object.id);
         case "Calendar":
             return removeCalendarWithPlacements(project, object.id);
+        case "Kanban":
+            return removeKanbanWithPlacements(project, object.id);
         case "Table":
             return removeTableWithPolicyUndoable(project, object.id);
         case "Schedule":
@@ -267,13 +285,18 @@ export function deleteObject(project: Project | null | undefined, object: NamedO
 }
 
 /** Delete an exact, pre-snapshotted target set as one undo-router operation. */
-export function deleteObjects(project: Project | null | undefined, objects: NamedObject[]): boolean {
+export function deleteObjects(
+    project: Project | null | undefined,
+    objects: NamedObject[],
+    authorization: PlacementAuthorization,
+): boolean {
+    if (!authorization.projectAccess || !authorization.surfaceWritable) return false;
     if (!project?.ydoc || objects.length === 0) return false;
     const liveIds = new Set(getObjects(project).map(object => object.id));
     if (objects.some(object => !liveIds.has(object.id))) return false;
     return globalUndoRouter.captureManualGroup(`Delete ${objects.length} objects`, () => {
         for (const object of objects) {
-            if (!deleteObject(project, object)) return false;
+            if (!deleteObject(project, object, authorization)) return false;
         }
         return true;
     });
@@ -302,7 +325,7 @@ export function buildDuplicationSetPreview(
     project: Project | null | undefined,
     selected: NamedObject[],
 ): DuplicationSetPreview | null {
-    if (!project?.ydoc || selected.length === 0) return null;
+    if (!project?.ydoc || selected.length === 0 || selected.some(object => object.type === "Kanban")) return null;
     const preview = previewObjectSetDuplication(project.ydoc, toDuplicableObjects(selected));
     const byId = new Map(selected.map(object => [object.id, object]));
     const objects = preview.objects

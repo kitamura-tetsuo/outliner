@@ -10,6 +10,7 @@ import {
     isTextNode,
     isVisualLeafNode,
     isVisualNode,
+    KANBAN_COMPONENT_TYPE,
     LAYOUT_COMPONENT_TYPE,
     nodeKindOf,
     nodeKindOfComponentType,
@@ -20,6 +21,7 @@ const grid = { componentType: GRID_COMPONENT_TYPE };
 const calendar = { componentType: CALENDAR_COMPONENT_TYPE };
 const layout = { componentType: LAYOUT_COMPONENT_TYPE };
 const diagram = { componentType: DIAGRAM_COMPONENT_TYPE };
+const kanban = { componentType: KANBAN_COMPONENT_TYPE };
 
 describe("outline node kinds (#5015)", () => {
     it("maps each stored discriminator to exactly one semantic kind", () => {
@@ -28,6 +30,7 @@ describe("outline node kinds (#5015)", () => {
         expect(nodeKindOfComponentType(CALENDAR_COMPONENT_TYPE)).toBe("calendar");
         expect(nodeKindOfComponentType(LAYOUT_COMPONENT_TYPE)).toBe("layout");
         expect(nodeKindOfComponentType(DIAGRAM_COMPONENT_TYPE)).toBe("diagram");
+        expect(nodeKindOfComponentType(KANBAN_COMPONENT_TYPE)).toBe("kanban");
     });
 
     it("reads an unknown or unreadable discriminator as Text, the narrowest kind", () => {
@@ -44,7 +47,7 @@ describe("outline node kinds (#5015)", () => {
         expect(isTextNode(text)).toBe(true);
         expect(isVisualNode(text)).toBe(false);
 
-        for (const node of [grid, calendar, diagram]) {
+        for (const node of [grid, calendar, diagram, kanban]) {
             expect(isTextNode(node)).toBe(false);
             expect(isVisualNode(node)).toBe(true);
             expect(isVisualLeafNode(node)).toBe(true);
@@ -62,6 +65,7 @@ describe("outline node kinds (#5015)", () => {
         expect(canNodeHaveChildren(grid)).toBe(false);
         expect(canNodeHaveChildren(calendar)).toBe(false);
         expect(canNodeHaveChildren(diagram)).toBe(false);
+        expect(canNodeHaveChildren(kanban)).toBe(false);
     });
 
     it("lets Text hold any kind, including a block under a heading", () => {
@@ -70,14 +74,15 @@ describe("outline node kinds (#5015)", () => {
         expect(canAcceptChild(text, calendar)).toBe(true);
         expect(canAcceptChild(text, layout)).toBe(true);
         expect(canAcceptChild(text, diagram)).toBe(true);
+        expect(canAcceptChild(text, kanban)).toBe(true);
         // No parent means the page root, which behaves like a Text container.
         expect(canAcceptChild(undefined, layout)).toBe(true);
         expect(canAcceptChild(undefined, diagram)).toBe(true);
     });
 
     it("refuses every child under a Grid, Calendar or Diagram leaf", () => {
-        for (const parent of [grid, calendar, diagram]) {
-            for (const child of [text, grid, calendar, layout, diagram]) {
+        for (const parent of [grid, calendar, diagram, kanban]) {
+            for (const child of [text, grid, calendar, layout, diagram, kanban]) {
                 expect(canAcceptChild(parent, child)).toBe(false);
             }
         }
@@ -87,6 +92,7 @@ describe("outline node kinds (#5015)", () => {
         expect(canAcceptChild(layout, grid)).toBe(true);
         expect(canAcceptChild(layout, calendar)).toBe(true);
         expect(canAcceptChild(layout, diagram)).toBe(true);
+        expect(canAcceptChild(layout, kanban)).toBe(true);
         expect(canAcceptChild(layout, text)).toBe(false);
         expect(canAcceptChild(layout, layout)).toBe(false);
     });

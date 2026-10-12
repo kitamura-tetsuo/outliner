@@ -42,8 +42,11 @@ export const LAYOUT_COMPONENT_TYPE = "layout";
  */
 export const DIAGRAM_COMPONENT_TYPE = "diagram";
 
+/** `Item.componentType` of a Kanban placement. */
+export const KANBAN_COMPONENT_TYPE = "kanban";
+
 /** The semantic kinds an outline node can have. */
-export type OutlineNodeKind = "text" | "grid" | "calendar" | "layout" | "diagram";
+export type OutlineNodeKind = "text" | "grid" | "calendar" | "layout" | "diagram" | "kanban";
 
 /**
  * The single registry mapping stored discriminator to semantic kind. A future
@@ -55,10 +58,11 @@ const KIND_BY_COMPONENT_TYPE: ReadonlyMap<string, OutlineNodeKind> = new Map([
     [CALENDAR_COMPONENT_TYPE, "calendar" as const],
     [LAYOUT_COMPONENT_TYPE, "layout" as const],
     [DIAGRAM_COMPONENT_TYPE, "diagram" as const],
+    [KANBAN_COMPONENT_TYPE, "kanban" as const],
 ]);
 
 /** Kinds that render as a self-contained visual block and may sit in a Layout. */
-const VISUAL_LEAF_KINDS: ReadonlySet<OutlineNodeKind> = new Set(["grid", "calendar", "diagram"]);
+const VISUAL_LEAF_KINDS: ReadonlySet<OutlineNodeKind> = new Set(["grid", "calendar", "diagram", "kanban"]);
 
 /** Anything that stores a node kind: the Yjs `Item`, or a plain test double. */
 export interface NodeKindLike {

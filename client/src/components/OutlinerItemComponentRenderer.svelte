@@ -3,6 +3,7 @@ import type { Item } from "../schema/app-schema";
 import { VISUAL_NODE_ROOT_ATTRIBUTE } from "../lib/selectionGeometry";
 import { VISUAL_NODE_SELECTION_SURFACE_ATTRIBUTE } from "../lib/selection/outlineSelectionDom";
 import { DIAGRAM_COMPONENT_TYPE, LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
+import { KANBAN_COMPONENT_TYPE } from "$shared/services/outlineNodeKind";
 
 interface Props {
     componentType: string | undefined;
@@ -75,6 +76,13 @@ const selectionSurfaceAttributes = $derived({ [VISUAL_NODE_SELECTION_SURFACE_ATT
         <div class="component-wrapper" class:outline-row={outlineRow} {...rootAttributes}>
             {@render selectionSurface()}
             <DiagramBlock item={item} {isReadOnly} />
+        </div>
+    {/await}
+{:else if componentType === KANBAN_COMPONENT_TYPE}
+    {#await import("./kanban/KanbanBlock.svelte") then { default: KanbanBlock }}
+        <div class="component-wrapper" class:outline-row={outlineRow} {...rootAttributes}>
+            {@render selectionSurface()}
+            <KanbanBlock item={item} {isReadOnly} />
         </div>
     {/await}
 {/if}

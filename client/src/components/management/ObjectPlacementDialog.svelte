@@ -10,15 +10,20 @@ interface Props {
     objectId: string;
     objectName: string;
     onclose: () => void;
+    canWrite: boolean;
 }
 
-let { project, objectType, objectId, objectName, onclose }: Props = $props();
+let { project, objectType, objectId, objectName, onclose, canWrite }: Props = $props();
 let pageId = $state("");
 let pages = $state<{ id: string; title: string; }[]>([]);
+let pagesInitialized = false;
 
 function syncPages() {
     pages = [...project.items].map(page => ({ id: page.id, title: page.text || "Untitled Page" }));
-    if (pageId && !pages.some(page => page.id === pageId)) pageId = pages[0]?.id ?? "";
+    if (!pagesInitialized) {
+        pageId = pages[0]?.id ?? "";
+        pagesInitialized = true;
+    }
 }
 
 onMount(() => {
@@ -39,16 +44,23 @@ $effect(() => {
 });
 
 function place() {
-    const destinationPageId = pageId || pages[0]?.id;
+    const destinationPageId = pageId;
     if (!destinationPageId) return;
-    placeObjectOnPage(project.ydoc, destinationPageId, objectType, objectId, userManager.getCurrentUser()?.id ?? "anonymous");
+    placeObjectOnPage(
+        project.ydoc,
+        destinationPageId,
+        objectType,
+        objectId,
+        userManager.getCurrentUser()?.id ?? "anonymous",
+        { projectAccess: canWrite, surfaceWritable: canWrite },
+    );
     onclose();
 }
 </script>
 
 <dialog class="dialog" bind:this={dialogEl} oncancel={(e) => { e.preventDefault(); onclose(); }} onclick={(e) => { if (e.target === dialogEl) onclose(); }} aria-labelledby="placement-title">
     <div class="dialog-content" role="document">
-        <h2 id="placement-title">Place “{objectName}” on a Page</h2>
+        <h2 id="placement-title">{objectType === "table" ? `Create a Kanban over “${objectName}”` : `Place “${objectName}” on a Page`}</h2>
         <label>Page
             <select bind:value={pageId} data-testid="object-placement-page-picker">
                 {#each pages as page (page.id)}
@@ -58,7 +70,7 @@ function place() {
         </label>
         <div class="actions">
             <button type="button" onclick={onclose}>Cancel</button>
-            <button type="button" class="primary" disabled={pages.length === 0} onclick={place} data-testid="object-placement-confirm">Place</button>
+            <button type="button" class="primary" disabled={!canWrite || pages.length === 0} onclick={place} data-testid="object-placement-confirm">Place</button>
         </div>
     </div>
 </dialog>

@@ -9,12 +9,15 @@
 import * as Y from "yjs";
 import { type Item, Project } from "../../../../shared/src/app-schema";
 import type { ScheduleRuleValueType } from "../../../../shared/src/types/yjs-types";
+import { findKanbanPlacements } from "../objectManager/objectPlacements";
 import { findSchedulesReferencingTable } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { destroyGridUndoManager, findGridsBySourceTable, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
+import { findKanbansBySourceTable, getKanban, getKanbanRegistry, listKanbans } from "./kanbanDocs";
 import { parseIdentifiers } from "./queryAnalysis";
 import { destroyTableUndoManager, getTableRegistry, listTables } from "./tableDocs";
 import { tableDocGuid } from "./tableDocs";
+import { rewriteTableQuerySql } from "./tableSqlRewrite";
 
 export interface TableDependencies {
     directGridReferences: {
@@ -47,11 +50,13 @@ export interface TableDependencies {
         kind: "write-target" | "sql-reference";
     }[];
     indirectSqlReferences: {
-        type: "query" | "calendar" | "schedule";
+        type: "query" | "calendar" | "schedule" | "kanban";
         name: string;
     }[];
     /** Grids in the project registry that name this Table as their source. */
     dependentGridIds: string[];
+    /** Kanbans whose primary source is this Table. */
+    dependentKanbanIds: string[];
 }
 
 export function getTableDependencies(project: Project, tableId: string): TableDependencies {
@@ -64,6 +69,7 @@ export function getTableDependencies(project: Project, tableId: string): TableDe
         scheduleReferences: scheduleReferences.map(({ ruleId, ruleName, kind }) => ({ ruleId, ruleName, kind })),
         indirectSqlReferences: [],
         dependentGridIds: findGridsBySourceTable(project.ydoc, tableId).map(g => g.gridId),
+        dependentKanbanIds: findKanbansBySourceTable(project.ydoc, tableId).map(k => k.kanbanId),
     };
 
     const targetSqlName = listTables(project.ydoc).find(t => t.tableId === tableId)?.sqlName;
@@ -146,6 +152,17 @@ export function getTableDependencies(project: Project, tableId: string): TableDe
                 }
             });
         }
+
+        for (const board of listKanbans(project.ydoc)) {
+            if (dependencies.dependentKanbanIds.includes(board.kanbanId)) continue;
+            const query = getKanban(project.ydoc, board.kanbanId)?.query ?? "";
+            try {
+                const relations = rewriteTableQuerySql(query, new Map()).actualRelationDependencies;
+                if (relations.includes(targetSqlName)) {
+                    dependencies.indirectSqlReferences.push({ type: "kanban", name: board.name || "Untitled Kanban" });
+                }
+            } catch (_error) { /* Invalid SQL has no safely identifiable relation set. */ }
+        }
     }
 
     return dependencies;
@@ -182,6 +199,18 @@ export function removeTableWithPolicy(
 
     project.ydoc.transact(() => {
         if (policy === "remove-direct-references") {
+            const kanbanRegistry = getKanbanRegistry(project.ydoc);
+            for (const kanbanId of deps.dependentKanbanIds) {
+                for (const placement of findKanbanPlacements(project, kanbanId)) {
+                    try {
+                        const node = project.tree.getNodeValueFromKey(placement.itemKey) as Y.Map<unknown> | undefined;
+                        if (node?.get("componentType") === "kanban" && node.get("kanbanId") === kanbanId) {
+                            project.tree.deleteNodeAndDescendants(placement.itemKey);
+                        }
+                    } catch (_error) { /* Concurrently removed placement. */ }
+                }
+                kanbanRegistry.delete(kanbanId);
+            }
             // Remove direct Grid references from outline items
             for (const ref of deps.directGridReferences) {
                 try {

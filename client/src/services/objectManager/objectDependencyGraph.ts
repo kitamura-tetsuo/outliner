@@ -12,10 +12,11 @@ import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import * as Y from "yjs";
 import { listCalendars } from "../calendar/calendarService";
 import { getGridHandles, listGrids } from "../yjstable/gridDocs";
+import { getKanban, listKanbans } from "../yjstable/kanbanDocs";
 import { listTables } from "../yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../yjstable/tableSqlRewrite";
 
-export type ObjectKind = "grid" | "table" | "schedule" | "calendar";
+export type ObjectKind = "grid" | "table" | "schedule" | "calendar" | "kanban";
 
 export interface GraphObject {
     type: ObjectKind;
@@ -73,7 +74,7 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
     /** Table ids read by a SQL/query string, via relation-level parsing only. */
     function relationTableIds(sql: string): string[] {
         try {
-            return rewriteTableQuerySql(sql, new Map()).relationDependencies
+            return rewriteTableQuerySql(sql, new Map()).actualRelationDependencies
                 .map(sqlName => tableBySqlName.get(sqlName))
                 .filter((tableId): tableId is string => tableId !== undefined);
         } catch {
@@ -93,6 +94,16 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
         for (const tableId of relationTableIds(query)) references.add(tableId);
         for (const tableId of references) {
             if (tableIds.has(tableId)) addEdge(gridObject, { type: "table", id: tableId });
+        }
+    }
+
+    for (const kanban of listKanbans(doc)) {
+        const object: GraphObject = { type: "kanban", id: kanban.kanbanId };
+        const settings = getKanban(doc, kanban.kanbanId);
+        const references = new Set<string>([kanban.sourceTableId]);
+        for (const tableId of relationTableIds(settings?.query ?? "")) references.add(tableId);
+        for (const tableId of references) {
+            if (tableIds.has(tableId)) addEdge(object, { type: "table", id: tableId });
         }
     }
 
