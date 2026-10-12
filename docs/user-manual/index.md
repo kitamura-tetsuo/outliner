@@ -75,7 +75,7 @@ Click the sidebar toggle button in the top-left corner to access the main sideba
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the **+** (Add page) button in the section header.
 - **Tables:** View and manage database tables.
-- **Object Manager:** Manage Grids, Tables, and Schedules centrally.
+- **Object Manager:** Manage Grids, Tables, Calendars, and Schedules centrally.
 - **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **+** (Add scheduled SQL) button in the section header.
 - **Settings:** Access project configurations. This section also includes quick links to the documentation (**Docs**) and source code (**GitHub**).
 
@@ -297,12 +297,13 @@ On touch, tap a cell to activate it, double-tap to edit, or long-press for range
 
 Choose a destination Page when duplicating, or drag a Grid's outline handle to a Page in the sidebar. Hold Ctrl (Option on macOS) while dragging to copy instead of move.
 
-### Tables, Grids and Schedules are separate
+### Tables, Grids, Calendars and Schedules are separate
 
-A table, a grid and a schedule are three independent things, and each has its own page.
+A table, a grid, a calendar and a schedule are four independent things, and each has its own management page.
 
 - **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
 - **Grid** (`/-/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
+- **Calendar** (`/-/calendars/<project>/<calendar>`) owns a query and role assignments for its result columns (e.g., title, start date), but no data of its own. It dynamically visualizes the underlying table data based on its view settings. A calendar page links back to the tables its query reads.
 - **Schedule** (`/-/schedules/<project>`, one rule at `/-/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
 
 ### Collaboration
