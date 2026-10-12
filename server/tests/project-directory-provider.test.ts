@@ -136,14 +136,21 @@ describe("project directory provider boundary (real Firestore)", () => {
     });
 
     after(async () => {
-        await Promise.all([
-            ...projectIds.map(projectId =>
-                db.collection("projectUsers").doc(projectId).delete().catch(() => undefined)
-            ),
-            db.collection("containerUsers").doc("provider-legacy").delete().catch(() => undefined),
-            db.collection("userProjects").doc(ownerUid).delete().catch(() => undefined),
-        ]);
-        await deleteApp(app);
+        // ownerUid stays unset when the before hook fails before minting
+        // identities; skipping that cleanup keeps the original setup error
+        // reported instead of a documentPath validation error.
+        if (db) {
+            await Promise.all([
+                ...projectIds.map(projectId =>
+                    db.collection("projectUsers").doc(projectId).delete().catch(() => undefined)
+                ),
+                db.collection("containerUsers").doc("provider-legacy").delete().catch(() => undefined),
+                ...(ownerUid
+                    ? [db.collection("userProjects").doc(ownerUid).delete().catch(() => undefined)]
+                    : []),
+            ]);
+        }
+        if (app) await deleteApp(app);
     });
 
     it("selects the Firestore provider by default without local configuration", () => {
