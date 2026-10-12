@@ -13,7 +13,13 @@ and accessible-ID discovery. The Firestore adapter (`project-directory.ts` plus
 `access-control.ts`) is selected by default with no local configuration. Its
 project-ID domain (`^[A-Za-z0-9_-]{1,200}$`) and title rules (trim, Unicode NFC,
 1–255 UTF-16 code units, no UUID titles, case-sensitive equality) belong to
-that adapter only; other providers may support different ID shapes.
+that adapter only; other providers may support different ID shapes. The local
+SQLite producer (`project-directory-sqlite.ts`) implements the same boundary
+for the single local owner (`local-user`) from an explicitly supplied database
+file: IDs follow the project-room grammar (`^[A-Za-z0-9_-]{1,128}$`), titles
+follow the same trim/NFC rules, and unavailable storage reports
+`storage_unavailable` instead of an empty directory. It never touches Yjs
+documents or Firestore data.
 
 ## Safety rules
 

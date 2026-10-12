@@ -13,6 +13,7 @@ type VerifyToken = typeof verifyIdTokenCached;
 function errorStatus(error: ProjectDirectoryError): number {
     if (error.code === "forbidden") return 403;
     if (error.code === "not_found") return 404;
+    if (error.code === "storage_unavailable") return 503;
     if (error.code === "ambiguous_title" || error.code === "duplicate_title" || error.code === "title_conflict") {
         return 409;
     }

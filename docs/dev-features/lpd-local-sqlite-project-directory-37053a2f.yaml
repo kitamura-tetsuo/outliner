@@ -1,0 +1,13 @@
+id: FTR-37053a2f
+title: Local SQLite project directory for the single local owner
+description: A SQLite-backed ProjectDirectoryProvider rooted at an explicitly supplied local database path serves descriptor creation, lookup, listing, title resolution, rename, access checks and accessible-ID discovery for the fixed principal local-user, with no Firebase SDK initialization. Project and outline contents stay in Yjs/Hocuspocus persistence; this database holds only directory metadata.
+category: server
+status: implemented
+components:
+- server/src/project-directory-sqlite.ts
+- server/src/project-directory-provider.ts
+- server/src/project-directory.ts
+- server/src/project-directory-api.ts
+tests:
+- server/tests/project-directory-sqlite.test.ts
+title-ja: 単一ローカル所有者のためのSQLiteプロジェクトディレクトリ
