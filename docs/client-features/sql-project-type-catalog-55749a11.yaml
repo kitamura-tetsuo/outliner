@@ -5,20 +5,21 @@ description: Authorized users browse Project-owned SQL TYPE declarations on a de
 category: client
 status: implemented
 components:
-- server/src/sql-catalog-routes.ts
-- server/src/server.ts
-- client/src/services/yjstable/sqlCatalogClient.ts
-- client/src/components/yjstable/SqlCatalogPanel.svelte
-- client/src/components/management/TypeListView.svelte
-- client/src/lib/managementPaths.ts
 - client/src/components/management/ManagementLanding.svelte
+- client/src/components/management/TypeListView.svelte
+- client/src/components/yjstable/SqlCatalogPanel.svelte
+- client/src/lib/managementPaths.ts
+- client/src/services/yjstable/sqlCatalogClient.ts
+- server/src/server.ts
+- server/src/sql-catalog-routes.ts
 acceptance:
-- Catalog UI lists persisted declaration identities, kinds and resolved ENUM names from the authorized transport
 - Authorized users create, inspect, edit and delete one unqualified CREATE TYPE AS ENUM declaration per object through the existing SQL editor
+- Catalog UI lists persisted declaration identities, kinds and resolved ENUM names from the authorized transport
 - Every mutation travels the authenticated transport and is refused for missing or denied grants
-- TYPE source stays separate from Table schema/record editors and Grid SELECT editors
 - Only the ENUM kind is exposed as executable; other DDL is reported unsupported rather than presented as working
+- TYPE source stays separate from Table schema/record editors and Grid SELECT editors
 tests:
-- server/tests/sql-catalog-routes.test.ts
-- client/src/services/yjstable/sqlCatalogClient.test.ts
+- client/src/components/yjstable/SqlCatalogPanel.test.ts
 - client/src/lib/managementPaths.test.ts
+- client/src/services/yjstable/sqlCatalogClient.test.ts
+- server/tests/sql-catalog-routes.test.ts

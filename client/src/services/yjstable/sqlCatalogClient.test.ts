@@ -20,6 +20,24 @@ describe("sqlCatalogClient naming", () => {
         ).toBe("task_state");
     });
 
+    it("resolves names the way the catalog compiler does (comments, case folding, escapes)", () => {
+        // Block-comment-prefixed source is accepted by the service, so the
+        // surface must show its resolved name instead of "unsupported".
+        expect(resolveCatalogTypeName("/* project type */ CREATE TYPE task_state AS ENUM ('Open', 'Closed');"))
+            .toBe("task_state");
+        // Unquoted identifiers fold to lowercase per PostgreSQL rules.
+        expect(resolveCatalogTypeName("CREATE TYPE TaskState AS ENUM ('Open');")).toBe("taskstate");
+        // Quoted identifiers keep case and unescape doubled quotes.
+        expect(resolveCatalogTypeName('CREATE TYPE "My ""Quoted"" Type" AS ENUM (\'a\');'))
+            .toBe('My "Quoted" Type');
+        // Comments between tokens and after the statement are trivia, not new shapes.
+        expect(resolveCatalogTypeName("CREATE /* c */ TYPE task_state AS ENUM ('a');")).toBe("task_state");
+        expect(resolveCatalogTypeName("CREATE TYPE task_state AS ENUM ('a'); /* done */")).toBe("task_state");
+        expect(isExecutableEnumSource("/* project type */ CREATE TYPE task_state AS ENUM ('Open', 'Closed');"))
+            .toBe(true);
+        expect(isExecutableEnumSource("CREATE TYPE TaskState AS ENUM ('Open');")).toBe(true);
+    });
+
     it("reports every other DDL shape as unsupported", () => {
         expect(resolveCatalogTypeName("CREATE TABLE tasks (id TEXT PRIMARY KEY)")).toBeUndefined();
         expect(resolveCatalogTypeName("SELECT 1")).toBeUndefined();

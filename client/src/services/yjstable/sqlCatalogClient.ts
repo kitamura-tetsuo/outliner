@@ -122,33 +122,141 @@ export async function applyCatalogMutation(
     }, deps);
 }
 
-const TYPE_NAME_PATTERN = /^\s*(?:--[^\n]*\n|\s)*create\s+type\s+(?:"([^"]+)"|([A-Za-z_][\w$]*))\s+as\s+enum\s*\(/i;
+/** Skip whitespace and SQL comments (double-dash lines and slash-star blocks). */
+function skipTrivia(source: string, position: number): number {
+    let cursor = position;
+    for (;;) {
+        const char = source[cursor];
+        if (char === undefined) return cursor;
+        if (/\s/.test(char)) {
+            cursor += 1;
+            continue;
+        }
+        if (source.startsWith("--", cursor)) {
+            const newline = source.indexOf("\n", cursor + 2);
+            cursor = newline === -1 ? source.length : newline + 1;
+            continue;
+        }
+        if (source.startsWith("/*", cursor)) {
+            const close = source.indexOf("*/", cursor + 2);
+            cursor = close === -1 ? source.length : close + 2;
+            continue;
+        }
+        return cursor;
+    }
+}
+
+/** Match a keyword case-insensitively at `position` (after trivia), with a word boundary. */
+function matchKeyword(source: string, position: number, keyword: string): number | undefined {
+    const cursor = skipTrivia(source, position);
+    const word = source.slice(cursor, cursor + keyword.length);
+    if (word.toLowerCase() !== keyword) return undefined;
+    const next = source[cursor + keyword.length];
+    if (next !== undefined && /[\w$]/.test(next)) return undefined;
+    return cursor + keyword.length;
+}
+
+/**
+ * Parse one SQL identifier at `position` (after trivia). Returns the resolved
+ * name — quoted identifiers unescaped with case preserved, unquoted
+ * identifiers folded to lowercase per PostgreSQL rules — and the end cursor.
+ */
+function parseIdentifier(source: string, position: number): { name: string; end: number; } | undefined {
+    const cursor = skipTrivia(source, position);
+    const char = source[cursor];
+    if (char === '"') {
+        let name = "";
+        let index = cursor + 1;
+        for (;;) {
+            const close = source.indexOf('"', index);
+            if (close === -1) return undefined;
+            if (source[close + 1] === '"') {
+                name += source.slice(index, close + 1);
+                index = close + 2;
+                continue;
+            }
+            name += source.slice(index, close);
+            return { name, end: close + 1 };
+        }
+    }
+    const match = /^[A-Za-z_][\w$]*/.exec(source.slice(cursor));
+    if (!match) return undefined;
+    return { name: match[0].toLowerCase(), end: cursor + match[0].length };
+}
+
+/**
+ * True when `source` holds exactly one statement: after the first top-level
+ * semicolon only whitespace and comments may follow. String literals, quoted
+ * identifiers and comments never contribute a statement boundary.
+ */
+function isSingleStatementTail(rest: string): boolean {
+    let index = 0;
+    while (index < rest.length) {
+        const char = rest[index];
+        if (char === "'") {
+            const match = /'(?:[^']|'')*'/.exec(rest.slice(index));
+            if (!match) return true;
+            index += match[0].length;
+            continue;
+        }
+        if (char === '"') {
+            const match = /"(?:[^"]|"")*"/.exec(rest.slice(index));
+            if (!match) return true;
+            index += match[0].length;
+            continue;
+        }
+        if (rest.startsWith("--", index)) {
+            const newline = rest.indexOf("\n", index + 2);
+            index = newline === -1 ? rest.length : newline + 1;
+            continue;
+        }
+        if (rest.startsWith("/*", index)) {
+            const close = rest.indexOf("*/", index + 2);
+            index = close === -1 ? rest.length : close + 2;
+            continue;
+        }
+        if (char === ";") {
+            return skipTrivia(rest, index + 1) >= rest.length;
+        }
+        index += 1;
+    }
+    return true;
+}
 
 /**
  * Resolve the SQL type name of one catalog source for display. Returns the
  * unqualified name only for a single unqualified CREATE TYPE AS ENUM
- * declaration; every other source (qualified names, multiple statements,
- * non-ENUM DDL) resolves to undefined so the surface reports it as
- * unsupported instead of presenting it as working functionality.
+ * declaration — the same shape the catalog compiler accepts, resolved the
+ * same way (leading/trailing comments allowed, unquoted identifiers folded
+ * to lowercase, quoted identifiers unescaped); every other source (qualified
+ * names, multiple statements, non-ENUM DDL) resolves to undefined so the
+ * surface reports it as unsupported instead of presenting it as working
+ * functionality.
  */
 export function resolveCatalogTypeName(source: string): string | undefined {
-    const match = TYPE_NAME_PATTERN.exec(source);
-    if (!match) return undefined;
-    const name = match[1] ?? match[2];
-    const rest = source.slice(match[0].length);
-    // A second statement after the ENUM declaration is not the supported shape.
-    const withoutStrings = rest.replace(/'(?:[^']|'')*'/g, "''").replace(/--[^\n]*/g, "");
-    if (withoutStrings.includes(";")) {
-        const tail = withoutStrings.slice(withoutStrings.indexOf(";") + 1);
-        if (/[^\s]/.test(tail)) return undefined;
+    let cursor = matchKeyword(source, 0, "create");
+    if (cursor === undefined) return undefined;
+    cursor = matchKeyword(source, cursor, "type");
+    if (cursor === undefined) return undefined;
+    const identifier = parseIdentifier(source, cursor);
+    if (!identifier) return undefined;
+    // A dot after the first identifier is a qualified (schema-bound) name.
+    if (source[skipTrivia(source, identifier.end)] === ".") {
+        return undefined;
     }
-    return name;
+    cursor = matchKeyword(source, identifier.end, "as");
+    if (cursor === undefined) return undefined;
+    cursor = matchKeyword(source, cursor, "enum");
+    if (cursor === undefined) return undefined;
+    const paren = skipTrivia(source, cursor);
+    if (source[paren] !== "(") return undefined;
+    if (!isSingleStatementTail(source.slice(paren + 1))) return undefined;
+    return identifier.name;
 }
 
 /** True only for the one executable shape: a single unqualified CREATE TYPE AS ENUM. */
 export function isExecutableEnumSource(source: string): boolean {
-    if (resolveCatalogTypeName(source) === undefined) return false;
-    return /as\s+enum\s*\(/i.test(source);
+    return resolveCatalogTypeName(source) !== undefined;
 }
 
 /** Display label for a stored kind. Only "enum" is executable (REQ-004). */
