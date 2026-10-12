@@ -62,13 +62,7 @@ test("Page/Layout card controls and pointer drag update Grid, peer, and reload w
 
     const movedCard = board.locator("article.card").filter({ hasText: "Alpha in layout" });
     const target = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-    const from = await movedCard.getByRole("button", { name: "Move card" }).boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) throw new Error("Kanban pointer targets are unavailable");
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(to.x + to.width / 2, to.y + 40, { steps: 12 });
-    await page.mouse.up();
+    await movedCard.getByRole("button", { name: "Move card" }).dragTo(target);
     await expect(target.locator("article.card").filter({ hasText: "Alpha in layout" })).toBeVisible();
 
     const source = (await readGridProjectState(page)).tables.find(table => table.id === fixture.tableId)!;
