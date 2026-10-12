@@ -1,0 +1,76 @@
+/** @feature KAN-5a45c9e1 */
+import { expect, test } from "@playwright/test";
+import { readGridProjectState } from "../utils/crossProjectGridHelpers";
+import {
+    configureKanbanThroughUi,
+    createKanbanThroughUi,
+    createSourceThroughUi,
+    openKanbanList,
+    TASK_QUERY,
+} from "../utils/kanbanTestHelpers";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
+
+function recordValue(
+    state: Awaited<ReturnType<typeof readGridProjectState>>,
+    tableId: string,
+    id: string,
+    field: string,
+) {
+    const data = state.tables.find(table => table.id === tableId)?.data as Record<string, Record<string, unknown>>;
+    return data[id]?.[field];
+}
+
+test(
+    "standalone controls write source fields, synchronize, undo, redo, and reload",
+    async ({ page, context }, info) => {
+        test.setTimeout(180000);
+        const fixture = await createSourceThroughUi(page, info);
+        await openKanbanList(page, fixture.projectName);
+        await createKanbanThroughUi(page, "Editable board", fixture.tableId);
+        await configureKanbanThroughUi(page, {
+            query: TASK_QUERY,
+            group: "status",
+            title: "title",
+            details: ["detail"],
+        });
+
+        const alpha = page.locator("article.card").filter({ hasText: "Alpha" });
+        await alpha.getByRole("button", { name: "Edit title" }).click();
+        const editor = alpha.getByRole("textbox", { name: "Edit title" });
+        await editor.fill("Alpha edited");
+        await alpha.getByRole("button", { name: "Save" }).click();
+        await expect(alpha).toContainText("Alpha edited");
+        expect(recordValue(await readGridProjectState(page), fixture.tableId, fixture.recordIds[0], "title"))
+            .toBe("Alpha edited");
+
+        const peer = await context.newPage();
+        await peer.goto(page.url());
+        await expect(peer.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible({ timeout: 30000 });
+
+        const destination = page.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
+        await alpha.getByRole("button", { name: "Move card" }).dragTo(destination);
+        await expect(destination.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible();
+        expect(recordValue(await readGridProjectState(page), fixture.tableId, fixture.recordIds[0], "status")).toBe(
+            "done",
+        );
+
+        await page.getByRole("button", { name: "Undo" }).click();
+        await expect(
+            page.locator("article.card").filter({ hasText: "Alpha edited" }).locator(
+                "xpath=ancestor::section[contains(@class,'lane')]",
+            ),
+        ).toContainText("open");
+        await page.getByRole("button", { name: "Redo" }).click();
+        await expect(destination.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible();
+
+        await destination.locator("article.card").filter({ hasText: "Alpha edited" }).getByRole("button", {
+            name: "Edit title",
+        }).click();
+        await page.keyboard.press("Escape");
+        expect(recordValue(await readGridProjectState(page), fixture.tableId, fixture.recordIds[0], "title"))
+            .toBe("Alpha edited");
+        await page.reload();
+        await expect(page.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible({ timeout: 30000 });
+    },
+);
