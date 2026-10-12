@@ -134,6 +134,17 @@ export async function resolveAccessibleProjectTitle(
     return matches[0]!;
 }
 
+function isNormalizedTitleConflict(storedTitle: unknown, title: string): boolean {
+    if (typeof storedTitle !== "string") {
+        return false;
+    }
+    try {
+        return normalizeProjectTitle(storedTitle) === title;
+    } catch {
+        return false;
+    }
+}
+
 export async function renameProject(
     uid: string,
     projectId: string,
@@ -146,14 +157,13 @@ export async function renameProject(
     const ref = collection.doc(projectId);
 
     return await firestore.runTransaction(async transaction => {
-        const duplicateQuery = collection.where("title", "==", title).limit(2);
-        const [duplicates, snapshot] = await Promise.all([
-            transaction.get(duplicateQuery),
-            transaction.get(ref),
-        ]);
+        const snapshot = await transaction.get(ref);
         const descriptor = descriptorFromData(uid, projectId, snapshot.exists ? snapshot.data() : undefined);
-        const conflictingDocument = duplicates.docs.find(document => document.id !== projectId);
-        if (conflictingDocument) {
+        const all = await transaction.get(collection);
+        const hasConflict = all.docs.some(
+            document => document.id !== projectId && isNormalizedTitleConflict(document.data()?.title, title),
+        );
+        if (hasConflict) {
             throw new ProjectDirectoryError("duplicate_title", "Project title is already in use");
         }
         if (descriptor.title !== title) {
@@ -181,33 +191,32 @@ export async function ensureProjectDescriptorForWrite(
     const ref = collection.doc(projectId);
 
     return await firestore.runTransaction(async transaction => {
-        const duplicateQuery = collection.where("title", "==", title).limit(2);
-        const [duplicates, snapshot] = await Promise.all([
-            transaction.get(duplicateQuery),
-            transaction.get(ref),
-        ]);
-        if (duplicates.docs.some(document => document.id !== projectId)) {
+        const snapshot = await transaction.get(ref);
+        if (snapshot.exists) {
+            const existingTitle = descriptorFromData(uid, projectId, snapshot.data()).title;
+            if (existingTitle !== title) {
+                throw new ProjectDirectoryError(
+                    "title_conflict",
+                    "Requested project title does not match the canonical project title",
+                );
+            }
+            return { projectId, title: existingTitle };
+        }
+
+        const all = await transaction.get(collection);
+        const hasConflict = all.docs.some(
+            document => document.id !== projectId && isNormalizedTitleConflict(document.data()?.title, title),
+        );
+        if (hasConflict) {
             throw new ProjectDirectoryError("duplicate_title", "Project title is already in use");
         }
-        if (!snapshot.exists) {
-            transaction.set(ref, {
-                projectId,
-                title,
-                accessibleUserIds: [uid],
-                createdAt: FieldValue.serverTimestamp(),
-                updatedAt: FieldValue.serverTimestamp(),
-            });
-            return { projectId, title };
-        }
-
-        const existingTitle = descriptorFromData(uid, projectId, snapshot.data()).title;
-        if (existingTitle !== title) {
-            throw new ProjectDirectoryError(
-                "title_conflict",
-                "Requested project title does not match the canonical project title",
-            );
-        }
-
-        return { projectId, title: existingTitle };
+        transaction.set(ref, {
+            projectId,
+            title,
+            accessibleUserIds: [uid],
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+        });
+        return { projectId, title };
     });
 }

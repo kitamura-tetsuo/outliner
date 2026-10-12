@@ -54,6 +54,12 @@ describe("project-directory provider boundary (real Firestore)", () => {
         "provider-quarantine-bad",
         "provider-quarantine-good",
         "provider-ws-room",
+        "provider-ws-legacy",
+        "provider-norm-alpha",
+        "provider-norm-beta",
+        "provider-norm-other",
+        "provider-reg-private",
+        "provider-reg-reserved",
     ];
 
     async function mintIdToken(uid: string): Promise<string> {
@@ -118,6 +124,9 @@ describe("project-directory provider boundary (real Firestore)", () => {
             ...projectIds.map(projectId => db.collection("containerUsers").doc(projectId).delete()),
             db.collection("userProjects").doc("provider-owner").delete(),
             db.collection("userProjects").doc("provider-intruder").delete(),
+            db.collection("userProjects").doc("provider-intruder-ws").delete(),
+            db.collection("userContainers").doc("provider-intruder-ws").delete(),
+            db.collection("userProjects").doc("provider-legacy-ws").delete(),
         ]);
     });
 
@@ -127,6 +136,9 @@ describe("project-directory provider boundary (real Firestore)", () => {
             ...projectIds.map(projectId => db.collection("containerUsers").doc(projectId).delete()),
             db.collection("userProjects").doc("provider-owner").delete(),
             db.collection("userProjects").doc("provider-intruder").delete(),
+            db.collection("userProjects").doc("provider-intruder-ws").delete(),
+            db.collection("userContainers").doc("provider-intruder-ws").delete(),
+            db.collection("userProjects").doc("provider-legacy-ws").delete(),
         ]);
         await deleteApp(app);
     });
@@ -189,6 +201,92 @@ describe("project-directory provider boundary (real Firestore)", () => {
             .send({ projectId: "provider-second", title: "4a934322-05de-4c97-932c-bc87fb43e18c" });
         expect(invalid.status).to.equal(400);
         expect((await db.collection("projectUsers").doc("provider-second").get()).exists).to.equal(false);
+    });
+
+    it("rejects normalized-title collisions from padded or decomposed stored titles", async () => {
+        const token = await mintIdToken("provider-owner");
+        const api = appWithRouter();
+        await db.collection("projectUsers").doc("provider-norm-alpha").set({
+            projectId: "provider-norm-alpha",
+            title: "  Caf\u00e9  ",
+            accessibleUserIds: ["provider-owner"],
+        });
+        await db.collection("projectUsers").doc("provider-norm-other").set({
+            projectId: "provider-norm-other",
+            title: "Other",
+            accessibleUserIds: ["provider-owner"],
+        });
+
+        const duplicate = await request(api).post("/api/projects").set("Authorization", `Bearer ${token}`)
+            .send({ projectId: "provider-norm-beta", title: "Caf\u00e9" });
+        expect(duplicate.status).to.equal(409);
+        expect((await db.collection("projectUsers").doc("provider-norm-beta").get()).exists).to.equal(false);
+
+        const renameClash = await request(api).post("/api/projects/provider-norm-other/rename")
+            .set("Authorization", `Bearer ${token}`).send({ title: "Caf\u00e9" });
+        expect(renameClash.status).to.equal(409);
+        expect((await db.collection("projectUsers").doc("provider-norm-other").get()).data()?.title)
+            .to.equal("Other");
+        expect((await db.collection("projectUsers").doc("provider-norm-alpha").get()).data()?.title)
+            .to.equal("  Caf\u00e9  ");
+
+        // Same collision via a decomposed stored form.
+        await db.collection("projectUsers").doc("provider-norm-alpha").set({
+            projectId: "provider-norm-alpha",
+            title: "Cafe\u0301",
+            accessibleUserIds: ["provider-owner"],
+        });
+        const decomposedDuplicate = await request(api).post("/api/projects")
+            .set("Authorization", `Bearer ${token}`)
+            .send({ projectId: "provider-norm-beta", title: "Caf\u00e9" });
+        expect(decomposedDuplicate.status).to.equal(409);
+        expect((await db.collection("projectUsers").doc("provider-norm-beta").get()).exists).to.equal(false);
+
+        const decomposedRename = await request(api).post("/api/projects/provider-norm-other/rename")
+            .set("Authorization", `Bearer ${token}`).send({ title: "Caf\u00e9" });
+        expect(decomposedRename.status).to.equal(409);
+        expect((await db.collection("projectUsers").doc("provider-norm-other").get()).data()?.title)
+            .to.equal("Other");
+    });
+
+    it("checks existing-ID authorization before reporting title collisions", async () => {
+        const ownerToken = await mintIdToken("provider-owner");
+        const api = appWithRouter();
+        await db.collection("projectUsers").doc("provider-reg-private").set({
+            projectId: "provider-reg-private",
+            title: "Private",
+            accessibleUserIds: ["someone-else"],
+        });
+        await db.collection("projectUsers").doc("provider-reg-reserved").set({
+            projectId: "provider-reg-reserved",
+            title: "Reserved",
+            accessibleUserIds: ["provider-owner"],
+        });
+
+        // Inaccessible existing ID: forbidden (403), never overwritten, even
+        // though another record occupies the requested title.
+        const forbidden = await request(api).post("/api/projects").set("Authorization", `Bearer ${ownerToken}`)
+            .send({ projectId: "provider-reg-private", title: "Reserved" });
+        expect(forbidden.status).to.equal(403);
+        expect((await db.collection("projectUsers").doc("provider-reg-private").get()).data())
+            .to.include({ title: "Private" });
+        expect((await db.collection("projectUsers").doc("provider-reg-private").get()).data()?.accessibleUserIds)
+            .to.deep.equal(["someone-else"]);
+
+        // Authorized existing ID with another project's title: title_conflict
+        // at the provider boundary (HTTP 409), without touching either record.
+        const provider = createFirestoreProjectDirectoryProvider(db);
+        try {
+            await provider.ensureDescriptor("provider-owner", "provider-reg-reserved", "Private");
+            expect.fail("expected title_conflict for an authorized existing ID with a different title");
+        } catch (error: unknown) {
+            expect((error as { code?: string; }).code).to.equal("title_conflict");
+        }
+        const conflict = await request(api).post("/api/projects").set("Authorization", `Bearer ${ownerToken}`)
+            .send({ projectId: "provider-reg-reserved", title: "Private" });
+        expect(conflict.status).to.equal(409);
+        expect((await db.collection("projectUsers").doc("provider-reg-reserved").get()).data()?.title)
+            .to.equal("Reserved");
     });
 
     it("renames only the title and preserves document identity", async () => {
@@ -379,29 +477,39 @@ describe("project-directory provider boundary (real Firestore)", () => {
         await initializeFirebase();
         const defaultDb = getFirestore();
         const roomId = "provider-ws-room";
+        const legacyRoomId = "provider-ws-legacy";
         await defaultDb.collection("projectUsers").doc(roomId).set({
             projectId: roomId,
             title: "Socket Project",
             accessibleUserIds: ["provider-owner"],
         });
+        // Legacy resource-side grant only: no projectUsers record, so the
+        // canonical directory stays empty for this uid while room access is
+        // still permitted through the legacy resource path.
+        await defaultDb.collection("containerUsers").doc(legacyRoomId).set({
+            accessibleUserIds: ["provider-legacy-ws"],
+        });
 
         const ownerAuth = getAuth();
-        try {
-            await ownerAuth.createUser({ uid: "provider-owner" });
-        } catch (error: unknown) {
-            const code = error && typeof error === "object" && "code" in error
-                ? (error as { code: string; }).code
-                : undefined;
-            if (code !== "auth/uid-already-exists") throw error;
+        for (const uid of ["provider-owner", "provider-intruder-ws", "provider-legacy-ws"]) {
+            try {
+                await ownerAuth.createUser({ uid });
+            } catch (error: unknown) {
+                const code = error && typeof error === "object" && "code" in error
+                    ? (error as { code: string; }).code
+                    : undefined;
+                if (code !== "auth/uid-already-exists") throw error;
+            }
         }
-        try {
-            await ownerAuth.createUser({ uid: "provider-intruder-ws" });
-        } catch (error: unknown) {
-            const code = error && typeof error === "object" && "code" in error
-                ? (error as { code: string; }).code
-                : undefined;
-            if (code !== "auth/uid-already-exists") throw error;
-        }
+        // Forged user-side caches for the denied uid: the production
+        // WebSocket caller must not treat these as grants.
+        await defaultDb.collection("userProjects").doc("provider-intruder-ws").set({
+            accessibleProjectIds: [roomId],
+            projectTitles: { [roomId]: "Socket Project" },
+        });
+        await defaultDb.collection("userContainers").doc("provider-intruder-ws").set({
+            accessibleContainerIds: [roomId],
+        });
         const signIn = async (uid: string): Promise<string> => {
             const customToken = await ownerAuth.createCustomToken(uid);
             const response = await fetch(
@@ -417,6 +525,7 @@ describe("project-directory provider boundary (real Firestore)", () => {
         };
         const ownerToken = await signIn("provider-owner");
         const intruderToken = await signIn("provider-intruder-ws");
+        const legacyToken = await signIn("provider-legacy-ws");
 
         // No access override: the server must use the default Firestore
         // provider for its Hocuspocus authorization path. Identity comes from
@@ -437,10 +546,10 @@ describe("project-directory provider boundary (real Firestore)", () => {
         });
         const port = (httpServer.address() as { port: number; }).port;
 
-        const connect = (idToken: string) =>
+        const connect = (targetRoomId: string, idToken: string) =>
             new HocuspocusProvider({
-                url: `ws://127.0.0.1:${port}/projects/${roomId}?token=${idToken}`,
-                name: `projects/${roomId}`,
+                url: `ws://127.0.0.1:${port}/projects/${targetRoomId}?token=${idToken}`,
+                name: `projects/${targetRoomId}`,
                 document: new Y.Doc(),
                 token: idToken,
             });
@@ -476,17 +585,31 @@ describe("project-directory provider boundary (real Firestore)", () => {
         // Sanity: the server under test really is using the default provider.
         expect(getProjectDirectoryProvider().kind).to.equal("firestore");
 
-        const member = connect(ownerToken);
+        const member = connect(roomId, ownerToken);
         await awaitSynced(member);
         member.disconnect();
         member.destroy();
 
-        const intruder = connect(intruderToken);
+        // Forged user-side caches must not grant room access through the
+        // production WebSocket caller.
+        const intruder = connect(roomId, intruderToken);
         await awaitDenied(intruder);
         intruder.destroy();
 
+        // Legacy resource-side membership must still grant room access
+        // through the same production WebSocket caller.
+        const legacyMember = connect(legacyRoomId, legacyToken);
+        await awaitSynced(legacyMember);
+        legacyMember.disconnect();
+        legacyMember.destroy();
+
         await shutdown();
         await fs.remove(dbDir);
-        await defaultDb.collection("projectUsers").doc(roomId).delete();
+        await Promise.all([
+            defaultDb.collection("projectUsers").doc(roomId).delete(),
+            defaultDb.collection("containerUsers").doc(legacyRoomId).delete(),
+            defaultDb.collection("userProjects").doc("provider-intruder-ws").delete(),
+            defaultDb.collection("userContainers").doc("provider-intruder-ws").delete(),
+        ]);
     });
 });
