@@ -1,0 +1,32 @@
+id: SQL-9b5576a1
+title: Separated SQL catalog draft, validation, apply and runtime states
+title-ja: SQLカタログの下書き・検証・適用・ランタイム状態の分離
+description: The SQL catalog editor keeps the local unsaved draft, the validation
+  result, the pending source apply, the confirmed source commit, the runtime
+  build state and any unconfirmed mutation outcome visibly distinct. Typing,
+  opening the editor and Validate never change committed catalog state or history;
+  Cancel discards only the local draft. Apply submits the stable object identity
+  with the observed source revision, so a remote change while a draft exists is
+  shown as a conflict with the draft preserved. Runtime readiness comes only from
+  a confirmed rebuild of the persisted revision, never from a preview or an older
+  build. Reload and reconnect read persisted source instead of repairing missing
+  definitions from editor state.
+category: client
+status: implemented
+components:
+- client/src/components/yjstable/SqlCatalogPanel.svelte
+- client/src/services/yjstable/sqlCatalogClient.ts
+- server/src/sql-catalog-routes.ts
+acceptance:
+- Typing, opening the editor and Validate change no committed catalog state or
+  history, and Cancel discards only the local draft
+- Apply carries the candidate object identity plus the observed source revision;
+  a remote change while a draft exists shows a conflict and preserves the draft
+- Draft, validation, pending apply, confirmed commit, runtime building/ready/error
+  and unconfirmed outcomes are displayed separately with offending declarations
+  identified; older previews or builds never enable success for newer input
+- Reload and reconnect read persisted source instead of repairing missing
+  definitions from editor state
+tests:
+- client/src/components/yjstable/SqlCatalogPanel.draft-conflict.test.ts
+- client/src/components/yjstable/SqlCatalogPanel.apply-runtime.test.ts
