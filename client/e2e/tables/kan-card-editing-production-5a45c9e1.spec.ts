@@ -45,7 +45,10 @@ test(
         const editor = alpha.getByRole("textbox", { name: "Edit title" });
         await editor.fill("Alpha edited");
         await alpha.getByRole("button", { name: "Save" }).click();
-        await expect(alpha).toContainText("Alpha edited");
+        // A confirmed write re-executes the SELECT, so result occurrence keys
+        // are intentionally replaced; reacquire the authoritative card.
+        const alphaEdited = page.locator("article.card").filter({ hasText: "Alpha edited" });
+        await expect(alphaEdited).toBeVisible();
         expect(recordValue(await readGridProjectState(page), fixture.tableId, fixture.recordIds[0], "title"))
             .toBe("Alpha edited");
 
@@ -54,7 +57,7 @@ test(
         await expect(peer.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible({ timeout: 30000 });
 
         const destination = page.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-        await alpha.getByRole("button", { name: "Move card" }).dragTo(destination);
+        await alphaEdited.getByRole("button", { name: "Move card" }).dragTo(destination);
         await expect(destination.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible();
         expect(recordValue(await readGridProjectState(page), fixture.tableId, fixture.recordIds[0], "status")).toBe(
             "done",
