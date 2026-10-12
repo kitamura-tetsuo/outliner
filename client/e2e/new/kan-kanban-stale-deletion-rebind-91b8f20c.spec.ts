@@ -98,14 +98,13 @@ test(
         const secondId = ids.find(id => id !== firstId)!;
         await peer.locator("aside [data-page-id]").first().click();
         await peer.waitForFunction(
-            () => !!(globalThis as any).generalStore?.activeViewModel?.getVisibleItems,
-            undefined,
+            ({ placementId }) => !!(globalThis as any).generalStore?.activeViewModel?.getViewModel?.(placementId),
+            { placementId: stalePlacementId },
             { timeout: 30000 },
         );
         await peer.evaluate(({ placementId, kanbanId }) => {
-            const visible = (globalThis as any).generalStore.activeViewModel.getVisibleItems();
-            const placement = visible.find((entry: any) => entry.model.id === placementId)?.model.original;
-            if (!placement) throw new Error("The placement is not visible to the supported Page model.");
+            const placement = (globalThis as any).generalStore.activeViewModel.getViewModel(placementId)?.original;
+            if (!placement) throw new Error("The placement is not available from the supported Page model.");
             placement.kanbanId = kanbanId;
         }, { placementId: stalePlacementId, kanbanId: secondId });
         await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`).getByTestId("kanban-board"))
