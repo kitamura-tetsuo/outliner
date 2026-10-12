@@ -9,7 +9,7 @@ import http from "http";
 import { Socket } from "net";
 import WebSocket, { WebSocketServer } from "ws";
 import * as Y from "yjs";
-import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
+import { checkContainerAccess as firestoreCheckContainerAccess } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { createDemoRouter } from "./demo-api.js";
@@ -30,7 +30,7 @@ import { getOAuthFirebaseWebConfig } from "./oauth/authorize-page.js";
 import { createOAuthRouter } from "./oauth/oauth-api.js";
 import { createDocumentStore, createPersistence } from "./persistence.js";
 import { createProjectDirectoryRouter } from "./project-directory-api.js";
-import { listAccessibleProjectDescriptors } from "./project-directory.js";
+import { getDefaultProjectDirectoryProvider, type ProjectDirectoryProvider } from "./project-directory-provider.js";
 import { parseRoom } from "./room-validator.js";
 import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
 import { createScheduleRunRouter } from "./scheduler/schedule-run-api.js";
@@ -51,8 +51,9 @@ import { sanitizeUrl } from "./utils/sanitize.js";
 import { verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
 
 interface ServerOverrides {
-    checkContainerAccess?: typeof defaultCheckAccess;
+    checkContainerAccess?: typeof firestoreCheckContainerAccess;
     verifyIdTokenCached?: typeof defaultVerifyToken;
+    directory?: ProjectDirectoryProvider;
 }
 
 export interface ConnectionContext {
@@ -104,7 +105,9 @@ export async function startServer(
         }
     }
 
-    const checkContainerAccess = overrides.checkContainerAccess || defaultCheckAccess;
+    const directory = overrides.directory ?? getDefaultProjectDirectoryProvider();
+    const checkContainerAccess = overrides.checkContainerAccess
+        ?? ((uid: string, projectId: string) => directory.checkAccess(uid, projectId));
     const verifyIdTokenCached = overrides.verifyIdTokenCached || defaultVerifyToken;
 
     // Create Express app for API endpoints
@@ -422,10 +425,10 @@ export async function startServer(
     });
 
     // Seed API - use Hocuspocus's openDirectConnection for proper document lifecycle
-    app.use("/api", createSeedRouter(hocuspocus));
+    app.use("/api", createSeedRouter(hocuspocus, { directory }));
 
     // Canonical resource-side project metadata used by both the web client and MCP.
-    app.use("/api", createProjectDirectoryRouter({ verifyToken: verifyIdTokenCached }));
+    app.use("/api", createProjectDirectoryRouter({ verifyToken: verifyIdTokenCached, directory }));
 
     // Demo API - anonymous access for the public demo page
     app.use("/api", createDemoRouter(hocuspocus, config));
@@ -469,7 +472,7 @@ export async function startServer(
             hocuspocus,
             checkContainerAccess,
             uid =>
-                listAccessibleProjectDescriptors(uid, undefined, error => {
+                directory.listDescriptors(uid, error => {
                     logger.warn(
                         {
                             event: "project_directory_descriptor_quarantined",

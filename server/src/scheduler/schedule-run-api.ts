@@ -3,6 +3,7 @@ import express from "express";
 import { z } from "zod";
 import { checkContainerAccess as defaultCheckAccess } from "../access-control.js";
 import { logger } from "../logger.js";
+import { getDefaultProjectDirectoryProvider, type ProjectDirectoryProvider } from "../project-directory-provider.js";
 import { verifyIdTokenCached as defaultVerifyToken } from "../websocket-auth.js";
 import { JobScheduler } from "./Scheduler.js";
 
@@ -17,9 +18,14 @@ export function createScheduleRunRouter(
     overrides?: {
         checkContainerAccess?: typeof defaultCheckAccess;
         verifyIdTokenCached?: typeof defaultVerifyToken;
+        directory?: ProjectDirectoryProvider;
     },
 ) {
-    const checkContainerAccess = overrides?.checkContainerAccess || defaultCheckAccess;
+    const checkContainerAccess = overrides?.checkContainerAccess
+        ?? (overrides?.directory
+            ? (uid: string, projectId: string) => overrides.directory!.checkAccess(uid, projectId)
+            : undefined)
+        ?? ((uid: string, projectId: string) => getDefaultProjectDirectoryProvider().checkAccess(uid, projectId));
     const verifyIdTokenCached = overrides?.verifyIdTokenCached || defaultVerifyToken;
     const router = express.Router();
 

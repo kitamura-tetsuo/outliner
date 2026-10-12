@@ -2,12 +2,8 @@ import express from "express";
 import * as Y from "yjs";
 import { z } from "zod";
 import { logger } from "./logger.js";
-import {
-    ensureProjectDescriptorForWrite,
-    normalizeProjectTitle,
-    type ProjectDescriptor,
-    ProjectDirectoryError,
-} from "./project-directory.js";
+import { getDefaultProjectDirectoryProvider, type ProjectDirectoryProvider } from "./project-directory-provider.js";
+import { normalizeProjectTitle, type ProjectDescriptor, ProjectDirectoryError } from "./project-directory.js";
 import { Project } from "./schema/app-schema.js";
 import { verifyIdTokenCached } from "./websocket-auth.js";
 
@@ -44,8 +40,10 @@ export function createSeedRouter(
     hocuspocus: HocuspocusInstance,
     dependencies: {
         ensureDescriptor?: (uid: string, projectId: string, title: string) => Promise<ProjectDescriptor>;
+        directory?: ProjectDirectoryProvider;
     } = {},
 ) {
+    const directory = dependencies.directory;
     const router = express.Router();
 
     router.post("/seed", async (req, res): Promise<void> => {
@@ -113,7 +111,10 @@ export function createSeedRouter(
             const projectId = stableIdFromTitle(projectName);
 
             try {
-                const ensureDescriptor = dependencies.ensureDescriptor ?? ensureProjectDescriptorForWrite;
+                const ensureDescriptor = dependencies.ensureDescriptor
+                    ?? ((memberUid: string, memberProjectId: string, title: string) =>
+                        (directory ?? getDefaultProjectDirectoryProvider())
+                            .ensureDescriptor(memberUid, memberProjectId, title));
                 await ensureDescriptor(uid, projectId, projectName);
             } catch (authError) {
                 if (authError instanceof ProjectDirectoryError) {

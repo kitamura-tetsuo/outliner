@@ -4,6 +4,17 @@ Project titles are canonical resource-side metadata. Maintenance tools must
 validate `projectUsers/{projectId}` before opening or changing
 `projects/{projectId}` in Yjs persistence.
 
+## Storage boundary
+
+All server directory and project-access reads/writes go through the
+`ProjectDirectoryProvider` boundary (`server/src/project-directory-provider.ts`):
+descriptor creation, lookup, listing, title resolution, rename, access checks
+and accessible-ID discovery. The Firestore adapter (`project-directory.ts` plus
+`access-control.ts`) is selected by default with no local configuration. Its
+project-ID domain (`^[A-Za-z0-9_-]{1,200}$`) and title rules (trim, Unicode NFC,
+1–255 UTF-16 code units, no UUID titles, case-sensitive equality) belong to
+that adapter only; other providers may support different ID shapes.
+
 ## Safety rules
 
 - Use Firebase Emulator and a copied SQLite database while developing or
