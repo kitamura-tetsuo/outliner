@@ -31,7 +31,7 @@ export type { ProjectDescriptor, ProjectDirectoryError };
  * pre-validate IDs against the Firestore expression.
  */
 export interface ProjectDirectoryProvider {
-    readonly kind: "firestore";
+    readonly kind: "firestore" | "local-sqlite";
     getDescriptor(uid: string, projectId: string): Promise<ProjectDescriptor>;
     listDescriptors(
         uid: string,

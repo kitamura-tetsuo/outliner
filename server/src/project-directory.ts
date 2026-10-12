@@ -16,7 +16,8 @@ export class ProjectDirectoryError extends Error {
             | "forbidden"
             | "title_conflict"
             | "ambiguous_title"
-            | "duplicate_title",
+            | "duplicate_title"
+            | "storage_unavailable",
         message: string,
         public readonly debug?: Record<string, unknown>,
     ) {
