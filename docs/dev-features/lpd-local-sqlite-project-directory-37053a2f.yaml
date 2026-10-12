@@ -4,10 +4,10 @@ description: A SQLite-backed ProjectDirectoryProvider rooted at an explicitly su
 category: server
 status: implemented
 components:
-- server/src/project-directory-sqlite.ts
-- server/src/project-directory-provider.ts
-- server/src/project-directory.ts
 - server/src/project-directory-api.ts
+- server/src/project-directory-provider.ts
+- server/src/project-directory-sqlite.ts
+- server/src/project-directory.ts
 tests:
 - server/tests/project-directory-sqlite.test.ts
 title-ja: 単一ローカル所有者のためのSQLiteプロジェクトディレクトリ

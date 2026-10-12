@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { ProjectDirectoryProvider } from "./project-directory-provider.js";
 import { normalizeProjectTitle, type ProjectDescriptor, ProjectDirectoryError } from "./project-directory.js";
@@ -284,8 +284,11 @@ class LocalSqliteProjectDirectory implements LocalSqliteProjectDirectoryProvider
     private findByNormalizedTitle(title: string): ProjectRow[] {
         const db = this.requireDb();
         try {
+            // Title equality is case-sensitive after normalization: pin the
+            // comparison to BINARY so a database-level NOCASE collation can
+            // never merge case-distinct titles such as Notes and notes.
             return db.prepare(
-                "SELECT projectId, title, normalizedTitle, ownerUid FROM projects WHERE normalizedTitle = ?",
+                "SELECT projectId, title, normalizedTitle, ownerUid FROM projects WHERE normalizedTitle COLLATE BINARY = ?",
             )
                 .all(title) as ProjectRow[];
         } catch (error) {
@@ -328,13 +331,13 @@ class LocalSqliteProjectDirectory implements LocalSqliteProjectDirectoryProvider
 
     private findRowInWrite(title: string): ProjectRow | undefined {
         return this.requireDb().prepare(
-            "SELECT projectId, title, normalizedTitle, ownerUid FROM projects WHERE normalizedTitle = ?",
+            "SELECT projectId, title, normalizedTitle, ownerUid FROM projects WHERE normalizedTitle COLLATE BINARY = ?",
         ).get(title) as ProjectRow | undefined;
     }
 
     private findRowExcludingInWrite(title: string, projectId: string): ProjectRow | undefined {
         return this.requireDb().prepare(
-            "SELECT projectId, title, normalizedTitle, ownerUid FROM projects WHERE normalizedTitle = ? AND projectId != ?",
+            "SELECT projectId, title, normalizedTitle, ownerUid FROM projects WHERE normalizedTitle COLLATE BINARY = ? AND projectId != ?",
         ).get(title, projectId) as ProjectRow | undefined;
     }
 
@@ -348,8 +351,23 @@ class LocalSqliteProjectDirectory implements LocalSqliteProjectDirectoryProvider
         if (typeof dbPath !== "string" || dbPath.trim() === "") {
             throw new Error("Local project directory database path must be a non-empty string");
         }
+        // The directory must survive closing and process restarts, so only a
+        // durable file-backed database is accepted. better-sqlite3 treats
+        // ':memory:' (and shared-memory URIs) as a transient database that
+        // loses every committed descriptor when the handle closes.
+        const trimmedPath = dbPath.trim();
+        if (trimmedPath === ":memory:" || /^file::memory:/i.test(trimmedPath)) {
+            throw new Error(
+                "Local project directory database path must be a durable file path, not an in-memory database",
+            );
+        }
         mkdirSync(dirname(dbPath), { recursive: true });
-        const fresh = !existsSync(dbPath) || statSync(dbPath).size === 0;
+        // Only a path with no existing file is a new installation. An
+        // existing file — including a zero-byte file left by a truncated or
+        // otherwise damaged database — is never silently reinitialized; when
+        // its schema is unreadable or unsupported the provider below reports
+        // storage_unavailable and preserves the file.
+        const fresh = !existsSync(dbPath);
         const db = new Database(dbPath);
         // Contended writers must refuse immediately with storage_unavailable
         // rather than stall behind another connection's write transaction.
@@ -376,12 +394,49 @@ class LocalSqliteProjectDirectory implements LocalSqliteProjectDirectoryProvider
     private hasSupportedSchema(db: InstanceType<typeof Database>): boolean {
         try {
             const table = db.prepare(
-                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'projects'",
-            ).get() as { name?: string; } | undefined;
-            if (!table) return false;
-            const columns = db.prepare("PRAGMA table_info(projects)").all() as { name?: unknown; }[];
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'projects'",
+            ).get() as { sql?: unknown; } | undefined;
+            if (!table || typeof table.sql !== "string") return false;
+            // The supported schema relies on BINARY (case-sensitive) title
+            // equality. Any custom collation such as COLLATE NOCASE changes
+            // duplicate-title semantics, so a database declaring one is
+            // unsupported even when its column names match.
+            if (/collate|nocase/i.test(table.sql)) return false;
+            if (!/primary\s+key/i.test(table.sql) || !/unique/i.test(table.sql)) return false;
+            const columns = db.prepare("PRAGMA table_info(projects)").all() as {
+                name?: unknown;
+                type?: unknown;
+                notnull?: unknown;
+                pk?: unknown;
+            }[];
+            if (columns.length !== EXPECTED_COLUMNS.length) return false;
+            for (const column of columns) {
+                if (typeof column.name !== "string" || typeof column.type !== "string") return false;
+                if (!EXPECTED_COLUMNS.includes(column.name as typeof EXPECTED_COLUMNS[number])) return false;
+                if (column.type.toUpperCase() !== "TEXT") return false;
+                if (column.name === "projectId") {
+                    if (column.pk !== 1) return false;
+                } else if (column.pk !== 0 || column.notnull !== 1) {
+                    return false;
+                }
+            }
             const names = new Set(columns.map(column => column.name));
-            return EXPECTED_COLUMNS.every(column => names.has(column));
+            if (!EXPECTED_COLUMNS.every(column => names.has(column))) return false;
+            // Uniqueness of normalizedTitle must be enforced by storage, not
+            // just declared in checked-in SQL text.
+            const indexes = db.prepare("PRAGMA index_list(projects)").all() as {
+                name?: unknown;
+                unique?: unknown;
+            }[];
+            for (const index of indexes) {
+                if (typeof index.name !== "string" || index.unique !== 1) continue;
+                const keys = db.prepare(
+                    `PRAGMA index_xinfo("${index.name.replace(/"/g, '""')}")`,
+                ).all() as { name?: unknown; key?: unknown; }[];
+                const keyColumns = keys.filter(key => key.key === 1).map(key => key.name);
+                if (keyColumns.length === 1 && keyColumns[0] === "normalizedTitle") return true;
+            }
+            return false;
         } catch {
             return false;
         }

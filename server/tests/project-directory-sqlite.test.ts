@@ -1,8 +1,10 @@
 import Database from "better-sqlite3";
 import { expect } from "chai";
-import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
     getDefaultProjectDirectoryProvider,
     resolveProjectDirectoryProvider,
@@ -345,6 +347,173 @@ describe("local SQLite project directory (real file-backed database)", () => {
             { projectId: "project-one", title: "Notes" },
         ]);
         expect(await recovered.checkAccess(OWNER, "project-one")).to.equal(true);
+    });
+
+    it("rejects in-memory database paths instead of losing committed descriptors", async () => {
+        const provider = openProvider(":memory:");
+        await expectDirectoryError(provider.listDescriptors(OWNER), "storage_unavailable");
+        await expectDirectoryError(provider.getDescriptor(OWNER, "project-one"), "storage_unavailable");
+        await expectDirectoryError(provider.resolveTitle(OWNER, "Notes"), "storage_unavailable");
+        await expectDirectoryError(
+            provider.ensureDescriptor(OWNER, "project-one", "Notes"),
+            "storage_unavailable",
+        );
+        await expectDirectoryError(provider.rename(OWNER, "project-one", "Notes"), "storage_unavailable");
+        await expectDirectoryError(provider.checkAccess(OWNER, "project-one"), "storage_unavailable");
+        await expectDirectoryError(provider.findAccessibleIds(OWNER), "storage_unavailable");
+        // No transient database handle may stand in for the configured file.
+        expect(existsSync(":memory:")).to.equal(false);
+    });
+
+    it("rejects an existing NOCASE-collation schema without modifying it", async () => {
+        const dbPath = scratchDbPath();
+        const raw = new Database(dbPath);
+        try {
+            raw.exec(
+                "CREATE TABLE projects (projectId TEXT PRIMARY KEY, title TEXT NOT NULL, "
+                    + "normalizedTitle TEXT COLLATE NOCASE NOT NULL UNIQUE, ownerUid TEXT NOT NULL)",
+            );
+        } finally {
+            raw.close();
+        }
+        const before = readFileSync(dbPath);
+
+        const provider = openProvider(dbPath);
+        await expectDirectoryError(provider.listDescriptors(OWNER), "storage_unavailable");
+        await expectDirectoryError(
+            provider.ensureDescriptor(OWNER, "project-one", "Notes"),
+            "storage_unavailable",
+        );
+        await expectDirectoryError(
+            provider.ensureDescriptor(OWNER, "project-two", "notes"),
+            "storage_unavailable",
+        );
+        await expectDirectoryError(provider.rename(OWNER, "project-one", "Renamed"), "storage_unavailable");
+        expect(readFileSync(dbPath)).to.deep.equal(before);
+    });
+
+    it("treats a truncated zero-byte database as unavailable without reinitializing it", async () => {
+        const dbPath = scratchDbPath();
+        const provider = openProvider(dbPath);
+        await provider.ensureDescriptor(OWNER, "project-one", "Notes");
+        provider.close();
+        const originalBytes = readFileSync(dbPath);
+
+        // A storage failure truncates the configured file after a commit.
+        writeFileSync(dbPath, Buffer.alloc(0));
+        expect(readFileSync(dbPath).length).to.equal(0);
+
+        const reopened = openProvider(dbPath);
+        await expectDirectoryError(reopened.listDescriptors(OWNER), "storage_unavailable");
+        await expectDirectoryError(
+            reopened.ensureDescriptor(OWNER, "project-two", "Other"),
+            "storage_unavailable",
+        );
+        await expectDirectoryError(reopened.rename(OWNER, "project-one", "Other"), "storage_unavailable");
+        // The damaged file is preserved, never replaced with an empty directory.
+        expect(readFileSync(dbPath).length).to.equal(0);
+
+        // Restoring the readable file recovers the original directory.
+        writeFileSync(dbPath, originalBytes);
+        const recovered = openProvider(dbPath);
+        expect(await recovered.listDescriptors(OWNER)).to.deep.equal([
+            { projectId: "project-one", title: "Notes" },
+        ]);
+    });
+
+    it("recovers a committed rename across a process restart without seeding", async function() {
+        this.timeout(60000);
+        const dir = mkdtempSync(join(tmpdir(), "local-project-directory-"));
+        scratchDirs.push(dir);
+        const dbPath = join(dir, "directory.sqlite");
+        const serverRoot = fileURLToPath(new URL("..", import.meta.url));
+        // The helper lives outside the package, so it uses .mts to force ESM
+        // resolution regardless of the surrounding directory's package scope.
+        const helperPath = join(dir, "restart-helper.mts");
+        const providerSource = join(serverRoot, "src", "project-directory-sqlite.ts");
+        writeFileSync(
+            helperPath,
+            [
+                `import { createLocalSqliteProjectDirectoryProvider, LOCAL_OWNER_UID } from ${
+                    JSON.stringify(providerSource)
+                };`,
+                "const dbPath = process.argv[2] as string;",
+                "const step = process.argv[3] as string;",
+                "const provider = createLocalSqliteProjectDirectoryProvider(dbPath);",
+                "const outcome: Record<string, unknown> = {};",
+                "try {",
+                '    if (step === "mutate") {',
+                '        await provider.ensureDescriptor(LOCAL_OWNER_UID, "project-one", "Notes");',
+                '        outcome.renamed = await provider.rename(LOCAL_OWNER_UID, "project-one", "Renamed");',
+                "    } else {",
+                "        outcome.listing = await provider.listDescriptors(LOCAL_OWNER_UID);",
+                '        outcome.descriptor = await provider.getDescriptor(LOCAL_OWNER_UID, "project-one");',
+                '        outcome.access = await provider.checkAccess(LOCAL_OWNER_UID, "project-one");',
+                "        outcome.ids = await provider.findAccessibleIds(LOCAL_OWNER_UID);",
+                '        outcome.resolved = await provider.resolveTitle(LOCAL_OWNER_UID, "Renamed");',
+                "        try {",
+                '            await provider.resolveTitle(LOCAL_OWNER_UID, "Notes");',
+                '            outcome.oldTitle = "resolved";',
+                "        } catch (error) {",
+                '            outcome.oldTitle = (error as { code?: string; }).code ?? "threw";',
+                "        }",
+                "        try {",
+                '            await provider.ensureDescriptor(LOCAL_OWNER_UID, "project-one", "Notes");',
+                '            outcome.replay = "created";',
+                "        } catch (error) {",
+                '            outcome.replay = (error as { code?: string; }).code ?? "threw";',
+                "        }",
+                "    }",
+                "} finally {",
+                "    provider.close();",
+                "}",
+                "console.log(JSON.stringify(outcome));",
+                "",
+            ].join("\n"),
+        );
+
+        const runHelper = (step: string): Record<string, unknown> => {
+            // Run the helper with the same ts-node ESM loader as this suite so
+            // each step executes in a genuinely fresh process without any
+            // additional runtime (tsx opens an IPC socket, which sandboxed or
+            // minimal environments may forbid).
+            const output = execFileSync(
+                process.execPath,
+                [
+                    "--no-warnings",
+                    "--loader",
+                    "ts-node/esm",
+                    "--loader",
+                    "./tests/loaders/pin-server-deps.mjs",
+                    helperPath,
+                    dbPath,
+                    step,
+                ],
+                {
+                    cwd: serverRoot,
+                    encoding: "utf8",
+                    env: { ...process.env, TS_NODE_TRANSPILE_ONLY: "1" },
+                    timeout: 55000,
+                },
+            ) as string;
+            return JSON.parse(output) as Record<string, unknown>;
+        };
+
+        // The creating process registers and renames through provider
+        // operations, then terminates.
+        const mutated = runHelper("mutate");
+        expect(mutated.renamed).to.deep.equal({ projectId: "project-one", title: "Renamed" });
+
+        // A fresh process reopens the same file without seeding and must
+        // recover the committed rename rather than the original title.
+        const verified = runHelper("verify");
+        expect(verified.listing).to.deep.equal([{ projectId: "project-one", title: "Renamed" }]);
+        expect(verified.descriptor).to.deep.equal({ projectId: "project-one", title: "Renamed" });
+        expect(verified.access).to.equal(true);
+        expect(verified.ids).to.deep.equal(["project-one"]);
+        expect(verified.resolved).to.deep.equal({ projectId: "project-one", title: "Renamed" });
+        expect(verified.oldTitle).to.equal("not_found");
+        expect(verified.replay).to.equal("title_conflict");
     });
 
     it("treats missing projects as not_found and never grants access implicitly", async () => {
