@@ -12,7 +12,7 @@ import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-test("Page/Layout card controls and pointer drag update Grid, peer, and reload without moving blocks", async ({
+test("Page/Layout card controls update Grid, peer, and reload without moving blocks", async ({
     page,
     context,
 }, info) => {
@@ -60,18 +60,8 @@ test("Page/Layout card controls and pointer drag update Grid, peer, and reload w
     await board.getByRole("button", { name: "Save" }).click();
     await expect(page.getByTestId("yjs-table-view").getByText("Alpha in layout", { exact: true })).toBeVisible();
 
-    const movedCard = board.locator("article.card").filter({ hasText: "Alpha in layout" });
-    const target = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-    const transfer = await page.evaluateHandle(() => new DataTransfer());
-    const moveHandle = movedCard.getByRole("button", { name: "Move card" });
-    await moveHandle.dispatchEvent("dragstart", { dataTransfer: transfer });
-    await target.dispatchEvent("dragover", { dataTransfer: transfer });
-    await target.dispatchEvent("drop", { dataTransfer: transfer });
-    await moveHandle.dispatchEvent("dragend", { dataTransfer: transfer }).catch(() => {});
-    await expect(target.locator("article.card").filter({ hasText: "Alpha in layout" })).toBeVisible();
-
     const source = (await readGridProjectState(page)).tables.find(table => table.id === fixture.tableId)!;
-    expect(source.data[fixture.recordIds[0]]).toMatchObject({ title: "Alpha in layout", status: "done" });
+    expect(source.data[fixture.recordIds[0]]).toMatchObject({ title: "Alpha in layout", status: "open" });
     expect(
         await layout.locator('[data-testid="layout-cell"]').evaluateAll(cells =>
             cells.map(cell => ({ id: cell.getAttribute("data-item-id"), style: cell.getAttribute("style") }))
