@@ -57,7 +57,13 @@ test(
         await expect(peer.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible({ timeout: 30000 });
 
         const destination = page.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-        await alphaEdited.getByRole("button", { name: "Move card" }).dragTo(destination);
+        const handleBox = await alphaEdited.getByRole("button", { name: "Move card" }).boundingBox();
+        const laneBox = await destination.boundingBox();
+        if (!handleBox || !laneBox) throw new Error("Kanban drag endpoints are not rendered");
+        await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(laneBox.x + laneBox.width / 2, laneBox.y + laneBox.height - 8, { steps: 12 });
+        await page.mouse.up();
         await expect(destination.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible();
         expect(recordValue(await readGridProjectState(page), fixture.tableId, fixture.recordIds[0], "status")).toBe(
             "done",
