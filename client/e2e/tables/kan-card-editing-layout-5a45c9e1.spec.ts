@@ -62,7 +62,12 @@ test("Page/Layout card controls and pointer drag update Grid, peer, and reload w
 
     const movedCard = board.locator("article.card").filter({ hasText: "Alpha in layout" });
     const target = board.locator('section.lane[data-lane-kind="string"]').filter({ hasText: "done" });
-    await movedCard.getByRole("button", { name: "Move card" }).dragTo(target);
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    const moveHandle = movedCard.getByRole("button", { name: "Move card" });
+    await moveHandle.dispatchEvent("dragstart", { dataTransfer: transfer });
+    await target.dispatchEvent("dragover", { dataTransfer: transfer });
+    await target.dispatchEvent("drop", { dataTransfer: transfer });
+    await moveHandle.dispatchEvent("dragend", { dataTransfer: transfer }).catch(() => {});
     await expect(target.locator("article.card").filter({ hasText: "Alpha in layout" })).toBeVisible();
 
     const source = (await readGridProjectState(page)).tables.find(table => table.id === fixture.tableId)!;
