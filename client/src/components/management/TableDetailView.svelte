@@ -1,6 +1,6 @@
 <script lang="ts">
     import Loader from "../Loader.svelte";
-    import { onMount } from "svelte";
+    import { onMount, tick } from "svelte";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../AuthComponent.svelte";
     import { getLogger } from "../../lib/logger";
@@ -80,6 +80,10 @@
             // Unmount table view before destroying document
             const currentHandles = tableHandles;
             tableHandles = undefined;
+            // Let Svelte unmount TableEntityView before the policy destroys
+            // the Table subdocument. Otherwise its teardown can race the
+            // subdocument destroy and leave this confirmation dialog open.
+            await tick();
             if (currentHandles?.doc) {
                 destroyTableUndoManager(currentHandles.doc);
             }

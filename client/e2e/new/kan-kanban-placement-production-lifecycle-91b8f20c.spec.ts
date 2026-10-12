@@ -43,7 +43,7 @@ test.describe("FTR-91b8f20c: Kanban production placement lifecycle", () => {
         await page.locator("aside [data-page-id]").first().click();
         const layoutRow = await createBlockFromItem(
             page,
-            page.locator('.outliner-item[data-node-kind="text"]').last(),
+            page.locator('.outliner-item[data-node-kind="text"]').filter({ hasText: "Dashboard" }),
             "Layout",
         );
         const layout = layoutRow.getByTestId("layout-block");
@@ -92,6 +92,7 @@ test.describe("FTR-91b8f20c: Kanban production placement lifecycle", () => {
             const dialog = page.getByRole("dialog", { name: /Delete table/ });
             await expect(dialog).toContainText("Kanbans sourced from this table (1)");
             await dialog.getByRole("button", { name: `Delete table and ${policy}` }).click();
+            await expect(dialog).toHaveCount(0);
 
             await openObjects(page);
             await expect(objectRow(page, "table")).toHaveCount(0);
