@@ -61,6 +61,7 @@ test(
         await peer.addInitScript(() => {
             localStorage.setItem("VITE_IS_TEST", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+            localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
             (globalThis as any).__E2E__ = true;
         });
         await peer.goto(pageUrl);
@@ -76,6 +77,8 @@ test(
             undefined,
             { timeout: 10000 },
         );
+        const pageName = decodeURIComponent(new URL(pageUrl).pathname.split("/").at(-1)!);
+        await TestHelpers.waitForPageData(peer, pageName, 30000);
         await expect(peer.locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`)).toHaveCount(2, {
             timeout: 30000,
         });
