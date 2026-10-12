@@ -36,6 +36,7 @@ import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js
 import { createScheduleRunRouter } from "./scheduler/schedule-run-api.js";
 import { JobScheduler } from "./scheduler/Scheduler.js";
 import { createSeedRouter } from "./seed-api.js";
+import { createSqlCatalogRouter } from "./sql-catalog-routes.js";
 import { getClientIp } from "./utils/ip.js";
 import {
     refreshClientLogStream,
@@ -439,6 +440,18 @@ export async function startServer(
             checkContainerAccess,
             verifyIdTokenCached,
         }),
+    );
+
+    // Authorized browser transport for the Project SQL catalog (issue #5574).
+    // Reads and mutations reuse the revision-bound SqlCatalogMutationService;
+    // the panel never publishes Yjs updates directly.
+    app.use(
+        "/api",
+        createSqlCatalogRouter(
+            hocuspocus as unknown as Hocuspocus,
+            persistence ? createDocumentStore(persistence) : undefined,
+            { checkContainerAccess, verifyIdTokenCached },
+        ),
     );
 
     // OAuth 2.0/OIDC bridge for ChatGPT/MCP clients (issue #5032): authorizes

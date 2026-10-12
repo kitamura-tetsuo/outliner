@@ -17,6 +17,7 @@ import {
     projectSettingsPath,
     projectTablePath,
     projectTablesPath,
+    projectTypesPath,
 } from "./managementPaths";
 
 // Documents the canonical URL matrix so a future feature does not reintroduce
@@ -48,6 +49,7 @@ describe("managementPaths", () => {
         expect(projectKanbansPath("acme")).toBe("/acme/-/kanbans");
         expect(projectCalendarsPath("acme")).toBe("/acme/-/calendars");
         expect(projectSchedulesPath("acme")).toBe("/acme/-/schedules");
+        expect(projectTypesPath("acme")).toBe("/acme/-/types");
     });
 
     it("builds entity-detail paths nested under their list path", () => {

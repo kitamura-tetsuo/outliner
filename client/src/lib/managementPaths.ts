@@ -88,3 +88,8 @@ export function projectSchedulesPath(projectName: string): string {
 export function projectSchedulePath(projectName: string, ruleId: string): string {
     return `${projectSchedulesPath(projectName)}/${encodeURIComponent(ruleId)}`;
 }
+
+/** The Project SQL type catalog: `/:project/-/types`. */
+export function projectTypesPath(projectName: string): string {
+    return `${projectManagementPath(projectName)}/types`;
+}
