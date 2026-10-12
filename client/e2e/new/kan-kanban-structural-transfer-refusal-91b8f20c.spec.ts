@@ -57,4 +57,33 @@ test.describe("FTR-91b8f20c: unsupported Kanban structural transfer", () => {
         await expect(objectRow(page, "kanban")).toHaveCount(1);
         await expect(objectRow(page, "table")).toHaveCount(1);
     });
+
+    test("Duplicate selected refuses a Kanban before opening an actionable operation", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Alpha neighbour", "Omega neighbour"]);
+        await createBlankGrid(page, "Tasks", "tasks");
+        await openObjects(page);
+
+        const table = objectRow(page, "table");
+        await table.locator('[data-testid^="object-place-"]').click();
+        await page.getByTestId("object-placement-confirm").click();
+        const board = objectRow(page, "kanban");
+        const boardId = (await board.getAttribute("data-testid"))!.replace("object-row-", "");
+        await board.locator('input[type="checkbox"]').check();
+
+        await page.getByTestId("object-manager-duplicate-selected").click();
+        const dialog = page.getByTestId("object-manager-duplicate-dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByTestId("object-manager-duplicate-apply")).toBeDisabled();
+
+        await dialog.getByTestId("object-manager-duplicate-cancel").click();
+        await expect(objectRow(page, "kanban")).toHaveCount(1);
+        await expect(objectRow(page, "table")).toHaveCount(1);
+        await expect(page.locator(`[data-testid="object-row-${boardId}"]`)).toBeVisible();
+
+        await page.locator("aside [data-page-id]").first().click();
+        await expect(page.locator(`[data-testid="kanban-board"][data-kanban-id="${boardId}"]`)).toHaveCount(1);
+        await expect(page.getByText("Alpha neighbour", { exact: true })).toBeVisible();
+        await expect(page.getByText("Omega neighbour", { exact: true })).toBeVisible();
+    });
 });
