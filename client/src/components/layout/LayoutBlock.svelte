@@ -641,6 +641,18 @@ function confirmKanbanPlacement() {
     margin-top: 4px;
 }
 
+.kanban-placement-dialog {
+    position: fixed;
+    z-index: 100;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background: white;
+}
+
 /* The responsive threshold is the Layout's own width, not the viewport's, so a
    Layout inside a narrow container collapses on its own terms. */
 .layout-grid-container {
