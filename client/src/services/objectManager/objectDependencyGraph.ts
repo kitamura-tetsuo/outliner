@@ -74,7 +74,7 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
     /** Table ids read by a SQL/query string, via relation-level parsing only. */
     function relationTableIds(sql: string): string[] {
         try {
-            return rewriteTableQuerySql(sql, new Map()).relationDependencies
+            return rewriteTableQuerySql(sql, new Map()).actualRelationDependencies
                 .map(sqlName => tableBySqlName.get(sqlName))
                 .filter((tableId): tableId is string => tableId !== undefined);
         } catch {

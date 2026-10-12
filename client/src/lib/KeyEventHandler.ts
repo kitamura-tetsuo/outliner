@@ -209,8 +209,9 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const item = entry.model.original;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
+        const kanbanId = getItemKanbanId(item);
         const isLayout = isLayoutItem(item);
-        const isComponent = Boolean(tableId || calendarId) || isLayout || isDiagramNode(item);
+        const isComponent = Boolean(tableId || calendarId || kanbanId) || isLayout || isDiagramNode(item);
         const text = String(item.text ?? "");
         // What the endpoints select of this item: an interval for a Text node, the whole
         // block for a component - both read from the one traversal (#5025).

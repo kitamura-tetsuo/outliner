@@ -234,8 +234,7 @@ export function removeKanbanWithPlacements(project: Project, kanbanId: string): 
                     const node = project.tree.getNodeValueFromKey(placement.itemKey) as Y.Map<unknown> | undefined;
                     // The preview is informative, never authority over a newer binding.
                     if (node?.get("componentType") === "kanban" && node.get("kanbanId") === kanbanId) {
-                        node.set("componentType", undefined);
-                        node.delete("kanbanId");
+                        project.tree.deleteNodeAndDescendants(placement.itemKey);
                     }
                 } catch (_error) { /* Concurrently removed placements need no cleanup. */ }
             }
@@ -246,15 +245,6 @@ export function removeKanbanWithPlacements(project: Project, kanbanId: string): 
     const applyRestore = () =>
         project.ydoc.transact(() => {
             if (!registry.has(kanbanId)) createKanbanEntry(project.ydoc, kanbanId, settings.sourceTableId, settings);
-            for (const placement of placements) {
-                try {
-                    const node = project.tree.getNodeValueFromKey(placement.itemKey) as Y.Map<unknown> | undefined;
-                    if (node && node.get("componentType") === undefined) {
-                        node.set("componentType", "kanban");
-                        node.set("kanbanId", kanbanId);
-                    }
-                } catch (_error) { /* A placement removed later is not resurrected. */ }
-            }
         });
     globalUndoRouter.captureManual(applyDelete, {
         type: "manual",

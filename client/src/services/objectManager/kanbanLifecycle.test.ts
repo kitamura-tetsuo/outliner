@@ -50,9 +50,21 @@ describe("Kanban placement and reference lifecycle", () => {
         (b.tree.getNodeValueFromKey(b.key) as Y.Map<unknown>).set("kanbanId", second);
         expect(removeKanbanWithPlacements(project, first)).toBe(true);
         expect(getKanban(project.ydoc, first)).toBeUndefined();
-        expect((a.tree.getNodeValueFromKey(a.key) as Y.Map<unknown>).get("kanbanId")).toBeUndefined();
+        expect(() => project.tree.getNodeValueFromKey(a.key)).toThrow();
         expect((b.tree.getNodeValueFromKey(b.key) as Y.Map<unknown>).get("kanbanId")).toBe(second);
         expect(listTables(project.ydoc).map(table => table.tableId)).toContain(tableId);
+    });
+
+    it("ignores source_kind labels when building Kanban Table dependencies", () => {
+        const project = Project.createInstance("kanban-literal-dependency");
+        const tasks = createTable(project.ydoc, "Tasks", "tasks");
+        const unrelated = createTable(project.ydoc, "Unrelated", "unrelated");
+        const board = createKanban(project.ydoc, tasks, {
+            query: "SELECT 'unrelated' AS source_kind, status, title FROM tasks",
+        });
+        expect(buildObjectDependencyGraph(project.ydoc).dependenciesOf({ type: "kanban", id: board }))
+            .toEqual([{ type: "table", id: tasks }]);
+        expect(getTableDependencies(project, unrelated).indirectSqlReferences).toEqual([]);
     });
 
     it("tracks primary and parsed query dependencies and applies both Table policies", () => {

@@ -16,10 +16,14 @@ interface Props {
 let { project, objectType, objectId, objectName, onclose, canWrite }: Props = $props();
 let pageId = $state("");
 let pages = $state<{ id: string; title: string; }[]>([]);
+let pagesInitialized = false;
 
 function syncPages() {
     pages = [...project.items].map(page => ({ id: page.id, title: page.text || "Untitled Page" }));
-    if (pageId && !pages.some(page => page.id === pageId)) pageId = pages[0]?.id ?? "";
+    if (!pagesInitialized) {
+        pageId = pages[0]?.id ?? "";
+        pagesInitialized = true;
+    }
 }
 
 onMount(() => {
@@ -40,7 +44,7 @@ $effect(() => {
 });
 
 function place() {
-    const destinationPageId = pageId || pages[0]?.id;
+    const destinationPageId = pageId;
     if (!destinationPageId) return;
     placeObjectOnPage(
         project.ydoc,

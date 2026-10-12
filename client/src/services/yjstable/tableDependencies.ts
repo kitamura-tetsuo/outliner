@@ -157,7 +157,7 @@ export function getTableDependencies(project: Project, tableId: string): TableDe
             if (dependencies.dependentKanbanIds.includes(board.kanbanId)) continue;
             const query = getKanban(project.ydoc, board.kanbanId)?.query ?? "";
             try {
-                const relations = rewriteTableQuerySql(query, new Map()).relationDependencies;
+                const relations = rewriteTableQuerySql(query, new Map()).actualRelationDependencies;
                 if (relations.includes(targetSqlName)) {
                     dependencies.indirectSqlReferences.push({ type: "kanban", name: board.name || "Untitled Kanban" });
                 }

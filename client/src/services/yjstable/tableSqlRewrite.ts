@@ -11,6 +11,8 @@ export interface TableSqlRewriteResult {
     sql: string;
     /** Non-system relations actually read by FROM/JOIN or projected as source_kind. */
     relationDependencies: string[];
+    /** Relations named by FROM/JOIN or DML targets, excluding source_kind display literals. */
+    actualRelationDependencies: string[];
     /** System-defined relations that intentionally rebind to the destination project. */
     reservedRelationDependencies: string[];
 }
@@ -435,6 +437,7 @@ export function rewriteCreateTableSql(
     return {
         sql: tokens.map(token => token.text).join(""),
         relationDependencies: [],
+        actualRelationDependencies: [],
         reservedRelationDependencies: [],
     };
 }
@@ -457,6 +460,7 @@ export function rewriteTableQuerySql(
     const { matchingClose, enclosingOpen, enclosingClose } = parenMetadata(tokens);
     const cteScopes = collectCteScopes(tokens, matchingClose, enclosingClose);
     const dependencies = new Set<string>();
+    const actualDependencies = new Set<string>();
     const reservedDependencies = new Set<string>();
     const fromActive = new Map<number, boolean>();
     const expectRelation = new Map<number, boolean>();
@@ -472,6 +476,10 @@ export function rewriteTableQuerySql(
     const recordDependency = (name: string) => {
         if (RESERVED_RELATION_NAMES.has(name)) reservedDependencies.add(name);
         else dependencies.add(name);
+    };
+    const recordActualDependency = (name: string) => {
+        recordDependency(name);
+        if (!RESERVED_RELATION_NAMES.has(name)) actualDependencies.add(name);
     };
 
     for (let i = 0; i < tokens.length; i++) {
@@ -543,7 +551,7 @@ export function rewriteTableQuerySql(
             // A CTE cannot be written to, but `INSERT ... RETURNING` inside one
             // makes the CTE's own name visible here; leave it alone.
             if (isCteReference(relation, i, cteScopes)) continue;
-            recordDependency(relation);
+            recordActualDependency(relation);
             const destination = mapping.get(relation);
             if (destination !== undefined && !RESERVED_RELATION_NAMES.has(relation)) {
                 token.text = replacementIdentifier(token, destination);
@@ -596,7 +604,7 @@ export function rewriteTableQuerySql(
                 if (alias === undefined) qualifierScopes.push({ name: relation, start: scopeStart, end: scopeEnd });
                 continue;
             }
-            recordDependency(relation);
+            recordActualDependency(relation);
             const destination = mapping.get(relation);
             if (destination !== undefined && !RESERVED_RELATION_NAMES.has(relation)) {
                 token.text = replacementIdentifier(token, destination);
@@ -659,6 +667,7 @@ export function rewriteTableQuerySql(
     return {
         sql: tokens.map(token => token.text).join(""),
         relationDependencies: [...dependencies],
+        actualRelationDependencies: [...actualDependencies],
         reservedRelationDependencies: [...reservedDependencies],
     };
 }
