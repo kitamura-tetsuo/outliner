@@ -195,15 +195,14 @@ onDestroy(() => { operations?.cancel(); kanban.entry.unobserveDeep(observer); ru
                             <button class="drag-handle" type="button" draggable={!isReadOnly} aria-label="Move card"
                                 ondragstart={event => beginDrag(event, card, lane.key)} ondragend={endDrag}>↕</button>
                             {#if committed.titleField}
-                                <div class="card-field title-field">
-                                    <strong>{committed.titleField}</strong>
+                                <h3 class="card-field title-field">
                                     {#if editingCard?.occurrenceKey === card.occurrenceKey && editingCard.field === committed.titleField}
-                                        <input bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
+                                        <input aria-label={`Edit ${committed.titleField}`} bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
                                         <button type="button" onclick={() => void commitFieldEdit()}>Save</button>
                                     {:else}
-                                        <button class="field-value" type="button" disabled={isReadOnly} onclick={() => beginFieldEdit(card, committed.titleField!)}>{display(card.row[committed.titleField]) || "Untitled"}</button>
+                                        <button class="field-value" type="button" aria-label={`Edit ${committed.titleField}`} disabled={isReadOnly} onclick={() => beginFieldEdit(card, committed.titleField!)}>{display(card.row[committed.titleField]) || "Untitled"}</button>
                                     {/if}
-                                </div>
+                                </h3>
                             {:else}<h3>Untitled</h3>{/if}
                             {#each committed.detailFields as field (field)}
                                 <div class="detail"><strong>{field}</strong>:

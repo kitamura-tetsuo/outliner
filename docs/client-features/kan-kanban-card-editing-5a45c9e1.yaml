@@ -6,8 +6,8 @@ category: tables
 status: implemented
 acceptance:
 - Card title and detail controls edit only query-proven writable source columns and preserve every other record field
-- Moving a card writes only the exact raw grouping value of the destination lane, including SQL NULL and the empty string
 - Invalid, cancelled, same-lane, stale, read-only and cross-board interactions write no source or presentation state
+- Moving a card writes only the exact raw grouping value of the destination lane, including SQL NULL and the empty string
 - Provider-backed writes remain pending until confirmed and stale operations revalidate after provider resolution
 - Query results alone determine final membership and SQL order; Kanban stores no card copies or ranks
 tests:

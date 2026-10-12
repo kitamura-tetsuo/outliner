@@ -15,8 +15,8 @@ components:
 - scripts/native-ime-regression/ubuntu/verdict.py
 - scripts/native-ime-regression/windows/start-backend.ps1
 tests:
-- scripts/tests/env-native-ime-container-label-inspection-3a8f6c21.spec.ts
 - scripts/native-ime-regression/ubuntu/check-selection.py
 - scripts/native-ime-regression/ubuntu/test_report.py
 - scripts/native-ime-regression/ubuntu/test_selection.py
 - scripts/native-ime-regression/ubuntu/test_verdict.py
+- scripts/tests/env-native-ime-container-label-inspection-3a8f6c21.spec.ts
