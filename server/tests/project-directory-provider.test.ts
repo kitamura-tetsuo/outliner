@@ -42,6 +42,11 @@ describe("project directory provider boundary (real Firestore)", () => {
         "provider-legacy",
         "provider-bad-title",
         "provider-uuid-title",
+        "provider-unicode-first",
+        "provider-unicode-second",
+        "provider-unicode-third",
+        "provider-private",
+        "provider-reserved",
     ];
 
     async function mintIdentity(email: string): Promise<{ uid: string; idToken: string; }> {
@@ -198,6 +203,55 @@ describe("project directory provider boundary (real Firestore)", () => {
             .send({ projectId: "provider-second", title: "Local planning" });
         expect(duplicateTitle.status).to.equal(409);
         expect((await db.collection("projectUsers").doc("provider-second").get()).exists).to.equal(false);
+    });
+
+    it("rejects router mutations colliding with a padded decomposed Unicode title", async () => {
+        const app = buildApp();
+        const directory = createFirestoreProjectDirectoryProvider(db);
+        // Preexisting metadata with padding and a decomposed accent whose
+        // readable canonical title is the NFC request below.
+        await db.collection("projectUsers").doc("provider-unicode-first").set({
+            projectId: "provider-unicode-first",
+            title: " Café ",
+            accessibleUserIds: [ownerUid],
+        });
+        await directory.ensureDescriptor(ownerUid, "provider-unicode-second", "Other");
+
+        const created = await request(app).post("/api/projects")
+            .set("Authorization", `Bearer ${ownerToken}`)
+            .send({ projectId: "provider-unicode-third", title: "Café" });
+        expect(created.status).to.equal(409);
+        expect((await db.collection("projectUsers").doc("provider-unicode-third").get()).exists)
+            .to.equal(false);
+
+        const renamed = await request(app).post("/api/projects/provider-unicode-second/rename")
+            .set("Authorization", `Bearer ${ownerToken}`)
+            .send({ title: "Café" });
+        expect(renamed.status).to.equal(409);
+        expect((await db.collection("projectUsers").doc("provider-unicode-second").get()).data()?.title)
+            .to.equal("Other");
+    });
+
+    it("reports forbidden when registering an inaccessible ID with a colliding title", async () => {
+        const app = buildApp();
+        await db.collection("projectUsers").doc("provider-private").set({
+            projectId: "provider-private",
+            title: "Private",
+            accessibleUserIds: [otherUid],
+        });
+        await db.collection("projectUsers").doc("provider-reserved").set({
+            projectId: "provider-reserved",
+            title: "Reserved",
+            accessibleUserIds: [otherUid],
+        });
+
+        const response = await request(app).post("/api/projects")
+            .set("Authorization", `Bearer ${ownerToken}`)
+            .send({ projectId: "provider-private", title: "Reserved" });
+        expect(response.status).to.equal(403);
+        const stored = (await db.collection("projectUsers").doc("provider-private").get()).data();
+        expect(stored?.title).to.equal("Private");
+        expect(stored?.accessibleUserIds).to.deep.equal([otherUid]);
     });
 
     it("renames only the title and preserves membership and Yjs document state", async () => {
