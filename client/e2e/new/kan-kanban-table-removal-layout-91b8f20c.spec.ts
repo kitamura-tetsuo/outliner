@@ -30,6 +30,7 @@ test("FTR-91b8f20c: remove-direct-references deletes Page and Layout placement n
     const boardId = (await board.getAttribute("data-testid"))!.replace("object-row-", "");
 
     await page.locator("aside [data-page-id]").first().click();
+    await expect(page).not.toHaveURL(/\/objects$/);
     const pageName = decodeURIComponent(new URL(page.url()).pathname.split("/").at(-1)!);
     const layout = (await createBlockFromItem(
         page,
@@ -55,10 +56,12 @@ test("FTR-91b8f20c: remove-direct-references deletes Page and Layout placement n
     await expect(objectRow(page, "kanban")).toHaveCount(0);
 
     await page.locator("aside [data-page-id]").first().click();
+    await expect(page).not.toHaveURL(/\/objects$/);
     for (const placementId of placementIds) {
         await expect(page.locator(`[data-item-id="${placementId}"]`)).toHaveCount(0);
     }
     await expect(page.getByText("Unaffected neighbour", { exact: true })).toBeVisible();
+    await page.waitForTimeout(4000);
     await page.reload();
     await TestHelpers.waitForPageData(page, pageName, 30000);
     for (const placementId of placementIds) {

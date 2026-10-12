@@ -99,9 +99,11 @@ test.describe("FTR-91b8f20c: Kanban production placement lifecycle", () => {
         await expect(objectRow(page, "table")).toHaveCount(1);
         expect(await readGridProjectState(page)).toEqual(before);
         await page.locator("aside [data-page-id]").first().click();
+        await expect(page).not.toHaveURL(/\/objects$/);
         for (const placementId of placementIds) {
             await expect(page.locator(`[data-item-id="${placementId}"]`)).toHaveCount(0);
         }
+        await page.waitForTimeout(4000);
         await page.reload();
         await TestHelpers.waitForPageData(page, pageName, 30000);
         for (const placementId of placementIds) {

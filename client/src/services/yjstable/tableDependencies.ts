@@ -205,8 +205,7 @@ export function removeTableWithPolicy(
                     try {
                         const node = project.tree.getNodeValueFromKey(placement.itemKey) as Y.Map<unknown> | undefined;
                         if (node?.get("componentType") === "kanban" && node.get("kanbanId") === kanbanId) {
-                            node.set("componentType", undefined);
-                            node.delete("kanbanId");
+                            project.tree.deleteNodeAndDescendants(placement.itemKey);
                         }
                     } catch (_error) { /* Concurrently removed placement. */ }
                 }
