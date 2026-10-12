@@ -7,14 +7,14 @@ status: implemented
 services:
 - client/src/stores/EditorOverlayStore.svelte.ts
 acceptance:
-- Real Shift+Down, Shift+Down and Shift+Up retain the expected Text and visual-node boundaries for Grid, Calendar and Layout
 - Delayed and repeated character-mirror notifications cannot overwrite a visual endpoint range
+- Firefox and Chromium use the same logical endpoints and document outcomes
+- Real Shift+Down, Shift+Down and Shift+Up retain the expected Text and visual-node boundaries for Grid, Calendar and Layout
+- Selection gestures and mirror notifications preserve outline text, identity, ordering and visual bindings
 - Text pointer placement clears the range and stale notifications cannot restore it
 - Text-only single-item and cross-item native selection and collapse remain effective
-- Selection gestures and mirror notifications preserve outline text, identity, ordering and visual bindings
-- Firefox and Chromium use the same logical endpoints and document outcomes
 tests:
-- client/e2e/new/slr-visual-endpoint-mirror-replay-8f29a6d0.spec.ts
 - client/e2e/new/slr-text-mirror-native-readback-8f29a6d0.spec.ts
-- client/src/tests/unit/stores/editorOverlayVisualEndpointMirror.spec.ts
+- client/e2e/new/slr-visual-endpoint-mirror-replay-8f29a6d0.spec.ts
 - client/src/tests/unit/stores/editorOverlayCrossItemMirror.spec.ts
+- client/src/tests/unit/stores/editorOverlayVisualEndpointMirror.spec.ts
