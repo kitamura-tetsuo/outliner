@@ -35,7 +35,12 @@ test(
             details: ["detail"],
         });
 
-        const alpha = page.locator("article.card").filter({ hasText: "Alpha" });
+        const alphaResult = page.locator("article.card").filter({ hasText: "Alpha" });
+        const occurrence = await alphaResult.getAttribute("data-card-occurrence");
+        if (!occurrence) throw new Error("Alpha card has no result-occurrence identity");
+        // Keep addressing the card by its stable result occurrence while its
+        // title switches from rendered text to an input with no textContent.
+        const alpha = page.locator(`article.card[data-card-occurrence="${occurrence}"]`);
         await alpha.getByRole("button", { name: "Edit title" }).click();
         const editor = alpha.getByRole("textbox", { name: "Edit title" });
         await editor.fill("Alpha edited");
