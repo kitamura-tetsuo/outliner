@@ -38,6 +38,15 @@ test.describe("ENUM declaration-order demo", () => {
         await expect(grid).toBeVisible({ timeout: 30000 });
         await expect(grid.locator("th", { hasText: "priority" })).toBeVisible();
 
+        // The Grid queries PGlite asynchronously (compiling the Project
+        // catalog's ENUM type first), so wait for the rows before asserting
+        // on their content: reading innerText immediately races the query.
+        const rows = grid.locator("tbody tr");
+        await expect(rows).toHaveCount(3, { timeout: 30000 });
+        expect(
+            await rows.evaluateAll(elements => elements.map(row => row.getAttribute("data-record-id"))),
+        ).toEqual(["demo-enum-1", "demo-enum-3", "demo-enum-2"]);
+
         // Declaration order (high, medium, low), not lexical text order
         // (high, low, medium): the type itself carries the order.
         const gridText = await grid.innerText();
@@ -77,6 +86,15 @@ test.describe("ENUM declaration-order demo", () => {
         await expect(enumTable).toBeVisible({ timeout: 30000 });
         const grid = enumTable.getByTestId("yjs-table-grid");
         await expect(grid).toBeVisible({ timeout: 30000 });
+
+        // The Grid queries PGlite asynchronously (compiling the Project
+        // catalog's ENUM type first), so wait for the rows before asserting
+        // on their content: reading innerText immediately races the query.
+        const rows = grid.locator("tbody tr");
+        await expect(rows).toHaveCount(3, { timeout: 30000 });
+        expect(
+            await rows.evaluateAll(elements => elements.map(row => row.getAttribute("data-record-id"))),
+        ).toEqual(["demo-enum-1", "demo-enum-3", "demo-enum-2"]);
 
         const gridText = await grid.innerText();
         const outage = gridText.indexOf("障害対応を直す");
