@@ -84,9 +84,11 @@ test(
             timeout: 30000,
         });
         const nested = peer.locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`).last();
-        const stalePlacementId = await nested.evaluate(node =>
-            node.closest(".outliner-item")?.getAttribute("data-item-id")
-        );
+        const cell = nested.locator("xpath=ancestor::*[@data-testid='layout-cell']");
+        const stalePlacementId = await cell.getAttribute("data-item-id");
+        await cell.getByTestId("layout-move-out").click();
+        await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`).getByTestId("kanban-board"))
+            .toHaveAttribute("data-kanban-id", firstId);
         await selectVisualNode(peer, stalePlacementId!);
         await peer.keyboard.press("Delete");
         await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`)).toHaveCount(0);
