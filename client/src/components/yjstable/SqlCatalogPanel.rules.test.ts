@@ -11,7 +11,6 @@ vi.mock("../../lib/monaco/monacoLoader", () => ({
     loadMonaco: () => import("../../tests/mocks/fakeMonaco").then((m) => m.fakeMonaco),
 }));
 
-const TEST_AUTHORIZATION = "Bearer test-token";
 vi.mock("../../auth/UserManager", () => ({
     userManager: {
         getCurrentUser: () => ({ id: "u" }),
