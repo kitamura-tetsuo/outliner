@@ -65,6 +65,30 @@ test.describe("FTR-91b8f20c: unsupported Kanban structural transfer", () => {
         await expect(page.getByText("Alpha neighbour", { exact: true })).toBeVisible();
         await expect(page.getByText("Omega neighbour", { exact: true })).toBeVisible();
 
+        const alphaId = await page.getByText("Alpha neighbour", { exact: true }).evaluate(node =>
+            node.closest(".outliner-item")?.getAttribute("data-item-id")
+        );
+        const omegaId = await page.getByText("Omega neighbour", { exact: true }).evaluate(node =>
+            node.closest(".outliner-item")?.getAttribute("data-item-id")
+        );
+        for (const shortcut of ["Control+c", "Control+x"]) {
+            await page.evaluate(({ startId, endId }) => {
+                (globalThis as any).editorOverlayStore.setSelection({
+                    startItemId: startId,
+                    startOffset: 3,
+                    endItemId: endId,
+                    endOffset: 5,
+                    userId: "local",
+                });
+            }, { startId: alphaId, endId: omegaId });
+            await page.keyboard.press(shortcut);
+            await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("sentinel clipboard");
+            await expect(page.locator(`[data-item-id="${placementId}"]`).getByTestId("kanban-board"))
+                .toHaveAttribute("data-kanban-id", boardId);
+            await expect(page.getByText("Alpha neighbour", { exact: true })).toBeVisible();
+            await expect(page.getByText("Omega neighbour", { exact: true })).toBeVisible();
+        }
+
         await openObjects(page);
         await expect(objectRow(page, "kanban")).toHaveCount(1);
         await expect(objectRow(page, "table")).toHaveCount(1);

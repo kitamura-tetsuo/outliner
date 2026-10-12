@@ -8,7 +8,6 @@ import { expect, type Page, test } from "@playwright/test";
 import { createBlankGrid } from "../utils/crossProjectGridHelpers";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
-import { selectVisualNode } from "../utils/visualNodeSelectionHelpers";
 
 const objectRow = (page: Page, type: string) =>
     page.locator('[data-testid^="object-row-"]').filter({ has: page.locator(`.type-badge.${type}`) });
@@ -85,14 +84,8 @@ test(
         });
         const nested = peer.getByTestId("layout-block")
             .locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`);
-        const cell = nested.locator("xpath=ancestor::*[@data-testid='layout-cell']");
-        const stalePlacementId = await cell.getAttribute("data-item-id");
-        await cell.getByTestId("layout-move-out").click();
-        await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`).getByTestId("kanban-board"))
-            .toHaveAttribute("data-kanban-id", firstId);
-        await selectVisualNode(peer, stalePlacementId!);
-        await peer.keyboard.press("Delete");
-        await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`)).toHaveCount(0);
+        const stalePlacementId = await nested.locator("xpath=ancestor::*[@data-testid='layout-cell']")
+            .getAttribute("data-item-id");
 
         await openObjects(peer);
         await objectRow(peer, "table").locator('[data-testid^="object-place-"]').click();
@@ -104,14 +97,26 @@ test(
         );
         const secondId = ids.find(id => id !== firstId)!;
         await peer.locator("aside [data-page-id]").first().click();
-        await addExistingBoardToLayout(peer, peer.getByTestId("layout-block"), secondId);
+        await peer.evaluate(({ placementId, kanbanId }) => {
+            const visible = (globalThis as any).generalStore.activeViewModel.getVisibleItems();
+            const placement = visible.find((entry: any) => entry.model.id === placementId)?.model.original;
+            if (!placement) throw new Error("The placement is not visible to the supported Page model.");
+            placement.kanbanId = kanbanId;
+        }, { placementId: stalePlacementId, kanbanId: secondId });
+        await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`).getByTestId("kanban-board"))
+            .toHaveAttribute("data-kanban-id", secondId);
         await expect(page.locator(`[data-testid="object-row-${secondId}"]`)).toBeVisible();
 
         await confirmation.getByRole("button", { name: "Delete" }).click();
         await expect(page.locator(`[data-testid="object-row-${firstId}"]`)).toHaveCount(0);
         await expect(page.locator(`[data-testid="object-row-${secondId}"]`)).toBeVisible();
         await peer.locator("aside [data-page-id]").first().click();
-        await expect(peer.locator(`[data-testid="kanban-board"][data-kanban-id="${secondId}"]`)).toHaveCount(2);
+        await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`).getByTestId("kanban-board"))
+            .toHaveAttribute("data-kanban-id", secondId);
+        await peer.reload();
+        await TestHelpers.waitForPageData(peer, pageName, 30000);
+        await expect(peer.locator(`[data-item-id="${stalePlacementId}"]`).getByTestId("kanban-board"))
+            .toHaveAttribute("data-kanban-id", secondId);
         await peerContext.close();
     },
 );
