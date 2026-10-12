@@ -42,6 +42,23 @@
     let projectHandle: RouteProjectHandle | undefined = undefined;
 
     let showDeleteDialog = $state(false);
+    let deleteDialog = $state<HTMLDialogElement>();
+
+    $effect(() => {
+        if (deleteDialog) {
+            if (!deleteDialog.showModal || !deleteDialog.close) return;
+            if (showDeleteDialog && dependencies) {
+                if (!deleteDialog.open && typeof deleteDialog.showModal === 'function') {
+                    deleteDialog.showModal();
+                }
+            } else {
+                if (deleteDialog.open && typeof deleteDialog.close === 'function') {
+                    deleteDialog.close();
+                }
+            }
+        }
+    });
+
     let dependencies = $state<TableDependencies | undefined>(undefined);
     let deleteActionError = $state<string | undefined>(undefined);
     let isDeleting = $state(false);
@@ -349,8 +366,8 @@
 </main>
 
 {#if showDeleteDialog && dependencies}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="delete-dialog-title">
-        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+    <dialog bind:this={deleteDialog} class="m-auto p-0 rounded-lg shadow-xl backdrop:bg-black/50 bg-transparent border-none max-w-lg w-full max-h-[90vh]" oncancel={(e) => { e.preventDefault(); showDeleteDialog = false; }} onclick={(e) => { if (e.target === deleteDialog) showDeleteDialog = false; }} aria-labelledby="delete-dialog-title">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col dialog-content" role="presentation" onclick={(e) => e.stopPropagation()} onmousedown={(e) => e.stopPropagation()}>
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 id="delete-dialog-title" class="text-lg font-bold text-gray-900">Delete table "{tableName}"</h2>
             </div>
@@ -460,5 +477,5 @@
                 </button>
             </div>
         </div>
-    </div>
+    </dialog>
 {/if}
