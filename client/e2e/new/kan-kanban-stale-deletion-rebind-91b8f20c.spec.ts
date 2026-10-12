@@ -76,12 +76,9 @@ test(
             undefined,
             { timeout: 10000 },
         );
-        await peer.waitForFunction(
-            () => (globalThis as any).__YJS_STORE__?.getIsConnected?.() === true,
-            undefined,
-            { timeout: 30000 },
-        );
-        await expect(peer.locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`)).toHaveCount(2);
+        await expect(peer.locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`)).toHaveCount(2, {
+            timeout: 30000,
+        });
         const nested = peer.locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`).last();
         const stalePlacementId = await nested.evaluate(node =>
             node.closest(".outliner-item")?.getAttribute("data-item-id")
