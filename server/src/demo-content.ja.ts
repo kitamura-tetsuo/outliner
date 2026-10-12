@@ -22,6 +22,7 @@ import {
     DEMO_CALENDAR_ID,
     DEMO_DAILY_RULE_ID,
     DEMO_DIAGRAM_ID,
+    DEMO_ENUM_PRIORITIES_TABLE_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_HOUR_MAP_CALENDAR_ID,
@@ -44,6 +45,7 @@ export function demoContentJa(): DemoLocaleContent {
             [DEMO_HABITS_TABLE_ID]: "習慣",
             [DEMO_ROUTINE_TEMPLATES_TABLE_ID]: "繰り返しタスクの定義",
             [DEMO_ROUTINE_OCCURRENCES_TABLE_ID]: "繰り返しタスクの発生",
+            [DEMO_ENUM_PRIORITIES_TABLE_ID]: "ENUM 優先度",
         },
 
         columnLabels: {
@@ -59,6 +61,9 @@ export function demoContentJa(): DemoLocaleContent {
             [`${DEMO_TASKS_TABLE_ID}.demo-task-recurring.title`]: "植物に水をやる",
             [`${DEMO_TASKS_TABLE_ID}.demo-task-upcoming.title`]: "歯医者を予約する",
             [`${DEMO_TASKS_TABLE_ID}.demo-task-done.title`]: "週次レポートを送る",
+            [`${DEMO_ENUM_PRIORITIES_TABLE_ID}.demo-enum-1.title`]: "障害対応を直す",
+            [`${DEMO_ENUM_PRIORITIES_TABLE_ID}.demo-enum-2.title`]: "ドキュメントを整理する",
+            [`${DEMO_ENUM_PRIORITIES_TABLE_ID}.demo-enum-3.title`]: "スプリントを計画する",
             [`${DEMO_HABITS_TABLE_ID}.demo-habit-stretch.name`]: "朝のストレッチ",
             [`${DEMO_HABITS_TABLE_ID}.demo-habit-review.name`]: "週次レビュー",
         },
@@ -109,6 +114,7 @@ export function demoContentJa(): DemoLocaleContent {
                     "  [レイアウト]: 12カラムのグリッド上にビジュアルブロックを横並びに配置します。",
                     "  [Remote MCP Access]: 対応する AI クライアントから意味構造を保ったデータを参照し、承認後は検証・ドライラン・リビジョン確認を経て Grid クエリや Table のスキーマ・レコードを安全に修復します。各ツールは必要な OAuth スコープ（参照は outliner.read、変更操作は outliner.write も追加）を宣言し、書き込み権限が不足する場合は再認可を促す標準形式のチャレンジを返します。",
                     "  [Mermaid ダイアグラム]: プロジェクトが持つひとつの Mermaid ダイアグラムを、どのページにも埋め込み（transclude）できます。",
+                    "  [ENUM の順序]: プロジェクトの ENUM 型の宣言順ソート。",
                     "ぜひ試してみてください。このプロジェクトの中身はすべて編集できます。",
                 ],
             },
@@ -808,6 +814,42 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         text:
                             "Diagram の行を前後の行ごと選択してコピー＆貼り付けすると、独自のソースを持つ独立した複製ができます。切り取り＆貼り付けでは複製せずに同じ Diagram を移動します。同じ Diagram をもう一か所に表示するには、引き続き /Insert transclusion を使います。",
+                    },
+                ],
+            },
+            {
+                key: "enum ordering",
+                title: "ENUM の順序",
+                items: [
+                    {
+                        text:
+                            "プロジェクトが持つ ENUM 型は、テキスト値に宣言順を与えます。列で並べ替えると、アルファベット順ではなく CREATE TYPE のラベル順になります。",
+                    },
+                    {
+                        text:
+                            "TYPE はプロジェクトのカタログに属し、下の Grid はそれで並べ替えるだけです。どちらも読み取り専用で確認できます。このページの表示にカタログへの書き込み権限は不要です:",
+                        children: [
+                            {
+                                text:
+                                    "カタログソース (プロジェクトの TYPE demo-enum-priority): CREATE TYPE demo_priority AS ENUM ('high', 'medium', 'low')",
+                            },
+                            {
+                                text:
+                                    "Grid のクエリ: SELECT id, title, priority FROM enum_priorities ORDER BY priority, id",
+                            },
+                        ],
+                    },
+                    {
+                        text:
+                            "文字列の辞書順なら high, low, medium になりますが、下のライブ Grid は宣言順の high, medium, low で並びます。CASE 式も、行ごとの順位付けも不要です。順序は型そのものが持っています。",
+                    },
+                    {
+                        componentType: "yjstable",
+                        yjsTableId: DEMO_ENUM_PRIORITIES_TABLE_ID,
+                    },
+                    {
+                        text:
+                            "[タスクと習慣] ページでは、通常のテキストに対する CASE 式で同じ考え方を示しています。ここではデータベースの型が順序を担うため、保存済み SELECT は通常の ORDER BY のままです。",
                     },
                 ],
             },
