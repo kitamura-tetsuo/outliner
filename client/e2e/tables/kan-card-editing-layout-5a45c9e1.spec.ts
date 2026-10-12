@@ -52,8 +52,12 @@ test("Page/Layout card controls and pointer drag update Grid, peer, and reload w
     );
     const alpha = board.locator("article.card").filter({ hasText: "Alpha" });
     await alpha.getByRole("button", { name: "Edit title" }).click();
-    await alpha.getByRole("textbox", { name: "Edit title" }).fill("Alpha in layout");
-    await alpha.getByRole("button", { name: "Save" }).click();
+    // Opening the editor removes the title text used by `alpha`'s filter, so
+    // reacquire the controls from the stable board boundary.
+    const titleEditor = board.getByRole("textbox", { name: "Edit title" });
+    await expect(titleEditor).toBeVisible();
+    await titleEditor.fill("Alpha in layout");
+    await board.getByRole("button", { name: "Save" }).click();
     await expect(page.getByTestId("yjs-table-view").getByText("Alpha in layout", { exact: true })).toBeVisible();
 
     const movedCard = board.locator("article.card").filter({ hasText: "Alpha in layout" });
