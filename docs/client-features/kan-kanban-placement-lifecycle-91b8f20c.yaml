@@ -6,12 +6,15 @@ category: tables
 status: implemented
 acceptance:
 - Kanban is a visual leaf and stores only its project-owned Kanban identity in each placement
-- Object management discovers all Kanban placements and revalidates live bindings when deleting a board
-- Table dependency analysis includes primary and parsed SQL references without matching comments or literals
 - Keeping Table references preserves affected Kanbans, while removing direct references removes only primary-source Kanbans and their placements
 - Missing Kanban definitions render an unavailable state and are not recreated from placement data
+- Object management discovers all Kanban placements and revalidates live bindings when deleting a board
+- Table dependency analysis includes primary and parsed SQL references without matching comments or literals
 tests:
-- client/e2e/new/obj-place-on-page-b94e5175.spec.ts
+- client/e2e/new/kan-kanban-multiple-placement-reload-91b8f20c.spec.ts
 - client/e2e/new/kan-kanban-placement-production-lifecycle-91b8f20c.spec.ts
+- client/e2e/new/kan-kanban-stale-deletion-rebind-91b8f20c.spec.ts
+- client/e2e/new/kan-kanban-structural-transfer-refusal-91b8f20c.spec.ts
+- client/e2e/new/obj-place-on-page-b94e5175.spec.ts
 - client/src/services/objectManager/kanbanLifecycle.test.ts
 - shared/tests/services/outlineNodeKind.test.ts
