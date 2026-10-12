@@ -1,5 +1,7 @@
 <script lang="ts">
+import { onDestroy } from "svelte";
 import SqlEditor from "./SqlEditor.svelte";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import {
     applyCatalogMutation,
     catalogKindLabel,
@@ -10,6 +12,10 @@ import {
     type SqlCatalogObjectDto,
     type SqlCatalogSnapshotDto,
 } from "../../services/yjstable/sqlCatalogClient";
+import {
+    captureAppliedTransportEdit,
+    createTransportCatalogReplayService,
+} from "../../services/yjstable/sqlCatalogHistory";
 
 interface Props {
     /** Stable project id used by project-owned rooms. */
@@ -30,8 +36,51 @@ let busy = $state(false);
 let mutationError = $state<string | undefined>(undefined);
 let mutationInfo = $state<string | undefined>(undefined);
 let confirmDelete = $state(false);
+let destroyed = false;
+
+onDestroy(() => {
+    destroyed = true;
+});
 
 const selected = $derived(snapshot?.objects.find(object => object.id === selectedId));
+// History availability tracks the shared router so the panel's Undo/Redo
+// behave exactly like the toolbar and Ctrl+Z / Ctrl+Shift+Z.
+const canUndoHistory = $derived(globalUndoRouter.canUndo());
+const canRedoHistory = $derived(globalUndoRouter.canRedo());
+const historyPending = $derived(globalUndoRouter.isPending);
+const historyOutcome = $derived(globalUndoRouter.lastAsyncOutcome);
+
+function isActiveProject(value: string): boolean {
+    return !destroyed && value === projectId;
+}
+
+function appliedObjectId(result: unknown): string | undefined {
+    if (!result || typeof result !== "object") return undefined;
+    const record = result as { status?: unknown; objectIds?: unknown; };
+    if (record.status !== "applied") return undefined;
+    if (!Array.isArray(record.objectIds) || record.objectIds.length !== 1) return undefined;
+    const id = record.objectIds[0];
+    return typeof id === "string" ? id : undefined;
+}
+
+function captureWhenApplied(before: SqlCatalogSnapshotDto, result: unknown, fallbackId: string) {
+    const id = appliedObjectId(result) ?? fallbackId;
+    const after = snapshot;
+    if (!after) return;
+    // The confirmed receipt carries the authoritative before/after snapshots:
+    // capture prefers them over this display refresh, so a failed refresh
+    // still registers exactly one step and a concurrent peer edit is never
+    // absorbed into this user's step.
+    captureAppliedTransportEdit(
+        globalUndoRouter,
+        before,
+        after,
+        id,
+        createTransportCatalogReplayService(projectId),
+        isActiveProject,
+        result,
+    );
+}
 
 function describeError(error: unknown): string {
     if (error instanceof SqlCatalogTransportError) {
@@ -41,6 +90,24 @@ function describeError(error: unknown): string {
     }
     return error instanceof Error ? error.message : String(error);
 }
+
+function describeApplyFailure(error: unknown): string {
+    // Offline drafting stays local: an unavailable authenticated apply is an
+    // explicit unconfirmed failure, never a queued implicit write. Only the
+    // server's confirmed receipt advances history; the draft is preserved.
+    if (error instanceof SqlCatalogTransportError) return describeError(error);
+    const detail = error instanceof Error ? error.message : String(error);
+    return `Not confirmed: ${detail}. Draft preserved locally; nothing was queued. Reload and retry.`;
+}
+
+function describeHistoryOutcome(): string | undefined {
+    if (historyPending) return "History replay pending confirmation…";
+    if (!historyOutcome) return undefined;
+    if (historyOutcome.status === "applied") return "History replay confirmed.";
+    return `History ${historyOutcome.status}: ${historyOutcome.reason}`;
+}
+
+const historyStatus = $derived(describeHistoryOutcome());
 
 function describeResult(result: unknown): string | undefined {
     if (!result || typeof result !== "object") return undefined;
@@ -120,16 +187,21 @@ function cancel() {
 
 async function submitCreate() {
     if (!snapshot) return;
+    const before = snapshot;
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
     try {
         const result = await applyCatalogMutation(projectId, {
-            expectedRevision: snapshot.revision,
+            expectedRevision: before.revision,
             intent: { operation: "create", object: { id: draftId, kind: "enum", source: draft } },
         });
         const summary = describeResult(result);
         await load();
+        // Only a confirmed effectful receipt registers exactly one history
+        // step; previews, no-ops, refusals and unconfirmed results register
+        // none. Disabled/read-only controls never substitute for this gate.
+        if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, draftId);
         if (summary === "Saved.") {
             creating = false;
             selectedId = draftId;
@@ -138,7 +210,7 @@ async function submitCreate() {
         mutationInfo = summary;
         if (summary !== "Saved." && summary !== "No changes to save.") mutationError = summary;
     } catch (error) {
-        mutationError = describeError(error);
+        mutationError = describeApplyFailure(error);
     } finally {
         busy = false;
     }
@@ -146,21 +218,24 @@ async function submitCreate() {
 
 async function submitEdit() {
     if (!snapshot || !selected) return;
+    const before = snapshot;
+    const targetId = selected.id;
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
     try {
         const result = await applyCatalogMutation(projectId, {
-            expectedRevision: snapshot.revision,
-            intent: { operation: "replace", object: { id: selected.id, kind: "enum", source: draft } },
+            expectedRevision: before.revision,
+            intent: { operation: "replace", object: { id: targetId, kind: "enum", source: draft } },
         });
         const summary = describeResult(result);
         await load();
+        if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, targetId);
         if (summary === "Saved." || summary === "No changes to save.") editing = false;
         mutationInfo = summary;
         if (summary !== "Saved." && summary !== "No changes to save.") mutationError = summary;
     } catch (error) {
-        mutationError = describeError(error);
+        mutationError = describeApplyFailure(error);
     } finally {
         busy = false;
     }
@@ -172,16 +247,19 @@ async function submitDelete() {
         confirmDelete = true;
         return;
     }
+    const before = snapshot;
+    const targetId = selected.id;
     busy = true;
     mutationError = undefined;
     mutationInfo = undefined;
     try {
         const result = await applyCatalogMutation(projectId, {
-            expectedRevision: snapshot.revision,
-            intent: { operation: "delete", objectId: selected.id },
+            expectedRevision: before.revision,
+            intent: { operation: "delete", objectId: targetId },
         });
         const summary = describeResult(result);
         await load();
+        if (appliedObjectId(result) !== undefined) captureWhenApplied(before, result, targetId);
         if (summary === "Saved.") {
             selectedId = undefined;
             editing = false;
@@ -190,11 +268,19 @@ async function submitDelete() {
         mutationInfo = summary;
         if (summary !== "Saved.") mutationError = summary;
     } catch (error) {
-        mutationError = describeError(error);
+        mutationError = describeApplyFailure(error);
     } finally {
         busy = false;
         confirmDelete = false;
     }
+}
+
+function handleHistoryUndo() {
+    globalUndoRouter.undo();
+}
+
+function handleHistoryRedo() {
+    globalUndoRouter.redo();
 }
 
 $effect(() => {
@@ -219,11 +305,44 @@ $effect(() => {
             <button type="button" data-testid="sql-catalog-new" disabled={loading || busy} onclick={startCreate}>
                 New type
             </button>
+            <button
+                type="button"
+                data-testid="sql-catalog-undo"
+                disabled={loading || busy || historyPending || !canUndoHistory}
+                onclick={handleHistoryUndo}
+                title="Undo (Ctrl+Z)"
+            >
+                Undo
+            </button>
+            <button
+                type="button"
+                data-testid="sql-catalog-redo"
+                disabled={loading || busy || historyPending || !canRedoHistory}
+                onclick={handleHistoryRedo}
+                title="Redo (Ctrl+Shift+Z)"
+            >
+                Redo
+            </button>
         </div>
     </div>
 
     {#if snapshot}
         <p class="revision" data-testid="sql-catalog-revision">Revision <code>{snapshot.revision.slice(0, 12)}</code></p>
+    {/if}
+
+    <section class="rules" data-testid="sql-catalog-first-release-rules" aria-label="First-release declarative rules">
+        <h3>First-release declarative rules</h3>
+        <ul>
+            <li>Deleting or renaming a referenced type, or removing one of its labels, is refused before effects with a reference diagnostic; Table schemas, records and Grid/Calendar/Schedule queries are never mutated by the refusal.</li>
+            <li>Creating ENUMs, adding labels and reordering labels never rewrite Table records; the catalog stores declarations only and performs no automatic data or reference migration.</li>
+            <li>Arbitrary ALTER and DROP scripts are not performed here; only one unqualified CREATE TYPE AS ENUM declaration per object is executable.</li>
+            <li>Cross-Project structural transfer requires a compatible pre-existing destination type and is refused rather than converted to TEXT.</li>
+            <li>A stored declaration is not proof that all dependent SQL has rebuilt successfully; every read and write is re-authorized server-side and a denied grant or lost connection leaves the editor unconfirmed.</li>
+        </ul>
+    </section>
+
+    {#if historyStatus}
+        <p class="info" data-testid="sql-catalog-history-status">{historyStatus}</p>
     {/if}
 
     {#if loading}
@@ -405,6 +524,28 @@ $effect(() => {
 
 .revision code {
     font-family: ui-monospace, monospace;
+}
+
+.rules {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #f9fafb;
+    padding: 8px 12px;
+}
+
+.rules h3 {
+    margin: 0 0 4px;
+    font-size: 0.85rem;
+}
+
+.rules ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.78rem;
+    color: #4b5563;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .loading,
