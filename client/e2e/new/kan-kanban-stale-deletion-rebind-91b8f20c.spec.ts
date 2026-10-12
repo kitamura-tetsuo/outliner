@@ -83,7 +83,8 @@ test(
         await expect(peer.locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`)).toHaveCount(2, {
             timeout: 30000,
         });
-        const nested = peer.locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`).last();
+        const nested = peer.getByTestId("layout-block")
+            .locator(`[data-testid="kanban-board"][data-kanban-id="${firstId}"]`);
         const cell = nested.locator("xpath=ancestor::*[@data-testid='layout-cell']");
         const stalePlacementId = await cell.getAttribute("data-item-id");
         await cell.getByTestId("layout-move-out").click();
