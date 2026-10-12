@@ -1,7 +1,0 @@
-demo
-Add Database
-Undo
-Redo
-Search pages
-Databases
-Not signed in
