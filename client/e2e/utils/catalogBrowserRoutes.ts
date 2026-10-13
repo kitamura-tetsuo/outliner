@@ -57,7 +57,7 @@ export async function verifyFreshCatalogRoutes(
         const tableClient = await freshCatalogRoute(browser, port, `${fixture.base}/-/tables/${fixture.tableId}`);
         contexts.push(tableClient.context);
         await expect(tableClient.page.getByTestId("table-entity-view")).toBeVisible();
-        await expect(tableClient.page.locator('td[data-col="state"] select')).toHaveCount(5);
+        await expect(tableClient.page.locator('td[data-col="state"] select')).toHaveCount(4);
         expect(
             await tableClient.page.evaluate(
                 id => (globalThis as any).__catalogBrowserTest.snapshot(id),
@@ -72,7 +72,7 @@ export async function verifyFreshCatalogRoutes(
             `${fixture.base}/-/calendars/${fixture.calendarId}`,
         );
         contexts.push(calendarClient.context);
-        await expect(calendarClient.page.getByText("Open", { exact: true }).first()).toBeVisible();
+        await expect(calendarClient.page.getByText("high", { exact: true }).first()).toBeVisible();
         await expect(calendarClient.page.getByTestId("calendar-query-error")).toHaveCount(0);
     } finally {
         for (const context of contexts) await context.close();
