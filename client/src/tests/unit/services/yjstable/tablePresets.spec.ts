@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { GRID_REGISTRY_KEY } from "../../../../services/yjstable/gridDocs";
-import { TABLE_REGISTRY_KEY } from "../../../../services/yjstable/tableDocs";
+import { getTableHandles, TABLE_REGISTRY_KEY } from "../../../../services/yjstable/tableDocs";
 import {
     BLANK_PRESET,
     createTableFromPreset,
@@ -66,6 +66,9 @@ describe("tablePresets", () => {
             expect(tableEntry).toBeDefined();
             expect(tableEntry.get("name")).toBe("My Blank Table");
             expect(tableEntry.get("sqlName")).toBe("custom_sql_name");
+            expect(getTableHandles(doc, result.tableId)?.schemaText.toString()).toBe(
+                BLANK_PRESET.schemaSql("custom_sql_name"),
+            );
 
             // Verify grid registry
             const gridRegistry = doc.getMap(GRID_REGISTRY_KEY);
