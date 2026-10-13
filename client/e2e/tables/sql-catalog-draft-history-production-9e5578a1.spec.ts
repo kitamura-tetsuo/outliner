@@ -56,6 +56,7 @@ test("real catalog drafts survive cancellation, failure, peer replacement and re
         const referencedRecord = page.locator('td[data-col="state"] select').first();
         const referencedRecordId = await referencedRecord.locator("xpath=ancestor::tr").getAttribute("data-record-id");
         expect(referencedRecordId).toBeTruthy();
+        await referencedRecord.focus();
         await referencedRecord.selectOption("urgent");
         await expect.poll(() =>
             page.evaluate(
