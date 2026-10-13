@@ -142,7 +142,7 @@ export async function authorCatalogFixture(page: Page, server: CatalogBrowserSer
     await expect(page.getByTestId("sql-catalog-validation")).toContainText("Validation preview");
     expect(
         (await server.request<CatalogSnapshot>("snapshot", { projectId, tableId: "not-created" })).project!
-            .catalog.objects,
+            .catalog.snapshot.objects,
     ).toEqual([]);
     await page.getByTestId("sql-catalog-create").click();
     await expect(page.getByTestId("sql-catalog-name")).toHaveText("priority_level");
