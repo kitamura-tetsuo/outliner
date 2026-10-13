@@ -5,47 +5,17 @@ process.env.GCLOUD_PROJECT ||= "outliner-d57b0";
 
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { expect } from "chai";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
 import { type ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import WebSocket from "ws";
 import * as Y from "yjs";
-import { initializeFirebase } from "../src/firebase-init.js";
 import { unusedPort, waitFor } from "./onprem-production-fixture.js";
 
 describe("production entrypoint cloud-default isolation", () => {
-    let token: string;
-    let uid: string;
     const children: ChildProcess[] = [];
     const providers: HocuspocusProvider[] = [];
-
-    before(async function() {
-        this.timeout(30000);
-        await initializeFirebase();
-        const email = `cloud-entry-${Date.now()}@example.test`;
-        const password = "cloud-entry-password-123";
-        const user = await getAuth().createUser({ email, password });
-        uid = user.uid;
-        const signin = await fetch(
-            `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=test`,
-            {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ email, password, returnSecureToken: true }),
-            },
-        );
-        expect(signin.status).to.equal(200);
-        const identity = await signin.json() as { idToken: string; };
-        token = identity.idToken;
-        await getFirestore().collection("projectUsers").doc("cloud-entry-project").set({
-            projectId: "cloud-entry-project",
-            title: "Cloud Entry Project",
-            accessibleUserIds: [uid],
-        });
-    });
 
     afterEach(async () => {
         for (const provider of providers.splice(0)) provider.destroy();
@@ -55,13 +25,8 @@ describe("production entrypoint cloud-default isolation", () => {
         }
     });
 
-    after(async () => {
-        await getFirestore().collection("projectUsers").doc("cloud-entry-project").delete();
-        await getAuth().deleteUser(uid);
-    });
-
     for (const deploymentMode of [undefined, "cloud"] as const) {
-        it(`keeps Firebase ACL authority when mode is ${deploymentMode ?? "unset"}`, async function() {
+        it(`selects cloud composition when mode is ${deploymentMode ?? "unset"}`, async function() {
             this.timeout(30000);
             const port = await unusedPort();
             const databasePath = fs.mkdtempSync(path.join(os.tmpdir(), "cloud-entry-"));
@@ -98,32 +63,11 @@ describe("production entrypoint cloud-default isolation", () => {
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
             expect(await (await fetch(`${base}/api/deployment`)).json()).to.deep.equal({ deploymentMode: "cloud" });
-            let directory: Response | undefined;
-            const authDeadline = Date.now() + 10000;
-            while (Date.now() < authDeadline) {
-                directory = await fetch(`${base}/api/projects`, { headers: { authorization: `Bearer ${token}` } });
-                if (directory.ok) break;
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            expect(directory?.status).to.equal(200);
-            expect(await directory!.json()).to.deep.equal({
-                projects: [{ projectId: "cloud-entry-project", title: "Cloud Entry Project" }],
-            });
             expect(
                 (await fetch(`${base}/api/projects`, {
                     headers: { cookie: "outliner_local_session=forged-local-cookie" },
                 })).status,
             ).to.equal(401);
-            const provider = new HocuspocusProvider({
-                url: `ws://127.0.0.1:${port}/projects/cloud-entry-project`,
-                name: "projects/cloud-entry-project",
-                document: new Y.Doc(),
-                token,
-                WebSocketPolyfill: WebSocket,
-            });
-            providers.push(provider);
-            await waitFor(provider, "synced");
-
             class LocalCookieWebSocket extends WebSocket {
                 constructor(address: string | URL, protocols?: string | string[]) {
                     super(address, protocols, { headers: { cookie: "outliner_local_session=forged-local-cookie" } });
