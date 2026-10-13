@@ -5,10 +5,11 @@ import express from "express";
 import http from "node:http";
 import path from "node:path";
 import { WebSocketServer } from "ws";
+import * as Y from "yjs";
 import type { Config } from "./config.js";
 import { createLocalAuthFromEnv, LOCAL_USER_ID, parseLocalSessionId } from "./local-auth.js";
 import { logger as defaultLogger } from "./logger.js";
-import { createDocumentStore, createPersistence } from "./persistence.js";
+import { createDocumentStore, createPersistence, type DocumentStore } from "./persistence.js";
 import { createLocalSqliteProjectDirectoryProvider } from "./project-directory-sqlite.js";
 import { ProjectDirectoryError } from "./project-directory.js";
 import { parseRoom } from "./room-validator.js";
@@ -48,9 +49,23 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
         throw new Error("On-premises document persistence is unavailable");
     }
 
+    let documentStore: DocumentStore | undefined;
+    let documentStorageReady = true;
+    const storageReadinessExtension: import("@hocuspocus/server").Extension<LocalContext> = {
+        priority: 1000,
+        async onStoreDocument(data) {
+            try {
+                if (!documentStore) throw new Error("Document storage is unavailable");
+                await documentStore(data.documentName, data.document);
+            } catch (error) {
+                documentStorageReady = false;
+                throw error;
+            }
+        },
+    };
     const hocuspocus = new Hocuspocus({
         name: "outliner-onprem",
-        extensions: [new Logger({}), persistence] as import("@hocuspocus/server").Extension[],
+        extensions: [storageReadinessExtension, new Logger({}), persistence],
         debounce: 0,
         async onAuthenticate(data): Promise<LocalContext> {
             const sessionId = parseLocalSessionId(data.requestHeaders.get("cookie") ?? undefined);
@@ -77,7 +92,16 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
         directory.close();
         throw new Error("On-premises document database failed to open");
     }
+    documentStore = async (documentName, document) => {
+        if (!persistence.db) throw new Error("Persistence database is not open");
+        await persistence.configuration.store({
+            documentName,
+            document,
+            state: Buffer.from(Y.encodeStateAsUpdate(document)),
+        } as never);
+    };
     const assertStorageReady = () => {
+        if (!documentStorageReady) throw new Error("An observed document storage write failed");
         directory.assertWritable();
         if (!persistence.db?.open) throw new Error("Document storage is unavailable");
         persistence.db.exec("BEGIN IMMEDIATE");
@@ -168,22 +192,26 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
         server.once("error", reject);
         server.listen(config.PORT, "0.0.0.0", resolve);
     });
-    let stopping = false;
-    const shutdown = async () => {
-        if (stopping) return;
-        stopping = true;
-        // Stop accepting HTTP/upgrades first, but do not wait for existing
-        // WebSockets until their already-applied state has been persisted.
-        const closed = new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-        hocuspocus.flushPendingStores();
-        const store = createDocumentStore(persistence);
-        await Promise.all([...hocuspocus.documents].map(([name, document]) => store(name, document)));
-        hocuspocus.closeConnections();
-        for (const client of wss.clients) client.close(1001, "Server shutting down");
-        await closed;
-        persistence.db?.close();
-        directory.close();
-        logger.info("On-premises server shut down cleanly");
+    let shutdownPromise: Promise<void> | undefined;
+    const shutdown = (): Promise<void> => {
+        if (shutdownPromise) return shutdownPromise;
+        shutdownPromise = (async () => {
+            // Stop accepting HTTP/upgrades first, but do not wait for existing
+            // WebSockets until their already-applied state has been persisted.
+            const closed = new Promise<void>((resolve, reject) =>
+                server.close(error => error ? reject(error) : resolve())
+            );
+            hocuspocus.flushPendingStores();
+            const store = createDocumentStore(persistence);
+            await Promise.all([...hocuspocus.documents].map(([name, document]) => store(name, document)));
+            hocuspocus.closeConnections();
+            for (const client of wss.clients) client.close(1001, "Server shutting down");
+            await closed;
+            persistence.db?.close();
+            directory.close();
+            logger.info("On-premises server shut down cleanly");
+        })();
+        return shutdownPromise;
     };
     return { server, hocuspocus, persistence, shutdown };
 }

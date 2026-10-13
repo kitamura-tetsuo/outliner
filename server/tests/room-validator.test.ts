@@ -15,6 +15,8 @@ describe("room-validator", () => {
     it("should return undefined for invalid paths", () => {
         expect(parseRoom("/invalid")).to.be.undefined;
         expect(parseRoom("/projects/")).to.be.undefined;
+        expect(parseRoom("/projects//my-project")).to.be.undefined;
+        expect(parseRoom("projects/my-project/")).to.be.undefined;
     });
 
     it("should parse table subdoc rooms and inherit the project", () => {
@@ -29,6 +31,8 @@ describe("room-validator", () => {
         expect(parseRoom("/projects/my-project/tables/")).to.be.undefined;
         expect(parseRoom("/projects/my-project/pages/x")).to.be.undefined;
         expect(parseRoom("/projects/my-project/tables/bad%2Fslash")).to.be.undefined;
+        expect(parseRoom("/projects/my-project//tables/table-id")).to.be.undefined;
+        expect(parseRoom("/projects/my-project/tables//table-id")).to.be.undefined;
     });
 
     it("should return undefined on malformed URI components (FIXED)", () => {

@@ -33,10 +33,36 @@ describe("on-premises production WebSocket authorization", () => {
         }
         const missing = server.connect("projects/missing_project", cookie);
         await waitFor(missing.provider, "authenticationFailed");
+        for (
+            const malformedRoom of [
+                "projects//project_one",
+                "projects/project_one/",
+                "projects/project_one//tables/table_one",
+                "projects/project_one/tables//table_one",
+                "projects/project_one/tables/table_one/",
+            ]
+        ) {
+            const malformed = server.connect(malformedRoom, cookie);
+            await new Promise<void>((resolve, reject) => {
+                const timer = setTimeout(
+                    () => reject(new Error(`Malformed room was not rejected: ${malformedRoom}`)),
+                    8000,
+                );
+                const rejected = () => {
+                    clearTimeout(timer);
+                    resolve();
+                };
+                malformed.provider.on("authenticationFailed", rejected);
+                malformed.provider.on("disconnect", rejected);
+            });
+        }
         const stored = new Database(path.join(dataDir, "database.sqlite"), { readonly: true });
         try {
             const row = stored.prepare("SELECT name FROM documents WHERE name = ?").get("projects/missing_project");
             expect(row).to.equal(undefined);
+            const aliases = stored.prepare("SELECT name FROM documents WHERE name LIKE '%//%' OR name LIKE '%/'")
+                .all();
+            expect(aliases).to.deep.equal([]);
         } finally {
             stored.close();
         }

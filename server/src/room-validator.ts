@@ -9,7 +9,11 @@ export interface RoomInfo {
 
 export function parseRoom(path: string): RoomInfo | undefined {
     const [pathname] = path.split("?");
-    const parts = pathname.split("/").filter(Boolean);
+    // Empty or trailing segments are not aliases for canonical rooms. Keeping
+    // them here ensures the exact document name that Hocuspocus persists is
+    // the same name authorization validated.
+    const roomPath = pathname.startsWith("/") ? pathname.slice(1) : pathname;
+    const parts = roomPath.split("/");
 
     try {
         if (parts.length === 2 && parts[0] === "projects") {
