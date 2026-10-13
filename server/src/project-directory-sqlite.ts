@@ -34,6 +34,7 @@ interface ProjectRow {
 export interface LocalSqliteProjectDirectoryProvider extends ProjectDirectoryProvider {
     readonly kind: "local-sqlite";
     readonly dbPath: string;
+    assertWritable(): void;
     close(): void;
 }
 
@@ -97,6 +98,23 @@ class LocalSqliteProjectDirectory implements LocalSqliteProjectDirectoryProvider
             // Closing an already-broken handle must not mask the stored state.
         } finally {
             this.db = undefined;
+        }
+    }
+
+    /** Verify both read access and acquisition of SQLite's write lock without changing data. */
+    assertWritable(): void {
+        const db = this.requireDb();
+        try {
+            db.exec("BEGIN IMMEDIATE");
+            db.prepare("SELECT projectId FROM projects LIMIT 1").get();
+            db.exec("ROLLBACK");
+        } catch (error) {
+            try {
+                if (db.inTransaction) db.exec("ROLLBACK");
+            } catch {
+                // Preserve the original storage failure.
+            }
+            throw storageUnavailable(this.dbPath, error);
         }
     }
 
