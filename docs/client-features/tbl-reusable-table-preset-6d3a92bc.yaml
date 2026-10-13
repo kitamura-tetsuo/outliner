@@ -1,0 +1,15 @@
+id: TBL-6d3a92bc
+title: Reusable Table preset creation
+title-ja: Table プリセットの共通作成機能
+description: Preset Table initialization and its creation form can be reused by Grid, Kanban and Calendar while Grid keeps its original Table-plus-Grid workflow.
+category: tables
+status: implemented
+acceptance:
+- A preset Table can be created independently without a Grid or other presentation
+- The Table schema is initialized before its registry entry is published
+- Grid creation continues to initialize the same Table, Grid query, and cell components
+- Preset and SQL name validation use the same production form for all three visual blocks
+tests:
+- client/src/tests/unit/services/yjstable/tablePresets.spec.ts
+- client/e2e/new/kan-kanban-slash-table-creation-92ac61e0.spec.ts
+- client/e2e/new/cal-calendar-slash-table-creation-7be3f0c9.spec.ts
