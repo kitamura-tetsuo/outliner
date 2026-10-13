@@ -44,6 +44,7 @@ import {
     listGrids,
 } from "../../services/yjstable/gridDocs";
 import { createTableFromPreset } from "../../services/yjstable/tablePresets";
+import { sqlNameError } from "../../services/yjstable/sqlNames";
 import { resolvePath } from "../../utils/pathUtils";
 import { projectTablePath } from "../../lib/managementPaths";
 import { page as pageState } from "$app/state";
@@ -84,6 +85,8 @@ let sourceError = $state<string | undefined>();
 let creationMode = $state<"new" | "existing-table" | "existing-grid">("new");
 let selectedExistingTableId = $state<string | undefined>(undefined);
 let selectedExistingGridId = $state<string | undefined>(undefined);
+let selectedExistingTableSqlName = $state<string | undefined>(undefined);
+let selectedExistingGridSourceTableId = $state<string | undefined>(undefined);
 
 const existingTables = $derived.by(() => {
     void registryVersion;
@@ -97,10 +100,13 @@ const existingGrids = $derived.by(() => {
 function showExistingTables() {
     creationMode = "existing-table";
     if (!selectedExistingTableId) selectedExistingTableId = existingTables[0]?.tableId;
+    selectedExistingTableSqlName = existingTables.find(table => table.tableId === selectedExistingTableId)?.sqlName;
 }
 function showExistingGrids() {
     creationMode = "existing-grid";
     if (!selectedExistingGridId) selectedExistingGridId = existingGrids[0]?.gridId;
+    selectedExistingGridSourceTableId = existingGrids.find(grid => grid.gridId === selectedExistingGridId)
+        ?.sourceTableId;
 }
 
 const grid = $derived.by(() => {
@@ -186,6 +192,15 @@ function selectExistingTable() {
         sourceError = "The selected Table is no longer available. Choose an existing Table.";
         return;
     }
+    if (table.sqlName !== selectedExistingTableSqlName) {
+        sourceError = "The selected Table changed after selection. Select the current Table again before creating a Grid.";
+        return;
+    }
+    const currentSqlNameError = sqlNameError(table.sqlName);
+    if (currentSqlNameError) {
+        sourceError = `The selected Table's current SQL name is unsuitable: ${currentSqlNameError}`;
+        return;
+    }
     sourceError = undefined;
     const newGridId = createGrid(item.ydoc, table.tableId, {
         name: table.name || "Grid",
@@ -203,6 +218,10 @@ function selectExistingGrid() {
         : undefined;
     if (!selectedGrid || !selectedTable) {
         sourceError = "The selected Grid or its source Table is no longer available. Choose an existing Grid.";
+        return;
+    }
+    if (selectedGrid.sourceTableId !== selectedExistingGridSourceTableId) {
+        sourceError = "The selected Grid's source Table changed after selection. Select the current Grid again before placing it.";
         return;
     }
     sourceError = undefined;
@@ -296,6 +315,10 @@ function createFromPreset(input: TableCreationInput): string | undefined {
                         }}
                         onchange={(e) => {
                             selectedExistingTableId = (e.target as HTMLSelectElement).value;
+                            selectedExistingTableSqlName = existingTables.find(
+                                table => table.tableId === selectedExistingTableId,
+                            )?.sqlName;
+                            sourceError = undefined;
                         }}
                     >
                         {#each existingTables as table (table.tableId)}
@@ -324,6 +347,10 @@ function createFromPreset(input: TableCreationInput): string | undefined {
                         }}
                         onchange={(e) => {
                             selectedExistingGridId = (e.target as HTMLSelectElement).value;
+                            selectedExistingGridSourceTableId = existingGrids.find(
+                                grid => grid.gridId === selectedExistingGridId,
+                            )?.sourceTableId;
+                            sourceError = undefined;
                         }}
                     >
                         {#each existingGrids as g (g.gridId)}
