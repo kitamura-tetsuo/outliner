@@ -15,6 +15,7 @@ services:
 - server/src/scheduler/Scheduler.ts
 tests:
 - client/e2e/core/dmo-enum-ordering-demo-5f2c8e41.spec.ts
+- client/e2e/tables/sql-catalog-draft-history-production-9e5578a1.spec.ts
 - client/e2e/tables/sql-catalog-production-routes-5533cafe.spec.ts
 - client/src/components/yjstable/SqlCatalogPanel.apply-runtime.test.ts
 - client/src/components/yjstable/SqlCatalogPanel.draft-conflict.test.ts
