@@ -43,10 +43,10 @@ import {
     getGridSourceTableId,
     listGrids,
 } from "../../services/yjstable/gridDocs";
-import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/tablePresets";
+import { createTableFromPreset, type TablePreset } from "../../services/yjstable/tablePresets";
+import TableCreationForm from "./TableCreationForm.svelte";
 import { resolvePath } from "../../utils/pathUtils";
 import { projectTablePath } from "../../lib/managementPaths";
-import { deriveSqlName, sqlNameError } from "../../services/yjstable/sqlNames";
 import { page as pageState } from "$app/state";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
@@ -75,14 +75,6 @@ let { item, isReadOnly = false }: Props = $props();
 let gridId = $state<string | undefined>();
 // Bumped by Yjs observers so the $derived lookups below re-evaluate.
 let registryVersion = $state(0);
-
-let presetKey = $state("tasks");
-let newTableName = $state("");
-// The SQL name is derived from the display name until the user edits it, so
-// the common case needs no extra typing while the identifier stays visible.
-let newSqlName = $state("");
-let sqlNameEdited = $state(false);
-let createError = $state<string | undefined>(undefined);
 
 // Three creation modes: brand-new Table+Grid, new Grid over an existing Table,
 // or bind to an existing Grid. The last one is the "many Grids per outline"
@@ -148,12 +140,6 @@ const tableSourceProjectId = $derived.by(() => {
     return entry?.sourceProjectId;
 });
 
-const takenSqlNames = $derived(existingTables.map((t) => t.sqlName).filter(Boolean));
-const suggestedSqlName = $derived.by(() => {
-    const preset = TABLE_PRESETS.find((p) => p.key === presetKey) ?? TABLE_PRESETS[0];
-    return deriveSqlName(newTableName.trim() || preset.defaultSqlName, takenSqlNames);
-});
-const effectiveSqlName = $derived(sqlNameEdited ? newSqlName.trim() : suggestedSqlName);
 const projectId = $derived(yjsStore.currentProjectId ?? undefined);
 // The route name the user navigated with, the same one the sidebar links
 // with. Used to point at the source Table's own page — schema and data are
@@ -207,20 +193,12 @@ function selectExistingGrid() {
     gridId = selectedExistingGridId;
 }
 
-function createFromPreset() {
-    const preset = TABLE_PRESETS.find((p) => p.key === presetKey) ?? TABLE_PRESETS[0];
-    const name = newTableName.trim() || preset.name;
-    const sqlName = effectiveSqlName;
-    createError = sqlNameError(sqlName);
-    if (createError) return;
-    if (takenSqlNames.includes(sqlName)) {
-        createError = `SQL name "${sqlName}" is already used in this project`;
-        return;
-    }
+function createFromPreset(preset: TablePreset, name: string, sqlName: string) {
     const { tableId, gridId: newGridId } = createTableFromPreset(item.ydoc, preset, name, sqlName);
     bindItemToGrid(item, newGridId, tableId);
     gridId = newGridId;
 }
+
 </script>
 
 <div
@@ -272,54 +250,7 @@ function createFromPreset() {
             </div>
 
             {#if creationMode === "new"}
-                <div class="create-form">
-                    <input
-                        type="text"
-                        placeholder="Table name"
-                        data-testid="yjs-table-name-input"
-                        value={newTableName}
-                        oninput={(e) => {
-                            newTableName = (e.target as HTMLInputElement).value;
-                        }}
-                    />
-                    <select
-                        aria-label="Preset"
-                        data-testid="yjs-table-preset-select"
-                        value={presetKey}
-                        onpointerdown={(e: Event) => e.stopPropagation()}
-                        onmousedown={(e: Event) => e.stopPropagation()}
-                        onmouseup={(e: Event) => e.stopPropagation()}
-                        onclick={(e: Event) => {
-                            e.stopPropagation();
-                            (e.target as HTMLElement).focus();
-                        }}
-                        onchange={(e) => {
-                            presetKey = (e.target as HTMLSelectElement).value;
-                        }}
-                    >
-                        {#each TABLE_PRESETS as preset (preset.key)}
-                            <option value={preset.key}>{preset.name}</option>
-                        {/each}
-                    </select>
-                    <input
-                        type="text"
-                        aria-label="SQL name"
-                        placeholder={suggestedSqlName}
-                        data-testid="yjs-table-sql-name-input"
-                        value={effectiveSqlName}
-                        oninput={(e) => {
-                            sqlNameEdited = true;
-                            newSqlName = (e.target as HTMLInputElement).value;
-                        }}
-                    />
-                    <button type="button" data-testid="yjs-table-create" onclick={createFromPreset}>
-                        Create
-                    </button>
-                </div>
-                <p class="hint">Queries reference this table as <code>{effectiveSqlName || "?"}</code>.</p>
-                {#if createError}
-                    <p class="create-error" data-testid="yjs-table-create-error">{createError}</p>
-                {/if}
+                <TableCreationForm {existingTables} onCreate={createFromPreset} />
             {:else if creationMode === "existing-table"}
                 <div class="create-form">
                     <select
