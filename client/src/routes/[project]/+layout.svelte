@@ -5,7 +5,7 @@ import { onMount } from "svelte";
 import { goto } from "$app/navigation";
     import { resolvePath } from "../../utils/pathUtils";
 import { userManager } from "../../auth/UserManager";
-import { getYjsClientByProjectTitle } from "../../services";
+import { getClientByProjectTitle as getYjsClientByProjectTitle } from "../../lib/yjsService.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { store } from "../../stores/store.svelte";
 

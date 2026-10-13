@@ -9,6 +9,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
+import { isOnPrem } from "../deployment";
 import { createPersistence, TimeoutError, waitForSync } from "../yjsPersistence";
 import { projectRoomPath, tableRoomPath } from "./roomPath";
 import {
@@ -70,6 +71,9 @@ export type ProjectConnection = {
 };
 
 function getWsBase(): string {
+    if (isOnPrem && typeof window !== "undefined") {
+        return `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+    }
     let port = 7093;
     try {
         if (import.meta.env.VITE_YJS_PORT) port = Number(import.meta.env.VITE_YJS_PORT);
@@ -162,6 +166,7 @@ function waitForAuthUser(auth: Auth, timeoutMs = AUTH_HYDRATION_TIMEOUT_MS): Pro
 }
 
 export async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
+    if (isOnPrem) return "local-session";
     // Wait for auth and fetch an ID token, using Firebase's cache unless a refresh is requested
     const auth = userManager.auth;
     const isTestEnv = import.meta.env.MODE === "test";
@@ -511,7 +516,7 @@ export async function setupProviderForRoom(
     }
 
     const unbindPresence = bindPresence && awareness ? yjsService.bindProjectPresence(awareness) : undefined;
-    const unsubTokenRefresh = attachTokenRefreshHook && !isDemo
+    const unsubTokenRefresh = attachTokenRefreshHook && !isDemo && !isOnPrem
         ? attachTokenRefresh(provider as TokenRefreshableProvider)
         : undefined;
 

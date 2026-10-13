@@ -12,7 +12,7 @@
         projectName: string,
     ) {
         try {
-            const { createYjsClient } = await import("../services");
+            const { createClient: createYjsClient } = await import("../lib/yjsService.svelte");
             const client = await createYjsClient(selectedProjectId);
             yjsStore.yjsClient = client;
 

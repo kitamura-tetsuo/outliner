@@ -21,7 +21,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { projectPagePath } from "../../../lib/publicProject";
     import { projectGraphPath } from "../../../lib/managementPaths";
-    import { getYjsClientByProjectTitle } from "../../../services";
+    import { getClientByProjectTitle as getYjsClientByProjectTitle } from "../../../lib/yjsService.svelte";
     const logger = getLogger("+page");
 
     import { yjsStore } from "../../../stores/yjsStore.svelte";
@@ -714,5 +714,4 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         <!-- no-op: avoid misleading SSR/hydration fallback message -->
     {/if}
 </main>
-
 

@@ -1,12 +1,12 @@
 import type { Project as AppProject } from "../schema/app-schema";
 import type { Item } from "../schema/app-schema";
-import { getYjsClientByProjectTitle } from "../services";
 import { store } from "../stores/store.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { iterateItems } from "../utils/itemTraversal";
 import { allocatePageTitle, findPageByName as sharedFindPageByName } from "../utils/pageUtils";
 import type { YjsClient } from "../yjs/YjsClient";
 import { getLogger } from "./logger";
+import { getClientByProjectTitle as getYjsClientByProjectTitle } from "./yjsService.svelte";
 
 const logger = getLogger("projectPageLoader");
 

@@ -8,6 +8,7 @@ import { Project } from "../schema/yjs-schema";
 import { createProjectDescriptor, resolveProject } from "../services/projectDirectoryService";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
+import { isOnPrem } from "./deployment";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
 import { getLogger } from "./logger";
 const logger = getLogger("yjsService");
@@ -146,7 +147,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     // This is critical for the server to grant access (checkContainerAccess)
     // We MUST ensure this succeeds before attempting WebSocket connection
     let registrationSuccess = false;
-    if (!isTest) {
+    if (!isTest || isOnPrem) {
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             logger.info(
@@ -159,8 +160,8 @@ export async function createNewProject(projectName: string, existingProjectId?: 
                 if (saved) {
                     logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
                     registrationSuccess = true;
-                    // Wait for Firestore propagation (important for subsequent reads)
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Cloud directory propagation can lag; the local SQLite response is authoritative immediately.
+                    if (!isOnPrem) await new Promise(resolve => setTimeout(resolve, 500));
                     break;
                 } else {
                     logger.warn(
@@ -463,13 +464,20 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
 }
 
 export function cleanupClient() {
-    try {
-        yjsStore.yjsClient?.dispose();
-    } catch (_e) {
-        logger.error(_e);
+    for (const [key, [client]] of registry.entries()) {
+        try {
+            client?.dispose();
+        } catch (_e) {
+            logger.error(_e);
+        }
+        registry.deleteSerialized(key);
     }
     yjsStore.yjsClient = undefined;
 }
+
+userManager.addEventListener(result => {
+    if (!result) cleanupClient();
+});
 
 /**
  * Dispose the registered client for a project and drop it from the registry,

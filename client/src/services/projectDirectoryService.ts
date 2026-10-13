@@ -1,4 +1,5 @@
 import { userManager } from "../auth/UserManager";
+import { isOnPrem, verifyDeployment } from "../lib/deployment";
 import { resolveApiBaseUrl } from "../lib/yjsApiUrl";
 
 export interface ProjectDescriptor {
@@ -9,22 +10,30 @@ export interface ProjectDescriptor {
 type FetchOptions = Parameters<typeof fetch>[1];
 
 async function request(path: string, init?: FetchOptions): Promise<Response> {
-    const user = userManager.auth.currentUser;
-    if (!user) throw new Error("User not logged in");
-    const token = await user.getIdToken();
-    const base = resolveApiBaseUrl().replace(/\/$/, "");
-    return fetch(`${base}/api${path}`, {
+    const currentUser = userManager.getCurrentUser();
+    if (!currentUser) throw new Error("User not logged in");
+    if (isOnPrem) await verifyDeployment();
+    const token = isOnPrem ? undefined : await userManager.auth.currentUser?.getIdToken();
+    if (!isOnPrem && !token) throw new Error("User not logged in");
+    const base = isOnPrem ? "" : resolveApiBaseUrl().replace(/\/$/, "");
+    const response = await fetch(`${base}/api${path}`, {
         ...init,
+        credentials: isOnPrem ? "same-origin" : init?.credentials,
         headers: {
-            Authorization: `Bearer ${token}`,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             "Content-Type": "application/json",
             ...init?.headers,
         },
     });
+    if (isOnPrem && response.status === 401) userManager.invalidateLocalSession();
+    return response;
 }
 
 async function descriptor(response: Response): Promise<ProjectDescriptor> {
-    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? "Project request failed");
+    if (!response.ok) {
+        const detail = (await response.json().catch(() => ({}))).error;
+        throw new Error(detail ?? `Project request failed (${response.status})`);
+    }
     return response.json() as Promise<ProjectDescriptor>;
 }
 

@@ -6,7 +6,7 @@
     import AuthComponent from "../../components/AuthComponent.svelte";
     import PageList from "../../components/PageList.svelte";
     import { getLogger } from "../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../services";
+    import { getClientByProjectTitle as getYjsClientByProjectTitle } from "../../lib/yjsService.svelte";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import Breadcrumb from "../../components/Breadcrumb.svelte";
@@ -244,5 +244,4 @@
         </div>
     {/if}
 </main>
-
 

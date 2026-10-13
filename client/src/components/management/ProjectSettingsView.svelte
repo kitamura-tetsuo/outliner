@@ -11,6 +11,7 @@
     import { userManager } from "../../auth/UserManager";
     import { projectBasePath } from "../../lib/publicProject";
     import { projectSettingsPath } from "../../lib/managementPaths";
+    import { isOnPrem } from "../../lib/deployment";
 
     interface Props {
         projectName: string;
@@ -172,6 +173,7 @@
                 </button>
             </section>
 
+            {#if !isOnPrem}
             <!-- Sharing Section -->
             <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <h2 class="text-xl font-semibold mb-4">Sharing</h2>
@@ -232,6 +234,7 @@
                     </div>
                 {/if}
             </section>
+            {/if}
         </div>
     {/if}
 </div>

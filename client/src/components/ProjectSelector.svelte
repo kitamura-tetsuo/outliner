@@ -3,13 +3,14 @@
     import { resolvePath } from "../utils/pathUtils";
 
 
-    import { createYjsClient } from "../services";
+    import { createClient as createYjsClient } from "../lib/yjsService.svelte";
     import { getLogger } from "../lib/logger";
     import { projectStore } from "../stores/projectStore.svelte";
     import { yjsStore } from "../stores/yjsStore.svelte";
     import type { UserManager } from "../auth/UserManager";
     import type { IAuthResult } from "../auth/UserManager";
     import type { YjsClient } from "../yjs/YjsClient";
+    import { isOnPrem } from "../lib/deployment";
     const logger = getLogger();
 
     interface Props {
@@ -90,12 +91,12 @@
         }
 
         const currentUser = userManagerInstance.getCurrentUser();
-        const authUser = userManagerInstance.auth?.currentUser;
+        const authUser = isOnPrem ? currentUser : userManagerInstance.auth?.currentUser;
 
         logger.info({ data: currentUser }, "ProjectSelector - Current user:");
         logger.info({ data: authUser }, "ProjectSelector - Auth user:");
 
-        if (!currentUser && !authUser) {
+        if (!isOnPrem && !currentUser && !authUser) {
             logger.info({}, "ProjectSelector - No user found, attempting login...");
             try {
                 await userManagerInstance.loginWithEmailPassword(
