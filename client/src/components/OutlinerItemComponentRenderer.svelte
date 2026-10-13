@@ -61,7 +61,7 @@ const selectionSurfaceAttributes = $derived({ [VISUAL_NODE_SELECTION_SURFACE_ATT
     {#await import("./calendar/CalendarBlock.svelte") then { default: CalendarBlock }}
         <div class="component-wrapper" class:outline-row={outlineRow} {...rootAttributes}>
             {@render selectionSurface()}
-            <CalendarBlock item={item} />
+            <CalendarBlock item={item} {isReadOnly} />
         </div>
     {/await}
 {:else if componentType === LAYOUT_COMPONENT_TYPE}
