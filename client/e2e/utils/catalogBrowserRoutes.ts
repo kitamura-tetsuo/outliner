@@ -57,7 +57,7 @@ export async function verifyFreshCatalogRoutes(
         const tableClient = await freshCatalogRoute(browser, port, `${fixture.base}/-/tables/${fixture.tableId}`);
         contexts.push(tableClient.context);
         await expect(tableClient.page.getByTestId("table-entity-view")).toBeVisible();
-        await expect(tableClient.page.locator('td[data-col="state"] select')).toHaveCount(5);
+        await expect(tableClient.page.locator('td[data-col="state"] select')).toHaveCount(4);
         expect(
             await tableClient.page.evaluate(
                 id => (globalThis as any).__catalogBrowserTest.snapshot(id),

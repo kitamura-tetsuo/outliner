@@ -1,11 +1,11 @@
 import { expect, type Page, type TestInfo } from "@playwright/test";
-import { CatalogBrowserServer } from "./catalogBrowserServer";
+import { CatalogBrowserServer, type CatalogSnapshot } from "./catalogBrowserServer";
 import { SeedClient } from "./seedClient";
 import { SqlEditorHelper } from "./sqlEditorHelpers";
 import { TestHelpers } from "./testHelpers";
 
-export const INITIAL_SOURCE = "CREATE TYPE task_state AS ENUM ('Open', '', ' Done ', 'Closed')";
-export const INITIAL_ORDER = ["Open", "", " Done ", "Closed", null];
+export const INITIAL_SOURCE = "CREATE TYPE priority_level AS ENUM ('high','medium','low')";
+export const INITIAL_ORDER = ["high", "medium", "low", null];
 
 export async function configureCatalogPage(page: Page, port: number) {
     await page.addInitScript(value => {
@@ -53,7 +53,7 @@ export async function createTypedTable(page: Page) {
     await editor.waitForReady();
     await editor.setValue(
         page,
-        "CREATE TABLE catalog_tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, done BOOLEAN, state task_state)",
+        "CREATE TABLE catalog_tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, done BOOLEAN, state priority_level)",
     );
     await page.getByTestId("yjs-table-schema-apply").click();
     await expect(page.getByTestId("yjs-table-schema-apply")).toHaveText("Apply schema");
@@ -107,7 +107,6 @@ export async function authorCatalogFixture(page: Page, server: CatalogBrowserSer
         pageName,
     });
     const identity = { projectId, uid: seeded.uid };
-    expect((await server.request("apply", { ...identity, source: INITIAL_SOURCE })).status).toBe("applied");
     await configureCatalogPage(page, server.port);
     await TestHelpers.seedProjectAndNavigate(page, info, [], undefined, {
         projectName: title,
@@ -117,6 +116,27 @@ export async function authorCatalogFixture(page: Page, server: CatalogBrowserSer
     });
     await installCatalogControls(page);
     expect(await page.evaluate(() => (globalThis as any).__catalogBrowserTest.identity())).toEqual(identity);
+
+    // Author through the shipped management route and authenticated HTTP
+    // transport. Validation is deliberately observed before Apply so this
+    // regression proves that previewing cannot mutate the persisted catalog.
+    const base = `${new URL(page.url()).origin}/${encodeURIComponent(title)}`;
+    await navigateCatalog(page, `${base}/-/types`);
+    await expect(page.getByTestId("sql-catalog-panel")).toBeVisible();
+    await page.getByTestId("sql-catalog-new").click();
+    const catalogEditor = SqlEditorHelper.byTestId(page, "sql-catalog-editor");
+    await catalogEditor.waitForReady();
+    await catalogEditor.setValue(page, INITIAL_SOURCE);
+    await page.getByTestId("sql-catalog-validate").click();
+    await expect(page.getByTestId("sql-catalog-validation")).toContainText("Validation preview");
+    expect(
+        (await server.request<CatalogSnapshot>("snapshot", { projectId, tableId: "not-created" })).project!
+            .catalog.objects,
+    ).toEqual([]);
+    await page.getByTestId("sql-catalog-create").click();
+    await expect(page.getByTestId("sql-catalog-name")).toHaveText("priority_level");
+    await expect(page.getByTestId("sql-catalog-mutation-info")).toContainText("Created");
+    await navigateCatalog(page, `${base}/${encodeURIComponent(pageName)}?isTest=true`);
     const tableId = await createTypedTable(page);
     const views = await page.evaluate(id => (globalThis as any).__catalogBrowserTest.createViews(id), tableId);
     const table = await page.evaluate(id => (globalThis as any).__catalogBrowserTest.snapshot(id), tableId);
@@ -127,7 +147,6 @@ export async function authorCatalogFixture(page: Page, server: CatalogBrowserSer
             calendars: { [views.calendarId]: expect.any(Object) },
         },
     });
-    const base = `${new URL(page.url()).origin}/${encodeURIComponent(title)}`;
     return {
         ...identity,
         tableId,

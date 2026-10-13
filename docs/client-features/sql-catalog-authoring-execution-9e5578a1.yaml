@@ -1,0 +1,29 @@
+id: SQL-9e5578a1
+title: SQL catalog authoring-to-execution evidence
+title-ja: SQL カタログの作成から実行までの検証
+description: A production-boundary regression authors an ENUM in the Project SQL Types UI, verifies effect-free validation and authenticated application, then creates and edits a dependent Table and observes declaration-order results through ordinary Grid and fresh-client routes with exact Yjs string values.
+category: client
+status: implemented
+components:
+- client/src/components/management/TypeListView.svelte
+- client/src/components/yjstable/SqlCatalogPanel.svelte
+- client/src/components/yjstable/TableGrid.svelte
+services:
+- server/src/sql-catalog-routes.ts
+- server/src/sql-catalog-service.ts
+- server/src/mcp/relation-service.ts
+- server/src/scheduler/Scheduler.ts
+tests:
+- client/e2e/tables/sql-catalog-production-routes-5533cafe.spec.ts
+- client/e2e/core/dmo-enum-ordering-demo-5f2c8e41.spec.ts
+- client/src/components/yjstable/SqlCatalogPanel.draft-conflict.test.ts
+- client/src/components/yjstable/SqlCatalogPanel.apply-runtime.test.ts
+- client/src/components/yjstable/SqlCatalogPanel.receipt-history.test.ts
+- server/tests/mcp-enum-catalog.test.ts
+- server/tests/scheduler/catalog-schedule-production.test.ts
+acceptance:
+- Catalog source is entered, validated without effects, and applied through the real SQL Types UI and authenticated transport
+- A dependent Table stores exact strings and an ordinary Grid orders them by ENUM declaration order
+- Cold routes reconstruct the catalog without first opening its editor
+- MCP and Schedule production services execute typed data with the same ENUM semantics
+- Draft cancellation, remote conflicts, unconfirmed application, refused Undo, and both localized demos retain focused regression coverage

@@ -8,8 +8,10 @@ import { readSqlCatalog } from "../../shared/src/services/sqlCatalog.js";
 import { checkContainerAccess } from "../src/access-control.js";
 import { loadConfig } from "../src/config.js";
 import { initializeFirebase } from "../src/firebase-init.js";
+import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import { createDocumentLoader, createDocumentStore } from "../src/persistence.js";
 import { ensureProjectDescriptorForWrite } from "../src/project-directory.js";
+import { JobScheduler } from "../src/scheduler/Scheduler.js";
 import { Project } from "../src/schema/app-schema.js";
 import { startServer } from "../src/server.js";
 import { SqlCatalogMutationService } from "../src/sql-catalog-service.js";
@@ -120,6 +122,19 @@ async function dispatch(command: string, input: Record<string, any>) {
         });
     }
     if (command === "snapshot") return await snapshot(input.projectId, input.tableId, Boolean(input.persisted));
+    if (command === "mcpQuery") {
+        const relations = new OutlinerRelationService(server.hocuspocus, checkContainerAccess);
+        return await relations.querySql(input.uid, input.projectId, input.sql);
+    }
+    if (command === "runSchedule") {
+        const scheduler = new JobScheduler(server.hocuspocus);
+        scheduler.start(3_600_000, false);
+        try {
+            return await scheduler.runRuleNow(`projects/${input.projectId}`, input.ruleId);
+        } finally {
+            await scheduler.stop();
+        }
+    }
     if (command === "remoteValue") {
         if (!await checkContainerAccess(input.uid, input.projectId)) throw new Error("Forbidden remote fixture update");
         // Deliberately inconsistent synchronized input: runtime must preserve it.

@@ -6,6 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { userManager } from "../../auth/UserManager";
 import { getRoomSyncState } from "../../lib/yjs/roomSyncState";
 import { createCalendar } from "../../services/calendar/calendarService";
+import { createScheduleRule } from "../../services/schedule/scheduleRuleService";
 import { CatalogRuntime } from "../../services/yjstable/catalogRuntime";
 import {
     createGrid,
@@ -159,6 +160,18 @@ const controls = {
             viewType: "week",
         });
         return { gridId, calendarId };
+    },
+    createTypedSchedule(tableId) {
+        return createScheduleRule(project(), {
+            ruleId: "catalog-e2e-schedule",
+            name: "Catalog typed schedule",
+            targetTableId: tableId,
+            timezone: "UTC",
+            rrule: "FREQ=DAILY;COUNT=1",
+            dtstart: "2026-10-13T00:00:00",
+            enabled: false,
+            sql: "INSERT INTO catalog_tasks (id,title,done,state) VALUES ('scheduled','Scheduled',false,'medium') RETURNING *",
+        });
     },
     addSecondView(tableId) {
         if (!store.currentPage) throw new Error("Open the ordinary Project page first");
