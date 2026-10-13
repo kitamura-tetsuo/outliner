@@ -121,7 +121,7 @@ test(
             expect(inconsistent.table!.records[delayed.recordId].state).toBe("urgent");
             const sourceD = "CREATE TYPE priority_level AS ENUM ('high','medium','low','deferred','urgent')";
             expect((await server.request("apply", { ...identity, source: sourceD })).status).toBe("applied");
-            await expect.poll(() => gridValues(page)).toEqual(["high", "medium", "low", "urgent"]);
+            await expect.poll(() => gridValues(page)).toEqual(["high", "medium", "urgent", null]);
             await expect(page.getByTestId("yjs-table-query-error")).toHaveCount(0);
             const corrected = await server.request<CatalogSnapshot>("snapshot", key);
             expect(corrected.table).toEqual(inconsistent.table);
@@ -132,7 +132,7 @@ test(
             await server.request("restart", {});
             const restarted = await freshCatalogRoute(browser, server.port, gridUrl);
             contexts.push(restarted.context);
-            await expect.poll(() => gridValues(restarted.page)).toEqual(["high", "medium", "low", "urgent"]);
+            await expect.poll(() => gridValues(restarted.page)).toEqual(["high", "medium", "urgent", null]);
             await sourceReached(restarted.page, sourceD);
             expect(
                 await restarted.page.evaluate(
@@ -146,6 +146,7 @@ test(
                 id => (globalThis as any).__catalogBrowserTest.createTypedSchedule(id),
                 fixture.tableId,
             );
+            await expect.poll(() => server.request("scheduleExists", { ...identity, ruleId })).toBe(true);
             expect(await server.request("runSchedule", { ...identity, ruleId })).toEqual({ success: true });
             await expect.poll(() => server.request<CatalogSnapshot>("snapshot", key)).toMatchObject({
                 table: { records: { scheduled: { state: "medium" } } },

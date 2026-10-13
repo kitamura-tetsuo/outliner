@@ -115,16 +115,20 @@ async function dispatch(command: string, input: Record<string, any>) {
     }
     if (command === "apply") {
         const before = await service.read(input.uid, input.projectId);
-        const object = { id: "catalog-state", kind: "enum" as const, source: input.source };
+        const current = before.objects[0];
+        const object = { id: current?.id ?? "catalog-state", kind: "enum" as const, source: input.source };
         return await service.apply(input.uid, input.projectId, {
             expectedRevision: before.revision,
-            intent: { operation: before.objects.some(entry => entry.id === object.id) ? "replace" : "create", object },
+            intent: { operation: current ? "replace" : "create", object },
         });
     }
     if (command === "snapshot") return await snapshot(input.projectId, input.tableId, Boolean(input.persisted));
     if (command === "mcpQuery") {
         const relations = new OutlinerRelationService(server.hocuspocus, checkContainerAccess);
         return await relations.querySql(input.uid, input.projectId, input.sql);
+    }
+    if (command === "scheduleExists") {
+        return await room(`projects/${input.projectId}`, doc => doc.getMap("schedules").has(input.ruleId));
     }
     if (command === "runSchedule") {
         const scheduler = new JobScheduler(server.hocuspocus);
