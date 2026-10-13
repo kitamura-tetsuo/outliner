@@ -8,12 +8,13 @@
 
 import { expect, type Locator, type Page } from "@playwright/test";
 
-export type BlockCommand = "Grid" | "Calendar" | "Layout";
+export type BlockCommand = "Grid" | "Calendar" | "Kanban" | "Layout";
 
 /** The `componentType` each command creates, which is also its palette test id. */
 const COMPONENT_TYPE: Record<BlockCommand, string> = {
     Grid: "yjstable",
     Calendar: "calendar",
+    Kanban: "kanban",
     Layout: "layout",
 };
 
@@ -21,6 +22,7 @@ const COMPONENT_TYPE: Record<BlockCommand, string> = {
 const NODE_KIND: Record<BlockCommand, string> = {
     Grid: "grid",
     Calendar: "calendar",
+    Kanban: "kanban",
     Layout: "layout",
 };
 
