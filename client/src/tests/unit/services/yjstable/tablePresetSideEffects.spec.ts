@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { getGridRegistry } from "../../../../services/yjstable/gridDocs";
+import {
+    getGridHandles,
+    getGridRegistry,
+    setGridComponentField,
+    setGridQuery,
+} from "../../../../services/yjstable/gridDocs";
 import { createKanban, getKanbanRegistry, listKanbans } from "../../../../services/yjstable/kanbanDocs";
 import { createTable, getTableRegistry } from "../../../../services/yjstable/tableDocs";
 import {
+    BLANK_PRESET,
     createTableFromPreset,
     createTableOnlyFromPreset,
     TABLE_PRESETS,
@@ -41,6 +47,28 @@ function expectOnlyExistingKanban(
 }
 
 describe("preset creation side-effect boundaries", () => {
+    it.each(TABLE_PRESETS)("preserves a customized existing Grid during standalone $key creation", preset => {
+        const doc = new Y.Doc({ guid: `grid-preservation-${preset.key}` });
+        const existingGridId = createTableFromPreset(
+            doc,
+            BLANK_PRESET,
+            "Existing pair",
+            "existing_pair",
+        ).gridId;
+        const handles = getGridHandles(doc, existingGridId)!;
+        setGridQuery(handles, "SELECT id, title FROM existing_pair ORDER BY title DESC");
+        setGridComponentField(handles, "title", "label", "Preserved custom label");
+        setGridComponentField(handles, "done", "hidden", true);
+        const existingGrid = getGridRegistry(doc).get(existingGridId)!;
+        const definitionBefore = existingGrid.toJSON();
+
+        createTableOnlyFromPreset(doc, preset, `${preset.name} only`, `${preset.key}_only`);
+
+        expect(getGridRegistry(doc).size).toBe(1);
+        expect(getGridRegistry(doc).get(existingGridId)).toBe(existingGrid);
+        expect(existingGrid.toJSON()).toEqual(definitionBefore);
+    });
+
     it.each(TABLE_PRESETS)("creates standalone $key without Kanban or INSERT preference", preset => {
         const { doc, kanbanId, kanbansBefore } = projectWithKanban();
 

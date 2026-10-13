@@ -14,6 +14,7 @@ acceptance:
 - Failed schema or query evaluation leaves no Table, Grid, or attached subdocument
 - A standalone preset Table reconstructs with the same identity, SQL name, and schema through normal Yjs project and subdocument updates
 tests:
+- client/src/tests/unit/services/yjstable/tablePresetValidation.spec.ts
 - client/src/tests/unit/services/yjstable/tablePresetSideEffects.spec.ts
 - client/src/tests/unit/services/yjstable/tablePresetCreation.spec.ts
 - client/src/tests/unit/services/yjstable/tablePresets.spec.ts
