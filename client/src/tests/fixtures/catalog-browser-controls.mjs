@@ -153,7 +153,7 @@ const controls = {
         const calendarId = createCalendar(project(), {
             name: "Catalog calendar",
             query:
-                "SELECT id AS id, state::TEXT AS title, CURRENT_DATE + INTERVAL '12 hours' AS start_at, false AS all_day, state::TEXT::task_state AS typed_state FROM catalog_tasks WHERE state IS NOT NULL AND state <> ''::task_state",
+                "SELECT id AS id, state::TEXT AS title, CURRENT_DATE + INTERVAL '12 hours' AS start_at, false AS all_day, state::TEXT::priority_level AS typed_state FROM catalog_tasks WHERE state IS NOT NULL",
             roleTitle: "title",
             roleStart: "start_at",
             roleAllDay: "all_day",

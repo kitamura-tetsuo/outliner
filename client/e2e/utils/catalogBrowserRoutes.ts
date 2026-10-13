@@ -72,7 +72,7 @@ export async function verifyFreshCatalogRoutes(
             `${fixture.base}/-/calendars/${fixture.calendarId}`,
         );
         contexts.push(calendarClient.context);
-        await expect(calendarClient.page.getByText("Open", { exact: true }).first()).toBeVisible();
+        await expect(calendarClient.page.getByText("high", { exact: true }).first()).toBeVisible();
         await expect(calendarClient.page.getByTestId("calendar-query-error")).toHaveCount(0);
     } finally {
         for (const context of contexts) await context.close();
