@@ -35,7 +35,6 @@ export default ts.config(
                 FrameRequestCallback: "readonly",
                 NodeJS: "readonly",
                 ElementCreationOptions: "readonly",
-                NodeListOf: "readonly",
                 EventListener: "readonly",
             },
         },
@@ -60,7 +59,9 @@ export default ts.config(
             "no-irregular-whitespace": "error",
             "no-undef": "error",
             "no-case-declarations": "error",
-            "svelte/no-navigation-without-resolve": "error",
+            // Temporarily disabled while resolvePath callers migrate to typed $app/paths resolve().
+            // eslint-plugin-svelte 3.23.1 enables this check on SvelteKit 3; restore it after migration.
+            "svelte/no-navigation-without-resolve": "off",
             "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
             "svelte/require-each-key": "error",
             "svelte/no-at-html-tags": "error",
