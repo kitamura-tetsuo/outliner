@@ -50,7 +50,14 @@
             { label: "Graph", description: "The link graph between this project's pages.", href: resolvePath(projectGraphPath(projectName)) },
         ];
         if (isOnPrem) {
-            return items.filter(item => ["Objects", "Tables", "Grids", "Graph", "Settings"].includes(item.label));
+            return [
+                ...items.filter(item => ["Objects", "Tables", "Grids", "Graph"].includes(item.label)),
+                {
+                    label: "Settings",
+                    description: "Rename this project.",
+                    href: resolvePath(projectSettingsPath(projectName)),
+                },
+            ];
         }
         if (!isDemo) {
             items.push(
