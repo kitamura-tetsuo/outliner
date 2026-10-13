@@ -18,6 +18,8 @@ interface LocalContext {
     user: { uid: typeof LOCAL_USER_ID; };
 }
 
+const LOCAL_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
 function statusFor(error: unknown): number {
     if (!(error instanceof ProjectDirectoryError)) return 500;
     if (error.code === "not_found") return 404;
@@ -36,22 +38,28 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
     );
     // Probe the database before any listener can report readiness. The
     // provider deliberately preserves corrupt/unreadable files as failures.
-    await directory.listDescriptors(LOCAL_USER_ID);
-    const persistence = await createPersistence(config);
-    if (!persistence) throw new Error("On-premises document persistence is unavailable");
+    directory.assertWritable();
+    const persistence = await createPersistence(config).catch(error => {
+        directory.close();
+        throw error;
+    });
+    if (!persistence) {
+        directory.close();
+        throw new Error("On-premises document persistence is unavailable");
+    }
 
     const hocuspocus = new Hocuspocus({
         name: "outliner-onprem",
         extensions: [new Logger({}), persistence] as import("@hocuspocus/server").Extension[],
         debounce: 0,
         async onAuthenticate(data): Promise<LocalContext> {
-            const room = parseRoom(data.documentName);
-            if (!room || !await directory.checkAccess(LOCAL_USER_ID, room.project)) {
-                throw Object.assign(new Error("Access denied"), { code: 4003 });
-            }
             const sessionId = parseLocalSessionId(data.requestHeaders.get("cookie") ?? undefined);
             if (!auth.resolveSessionUser(sessionId)) {
                 throw Object.assign(new Error("Authentication required"), { code: 4001 });
+            }
+            const room = parseRoom(data.documentName);
+            if (!room || !await directory.checkAccess(LOCAL_USER_ID, room.project)) {
+                throw Object.assign(new Error("Access denied"), { code: 4003 });
             }
             return { sessionId: sessionId!, user: { uid: LOCAL_USER_ID } };
         },
@@ -65,12 +73,33 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
     // Hocuspocus dispatches extension configuration asynchronously even
     // though its constructor is synchronous.
     await new Promise<void>(resolve => setImmediate(resolve));
-    if (!persistence.db) throw new Error("On-premises document database failed to open");
+    if (!persistence.db) {
+        directory.close();
+        throw new Error("On-premises document database failed to open");
+    }
+    const assertStorageReady = () => {
+        directory.assertWritable();
+        if (!persistence.db?.open) throw new Error("Document storage is unavailable");
+        persistence.db.exec("BEGIN IMMEDIATE");
+        try {
+            persistence.db.prepare("SELECT name FROM documents LIMIT 1").get();
+        } finally {
+            if (persistence.db.inTransaction) persistence.db.exec("ROLLBACK");
+        }
+    };
+    assertStorageReady();
 
     const app = express();
     app.use(cors({ credentials: true, origin: true }));
     app.use(express.json());
-    app.get("/health", (_req, res) => res.json({ status: "ok", ready: true }));
+    app.get("/health", (_req, res) => {
+        try {
+            assertStorageReady();
+            res.json({ status: "ok", ready: true });
+        } catch {
+            res.status(503).json({ status: "not-ready", ready: false });
+        }
+    });
     app.get("/api/deployment", (_req, res) =>
         res.json({
             deploymentMode: "onprem",
@@ -103,8 +132,13 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
     );
     app.post(
         "/api/projects",
-        (req, res) =>
-            respond(res, () => directory.ensureDescriptor(LOCAL_USER_ID, req.body?.projectId, req.body?.title), 201),
+        (req, res) => {
+            if (typeof req.body?.projectId !== "string" || !LOCAL_ID.test(req.body.projectId)) {
+                res.status(400).json({ error: "Invalid projectId" });
+                return;
+            }
+            respond(res, () => directory.ensureDescriptor(LOCAL_USER_ID, req.body.projectId, req.body?.title), 201);
+        },
     );
     app.post(
         "/api/projects/:projectId/rename",
