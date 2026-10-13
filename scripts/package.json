@@ -18,13 +18,13 @@
     },
     "dependencies": {
         "firebase-admin": "^14.5.0",
-        "uuid": "^14.0.2",
+        "uuid": "^14.0.3",
         "ws": "^8.22.0",
         "y-websocket": "^3.1.0",
         "yjs": "^13.6.33"
     },
     "devDependencies": {
-        "@types/node": "^26.6.4",
+        "@types/node": "^26.6.5",
         "@types/uuid": "^11.0.0",
         "@types/ws": "^8.18.2",
         "ts-node": "^10.9.2",

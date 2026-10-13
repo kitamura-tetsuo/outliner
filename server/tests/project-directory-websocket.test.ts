@@ -34,6 +34,8 @@ describe("project directory production websocket authorization (real Firestore)"
     let dbDir: string;
     let port: number;
     let savedAllowTestAccess: string | undefined;
+    let savedLocalPassword: string | undefined;
+    let savedLocalDataDir: string | undefined;
     const providers: HocuspocusProvider[] = [];
 
     const OWNER_UID = "ws-owner";
@@ -108,7 +110,13 @@ describe("project directory production websocket authorization (real Firestore)"
         process.env.FIREBASE_PROJECT_ID = "outliner-d57b0";
         process.env.GCLOUD_PROJECT = "outliner-d57b0";
         savedAllowTestAccess = process.env.ALLOW_TEST_ACCESS;
+        savedLocalPassword = process.env.OUTLINER_LOCAL_PASSWORD;
+        savedLocalDataDir = process.env.OUTLINER_DATA_DIR;
         delete process.env.ALLOW_TEST_ACCESS;
+        // Inactive local settings must not alter the default cloud
+        // composition's real resource-side authorization outcomes.
+        process.env.OUTLINER_LOCAL_PASSWORD = "inactive-cloud-local-password";
+        process.env.OUTLINER_DATA_DIR = path.join(os.tmpdir(), "inactive-cloud-local-data");
         // The production onAuthenticate hook requires Firebase readiness.
         if (firebaseState !== "ready") await initializeFirebase();
         expect(firebaseState).to.equal("ready");
@@ -136,7 +144,14 @@ describe("project directory production websocket authorization (real Firestore)"
         ]);
 
         dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "ws-directory-test-"));
-        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info", DATABASE_PATH: dbDir });
+        const config = loadConfig({
+            PORT: "0",
+            LOG_LEVEL: "info",
+            DATABASE_PATH: dbDir,
+            OUTLINER_LOCAL_PASSWORD: process.env.OUTLINER_LOCAL_PASSWORD,
+            OUTLINER_DATA_DIR: process.env.OUTLINER_DATA_DIR,
+        });
+        expect(config.OUTLINER_DEPLOYMENT_MODE).to.equal("cloud");
         // Production-shaped wiring: a token verifier override for stable
         // test identities, the real Firestore-backed directory, and the
         // DEFAULT access function (no checkContainerAccess override, so the
@@ -190,6 +205,10 @@ describe("project directory production websocket authorization (real Firestore)"
         if (dbDir) await fs.remove(dbDir);
         if (savedAllowTestAccess === undefined) delete process.env.ALLOW_TEST_ACCESS;
         else process.env.ALLOW_TEST_ACCESS = savedAllowTestAccess;
+        if (savedLocalPassword === undefined) delete process.env.OUTLINER_LOCAL_PASSWORD;
+        else process.env.OUTLINER_LOCAL_PASSWORD = savedLocalPassword;
+        if (savedLocalDataDir === undefined) delete process.env.OUTLINER_DATA_DIR;
+        else process.env.OUTLINER_DATA_DIR = savedLocalDataDir;
         if (app) await deleteApp(app);
     });
 

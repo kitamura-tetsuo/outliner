@@ -261,6 +261,10 @@ export async function startServer(
         res.json(response);
     });
 
+    app.get("/api/deployment", (_req, res) => {
+        res.json({ deploymentMode: "cloud" });
+    });
+
     const extensions = [
         new Logger({}),
     ];
