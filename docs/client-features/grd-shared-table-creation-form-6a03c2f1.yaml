@@ -1,0 +1,13 @@
+id: FTR-6a03c2f1
+title: Shared Table creation form
+title-ja: 共有テーブル作成フォーム
+description: Grid creation uses a reusable preset, display-name, and SQL-name form that other visual-block creators can consume without coupling Table creation to a presentation. Grid retains its new-Table, new-Grid-over-existing-Table, and existing-Grid choices, validates live project registries at submission, and never treats a setup source as an INSERT preference.
+category: client
+status: implemented
+acceptance:
+- Tasks remains the default preset, blank display names use the preset name, and manually edited SQL names survive subsequent name and preset changes.
+- Invalid or occupied SQL names and sources removed before confirmation are refused without creating or silently substituting registry entries.
+- Reusing a Table creates only an independent Grid, while placing an existing Grid creates no Table or Grid definition and stores no INSERT preference.
+tests:
+- client/src/components/yjstable/TableCreationForm.test.ts
+- client/e2e/tables/grd-shared-table-creation-form-6a03c2f1.spec.ts

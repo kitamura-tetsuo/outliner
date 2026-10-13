@@ -43,16 +43,16 @@ import {
     getGridSourceTableId,
     listGrids,
 } from "../../services/yjstable/gridDocs";
-import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/tablePresets";
+import { createTableFromPreset } from "../../services/yjstable/tablePresets";
 import { resolvePath } from "../../utils/pathUtils";
 import { projectTablePath } from "../../lib/managementPaths";
-import { deriveSqlName, sqlNameError } from "../../services/yjstable/sqlNames";
 import { page as pageState } from "$app/state";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 import { isForeignInput } from "../../lib/KeyEventHandler";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { store } from "../../stores/store.svelte";
+import TableCreationForm, { type TableCreationInput } from "./TableCreationForm.svelte";
 
 interface ItemLike {
     ydoc: import("yjs").Doc;
@@ -76,13 +76,7 @@ let gridId = $state<string | undefined>();
 // Bumped by Yjs observers so the $derived lookups below re-evaluate.
 let registryVersion = $state(0);
 
-let presetKey = $state("tasks");
-let newTableName = $state("");
-// The SQL name is derived from the display name until the user edits it, so
-// the common case needs no extra typing while the identifier stays visible.
-let newSqlName = $state("");
-let sqlNameEdited = $state(false);
-let createError = $state<string | undefined>(undefined);
+let sourceError = $state<string | undefined>();
 
 // Three creation modes: brand-new Table+Grid, new Grid over an existing Table,
 // or bind to an existing Grid. The last one is the "many Grids per outline"
@@ -149,11 +143,6 @@ const tableSourceProjectId = $derived.by(() => {
 });
 
 const takenSqlNames = $derived(existingTables.map((t) => t.sqlName).filter(Boolean));
-const suggestedSqlName = $derived.by(() => {
-    const preset = TABLE_PRESETS.find((p) => p.key === presetKey) ?? TABLE_PRESETS[0];
-    return deriveSqlName(newTableName.trim() || preset.defaultSqlName, takenSqlNames);
-});
-const effectiveSqlName = $derived(sqlNameEdited ? newSqlName.trim() : suggestedSqlName);
 const projectId = $derived(yjsStore.currentProjectId ?? undefined);
 // The route name the user navigated with, the same one the sidebar links
 // with. Used to point at the source Table's own page — schema and data are
@@ -192,34 +181,50 @@ function selectExistingTable() {
     // Create a fresh Grid over the chosen Table so the block gets its own
     // presentation state — never share a Grid entry between different outline
     // hosts by accident.
-    const table = existingTables.find(t => t.tableId === selectedExistingTableId);
-    const newGridId = createGrid(item.ydoc, selectedExistingTableId, {
-        name: table?.name ?? "Grid",
-        query: `SELECT * FROM ${table?.sqlName ?? "table"}`,
+    const table = listTables(item.ydoc).find(candidate => candidate.tableId === selectedExistingTableId);
+    if (!table?.sqlName) {
+        sourceError = "The selected Table is no longer available. Choose an existing Table.";
+        return;
+    }
+    sourceError = undefined;
+    const newGridId = createGrid(item.ydoc, table.tableId, {
+        name: table.name || "Grid",
+        query: `SELECT * FROM ${table.sqlName}`,
     });
-    bindItemToGrid(item, newGridId, selectedExistingTableId);
+    bindItemToGrid(item, newGridId, table.tableId);
     gridId = newGridId;
 }
 
 function selectExistingGrid() {
     if (!selectedExistingGridId) return;
-    bindItemToGrid(item, selectedExistingGridId, getGridSourceTableId(item.ydoc, selectedExistingGridId));
+    const selectedGrid = listGrids(item.ydoc).find(candidate => candidate.gridId === selectedExistingGridId);
+    const selectedTable = selectedGrid
+        ? listTables(item.ydoc).find(candidate => candidate.tableId === selectedGrid.sourceTableId)
+        : undefined;
+    if (!selectedGrid || !selectedTable) {
+        sourceError = "The selected Grid or its source Table is no longer available. Choose an existing Grid.";
+        return;
+    }
+    sourceError = undefined;
+    bindItemToGrid(item, selectedGrid.gridId, selectedTable.tableId);
     gridId = selectedExistingGridId;
 }
 
-function createFromPreset() {
-    const preset = TABLE_PRESETS.find((p) => p.key === presetKey) ?? TABLE_PRESETS[0];
-    const name = newTableName.trim() || preset.name;
-    const sqlName = effectiveSqlName;
-    createError = sqlNameError(sqlName);
-    if (createError) return;
-    if (takenSqlNames.includes(sqlName)) {
-        createError = `SQL name "${sqlName}" is already used in this project`;
-        return;
+function createFromPreset(input: TableCreationInput): string | undefined {
+    // Re-read the registry at the mutation boundary: a collaborator may have
+    // claimed the draft's SQL name since the shared form last rendered.
+    if (listTables(item.ydoc).some(table => table.sqlName === input.sqlName)) {
+        return `SQL name "${input.sqlName}" is already used in this project`;
     }
-    const { tableId, gridId: newGridId } = createTableFromPreset(item.ydoc, preset, name, sqlName);
+    const { tableId, gridId: newGridId } = createTableFromPreset(
+        item.ydoc,
+        input.preset,
+        input.name,
+        input.sqlName,
+    );
     bindItemToGrid(item, newGridId, tableId);
     gridId = newGridId;
+    return undefined;
 }
 </script>
 
@@ -272,54 +277,7 @@ function createFromPreset() {
             </div>
 
             {#if creationMode === "new"}
-                <div class="create-form">
-                    <input
-                        type="text"
-                        placeholder="Table name"
-                        data-testid="yjs-table-name-input"
-                        value={newTableName}
-                        oninput={(e) => {
-                            newTableName = (e.target as HTMLInputElement).value;
-                        }}
-                    />
-                    <select
-                        aria-label="Preset"
-                        data-testid="yjs-table-preset-select"
-                        value={presetKey}
-                        onpointerdown={(e: Event) => e.stopPropagation()}
-                        onmousedown={(e: Event) => e.stopPropagation()}
-                        onmouseup={(e: Event) => e.stopPropagation()}
-                        onclick={(e: Event) => {
-                            e.stopPropagation();
-                            (e.target as HTMLElement).focus();
-                        }}
-                        onchange={(e) => {
-                            presetKey = (e.target as HTMLSelectElement).value;
-                        }}
-                    >
-                        {#each TABLE_PRESETS as preset (preset.key)}
-                            <option value={preset.key}>{preset.name}</option>
-                        {/each}
-                    </select>
-                    <input
-                        type="text"
-                        aria-label="SQL name"
-                        placeholder={suggestedSqlName}
-                        data-testid="yjs-table-sql-name-input"
-                        value={effectiveSqlName}
-                        oninput={(e) => {
-                            sqlNameEdited = true;
-                            newSqlName = (e.target as HTMLInputElement).value;
-                        }}
-                    />
-                    <button type="button" data-testid="yjs-table-create" onclick={createFromPreset}>
-                        Create
-                    </button>
-                </div>
-                <p class="hint">Queries reference this table as <code>{effectiveSqlName || "?"}</code>.</p>
-                {#if createError}
-                    <p class="create-error" data-testid="yjs-table-create-error">{createError}</p>
-                {/if}
+                <TableCreationForm {takenSqlNames} oncreate={createFromPreset} />
             {:else if creationMode === "existing-table"}
                 <div class="create-form">
                     <select
@@ -377,6 +335,9 @@ function createFromPreset() {
                 </div>
                 <p class="hint">Show an existing Grid at this outline location too.</p>
             {/if}
+            {#if sourceError}
+                <p class="create-error" data-testid="yjs-table-source-error">{sourceError}</p>
+            {/if}
         </div>
     {/if}
 </div>
@@ -406,13 +367,6 @@ function createFromPreset() {
     font-size: 0.75rem;
     color: #6b7280;
     margin: 0;
-}
-
-.hint code {
-    font-family: ui-monospace, monospace;
-    background: #f3f4f6;
-    border-radius: 3px;
-    padding: 0 4px;
 }
 
 .create-error {
@@ -456,7 +410,6 @@ function createFromPreset() {
     flex-wrap: wrap;
 }
 
-.create-form input,
 .create-form select {
     border: 1px solid #d1d5db;
     border-radius: 4px;
