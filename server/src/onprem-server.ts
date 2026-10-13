@@ -179,6 +179,7 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
         const store = createDocumentStore(persistence);
         await Promise.all([...hocuspocus.documents].map(([name, document]) => store(name, document)));
         hocuspocus.closeConnections();
+        for (const client of wss.clients) client.close(1001, "Server shutting down");
         await closed;
         persistence.db?.close();
         directory.close();
