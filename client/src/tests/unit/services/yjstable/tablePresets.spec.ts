@@ -5,6 +5,7 @@ import { TABLE_REGISTRY_KEY } from "../../../../services/yjstable/tableDocs";
 import {
     BLANK_PRESET,
     createTableFromPreset,
+    createPresetTable,
     HABITS_PRESET,
     TABLE_PRESETS,
     TASKS_PRESET,
@@ -47,6 +48,30 @@ describe("tablePresets", () => {
 
             const query = HABITS_PRESET.query("my_habits_table");
             expect(query).toContain("SELECT id, kind, name, interval_days, log_date FROM my_habits_table");
+        });
+    });
+
+
+    describe("createPresetTable", () => {
+        it("creates a schema-initialized Table without implicitly creating a Grid", () => {
+            const doc = new Y.Doc();
+            const tableId = createPresetTable(doc, TASKS_PRESET, "Roadmap", "roadmap");
+            const table = doc.getMap(TABLE_REGISTRY_KEY).get(tableId) as Y.Map<unknown>;
+            const subdoc = table.get("doc") as Y.Doc;
+
+            expect(table.get("name")).toBe("Roadmap");
+            expect(table.get("sqlName")).toBe("roadmap");
+            expect(subdoc.getText("schema").toString()).toBe(TASKS_PRESET.schemaSql("roadmap"));
+            expect(doc.getMap(GRID_REGISTRY_KEY).size).toBe(0);
+        });
+
+        it("does not publish a Table when preset schema initialization fails", () => {
+            const doc = new Y.Doc();
+            const failing = { ...BLANK_PRESET, schemaSql: () => { throw new Error("Invalid preset"); } };
+
+            expect(() => createPresetTable(doc, failing)).toThrow("Invalid preset");
+            expect(doc.getMap(TABLE_REGISTRY_KEY).size).toBe(0);
+            expect(doc.getMap(GRID_REGISTRY_KEY).size).toBe(0);
         });
     });
 
