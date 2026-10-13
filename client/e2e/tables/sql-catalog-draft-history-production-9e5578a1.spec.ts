@@ -45,28 +45,31 @@ test("real catalog drafts survive cancellation, failure, peer replacement and re
         expect(persisted.project!.catalog.snapshot.objects[0].source).toBe(ORIGINAL_SOURCE);
 
         // Add a label through the catalog UI, then use it through the ordinary
-        // Table UI. Returning to Types destroys the Table's local undo scope,
-        // leaving this confirmed catalog edit as the latest history entry.
+        // Table UI in a second browser. The Types session stays mounted and
+        // active, while the Table edit belongs to the other client's history.
         await page.getByTestId("sql-catalog-edit").click();
         await editor.waitForReady();
         await editor.setValue(page, REFERENCED_SOURCE);
         await page.getByTestId("sql-catalog-save").click();
         await expect(page.getByTestId("sql-catalog-mutation-info")).toHaveText("Saved.");
-        await navigateCatalog(page, `${fixture.base}/-/tables/${fixture.tableId}`);
-        const referencedRecord = page.locator('td[data-col="state"] select').first();
+        const tableWriter = await freshCatalogRoute(
+            browser,
+            server.port,
+            `${fixture.base}/-/tables/${fixture.tableId}`,
+        );
+        contexts.push(tableWriter.context);
+        const referencedRecord = tableWriter.page.locator('td[data-col="state"] select').first();
         const referencedRecordId = await referencedRecord.locator("xpath=ancestor::tr").getAttribute("data-record-id");
         expect(referencedRecordId).toBeTruthy();
         await referencedRecord.focus();
         await referencedRecord.selectOption("urgent");
         await expect.poll(() =>
-            page.evaluate(
+            tableWriter.page.evaluate(
                 ({ tableId, recordId }) =>
                     (globalThis as any).__catalogBrowserTest.snapshot(tableId).records[recordId!].state,
                 { tableId: fixture.tableId, recordId: referencedRecordId },
             )
         ).toBe("urgent");
-        await navigateCatalog(page, typesUrl);
-        await page.getByTestId("sql-catalog-item").click();
 
         // Undoing the label addition is refused because a real Table record
         // uses it. The refusal neither consumes history nor enables Redo.
