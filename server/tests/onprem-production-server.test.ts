@@ -7,6 +7,11 @@ import { loadConfig } from "../src/config.js";
 import { LOCAL_SESSION_COOKIE } from "../src/local-auth.js";
 import { startOnPremServer } from "../src/onprem-server.js";
 import { ProductionOnPrem } from "./onprem-production-fixture.js";
+// Keep the complete production lifecycle oracle reachable from this suite's
+// canonical entrypoint. Mocha's ESM cache prevents duplicate registration
+// when its file glob later encounters these focused suites directly.
+import "./onprem-production-persistence.test.js";
+import "./onprem-production-websocket.test.js";
 
 describe("on-premises production composition", () => {
     const previousPassword = process.env.OUTLINER_LOCAL_PASSWORD;
