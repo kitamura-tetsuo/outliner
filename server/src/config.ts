@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const ConfigSchema = z.object({
+    OUTLINER_DEPLOYMENT_MODE: z.enum(["cloud", "onprem"]).default("cloud"),
+    OUTLINER_DATA_DIR: z.string().optional(),
     PORT: z.coerce.number().default(7093),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
     ROOM_PREFIX_ENFORCE: z.coerce.boolean().default(false),
@@ -21,8 +23,21 @@ const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-    if (env.YJS_DATA_DIR && !env.DATABASE_PATH) {
-        env.DATABASE_PATH = env.YJS_DATA_DIR;
+    const values = { ...env };
+    if (values.YJS_DATA_DIR && !values.DATABASE_PATH) values.DATABASE_PATH = values.YJS_DATA_DIR;
+    const config = ConfigSchema.parse(values);
+    if (config.OUTLINER_DEPLOYMENT_MODE === "onprem") {
+        if (!config.OUTLINER_DATA_DIR?.trim()) {
+            throw new Error("OUTLINER_DATA_DIR must be a non-empty path in onprem mode");
+        }
+        if (env.DISABLE_PERSISTENCE === "true") {
+            throw new Error("On-premises mode requires persistence");
+        }
+        if (env.ALLOW_TEST_ACCESS === "true") {
+            throw new Error("On-premises mode refuses ALLOW_TEST_ACCESS");
+        }
+        config.OUTLINER_DATA_DIR = config.OUTLINER_DATA_DIR.trim();
+        config.DATABASE_PATH = config.OUTLINER_DATA_DIR;
     }
-    return ConfigSchema.parse(env);
+    return config;
 }
