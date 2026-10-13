@@ -2,7 +2,8 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FTR-6a03c2f1 */
-import { expect, type Page, test } from "../fixtures/grid-render-trace";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { TestHelpers } from "../utils/testHelpers";
 
 async function slashGrid(page: Page, itemIndex: number) {

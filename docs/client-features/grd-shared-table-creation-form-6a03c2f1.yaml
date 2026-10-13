@@ -12,3 +12,5 @@ tests:
 - client/src/components/yjstable/TableCreationForm.test.ts
 - client/e2e/tables/grd-shared-table-creation-form-6a03c2f1.spec.ts
 - client/e2e/tables/grd-shared-table-live-source-6a03c2f1.spec.ts
+- client/e2e/tables/grd-shared-table-selected-relation-6a03c2f1.spec.ts
+- client/e2e/tables/grd-shared-table-stale-deletion-6a03c2f1.spec.ts
