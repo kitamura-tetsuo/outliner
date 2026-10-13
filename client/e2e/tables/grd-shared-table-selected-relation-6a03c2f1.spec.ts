@@ -37,16 +37,22 @@ const snapshot = (page: Page) =>
     });
 
 async function createBlank(page: Page, itemIndex: number, name: string, sqlName: string) {
+    const before = await snapshot(page);
     const panel = await slashGrid(page, itemIndex);
     await panel.getByTestId("yjs-table-preset-select").selectOption("blank");
     await panel.getByTestId("yjs-table-name-input").fill(name);
     await panel.getByTestId("yjs-table-sql-name-input").fill(sqlName);
     await panel.getByTestId("yjs-table-create").click();
     await expect(page.getByTestId("yjs-table-grid")).toHaveCount(itemIndex + 1, { timeout: 30000 });
+    const after = await snapshot(page);
+    const added = after.grids.filter(grid => !before.grids.some(existing => existing.id === grid.id));
+    expect(added).toHaveLength(1);
+    return added[0].id;
 }
 
-async function addNamedRow(page: Page, viewIndex: number, value: string) {
-    const view = page.getByTestId("yjs-table-view").nth(viewIndex);
+async function addNamedRow(page: Page, gridId: string, value: string) {
+    const view = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+    await expect(view).toHaveCount(1);
     await view.getByTestId("yjs-table-add-row").click();
     const title = view.getByTestId("yjs-table-grid").locator('td[data-col="title"]').first();
     await title.locator("button.cell-value").click();
@@ -58,10 +64,10 @@ async function addNamedRow(page: Page, viewIndex: number, value: string) {
 test("slash-created Grid queries and renders the selected non-first Table", async ({ page }, testInfo) => {
     test.setTimeout(120000);
     await TestHelpers.seedProjectAndNavigate(page, testInfo, ["", "", ""]);
-    await createBlank(page, 0, "First", "first_table");
-    await addNamedRow(page, 0, "FIRST ROW");
-    await createBlank(page, 1, "Chosen", "chosen_table");
-    await addNamedRow(page, 1, "CHOSEN ROW");
+    const firstGridId = await createBlank(page, 0, "First", "first_table");
+    await addNamedRow(page, firstGridId, "FIRST ROW");
+    const chosenGridId = await createBlank(page, 1, "Chosen", "chosen_table");
+    await addNamedRow(page, chosenGridId, "CHOSEN ROW");
     const before = await snapshot(page);
     const chosenTable = before.tables.find(table => table.sqlName === "chosen_table")!;
 
@@ -78,7 +84,7 @@ test("slash-created Grid queries and renders the selected non-first Table", asyn
     expect(added[0].query).toBe("SELECT * FROM chosen_table");
     expect(after.tables).toEqual(before.tables);
     expect(after.grids.filter(grid => before.grids.some(existing => existing.id === grid.id))).toEqual(before.grids);
-    const rendered = page.getByTestId("yjs-table-view").nth(2);
+    const rendered = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${added[0].id}"]`);
     await expect(rendered).toContainText("CHOSEN ROW");
     await expect(rendered).not.toContainText("FIRST ROW");
 });
