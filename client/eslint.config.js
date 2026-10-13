@@ -35,6 +35,7 @@ export default ts.config(
                 FrameRequestCallback: "readonly",
                 NodeJS: "readonly",
                 ElementCreationOptions: "readonly",
+                NodeListOf: "readonly",
                 EventListener: "readonly",
             },
         },
