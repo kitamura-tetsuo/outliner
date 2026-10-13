@@ -1,0 +1,15 @@
+id: CAL-7be3f0c9
+title: Create Calendars over new or existing Tables
+title-ja: 新規・既存 Table から Calendar を作成
+description: Calendar creation offers new preset Tables, existing Tables and existing Calendars alongside its original independent Calendar creation.
+category: calendar
+status: implemented
+acceptance:
+- Calendar can still be created independently with its original New Calendar command
+- Calendar can initialize a Table from the common Grid preset form without generating a Grid
+- Calendar over an existing Table starts with a SELECT over the chosen relation, not a new single-Table identity constraint
+- Existing Calendar placement creates no new definition
+- Table-backed Calendar settings survive page reload
+tests:
+- client/e2e/new/cal-calendar-slash-table-creation-7be3f0c9.spec.ts
+- client/src/tests/unit/services/yjstable/tablePresets.spec.ts
