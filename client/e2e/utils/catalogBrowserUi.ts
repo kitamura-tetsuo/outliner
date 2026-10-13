@@ -146,7 +146,7 @@ export async function authorCatalogFixture(page: Page, server: CatalogBrowserSer
     ).toEqual([]);
     await page.getByTestId("sql-catalog-create").click();
     await expect(page.getByTestId("sql-catalog-name")).toHaveText("priority_level");
-    await expect(page.getByTestId("sql-catalog-mutation-info")).toContainText("Created");
+    await expect(page.getByTestId("sql-catalog-mutation-info")).toHaveText("Saved.");
     await navigateCatalog(page, `${base}/${encodeURIComponent(pageName)}?isTest=true`);
     const tableId = await createTypedTable(page);
     const views = await page.evaluate(id => (globalThis as any).__catalogBrowserTest.createViews(id), tableId);
