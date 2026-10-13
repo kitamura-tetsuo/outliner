@@ -108,6 +108,7 @@ const RESERVED_WORDS = new Set([
     "similar",
     "some",
     "symmetric",
+    "system_user",
     "table",
     "tablesample",
     "then",

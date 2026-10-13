@@ -25,6 +25,7 @@ describe("sqlNameError", () => {
     it("rejects reserved words and empty names", () => {
         expect(sqlNameError("order")).toMatch(/reserved/);
         expect(sqlNameError("user")).toMatch(/reserved/);
+        expect(sqlNameError("system_user")).toMatch(/reserved/);
         expect(sqlNameError("")).toMatch(/required/);
     });
 

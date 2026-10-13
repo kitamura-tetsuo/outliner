@@ -1,13 +1,15 @@
 // Presets: predefined CREATE TABLE + Grid definition templates.
 //
-// Every preset seeds a Table (schema+data) and one Grid over it (SELECT +
-// component settings). The Grid registry entry is created immediately so the
-// preset workflow directly produces the modern Table + Grid pair — no
-// separate step to attach a Grid, and no legacy Table-with-uiDef state.
+// A preset can seed a standalone Table, or the compatibility workflow can
+// compose that operation with one Grid over the new Table. Keeping the Table
+// writer independent lets other presentation creators reuse presets without
+// allocating an unused Grid.
 
+import { validateExplicitSelectAliases } from "$shared/services/explicitSelectAlias";
 import * as Y from "yjs";
 import { createGrid } from "./gridDocs";
-import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
+import { sqlNameError } from "./sqlNames";
+import { createTable, listTables } from "./tableDocs";
 
 export interface TablePreset {
     key: "blank" | "tasks" | "habits";
@@ -104,6 +106,33 @@ export interface PresetCreationResult {
     gridId: string;
 }
 
+function assertAvailableSqlName(projectDoc: Y.Doc, sqlName: string): void {
+    const invalid = sqlNameError(sqlName);
+    if (invalid) throw new Error(invalid);
+    if (listTables(projectDoc).some(table => table.sqlName === sqlName)) {
+        throw new Error(`SQL name "${sqlName}" is already used in this project`);
+    }
+}
+
+/**
+ * Create one fully initialized Table from a preset, without creating or
+ * changing any presentation object. The schema template is evaluated before
+ * publication, and createTable's initializer completes the subdoc before the
+ * registry entry becomes observable.
+ */
+export function createTableOnlyFromPreset(
+    projectDoc: Y.Doc,
+    preset: TablePreset,
+    name: string = preset.name,
+    sqlName: string = preset.defaultSqlName,
+): string {
+    assertAvailableSqlName(projectDoc, sqlName);
+    const schema = preset.schemaSql(sqlName);
+    return createTable(projectDoc, name, sqlName, handles => {
+        handles.schemaText.insert(0, schema);
+    });
+}
+
 /**
  * Create a Table AND a matching Grid from the preset. The Table owns
  * schema/data only; the Grid owns the SELECT and per-column settings.
@@ -114,16 +143,25 @@ export function createTableFromPreset(
     name: string = preset.name,
     sqlName: string = preset.defaultSqlName,
 ): PresetCreationResult {
-    const tableId = createTable(projectDoc, name, sqlName);
-    const handles = getTableHandles(projectDoc, tableId);
-    if (handles) setSchemaText(handles, preset.schemaSql(sqlName));
+    // Evaluate every user-supplied preset function before publishing either
+    // object. In particular, a malformed/throwing query cannot leave behind a
+    // successfully published Table with no matching Grid.
+    assertAvailableSqlName(projectDoc, sqlName);
+    const schema = preset.schemaSql(sqlName);
+    const query = preset.query(sqlName);
+    const components = Object.fromEntries(
+        Object.entries(preset.components).map(([column, cfg]) => [column, { type: cfg.type }]),
+    );
+    if (query.trim()) validateExplicitSelectAliases(query);
+
+    const tableId = createTable(projectDoc, name, sqlName, handles => {
+        handles.schemaText.insert(0, schema);
+    });
 
     const gridId = createGrid(projectDoc, tableId, {
         name,
-        query: preset.query(sqlName),
-        components: Object.fromEntries(
-            Object.entries(preset.components).map(([column, cfg]) => [column, { type: cfg.type }]),
-        ),
+        query,
+        components,
     });
 
     return { tableId, gridId };

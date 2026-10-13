@@ -1,0 +1,20 @@
+id: FTR-a5602c0d
+title: Standalone preset Table creation
+title-ja: プリセットによる単独 Table 作成
+description: A shipped Table preset can initialize one project-owned Table without creating a Grid or any other view. The existing composed preset workflow still creates one fully initialized Table and one Grid with the preset query and column components. Both paths validate the SQL name before publication, and failed preset evaluation leaves no partial Table or Grid.
+category: client
+status: implemented
+components:
+- client/src/services/yjstable/tablePresets.ts
+acceptance:
+- Every shipped preset can publish one Table whose schema is complete when its registry entry becomes observable
+- Standalone preset creation does not create or modify Grids, Kanbans, Calendars, placements, sources, records, or unrelated Tables
+- Empty, malformed, non-ASCII, overlong, reserved, and duplicate SQL names are refused before publication
+- The composed workflow creates exactly one Table and one Grid with the preset query and all preset components
+- Failed schema or query evaluation leaves no Table, Grid, or attached subdocument
+- A standalone preset Table reconstructs with the same identity, SQL name, and schema through normal Yjs project and subdocument updates
+tests:
+- client/src/tests/unit/services/yjstable/tablePresetValidation.spec.ts
+- client/src/tests/unit/services/yjstable/tablePresetSideEffects.spec.ts
+- client/src/tests/unit/services/yjstable/tablePresetCreation.spec.ts
+- client/src/tests/unit/services/yjstable/tablePresets.spec.ts
