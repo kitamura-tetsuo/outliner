@@ -5,6 +5,7 @@ process.env.GCLOUD_PROJECT ||= "outliner-d57b0";
 
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { expect } from "chai";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { type ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -24,13 +25,21 @@ describe("production entrypoint cloud-default isolation", () => {
     before(async function() {
         this.timeout(30000);
         await initializeFirebase();
-        const signup = await fetch(
-            `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=test`,
-            { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) },
+        const email = `cloud-entry-${Date.now()}@example.test`;
+        const password = "cloud-entry-password-123";
+        const user = await getAuth().createUser({ email, password });
+        uid = user.uid;
+        const signin = await fetch(
+            `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=test`,
+            {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ email, password, returnSecureToken: true }),
+            },
         );
-        const identity = await signup.json() as { idToken: string; localId: string; };
+        expect(signin.status).to.equal(200);
+        const identity = await signin.json() as { idToken: string; };
         token = identity.idToken;
-        uid = identity.localId;
         await getFirestore().collection("projectUsers").doc("cloud-entry-project").set({
             projectId: "cloud-entry-project",
             title: "Cloud Entry Project",
@@ -48,6 +57,7 @@ describe("production entrypoint cloud-default isolation", () => {
 
     after(async () => {
         await getFirestore().collection("projectUsers").doc("cloud-entry-project").delete();
+        await getAuth().deleteUser(uid);
     });
 
     for (const deploymentMode of [undefined, "cloud"] as const) {
