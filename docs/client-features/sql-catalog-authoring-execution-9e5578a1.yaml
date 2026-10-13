@@ -14,16 +14,16 @@ services:
 - server/src/mcp/relation-service.ts
 - server/src/scheduler/Scheduler.ts
 tests:
-- client/e2e/tables/sql-catalog-production-routes-5533cafe.spec.ts
 - client/e2e/core/dmo-enum-ordering-demo-5f2c8e41.spec.ts
-- client/src/components/yjstable/SqlCatalogPanel.draft-conflict.test.ts
+- client/e2e/tables/sql-catalog-production-routes-5533cafe.spec.ts
 - client/src/components/yjstable/SqlCatalogPanel.apply-runtime.test.ts
+- client/src/components/yjstable/SqlCatalogPanel.draft-conflict.test.ts
 - client/src/components/yjstable/SqlCatalogPanel.receipt-history.test.ts
 - server/tests/mcp-enum-catalog.test.ts
 - server/tests/scheduler/catalog-schedule-production.test.ts
 acceptance:
-- Catalog source is entered, validated without effects, and applied through the real SQL Types UI and authenticated transport
 - A dependent Table stores exact strings and an ordinary Grid orders them by ENUM declaration order
+- Catalog source is entered, validated without effects, and applied through the real SQL Types UI and authenticated transport
 - Cold routes reconstruct the catalog without first opening its editor
-- MCP and Schedule production services execute typed data with the same ENUM semantics
 - Draft cancellation, remote conflicts, unconfirmed application, refused Undo, and both localized demos retain focused regression coverage
+- MCP and Schedule production services execute typed data with the same ENUM semantics

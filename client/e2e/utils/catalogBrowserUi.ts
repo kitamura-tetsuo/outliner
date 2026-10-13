@@ -8,6 +8,17 @@ export const INITIAL_SOURCE = "CREATE TYPE priority_level AS ENUM ('high','mediu
 export const INITIAL_ORDER = ["high", "medium", "low", null];
 
 export async function configureCatalogPage(page: Page, port: number) {
+    // The catalog client resolves its HTTP origin independently from the Yjs
+    // websocket port. Forward only catalog requests to this spec's real
+    // isolated server; route.fetch preserves the browser request and returns
+    // the actual production router response (it does not stub a result).
+    await page.route("**/api/sql-catalog/**", async route => {
+        const requested = new URL(route.request().url());
+        const response = await route.fetch({
+            url: `http://127.0.0.1:${port}${requested.pathname}${requested.search}`,
+        });
+        await route.fulfill({ response });
+    });
     await page.addInitScript(value => {
         localStorage.setItem("VITE_YJS_PORT", String(value));
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
