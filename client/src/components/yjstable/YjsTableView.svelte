@@ -106,6 +106,7 @@ let adapterReady = $state(false);
 let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
+let observedEntry: Y.Map<unknown> | undefined;
 // Authority is revoked only by material changes from the authoritative Yjs
 // configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
@@ -242,8 +243,9 @@ onMount(() => {
     refreshGridMirror();
     // Claim a reference on the Grid's shared undo manager so a sibling view
     // bound to the same Grid keeps its manager when this one unmounts.
-    retainGridUndoManager(grid.entry);
-    grid.entry.observeDeep(gridMirrorObserver);
+    observedEntry = grid.entry;
+    retainGridUndoManager(observedEntry);
+    observedEntry.observeDeep(gridMirrorObserver);
     handles.schemaText.observe(schemaTextObserver);
     registerTableClipboardSource(handles.tableId, clipboardSource);
 
@@ -302,7 +304,7 @@ onMount(() => {
 });
 
 onDestroy(() => {
-    grid.entry.unobserveDeep(gridMirrorObserver);
+    observedEntry?.unobserveDeep(gridMirrorObserver);
     handles.schemaText.unobserve(schemaTextObserver);
     unsubscribeAdapter?.();
     unsubscribeRunner?.();
@@ -310,7 +312,7 @@ onDestroy(() => {
     unregisterTableClipboardSource(handles.tableId, clipboardSource);
     session.dispose();
     destroyTableUndoManager(handles.doc);
-    destroyGridUndoManager(grid.entry);
+    if (observedEntry) destroyGridUndoManager(observedEntry);
     if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
     unregisterGridRenderTraceSource?.();
 });
