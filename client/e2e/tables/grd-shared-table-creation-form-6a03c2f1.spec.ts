@@ -81,7 +81,7 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         expect(afterReuse.grids.every(grid => !("insertTargetTableId" in grid))).toBe(true);
     });
 
-    test("refuses invalid names and sources removed after selection without mutating registries", async ({ page }) => {
+    test("refuses invalid names and a Grid removed after selection without mutating registries", async ({ page }) => {
         const first = await openGridCreator(page, 0);
         await first.getByTestId("yjs-table-sql-name-input").fill("outline_items");
         await first.getByTestId("yjs-table-create").click();
@@ -94,17 +94,17 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         const created = await registrySnapshot(page);
 
         const second = await openGridCreator(page, 1);
-        await second.getByRole("button", { name: "New Grid over Existing Table" }).click();
-        await second.getByTestId("yjs-table-existing-select").selectOption(created.tables[0].id);
-        await page.evaluate((tableId) => {
+        await second.getByRole("button", { name: "Existing Grid", exact: true }).click();
+        await second.getByTestId("yjs-grid-existing-select").selectOption(created.grids[0].id);
+        await page.evaluate((gridId) => {
             const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
-            project.ydoc.getMap("yjsTables").delete(tableId);
-        }, created.tables[0].id);
-        await second.getByTestId("yjs-table-select-existing").click();
+            project.ydoc.getMap("yjsGrids").delete(gridId);
+        }, created.grids[0].id);
+        await second.getByTestId("yjs-grid-select-existing").click();
         await expect(second.getByTestId("yjs-table-source-error")).toContainText("no longer available");
 
         const refused = await registrySnapshot(page);
-        expect(refused.tables).toHaveLength(0);
-        expect(refused.grids).toHaveLength(1);
+        expect(refused.tables).toHaveLength(1);
+        expect(refused.grids).toHaveLength(0);
     });
 });

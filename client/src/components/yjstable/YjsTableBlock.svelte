@@ -276,9 +276,12 @@ function createFromPreset(input: TableCreationInput): string | undefined {
                 {/if}
             </div>
 
-            {#if creationMode === "new"}
+            <!-- Keep the shared form mounted while another mode is open so a
+                 mode switch cannot discard a user's in-progress draft. -->
+            <div hidden={creationMode !== "new"}>
                 <TableCreationForm {takenSqlNames} oncreate={createFromPreset} />
-            {:else if creationMode === "existing-table"}
+            </div>
+            {#if creationMode === "existing-table"}
                 <div class="create-form">
                     <select
                         aria-label="Existing Table"
@@ -306,7 +309,7 @@ function createFromPreset(input: TableCreationInput): string | undefined {
                     </button>
                 </div>
                 <p class="hint">A fresh Grid over the chosen Table. Multiple Grids can share a Table without cloning its data.</p>
-            {:else}
+            {:else if creationMode === "existing-grid"}
                 <div class="create-form">
                     <select
                         aria-label="Existing Grid"
