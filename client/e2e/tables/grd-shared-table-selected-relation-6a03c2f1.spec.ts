@@ -24,11 +24,16 @@ async function slashGrid(page: Page, itemIndex: number) {
 const snapshot = (page: Page) =>
     page.evaluate(() => {
         const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
-        const tables = [...project.ydoc.getMap("yjsTables").entries()].map(([id, entry]: any) => ({
-            id,
-            ...entry.toJSON(),
-            data: entry.get("doc").getMap("data").toJSON(),
-        }));
+        const tables = [...project.ydoc.getMap("yjsTables").entries()].map(([id, entry]: any) => {
+            const table = entry.toJSON();
+            return {
+                id,
+                name: table.name,
+                sqlName: table.sqlName,
+                schema: entry.get("doc").getText("schema").toString(),
+                data: entry.get("doc").getMap("data").toJSON(),
+            };
+        });
         const grids = [...project.ydoc.getMap("yjsGrids").entries()].map(([id, entry]: any) => ({
             id,
             ...entry.toJSON(),
