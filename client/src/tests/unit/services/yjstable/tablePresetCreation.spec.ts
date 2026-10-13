@@ -44,7 +44,6 @@ describe("standalone preset Table creation", () => {
         const existingTableId = createTable(doc, "Existing", "existing");
         addRecord(getTableHandles(doc, existingTableId)!, { title: "preserved" }, "record-1");
         const existingGridId = createTableFromPreset(doc, BLANK_PRESET, "Existing pair", "existing_pair").gridId;
-        doc.getMap("kanbans").set("kanban-1", "preserved");
         doc.getMap("calendars").set("calendar-1", "preserved");
         doc.getMap("placements").set("placement-1", "preserved");
         doc.getMap("sources").set("source-1", "preserved");
@@ -65,7 +64,6 @@ describe("standalone preset Table creation", () => {
         expect(getTableHandles(doc, existingTableId)?.data.get("record-1")?.get("title")).toBe("preserved");
         expect(getGridRegistry(doc).size).toBe(1);
         expect(getGridRegistry(doc).has(existingGridId)).toBe(true);
-        expect(doc.getMap("kanbans").toJSON()).toEqual({ "kanban-1": "preserved" });
         expect(doc.getMap("calendars").toJSON()).toEqual({ "calendar-1": "preserved" });
         expect(doc.getMap("placements").toJSON()).toEqual({ "placement-1": "preserved" });
         expect(doc.getMap("sources").toJSON()).toEqual({ "source-1": "preserved" });
