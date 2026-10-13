@@ -1,3 +1,4 @@
+import { KANBAN_COMPONENT_TYPE } from "$shared/services/outlineNodeKind";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Store");
 import { createMermaidDiagramAtTarget } from "../services/diagram/diagramPlacement";
@@ -21,6 +22,7 @@ export const DIAGRAM_TRANSCLUSION_COMMAND = "diagram-transclusion";
 export type CommandType =
     | typeof GRID_COMPONENT_TYPE
     | typeof CALENDAR_COMPONENT_TYPE
+    | typeof KANBAN_COMPONENT_TYPE
     | typeof LAYOUT_COMPONENT_TYPE
     | typeof DIAGRAM_COMPONENT_TYPE
     | typeof DIAGRAM_TRANSCLUSION_COMMAND
@@ -52,6 +54,7 @@ class CommandPaletteStore {
     readonly commands: ReadonlyArray<{ label: string; type: CommandType; keywords?: string[]; }> = [
         { label: "Grid", type: GRID_COMPONENT_TYPE, keywords: ["database", "table"] },
         { label: "Calendar", type: CALENDAR_COMPONENT_TYPE, keywords: ["schedule"] },
+        { label: "Kanban", type: KANBAN_COMPONENT_TYPE, keywords: ["board"] },
         { label: "Layout", type: LAYOUT_COMPONENT_TYPE },
         { label: "New Mermaid diagram", type: DIAGRAM_COMPONENT_TYPE, keywords: ["mermaid", "diagram"] },
         {
