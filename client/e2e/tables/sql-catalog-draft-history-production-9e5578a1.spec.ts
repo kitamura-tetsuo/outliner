@@ -12,9 +12,10 @@ registerCoverageHooks();
 
 const ORIGINAL_SOURCE = "CREATE TYPE priority_level AS ENUM ('high','medium','low')";
 const CANCELLED_SOURCE = "CREATE TYPE priority_level AS ENUM ('cancelled','high','medium','low')";
-const FAILED_SOURCE = "CREATE TYPE priority_level AS ENUM ('high','medium','low','offline')";
-const PEER_SOURCE = "CREATE TYPE priority_level AS ENUM ('low','medium','high','peer')";
-const LOCAL_DRAFT = "CREATE TYPE priority_level AS ENUM ('high','medium','low','local')";
+const REFERENCED_SOURCE = "CREATE TYPE priority_level AS ENUM ('high','medium','low','urgent')";
+const FAILED_SOURCE = "CREATE TYPE priority_level AS ENUM ('high','medium','low','urgent','offline')";
+const PEER_SOURCE = "CREATE TYPE priority_level AS ENUM ('low','medium','high','urgent','peer')";
+const LOCAL_DRAFT = "CREATE TYPE priority_level AS ENUM ('high','medium','low','urgent','local')";
 
 test("real catalog drafts survive cancellation, failure, peer replacement and refused Undo", async ({
     browser,
@@ -43,8 +44,32 @@ test("real catalog drafts survive cancellation, failure, peer replacement and re
         let persisted = await server.request<CatalogSnapshot>("snapshot", key);
         expect(persisted.project!.catalog.snapshot.objects[0].source).toBe(ORIGINAL_SOURCE);
 
-        // Undoing type creation is refused by the real dependent Table. The
-        // refusal neither consumes the history entry nor enables Redo.
+        // Add a label through the catalog UI, then use it through the ordinary
+        // Table UI. Returning to Types destroys the Table's local undo scope,
+        // leaving this confirmed catalog edit as the latest history entry.
+        await page.getByTestId("sql-catalog-edit").click();
+        await editor.waitForReady();
+        await editor.setValue(page, REFERENCED_SOURCE);
+        await page.getByTestId("sql-catalog-save").click();
+        await expect(page.getByTestId("sql-catalog-mutation-info")).toHaveText("Saved.");
+        await navigateCatalog(page, `${fixture.base}/-/tables/${fixture.tableId}`);
+        const referencedRecord = page.locator('td[data-col="state"] select').first();
+        const referencedRecordId = await referencedRecord.locator("xpath=ancestor::tr").getAttribute("data-record-id");
+        expect(referencedRecordId).toBeTruthy();
+        await referencedRecord.selectOption("urgent");
+        await expect.poll(() =>
+            page.evaluate(
+                ({ tableId, recordId }) =>
+                    (globalThis as any).__catalogBrowserTest.snapshot(tableId).records[recordId!].state,
+                { tableId: fixture.tableId, recordId: referencedRecordId },
+            )
+        ).toBe("urgent");
+        await navigateCatalog(page, typesUrl);
+        await page.getByTestId("sql-catalog-item").click();
+
+        // Undoing the label addition is refused because a real Table record
+        // uses it. The refusal neither consumes history nor enables Redo.
+        persisted = await server.request<CatalogSnapshot>("snapshot", key);
         const revisionBeforeUndo = persisted.project!.catalog.snapshot.revision;
         await expect(page.getByTestId("sql-catalog-undo")).toBeEnabled();
         await page.getByTestId("sql-catalog-undo").click();
@@ -53,7 +78,7 @@ test("real catalog drafts survive cancellation, failure, peer replacement and re
         await expect(page.getByTestId("sql-catalog-redo")).toBeDisabled();
         persisted = await server.request<CatalogSnapshot>("snapshot", key);
         expect(persisted.project!.catalog.snapshot.revision).toBe(revisionBeforeUndo);
-        expect(persisted.project!.catalog.snapshot.objects[0].source).toBe(ORIGINAL_SOURCE);
+        expect(persisted.project!.catalog.snapshot.objects[0].source).toBe(REFERENCED_SOURCE);
 
         // Interrupt exactly one real Apply response. This is a transport
         // failure, not a mocked successful compiler or service result.
