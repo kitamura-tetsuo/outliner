@@ -104,6 +104,8 @@ test("real catalog drafts survive cancellation, failure, peer replacement and re
         await page.getByTestId("sql-catalog-edit").click();
         await editor.waitForReady();
         await editor.setValue(page, LOCAL_DRAFT);
+        await expect(page.getByTestId("sql-catalog-runtime-status")).toContainText("Runtime ready");
+        const runtimeBeforePeer = await page.getByTestId("sql-catalog-runtime-status").textContent();
         const peer = await freshCatalogRoute(browser, server.port, typesUrl);
         contexts.push(peer.context);
         await peer.page.getByTestId("sql-catalog-item").click();
@@ -114,6 +116,11 @@ test("real catalog drafts survive cancellation, failure, peer replacement and re
         await peer.page.getByTestId("sql-catalog-save").click();
         await expect(peer.page.getByTestId("sql-catalog-mutation-info")).toHaveText("Saved.");
 
+        await expect.poll(() => page.getByTestId("sql-catalog-runtime-status").textContent())
+            .not.toBe(runtimeBeforePeer);
+        await expect(page.getByTestId("sql-catalog-runtime-status")).toContainText("Runtime ready");
+        expect(await editor.value()).toBe(LOCAL_DRAFT);
+        await page.getByTestId("sql-catalog-refresh").click();
         await expect(page.getByTestId("sql-catalog-conflict")).toContainText("Conflict");
         await expect(page.getByTestId("sql-catalog-conflict")).toContainText(revisionBeforeUndo.slice(0, 12));
         expect(await editor.value()).toBe(LOCAL_DRAFT);
