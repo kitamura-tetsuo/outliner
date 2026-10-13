@@ -43,6 +43,32 @@ describe("local password authentication", () => {
         expect(ok.status).to.equal(200);
     });
 
+    it("rejects lone-surrogate passwords that only collide under lossy UTF-8 encoding", async () => {
+        const configured = "secret-\uFFFD";
+        const auth = createLocalAuthFromEnv({ OUTLINER_LOCAL_PASSWORD: configured });
+        const app = express();
+        app.use(express.json());
+        app.use("/api", auth.router);
+
+        for (const attempt of ["secret-\uD800", "secret-\uDC00"]) {
+            expect(attempt).to.not.equal(configured);
+            const res = await request(app).post("/api/local-auth/login").send({ password: attempt });
+            expect(res.status).to.equal(401);
+            expect(issuedCookie(res)).to.equal(undefined);
+        }
+
+        const ok = await request(app).post("/api/local-auth/login").send({ password: configured });
+        expect(ok.status).to.equal(200);
+        const cookie = issuedCookie(ok);
+        expect(cookie).to.be.a("string");
+        const session = await request(app).get("/api/local-auth/session").set(
+            "Cookie",
+            `${LOCAL_SESSION_COOKIE}=${cookie}`,
+        );
+        expect(session.status).to.equal(200);
+        expect(session.body).to.deep.equal({ user: { id: "local-user", name: "Local User" } });
+    });
+
     it("logs in with the exact password and issues an HTTP-only session cookie", async () => {
         const { app } = buildApp(PASSWORD);
 

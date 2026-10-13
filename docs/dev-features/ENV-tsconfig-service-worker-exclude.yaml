@@ -1,9 +1,15 @@
 id: ENV-tsconfig-service-worker-exclude
-description: |
-  Documents the decision to intentionally ignore the SvelteKit warning `tsconfig_invalid`
+description: 'Documents the decision to intentionally ignore the SvelteKit warning `tsconfig_invalid`
+
   which complains about `src/service-worker` not being in the exclude array.
+
   Adding it to the exclude array breaks the `svelte-check` context for other files that depend on standard DOM globals.
+
   The warning `config_option_deprecated_alias` is also intentionally ignored to avoid a massive, high-risk refactor
+
   from `$lib` to `#lib`.
+
+  '
 severity: info
 resolution: Intentionally ignored to avoid widespread compilation failures and maintain architectural stability.
+title-ja: ''

@@ -18,8 +18,12 @@ function localUser(): LocalUser {
 }
 
 function passwordMatches(configured: string, supplied: string): boolean {
-    const a = createHash("sha256").update(configured, "utf8").digest();
-    const b = createHash("sha256").update(supplied, "utf8").digest();
+    // Compare the exact UTF-16 code-unit sequences: "utf8" encoding replaces
+    // lone surrogates with U+FFFD, which would make a nonmatching password
+    // hash identically to a configured password containing U+FFFD.
+    // "utf16le" maps each code unit to two bytes losslessly.
+    const a = createHash("sha256").update(Buffer.from(configured, "utf16le")).digest();
+    const b = createHash("sha256").update(Buffer.from(supplied, "utf16le")).digest();
     return timingSafeEqual(a, b);
 }
 
