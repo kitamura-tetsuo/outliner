@@ -7,7 +7,7 @@
 
 import * as Y from "yjs";
 import { createGrid } from "./gridDocs";
-import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
+import { createTable } from "./tableDocs";
 
 export interface TablePreset {
     key: "blank" | "tasks" | "habits";
@@ -108,22 +108,39 @@ export interface PresetCreationResult {
  * Create a Table AND a matching Grid from the preset. The Table owns
  * schema/data only; the Grid owns the SELECT and per-column settings.
  */
+/** Create only a preset-initialized Table, with no Grid or other presentation. */
+export function createPresetTable(
+    projectDoc: Y.Doc,
+    preset: TablePreset,
+    name: string = preset.name,
+    sqlName: string = preset.defaultSqlName,
+): string {
+    // Initialize the subdoc before publishing its Table registry entry.
+    // A presentation-specific creator can then attach a Grid, Calendar, or
+    // Kanban without allocating an unused Grid.
+    return createTable(projectDoc, name, sqlName, (handles) => {
+        handles.schemaText.insert(0, preset.schemaSql(sqlName));
+    });
+}
+
+/** Compatibility composer: preserve the existing Table + Grid behavior. */
 export function createTableFromPreset(
     projectDoc: Y.Doc,
     preset: TablePreset,
     name: string = preset.name,
     sqlName: string = preset.defaultSqlName,
 ): PresetCreationResult {
-    const tableId = createTable(projectDoc, name, sqlName);
-    const handles = getTableHandles(projectDoc, tableId);
-    if (handles) setSchemaText(handles, preset.schemaSql(sqlName));
-
-    const gridId = createGrid(projectDoc, tableId, {
-        name,
-        query: preset.query(sqlName),
-        components: Object.fromEntries(
-            Object.entries(preset.components).map(([column, cfg]) => [column, { type: cfg.type }]),
-        ),
+    let tableId = "";
+    let gridId = "";
+    projectDoc.transact(() => {
+        tableId = createPresetTable(projectDoc, preset, name, sqlName);
+        gridId = createGrid(projectDoc, tableId, {
+            name,
+            query: preset.query(sqlName),
+            components: Object.fromEntries(
+                Object.entries(preset.components).map(([column, cfg]) => [column, { type: cfg.type }]),
+            ),
+        });
     });
 
     return { tableId, gridId };
