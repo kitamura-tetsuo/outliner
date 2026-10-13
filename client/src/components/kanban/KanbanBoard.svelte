@@ -213,7 +213,7 @@ onDestroy(() => { operations?.cancel(); kanban.entry.unobserveDeep(observer); ru
                                 ondragstart={event => beginDrag(event, card, lane.key)} ondragend={endDrag}>↕</button>
                             {#if committed.titleField}
                                 <h3 class="card-field title-field">
-                                    {#if isEditing(card, committed.titleField)}
+                                    {#if isEditing(card, committed.titleField) && editingCard}
                                         <input aria-label={`Edit ${committed.titleField}`} bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
                                         <button type="button" onclick={() => void commitFieldEdit()}>Save</button>
                                     {:else}
@@ -223,7 +223,7 @@ onDestroy(() => { operations?.cancel(); kanban.entry.unobserveDeep(observer); ru
                             {:else}<h3>Untitled</h3>{/if}
                             {#each committed.detailFields as field (field)}
                                 <div class="detail"><strong>{field}</strong>:
-                                    {#if isEditing(card, field)}
+                                    {#if isEditing(card, field) && editingCard}
                                         <input bind:value={editingCard.value} onkeydown={event => { if (event.key === "Enter") void commitFieldEdit(); if (event.key === "Escape") { operations?.cancel(); editingCard = undefined; } }} onpointerdown={ownInput} onclick={ownInput} />
                                         <button type="button" onclick={() => void commitFieldEdit()}>Save</button>
                                     {:else}
