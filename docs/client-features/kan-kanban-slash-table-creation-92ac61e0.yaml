@@ -1,0 +1,15 @@
+id: KAN-92ac61e0
+title: Create and reuse Kanban boards from slash commands
+title-ja: スラッシュコマンドから Kanban の作成・再利用
+description: The Kanban slash command supports a new preset-initialized Table, a new Kanban over an existing Table, or another placement of an existing Kanban.
+category: tables
+status: implemented
+acceptance:
+- Slash Kanban creation uses the same preset, SQL name validation and Table creation UI as Grid without creating an unused Grid
+- New Kanbans over existing Tables have independent identities and begin with an explicit query that references their source
+- Selecting an existing Kanban places the same definition without copying source data, queries, or settings
+- Missing and read-only placements cannot publish new Kanbans or Tables
+- Board and placement identity survive ordinary page reload and synchronization
+tests:
+- client/e2e/new/kan-kanban-slash-table-creation-92ac61e0.spec.ts
+- client/src/tests/unit/services/yjstable/tablePresets.spec.ts
