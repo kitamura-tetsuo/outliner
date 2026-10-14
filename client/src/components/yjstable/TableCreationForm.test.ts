@@ -13,8 +13,9 @@ describe("TableCreationForm", () => {
         await fireEvent.submit(rendered.getByTestId("table-creation-form"));
 
         expect(oncreate).toHaveBeenCalledOnce();
-        expect(oncreate.mock.calls[0][0]).toMatchObject({ name: "Tasks", sqlName: "tasks" });
-        expect(oncreate.mock.calls[0][0].preset.key).toBe("tasks");
+        const callArgs1 = oncreate.mock.calls[0] as unknown as [unknown];
+        expect(callArgs1[0]).toMatchObject({ name: "Tasks", sqlName: "tasks" });
+        expect((callArgs1[0] as { preset: { key: string; }; }).preset.key).toBe("tasks");
     });
 
     it("keeps a manual SQL name through display-name and preset changes", async () => {
@@ -28,7 +29,8 @@ describe("TableCreationForm", () => {
 
         expect(sqlInput.value).toBe("manual_relation");
         await fireEvent.submit(rendered.getByTestId("table-creation-form"));
-        expect(oncreate.mock.calls[0][0]).toMatchObject({
+        const callArgs2 = oncreate.mock.calls[0] as unknown as [unknown];
+        expect(callArgs2[0]).toMatchObject({
             name: "Renamed",
             sqlName: "manual_relation",
             preset: { key: "habits" },

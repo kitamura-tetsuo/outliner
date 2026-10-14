@@ -38,20 +38,23 @@ const authorization = $derived({
     projectAccess: Boolean(projectId) && yjsStore.syncError !== "denied",
     surfaceWritable: !isReadOnly,
 });
-const tableRegistry = getTableRegistry(item.ydoc);
 const registryObserver = () => registryVersion++;
 let unobserveItem: (() => void) | undefined;
 let unobserveRegistry: (() => void) | undefined;
 
+$effect(() => {
+    const tableRegistry = getTableRegistry(item.ydoc);
+    tableRegistry.observeDeep(registryObserver);
+    return () => tableRegistry.unobserveDeep(registryObserver);
+});
+
 onMount(() => {
     calendarId = getItemCalendarId(item);
     unobserveRegistry = observeCalendars(project, registryObserver);
-    tableRegistry.observeDeep(registryObserver);
     unobserveItem = observeItemCalendarId(item, () => calendarId = getItemCalendarId(item));
 });
 onDestroy(() => {
     unobserveRegistry?.();
-    tableRegistry.unobserveDeep(registryObserver);
     unobserveItem?.();
 });
 function run(action: () => string): string | undefined {
