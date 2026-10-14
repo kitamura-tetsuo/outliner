@@ -85,6 +85,14 @@ interface Props {
 
 let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref, isReadOnly = false }: Props = $props();
 
+// This view is keyed by Grid-entry and Table-document identity. Preserve the
+// exact resources acquired by this mounted instance because Svelte may update
+// a disappearing parent's props before invoking this component's teardown.
+// svelte-ignore state_referenced_locally
+const mountedGrid = grid;
+// svelte-ignore state_referenced_locally
+const mountedHandles = handles;
+
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
@@ -106,7 +114,6 @@ let adapterReady = $state(false);
 let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
-let observedEntry: Y.Map<unknown> | undefined;
 // Authority is revoked only by material changes from the authoritative Yjs
 // configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
@@ -243,33 +250,32 @@ onMount(() => {
     refreshGridMirror();
     // Claim a reference on the Grid's shared undo manager so a sibling view
     // bound to the same Grid keeps its manager when this one unmounts.
-    observedEntry = grid.entry;
-    retainGridUndoManager(observedEntry);
-    observedEntry.observeDeep(gridMirrorObserver);
-    handles.schemaText.observe(schemaTextObserver);
-    registerTableClipboardSource(handles.tableId, clipboardSource);
+    retainGridUndoManager(mountedGrid.entry);
+    mountedGrid.entry.observeDeep(gridMirrorObserver);
+    mountedHandles.schemaText.observe(schemaTextObserver);
+    registerTableClipboardSource(mountedHandles.tableId, clipboardSource);
 
     cleanupWebMCP = registerWebMCPGridTools(
         () => ({
-            gridId: grid.gridId,
-            sourceTableId: handles.tableId,
+            gridId: mountedGrid.gridId,
+            sourceTableId: mountedHandles.tableId,
             query: gridQuery
         }),
         () => ({
-            gridId: grid.gridId,
-            sourceTableId: handles.tableId,
+            gridId: mountedGrid.gridId,
+            sourceTableId: mountedHandles.tableId,
             rows: result.rows,
             columns: result.columns,
             rowCount: result.rows.length
         }),
         getGridRenderTrace
     );
-    unregisterGridRenderTraceSource = registerGridRenderTraceSource(grid.gridId, getGridRenderTrace);
+    unregisterGridRenderTraceSource = registerGridRenderTraceSource(mountedGrid.gridId, getGridRenderTrace);
 
     void (async () => {
-        const acquired = await session.acquire(handles.tableId);
+        const acquired = await session.acquire(mountedHandles.tableId);
         if (!acquired) {
-            logger.warn({ tableId: handles.tableId }, "[YjsTableView] table is not registered in this project");
+            logger.warn({ tableId: mountedHandles.tableId }, "[YjsTableView] table is not registered in this project");
             return;
         }
         isInitialSyncDone = acquired.remoteSynced;
@@ -283,7 +289,7 @@ onMount(() => {
                 recordErrors = errors;
             },
         });
-        runner = new GridQueryRunner({ grid, sourceAdapter: acquired.adapter });
+        runner = new GridQueryRunner({ grid: mountedGrid, sourceAdapter: acquired.adapter });
         unsubscribeRunner = runner.subscribe({
             onResult: (r, execution) => {
                 result = r;
@@ -304,15 +310,15 @@ onMount(() => {
 });
 
 onDestroy(() => {
-    observedEntry?.unobserveDeep(gridMirrorObserver);
-    handles.schemaText.unobserve(schemaTextObserver);
+    mountedGrid.entry.unobserveDeep(gridMirrorObserver);
+    mountedHandles.schemaText.unobserve(schemaTextObserver);
     unsubscribeAdapter?.();
     unsubscribeRunner?.();
     runner?.dispose();
-    unregisterTableClipboardSource(handles.tableId, clipboardSource);
+    unregisterTableClipboardSource(mountedHandles.tableId, clipboardSource);
     session.dispose();
-    destroyTableUndoManager(handles.doc);
-    if (observedEntry) destroyGridUndoManager(observedEntry);
+    destroyTableUndoManager(mountedHandles.doc);
+    destroyGridUndoManager(mountedGrid.entry);
     if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
     unregisterGridRenderTraceSource?.();
 });
