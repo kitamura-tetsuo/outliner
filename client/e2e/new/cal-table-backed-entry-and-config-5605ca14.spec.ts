@@ -38,9 +38,9 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         await dueRole.selectOption("deadline");
 
         expect(await block.getByText(/insert target/i).count()).toBe(0);
-        const treeSizeBeforeEntry = await page.evaluate(() => {
+        const treeKeysBeforeEntry = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
-            return (window as any).generalStore.project.tree.computedMap.size;
+            return [...(window as any).generalStore.project.tree.computedMap.keys()];
         });
         await block.getByTestId("calendar-new-entry").click();
         const dialog = block.getByTestId("calendar-create-dialog");
@@ -56,21 +56,15 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         await destination.selectOption(destinationKey!);
         await submit.click();
         await expect(dialog).toHaveCount(0, { timeout: 10000 });
-        const createdItemId = await page.locator(".outliner-item[data-item-id]")
-            .filter({ has: page.locator(".item-text", { hasText: "Outline-only entry" }) })
-            .getAttribute("data-item-id");
-        expect(createdItemId).toBeTruthy();
-        const createdParent = await page.evaluate(itemId => {
+        const createdItems = await page.evaluate(previousKeys => {
             // eslint-disable-next-line no-restricted-globals
             const project = (window as any).generalStore.project;
-            return project.tree.getNodeParentFromKey(itemId);
-        }, createdItemId!);
-        expect(createdParent).toBe(destinationKey);
-        const treeSizeAfterEntry = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            return (window as any).generalStore.project.tree.computedMap.size;
-        });
-        expect(treeSizeAfterEntry).toBe(treeSizeBeforeEntry + 1);
+            const previous = new Set(previousKeys);
+            return [...project.tree.computedMap.keys()]
+                .filter(key => !previous.has(key))
+                .map(key => ({ key, parentKey: project.tree.getNodeParentFromKey(key) }));
+        }, treeKeysBeforeEntry);
+        expect(createdItems).toEqual([{ key: expect.any(String), parentKey: destinationKey }]);
 
         let state = await calendarProjectState(page);
         expect(state.tableRecords).toEqual(recordsBefore);

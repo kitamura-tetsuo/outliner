@@ -5,13 +5,20 @@ registerCoverageHooks();
  *  Title   : Table-backed Calendar creation
  *  Source  : docs/client-features/cal-table-backed-calendar-creation-5605ca14.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import {
     calendarProjectState,
     createCalendarBlockForLabel,
     createPresetCalendar,
 } from "../utils/calendarTableCreationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
+
+async function openCalendarSettings(block: Locator): Promise<void> {
+    const toggle = block.getByTestId("calendar-toggle-settings");
+    await toggle.focus();
+    await toggle.press("Enter");
+    await expect(block.getByTestId("calendar-settings-panel")).toBeVisible();
+}
 
 test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
     test("completes all four creation modes without source ownership or an extra Grid", async ({ page }, testInfo) => {
@@ -70,14 +77,14 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         // Configure the shared definition through the newly bound placement.
         // The original placement can remount when the second binding arrives,
         // so using the new placement also exercises the intended propagation.
-        await shared.getByTestId("calendar-toggle-settings").click();
+        await openCalendarSettings(shared);
         await shared.getByTestId("calendar-query-input").fill(
             "SELECT id, text AS shared_title FROM outline_items",
         );
         await shared.getByTestId("calendar-query-input").blur();
         await shared.getByTestId("calendar-role-roleTitle").selectOption("shared_title");
 
-        await independent.getByTestId("calendar-toggle-settings").click();
+        await openCalendarSettings(independent);
         await expect(independent.getByTestId("calendar-query-input")).toHaveValue(
             "SELECT id, text AS shared_title FROM outline_items",
             { timeout: 15000 },
@@ -89,7 +96,7 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         await peer.goto(page.url());
         const peerShared = peer.locator(`[data-item-id="${sharedPlacementId}"]`).getByTestId("calendar-block");
         await expect(peerShared.getByTestId("calendar-view")).toBeVisible({ timeout: 30000 });
-        await peerShared.getByTestId("calendar-toggle-settings").click();
+        await openCalendarSettings(peerShared);
         await expect(peerShared.getByTestId("calendar-query-input")).toHaveValue(
             "SELECT id, text AS shared_title FROM outline_items",
             { timeout: 30000 },
@@ -97,7 +104,7 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         await expect(peerShared.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
         await peer.close();
 
-        await overTable.getByTestId("calendar-toggle-settings").click();
+        await openCalendarSettings(overTable);
         await overTable.getByTestId("calendar-query-input").fill(
             "SELECT id, title AS second_title FROM release_tasks",
         );
