@@ -80,4 +80,26 @@ test.describe("FTR-5605ca14: Calendar setup refuses stale authority", () => {
         expect(after.tableCount).toBe(before.tableCount);
         expect(after.calendars).toEqual(before.calendars);
     });
+
+    test("refuses confirmation after terminal room admission denial", async ({ page }) => {
+        const row = await createCalendarBlockForLabel(page, "Denied");
+        const block = row.getByTestId("calendar-block");
+        await block.getByRole("button", { name: "New Table", exact: true }).click();
+        await block.getByTestId("yjs-table-sql-name-input").fill("access_denied_table");
+        const before = await calendarProjectState(page);
+        const retainedProjectId = await page.evaluate(() => {
+            // This is the production store state emitted by a terminal room
+            // denial: the connected client remains, while syncError becomes denied.
+            const store = (globalThis as any).__YJS_STORE__;
+            store.syncError = "denied";
+            return store.currentProjectId;
+        });
+        expect(retainedProjectId).toBeTruthy();
+        await block.getByTestId("yjs-table-create").click();
+        await expect(block.getByTestId("yjs-table-create-error")).toContainText("access is unavailable");
+        const after = await calendarProjectState(page);
+        expect(after.tableCount).toBe(before.tableCount);
+        expect(after.gridCount).toBe(before.gridCount);
+        expect(after.calendars).toEqual(before.calendars);
+    });
 });

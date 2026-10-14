@@ -45,10 +45,10 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         expect(state.tableCount).toBe(1);
         expect(state.gridCount).toBe(0);
         expect(state.calendars).toHaveLength(3);
-        expect(state.calendars).not.toEqual(expect.arrayContaining([
-            expect.objectContaining({ sourceTableId: expect.anything() }),
-            expect.objectContaining({ insertTargetTableId: expect.anything() }),
-        ]));
+        for (const calendar of state.calendars) {
+            expect(calendar.sourceTableId).toBeUndefined();
+            expect(calendar.insertTargetTableId).toBeUndefined();
+        }
         expect(state.calendars).toEqual(expect.arrayContaining([
             expect.objectContaining({
                 name: "Release Tasks",
@@ -66,6 +66,48 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
             })
         ));
         expect(idsBeforeReload[0]).toBe(idsBeforeReload[1]);
+
+        await independent.getByTestId("calendar-toggle-settings").click();
+        await shared.getByTestId("calendar-toggle-settings").click();
+        await independent.getByTestId("calendar-query-input").fill(
+            "SELECT id, text AS shared_title FROM outline_items",
+        );
+        await independent.getByTestId("calendar-query-input").blur();
+        await expect(shared.getByTestId("calendar-query-input")).toHaveValue(
+            "SELECT id, text AS shared_title FROM outline_items",
+            { timeout: 15000 },
+        );
+        await independent.getByTestId("calendar-role-roleTitle").selectOption("shared_title");
+        await expect(shared.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
+
+        const sharedPlacementId = await sharedRow.getAttribute("data-item-id");
+        const peer = await page.context().newPage();
+        await peer.goto(page.url());
+        const peerShared = peer.locator(`[data-item-id="${sharedPlacementId}"]`).getByTestId("calendar-block");
+        await expect(peerShared.getByTestId("calendar-view")).toBeVisible({ timeout: 30000 });
+        await peerShared.getByTestId("calendar-toggle-settings").click();
+        await expect(peerShared.getByTestId("calendar-query-input")).toHaveValue(
+            "SELECT id, text AS shared_title FROM outline_items",
+            { timeout: 30000 },
+        );
+        await expect(peerShared.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
+        await peer.close();
+
+        await overTable.getByTestId("calendar-toggle-settings").click();
+        await overTable.getByTestId("calendar-query-input").fill(
+            "SELECT id, title AS second_title FROM release_tasks",
+        );
+        await overTable.getByTestId("calendar-query-input").blur();
+        await overTable.getByTestId("calendar-role-roleTitle").selectOption("second_title");
+        state = await calendarProjectState(page);
+        expect(state.calendars.find(calendar => calendar.name === "Release Tasks")).toMatchObject({
+            query: expect.stringContaining("due_date"),
+            roleTitle: "title",
+        });
+        expect(state.calendars.find(calendar => calendar.name === "Second View")).toMatchObject({
+            query: "SELECT id, title AS second_title FROM release_tasks",
+            roleTitle: "second_title",
+        });
         await page.reload();
         await expect(page.getByTestId("calendar-view")).toHaveCount(4, { timeout: 20000 });
         const idsAfterReload = await Promise.all([independentRow, sharedRow].map(row =>
@@ -77,6 +119,16 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         expect(idsAfterReload).toEqual(idsBeforeReload);
         state = await calendarProjectState(page);
         expect(state.calendars).toHaveLength(3);
+        for (const calendar of state.calendars) {
+            expect(calendar.sourceTableId).toBeUndefined();
+            expect(calendar.insertTargetTableId).toBeUndefined();
+        }
+        expect(state.calendars.find(calendar => calendar.id === idsAfterReload[0])).toMatchObject({
+            query: "SELECT id, text AS shared_title FROM outline_items",
+            roleTitle: "shared_title",
+        });
+        expect(state.calendars.find(calendar => calendar.name === "Release Tasks")?.roleTitle).toBe("title");
+        expect(state.calendars.find(calendar => calendar.name === "Second View")?.roleTitle).toBe("second_title");
         expect(state.tableRecords).toEqual([expect.objectContaining({ sqlName: "release_tasks", recordCount: 0 })]);
     });
 });

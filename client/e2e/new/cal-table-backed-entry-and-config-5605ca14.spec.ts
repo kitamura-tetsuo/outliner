@@ -14,6 +14,11 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Calendar host", "Entry destination"]);
+        await page.evaluate(() => {
+            // Create a second real Page through the supported Project API so
+            // the destination picker has two distinguishable parent choices.
+            (globalThis as any).generalStore.project.addPage("Explicit destination", "tester");
+        });
     });
 
     test("reconfigures query roles and New entry writes only to the chosen outline parent", async ({ page }) => {
@@ -42,13 +47,25 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         await dialog.getByTestId("calendar-create-title-input").fill("Outline-only entry");
         const destination = dialog.getByTestId("calendar-create-destination-select");
         await expect.poll(() => destination.locator("option").count(), { timeout: 15000 }).toBeGreaterThan(1);
-        const destinationKey = await destination.locator("option").nth(1).getAttribute("value");
+        const destinationKey = await destination.locator("option", { hasText: "Explicit destination" })
+            .getAttribute("value");
         expect(destinationKey).toBeTruthy();
         await destination.selectOption(destinationKey!);
         await submit.click();
         await expect(dialog).toHaveCount(0, { timeout: 10000 });
         await expect(page.locator(".outliner-item", { hasText: "Outline-only entry" })).toBeVisible({ timeout: 15000 });
         await expect(page.locator(".outliner-item")).toHaveCount(rowsBeforeEntry + 1);
+        const createdParent = await page.evaluate(({ title, parentKey }) => {
+            // eslint-disable-next-line no-restricted-globals
+            const project = (window as any).generalStore.project;
+            for (const [key, value] of project.tree.computedMap.entries()) {
+                if (String(value.get("text") ?? "") !== title) continue;
+                return { key, parentKey: project.tree.getNodeParentFromKey(key) };
+            }
+            return { key: undefined, parentKey: undefined };
+        }, { title: "Outline-only entry", parentKey: destinationKey! });
+        expect(createdParent.key).toBeTruthy();
+        expect(createdParent.parentKey).toBe(destinationKey);
 
         let state = await calendarProjectState(page);
         expect(state.tableRecords).toEqual(recordsBefore);

@@ -31,7 +31,13 @@ const existingCalendars = $derived.by(() => { void registryVersion; return listC
 const existingTables = $derived.by(() => { void registryVersion; return listTables(item.ydoc); });
 const takenSqlNames = $derived(existingTables.map(table => table.sqlName));
 const projectId = $derived(yjsStore.currentProjectId ?? undefined);
-const authorization = $derived({ projectAccess: Boolean(projectId), surfaceWritable: !isReadOnly });
+// A retained client/container id is not proof of current admission: terminal
+// room denial deliberately keeps the mounted document available for
+// inspection. Recheck that live admission signal at every confirmation.
+const authorization = $derived({
+    projectAccess: Boolean(projectId) && yjsStore.syncError !== "denied",
+    surfaceWritable: !isReadOnly,
+});
 const tableRegistry = getTableRegistry(item.ydoc);
 const registryObserver = () => registryVersion++;
 let unobserveItem: (() => void) | undefined;
