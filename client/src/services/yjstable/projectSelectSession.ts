@@ -8,12 +8,12 @@
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { type CatalogRuntimeState } from "./catalogRuntime";
-import { ITEMS_RELATION_NAME } from "./itemsRelation";
 import { TableSqlError, toTableSqlError } from "./pgliteService";
 import type { RelationEvidence, RelationProvider } from "./relationProvider";
 import { projectSchemaName } from "./sqlNames";
 import { getTableRegistry } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
+import { rewriteTableQuerySql } from "./tableSqlRewrite";
 import { executeGridQuery, REQUERY_DEBOUNCE_MS } from "./tableSyncAdapter";
 
 const logger = getLogger("projectSelectSession");
@@ -276,18 +276,6 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
 
 /** Relation positions, including UNION branches and nested EXISTS queries. */
 function referencedRelations(query: string): string[] {
-    const names: string[] = [];
-    const seen = new Set<string>();
-    const expression = /\b(?:from|join)\s+(?:only\s+)?(?:"((?:[^"]|"")+)"|([a-z_][a-z0-9_$]*))/gi;
-    let match: RegExpExecArray | null;
-    while ((match = expression.exec(query))) {
-        const name = match[1]?.replace(/""/g, '"') ?? match[2]!.toLowerCase();
-        if (!seen.has(name)) {
-            seen.add(name);
-            names.push(name);
-        }
-    }
-    // outline_items is a system relation and can exist in a quoted query.
-    if (/\boutline_items\b/i.test(query) && !seen.has(ITEMS_RELATION_NAME)) names.push(ITEMS_RELATION_NAME);
-    return names;
+    const analysis = rewriteTableQuerySql(query, new Map());
+    return [...analysis.actualRelationDependencies, ...analysis.actualReservedRelationDependencies];
 }
