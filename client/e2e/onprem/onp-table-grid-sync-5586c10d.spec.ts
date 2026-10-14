@@ -4,7 +4,7 @@ import type { OnPremProductionStack } from "./onpremProductionStack";
 
 test.describe("production on-premises Table and Grid rooms", () => {
     let stack: OnPremProductionStack;
-    test.beforeAll(async ({}, testInfo) => {
+    test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
         stack = stackFor(testInfo);
         await stack.start();
     });
@@ -16,8 +16,7 @@ test.describe("production on-premises Table and Grid rooms", () => {
         await createProject(page, title);
         await page.getByLabel("New page name").fill("Data");
         await page.getByRole("button", { name: "Create new page" }).click();
-        await page.getByRole("link", { name: "Data" }).click();
-        await page.locator(".outliner-item").first().click();
+        await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(title)}/Data$`));
         await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
         const panel = page.getByTestId("yjs-table-create-panel").first();
         await panel.getByTestId("yjs-table-name-input").fill("Tasks");

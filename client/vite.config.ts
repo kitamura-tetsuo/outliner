@@ -3,7 +3,6 @@ import { sentrySvelteKit } from "@sentry/sveltekit/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { sveltekitOptions } from "./sveltekit.options.js";
@@ -26,19 +25,6 @@ export default defineConfig(async ({ mode }) => {
 
     return {
         plugins: [
-            {
-                name: "emit-libpg-query-wasm",
-                apply: "build",
-                buildStart() {
-                    this.emitFile({
-                        type: "asset",
-                        fileName: "libpg-query.wasm",
-                        source: readFileSync(
-                            fileURLToPath(new URL("./node_modules/libpg-query/wasm/libpg-query.wasm", import.meta.url)),
-                        ),
-                    });
-                },
-            },
             // Intercept removed endpoints early during dev to ensure expected 404
             {
                 name: "deny-fluid-token-endpoint",

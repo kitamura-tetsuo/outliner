@@ -4,7 +4,7 @@ import type { OnPremProductionStack } from "./onpremProductionStack";
 
 test.describe("production on-premises workspace", () => {
     let stack: OnPremProductionStack;
-    test.beforeAll(async ({}, testInfo) => {
+    test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
         stack = stackFor(testInfo);
         await stack.start();
     });
@@ -15,19 +15,20 @@ test.describe("production on-premises workspace", () => {
         await expect(page.getByText("Incorrect password")).toBeVisible();
 
         await login(page, stack);
-        await expect(page.getByText("No available projects")).toBeVisible();
+        await expect(page.locator("select.project-select option", { hasText: "No available projects" })).toHaveCount(1);
         const title = `Local-${Date.now()}`;
         await createProject(page, title);
 
         await page.getByLabel("New page name").fill("Inbox");
         await page.getByRole("button", { name: "Create new page" }).click();
-        await page.getByRole("link", { name: "Inbox" }).click();
-        const firstItem = page.locator(".outliner-item").first();
-        await expect(firstItem).toBeVisible();
+        await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(title)}/Inbox$`));
+        await page.getByTestId("add-item-button").click();
+        const firstItem = page.getByTestId("outliner-base").locator(".outliner-item[data-item-id]").nth(1);
         await firstItem.click();
         await page.keyboard.type("Persistent outline");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Nested item");
+        await page.waitForTimeout(2_000); // Allow the real websocket provider to persist both edits before reload.
 
         await page.reload();
         await expect(page.getByText("Persistent outline")).toBeVisible();

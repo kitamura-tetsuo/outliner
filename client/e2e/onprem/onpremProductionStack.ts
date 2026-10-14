@@ -94,6 +94,13 @@ export class OnPremProductionStack {
             request.pipe(upstream);
             return;
         }
+        if (request.url === "/libpg-query.wasm") {
+            response.setHeader("Content-Type", "application/wasm");
+            fs.createReadStream(
+                path.resolve(import.meta.dirname, "../../node_modules/libpg-query/wasm/libpg-query.wasm"),
+            ).pipe(response);
+            return;
+        }
         const build = path.resolve(import.meta.dirname, "../../../build");
         const pathname = decodeURIComponent(new URL(request.url ?? "/", this.origin).pathname);
         const candidate = path.join(build, pathname === "/" ? "index.html" : pathname);

@@ -4,7 +4,7 @@ import type { OnPremProductionStack } from "./onpremProductionStack";
 
 test.describe("production on-premises session ordering and failure states", () => {
     let stack: OnPremProductionStack;
-    test.beforeAll(async ({}, testInfo) => {
+    test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
         stack = stackFor(testInfo);
         await stack.start();
     });
