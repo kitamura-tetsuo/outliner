@@ -93,6 +93,8 @@ const AGGREGATES = new Set([
     "percentile_cont",
     "percentile_disc",
     "rank",
+    "range_agg",
+    "range_intersect_agg",
     "regr_avgx",
     "regr_avgy",
     "regr_count",
