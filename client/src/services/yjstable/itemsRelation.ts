@@ -221,6 +221,7 @@ export class ItemsRelationProvider implements RelationProvider {
             id: ITEMS_RELATION_NAME,
             sqlName: ITEMS_RELATION_NAME,
             schemaRevision: "outline-items-v1",
+            columns: ITEMS_RELATION_COLUMNS,
         };
     }
 

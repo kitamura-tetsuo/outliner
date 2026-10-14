@@ -42,6 +42,7 @@ export class TableRelationProvider implements RelationProvider {
             id: this.handles.tableId,
             sqlName: this.sqlName,
             schemaRevision: this.handles.schemaText.toString(),
+            columns: this.adapter.appliedSchema?.columns.map(column => column.name) ?? [],
         };
     }
 
