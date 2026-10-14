@@ -1,36 +1,20 @@
 id: FTR-9c4e2b7a
 title: Retire resolvePath at opaque URL boundaries
-description: 'Removed resolvePath use from the three URL-consumption boundaries
-  whose inputs are opaque URLs rather than application-owned route IDs, without
-  changing their behavior: attachment resource links still render att.url verbatim
-  with target _blank and noopener/noreferrer; the Paraglide language switch passes
-  localizeHref output directly to SvelteKit navigation with no second locale/base
-  prefix or parameter-encoding pass; the __SVELTE_GOTO__ debug bridge forwards
-  url and GotoOptions to goto while applying the configured base exactly once via
-  the official base primitive, preserving query/fragment data. No replacement
-  generic string-to-route resolver, no RouteId/ResolvedPathname casts, no new
-  global lint disable, and no navigation/security policy change.
+description: 'Removed resolvePath use from the three URL-consumption boundaries whose inputs are opaque URLs rather than application-owned route IDs, without changing their behavior: attachment resource links still render att.url verbatim with target _blank and noopener/noreferrer; the Paraglide language switch passes localizeHref output directly to SvelteKit navigation with no second locale/base prefix or parameter-encoding pass; the __SVELTE_GOTO__ debug bridge forwards url and GotoOptions to goto while applying the configured base exactly once via the official base primitive, preserving query/fragment data. No replacement generic string-to-route resolver, no RouteId/ResolvedPathname casts, no new global lint disable, and no navigation/security policy change.
 
   '
 category: routing
 status: implemented
 changes:
-- client/src/components/OutlinerItemAttachments.svelte documents the resource-URL
-  boundary (href already rendered verbatim; no route resolution)
-- client/src/routes/paraglide/+page.svelte calls goto with localizeHref output
-  directly instead of resolvePath(localisedPath)
-- client/src/lib/debug.ts calls goto with withConfiguredBase(url), a documented
-  base-prefixing helper whose default base comes from the official resolve
-  primitive (resolve("/")) instead of resolvePath; the opaque URL never enters
-  route-ID resolution
+- client/src/components/OutlinerItemAttachments.svelte documents the resource-URL boundary (href already rendered verbatim; no route resolution)
+- client/src/routes/paraglide/+page.svelte calls goto with localizeHref output directly instead of resolvePath(localisedPath)
+- client/src/lib/debug.ts calls goto with withConfiguredBase(url), a documented base-prefixing helper whose base always comes from the official resolve primitive (resolve("/")) instead of resolvePath; the opaque URL never enters route-ID resolution. The helper has no already-based passthrough; every leading-single-slash target is app-root-relative, so a project whose title equals the deployment base still navigates with the base applied once
 tests:
 - client/src/components/OutlinerItemAttachments.test.ts
-- client/src/routes/paraglide/page.svelte.test.ts
+- client/src/lib/debug.nonempty-base.test.ts
 - client/src/lib/debug.test.ts
-notes: 'The pinned svelte/no-navigation-without-resolve rule stays globally off
-  until the final enforcement stage; these boundaries carry documented rationale
-  in code comments instead of line-scoped exceptions. scripts/poc/windows-native-ime/production-bridge.mjs
-  consumes the unchanged __SVELTE_GOTO__ url-and-options interface.
+- client/src/routes/paraglide/page.svelte.test.ts
+notes: 'The pinned svelte/no-navigation-without-resolve rule stays globally off until the final enforcement stage; these boundaries carry documented rationale in code comments instead of line-scoped exceptions. scripts/poc/windows-native-ime/production-bridge.mjs consumes the unchanged __SVELTE_GOTO__ url-and-options interface.
 
   '
 title-ja: 不透明URL境界でのresolvePath依存の除去

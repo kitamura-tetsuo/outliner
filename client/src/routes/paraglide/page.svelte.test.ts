@@ -50,4 +50,25 @@ describe("paraglide language switch", () => {
         expect(reached).toContain("/paraglide");
         expect(reached).not.toContain("%2F");
     });
+
+    it("switches back from a localized nested path without duplicating locale/base", async () => {
+        setLocale("ja");
+        setPage({ url: "http://localhost/ja/paraglide" });
+
+        const { getByRole } = render(ParaglidePage);
+        await fireEvent.click(getByRole("button", { name: "en" }));
+
+        // Expected destination computed by the real localizer from the real
+        // localized pathname, not a fixture.
+        const expected = localizeHref("/ja/paraglide", { locale: "en" });
+        expect(gotoMock).toHaveBeenCalledTimes(1);
+        const reached = gotoMock.mock.calls[0][0] as string;
+        expect(reached).toBe(expected);
+        // Exactly one locale segment and no stacked prefixes.
+        expect(reached).not.toContain("/ja/en");
+        expect(reached).not.toContain("/en/en");
+        expect(reached).not.toContain("/ja/ja");
+        expect(reached).toContain("/paraglide");
+        expect(reached).not.toContain("%2F");
+    });
 });

@@ -55,6 +55,21 @@ describe("__SVELTE_GOTO__ debug bridge", () => {
         expect(resolved.hash).toBe("#frag");
     });
 
+    it("passes non-app-root targets to navigation untouched", async () => {
+        vi.stubEnv("NODE_ENV", "development");
+        setupGlobalDebugFunctions();
+
+        // Relative paths and protocol-relative URLs are not app-root-relative:
+        // the bridge must not prefix them with the deployment base.
+        await bridge()!("relative/page", { replace: true });
+        await bridge()!("//cdn.example.com/x");
+        expect(withConfiguredBase("relative/page")).toBe("relative/page");
+        expect(withConfiguredBase("//cdn.example.com/x")).toBe("//cdn.example.com/x");
+
+        const handed = gotoMock.mock.calls.map(call => call[0] as string);
+        expect(handed).toEqual(["relative/page", "//cdn.example.com/x"]);
+    });
+
     it("rejects when the underlying navigation fails", async () => {
         vi.stubEnv("NODE_ENV", "development");
         setupGlobalDebugFunctions();
@@ -67,20 +82,5 @@ describe("__SVELTE_GOTO__ debug bridge", () => {
         expect(process.env.NODE_ENV).toBe("test");
         setupGlobalDebugFunctions();
         expect(bridge()).toBeUndefined();
-    });
-
-    it("applies a nonempty base exactly once without touching query/fragment", () => {
-        expect(withConfiguredBase("/demo/Page?isTest=true#s", "/app")).toBe(
-            "/app/demo/Page?isTest=true#s",
-        );
-        // Already-based targets are returned unchanged: never two bases.
-        expect(withConfiguredBase("/app/demo/Page?isTest=true#s", "/app")).toBe(
-            "/app/demo/Page?isTest=true#s",
-        );
-        expect(withConfiguredBase("/app", "/app")).toBe("/app");
-        // Empty base, relative paths and protocol-relative URLs pass through.
-        expect(withConfiguredBase("/demo/Page", "")).toBe("/demo/Page");
-        expect(withConfiguredBase("relative/page", "/app")).toBe("relative/page");
-        expect(withConfiguredBase("//cdn.example.com/x", "/app")).toBe("//cdn.example.com/x");
     });
 });

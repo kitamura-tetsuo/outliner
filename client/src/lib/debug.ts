@@ -26,19 +26,23 @@ export function deploymentBase(): string {
  * SvelteKit's goto() resolves root-relative URLs against the origin without
  * applying the base itself, so the bridge must carry it. Only a single
  * leading slash marks an app-root-relative target (protocol-relative `//`
- * URLs, relative paths and absolute URLs pass through untouched), and a
- * target that already carries the base is returned unchanged. This is pure
- * base-prefixing: the opaque caller-supplied URL is never passed through
- * route-ID resolution, so encoded characters and query/fragment data are
- * never reinterpreted as route parameters.
+ * URLs, relative paths and absolute URLs pass through untouched). The base
+ * always comes from deploymentBase(): there is deliberately no
+ * already-based passthrough and no caller-supplied base parameter, because
+ * prefix-sniffing cannot tell an app-root-relative target whose first
+ * segment equals the deployment base (base `/app` plus project `app`)
+ * apart from an already-based one, and would then drop the base and reach
+ * the wrong route. This is pure base-prefixing: the opaque caller-supplied
+ * URL is never passed through route-ID resolution, so encoded characters
+ * and query/fragment data are never reinterpreted as route parameters.
  */
-export function withConfiguredBase(url: string, configuredBase: string = deploymentBase()): string {
+export function withConfiguredBase(url: string): string {
+    const configuredBase = deploymentBase();
     if (!configuredBase) return url;
     if (!url.startsWith("/") || url.startsWith("//")) return url;
     const boundary = url.search(/[?#]/);
     const pathname = boundary === -1 ? url : url.slice(0, boundary);
     const suffix = boundary === -1 ? "" : url.slice(boundary);
-    if (pathname === configuredBase || pathname.startsWith(`${configuredBase}/`)) return url;
     return `${configuredBase}${pathname}${suffix}`;
 }
 
