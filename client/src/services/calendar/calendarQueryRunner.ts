@@ -97,7 +97,6 @@ async function executeQuery(
             await db.exec("COMMIT");
             return {
                 columns: res.fields.map((f) => f.name),
-                columnTypes: res.fields.map((f) => f.dataTypeID),
                 rows: formatQueryDateFields(res.fields, res.rows),
             };
         } catch (err) {

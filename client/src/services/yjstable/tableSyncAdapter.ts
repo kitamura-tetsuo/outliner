@@ -614,6 +614,7 @@ export async function executeGridQuery(
         registry?: RelationRegistryPort;
         isStale?: () => boolean;
         requireExplicitAliases?: boolean;
+        includeColumnTypes?: boolean;
     },
 ): Promise<TableQueryResult> {
     const trimmed = selectQuery.trim();
@@ -628,7 +629,9 @@ export async function executeGridQuery(
                     await db.exec("COMMIT");
                     return {
                         columns: res.fields.map((f) => f.name),
-                        columnTypes: res.fields.map((f) => f.dataTypeID),
+                        ...(context.includeColumnTypes
+                            ? { columnTypes: res.fields.map((f) => f.dataTypeID) }
+                            : {}),
                         rows: formatQueryDateFields(res.fields, res.rows),
                     };
                 } catch (err) {

@@ -184,6 +184,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 },
                 isStale: stale,
                 requireExplicitAliases: this.requireExplicitAliases,
+                includeColumnTypes: true,
             });
             if (stale()) return undefined;
             // executeGridQuery may discover a relation that static FROM
