@@ -55,7 +55,7 @@
         "ws": "^8.22.0",
         "yjs": "13.6.33",
         "yjs-orderedtree": "^1.0.1-beta.3",
-        "zod": "^4.6.5"
+        "zod": "^4.6.6"
     },
     "devDependencies": {
         "@hocuspocus/provider": "^4.7.0",
