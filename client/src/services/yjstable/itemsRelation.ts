@@ -27,6 +27,7 @@ import {
     assertWriteAllowed,
     ITEMS_RELATION_CAPABILITIES,
     type RelationCapabilities,
+    type RelationEvidence,
     type RelationProvider,
     type RelationValue,
     type RelationWrite,
@@ -210,6 +211,15 @@ export class ItemsRelationProvider implements RelationProvider {
 
     get sqlName(): string {
         return this.materialized ? ITEMS_RELATION_NAME : "";
+    }
+
+    get evidence(): RelationEvidence {
+        return {
+            kind: "system",
+            id: ITEMS_RELATION_NAME,
+            sqlName: ITEMS_RELATION_NAME,
+            schemaRevision: "outline-items-v1",
+        };
     }
 
     /**

@@ -51,6 +51,8 @@ export interface RecordSyncError {
 
 export interface TableQueryResult {
     columns: string[];
+    /** PostgreSQL type OID for each corresponding result column. */
+    columnTypes?: number[];
     rows: Record<string, unknown>[];
 }
 
@@ -626,6 +628,7 @@ export async function executeGridQuery(
                     await db.exec("COMMIT");
                     return {
                         columns: res.fields.map((f) => f.name),
+                        columnTypes: res.fields.map((f) => f.dataTypeID),
                         rows: formatQueryDateFields(res.fields, res.rows),
                     };
                 } catch (err) {
