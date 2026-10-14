@@ -1,0 +1,26 @@
+name: outliner-onprem
+
+services:
+  app:
+    image: outliner-onprem:local
+    build:
+      context: .
+      dockerfile: Dockerfile.onprem
+    environment:
+      OUTLINER_DEPLOYMENT_MODE: onprem
+      OUTLINER_LOCAL_PASSWORD: "${OUTLINER_LOCAL_PASSWORD:?Set OUTLINER_LOCAL_PASSWORD to a nonempty password}"
+      OUTLINER_DATA_DIR: /data
+      OUTLINER_STATIC_DIR: /app/public
+      PORT: 7093
+    ports:
+      - "127.0.0.1:${OUTLINER_ONPREM_PORT:-7070}:7093"
+    volumes:
+      - "${OUTLINER_DATA_DIR:?Set OUTLINER_DATA_DIR to the persistent host directory}:/data"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    networks:
+      - runtime
+
+networks:
+  runtime:
+    internal: true

@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/dist
+build
+client/build
+client/test-results
+client/playwright-report
+server/logs
+server/data
+job_logs
+.env*
+!.env.example

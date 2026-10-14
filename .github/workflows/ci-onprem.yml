@@ -1,0 +1,38 @@
+name: On-premises Compose
+
+on:
+  pull_request:
+    paths:
+      - compose.onprem.yml
+      - Dockerfile.onprem
+      - .dockerignore
+      - server/**
+      - client/**
+      - shared/**
+      - scripts/test-onprem-compose.sh
+      - .github/workflows/ci-onprem.yml
+  workflow_dispatch:
+
+concurrency:
+  group: onprem-compose-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm ci
+        working-directory: client
+      - run: npx playwright install --with-deps chromium
+        working-directory: client
+      - name: Run isolated production Compose browser and recovery test
+        run: scripts/test-onprem-compose.sh
