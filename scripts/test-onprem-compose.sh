@@ -10,6 +10,8 @@ COMPOSE=(docker compose -f "$ROOT/compose.onprem.yml" -f "$ROOT/compose.onprem.t
 mkdir -p "$OUTLINER_DATA_DIR" "$OUTLINER_EGRESS_AUDIT_DIR"
 chmod 0777 "$OUTLINER_DATA_DIR"
 chmod 0777 "$OUTLINER_EGRESS_AUDIT_DIR"
+: > "$OUTLINER_EGRESS_AUDIT_DIR/attempts.jsonl"
+chmod 0666 "$OUTLINER_EGRESS_AUDIT_DIR/attempts.jsonl"
 
 cleanup() {
   "${COMPOSE[@]}" down --remove-orphans >/dev/null 2>&1 || true
