@@ -18,8 +18,8 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
             const row = page.locator(".outliner-item").filter({ hasText: label }).first();
             const itemId = await row.getAttribute("data-item-id");
             expect(itemId).toBeTruthy();
-            await createBlockFromItem(page, page.locator(`[data-item-id="${itemId}"]`), "Calendar");
-            return page.locator(`[data-item-id="${itemId}"]`).getByTestId("calendar-block");
+            const createdRow = await createBlockFromItem(page, page.locator(`[data-item-id="${itemId}"]`), "Calendar");
+            return createdRow.getByTestId("calendar-block");
         };
 
         const independent = await blockFor("Independent");
