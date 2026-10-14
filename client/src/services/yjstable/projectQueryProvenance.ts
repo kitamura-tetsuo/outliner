@@ -50,7 +50,68 @@ interface BranchShape {
     alias?: string;
 }
 
-const AGGREGATES = new Set(["avg", "count", "max", "min", "sum", "array_agg", "json_agg", "string_agg"]);
+/**
+ * Built-in PostgreSQL aggregate and ordered-set aggregate names available to
+ * Project queries. Project catalogs cannot define functions, so recognizing
+ * this complete built-in family is sufficient while still allowing ordinary
+ * scalar functions to coexist with independently proven physical columns.
+ */
+const AGGREGATES = new Set([
+    "any_value",
+    "array_agg",
+    "avg",
+    "bit_and",
+    "bit_or",
+    "bit_xor",
+    "bool_and",
+    "bool_or",
+    "corr",
+    "count",
+    "covar_pop",
+    "covar_samp",
+    "cume_dist",
+    "dense_rank",
+    "every",
+    "json_agg",
+    "json_agg_strict",
+    "json_arrayagg",
+    "json_object_agg",
+    "json_object_agg_strict",
+    "json_object_agg_unique",
+    "json_object_agg_unique_strict",
+    "json_objectagg",
+    "jsonb_agg",
+    "jsonb_agg_strict",
+    "jsonb_object_agg",
+    "jsonb_object_agg_strict",
+    "jsonb_object_agg_unique",
+    "jsonb_object_agg_unique_strict",
+    "max",
+    "min",
+    "mode",
+    "percent_rank",
+    "percentile_cont",
+    "percentile_disc",
+    "rank",
+    "regr_avgx",
+    "regr_avgy",
+    "regr_count",
+    "regr_intercept",
+    "regr_r2",
+    "regr_slope",
+    "regr_sxx",
+    "regr_sxy",
+    "regr_syy",
+    "stddev",
+    "stddev_pop",
+    "stddev_samp",
+    "string_agg",
+    "sum",
+    "var_pop",
+    "var_samp",
+    "variance",
+    "xmlagg",
+]);
 
 /**
  * Prove the deliberately bounded row and write lineage of a completed Project

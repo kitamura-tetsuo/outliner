@@ -54,6 +54,17 @@ describe("Project query mutation authority", { timeout: 30_000 }, () => {
         ]);
     });
 
+    it("refuses supplier and write authority for statistical aggregates", async () => {
+        for (const aggregate of ["variance", "stddev"]) {
+            const result = await analyze(project(), `SELECT ${aggregate}(value) AS calculated FROM a`);
+
+            expect(result.status).toBe("unsupported");
+            expect(result.suppliers).toEqual([]);
+            expect(result.branches).toEqual([]);
+            expect(result.bareIdSource).toBeUndefined();
+        }
+    });
+
     it("withholds every authority signal for duplicate source_id outputs", async () => {
         const query = "SELECT 'a' AS source_kind, id AS source_id, id AS source_id FROM a";
         const result = await analyze(project(), query);
