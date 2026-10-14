@@ -155,7 +155,7 @@ export function analyzeProjectQueryProvenance(evidence: ProjectSelectEvidence): 
     }
 
     const leaves: Node[] = [];
-    if (root.withClause !== undefined) {
+    if (containsWithClause(root)) {
         return refuse("unsupported", "CTE provenance is unsupported");
     }
     if (!collectUnionLeaves(root, leaves)) {
@@ -170,6 +170,9 @@ export function analyzeProjectQueryProvenance(evidence: ProjectSelectEvidence): 
         }
         if (unsupportedLeaf(leaf)) return refuse("unsupported", "The SELECT branch has unsupported row provenance");
         const range = from[0].RangeVar;
+        if (isNode(range.alias) && Array.isArray(range.alias.colnames) && range.alias.colnames.length > 0) {
+            return refuse("unsupported", "Relation column-alias provenance is unsupported");
+        }
         const sqlName = typeof range.relname === "string" ? range.relname : undefined;
         const relation = sqlName === undefined ? undefined : sourceByName.get(sqlName);
         if (!relation) {
@@ -247,6 +250,13 @@ function collectUnionLeaves(select: Node, leaves: Node[]): boolean {
     }
     if (op !== "SETOP_UNION" || select.all !== true || !isNode(select.larg) || !isNode(select.rarg)) return false;
     return collectUnionLeaves(select.larg, leaves) && collectUnionLeaves(select.rarg, leaves);
+}
+
+function containsWithClause(value: unknown): boolean {
+    if (Array.isArray(value)) return value.some(containsWithClause);
+    if (!isNode(value)) return false;
+    if (value.withClause !== undefined) return true;
+    return Object.values(value).some(containsWithClause);
 }
 
 function unsupportedLeaf(select: Node): boolean {

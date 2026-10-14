@@ -65,6 +65,37 @@ describe("Project query mutation authority", { timeout: 30_000 }, () => {
         }
     });
 
+    it("refuses positional relation-column aliases that can reverse identity", async () => {
+        const doc = new Y.Doc({ guid: `provenance-column-alias-${crypto.randomUUID()}` });
+        const tableId = createTable(doc, "A", "a");
+        const handles = getTableHandles(doc, tableId)!;
+        setSchemaText(handles, "CREATE TABLE a (id TEXT PRIMARY KEY, title TEXT)");
+        addRecord(handles, { title: "r2" }, "r1");
+        addRecord(handles, { title: "other" }, "r2");
+        const result = await analyze(doc, "SELECT x.id, x.title FROM a AS x(title, id)");
+
+        expect(result.status).toBe("unsupported");
+        expect(result.suppliers).toEqual([]);
+        expect(result.branches).toEqual([]);
+        expect(result.bareIdSource).toBeUndefined();
+    });
+
+    it("refuses a UNION-local CTE that shadows a live relation", async () => {
+        const doc = project();
+        const bId = createTable(doc, "B", "b");
+        const b = getTableHandles(doc, bId)!;
+        setSchemaText(b, "CREATE TABLE b (id TEXT PRIMARY KEY, value INTEGER)");
+        addRecord(b, { value: 2 }, "a1");
+        const query = "SELECT 'a' AS source_kind, id AS source_id, value FROM a "
+            + "UNION ALL (WITH a AS (SELECT id, value FROM b) SELECT 'a', id, value FROM a)";
+        const result = await analyze(doc, query);
+
+        expect(result.status).toBe("unsupported");
+        expect(result.suppliers).toEqual([]);
+        expect(result.branches).toEqual([]);
+        expect(result.bareIdSource).toBeUndefined();
+    });
+
     it("withholds every authority signal for duplicate source_id outputs", async () => {
         const query = "SELECT 'a' AS source_kind, id AS source_id, id AS source_id FROM a";
         const result = await analyze(project(), query);
