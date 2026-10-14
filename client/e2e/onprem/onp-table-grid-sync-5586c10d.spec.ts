@@ -30,10 +30,21 @@ test.describe("production on-premises Table and Grid rooms", () => {
         await page.keyboard.press("Enter");
         await row.locator("td[data-col='done'] input[type=checkbox]").check();
 
+        // Create a distinct Grid over the existing Table. This must retain a
+        // source reference rather than copying the current rows into the block.
+        await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+        const gridPanel = page.getByTestId("yjs-table-create-panel").last();
+        await gridPanel.getByRole("button", { name: "New Grid over Existing Table" }).click();
+        await expect(gridPanel.getByTestId("yjs-table-existing-select")).toHaveValue(/.+/);
+        await gridPanel.getByTestId("yjs-table-select-existing").click();
+        const boundGrid = page.getByTestId("yjs-table-grid").last();
+        await expect(boundGrid.locator("tbody tr", { hasText: "Ship local mode" })).toBeVisible();
+
         const peer = await browser.newPage();
         await login(peer, stack);
         await peer.goto(page.url());
-        const peerRow = peer.getByTestId("yjs-table-grid").first().locator("tbody tr", { hasText: "Ship local mode" });
+        await expect(peer.getByTestId("yjs-table-grid")).toHaveCount(2);
+        const peerRow = peer.getByTestId("yjs-table-grid").last().locator("tbody tr", { hasText: "Ship local mode" });
         await expect(peerRow).toBeVisible();
         await expect(peerRow.locator("td[data-col='done'] input[type=checkbox]")).toBeChecked();
         await row.locator("td[data-col='done'] input[type=checkbox]").uncheck();

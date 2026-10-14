@@ -38,6 +38,33 @@ test.describe("production on-premises session ordering and failure states", () =
         await expect(page.locator(".outliner-item")).toHaveCount(0);
     });
 
+    test("does not let a delayed page-route response reopen the editor after logout", async ({ page }) => {
+        await login(page, stack);
+        const title = `PageRace-${Date.now()}`;
+        await createProject(page, title);
+        await page.getByLabel("New page name").fill("Delayed");
+        await page.getByRole("button", { name: "Create new page" }).click();
+        await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(title)}/Delayed$`));
+        await page.goto(stack.origin);
+
+        let release!: () => void;
+        const delayed = new Promise<void>(resolve => release = resolve);
+        await page.route("**/api/projects/resolve?title=*", async route => {
+            const realResponse = await route.fetch();
+            await delayed;
+            await route.fulfill({ response: realResponse });
+        });
+        const navigation = page.goto(`${stack.origin}/${encodeURIComponent(title)}/Delayed`);
+        await page.waitForRequest("**/api/projects/resolve?title=*");
+        await page.getByTestId("login-status-indicator").click();
+        await page.getByTestId("user-menu-signout").click();
+        release();
+        await navigation;
+
+        await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
+        await expect(page.locator(".outliner-item")).toHaveCount(0);
+    });
+
     test("requires login after backend restart but retains the registered project", async ({ page }) => {
         await login(page, stack);
         const title = `Restart-${Date.now()}`;
@@ -59,5 +86,20 @@ test.describe("production on-premises session ordering and failure states", () =
         await page.getByRole("button", { name: "Save Changes" }).click();
         await expect(page.getByText("An error occurred while saving.")).toBeVisible();
         await expect(page).toHaveURL(new RegExp(`${encodeURIComponent(title)}/-/settings$`));
+    });
+
+    test("blocks direct schedule navigation without rendering mutation controls", async ({ page }) => {
+        await stack.restart();
+        await login(page, stack);
+        const title = `Unsupported-${Date.now()}`;
+        await createProject(page, title);
+        await page.goto(`${stack.origin}/${encodeURIComponent(title)}/-/schedules`);
+
+        await expect(page.getByRole("heading", { name: "Unavailable in this deployment" })).toBeVisible();
+        await expect(page.getByRole("button", { name: /schedule|create/i })).toHaveCount(0);
+
+        await page.goto(`${stack.origin}/${encodeURIComponent(title)}/-/schedules/not-a-rule`);
+        await expect(page.getByRole("heading", { name: "Unavailable in this deployment" })).toBeVisible();
+        await expect(page.getByRole("button", { name: /schedule|create|save|run/i })).toHaveCount(0);
     });
 });

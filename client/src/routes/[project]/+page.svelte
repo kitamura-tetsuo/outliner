@@ -30,6 +30,7 @@
     let isAuthenticated = $state(false);
     let projectNotFound = $state(false);
     let isLoading = $state(true);
+    let loadGeneration = 0;
 
     let isPublicDemo = $derived(isPublicProject(projectName));
     let canAccess = $derived(isAuthenticated || isPublicDemo);
@@ -49,11 +50,13 @@
             logger.info("Logged out");
         }
         isAuthenticated = false;
+        ++loadGeneration;
     }
 
     // Load project
     async function loadProject() {
         if (!projectName || !canAccess) return;
+        const generation = ++loadGeneration;
 
         logger.info(`loadProject: Starting for project="${projectName}"`);
         isLoading = true;
@@ -62,6 +65,10 @@
 
         try {
             let client = await getYjsClientByProjectTitle(projectName);
+            if (generation !== loadGeneration || (!userManager.getCurrentUser() && !isPublicDemo)) {
+                client?.dispose?.();
+                return;
+            }
             if (!client) {
                 logger.warn(`loadProject: Project client not found for "${projectName}"`);
                 projectNotFound = true;
@@ -101,7 +108,7 @@
     });
 
     onDestroy(() => {
-        // Cleanup code
+        ++loadGeneration;
     });
 </script>
 
@@ -244,4 +251,3 @@
         </div>
     {/if}
 </main>
-

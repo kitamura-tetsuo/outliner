@@ -43,6 +43,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     let isAuthenticated = $state(false);
     let pageNotFound = $state(false);
     let lastReset = $state(0);
+    let loadGeneration = 0;
 
     $effect(() => {
         if (store.project) {
@@ -181,10 +182,12 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     function handleAuthLogout() {
         logger.info("Logged out");
         isAuthenticated = false;
+        ++loadGeneration;
     }
 
     // Load project and page
     async function loadProjectAndPage() {
+        const generation = ++loadGeneration;
         logger.info(
             `loadProjectAndPage: Starting for project="${projectName}", page="${pageName}"`,
         );
@@ -199,6 +202,10 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 `loadProjectAndPage: Getting Yjs client for "${projectName}"`,
             );
             let client = await getYjsClientByProjectTitle(projectName);
+            if (generation !== loadGeneration || !userManager.getCurrentUser()) {
+                client?.dispose?.();
+                return;
+            }
 
             if (!client) {
                 // User requested NOT to create new project here.
@@ -263,6 +270,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 const maxRetries = import.meta.env.MODE === 'test' ? 150 : 5;
                 for (let i = 0; i < maxRetries; i++) {
                     await new Promise((r) => setTimeout(r, 100));
+                    if (generation !== loadGeneration || !userManager.getCurrentUser()) return;
                     targetPage = findPage();
                     if (targetPage) {
                         logger.info(
@@ -570,6 +578,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     });
 
     onDestroy(() => {
+        ++loadGeneration;
         // Cleanup link previews
         cleanupLinkPreviews();
     });
@@ -714,4 +723,3 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         <!-- no-op: avoid misleading SSR/hydration fallback message -->
     {/if}
 </main>
-
