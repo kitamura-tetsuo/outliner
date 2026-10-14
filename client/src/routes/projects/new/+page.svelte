@@ -1,7 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
-    import { projectRoute } from "../../../lib/publicProject";
+    import { resolvePath } from "../../../utils/pathUtils";
 import {
     onDestroy,
     onMount,
@@ -70,7 +69,7 @@ async function createNewContainer() {
 
         // Navigate to the created project page after 1.5 seconds
         setTimeout(() => {
-            goto(projectRoute(containerName));
+            goto(resolvePath("/" + encodeURIComponent(newClient.project.title)));
         }, 1500);
     }
     catch (err) {
@@ -186,7 +185,7 @@ onDestroy(() => {
 
     <div class="mt-6 text-center">
         <a
-            href={resolve("/")}
+            href={resolvePath("/")}
             class="rounded-md px-2 py-1 text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
             Back to Home

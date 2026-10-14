@@ -95,6 +95,10 @@ export default ts.config(
     // KanbanBlock (transient legacy fallback), Breadcrumb and its item
     // callers, the YjsTableBlock prop contract, ScheduleListView reference
     // records, the opaque debug bridge, Paraglide output and debug-test.
+    // Scope follow-up (kept under the PR size guard): the auxiliary routes
+    // below stay on the generic wrapper until their own stage migrates them:
+    // debug, error/project-unavailable, projects/new, settings, and the
+    // non-demo table-schedule redirect stub.
     {
         files: [
             "src/components/AuthenticatedHome.svelte",
@@ -127,13 +131,8 @@ export default ts.config(
             "src/routes/[project]/+layout.svelte",
             "src/routes/[project]/[page]/+page.svelte",
             "src/routes/[project]/[page]/schedule/+page.svelte",
-            "src/routes/[project]/-/tables/[tableId]/schedule/+page.svelte",
             "src/routes/[demoProject=demoProject]/[page]/+page.svelte",
             "src/routes/[demoProject=demoProject]/-/tables/[tableId]/schedule/+page.svelte",
-            "src/routes/debug/+page.svelte",
-            "src/routes/error/project-unavailable/+page.svelte",
-            "src/routes/projects/new/+page.svelte",
-            "src/routes/settings/+page.svelte",
             "src/routes/share/[token]/+page.svelte",
         ],
         rules: {
