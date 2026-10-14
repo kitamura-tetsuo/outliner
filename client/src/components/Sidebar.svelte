@@ -33,6 +33,7 @@ import { isPublicProject } from "../lib/publicProject";
     import { formatDate } from "../utils/dateUtils";
     import { projectPagePath } from "../lib/publicProject";
     import { projectObjectsPath, projectSchedulePath, projectTablePath } from "../lib/managementPaths";
+    import { isOnPrem } from "../lib/deployment";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -511,7 +512,7 @@ import { isPublicProject } from "../lib/publicProject";
             {/if}
         </div>
 
-        <!-- Scheduled SQL section -->
+        <!-- Object manager section -->
         <div class="sidebar-section">
             <a class="section-header" href={resolvePath(projectObjectsPath(currentProjectName))} style="text-decoration: none;">
                 <div class="section-header-content">
@@ -523,6 +524,7 @@ import { isPublicProject } from "../lib/publicProject";
             </ul>
         </div>
 
+        {#if !isOnPrem}
         <div class="sidebar-section">
             <div class="section-header">
                 <div class="section-header-content">
@@ -600,6 +602,7 @@ import { isPublicProject } from "../lib/publicProject";
                 </ul>
             {/if}
         </div>
+        {/if}
 
         <div class="sidebar-section">
             <h3 class="sidebar-section-title">Settings</h3>

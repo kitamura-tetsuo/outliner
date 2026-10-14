@@ -2,6 +2,7 @@
     import { resolvePath } from "../utils/pathUtils";
     import { preventEditorBlur } from "../lib/editorFocus";
     import { projectPagePath } from "../lib/publicProject";
+    import { isOnPrem } from "../lib/deployment";
 
     interface Props {
         mode: "desktop" | "mobile";
@@ -134,7 +135,7 @@
     <div class="toolbar">
         <div class="actions">
             <button type="button" aria-label="Add Item" onclick={onAddItem} data-testid="add-item-button" data-keep-editor-focus onpointerdown={preventEditorBlur}>Add Item</button>
-            <button type="button" aria-label="Add Image" onclick={triggerFileSelect} title="Add Image" data-keep-editor-focus onpointerdown={preventEditorBlur}>Add Image</button>
+            {#if !isOnPrem}<button type="button" aria-label="Add Image" onclick={triggerFileSelect} title="Add Image" data-keep-editor-focus onpointerdown={preventEditorBlur}>Add Image</button>
             <input
                 type="file"
                 accept="image/*"
@@ -142,7 +143,7 @@
                 bind:this={fileInput}
                 onchange={handleFileInputChange}
                 style="display: none;"
-            />
+            />{/if}
             <a href={resolvePath(`${projectPagePath(projectName, pageName)}/diff`)} class="button-style">History / Diff</a>
             <button type="button" class="button-style" onclick={() => { showA11yHelp = true; }}>Keyboard Shortcuts</button>
         </div>

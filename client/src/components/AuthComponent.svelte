@@ -55,6 +55,7 @@ onMount(() => {
         }
         else {
             currentUser = null;
+            if (isOnPrem) error = userManager.getLocalAuthError() ?? "";
             // Call the callback prop directly instead of dispatching
             if (onAuthLogout) onAuthLogout();
         }

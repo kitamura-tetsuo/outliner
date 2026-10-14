@@ -11,6 +11,12 @@ test.describe("production on-premises workspace", () => {
     test.afterAll(async () => stack.stop());
 
     test("uses password sessions and canonical project registration, outline, reload, and rename", async ({ page }) => {
+        const cloudRequests: string[] = [];
+        page.on("request", request => {
+            if (/googleapis\.com|firebaseio\.com|google-analytics\.com/.test(request.url())) {
+                cloudRequests.push(request.url());
+            }
+        });
         await login(page, stack, "wrong password");
         await expect(page.getByText("Incorrect password")).toBeVisible();
 
@@ -33,12 +39,15 @@ test.describe("production on-premises workspace", () => {
         await page.reload();
         await expect(page.getByText("Persistent outline")).toBeVisible();
         await expect(page.getByText("Nested item")).toBeVisible();
+        await expect(page.getByRole("button", { name: "Add Image" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Add new scheduled SQL" })).toHaveCount(0);
 
         await page.goto(`${stack.origin}/${encodeURIComponent(title)}/-/settings`);
-        await page.getByLabel("Project Title").fill(`${title}-renamed`);
+        await page.getByLabel("Project Title").fill(`  ${title}-renamed  `);
         await page.getByRole("button", { name: "Save Changes" }).click();
         await expect(page).toHaveURL(new RegExp(`${encodeURIComponent(title)}-renamed/-/settings$`));
         await page.goto(stack.origin);
         await expect(page.locator("select.project-select option", { hasText: `${title}-renamed` })).toHaveCount(1);
+        expect(cloudRequests).toEqual([]);
     });
 });

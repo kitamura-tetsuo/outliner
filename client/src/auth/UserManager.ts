@@ -44,6 +44,11 @@ export class UserManager {
     private unsubscribeAuth: (() => void) | null = null;
     private localUser: IUser | null = null;
     private authGeneration = 0;
+    private localAuthError: string | undefined;
+
+    getLocalAuthError(): string | undefined {
+        return this.localAuthError;
+    }
 
     // Determine if it is a development environment
     private isDevelopment = (typeof import.meta !== "undefined" && import.meta.env?.DEV) || false;
@@ -326,6 +331,7 @@ export class UserManager {
                 const response = await fetch("/api/local-auth/session", { credentials: "same-origin" });
                 if (generation !== this.authGeneration) return;
                 if (response.status === 401) {
+                    this.localAuthError = undefined;
                     this.localUser = null;
                     this.notifyListeners(null);
                     return;
@@ -336,10 +342,12 @@ export class UserManager {
                     throw new Error("Local server returned an invalid identity");
                 }
                 this.localUser = result.user;
+                this.localAuthError = undefined;
                 this.notifyListeners(result);
             } catch (error) {
                 if (generation === this.authGeneration) {
                     logger.error({ error }, "Failed to restore local session");
+                    this.localAuthError = error instanceof Error ? error.message : "Local server unavailable";
                     this.localUser = null;
                     this.notifyListeners(null);
                 }
@@ -584,6 +592,7 @@ export class UserManager {
         }
         if (generation !== this.authGeneration) return;
         this.localUser = result.user;
+        this.localAuthError = undefined;
         this.notifyListeners(result);
     }
 
@@ -591,6 +600,7 @@ export class UserManager {
         if (!isOnPrem) return;
         ++this.authGeneration;
         this.localUser = null;
+        this.localAuthError = undefined;
         this.notifyListeners(null);
     }
 }

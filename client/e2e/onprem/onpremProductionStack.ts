@@ -59,6 +59,10 @@ export class OnPremProductionStack {
         this.backend = undefined;
     }
 
+    makeDirectoryUnavailable() {
+        this.backend?.directory.close();
+    }
+
     async stop() {
         await this.backend?.shutdown();
         await new Promise<void>(resolve => this.gateway?.close(() => resolve()) ?? resolve());

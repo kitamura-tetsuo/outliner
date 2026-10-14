@@ -175,6 +175,9 @@
             {error}
         </div>
     {/if}
+    {#if projectStore.error}
+        <div class="error-message" role="alert">Project directory unavailable: {projectStore.error}</div>
+    {/if}
 
     <div class="selector-content">
         <div class="select-container"
@@ -187,11 +190,13 @@
             <select
                 bind:value={selectedProjectId}
                 onchange={handleProjectChange}
-                disabled={isLoading || projects.length === 0}
+                disabled={isLoading || !!projectStore.error || projects.length === 0}
                 class="project-select"
                 aria-labelledby="project-selector-title"
             >
-                {#if projects.length === 0}
+                {#if projectStore.error}
+                    <option value="">Project directory unavailable</option>
+                {:else if projects.length === 0}
                     <option value="">No available projects</option>
                 {:else}
                     {#each projects as project (project.id)}

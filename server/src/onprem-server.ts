@@ -213,5 +213,5 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
         })();
         return shutdownPromise;
     };
-    return { server, hocuspocus, persistence, shutdown };
+    return { server, hocuspocus, persistence, directory, shutdown };
 }

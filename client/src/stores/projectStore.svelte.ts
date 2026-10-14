@@ -13,10 +13,12 @@ export interface ProjectInfo {
 export class ProjectStore {
     projects = $state<Array<ProjectInfo>>([]);
     isLoaded = $state(false);
+    error = $state<string | undefined>(undefined);
     private generation = 0;
 
     async refresh(): Promise<void> {
         const generation = this.generation;
+        if (generation === this.generation) this.error = undefined;
         try {
             const defaultProjectId = isOnPrem
                 ? undefined
@@ -27,8 +29,14 @@ export class ProjectStore {
                 isDefault: project.projectId === defaultProjectId,
             }));
             if (generation === this.generation) this.projects = projects;
+        } catch (error) {
+            if (generation === this.generation) {
+                this.error = error instanceof Error ? error.message : "Project directory unavailable";
+                this.isLoaded = false;
+            }
+            throw error;
         } finally {
-            if (generation === this.generation) this.isLoaded = true;
+            if (generation === this.generation && !this.error) this.isLoaded = true;
             if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("project-store-updated"));
         }
     }
@@ -41,6 +49,7 @@ export class ProjectStore {
         ++this.generation;
         this.projects = [];
         this.isLoaded = false;
+        this.error = undefined;
     }
 
     syncDefaultPreference(): void {

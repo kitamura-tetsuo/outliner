@@ -376,6 +376,11 @@ export async function setupProviderForRoom(
         }
 
         if (code === 4001) {
+            if (isOnPrem) {
+                userManager.invalidateLocalSession();
+                provider.disconnect();
+                return;
+            }
             // Let `authenticationFailed` handle token refresh and terminal close logic.
             // Only set `isRetryingCurrentClose` if we are sure a retry will happen and hasn't started yet.
             // If `authenticationFailed` fired first, it already set `isRetryingCurrentClose = true`.
@@ -429,6 +434,11 @@ export async function setupProviderForRoom(
         "authenticationFailed",
         (data: unknown) => {
             logger.error({ data }, `[yjs-conn] ${room} authenticationFailed`);
+            if (isOnPrem) {
+                userManager.invalidateLocalSession();
+                provider.disconnect();
+                return;
+            }
             if (authRetries < MAX_AUTH_RETRIES) {
                 logger.debug(
                     `[yjs-conn] Auth error detected for ${room}, forcing token refresh and retrying (${
