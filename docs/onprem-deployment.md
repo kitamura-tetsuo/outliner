@@ -1,7 +1,8 @@
 # Local on-premises deployment
 
 The on-premises package runs the production client, local APIs, and Yjs
-WebSockets in one container and exposes one loopback-only browser origin. Its
+WebSockets in an egress-isolated application container and exposes them through
+a small TCP gateway on one loopback-only browser origin. Its
 initial supported feature set is **projects, outlines, Tables, and bound
 Grids**. It does not use Firebase, Google login, Cloud Functions or Storage,
 Firebase emulators, a tunnel, or a development server at runtime.
@@ -28,9 +29,10 @@ docker compose -f compose.onprem.yml up -d
 Open `http://127.0.0.1:7070`. Compose refuses to resolve the configuration if
 the password or data directory is missing. The application also refuses to
 become ready when its SQLite storage is corrupt or unwritable. Only the chosen
-host loopback port is published; there is no separately published backend or
-tunnel port. Images and dependencies must be obtained during `build`; normal
-startup performs no package or required-asset download.
+host loopback port on the gateway is published; the application container is
+reachable only over Compose's internal runtime network, with no separately
+published backend or tunnel port. Images and dependencies must be obtained
+during `build`; normal startup performs no package or required-asset download.
 
 ## Inspect, stop, and restart
 

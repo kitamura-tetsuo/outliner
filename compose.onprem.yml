@@ -12,9 +12,34 @@ services:
       OUTLINER_DATA_DIR: /data
       OUTLINER_STATIC_DIR: /app/public
       PORT: 7093
-    ports:
-      - "127.0.0.1:${OUTLINER_ONPREM_PORT:-7070}:7093"
     volumes:
       - "${OUTLINER_DATA_DIR:?Set OUTLINER_DATA_DIR to the persistent host directory}:/data"
     restart: unless-stopped
     stop_grace_period: 30s
+    networks:
+      - runtime
+
+  gateway:
+    image: outliner-onprem:local
+    depends_on:
+      app:
+        condition: service_healthy
+    command:
+      - node
+      - -e
+      - >-
+        const net=require('node:net');
+        net.createServer(client=>{const upstream=net.connect(7093,'app');
+        client.pipe(upstream).pipe(client);
+        upstream.on('error',()=>client.destroy());}).listen(7093,'0.0.0.0');
+    ports:
+      - "127.0.0.1:${OUTLINER_ONPREM_PORT:-7070}:7093"
+    restart: unless-stopped
+    networks:
+      - ingress
+      - runtime
+
+networks:
+  ingress:
+  runtime:
+    internal: true

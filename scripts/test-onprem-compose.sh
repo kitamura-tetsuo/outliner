@@ -26,5 +26,15 @@ docker compose -f "$ROOT/compose.onprem.yml" config --quiet
 docker compose -f "$ROOT/compose.onprem.yml" build
 docker compose -f "$ROOT/compose.onprem.yml" up -d --wait
 
+# The production app joins only Docker's internal network, so it cannot reach
+# external runtime services. The gateway has no application logic and merely
+# forwards the one loopback-published TCP origin to the app.
+app_networks=$(docker inspect "$(docker compose -f "$ROOT/compose.onprem.yml" ps -q app)" --format '{{json .NetworkSettings.Networks}}')
+runtime_network=$(docker network inspect outliner-onprem_runtime --format '{{.Internal}}')
+if [[ "$runtime_network" != "true" || "$app_networks" != *"outliner-onprem_runtime"* || "$app_networks" == *"outliner-onprem_ingress"* ]]; then
+  echo "on-prem app is not isolated on the internal runtime network" >&2
+  exit 1
+fi
+
 cd "$ROOT/client"
 npx playwright test --config playwright.compose-onprem.config.ts

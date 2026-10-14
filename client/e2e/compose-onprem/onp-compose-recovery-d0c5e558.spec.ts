@@ -16,6 +16,25 @@ function compose(...args: string[]) {
     });
 }
 
+function composeOutput(...args: string[]) {
+    return execFileSync("docker", ["compose", "-f", "compose.onprem.yml", ...args], {
+        cwd: repository,
+        env: process.env,
+        encoding: "utf8",
+    });
+}
+
+async function observeExternalRequests(context: import("@playwright/test").BrowserContext, attempts: string[]) {
+    await context.route("**/*", route => {
+        const url = new URL(route.request().url());
+        if (url.hostname !== "127.0.0.1") {
+            attempts.push(url.href);
+            return route.abort("blockedbyclient");
+        }
+        return route.continue();
+    });
+}
+
 async function login(page: import("@playwright/test").Page, supplied = password) {
     await page.goto(origin);
     await page.getByLabel("Password").fill(supplied);
@@ -27,14 +46,7 @@ async function login(page: import("@playwright/test").Page, supplied = password)
 
 test("the Compose artifact persists a UI-created outline, Table, and bound Grid across recreation", async ({ page, browser }) => {
     const externalRequests: string[] = [];
-    await page.route("**/*", route => {
-        const url = new URL(route.request().url());
-        if (url.hostname !== "127.0.0.1") {
-            externalRequests.push(url.href);
-            return route.abort("blockedbyclient");
-        }
-        return route.continue();
-    });
+    await observeExternalRequests(page.context(), externalRequests);
     await login(page, "wrong-password");
     await expect(page.getByText("Incorrect password")).toBeVisible();
     await login(page);
@@ -69,11 +81,14 @@ test("the Compose artifact persists a UI-created outline, Table, and bound Grid 
     await expect(page.getByTestId("yjs-table-grid").last().getByText("Persisted row")).toBeVisible();
 
     await expect.poll(async () => (await fetch(`${origin}/health`)).ok).toBe(true);
-    await page.context().close();
+    // Keep the live Hocuspocus documents connected during the normal stop.
     compose("stop", "app");
+    await page.context().close();
     compose("up", "-d", "--force-recreate", "--wait");
 
-    const recovered = await browser.newPage();
+    const recoveredContext = await browser.newContext();
+    await observeExternalRequests(recoveredContext, externalRequests);
+    const recovered = await recoveredContext.newPage();
     await login(recovered);
     await recovered.goto(`${origin}/${encodeURIComponent(title)}/Recovery`);
     await expect(recovered.getByText("Retained by Compose")).toBeVisible();
@@ -83,18 +98,24 @@ test("the Compose artifact persists a UI-created outline, Table, and bound Grid 
     });
     await expect(recoveredRow).toBeVisible();
     await expect(recoveredRow.locator("td[data-col='done'] input[type=checkbox]")).toBeChecked();
-    await recovered.context().close();
+    const recoveredViews = recovered.getByTestId("yjs-table-view");
+    await expect(recoveredViews).toHaveCount(2);
+    await expect(recoveredViews.nth(0)).toHaveAttribute("data-source-table-id", sourceId);
+    await expect(recoveredViews.nth(1)).toHaveAttribute("data-source-table-id", sourceId);
+    await recoveredContext.close();
 
     // The preceding fresh-browser read positively observes committed storage
     // before the crash boundary. No old client can repopulate the server.
     compose("kill", "-s", "KILL", "app");
     compose("up", "-d", "--force-recreate", "--wait");
-    const afterCrash = await browser.newPage();
+    const afterCrashContext = await browser.newContext();
+    await observeExternalRequests(afterCrashContext, externalRequests);
+    const afterCrash = await afterCrashContext.newPage();
     await login(afterCrash);
     await afterCrash.goto(`${origin}/${encodeURIComponent(title)}/Recovery`);
     await expect(afterCrash.getByText("Retained by Compose")).toBeVisible();
     await expect(afterCrash.getByText("Persisted row").first()).toBeVisible();
-    await afterCrash.context().close();
+    await afterCrashContext.close();
 
     const originalDataDir = process.env.OUTLINER_DATA_DIR!;
     const restoreRoot = fs.mkdtempSync(path.join(os.tmpdir(), "outliner-compose-restore-"));
@@ -103,7 +124,9 @@ test("the Compose artifact persists a UI-created outline, Table, and bound Grid 
     fs.cpSync(originalDataDir, restoredDataDir, { recursive: true });
     process.env.OUTLINER_DATA_DIR = restoredDataDir;
     compose("up", "-d", "--force-recreate", "--wait");
-    const restored = await browser.newPage();
+    const restoredContext = await browser.newContext();
+    await observeExternalRequests(restoredContext, externalRequests);
+    const restored = await restoredContext.newPage();
     await login(restored);
     await expect.poll(async () => {
         const response = await restored.context().request.get(`${origin}/api/projects`);
@@ -111,8 +134,18 @@ test("the Compose artifact persists a UI-created outline, Table, and bound Grid 
     }).toEqual({ projects: [{ projectId: expect.any(String), title }] });
     await restored.goto(`${origin}/${encodeURIComponent(title)}/Recovery`);
     await expect(restored.getByText("Retained by Compose")).toBeVisible();
-    await expect(restored.getByText("Persisted row").first()).toBeVisible();
-    await restored.context().close();
+    const restoredViews = restored.getByTestId("yjs-table-view");
+    await expect(restoredViews).toHaveCount(2);
+    await expect(restoredViews.nth(0)).toHaveAttribute("data-source-table-id", sourceId);
+    await expect(restoredViews.nth(1)).toHaveAttribute("data-source-table-id", sourceId);
+    const restoredRow = restored.getByTestId("yjs-table-grid").last().locator("tbody tr", {
+        hasText: "Persisted row",
+    });
+    await expect(restoredRow).toBeVisible();
+    await expect(restoredRow.locator("td[data-col='done'] input[type=checkbox]")).toBeChecked();
+    const serverLogs = composeOutput("logs", "--no-color", "app");
+    expect(serverLogs).not.toMatch(/googleapis\.com|firebaseio\.com|google\.com|cloudflare\.com|npmjs\.org/i);
+    await restoredContext.close();
     compose("down");
     fs.rmSync(restoreRoot, { recursive: true, force: true });
     expect(externalRequests).toEqual([]);
