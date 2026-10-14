@@ -1,0 +1,8 @@
+services:
+  app:
+    restart: "no"
+    environment:
+      NODE_OPTIONS: --require=/app/onprem-egress-audit.cjs
+      OUTLINER_EGRESS_AUDIT_LOG: /egress-audit/attempts.jsonl
+    volumes:
+      - "${OUTLINER_EGRESS_AUDIT_DIR:?Set OUTLINER_EGRESS_AUDIT_DIR for the test observer}:/egress-audit"

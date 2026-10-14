@@ -53,6 +53,42 @@ describe("on-premises production composition", () => {
                 DISABLE_PERSISTENCE: "true",
             })
         ).to.throw("requires persistence");
+        expect(() =>
+            loadConfig({
+                OUTLINER_DEPLOYMENT_MODE: "onprem",
+                OUTLINER_DATA_DIR: dataDir,
+                OUTLINER_STATIC_DIR: "  ",
+            })
+        ).to.throw("OUTLINER_STATIC_DIR");
+    });
+
+    it("serves navigation and assets from the production origin without masking failures", async () => {
+        const staticDir = fs.mkdtempSync(path.join(os.tmpdir(), "outliner-static-"));
+        fs.writeFileSync(path.join(staticDir, "index.html"), "<!doctype html><title>Outliner local</title>");
+        fs.writeFileSync(path.join(staticDir, "app.js"), "globalThis.outliner = true;");
+        try {
+            const started = await startOnPremServer(loadConfig({
+                PORT: "0",
+                OUTLINER_DEPLOYMENT_MODE: "onprem",
+                OUTLINER_DATA_DIR: dataDir,
+                OUTLINER_STATIC_DIR: staticDir,
+            }));
+            shutdown = started.shutdown;
+
+            expect((await request(started.server).get("/app.js")).text).to.equal("globalThis.outliner = true;");
+            expect((await request(started.server).get("/Project/Page").set("Accept", "text/html")).text).to.contain(
+                "Outliner local",
+            );
+            expect(
+                (await request(started.server).get("/Project/Release%201.0").set("Accept", "text/html")).text,
+            ).to.contain("Outliner local");
+            expect((await request(started.server).get("/missing.js").set("Accept", "text/html")).status).to.equal(404);
+            const api = await request(started.server).get("/api/not-supported").set("Accept", "text/html");
+            expect(api.status).to.equal(501);
+            expect(api.type).to.equal("application/json");
+        } finally {
+            fs.rmSync(staticDir, { recursive: true, force: true });
+        }
     });
 
     it("boots with local storage and exposes only authenticated committed projects", async () => {
