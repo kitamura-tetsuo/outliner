@@ -170,6 +170,65 @@ describe("OutlinerItemAttachments", () => {
         expect(container.querySelector(".attachments")).not.toBeInTheDocument();
     });
 
+    // A signed resource URL carrying query/fragment data must reach the
+    // browser verbatim: it is an opaque resource destination, not an
+    // application route, so no base prefix or route-ID expansion applies.
+    it("renders a signed resource URL verbatim with target and protections", async () => {
+        const signed =
+            "https://storage.example.com/files/report.pdf?sig=abc123&exp=1700000000#page=2";
+        const item = new Item({ id: "test-id" });
+        item.addAttachment(signed, "application/pdf", "report.pdf");
+
+        const { container } = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+        await tick();
+
+        const link = container.querySelector("a.attachment-link") as HTMLAnchorElement | null;
+        expect(link).not.toBeNull();
+        expect(link!.getAttribute("href")).toBe(signed);
+        expect(link!.target).toBe("_blank");
+        expect(link!.rel).toContain("noopener");
+        expect(link!.rel).toContain("noreferrer");
+
+        // The real browser URL parser must see the same query/fragment data.
+        const parsed = new URL(link!.href, document.baseURI);
+        expect(parsed.search).toBe("?sig=abc123&exp=1700000000");
+        expect(parsed.hash).toBe("#page=2");
+    });
+
+    // Attachment activation must not propagate out to the outliner item:
+    // every activation handler on the link stops propagation. Svelte 5
+    // stores these handlers on the rendered anchor (delegated events), so
+    // the test invokes the actually attached handlers with a real Event.
+    it("stops attachment activation events from propagating", async () => {
+        const item = new Item({ id: "test-id" });
+        item.addAttachment("https://example.com/document.pdf", "application/pdf", "document.pdf");
+
+        const { container } = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+        await tick();
+
+        const link = container.querySelector("a.attachment-link") as HTMLAnchorElement;
+        // Test-only introspection: Svelte's delegated-handler expando.
+        const eventsSymbol = Object.getOwnPropertySymbols(link).find(symbol =>
+            symbol.description === "events"
+        );
+        expect(eventsSymbol).toBeDefined();
+        const attached = (link as unknown as Record<symbol, Record<string, (event: Event) => void>>)[
+            eventsSymbol!
+        ];
+        for (const type of ["mousedown", "pointerdown", "mouseup", "click"]) {
+            expect(typeof attached[type]).toBe("function");
+            const event = new MouseEvent(type, { bubbles: true, cancelable: true });
+            attached[type].call(link, event);
+            expect(event.cancelBubble).toBe(true);
+        }
+    });
+
     // The mirror must follow the array actually stored on the item, even when
     // that array is created or replaced after the component mounted (a remote
     // client writing the "attachments" key does exactly this).

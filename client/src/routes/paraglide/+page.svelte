@@ -7,11 +7,13 @@ import {
     locales,
     localizeHref,
 } from "$lib/paraglide/runtime";
-import { resolvePath } from "../../utils/pathUtils";
 
 function switchToLanguage(newLanguage: "en" | "ja") {
+    // localizeHref returns an already-localized URL, not a route ID: it must
+    // reach SvelteKit navigation unchanged, without a second locale/base
+    // prefix or parameter-encoding pass.
     const localisedPath = localizeHref(page.url.pathname, { locale: newLanguage });
-    goto(resolvePath(localisedPath));
+    goto(localisedPath);
 }
 </script>
 
