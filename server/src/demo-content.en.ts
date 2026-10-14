@@ -538,6 +538,10 @@ export function demoContentEn(): DemoLocaleContent {
                             "A calendar is a query plus a role assignment over its result columns — which column is the title, the start, the all-day flag, the duration, and which columns are grouping axes. It has no data of its own.",
                     },
                     {
+                        text:
+                            "Use /calendar to create an independent Calendar, initialize one with a new preset Table, build one over an existing Table, or place an existing Calendar. A setup Table initializes the query; it is not an entry destination.",
+                    },
+                    {
                         text: "How it works:",
                         children: [
                             {

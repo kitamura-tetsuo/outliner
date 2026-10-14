@@ -1,0 +1,18 @@
+id: FTR-5605ca14
+title: Table-backed Calendar creation
+title-ja: Table を使用した Calendar 作成
+description: The Calendar block can create an independent Calendar, create one with a preset Table, create one over an existing same-project Table, or bind an existing Calendar. Table-backed setup initializes only the Calendar query and supported roles; it does not make the Table a persistent source or entry destination.
+category: client
+status: implemented
+components:
+- client/src/components/calendar/CalendarBlock.svelte
+- client/src/services/calendar/calendarSetup.ts
+acceptance:
+- All four creation modes revalidate the live unbound destination before publishing
+- Preset setup creates exactly one Table and one Calendar without a Grid
+- Existing-Table setup stores a query for the selected current SQL relation without source ownership
+- Tasks maps title and deadline roles, while Habits maps only its valid title role
+- Calendar entry creation remains an explicit-parent outline item operation
+tests:
+- client/src/services/calendar/calendarSetup.test.ts
+- client/e2e/new/cal-table-backed-creation-5605ca14.spec.ts
