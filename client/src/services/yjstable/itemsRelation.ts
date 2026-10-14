@@ -175,6 +175,7 @@ export class ItemsRelationProvider implements RelationProvider {
     private pendingKeys = new Set<string>();
     private flushScheduled = false;
     private flushing: Promise<void> = Promise.resolve();
+    private invalidationListeners = new Set<() => void>();
 
     private readonly treeObserver = (
         events: Y.YEvent<Y.AbstractType<unknown>>[],
@@ -264,6 +265,11 @@ export class ItemsRelationProvider implements RelationProvider {
         return await this.materialize();
     }
 
+    subscribeInvalidation(listener: () => void): () => void {
+        this.invalidationListeners.add(listener);
+        return () => this.invalidationListeners.delete(listener);
+    }
+
     dispose(): void {
         this.disposed = true;
         this.materialized = false;
@@ -271,6 +277,7 @@ export class ItemsRelationProvider implements RelationProvider {
             this.treeMap.unobserveDeep(this.treeObserver);
             this.started = false;
         }
+        this.invalidationListeners.clear();
     }
 
     // ------------------------------------------------------------------
@@ -574,6 +581,10 @@ export class ItemsRelationProvider implements RelationProvider {
                 await enqueueWrite(async (db) => {
                     for (const key of keys) await this.applyKeyToDb(db, key);
                 });
+                // Publish only after PGlite reflects the Yjs transaction. A
+                // subscriber can therefore requery immediately without
+                // racing the projection flush that caused the invalidation.
+                for (const listener of [...this.invalidationListeners]) listener();
             } catch (err) {
                 logger.warn({ err }, "[itemsRelation] applying an item change failed");
             }
