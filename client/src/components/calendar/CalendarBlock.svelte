@@ -9,7 +9,7 @@ import {
     createCalendarWithNewTable,
     createIndependentCalendar,
 } from "../../services/calendar/calendarSetup";
-import { listTables } from "../../services/yjstable/tableDocs";
+import { getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
 import type { TableCreationInput } from "../yjstable/TableCreationForm.svelte";
 import TableCreationForm from "../yjstable/TableCreationForm.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
@@ -32,6 +32,7 @@ const existingTables = $derived.by(() => { void registryVersion; return listTabl
 const takenSqlNames = $derived(existingTables.map(table => table.sqlName));
 const projectId = $derived(yjsStore.currentProjectId ?? undefined);
 const authorization = $derived({ projectAccess: Boolean(projectId), surfaceWritable: !isReadOnly });
+const tableRegistry = getTableRegistry(item.ydoc);
 const registryObserver = () => registryVersion++;
 let unobserveItem: (() => void) | undefined;
 let unobserveRegistry: (() => void) | undefined;
@@ -39,12 +40,12 @@ let unobserveRegistry: (() => void) | undefined;
 onMount(() => {
     calendarId = getItemCalendarId(item);
     unobserveRegistry = observeCalendars(project, registryObserver);
-    project.tables.observeDeep(registryObserver);
+    tableRegistry.observeDeep(registryObserver);
     unobserveItem = observeItemCalendarId(item, () => calendarId = getItemCalendarId(item));
 });
 onDestroy(() => {
     unobserveRegistry?.();
-    project.tables.unobserveDeep(registryObserver);
+    tableRegistry.unobserveDeep(registryObserver);
     unobserveItem?.();
 });
 function run(action: () => string): string | undefined {

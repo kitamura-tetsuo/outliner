@@ -14,5 +14,6 @@ acceptance:
 - Tasks maps title and deadline roles, while Habits maps only its valid title role
 - Calendar entry creation remains an explicit-parent outline item operation
 tests:
+- client/src/components/calendar/CalendarBlock.test.ts
 - client/src/services/calendar/calendarSetup.test.ts
 - client/e2e/new/cal-table-backed-creation-5605ca14.spec.ts
