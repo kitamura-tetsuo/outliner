@@ -148,7 +148,7 @@
             <button type="button" class="button-style" onclick={() => { showA11yHelp = true; }}>Keyboard Shortcuts</button>
         </div>
                 <dialog class="a11y-dialog" bind:this={a11yDialog} onclose={() => showA11yHelp = false} onclick={handleDialogBackdropClick} aria-labelledby="a11y-dialog-title">
-            <div class="dialog-content" role="document">
+            <div class="dialog-content" role="presentation">
                 <h2 id="a11y-dialog-title">Keyboard &amp; accessibility help</h2>
                 <ul>
                     <li><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
