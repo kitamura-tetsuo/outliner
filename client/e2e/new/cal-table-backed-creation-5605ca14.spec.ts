@@ -6,7 +6,11 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cal-table-backed-calendar-creation-5605ca14.yaml
  */
 import { expect, test } from "@playwright/test";
-import { createBlockFromItem } from "../utils/nodeKindHelpers";
+import {
+    calendarProjectState,
+    createCalendarBlockForLabel,
+    createPresetCalendar,
+} from "../utils/calendarTableCreationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
@@ -14,50 +18,32 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Independent", "Preset", "Existing table", "Shared"]);
 
-        const blockFor = async (label: string) => {
-            const row = page.locator(".outliner-item").filter({ hasText: label }).first();
-            const itemId = await row.getAttribute("data-item-id");
-            expect(itemId).toBeTruthy();
-            const createdRow = await createBlockFromItem(page, page.locator(`[data-item-id="${itemId}"]`), "Calendar");
-            return createdRow.getByTestId("calendar-block");
-        };
-
-        const independent = await blockFor("Independent");
+        const independentRow = await createCalendarBlockForLabel(page, "Independent");
+        const independent = independentRow.getByTestId("calendar-block");
         await independent.getByTestId("calendar-name-input").fill("Independent Calendar");
         await independent.getByTestId("calendar-create").click();
         await expect(independent.getByTestId("calendar-view")).toBeVisible({ timeout: 15000 });
 
-        const preset = await blockFor("Preset");
-        await preset.getByRole("button", { name: "New Table" }).click();
-        await preset.getByTestId("yjs-table-name-input").fill("Release Tasks");
-        await preset.getByTestId("yjs-table-sql-name-input").fill("release_tasks");
-        await preset.getByTestId("yjs-table-create").click();
-        await expect(preset.getByTestId("calendar-view")).toBeVisible({ timeout: 15000 });
+        const presetRow = await createCalendarBlockForLabel(page, "Preset");
+        await createPresetCalendar(presetRow, { preset: "tasks", name: "Release Tasks", sqlName: "release_tasks" });
 
-        const overTable = await blockFor("Existing table");
+        const overTableRow = await createCalendarBlockForLabel(page, "Existing table");
+        const overTable = overTableRow.getByTestId("calendar-block");
         await overTable.getByRole("button", { name: "New Calendar over Existing Table" }).click();
         await overTable.getByTestId("calendar-table-name-input").fill("Second View");
         await overTable.getByTestId("calendar-create-over-table").click();
         await expect(overTable.getByTestId("calendar-view")).toBeVisible({ timeout: 15000 });
 
-        const shared = await blockFor("Shared");
+        const sharedRow = await createCalendarBlockForLabel(page, "Shared");
+        const shared = sharedRow.getByTestId("calendar-block");
         await shared.getByRole("button", { name: "Existing Calendar" }).click();
         await shared.getByTestId("calendar-existing-select").selectOption({ label: "Independent Calendar" });
         await shared.getByTestId("calendar-select-existing").click();
         await expect(shared.getByTestId("calendar-name")).toHaveText("Independent Calendar", { timeout: 15000 });
 
-        const state = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const project = (window as any).generalStore.project;
-            const calendars = [...project.calendars.values()].map((entry: any) => entry.toJSON());
-            return {
-                tables: project.ydoc.getMap("yjsTables").size,
-                grids: project.ydoc.getMap("yjsGrids").size,
-                calendars,
-            };
-        });
-        expect(state.tables).toBe(1);
-        expect(state.grids).toBe(0);
+        let state = await calendarProjectState(page);
+        expect(state.tableCount).toBe(1);
+        expect(state.gridCount).toBe(0);
         expect(state.calendars).toHaveLength(3);
         expect(state.calendars).not.toEqual(expect.arrayContaining([
             expect.objectContaining({ sourceTableId: expect.anything() }),
@@ -72,5 +58,25 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
             }),
             expect.objectContaining({ name: "Second View", query: "SELECT * FROM release_tasks" }),
         ]));
+
+        const idsBeforeReload = await Promise.all([independentRow, sharedRow].map(row =>
+            row.evaluate(element => {
+                const id = element.getAttribute("data-item-id")!;
+                return (globalThis as any).generalStore.project.tree.getNodeValueFromKey(id).get("calendarId");
+            })
+        ));
+        expect(idsBeforeReload[0]).toBe(idsBeforeReload[1]);
+        await page.reload();
+        await expect(page.getByTestId("calendar-view")).toHaveCount(4, { timeout: 20000 });
+        const idsAfterReload = await Promise.all([independentRow, sharedRow].map(row =>
+            row.evaluate(element => {
+                const id = element.getAttribute("data-item-id")!;
+                return (globalThis as any).generalStore.project.tree.getNodeValueFromKey(id).get("calendarId");
+            })
+        ));
+        expect(idsAfterReload).toEqual(idsBeforeReload);
+        state = await calendarProjectState(page);
+        expect(state.calendars).toHaveLength(3);
+        expect(state.tableRecords).toEqual([expect.objectContaining({ sqlName: "release_tasks", recordCount: 0 })]);
     });
 });

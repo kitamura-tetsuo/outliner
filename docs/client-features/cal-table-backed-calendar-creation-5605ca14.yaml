@@ -17,3 +17,6 @@ tests:
 - client/src/components/calendar/CalendarBlock.test.ts
 - client/src/services/calendar/calendarSetup.test.ts
 - client/e2e/new/cal-table-backed-creation-5605ca14.spec.ts
+- client/e2e/new/cal-table-backed-presets-validation-5605ca14.spec.ts
+- client/e2e/new/cal-table-backed-refusals-5605ca14.spec.ts
+- client/e2e/new/cal-table-backed-entry-and-config-5605ca14.spec.ts
