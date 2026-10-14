@@ -59,7 +59,8 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         const createdParent = await page.evaluate(({ title }) => {
             // eslint-disable-next-line no-restricted-globals
             const project = (window as any).generalStore.project;
-            for (const [key, value] of project.tree.computedMap.entries()) {
+            for (const key of project.tree.computedMap.keys()) {
+                const value = project.tree.getNodeValueFromKey(key);
                 if (String(value.get("text") ?? "") !== title) continue;
                 return { key, parentKey: project.tree.getNodeParentFromKey(key) };
             }
