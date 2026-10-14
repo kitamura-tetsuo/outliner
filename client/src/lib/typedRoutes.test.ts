@@ -100,6 +100,17 @@ describe("typed project/page routes", () => {
         expect(projectPageDiffRoute("demo-ja", "書式")).toBe("/demo-ja/%E6%9B%B8%E5%BC%8F/diff");
         expect(projectPageScheduleRoute("acme", "My Page")).toBe("/acme/My%20Page/schedule");
     });
+
+    it("falls back to the legacy builders instead of throwing for empty segments", () => {
+        // The legacy string builders never threw for degenerate inputs, so a
+        // transiently empty title during clear-to-type editing must keep
+        // producing a string rather than crashing the rendering component.
+        expect(projectRoute("")).toBe(projectBasePath(""));
+        expect(projectPageRoute("", "page")).toBe(projectPagePath("", "page"));
+        expect(projectPageRoute("acme", "")).toBe(projectPagePath("acme", ""));
+        expect(projectPageDiffRoute("acme", "")).toBe(`${projectPagePath("acme", "")}/diff`);
+        expect(projectPageScheduleRoute("", "page")).toBe("//page/schedule");
+    });
 });
 
 describe("typed management routes", () => {
@@ -133,6 +144,17 @@ describe("typed management routes", () => {
         expect(projectTableRoute("demo-ja", "tbl-1")).toBe("/demo-ja/-/tables/tbl-1");
         expect(projectGraphRoute("demo")).toBe("/demo/-/graph");
         expect(projectManagementRoute("demo")).toBe("/demo/-");
+    });
+
+    it("falls back to the legacy builders instead of throwing for empty ids", () => {
+        expect(projectManagementRoute("")).toBe(projectManagementPath(""));
+        expect(projectObjectsRoute("")).toBe(projectObjectsPath(""));
+        expect(projectTablesRoute("")).toBe(projectTablesPath(""));
+        expect(projectTableRoute("acme", "")).toBe(projectTablePath("acme", ""));
+        expect(projectGridRoute("acme", "")).toBe(projectGridPath("acme", ""));
+        expect(projectKanbanRoute("acme", "")).toBe(projectKanbanPath("acme", ""));
+        expect(projectCalendarRoute("acme", "")).toBe(projectCalendarPath("acme", ""));
+        expect(projectScheduleRoute("acme", "")).toBe(projectSchedulePath("acme", ""));
     });
 
     it("builds the query-bearing management link without escaping the separator", () => {
