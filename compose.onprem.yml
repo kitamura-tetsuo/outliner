@@ -18,9 +18,3 @@ services:
       - "${OUTLINER_DATA_DIR:?Set OUTLINER_DATA_DIR to the persistent host directory}:/data"
     restart: unless-stopped
     stop_grace_period: 30s
-    networks:
-      - runtime
-
-networks:
-  runtime:
-    internal: true
