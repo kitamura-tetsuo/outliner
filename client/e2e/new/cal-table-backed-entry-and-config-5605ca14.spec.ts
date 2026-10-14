@@ -56,18 +56,16 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         await destination.selectOption(destinationKey!);
         await submit.click();
         await expect(dialog).toHaveCount(0, { timeout: 10000 });
-        const createdParent = await page.evaluate(({ title }) => {
+        const createdItemId = await page.locator(".outliner-item[data-item-id]")
+            .filter({ has: page.locator(".item-text", { hasText: "Outline-only entry" }) })
+            .getAttribute("data-item-id");
+        expect(createdItemId).toBeTruthy();
+        const createdParent = await page.evaluate(itemId => {
             // eslint-disable-next-line no-restricted-globals
             const project = (window as any).generalStore.project;
-            for (const key of project.tree.computedMap.keys()) {
-                const value = project.tree.getNodeValueFromKey(key);
-                if (String(value.get("text") ?? "") !== title) continue;
-                return { key, parentKey: project.tree.getNodeParentFromKey(key) };
-            }
-            return { key: undefined, parentKey: undefined };
-        }, { title: "Outline-only entry", parentKey: destinationKey! });
-        expect(createdParent.key).toBeTruthy();
-        expect(createdParent.parentKey).toBe(destinationKey);
+            return project.tree.getNodeParentFromKey(itemId);
+        }, createdItemId!);
+        expect(createdParent).toBe(destinationKey);
         const treeSizeAfterEntry = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             return (window as any).generalStore.project.tree.computedMap.size;

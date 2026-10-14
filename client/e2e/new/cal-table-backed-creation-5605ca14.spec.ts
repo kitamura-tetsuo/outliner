@@ -67,19 +67,22 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         ));
         expect(idsBeforeReload[0]).toBe(idsBeforeReload[1]);
 
-        await independent.getByTestId("calendar-toggle-settings").click();
-        await independent.getByTestId("calendar-query-input").fill(
+        // Configure the shared definition through the newly bound placement.
+        // The original placement can remount when the second binding arrives,
+        // so using the new placement also exercises the intended propagation.
+        await shared.getByTestId("calendar-toggle-settings").click();
+        await shared.getByTestId("calendar-query-input").fill(
             "SELECT id, text AS shared_title FROM outline_items",
         );
-        await independent.getByTestId("calendar-query-input").blur();
-        await independent.getByTestId("calendar-role-roleTitle").selectOption("shared_title");
+        await shared.getByTestId("calendar-query-input").blur();
+        await shared.getByTestId("calendar-role-roleTitle").selectOption("shared_title");
 
-        await shared.getByTestId("calendar-toggle-settings").click();
-        await expect(shared.getByTestId("calendar-query-input")).toHaveValue(
+        await independent.getByTestId("calendar-toggle-settings").click();
+        await expect(independent.getByTestId("calendar-query-input")).toHaveValue(
             "SELECT id, text AS shared_title FROM outline_items",
             { timeout: 15000 },
         );
-        await expect(shared.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
+        await expect(independent.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
 
         const sharedPlacementId = await sharedRow.getAttribute("data-item-id");
         const peer = await page.context().newPage();
