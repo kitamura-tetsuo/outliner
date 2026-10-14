@@ -6,6 +6,7 @@
     import { SeedDemoError } from "../../lib/demoSeed";
     import { DemoInitAborted, forceResetDemoProject, initializeDemoProject, releaseDemoProject } from "../../lib/demoInit";
     import { getLogger } from "../../lib/logger";
+    import { isOnPrem } from "../../lib/deployment";
 
     const logger = getLogger("DemoListPage");
     import { store, isProvisionalProject } from "../../stores/store.svelte";
@@ -95,6 +96,10 @@
     let acquiredProject = "";
 
     onMount(() => {
+        if (isOnPrem) {
+            isLoading = false;
+            return;
+        }
         acquiredProject = demoProject;
         initializeDemo();
     });
@@ -111,6 +116,12 @@
     <title>Demo | Outliner</title>
 </svelte:head>
 
+{#if isOnPrem}
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-4">Unavailable in this deployment</h1>
+        <p>Public demo reseeding is not available in on-premises deployments.</p>
+    </main>
+{:else}
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
     <div class="mb-4">
         <Breadcrumb items={[
@@ -216,4 +227,4 @@
         </div>
     {/if}
 </main>
-
+{/if}

@@ -338,6 +338,7 @@ export class UserManager {
                 }
                 if (!response.ok) throw new Error(`Session restoration failed (${response.status})`);
                 const result = await response.json() as IAuthResult;
+                if (generation !== this.authGeneration) return;
                 if (result.user?.id !== "local-user" || result.user.name !== "Local User") {
                     throw new Error("Local server returned an invalid identity");
                 }
@@ -475,13 +476,14 @@ export class UserManager {
     public async logout(): Promise<void> {
         if (isOnPrem) {
             ++this.authGeneration;
+            this.localUser = null;
+            this.localAuthError = undefined;
+            this.notifyListeners(null);
             const response = await fetch("/api/local-auth/logout", {
                 method: "POST",
                 credentials: "same-origin",
             });
             if (!response.ok) throw new Error(`Logout failed (${response.status})`);
-            this.localUser = null;
-            this.notifyListeners(null);
             return;
         }
         if (this.isMockMode) {

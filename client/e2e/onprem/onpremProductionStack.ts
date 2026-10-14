@@ -23,6 +23,13 @@ export class OnPremProductionStack {
     readonly originPort: number;
     private backend?: Awaited<ReturnType<typeof startOnPremServer>>;
     private gateway?: http.Server;
+    private sessionBodyGate?: Promise<void>;
+
+    delayNextSessionBody(): () => void {
+        let release!: () => void;
+        this.sessionBodyGate = new Promise<void>(resolve => release = resolve);
+        return release;
+    }
 
     constructor(workerIndex: number) {
         this.backendPort = 17400 + workerIndex * 2;
@@ -89,7 +96,13 @@ export class OnPremProductionStack {
                 headers: { ...request.headers, host: `127.0.0.1:${this.backendPort}` },
             }, result => {
                 response.writeHead(result.statusCode ?? 502, result.headers);
-                result.pipe(response);
+                if (request.method === "GET" && request.url === "/api/local-auth/session" && this.sessionBodyGate) {
+                    const gate = this.sessionBodyGate;
+                    this.sessionBodyGate = undefined;
+                    void gate.then(() => result.pipe(response));
+                } else {
+                    result.pipe(response);
+                }
             });
             upstream.on("error", () => {
                 response.writeHead(503);

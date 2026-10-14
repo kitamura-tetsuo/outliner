@@ -25,6 +25,7 @@
 
     // Calculate projects stably (Eventless: ucVersion)
     let projects = $derived(projectStore.projects);
+    let isDirectoryLoading = $derived(!projectStore.isLoaded && !projectStore.error);
     $effect(() => {
         logger.info({
             len: projects.length,
@@ -165,7 +166,7 @@
 <div class="project-selector">
     <div class="selector-header">
         <h3 id="project-selector-title" class="selector-title">Select Project</h3>
-        {#if isLoading}
+        {#if isLoading || isDirectoryLoading}
             <span class="loading-indicator" role="status" aria-live="polite">Loading...</span>
         {/if}
     </div>
@@ -190,12 +191,14 @@
             <select
                 bind:value={selectedProjectId}
                 onchange={handleProjectChange}
-                disabled={isLoading || !!projectStore.error || projects.length === 0}
+                disabled={isLoading || isDirectoryLoading || !!projectStore.error || projects.length === 0}
                 class="project-select"
                 aria-labelledby="project-selector-title"
             >
                 {#if projectStore.error}
                     <option value="">Project directory unavailable</option>
+                {:else if isDirectoryLoading}
+                    <option value="">Loading projects...</option>
                 {:else if projects.length === 0}
                     <option value="">No available projects</option>
                 {:else}
