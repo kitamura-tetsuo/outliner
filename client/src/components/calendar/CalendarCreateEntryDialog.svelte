@@ -146,7 +146,7 @@ async function submit(e: Event) {
     oncancel={(e) => { e.preventDefault(); onCancel(); }}
     onclick={(e) => { if (e.target === dialogEl) onCancel(); }}
 >
-    <div class="dialog-content" role="presentation">
+    <div class="dialog-content" role="document">
         <h3>New entry</h3>
         <form onsubmit={submit}>
             <label class="field">

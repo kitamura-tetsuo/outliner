@@ -151,7 +151,7 @@
     aria-labelledby="duplicate-selected-dialog-title"
     data-testid="object-manager-duplicate-dialog"
 >
-    <div class="dialog-content w-full max-w-lg rounded-lg bg-white shadow-xl" role="presentation">
+    <div class="dialog-content w-full max-w-lg rounded-lg bg-white shadow-xl" role="document">
         <div class="border-b border-gray-200 px-6 py-4">
             <h2 id="duplicate-selected-dialog-title" class="text-lg font-bold text-gray-900">
                 Duplicate selected ({selected.length})

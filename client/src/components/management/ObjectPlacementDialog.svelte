@@ -59,7 +59,7 @@ function place() {
 </script>
 
 <dialog class="dialog" bind:this={dialogEl} oncancel={(e) => { e.preventDefault(); onclose(); }} onclick={(e) => { if (e.target === dialogEl) onclose(); }} aria-labelledby="placement-title">
-    <div class="dialog-content" role="presentation">
+    <div class="dialog-content" role="document">
         <h2 id="placement-title">{objectType === "table" ? `Create a Kanban over “${objectName}”` : `Place “${objectName}” on a Page`}</h2>
         <label>Page
             <select bind:value={pageId} data-testid="object-placement-page-picker">
