@@ -14,7 +14,7 @@ import type { RelationEvidence, RelationProvider } from "./relationProvider";
 import { projectSchemaName } from "./sqlNames";
 import { getTableRegistry } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
-import { executeGridQuery, REQUERY_DEBOUNCE_MS, type TableQueryResult } from "./tableSyncAdapter";
+import { executeGridQuery, REQUERY_DEBOUNCE_MS } from "./tableSyncAdapter";
 
 const logger = getLogger("projectSelectSession");
 

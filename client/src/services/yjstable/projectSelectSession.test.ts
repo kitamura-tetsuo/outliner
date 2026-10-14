@@ -63,7 +63,7 @@ describe("Project SELECT session", { timeout: 30_000 }, () => {
     });
 
     it("resolves every UNION/EXISTS source and reacts to warm provider data", async () => {
-        const { doc, a, b } = project("project-select-relations");
+        const { doc, b } = project("project-select-relations");
         const warming = createProjectSelectSession({
             projectDoc: doc,
             query: "SELECT * FROM a",
