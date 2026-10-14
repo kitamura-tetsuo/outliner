@@ -95,6 +95,8 @@ export interface RelationProvider {
      */
     readonly sqlName: string;
     readonly capabilities: RelationCapabilities;
+    /** Stable source description for result provenance; it grants no write authority. */
+    readonly evidence?: RelationEvidence;
     /**
      * Ensure the relation exists in the project's Postgres schema. Resolves
      * false when it cannot be built (no valid schema, for example).
@@ -106,6 +108,15 @@ export interface RelationProvider {
     applyWrite(write: RelationWrite): Promise<void>;
     /** Detach observers. Dropping the Postgres relation is the engine's job. */
     dispose(): void;
+}
+
+export interface RelationEvidence {
+    kind: "table" | "system";
+    /** Stable identity inside the admitted Project (Table id or system name). */
+    id: string;
+    sqlName: string;
+    /** Revision of the materialized source shape. */
+    schemaRevision: string;
 }
 
 /**

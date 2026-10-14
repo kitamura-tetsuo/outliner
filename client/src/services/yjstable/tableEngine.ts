@@ -110,6 +110,8 @@ export interface TableEngineSession {
      * declares what it accepts and applies writes to the owning Yjs structure.
      */
     resolveRelation: (sqlName: string) => Promise<RelationProvider | undefined>;
+    /** Release one relation hold acquired by `resolveRelation`. */
+    releaseRelation: (provider: RelationProvider) => void;
     dispose: () => void;
 }
 
@@ -557,6 +559,14 @@ export function createTableEngineSession(options: {
             const resolved = await resolveRelationInternal(projectDoc, projectId, pgSchema, sqlName, connect);
             if (disposed) return undefined;
             return resolved?.provider;
+        },
+        releaseRelation: provider => {
+            const index = held.findIndex(key => entries.get(key)?.provider === provider);
+            if (index < 0) return;
+            const [key] = held.splice(index, 1);
+            const entry = entries.get(key);
+            if (entry) entry.refs = Math.max(0, entry.refs - 1);
+            sweep();
         },
         dispose: () => {
             if (disposed) return;

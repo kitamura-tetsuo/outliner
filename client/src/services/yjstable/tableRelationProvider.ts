@@ -14,6 +14,7 @@ import {
     RelationWriteError,
     TABLE_RELATION_CAPABILITIES,
 } from "./relationProvider";
+import type { RelationEvidence } from "./relationProvider";
 import { addRecord, deleteRecord, setRecordValue, type TableHandles, type TableRecordValue } from "./tableDocs";
 import type { TableSyncAdapter } from "./tableSyncAdapter";
 
@@ -35,6 +36,15 @@ export class TableRelationProvider implements RelationProvider {
         return this.adapter.appliedSchema?.tableName ?? "";
     }
 
+    get evidence(): RelationEvidence {
+        return {
+            kind: "table",
+            id: this.handles.tableId,
+            sqlName: this.sqlName,
+            schemaRevision: this.handles.schemaText.toString(),
+        };
+    }
+
     async materialize(): Promise<boolean> {
         await this.ready;
         return this.adapter.appliedSchema !== undefined;
@@ -53,6 +63,7 @@ export class TableRelationProvider implements RelationProvider {
                 }
                 listener();
             },
+            onDataChanged: listener,
             onDataApplied: listener,
         });
     }
