@@ -87,6 +87,7 @@ test.describe("FTR-5605ca14: Calendar setup refuses stale authority", () => {
         await block.getByRole("button", { name: "New Table", exact: true }).click();
         await block.getByTestId("yjs-table-sql-name-input").fill("access_denied_table");
         const before = await calendarProjectState(page);
+        const undoDepthBefore = await page.evaluate(() => (globalThis as any).globalUndoRouter?.undoDepth ?? 0);
         const retainedProjectId = await page.evaluate(() => {
             // This is the production store state emitted by a terminal room
             // denial: the connected client remains, while syncError becomes denied.
@@ -101,5 +102,12 @@ test.describe("FTR-5605ca14: Calendar setup refuses stale authority", () => {
         expect(after.tableCount).toBe(before.tableCount);
         expect(after.gridCount).toBe(before.gridCount);
         expect(after.calendars).toEqual(before.calendars);
+        await expect(block.getByTestId("calendar-create-panel")).toBeVisible();
+        const binding = await row.evaluate(element => {
+            const itemId = element.getAttribute("data-item-id")!;
+            return (globalThis as any).generalStore.project.tree.getNodeValueFromKey(itemId).get("calendarId");
+        });
+        expect(binding).toBeUndefined();
+        expect(await page.evaluate(() => (globalThis as any).globalUndoRouter?.undoDepth ?? 0)).toBe(undoDepthBefore);
     });
 });
