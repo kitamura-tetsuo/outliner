@@ -55,7 +55,7 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         await expect(dialog).toHaveCount(0, { timeout: 10000 });
         await expect(page.locator(".outliner-item", { hasText: "Outline-only entry" })).toBeVisible({ timeout: 15000 });
         await expect(page.locator(".outliner-item")).toHaveCount(rowsBeforeEntry + 1);
-        const createdParent = await page.evaluate(({ title, parentKey }) => {
+        const createdParent = await page.evaluate(({ title }) => {
             // eslint-disable-next-line no-restricted-globals
             const project = (window as any).generalStore.project;
             for (const [key, value] of project.tree.computedMap.entries()) {
