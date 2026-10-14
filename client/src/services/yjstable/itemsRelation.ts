@@ -185,6 +185,7 @@ export class ItemsRelationProvider implements RelationProvider {
         // itself, from the Yjs state it just wrote. Re-entering here would
         // treat it as a foreign change and redo the same work.
         if (tr.origin === ITEMS_RELATION_ORIGIN) return;
+        this.notifyInvalidation();
         for (const event of events) {
             if (event.path.length === 0) {
                 // Nodes added to or removed from the tree.
@@ -351,6 +352,7 @@ export class ItemsRelationProvider implements RelationProvider {
             }
         }, ITEMS_RELATION_ORIGIN);
 
+        this.notifyInvalidation();
         for (const key of touched) this.pendingKeys.add(key);
         await this.flushPending();
     }
@@ -584,7 +586,7 @@ export class ItemsRelationProvider implements RelationProvider {
                 // Publish only after PGlite reflects the Yjs transaction. A
                 // subscriber can therefore requery immediately without
                 // racing the projection flush that caused the invalidation.
-                for (const listener of [...this.invalidationListeners]) listener();
+                this.notifyInvalidation();
             } catch (err) {
                 logger.warn({ err }, "[itemsRelation] applying an item change failed");
             }
@@ -593,6 +595,10 @@ export class ItemsRelationProvider implements RelationProvider {
             return undefined;
         });
         return this.flushing;
+    }
+
+    private notifyInvalidation(): void {
+        for (const listener of [...this.invalidationListeners]) listener();
     }
 
     /** Upsert one item, or delete its row when it is no longer projected. */

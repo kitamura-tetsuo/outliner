@@ -106,7 +106,10 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
             }
             this.invalidate();
         });
-        this.registryObserver = () => this.invalidate();
+        this.registryObserver = () => {
+            this.releaseDependencies();
+            this.invalidate();
+        };
         getTableRegistry(projectDoc).observeDeep(this.registryObserver);
         this.schedule();
     }
@@ -238,6 +241,9 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
     private async resolveDependency(name: string): Promise<RelationProvider | undefined> {
         const existing = this.dependencyProviders.get(name);
         if (existing) {
+            if (!(await existing.materialize()) || !existing.sqlName) {
+                throw new TableSqlError("schema", `Relation "${name}" has no valid applied schema`);
+            }
             this.observeDependency(name, existing);
             return existing;
         }
@@ -260,6 +266,13 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         for (const listener of this.listeners) listener(state);
     }
 
+    private releaseDependencies(): void {
+        for (const unsubscribe of this.dependencyUnsubscribes.values()) unsubscribe();
+        this.dependencyUnsubscribes.clear();
+        for (const provider of this.dependencyProviders.values()) this.engine.releaseRelation(provider);
+        this.dependencyProviders.clear();
+    }
+
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
@@ -267,8 +280,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         if (this.timer !== undefined) clearTimeout(this.timer);
         this.unsubscribeCatalog();
         getTableRegistry(this.projectDoc).unobserveDeep(this.registryObserver);
-        for (const unsubscribe of this.dependencyUnsubscribes.values()) unsubscribe();
-        this.dependencyUnsubscribes.clear();
+        this.releaseDependencies();
         this.engine.dispose();
         this.publish({ status: "disposed" });
     }

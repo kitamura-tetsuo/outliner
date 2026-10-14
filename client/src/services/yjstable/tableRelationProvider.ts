@@ -63,6 +63,7 @@ export class TableRelationProvider implements RelationProvider {
                 }
                 listener();
             },
+            onDataChanged: listener,
             onDataApplied: listener,
         });
     }

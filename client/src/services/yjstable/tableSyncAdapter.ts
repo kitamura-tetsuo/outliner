@@ -57,6 +57,8 @@ export interface TableQueryResult {
 }
 
 export interface TableSyncCallbacks {
+    /** Fired synchronously when Yjs data changes, before its PGlite flush. */
+    onDataChanged?: () => void;
     /** Fired whenever the applied schema changes (undefined = none/invalid). */
     onSchemaChanged?: (schema: ParsedTableSchema | undefined, error?: string) => void;
     onRecordErrors?: (errors: RecordSyncError[]) => void;
@@ -149,6 +151,7 @@ export class TableSyncAdapter {
                 this.pendingRecordIds.add(String(event.path[0]));
             }
         }
+        for (const listener of this.listeners) listener.onDataChanged?.();
         this.scheduleFlush();
     };
 
