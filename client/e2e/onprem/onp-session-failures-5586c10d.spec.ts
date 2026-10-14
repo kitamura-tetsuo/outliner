@@ -16,6 +16,11 @@ test.describe("production on-premises session ordering and failure states", () =
         await createProject(page, title);
         await page.goto(stack.origin);
 
+        let loggedOut = false;
+        let socketOpenedAfterLogout = false;
+        page.on("websocket", () => {
+            if (loggedOut) socketOpenedAfterLogout = true;
+        });
         let release!: () => void;
         const delayed = new Promise<void>(resolve => {
             release = resolve;
@@ -29,11 +34,13 @@ test.describe("production on-premises session ordering and failure states", () =
         await page.waitForRequest("**/api/projects/resolve?title=*");
         await page.getByTestId("login-status-indicator").click();
         await page.getByTestId("user-menu-signout").click();
+        loggedOut = true;
         release();
         await navigation;
 
         await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
         await expect(page.locator(".outliner-item")).toHaveCount(0);
+        expect(socketOpenedAfterLogout).toBe(false);
         await page.waitForTimeout(500);
         await expect(page.locator(".outliner-item")).toHaveCount(0);
     });
@@ -47,6 +54,11 @@ test.describe("production on-premises session ordering and failure states", () =
         await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(title)}/Delayed$`));
         await page.goto(stack.origin);
 
+        let loggedOut = false;
+        let socketOpenedAfterLogout = false;
+        page.on("websocket", () => {
+            if (loggedOut) socketOpenedAfterLogout = true;
+        });
         let release!: () => void;
         const delayed = new Promise<void>(resolve => release = resolve);
         await page.route("**/api/projects/resolve?title=*", async route => {
@@ -58,11 +70,13 @@ test.describe("production on-premises session ordering and failure states", () =
         await page.waitForRequest("**/api/projects/resolve?title=*");
         await page.getByTestId("login-status-indicator").click();
         await page.getByTestId("user-menu-signout").click();
+        loggedOut = true;
         release();
         await navigation;
 
         await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
         await expect(page.locator(".outliner-item")).toHaveCount(0);
+        expect(socketOpenedAfterLogout).toBe(false);
     });
 
     test("requires login after backend restart but retains the registered project", async ({ page }) => {

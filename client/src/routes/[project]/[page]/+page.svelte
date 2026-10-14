@@ -21,7 +21,8 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { projectPagePath } from "../../../lib/publicProject";
     import { projectGraphPath } from "../../../lib/managementPaths";
-    import { getClientByProjectTitle as getYjsClientByProjectTitle } from "../../../lib/yjsService.svelte";
+    import { isOnPrem } from "../../../lib/deployment";
+    import { getAuthorizedClientByProjectTitle } from "../../../lib/yjsService.svelte";
     const logger = getLogger("+page");
 
     import { yjsStore } from "../../../stores/yjsStore.svelte";
@@ -44,6 +45,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     let pageNotFound = $state(false);
     let lastReset = $state(0);
     let loadGeneration = 0;
+    let loadController: AbortController | undefined;
 
     $effect(() => {
         if (store.project) {
@@ -183,11 +185,16 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         logger.info("Logged out");
         isAuthenticated = false;
         ++loadGeneration;
+        loadController?.abort();
+        loadController = undefined;
     }
 
     // Load project and page
     async function loadProjectAndPage() {
         const generation = ++loadGeneration;
+        loadController?.abort();
+        const controller = new AbortController();
+        loadController = controller;
         logger.info(
             `loadProjectAndPage: Starting for project="${projectName}", page="${pageName}"`,
         );
@@ -201,8 +208,8 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             logger.info(
                 `loadProjectAndPage: Getting Yjs client for "${projectName}"`,
             );
-            let client = await getYjsClientByProjectTitle(projectName);
-            if (generation !== loadGeneration || !userManager.getCurrentUser()) {
+            let client = await getAuthorizedClientByProjectTitle(projectName, controller.signal);
+            if (generation !== loadGeneration || controller.signal.aborted || !userManager.getCurrentUser()) {
                 client?.dispose?.();
                 return;
             }
@@ -579,6 +586,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 
     onDestroy(() => {
         ++loadGeneration;
+        loadController?.abort();
         // Cleanup link previews
         cleanupLinkPreviews();
     });
@@ -608,7 +616,9 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 >
                     Search
                 </button>
-                <a href={resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
+                {#if !isOnPrem}
+                    <a href={resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
+                {/if}
                 <a href={resolvePath(projectGraphPath(projectName))} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
@@ -624,7 +634,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 
     {#if _isLoading && !store.currentPage}
         <div class="py-8"><Loader message="Loading Page..." /></div>
-    {:else if !error}
+    {:else if !error && isAuthenticated}
         <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
         {#key lastReset}
             <OutlinerBase

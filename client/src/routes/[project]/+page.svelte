@@ -6,7 +6,7 @@
     import AuthComponent from "../../components/AuthComponent.svelte";
     import PageList from "../../components/PageList.svelte";
     import { getLogger } from "../../lib/logger";
-    import { getClientByProjectTitle as getYjsClientByProjectTitle } from "../../lib/yjsService.svelte";
+    import { getAuthorizedClientByProjectTitle } from "../../lib/yjsService.svelte";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import Breadcrumb from "../../components/Breadcrumb.svelte";
@@ -31,6 +31,7 @@
     let projectNotFound = $state(false);
     let isLoading = $state(true);
     let loadGeneration = 0;
+    let loadController: AbortController | undefined;
 
     let isPublicDemo = $derived(isPublicProject(projectName));
     let canAccess = $derived(isAuthenticated || isPublicDemo);
@@ -51,12 +52,17 @@
         }
         isAuthenticated = false;
         ++loadGeneration;
+        loadController?.abort();
+        loadController = undefined;
     }
 
     // Load project
     async function loadProject() {
         if (!projectName || !canAccess) return;
         const generation = ++loadGeneration;
+        loadController?.abort();
+        const controller = new AbortController();
+        loadController = controller;
 
         logger.info(`loadProject: Starting for project="${projectName}"`);
         isLoading = true;
@@ -64,8 +70,8 @@
         projectNotFound = false;
 
         try {
-            let client = await getYjsClientByProjectTitle(projectName);
-            if (generation !== loadGeneration || (!userManager.getCurrentUser() && !isPublicDemo)) {
+            let client = await getAuthorizedClientByProjectTitle(projectName, controller.signal);
+            if (generation !== loadGeneration || controller.signal.aborted || (!userManager.getCurrentUser() && !isPublicDemo)) {
                 client?.dispose?.();
                 return;
             }
@@ -109,6 +115,7 @@
 
     onDestroy(() => {
         ++loadGeneration;
+        loadController?.abort();
     });
 </script>
 
