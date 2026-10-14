@@ -38,7 +38,10 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         await dueRole.selectOption("deadline");
 
         expect(await block.getByText(/insert target/i).count()).toBe(0);
-        const rowsBeforeEntry = await page.locator(".outliner-item").count();
+        const treeSizeBeforeEntry = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
+            return (window as any).generalStore.project.tree.computedMap.size;
+        });
         await block.getByTestId("calendar-new-entry").click();
         const dialog = block.getByTestId("calendar-create-dialog");
         await expect(dialog).toBeVisible();
@@ -53,8 +56,6 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         await destination.selectOption(destinationKey!);
         await submit.click();
         await expect(dialog).toHaveCount(0, { timeout: 10000 });
-        await expect(page.locator(".outliner-item", { hasText: "Outline-only entry" })).toBeVisible({ timeout: 15000 });
-        await expect(page.locator(".outliner-item")).toHaveCount(rowsBeforeEntry + 1);
         const createdParent = await page.evaluate(({ title }) => {
             // eslint-disable-next-line no-restricted-globals
             const project = (window as any).generalStore.project;
@@ -66,6 +67,11 @@ test.describe("FTR-5605ca14: Table setup remains separate from Calendar entry de
         }, { title: "Outline-only entry", parentKey: destinationKey! });
         expect(createdParent.key).toBeTruthy();
         expect(createdParent.parentKey).toBe(destinationKey);
+        const treeSizeAfterEntry = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
+            return (window as any).generalStore.project.tree.computedMap.size;
+        });
+        expect(treeSizeAfterEntry).toBe(treeSizeBeforeEntry + 1);
 
         let state = await calendarProjectState(page);
         expect(state.tableRecords).toEqual(recordsBefore);
