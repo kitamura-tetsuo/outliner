@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - compose.onprem.yml
+      - compose.onprem.test.yml
       - Dockerfile.onprem
       - .dockerignore
       - server/**
       - client/**
       - shared/**
       - scripts/test-onprem-compose.sh
+      - scripts/onprem-egress-audit.cjs
       - .github/workflows/ci-onprem.yml
   workflow_dispatch:
 

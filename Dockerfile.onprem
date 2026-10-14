@@ -35,6 +35,7 @@ COPY --from=server-build /app/server/dist ./server/dist
 COPY --from=server-build /app/server/node_modules ./server/node_modules
 COPY --from=server-build /app/server/package.json ./server/package.json
 COPY --from=client-build /build/build ./public
+COPY scripts/onprem-egress-audit.cjs ./onprem-egress-audit.cjs
 RUN mkdir /data && chown -R node:node /app /data
 USER node
 EXPOSE 7093

@@ -79,6 +79,9 @@ describe("on-premises production composition", () => {
             expect((await request(started.server).get("/Project/Page").set("Accept", "text/html")).text).to.contain(
                 "Outliner local",
             );
+            expect(
+                (await request(started.server).get("/Project/Release%201.0").set("Accept", "text/html")).text,
+            ).to.contain("Outliner local");
             expect((await request(started.server).get("/missing.js").set("Accept", "text/html")).status).to.equal(404);
             const api = await request(started.server).get("/api/not-supported").set("Accept", "text/html");
             expect(api.status).to.equal(501);

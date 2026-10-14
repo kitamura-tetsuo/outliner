@@ -21,6 +21,7 @@ interface LocalContext {
 }
 
 const LOCAL_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const STATIC_ASSET_EXTENSION = /\.(?:avif|css|gif|ico|jpe?g|js|json|map|mjs|png|svg|webp|woff2?|wasm)$/i;
 
 function statusFor(error: unknown): number {
     if (!(error instanceof ProjectDirectoryError)) return 500;
@@ -185,7 +186,7 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
         app.get("*splat", (req, res, next) => {
             // Only browser navigation receives the SPA shell. In particular,
             // failed API and asset requests must retain their failure status.
-            if (!req.accepts("html") || path.extname(req.path)) {
+            if (!req.accepts("html") || STATIC_ASSET_EXTENSION.test(req.path)) {
                 next();
                 return;
             }
