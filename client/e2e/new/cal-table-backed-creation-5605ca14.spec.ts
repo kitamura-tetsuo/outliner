@@ -86,13 +86,6 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
         await independent.getByTestId("calendar-query-input").blur();
         await independent.getByTestId("calendar-role-roleTitle").selectOption("shared_title");
 
-        await openCalendarSettings(shared);
-        await expect(shared.getByTestId("calendar-query-input")).toHaveValue(
-            "SELECT id, text AS shared_title FROM outline_items",
-            { timeout: 15000 },
-        );
-        await expect(shared.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
-
         const sharedPlacementId = await sharedRow.getAttribute("data-item-id");
         const peer = await page.context().newPage();
         await peer.goto(page.url());
@@ -130,6 +123,18 @@ test.describe("FTR-5605ca14: Table-backed Calendar creation", () => {
             })
         ));
         expect(idsAfterReload).toEqual(idsBeforeReload);
+
+        await openCalendarSettings(shared);
+        await expect(shared.getByTestId("calendar-query-input")).toHaveValue(
+            "SELECT id, text AS shared_title FROM outline_items",
+        );
+        await expect(shared.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
+        await openCalendarSettings(independent);
+        await expect(independent.getByTestId("calendar-query-input")).toHaveValue(
+            "SELECT id, text AS shared_title FROM outline_items",
+        );
+        await expect(independent.getByTestId("calendar-role-roleTitle")).toHaveValue("shared_title");
+
         state = await calendarProjectState(page);
         expect(state.calendars).toHaveLength(3);
         for (const calendar of state.calendars) {
