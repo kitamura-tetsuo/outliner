@@ -70,7 +70,7 @@ async function run(action: () => Promise<void> | void) {
     oncancel={(e) => { e.preventDefault(); onCancel(); }}
     onclick={(e) => { if (e.target === dialogEl) onCancel(); }}
 >
-    <div class="dialog-content" role="document">
+    <div class="dialog-content" role="presentation">
         <h3>Delete "{entry.title || "this entry"}"?</h3>
 
         {#if isOccurrence}

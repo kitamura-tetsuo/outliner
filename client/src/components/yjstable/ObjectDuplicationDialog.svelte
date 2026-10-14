@@ -138,7 +138,7 @@
     aria-labelledby="duplicate-dialog-title"
     data-testid="object-duplication-dialog"
 >
-    <div class="dialog-content w-full max-w-lg rounded-lg bg-white shadow-xl" role="document">
+    <div class="dialog-content w-full max-w-lg rounded-lg bg-white shadow-xl" role="presentation">
         <div class="border-b border-gray-200 px-6 py-4">
             <h2 id="duplicate-dialog-title" class="text-lg font-bold text-gray-900">
                 Duplicate {
