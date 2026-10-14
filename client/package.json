@@ -61,7 +61,7 @@
         "diff-match-patch": "^1.0.5",
         "dompurify": "^3.4.16",
         "echarts": "^6.1.0",
-        "firebase": "^12.19.0",
+        "firebase": "^13.0.0",
         "jsonwebtoken": "^9.0.2",
         "lib0": "^0.2.119",
         "libpg-query": "18.1.5",
