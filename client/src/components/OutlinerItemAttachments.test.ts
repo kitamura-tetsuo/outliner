@@ -174,8 +174,7 @@ describe("OutlinerItemAttachments", () => {
     // browser verbatim: it is an opaque resource destination, not an
     // application route, so no base prefix or route-ID expansion applies.
     it("renders a signed resource URL verbatim with target and protections", async () => {
-        const signed =
-            "https://storage.example.com/files/report.pdf?sig=abc123&exp=1700000000#page=2";
+        const signed = "https://storage.example.com/files/report.pdf?sig=abc123&exp=1700000000#page=2";
         const item = new Item({ id: "test-id" });
         item.addAttachment(signed, "application/pdf", "report.pdf");
 
@@ -214,9 +213,7 @@ describe("OutlinerItemAttachments", () => {
 
         const link = container.querySelector("a.attachment-link") as HTMLAnchorElement;
         // Test-only introspection: Svelte's delegated-handler expando.
-        const eventsSymbol = Object.getOwnPropertySymbols(link).find(symbol =>
-            symbol.description === "events"
-        );
+        const eventsSymbol = Object.getOwnPropertySymbols(link).find(symbol => symbol.description === "events");
         expect(eventsSymbol).toBeDefined();
         const attached = (link as unknown as Record<symbol, Record<string, (event: Event) => void>>)[
             eventsSymbol!

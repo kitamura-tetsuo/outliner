@@ -9,9 +9,10 @@ vi.mock("$app/navigation", () => ({
 }));
 
 const gotoMock = vi.mocked(goto);
-const bridge = () => (window as unknown as Record<string, unknown>).__SVELTE_GOTO__ as
-    | ((url: string, opts?: Record<string, unknown>) => Promise<void>)
-    | undefined;
+const bridge = () =>
+    (window as unknown as Record<string, unknown>).__SVELTE_GOTO__ as
+        | ((url: string, opts?: Record<string, unknown>) => Promise<void>)
+        | undefined;
 
 describe("__SVELTE_GOTO__ debug bridge", () => {
     beforeEach(() => {

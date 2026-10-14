@@ -1,7 +1,7 @@
+import { goto } from "$app/navigation";
+import { locales, localizeHref, setLocale } from "$lib/paraglide/runtime";
 import { fireEvent, render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { goto } from "$app/navigation";
-import { localizeHref, locales, setLocale } from "$lib/paraglide/runtime";
 import { setPage } from "../../tests/mocks/appState.svelte";
 import ParaglidePage from "./+page.svelte";
 
