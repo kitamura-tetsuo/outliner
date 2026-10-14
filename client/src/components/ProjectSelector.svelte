@@ -25,7 +25,7 @@
 
     // Calculate projects stably (Eventless: ucVersion)
     let projects = $derived(projectStore.projects);
-    let isDirectoryLoading = $derived(!projectStore.isLoaded && !projectStore.error);
+    let isDirectoryLoading = $derived(isOnPrem && !projectStore.isLoaded && !projectStore.error);
     $effect(() => {
         logger.info({
             len: projects.length,

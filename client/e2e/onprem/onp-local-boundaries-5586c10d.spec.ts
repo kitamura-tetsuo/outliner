@@ -42,7 +42,8 @@ test.describe("production on-premises local boundaries", () => {
             await route.fulfill({ response });
         });
         await login(page, stack);
-        await expect(page.getByText("Loading projects...")).toBeVisible();
+        await expect(page.getByRole("status")).toHaveText("Loading...");
+        await expect(page.locator("select.project-select option")).toHaveText("Loading projects...");
         await expect(page.getByText("No available projects")).toHaveCount(0);
         release();
         await expect(page.locator("select.project-select option", { hasText: title })).toHaveCount(1);
@@ -53,7 +54,9 @@ test.describe("production on-premises local boundaries", () => {
         const release = stack.delayNextSessionBody();
         await page.reload({ waitUntil: "domcontentloaded" });
         await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
-        await login(page, stack);
+        await page.getByLabel("Password").fill(stack.password);
+        await page.getByRole("button", { name: "Login", exact: true }).click();
+        await expect(page.getByTestId("login-status-indicator")).toContainText("Local User");
         await page.getByTestId("login-status-indicator").click();
         await page.getByTestId("user-menu-signout").click();
         release();
