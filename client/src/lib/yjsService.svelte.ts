@@ -224,11 +224,20 @@ export async function getAuthorizedClientByProjectTitle(
     signal?: AbortSignal,
 ): Promise<YjsClient | undefined> {
     if (isDemoProjectSlug(projectTitle)) return getClientByProjectTitle(projectTitle, signal);
-    if (!userManager.getCurrentUser() || signal?.aborted) return undefined;
+    const principalId = userManager.getCurrentUser()?.id;
+    if (!principalId || signal?.aborted) return undefined;
     try {
         const descriptor = await resolveProject(projectTitle);
-        if (!descriptor || signal?.aborted) return undefined;
-        return resolveClientByProjectTitle(projectTitle, signal, descriptor.projectId);
+        if (!descriptor || signal?.aborted || userManager.getCurrentUser()?.id !== principalId) return undefined;
+        const client = await resolveClientByProjectTitle(projectTitle, signal, descriptor.projectId);
+        if (signal?.aborted || userManager.getCurrentUser()?.id !== principalId) {
+            if (client) {
+                client.dispose();
+                registry.delete(keyFor(principalId, client.containerId));
+            }
+            return undefined;
+        }
+        return client;
     } catch (error) {
         logger.warn({ error, projectTitle }, "[getAuthorizedClientByProjectTitle] Project access denied");
         return undefined;

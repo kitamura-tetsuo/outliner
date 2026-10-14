@@ -494,8 +494,8 @@ export class UserManager {
         this.listeners.push(listener);
 
         // Notify immediately if already authenticated (FluidToken not needed)
-        if (isOnPrem && this.localUser) {
-            listener({ user: this.localUser });
+        if (isOnPrem) {
+            if (this.localUser) listener({ user: this.localUser });
         } else if (this.isMockMode) {
             const user = this.getCurrentUser();
             if (user) listener({ user });

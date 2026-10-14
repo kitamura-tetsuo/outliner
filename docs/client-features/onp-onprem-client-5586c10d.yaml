@@ -12,3 +12,6 @@ acceptance:
 - Cloud builds continue to use Firebase authentication and cloud project services
 tests:
 - client/src/lib/deployment.test.ts
+- client/e2e/onprem/onp-local-workspace-5586c10d.spec.ts
+- client/e2e/onprem/onp-table-grid-sync-5586c10d.spec.ts
+- client/e2e/onprem/onp-session-failures-5586c10d.spec.ts
