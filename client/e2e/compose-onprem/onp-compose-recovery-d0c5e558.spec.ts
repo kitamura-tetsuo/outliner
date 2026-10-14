@@ -20,6 +20,9 @@ async function login(page: import("@playwright/test").Page, supplied = password)
     await page.goto(origin);
     await page.getByLabel("Password").fill(supplied);
     await page.getByRole("button", { name: "Login", exact: true }).click();
+    if (supplied === password) {
+        await expect(page.getByRole("link", { name: /Create New Outliner/ })).toBeVisible();
+    }
 }
 
 test("the Compose artifact persists a UI-created outline, Table, and bound Grid across recreation", async ({ page, browser }) => {
@@ -102,6 +105,10 @@ test("the Compose artifact persists a UI-created outline, Table, and bound Grid 
     compose("up", "-d", "--force-recreate", "--wait");
     const restored = await browser.newPage();
     await login(restored);
+    await expect.poll(async () => {
+        const response = await restored.context().request.get(`${origin}/api/projects`);
+        return response.ok() ? await response.json() : { projects: [] };
+    }).toEqual({ projects: [{ projectId: expect.any(String), title }] });
     await restored.goto(`${origin}/${encodeURIComponent(title)}/Recovery`);
     await expect(restored.getByText("Retained by Compose")).toBeVisible();
     await expect(restored.getByText("Persisted row").first()).toBeVisible();
