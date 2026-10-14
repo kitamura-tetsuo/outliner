@@ -96,8 +96,11 @@ test.describe("production on-premises session ordering and failure states", () =
         page.on("websocket", () => {
             if (loggedOut) socketOpenedAfterLogout = true;
         });
-        void page.getByRole("button", { name: "Create Outliner" }).click();
-        await page.waitForRequest(request => request.url().endsWith("/api/projects") && request.method() === "POST");
+        const registration = page.waitForRequest(request =>
+            request.url().endsWith("/api/projects") && request.method() === "POST"
+        );
+        void page.getByRole("button", { name: "Create", exact: true }).click();
+        await registration;
         await page.getByTestId("login-status-indicator").click();
         await page.getByTestId("user-menu-signout").click();
         loggedOut = true;
@@ -132,13 +135,15 @@ test.describe("production on-premises session ordering and failure states", () =
         await expect(page.getByRole("alert")).toContainText("Project directory unavailable");
         await expect(page.getByText("No available projects")).toHaveCount(0);
         await page.goto(`${stack.origin}/${encodeURIComponent(title)}`);
-        await expect(page.getByText(/storage|unavailable/i)).toBeVisible();
+        await expect(page.getByRole("heading", { name: "An error occurred", exact: true })).toBeVisible();
         await page.goto(`${stack.origin}/projects/new`);
         await page.getByLabel("Outliner Name").fill(`Rejected-${Date.now()}`);
-        await page.getByRole("button", { name: "Create Outliner" }).click();
+        await page.getByRole("button", { name: "Create", exact: true }).click();
         await expect(page.getByText(/Failed to register project/)).toBeVisible();
         await stack.restart();
         await page.goto(stack.origin);
+        await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
+        await login(page, stack);
         await expect(page.locator("select.project-select option", { hasText: title })).toHaveCount(1);
     });
 
