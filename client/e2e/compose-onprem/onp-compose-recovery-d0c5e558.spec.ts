@@ -22,6 +22,9 @@ async function expectUnauthenticatedRefusals(page: import("@playwright/test").Pa
     const closeCode = await page.evaluate(async base => {
         const socket = new WebSocket(base.replace("http", "ws") + "/projects/unauthorized-project");
         return await new Promise<number>((resolve, reject) => {
+            // Hocuspocus authenticates on its first Auth/Token message rather
+            // than during the bare WebSocket upgrade. Send an empty token.
+            socket.addEventListener("open", () => socket.send(new Uint8Array([2, 0, 0])), { once: true });
             socket.addEventListener("close", event => resolve(event.code), { once: true });
             socket.addEventListener("error", () => undefined, { once: true });
             setTimeout(() => reject(new Error("unauthenticated WebSocket was not refused")), 5000);
