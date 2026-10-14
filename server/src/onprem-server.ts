@@ -2,6 +2,7 @@ import { Logger } from "@hocuspocus/extension-logger";
 import { Hocuspocus } from "@hocuspocus/server";
 import cors from "cors";
 import express from "express";
+import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { WebSocketServer } from "ws";
@@ -20,6 +21,7 @@ interface LocalContext {
 }
 
 const LOCAL_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const STATIC_ASSET_EXTENSION = /\.(?:avif|css|gif|ico|jpe?g|js|json|map|mjs|png|svg|webp|woff2?|wasm)$/i;
 
 function statusFor(error: unknown): number {
     if (!(error instanceof ProjectDirectoryError)) return 500;
@@ -113,6 +115,13 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
     };
     assertStorageReady();
 
+    const staticDir = config.OUTLINER_STATIC_DIR;
+    if (staticDir && !fs.statSync(path.join(staticDir, "index.html"), { throwIfNoEntry: false })?.isFile()) {
+        directory.close();
+        persistence.db?.close();
+        throw new Error(`OUTLINER_STATIC_DIR does not contain index.html: ${staticDir}`);
+    }
+
     const app = express();
     app.use(cors({ credentials: true, origin: true }));
     app.use(express.json());
@@ -172,6 +181,19 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
     // Cloud-only APIs are intentionally absent; this terminal handler makes
     // unsupported local operations explicit before any cloud side effect.
     app.use("/api", (_req, res) => res.status(501).json({ error: "Unsupported in onprem mode" }));
+    if (staticDir) {
+        app.use(express.static(staticDir, { index: false, fallthrough: true }));
+        app.get("*splat", (req, res, next) => {
+            // Only browser navigation receives the SPA shell. In particular,
+            // failed API and asset requests must retain their failure status.
+            if (!req.accepts("html") || STATIC_ASSET_EXTENSION.test(req.path)) {
+                next();
+                return;
+            }
+            res.sendFile(path.join(staticDir, "index.html"));
+        });
+    }
+    app.use((_req, res) => res.status(404).json({ error: "Not found" }));
     const server = http.createServer(app);
     const wss = new WebSocketServer({ noServer: true });
     server.on("upgrade", (request, socket, head) => {
@@ -213,5 +235,5 @@ export async function startOnPremServer(config: Config, logger = defaultLogger) 
         })();
         return shutdownPromise;
     };
-    return { server, hocuspocus, persistence, shutdown };
+    return { server, hocuspocus, persistence, directory, shutdown };
 }

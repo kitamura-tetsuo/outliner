@@ -3,6 +3,7 @@ import { z } from "zod";
 const ConfigSchema = z.object({
     OUTLINER_DEPLOYMENT_MODE: z.enum(["cloud", "onprem"]).default("cloud"),
     OUTLINER_DATA_DIR: z.string().optional(),
+    OUTLINER_STATIC_DIR: z.string().optional(),
     PORT: z.coerce.number().default(7093),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
     ROOM_PREFIX_ENFORCE: z.coerce.boolean().default(false),
@@ -37,6 +38,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
             throw new Error("On-premises mode refuses ALLOW_TEST_ACCESS");
         }
         config.OUTLINER_DATA_DIR = config.OUTLINER_DATA_DIR.trim();
+        if (config.OUTLINER_STATIC_DIR !== undefined && !config.OUTLINER_STATIC_DIR.trim()) {
+            throw new Error("OUTLINER_STATIC_DIR must be a non-empty path when configured");
+        }
+        config.OUTLINER_STATIC_DIR = config.OUTLINER_STATIC_DIR?.trim();
         config.DATABASE_PATH = config.OUTLINER_DATA_DIR;
     }
     return config;

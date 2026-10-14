@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { SvelteSet } from "svelte/reactivity";
     import * as yjsService from "../../../lib/yjsService.svelte";
+    import { isOnPrem } from "../../../lib/deployment";
     import {
         projectStore,
         type ProjectInfo,
@@ -86,7 +87,12 @@
     <title>Delete Projects</title>
 </svelte:head>
 
+{#if isOnPrem}
 <main class="p-4">
+    <h1 class="text-2xl font-bold mb-4">Unavailable in this deployment</h1>
+    <p>Project deletion is not available in on-premises deployments.</p>
+</main>
+{:else}<main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Delete Projects</h1>
 
     {#if error}
@@ -140,7 +146,7 @@
     {:else}
         <p>No projects found.</p>
     {/if}
-</main>
+</main>{/if}
 
 <style>
     table {

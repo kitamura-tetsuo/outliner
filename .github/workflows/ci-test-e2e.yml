@@ -96,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [basic, core-1, core-2, core-3, core-4, core-4b, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables-1, tables-2, schedule, firefox-selection-core-4, firefox-selection-core-4b, firefox-selection-new, firefox-selection-basic]
+        project: [basic, core-1, core-2, core-3, core-4, core-4b, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables-1, tables-2, schedule, onprem, firefox-selection-core-4, firefox-selection-core-4b, firefox-selection-new, firefox-selection-basic]
 
     steps:
       - name: Checkout code
@@ -193,7 +193,9 @@ jobs:
           set -euo pipefail
           mkdir -p job_logs
           project="${{ matrix.project }}"
-          if [ "$E2E_BROWSER" = "firefox" ]; then
+          if [ "$project" = "onprem" ]; then
+            scripts/test-onprem-client.sh 2>&1 | tee -a "job_logs/e2e-${E2E_BROWSER}-${project}-${E2E_EXECUTION_ID}.log"
+          elif [ "$E2E_BROWSER" = "firefox" ]; then
             node scripts/run-firefox-selection.mjs --project="$project" \
               2>&1 | tee "job_logs/e2e-${E2E_BROWSER}-${project}-${E2E_EXECUTION_ID}.log"
           else

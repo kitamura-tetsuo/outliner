@@ -1,0 +1,44 @@
+FROM node:22-slim AS client-build
+WORKDIR /build
+COPY client/package*.json ./client/
+COPY client/patches/ ./client/patches/
+COPY shared/package*.json ./shared/
+RUN cd client && npm ci
+COPY client/ ./client/
+COPY shared/ ./shared/
+RUN cd client && VITE_OUTLINER_DEPLOYMENT_MODE=onprem npm run build \
+    && cp node_modules/libpg-query/wasm/libpg-query.wasm ../build/libpg-query.wasm
+
+FROM node:22-slim AS server-build
+WORKDIR /app
+COPY shared/ ./shared/
+COPY server/package*.json ./server/
+COPY server/patches/ ./server/patches/
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && cd server && npm ci
+COPY server/ ./server/
+RUN cd server \
+    && npm run build \
+    && npm prune --omit=dev \
+    && apt-get purge -y --auto-remove python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM node:22-slim
+WORKDIR /app
+ENV NODE_ENV=production \
+    OUTLINER_DEPLOYMENT_MODE=onprem \
+    OUTLINER_DATA_DIR=/data \
+    OUTLINER_STATIC_DIR=/app/public \
+    PORT=7093
+COPY --from=server-build /app/server/dist ./server/dist
+COPY --from=server-build /app/server/node_modules ./server/node_modules
+COPY --from=server-build /app/server/package.json ./server/package.json
+COPY --from=client-build /build/build ./public
+COPY scripts/onprem-egress-audit.cjs ./onprem-egress-audit.cjs
+RUN mkdir /data && chown -R node:node /app /data
+USER node
+EXPOSE 7093
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:7093/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+CMD ["node", "server/dist/server/src/index.js"]

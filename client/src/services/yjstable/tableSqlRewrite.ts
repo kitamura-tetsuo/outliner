@@ -13,6 +13,8 @@ export interface TableSqlRewriteResult {
     relationDependencies: string[];
     /** Relations named by FROM/JOIN or DML targets, excluding source_kind display literals. */
     actualRelationDependencies: string[];
+    /** System relations named by FROM/JOIN, excluding source_kind display literals. */
+    actualReservedRelationDependencies: string[];
     /** System-defined relations that intentionally rebind to the destination project. */
     reservedRelationDependencies: string[];
 }
@@ -438,6 +440,7 @@ export function rewriteCreateTableSql(
         sql: tokens.map(token => token.text).join(""),
         relationDependencies: [],
         actualRelationDependencies: [],
+        actualReservedRelationDependencies: [],
         reservedRelationDependencies: [],
     };
 }
@@ -461,6 +464,7 @@ export function rewriteTableQuerySql(
     const cteScopes = collectCteScopes(tokens, matchingClose, enclosingClose);
     const dependencies = new Set<string>();
     const actualDependencies = new Set<string>();
+    const actualReservedDependencies = new Set<string>();
     const reservedDependencies = new Set<string>();
     const fromActive = new Map<number, boolean>();
     const expectRelation = new Map<number, boolean>();
@@ -479,7 +483,8 @@ export function rewriteTableQuerySql(
     };
     const recordActualDependency = (name: string) => {
         recordDependency(name);
-        if (!RESERVED_RELATION_NAMES.has(name)) actualDependencies.add(name);
+        if (RESERVED_RELATION_NAMES.has(name)) actualReservedDependencies.add(name);
+        else actualDependencies.add(name);
     };
 
     for (let i = 0; i < tokens.length; i++) {
@@ -668,6 +673,7 @@ export function rewriteTableQuerySql(
         sql: tokens.map(token => token.text).join(""),
         relationDependencies: [...dependencies],
         actualRelationDependencies: [...actualDependencies],
+        actualReservedRelationDependencies: [...actualReservedDependencies],
         reservedRelationDependencies: [...reservedDependencies],
     };
 }

@@ -11,6 +11,7 @@ import {
     signOut,
     type User as FirebaseUser,
 } from "firebase/auth";
+import { isOnPrem, verifyDeployment } from "../lib/deployment";
 import { getEnv } from "../lib/env";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger"; // Import log function
@@ -41,6 +42,13 @@ export class UserManager {
 
     private listeners: AuthEventListener[] = [];
     private unsubscribeAuth: (() => void) | null = null;
+    private localUser: IUser | null = null;
+    private authGeneration = 0;
+    private localAuthError: string | undefined;
+
+    getLocalAuthError(): string | undefined {
+        return this.localAuthError;
+    }
 
     // Determine if it is a development environment
     private isDevelopment = (typeof import.meta !== "undefined" && import.meta.env?.DEV) || false;
@@ -60,6 +68,7 @@ export class UserManager {
      * Lazily initialize Firebase Auth instance
      */
     get auth(): Auth {
+        if (isOnPrem) throw new Error("Firebase Auth is unavailable in on-premises deployments");
         if (!this._auth) {
             this._auth = getAuth(this.app);
         }
@@ -81,8 +90,10 @@ export class UserManager {
             Object.assign(window, { __USER_MANAGER__: this });
         }
 
-        // Initialize auth listener asynchronously
+        // Initialize the selected deployment's auth listener asynchronously.
         this.initAuthListenerAsync();
+
+        if (isOnPrem) return;
 
         // Detect test environment
         const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
@@ -284,6 +295,7 @@ export class UserManager {
 
     // Update getCurrentUser
     public getCurrentUser(): IUser | null {
+        if (isOnPrem) return this.localUser;
         if (this.isMockMode) {
             return {
                 id: "test-user",
@@ -312,6 +324,37 @@ export class UserManager {
 
     // Update initAuthListenerAsync
     private async initAuthListenerAsync(): Promise<void> {
+        if (isOnPrem) {
+            const generation = this.authGeneration;
+            try {
+                await verifyDeployment();
+                const response = await fetch("/api/local-auth/session", { credentials: "same-origin" });
+                if (generation !== this.authGeneration) return;
+                if (response.status === 401) {
+                    this.localAuthError = undefined;
+                    this.localUser = null;
+                    this.notifyListeners(null);
+                    return;
+                }
+                if (!response.ok) throw new Error(`Session restoration failed (${response.status})`);
+                const result = await response.json() as IAuthResult;
+                if (generation !== this.authGeneration) return;
+                if (result.user?.id !== "local-user" || result.user.name !== "Local User") {
+                    throw new Error("Local server returned an invalid identity");
+                }
+                this.localUser = result.user;
+                this.localAuthError = undefined;
+                this.notifyListeners(result);
+            } catch (error) {
+                if (generation === this.authGeneration) {
+                    logger.error({ error }, "Failed to restore local session");
+                    this.localAuthError = error instanceof Error ? error.message : "Local server unavailable";
+                    this.localUser = null;
+                    this.notifyListeners(null);
+                }
+            }
+            return;
+        }
         if (this.isMockMode) {
             logger.info({}, "[UserManager] Mock Mode: Simulating user sign-in");
             // Simulate async delay
@@ -358,6 +401,7 @@ export class UserManager {
 
     // Login with Google
     public async loginWithGoogle(): Promise<void> {
+        if (isOnPrem) throw new Error("Google login is unavailable in this deployment");
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(this.auth, provider);
@@ -370,6 +414,10 @@ export class UserManager {
 
     // Login with email and password (for development)
     public async loginWithEmailPassword(email: string, password: string): Promise<void> {
+        if (isOnPrem) {
+            await this.loginWithLocalPassword(password);
+            return;
+        }
         if (this.isMockMode) {
             logger.info({}, "[UserManager] Mock Mode: Simulating email/password login");
             const user: IUser = { id: "test-user", name: "Test User", email };
@@ -426,6 +474,18 @@ export class UserManager {
 
     // Logout
     public async logout(): Promise<void> {
+        if (isOnPrem) {
+            ++this.authGeneration;
+            this.localUser = null;
+            this.localAuthError = undefined;
+            this.notifyListeners(null);
+            const response = await fetch("/api/local-auth/logout", {
+                method: "POST",
+                credentials: "same-origin",
+            });
+            if (!response.ok) throw new Error(`Logout failed (${response.status})`);
+            return;
+        }
         if (this.isMockMode) {
             this.notifyListeners(null);
             return;
@@ -444,7 +504,9 @@ export class UserManager {
         this.listeners.push(listener);
 
         // Notify immediately if already authenticated (FluidToken not needed)
-        if (this.isMockMode) {
+        if (isOnPrem) {
+            if (this.localUser) listener({ user: this.localUser });
+        } else if (this.isMockMode) {
             const user = this.getCurrentUser();
             if (user) listener({ user });
         } else if (this.auth.currentUser) {
@@ -480,7 +542,7 @@ export class UserManager {
         this.notifyListeners(authResult);
     }
     public isAuthenticated(): boolean {
-        return this.isMockMode || !!this.auth.currentUser;
+        return isOnPrem ? this.localUser !== null : this.isMockMode || !!this.auth.currentUser;
     }
 
     // Dispose
@@ -494,6 +556,7 @@ export class UserManager {
 
     // For test and dev: Explicitly refresh ID token and notify listeners
     public async refreshToken(): Promise<void> {
+        if (isOnPrem) return;
         try {
             const current = this.auth.currentUser;
             if (!current) {
@@ -510,6 +573,37 @@ export class UserManager {
         } catch (err) {
             logger.error({ error: err as Error }, "[UserManager] refreshToken failed");
         }
+    }
+
+    public async loginWithLocalPassword(password: string): Promise<void> {
+        if (!isOnPrem) throw new Error("Local password login is unavailable in cloud deployments");
+        const generation = ++this.authGeneration;
+        await verifyDeployment();
+        const response = await fetch("/api/local-auth/login", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+        });
+        if (!response.ok) {
+            throw new Error(response.status === 401 ? "Incorrect password" : `Login failed (${response.status})`);
+        }
+        const result = await response.json() as IAuthResult;
+        if (result.user?.id !== "local-user" || result.user.name !== "Local User") {
+            throw new Error("Local server returned an invalid identity");
+        }
+        if (generation !== this.authGeneration) return;
+        this.localUser = result.user;
+        this.localAuthError = undefined;
+        this.notifyListeners(result);
+    }
+
+    public invalidateLocalSession(): void {
+        if (!isOnPrem) return;
+        ++this.authGeneration;
+        this.localUser = null;
+        this.localAuthError = undefined;
+        this.notifyListeners(null);
     }
 }
 

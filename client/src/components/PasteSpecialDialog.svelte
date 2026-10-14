@@ -35,7 +35,7 @@ function handleBackdropClick(event: MouseEvent) {
     aria-labelledby="paste-special-title"
     data-testid="paste-special-dialog"
 >
-    <div class="dialog-content" role="document">
+    <div class="dialog-content" role="presentation">
         <h2 id="paste-special-title">Paste Special</h2>
         <div class="choices">
             {#each choices as choice (choice.variant)}

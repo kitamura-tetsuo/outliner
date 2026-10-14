@@ -3,13 +3,14 @@
     import { resolve } from "$app/paths";
 
 
-    import { createYjsClient } from "../services";
+    import { createClient as createYjsClient } from "../lib/yjsService.svelte";
     import { getLogger } from "../lib/logger";
     import { projectStore } from "../stores/projectStore.svelte";
     import { yjsStore } from "../stores/yjsStore.svelte";
     import type { UserManager } from "../auth/UserManager";
     import type { IAuthResult } from "../auth/UserManager";
     import type { YjsClient } from "../yjs/YjsClient";
+    import { isOnPrem } from "../lib/deployment";
     const logger = getLogger();
 
     interface Props {
@@ -24,6 +25,7 @@
 
     // Calculate projects stably (Eventless: ucVersion)
     let projects = $derived(projectStore.projects);
+    let isDirectoryLoading = $derived(isOnPrem && !projectStore.isLoaded && !projectStore.error);
     $effect(() => {
         logger.info({
             len: projects.length,
@@ -90,12 +92,12 @@
         }
 
         const currentUser = userManagerInstance.getCurrentUser();
-        const authUser = userManagerInstance.auth?.currentUser;
+        const authUser = isOnPrem ? currentUser : userManagerInstance.auth?.currentUser;
 
         logger.info({ data: currentUser }, "ProjectSelector - Current user:");
         logger.info({ data: authUser }, "ProjectSelector - Auth user:");
 
-        if (!currentUser && !authUser) {
+        if (!isOnPrem && !currentUser && !authUser) {
             logger.info({}, "ProjectSelector - No user found, attempting login...");
             try {
                 await userManagerInstance.loginWithEmailPassword(
@@ -164,7 +166,7 @@
 <div class="project-selector">
     <div class="selector-header">
         <h3 id="project-selector-title" class="selector-title">Select Project</h3>
-        {#if isLoading}
+        {#if isLoading || isDirectoryLoading}
             <span class="loading-indicator" role="status" aria-live="polite">Loading...</span>
         {/if}
     </div>
@@ -173,6 +175,9 @@
         <div class="error-message">
             {error}
         </div>
+    {/if}
+    {#if projectStore.error}
+        <div class="error-message" role="alert">Project directory unavailable: {projectStore.error}</div>
     {/if}
 
     <div class="selector-content">
@@ -186,11 +191,15 @@
             <select
                 bind:value={selectedProjectId}
                 onchange={handleProjectChange}
-                disabled={isLoading || projects.length === 0}
+                disabled={isLoading || isDirectoryLoading || !!projectStore.error || projects.length === 0}
                 class="project-select"
                 aria-labelledby="project-selector-title"
             >
-                {#if projects.length === 0}
+                {#if projectStore.error}
+                    <option value="">Project directory unavailable</option>
+                {:else if isDirectoryLoading}
+                    <option value="">Loading projects...</option>
+                {:else if projects.length === 0}
                     <option value="">No available projects</option>
                 {:else}
                     {#each projects as project (project.id)}

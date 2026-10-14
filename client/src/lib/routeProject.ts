@@ -1,8 +1,8 @@
-import { getAuthorizedYjsClientByProjectTitle } from "../services";
 import { store } from "../stores/store.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { initializeDemoProject, releaseDemoProject } from "./demoInit";
 import { isPublicProject } from "./publicProject";
+import { getAuthorizedClientByProjectTitle as getAuthorizedYjsClientByProjectTitle } from "./yjsService.svelte";
 
 export interface RouteProjectHandle {
     /** Stable project id used by project-owned subdoc rooms. */

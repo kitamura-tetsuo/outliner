@@ -180,6 +180,18 @@ export default defineConfig({
 
     projects: withFirefoxSelectionProjects([
         {
+            // Production-built client with the real on-premises server stack.
+            // CI dispatches this project through scripts/test-onprem-client.sh.
+            name: "onprem",
+            testDir: "./e2e/onprem",
+        },
+        {
+            // The isolated Compose workflow executes this project after it has
+            // built and started the packaged production artifact.
+            name: "compose-onprem",
+            testDir: "./e2e/compose-onprem",
+        },
+        {
             // Tables tests
             name: "tables",
             testDir: "./e2e/tables",

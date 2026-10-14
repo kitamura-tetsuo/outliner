@@ -1,6 +1,6 @@
+import { isOnPrem } from "../lib/deployment";
 import { getLogger } from "../lib/logger";
 import { listAccessibleProjects } from "../services/projectDirectoryService";
-import { firestoreStore } from "./firestoreStore.svelte";
 
 const logger = getLogger("ProjectStore");
 
@@ -13,17 +13,30 @@ export interface ProjectInfo {
 export class ProjectStore {
     projects = $state<Array<ProjectInfo>>([]);
     isLoaded = $state(false);
+    error = $state<string | undefined>(undefined);
+    private generation = 0;
 
     async refresh(): Promise<void> {
+        const generation = this.generation;
+        if (generation === this.generation) this.error = undefined;
         try {
-            const defaultProjectId = firestoreStore.userProject?.defaultProjectId;
-            this.projects = (await listAccessibleProjects()).map(project => ({
+            const defaultProjectId = isOnPrem
+                ? undefined
+                : (await import("./firestoreStore.svelte")).firestoreStore.userProject?.defaultProjectId;
+            const projects = (await listAccessibleProjects()).map(project => ({
                 id: project.projectId,
                 name: project.title,
                 isDefault: project.projectId === defaultProjectId,
             }));
+            if (generation === this.generation) this.projects = projects;
+        } catch (error) {
+            if (generation === this.generation) {
+                this.error = error instanceof Error ? error.message : "Project directory unavailable";
+                this.isLoaded = false;
+            }
+            throw error;
         } finally {
-            this.isLoaded = true;
+            if (generation === this.generation && !this.error) this.isLoaded = true;
             if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("project-store-updated"));
         }
     }
@@ -33,16 +46,21 @@ export class ProjectStore {
     }
 
     reset(): void {
+        ++this.generation;
         this.projects = [];
         this.isLoaded = false;
+        this.error = undefined;
     }
 
     syncDefaultPreference(): void {
-        const defaultProjectId = firestoreStore.userProject?.defaultProjectId;
-        this.projects = this.projects.map(project => ({
-            ...project,
-            isDefault: project.id === defaultProjectId,
-        }));
+        if (isOnPrem) return;
+        void import("./firestoreStore.svelte").then(({ firestoreStore }) => {
+            const defaultProjectId = firestoreStore.userProject?.defaultProjectId;
+            this.projects = this.projects.map(project => ({
+                ...project,
+                isDefault: project.id === defaultProjectId,
+            }));
+        });
     }
 }
 

@@ -9,6 +9,7 @@ describe("rewriteCreateTableSql", () => {
             sql: `-- keep sales in this comment\nCREATE  TABLE  sales_2 (\n  sales TEXT DEFAULT 'sales',\n  note TEXT\n);`,
             relationDependencies: [],
             actualRelationDependencies: [],
+            actualReservedRelationDependencies: [],
             reservedRelationDependencies: [],
         });
     });
@@ -42,6 +43,7 @@ describe("rewriteTableQuerySql", () => {
 
         expect(result.relationDependencies).toEqual([]);
         expect(result.actualRelationDependencies).toEqual([]);
+        expect(result.actualReservedRelationDependencies).toEqual(["outline_items"]);
         expect(result.reservedRelationDependencies).toEqual(["outline_items"]);
     });
 

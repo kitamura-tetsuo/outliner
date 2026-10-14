@@ -21,6 +21,11 @@ test.describe("LNK-0003: Internal link navigation function", () => {
             const targetProjectName = "target-project-" + Date.now().toString().slice(-6);
             const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
+            await TestHelpers.seedProjectDataOnly(page, testInfo, [""], {
+                projectName: targetProjectName,
+                pageName: targetPageName,
+            });
+
             // Create an internal project link in the first item
             await TestHelpers.waitForOutlinerItems(page);
             const firstItem = page.locator(".outliner-item").first();

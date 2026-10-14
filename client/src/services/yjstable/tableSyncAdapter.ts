@@ -51,10 +51,14 @@ export interface RecordSyncError {
 
 export interface TableQueryResult {
     columns: string[];
+    /** PostgreSQL type OID for each corresponding result column. */
+    columnTypes?: number[];
     rows: Record<string, unknown>[];
 }
 
 export interface TableSyncCallbacks {
+    /** Fired synchronously when Yjs data changes, before its PGlite flush. */
+    onDataChanged?: () => void;
     /** Fired whenever the applied schema changes (undefined = none/invalid). */
     onSchemaChanged?: (schema: ParsedTableSchema | undefined, error?: string) => void;
     onRecordErrors?: (errors: RecordSyncError[]) => void;
@@ -147,6 +151,7 @@ export class TableSyncAdapter {
                 this.pendingRecordIds.add(String(event.path[0]));
             }
         }
+        for (const listener of this.listeners) listener.onDataChanged?.();
         this.scheduleFlush();
     };
 
@@ -612,6 +617,7 @@ export async function executeGridQuery(
         registry?: RelationRegistryPort;
         isStale?: () => boolean;
         requireExplicitAliases?: boolean;
+        includeColumnTypes?: boolean;
     },
 ): Promise<TableQueryResult> {
     const trimmed = selectQuery.trim();
@@ -626,6 +632,9 @@ export async function executeGridQuery(
                     await db.exec("COMMIT");
                     return {
                         columns: res.fields.map((f) => f.name),
+                        ...(context.includeColumnTypes
+                            ? { columnTypes: res.fields.map((f) => f.dataTypeID) }
+                            : {}),
                         rows: formatQueryDateFields(res.fields, res.rows),
                     };
                 } catch (err) {

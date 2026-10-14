@@ -5,9 +5,10 @@ import { v4 as uuid } from "uuid";
 import type * as Y from "yjs";
 import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
-import { createProjectDescriptor, resolveProject } from "../services/projectDirectoryService";
+import { createProjectDescriptor, type ProjectDescriptor, resolveProject } from "../services/projectDirectoryService";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
+import { isOnPrem } from "./deployment";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
 import { getLogger } from "./logger";
 const logger = getLogger("yjsService");
@@ -145,8 +146,8 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     // Save project ID to server-side persistence (Firestore)
     // This is critical for the server to grant access (checkContainerAccess)
     // We MUST ensure this succeeds before attempting WebSocket connection
-    let registrationSuccess = false;
-    if (!isTest) {
+    let savedDescriptor: ProjectDescriptor | undefined;
+    if (!isTest || isOnPrem) {
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             logger.info(
@@ -158,9 +159,9 @@ export async function createNewProject(projectName: string, existingProjectId?: 
                 const saved = await createProjectDescriptor(projectId, projectName);
                 if (saved) {
                     logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
-                    registrationSuccess = true;
-                    // Wait for Firestore propagation (important for subsequent reads)
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    savedDescriptor = saved;
+                    // Cloud directory propagation can lag; the local SQLite response is authoritative immediately.
+                    if (!isOnPrem) await new Promise(resolve => setTimeout(resolve, 500));
                     break;
                 } else {
                     logger.warn(
@@ -177,14 +178,23 @@ export async function createNewProject(projectName: string, existingProjectId?: 
             }
         }
 
-        if (!registrationSuccess) {
+        if (!savedDescriptor) {
             throw new Error(`Failed to register project ${projectId}`);
         }
     }
 
-    const project = Project.createInstance(projectName);
+    if (userManager.getCurrentUser()?.id !== userId) {
+        throw new Error("Project creation was cancelled because the session changed");
+    }
+    projectId = savedDescriptor?.projectId ?? projectId;
+    const canonicalTitle = savedDescriptor?.title ?? projectName;
+    const project = Project.createInstance(canonicalTitle);
     logger.info(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);
     const client = await YjsClient.connect(projectId, project);
+    if (userManager.getCurrentUser()?.id !== userId) {
+        client.dispose();
+        throw new Error("Project creation was cancelled because the session changed");
+    }
     logger.info(`[yjsService] createNewProject: YjsClient connected for projectId "${projectId}".`);
     registry.set(keyFor(userId, projectId), [client, project]);
 
@@ -194,7 +204,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     if (typeof window !== "undefined") {
         const win = window as Window & typeof globalThis;
         win.__CURRENT_PROJECT__ = project as unknown as import("../schema/app-schema").Project;
-        win.__CURRENT_PROJECT_TITLE__ = projectName;
+        win.__CURRENT_PROJECT_TITLE__ = canonicalTitle;
     }
 
     return client;
@@ -223,15 +233,19 @@ export async function getAuthorizedClientByProjectTitle(
     signal?: AbortSignal,
 ): Promise<YjsClient | undefined> {
     if (isDemoProjectSlug(projectTitle)) return getClientByProjectTitle(projectTitle, signal);
-    if (!userManager.getCurrentUser() || signal?.aborted) return undefined;
-    try {
-        const descriptor = await resolveProject(projectTitle);
-        if (!descriptor || signal?.aborted) return undefined;
-        return resolveClientByProjectTitle(projectTitle, signal, descriptor.projectId);
-    } catch (error) {
-        logger.warn({ error, projectTitle }, "[getAuthorizedClientByProjectTitle] Project access denied");
+    const principalId = userManager.getCurrentUser()?.id;
+    if (!principalId || signal?.aborted) return undefined;
+    const descriptor = await resolveProject(projectTitle);
+    if (!descriptor || signal?.aborted || userManager.getCurrentUser()?.id !== principalId) return undefined;
+    const client = await resolveClientByProjectTitle(projectTitle, signal, descriptor.projectId, descriptor.title);
+    if (signal?.aborted || userManager.getCurrentUser()?.id !== principalId) {
+        if (client) {
+            client.dispose();
+            registry.delete(keyFor(principalId, client.containerId));
+        }
         return undefined;
     }
+    return client;
 }
 
 export interface AcquiredProjectClient {
@@ -323,6 +337,7 @@ async function resolveClientByProjectTitle(
     projectTitle: string,
     signal?: AbortSignal,
     authorizedProjectId?: string,
+    canonicalTitle?: string,
 ): Promise<YjsClient | undefined> {
     logger.info(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
 
@@ -391,7 +406,7 @@ async function resolveClientByProjectTitle(
         const isTest = isTestEnvironment();
 
         // Handle placeholder title for test ids or UUIDs so they don't get saved as title
-        let resolvedTitle = projectTitle;
+        let resolvedTitle = canonicalTitle ?? projectTitle;
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (uuidRegex.test(projectTitle)) {
             // Do not seed the placeholder title with the raw UUID: YjsClient.connect()
@@ -463,13 +478,20 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
 }
 
 export function cleanupClient() {
-    try {
-        yjsStore.yjsClient?.dispose();
-    } catch (_e) {
-        logger.error(_e);
+    for (const [key, [client]] of registry.entries()) {
+        try {
+            client?.dispose();
+        } catch (_e) {
+            logger.error(_e);
+        }
+        registry.deleteSerialized(key);
     }
     yjsStore.yjsClient = undefined;
 }
+
+userManager.addEventListener(result => {
+    if (!result) cleanupClient();
+});
 
 /**
  * Dispose the registered client for a project and drop it from the registry,
