@@ -297,12 +297,13 @@ On touch, tap a cell to activate it, double-tap to edit, or long-press for range
 
 Choose a destination Page when duplicating, or drag a Grid's outline handle to a Page in the sidebar. Hold Ctrl (Option on macOS) while dragging to copy instead of move.
 
-### Tables, Grids, Calendars and Schedules are separate
+### Tables, Grids, Kanbans, Calendars and Schedules are separate
 
-A table, a grid, a calendar and a schedule are four independent things, and each has its own management page.
+A table, a grid, a kanban, a calendar and a schedule are five independent things, and each has its own management page.
 
-- **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
+- **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid or kanban exists over it. Below the data, the page lists the grids and kanbans that select from this table and the schedules that reference it, as links.
 - **Grid** (`/-/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
+- **Kanban** (`/-/kanbans/<project>/<kanban>`) owns one SELECT and its presentation settings, such as grouping, title roles, and lane preferences. Several kanbans may present the same table, and each keeps its own settings; they all read and write the same table data. A kanban page links back to its source table rather than owning its schema.
 - **Calendar** (`/-/calendars/<project>/<calendar>`) owns a query and role assignments for its result columns (e.g., title, start date), but no data of its own. It dynamically visualizes the underlying table data based on its view settings. A calendar page links back to the tables its query reads.
 - **Schedule** (`/-/schedules/<project>`, one rule at `/-/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
 
