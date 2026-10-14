@@ -92,6 +92,9 @@ export function analyzeProjectQueryProvenance(evidence: ProjectSelectEvidence): 
     }
 
     const leaves: Node[] = [];
+    if (root.withClause !== undefined) {
+        return refuse("unsupported", "CTE provenance is unsupported");
+    }
     if (!collectUnionLeaves(root, leaves)) {
         return refuse("unsupported", "Only plain SELECT and UNION ALL provenance is supported");
     }
@@ -166,7 +169,11 @@ function branchProvenance(shape: BranchShape, outputNames: string[], duplicateNa
     const id = idIndex >= 0
         ? plainColumn(targetAtOutputPosition(shape, idIndex)?.val, shape.relation.sqlName, shape.alias)
         : undefined;
-    return { source, columns, routedIdentity: kind === shape.relation.sqlName && id === "id" };
+    return {
+        source,
+        columns,
+        routedIdentity: !duplicateNames && kind === shape.relation.sqlName && id === "id",
+    };
 }
 
 function collectUnionLeaves(select: Node, leaves: Node[]): boolean {
