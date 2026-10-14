@@ -117,6 +117,8 @@ export interface RelationEvidence {
     sqlName: string;
     /** Revision of the materialized source shape. */
     schemaRevision: string;
+    /** Physical columns in the exact schema revision used by the execution. */
+    columns: readonly string[];
 }
 
 /**
