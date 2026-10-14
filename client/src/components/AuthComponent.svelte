@@ -7,6 +7,7 @@ import {
     userManager,
 } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
+import { isOnPrem } from "../lib/deployment";
 const logger = getLogger("AuthComponent");
 
 interface AuthSuccessEvent {
@@ -54,6 +55,7 @@ onMount(() => {
         }
         else {
             currentUser = null;
+            if (isOnPrem) error = userManager.getLocalAuthError() ?? "";
             // Call the callback prop directly instead of dispatching
             if (onAuthLogout) onAuthLogout();
         }
@@ -119,7 +121,8 @@ async function handleEmailPasswordSubmit() {
         loginError = "";
         // If in sign up mode and not development (where it auto-creates), we might need to handle creation.
         // For now, UserManager.loginWithEmailPassword handles login. We'll use the existing method.
-        await userManager.loginWithEmailPassword(email, password);
+        if (isOnPrem) await userManager.loginWithLocalPassword(password);
+        else await userManager.loginWithEmailPassword(email, password);
     }
     catch (err: unknown) {
         logger.error({ error: err }, "Email/password login error");
@@ -171,6 +174,7 @@ async function handleLogout() {
             <button type="button" onclick={handleLogout} class="logout-btn">Logout</button>
         </div>
     {:else}
+        {#if !isOnPrem}
         <!-- Google Auth Button -->
         <button type="button"
             onclick={handleLogin}
@@ -208,11 +212,13 @@ async function handleLogout() {
         <div class="divider">
             <span>OR</span>
         </div>
+        {/if}
 
         <div class="email-login-form">
             <form onsubmit={(e) => { e.preventDefault(); handleEmailPasswordSubmit(); }}>
                 <div class="form-group">
                     <label for="email">Email</label>
+                    {#if !isOnPrem}
                     <input
                         type="email"
                         id="email"
@@ -221,6 +227,7 @@ async function handleLogout() {
                         autocomplete="username"
                         required
                     />
+                    {/if}
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
@@ -235,13 +242,13 @@ async function handleLogout() {
                 </div>
                 <button type="submit"
                     class="email-login-btn"
-                    disabled={isLoggingIn || !email || !password}
-                    aria-disabled={isLoggingIn || !email || !password}
+                    disabled={isLoggingIn || (!isOnPrem && !email) || !password}
+                    aria-disabled={isLoggingIn || (!isOnPrem && !email) || !password}
                 >
                     {#if isLoggingIn}
                         <span class="spinner-inline"></span>
                     {/if}
-                    Login with Email
+                    {isOnPrem ? "Login" : "Login with Email"}
                 </button>
             </form>
         </div>

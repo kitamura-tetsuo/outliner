@@ -19,6 +19,7 @@
         projectTablesPath,
         projectTypesPath,
     } from "../../lib/managementPaths";
+    import { isOnPrem } from "../../lib/deployment";
 
     interface Props {
         projectName: string;
@@ -48,6 +49,16 @@
             { label: "Types", description: "Project SQL ENUM types for table columns.", href: resolvePath(projectTypesPath(projectName)) },
             { label: "Graph", description: "The link graph between this project's pages.", href: resolvePath(projectGraphPath(projectName)) },
         ];
+        if (isOnPrem) {
+            return [
+                ...items.filter(item => ["Objects", "Tables", "Grids", "Graph"].includes(item.label)),
+                {
+                    label: "Settings",
+                    description: "Rename this project.",
+                    href: resolvePath(projectSettingsPath(projectName)),
+                },
+            ];
+        }
         if (!isDemo) {
             items.push(
                 { label: "Import / Export", description: "Import or export this project as OPML or Markdown.", href: resolvePath(projectImportExportPath(projectName)) },

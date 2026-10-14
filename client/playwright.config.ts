@@ -180,6 +180,12 @@ export default defineConfig({
 
     projects: withFirefoxSelectionProjects([
         {
+            // Production-built client with the real on-premises server stack.
+            // CI dispatches this project through scripts/test-onprem-client.sh.
+            name: "onprem",
+            testDir: "./e2e/onprem",
+        },
+        {
             // Tables tests
             name: "tables",
             testDir: "./e2e/tables",

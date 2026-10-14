@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 
 import { userManager } from "../auth/UserManager";
+import { isOnPrem } from "../lib/deployment";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getFirebaseFunctionUrl } from "../lib/firebaseFunctionsUrl";
 import { getLogger } from "../lib/logger";
@@ -274,60 +275,62 @@ let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 
 // Initialize Firebase app (once)
-try {
-    // Use centrally managed Firebase app
-    app = getFirebaseApp();
-    logger.debug("Firebase app initialized via central management");
+if (!isOnPrem) {
+    try {
+        // Use centrally managed Firebase app
+        app = getFirebaseApp();
+        logger.debug("Firebase app initialized via central management");
 
-    // Get Firestore instance
-    db = getFirestore(app!);
+        // Get Firestore instance
+        db = getFirestore(app!);
 
-    // Detect test environment or emulator environment and connect
-    const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.mockFluidClient === false)
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+        // Detect test environment or emulator environment and connect
+        const isTestEnv = import.meta.env.MODE === "test"
+            || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.mockFluidClient === false)
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 
-    // Never use emulator in production environment
-    const isProduction = process.env.NODE_ENV === "production"
-        || import.meta.env.MODE === "production";
+        // Never use emulator in production environment
+        const isProduction = process.env.NODE_ENV === "production"
+            || import.meta.env.MODE === "production";
 
-    const useEmulator = !isProduction && (
-        isTestEnv
-        || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
-        || (typeof window !== "undefined"
-            && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true")
-    );
+        const useEmulator = !isProduction && (
+            isTestEnv
+            || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
+            || (typeof window !== "undefined"
+                && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true")
+        );
 
-    // Connect to Firebase Emulator
-    if (useEmulator) {
-        // Get connection info from environment variables (default is localhost:58080)
-        const emulatorHost = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || "localhost";
-        const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
+        // Connect to Firebase Emulator
+        if (useEmulator) {
+            // Get connection info from environment variables (default is localhost:58080)
+            const emulatorHost = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || "localhost";
+            const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
 
-        // Log emulator connection info
-        logger.debug(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
+            // Log emulator connection info
+            logger.debug(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
 
-        try {
-            // Connect to emulator
-            connectFirestoreEmulator(db, emulatorHost, emulatorPort);
-            logger.debug("Successfully connected to Firestore emulator");
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            logger.error({ error: error as Error }, "Failed to connect to Firestore emulator");
+            try {
+                // Connect to emulator
+                connectFirestoreEmulator(db, emulatorHost, emulatorPort);
+                logger.debug("Successfully connected to Firestore emulator");
+            } catch (err) {
+                const error = err instanceof Error ? err : new Error(String(err));
+                logger.error({ error: error as Error }, "Failed to connect to Firestore emulator");
 
-            // Notify that we continue in offline mode if connection fails
-            logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
+                // Notify that we continue in offline mode if connection fails
+                logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
+            }
         }
-    }
-} catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    logger.error({ error: err as Error }, "Critical error initializing Firestore");
-    // Ensure app continues to run even if database connection fails
-    // Do nothing if app is undefined (handled properly in subsequent processing)
-    if (!db && app) {
-        db = getFirestore(app);
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logger.error({ error: err as Error }, "Critical error initializing Firestore");
+        // Ensure app continues to run even if database connection fails
+        // Do nothing if app is undefined (handled properly in subsequent processing)
+        if (!db && app) {
+            db = getFirestore(app);
+        }
     }
 }
 
@@ -476,7 +479,7 @@ if (typeof window !== "undefined") {
     const shouldAutoSync = isProd || !__isTestEnv
         || (typeof window !== "undefined" && !!window.__E2E__);
 
-    if (shouldAutoSync) {
+    if (shouldAutoSync && !isOnPrem) {
         let cleanup: (() => void) | null = null;
 
         // Initialize/cleanup Firestore sync when auth state changes

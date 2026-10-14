@@ -39,6 +39,7 @@ const chromiumProjects = [
     "tables-1",
     "tables-2",
     "schedule",
+    "onprem",
 ];
 
 describe("ENV-934d0f2a: Firefox promotion to ordinary E2E CI", () => {
@@ -62,6 +63,7 @@ describe("ENV-934d0f2a: Firefox promotion to ordinary E2E CI", () => {
         expect(step["continue-on-error"]).toBeUndefined();
         expect(step.run).toContain("set -euo pipefail");
         expect(step.run).toContain('node scripts/run-firefox-selection.mjs --project="$project"');
+        expect(step.run).toContain("scripts/test-onprem-client.sh");
         expect(step.run).toContain('--project=tables --shard="${BASH_REMATCH[1]}/2"');
         expect(step.run).toContain('npm run github:test:e2e -- --project="$project"');
         const setup = job.steps.find((value: { id?: string; }) => value.id === "setup");

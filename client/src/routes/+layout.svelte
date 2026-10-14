@@ -101,7 +101,6 @@ onMount(() => {
         let userManager: typeof import("../auth/UserManager").userManager | undefined;
         try {
             ({ userManager } = await import("../auth/UserManager"));
-            await import("../services");
         } catch (e) {
             logger.error({ error: e as Error }, "Failed to load client-only modules");
             initError = "Failed to load application modules. Please check your connection and reload.";
@@ -156,8 +155,8 @@ onDestroy(async () => {
     // Execute only in browser environment
     if (browser) {
         try {
-            const { cleanupYjsClient } = await import("../services");
-            cleanupYjsClient();
+            const { cleanupClient } = await import("../lib/yjsService.svelte");
+            cleanupClient();
         } catch (_e) { logger.error(_e); }
     }
 });

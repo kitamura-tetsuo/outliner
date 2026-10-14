@@ -5,7 +5,7 @@ import { onMount } from "svelte";
 import { goto } from "$app/navigation";
     import { resolvePath } from "../../utils/pathUtils";
 import { userManager } from "../../auth/UserManager";
-import { getYjsClientByProjectTitle } from "../../services";
+import { getAuthorizedClientByProjectTitle } from "../../lib/yjsService.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { store } from "../../stores/store.svelte";
 
@@ -19,6 +19,8 @@ type Project = AppProject | YjsProject;
 import type { YjsClient } from "../../yjs/YjsClient";
 
 let project: Project | null = $state(null);
+let loadGeneration = 0;
+let loadController: AbortController | undefined;
 
 // Retrieve project from the store
 $effect(() => {
@@ -38,11 +40,17 @@ $effect(() => {
 });
 
 async function loadProject(projectNameFromParam?: string) {
+    const generation = ++loadGeneration;
+    loadController?.abort();
+    const controller = new AbortController();
+    loadController = controller;
     try {
         const projectName = projectNameFromParam ?? (data as { project: string }).project;
 
         // Retrieve Yjs client from project name
-        let client = await getYjsClientByProjectTitle(projectName);
+        const client = await getAuthorizedClientByProjectTitle(projectName, controller.signal);
+
+        if (generation !== loadGeneration || controller.signal.aborted || !userManager.getCurrentUser()) return;
 
         if (client) {
             yjsStore.yjsClient = client as YjsClient;
@@ -67,14 +75,26 @@ async function loadProject(projectNameFromParam?: string) {
 onMount(() => {
     // Keep auth state in sync
     try {
-        const unsub = userManager.addEventListener(() => {
+        const unsub = userManager.addEventListener(authResult => {
+            if (!authResult) {
+                ++loadGeneration;
+                loadController?.abort();
+                loadController = undefined;
+                project = null;
+                store.project = undefined;
+                return;
+            }
             // If project not yet loaded but param exists, try again when auth flips
             const projectParam = (data as { project?: string })?.project;
             if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }
         });
-        return unsub;
+        return () => {
+            ++loadGeneration;
+            loadController?.abort();
+            unsub();
+        };
     } catch (_e) { logger.error(_e); }
 });
 </script>

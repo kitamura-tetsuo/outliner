@@ -1,0 +1,18 @@
+id: ONP-5586c10d
+title: On-premises client deployment
+title-ja: オンプレミスクライアント展開
+description: The shared client can authenticate with a local password session, use the server-backed project directory, and connect project and Table documents to the same-origin on-premises server while retaining the cloud deployment path.
+category: deployment
+status: implemented
+acceptance:
+- On-premises builds verify the deployment descriptor before local authentication or directory operations
+- Local authentication uses the server-issued HTTP-only session cookie and restores the session after reload
+- Project creation, listing, resolution, and rename use canonical server descriptors
+- Project and Table rooms use same-origin WebSocket connections without Firebase tokens
+- Cloud builds continue to use Firebase authentication and cloud project services
+tests:
+- client/src/lib/deployment.test.ts
+- client/e2e/onprem/onp-local-workspace-5586c10d.spec.ts
+- client/e2e/onprem/onp-table-grid-sync-5586c10d.spec.ts
+- client/e2e/onprem/onp-session-failures-5586c10d.spec.ts
+- client/e2e/onprem/onp-local-boundaries-5586c10d.spec.ts
