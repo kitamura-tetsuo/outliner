@@ -14,9 +14,11 @@ import {
 import { TestHelpers } from "../utils/testHelpers";
 
 async function openCalendarSettings(block: Locator): Promise<void> {
+    // A visual-node row consumes the first pointer interaction to become the
+    // active editor item. Activate it before clicking its toolbar control.
+    await block.getByTestId("calendar-name").click();
     const toggle = block.getByTestId("calendar-toggle-settings");
-    await toggle.focus();
-    await toggle.press("Enter");
+    await toggle.click();
     await expect(block.getByTestId("calendar-settings-panel")).toBeVisible();
 }
 
