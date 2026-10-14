@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { resolvePath } from "../../utils/pathUtils";
+    import { resolve } from "$app/paths";
 import { browser } from "$app/env";
 import {
     onDestroy,
@@ -278,7 +278,7 @@ onDestroy(() => {
     </div>
 
     <div class="back-link">
-        <a href={resolvePath("/")}>Return to Main Page</a>
+        <a href={resolve("/")}>Return to Main Page</a>
     </div>
 </main>
 

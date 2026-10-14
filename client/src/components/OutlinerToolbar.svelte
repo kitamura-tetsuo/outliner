@@ -1,7 +1,6 @@
 <script lang="ts">
-    import { resolvePath } from "../utils/pathUtils";
     import { preventEditorBlur } from "../lib/editorFocus";
-    import { projectPagePath } from "../lib/publicProject";
+    import { projectPageDiffRoute } from "../lib/publicProject";
 
     interface Props {
         mode: "desktop" | "mobile";
@@ -143,7 +142,9 @@
                 onchange={handleFileInputChange}
                 style="display: none;"
             />
-            <a href={resolvePath(`${projectPagePath(projectName, pageName)}/diff`)} class="button-style">History / Diff</a>
+            {#if projectName && pageName}
+                <a href={projectPageDiffRoute(projectName, pageName)} class="button-style">History / Diff</a>
+            {/if}
             <button type="button" class="button-style" onclick={() => { showA11yHelp = true; }}>Keyboard Shortcuts</button>
         </div>
                 <dialog class="a11y-dialog" bind:this={a11yDialog} onclose={() => showA11yHelp = false} onclick={handleDialogBackdropClick} aria-labelledby="a11y-dialog-title">

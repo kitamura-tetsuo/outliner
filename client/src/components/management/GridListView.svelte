@@ -10,7 +10,8 @@
     import { store } from "../../stores/store.svelte";
     import { getGridRegistry, listGrids, type GridRegistryEntry } from "../../services/yjstable/gridDocs";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectGridPath } from "../../lib/managementPaths";
+    import { projectGridRoute } from "../../lib/managementPaths";
+    import type { ResolvedPathname } from "$app/types";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -122,8 +123,8 @@
         };
     });
 
-    function gridHref(gridId: string): string {
-        return resolvePath(projectGridPath(projectName, gridId));
+    function gridHref(gridId: string): ResolvedPathname {
+        return projectGridRoute(projectName, gridId);
     }
 </script>
 

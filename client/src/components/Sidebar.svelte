@@ -1,7 +1,7 @@
 <script lang="ts">
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
-    import { resolvePath } from "../utils/pathUtils";
+    import { resolve } from "$app/paths";
     import { allocatePageTitle } from "../utils/pageUtils";
     import { isArrayLikeItems } from "../utils/typeGuards";
     import { goto } from "$app/navigation";
@@ -31,8 +31,8 @@ import { isPublicProject } from "../lib/publicProject";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
     import { formatDate } from "../utils/dateUtils";
-    import { projectPagePath } from "../lib/publicProject";
-    import { projectObjectsPath, projectSchedulePath, projectTablePath } from "../lib/managementPaths";
+    import { projectPageRoute, projectRoute } from "../lib/publicProject";
+    import { projectObjectsRoute, projectScheduleRoute, projectTableRoute } from "../lib/managementPaths";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -246,7 +246,7 @@ import { isPublicProject } from "../lib/publicProject";
             sql: defaultSql,
             rrule: "FREQ=DAILY;INTERVAL=1",
         });
-        goto(resolvePath(projectSchedulePath(currentProjectName, ruleId)));
+        goto(projectScheduleRoute(currentProjectName, ruleId));
     }
 
     // Collapsible state for Projects section
@@ -322,10 +322,10 @@ import { isPublicProject } from "../lib/publicProject";
                         {#each projectStore.projects as project (project.id)}
                             <li>
                                 <a
-                                    href={`/${encodeURIComponent(project.name)}`}
+                                    href={projectRoute(project.name)}
                                     class="project-item"
-                                    aria-current={pageState.url.pathname === `/${encodeURIComponent(project.name)}` ? "page" : undefined}
-                                    class:active={pageState.url.pathname === `/${encodeURIComponent(project.name)}`}
+                                    aria-current={pageState.url.pathname === projectRoute(project.name) ? "page" : undefined}
+                                    class:active={pageState.url.pathname === projectRoute(project.name)}
                                 >
                                     <span class="item-content-wrapper">
                                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
@@ -365,9 +365,7 @@ import { isPublicProject } from "../lib/publicProject";
                                 const title = allocatePageTitle(store.project.items, "");
                                 const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
                                 const newPage = store.project.addPage(title, authorId);
-                                const pageHref = resolvePath(
-                                    projectPagePath(currentProjectName, newPage.text.trimEnd()),
-                                );
+                                const pageHref = projectPageRoute(currentProjectName, newPage.text.trimEnd());
                                 goto(pageHref);
                             }
                         }}
@@ -406,7 +404,7 @@ import { isPublicProject } from "../lib/publicProject";
                         <li class="sidebar-placeholder">No pages available</li>
                     {:else}
                         {#each pages as page (page.id)}
-                            {@const pageHref = resolvePath(projectPagePath(currentProjectName, page.text.trimEnd()))}
+                            {@const pageHref = projectPageRoute(currentProjectName, page.text.trimEnd())}
                             <li>
                                 <a
                                     class="page-item"
@@ -486,10 +484,10 @@ import { isPublicProject } from "../lib/publicProject";
                         {#each tables as table (table.tableId)}
                             <li>
                                 <a
-                                    href={resolvePath(projectTablePath(currentProjectName, table.tableId))}
+                                    href={projectTableRoute(currentProjectName, table.tableId)}
                                     class="page-item table-link"
-                                    class:active={pageState.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId))}
-                                    aria-current={pageState.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId)) ? 'page' : undefined}
+                                    class:active={pageState.url.pathname === projectTableRoute(currentProjectName, table.tableId)}
+                                    aria-current={pageState.url.pathname === projectTableRoute(currentProjectName, table.tableId) ? 'page' : undefined}
                                     data-table-id={table.tableId}
                                     onclick={closeSidebarIfMobile}
                                 >
@@ -513,7 +511,7 @@ import { isPublicProject } from "../lib/publicProject";
 
         <!-- Scheduled SQL section -->
         <div class="sidebar-section">
-            <a class="section-header" href={resolvePath(projectObjectsPath(currentProjectName))} style="text-decoration: none;">
+            <a class="section-header" href={projectObjectsRoute(currentProjectName)} style="text-decoration: none;">
                 <div class="section-header-content">
                     <h3 class="sidebar-section-title" style="margin-bottom: 0;">Object Manager</h3>
                 </div>
@@ -573,7 +571,7 @@ import { isPublicProject } from "../lib/publicProject";
                         <li class="sidebar-placeholder">No scheduled SQL</li>
                     {:else}
                         {#each schedules as schedule (schedule.id)}
-                            {@const scheduleHref = resolvePath(projectSchedulePath(currentProjectName, schedule.id))}
+                            {@const scheduleHref = projectScheduleRoute(currentProjectName, schedule.id)}
                             <li>
                                 <a
                                     class="page-item schedule-link"
@@ -605,9 +603,9 @@ import { isPublicProject } from "../lib/publicProject";
             <h3 class="sidebar-section-title">Settings</h3>
             <a
                 class="settings-link"
-                href={resolvePath("/settings")}
-                aria-current={pageState.url.pathname === resolvePath("/settings") ? "page" : undefined}
-                class:active={pageState.url.pathname === resolvePath("/settings")}
+                href={resolve("/settings")}
+                aria-current={pageState.url.pathname === resolve("/settings") ? "page" : undefined}
+                class:active={pageState.url.pathname === resolve("/settings")}
             >
                 <span class="item-content-wrapper">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">

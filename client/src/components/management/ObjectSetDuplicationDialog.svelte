@@ -9,8 +9,7 @@
     import type { Project } from "$shared/app-schema";
     import { userManager } from "../../auth/UserManager";
     import { getYjsClientByProjectTitle } from "../../services";
-    import { projectObjectsPath } from "../../lib/managementPaths";
-    import { resolvePath } from "../../utils/pathUtils";
+    import { projectObjectsSelectedRoute } from "../../lib/managementPaths";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { store } from "../../stores/store.svelte";
     import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
@@ -130,9 +129,7 @@
                 yjsStore.yjsClient = destinationClient as unknown as NonNullable<typeof yjsStore.yjsClient>;
                 store.project = destinationClient.project as unknown as NonNullable<typeof store.project>;
                 const ids = result.createdObjects.map(object => object.id);
-                await goto(
-                    resolvePath(`${projectObjectsPath(destinationTitle)}?selected=${encodeURIComponent(ids.join(","))}`),
-                );
+                await goto(projectObjectsSelectedRoute(destinationTitle, ids.join(",")));
             }
             onclose();
         } catch (error) {

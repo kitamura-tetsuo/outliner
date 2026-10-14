@@ -9,7 +9,7 @@ import { store } from "../../stores/store.svelte";
 import { createKanban, getKanbanRegistry, listKanbans, type KanbanRegistryEntry } from "../../services/yjstable/kanbanDocs";
 import { listTables, type TableRegistryEntry } from "../../services/yjstable/tableDocs";
 import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-import { projectKanbanPath } from "../../lib/managementPaths";
+import { projectKanbanRoute } from "../../lib/managementPaths";
 import { resolvePath } from "../../utils/pathUtils";
 import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -49,7 +49,7 @@ async function load() {
 function create() {
     if (!store.project?.ydoc || !sourceTableId || !isAuthenticated) return;
     const id = createKanban(store.project.ydoc, sourceTableId, { name: name.trim() || "Kanban" });
-    goto(resolvePath(projectKanbanPath(projectName, id)));
+    goto(projectKanbanRoute(projectName, id));
 }
 $effect(() => { if (projectName && canAccess) void load(); else { unload(); isLoading = false; } });
 onMount(() => { isAuthenticated = userManager.getCurrentUser() !== null; return () => { destroyed = true; unload(); }; });
@@ -65,7 +65,7 @@ onMount(() => { isAuthenticated = userManager.getCurrentUser() !== null; return 
     <label>Name <input bind:value={name} /></label><label>Source table <select bind:value={sourceTableId}>{#each tables as table (table.tableId)}<option value={table.tableId}>{table.name} ({table.tableId})</option>{/each}</select></label><button disabled={!sourceTableId}>Create Kanban</button>
 </form>
 {/if}
-{#if boards.length === 0}<p data-testid="project-kanban-list-empty">No Kanbans in this project yet.</p>{:else}<ul data-testid="project-kanban-list">{#each boards as board (board.kanbanId)}<li><a href={resolvePath(projectKanbanPath(projectName,board.kanbanId))}>{board.name || "Untitled Kanban"} <code>{board.kanbanId}</code></a></li>{/each}</ul>{/if}
+{#if boards.length === 0}<p data-testid="project-kanban-list-empty">No Kanbans in this project yet.</p>{:else}<ul data-testid="project-kanban-list">{#each boards as board (board.kanbanId)}<li><a href={projectKanbanRoute(projectName,board.kanbanId)}>{board.name || "Untitled Kanban"} <code>{board.kanbanId}</code></a></li>{/each}</ul>{/if}
 {/if}
 </main>
 <style>.create{display:flex;gap:1rem;align-items:end;padding:1rem;background:#f3f4f6;margin:1rem 0}.create label{display:grid}.create input,.create select{border:1px solid #9ca3af;padding:.4rem}button{background:#2563eb;color:white;padding:.45rem .8rem;border-radius:.25rem}li{margin:.5rem 0}a{color:#2563eb}code{font-size:.75rem;color:#6b7280}</style>

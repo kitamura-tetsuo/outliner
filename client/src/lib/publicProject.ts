@@ -1,3 +1,5 @@
+import { resolve } from "$app/paths";
+import type { ResolvedPathname } from "$app/types";
 import { demoProjectFromPath, isDemoProjectSlug } from "$shared/demoProjects";
 
 export { demoProjectFromPath };
@@ -28,4 +30,61 @@ export function projectBasePath(projectName: string): string {
 /** The path of one page inside a project. */
 export function projectPagePath(projectName: string, pageTitle: string): string {
     return `${projectBasePath(projectName)}/${encodeURIComponent(pageTitle)}`;
+}
+
+/**
+ * The project landing route as a typed SvelteKit resolution.
+ *
+ * A registered demo slug resolves through its matcher route; every other
+ * project resolves through the generic route. Either way the produced URL is
+ * byte-identical to {@link projectBasePath}: each segment is encoded once,
+ * and the configured application base is applied once by `resolve`.
+ */
+export function projectRoute(projectName: string): ResolvedPathname {
+    if (isPublicProject(projectName)) {
+        return resolve("/[demoProject=demoProject]", { demoProject: encodeURIComponent(projectName) });
+    }
+    return resolve("/[project]", { project: encodeURIComponent(projectName) });
+}
+
+/**
+ * One page inside a project as a typed SvelteKit resolution.
+ *
+ * Byte-identical to {@link projectPagePath} for accepted inputs: the project
+ * and page are encoded per parameter (never the whole URL, never twice), so
+ * Japanese/non-ASCII text, spaces and URL-sensitive characters (`/`, `%`,
+ * `?`, `#`) keep their established representation, and a registered demo
+ * slug such as `demo-ja` keeps its own segment.
+ */
+export function projectPageRoute(projectName: string, pageTitle: string): ResolvedPathname {
+    const page = encodeURIComponent(pageTitle);
+    if (isPublicProject(projectName)) {
+        return resolve("/[demoProject=demoProject]/[page]", { demoProject: encodeURIComponent(projectName), page });
+    }
+    return resolve("/[project]/[page]", { project: encodeURIComponent(projectName), page });
+}
+
+/** The page-history/diff route as a typed SvelteKit resolution. */
+export function projectPageDiffRoute(projectName: string, pageTitle: string): ResolvedPathname {
+    const page = encodeURIComponent(pageTitle);
+    if (isPublicProject(projectName)) {
+        return resolve("/[demoProject=demoProject]/[page]/diff", {
+            demoProject: encodeURIComponent(projectName),
+            page,
+        });
+    }
+    return resolve("/[project]/[page]/diff", { project: encodeURIComponent(projectName), page });
+}
+
+/**
+ * The page-schedule route as a typed SvelteKit resolution.
+ *
+ * The demo tree has no page-schedule twin, so demo slugs fall through to the
+ * generic route — the same destination the previous string builder produced.
+ */
+export function projectPageScheduleRoute(projectName: string, pageTitle: string): ResolvedPathname {
+    return resolve("/[project]/[page]/schedule", {
+        project: encodeURIComponent(projectName),
+        page: encodeURIComponent(pageTitle),
+    });
 }

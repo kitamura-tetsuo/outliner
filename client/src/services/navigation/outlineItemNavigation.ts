@@ -21,14 +21,14 @@
 // call reports `false` and leaves the user where they are. Nothing throws.
 
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import { page as pageState } from "$app/state";
 import { getLogger } from "../../lib/logger";
-import { projectPagePath } from "../../lib/publicProject";
+import { isPublicProject } from "../../lib/publicProject";
 import type { Project } from "../../schema/app-schema";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
-import { resolvePath } from "../../utils/pathUtils";
 import { type OutlineItemLocation, resolveOutlineItemLocation } from "./outlineItemLocation";
 import { getPageOutline } from "./outlinePageRegistry";
 
@@ -165,7 +165,20 @@ export async function navigateToOutlineItem(
         if (!alreadyOpen) {
             const projectName = options.projectName ?? routeProjectName(project);
             if (!projectName) return false;
-            await goto(resolvePath(projectPagePath(projectName, location.pageTitle)));
+            // Typed route IDs through the official resolver (a direct call:
+            // this plain `.ts` module has no type-aware lint context, so the
+            // navigation rule only recognizes `resolve(...)` itself). The
+            // destination matches `projectPageRoute(projectName, ...)` exactly;
+            // the regression test pins the two together.
+            const page = encodeURIComponent(location.pageTitle);
+            await goto(
+                isPublicProject(projectName)
+                    ? resolve("/[demoProject=demoProject]/[page]", {
+                        demoProject: encodeURIComponent(projectName),
+                        page,
+                    })
+                    : resolve("/[project]/[page]", { project: encodeURIComponent(projectName), page }),
+            );
         }
         return await revealOutlineItem(location, options.timeoutMs ?? DEFAULT_REVEAL_TIMEOUT_MS);
     } catch (err) {

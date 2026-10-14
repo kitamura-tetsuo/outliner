@@ -22,7 +22,7 @@
     // and the Table's for its own lifetime, so this page only resolves handles.
     import { type GridHandles, getGridHandles, getGridSourceTableId } from "../../services/yjstable/gridDocs";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectGridsPath, projectObjectsPath, projectTablePath } from "../../lib/managementPaths";
+    import { projectGridsPath, projectObjectsSelectedRoute, projectTableRoute } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -97,11 +97,11 @@
     // the user can duplicate it alone from there, or expand the set first via
     // `Select related`.
     function openDuplicate() {
-        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(routeGridId)}`));
+        goto(projectObjectsSelectedRoute(projectName, routeGridId));
     }
 
     let sourceTableHref = $derived(
-        sourceTableId ? resolvePath(projectTablePath(projectName, sourceTableId)) : undefined,
+        sourceTableId ? projectTableRoute(projectName, sourceTableId) : undefined,
     );
 
     async function handleAuthSuccess() {

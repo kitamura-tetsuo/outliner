@@ -15,7 +15,7 @@ const logger = getLogger("SearchBox");
     import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
     import { store } from "../stores/store.svelte";
     import { iterateItems } from "../utils/itemTraversal";
-    import { projectPagePath } from "../lib/publicProject";
+    import { projectPageRoute } from "../lib/publicProject";
 
     // Type alias for backward compatibility
     type Item = ItemLike;
@@ -246,8 +246,10 @@ const logger = getLogger("SearchBox");
             // `projTitle` is already the demo's own slug when we are in a demo,
             // so no special case is needed. The pathname test that used to be
             // here also matched `/demo-ja`, sending those visitors to `/demo`.
-            goto(resolvePath(projectPagePath(projTitle, title)));
+            goto(projectPageRoute(projTitle, title));
         } else if (query) {
+            // `/search` is not a SvelteKit route, so the typed resolver cannot
+            // express it; the generic wrapper stays for this one destination.
             goto(resolvePath(`/search?query=${encodeURIComponent(query)}`));
         }
     }

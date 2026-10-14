@@ -12,7 +12,7 @@
     import CalendarView from "../calendar/CalendarView.svelte";
     import { listCalendars } from "../../services/calendar/calendarService";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectCalendarsPath, projectObjectsPath } from "../../lib/managementPaths";
+    import { projectCalendarsPath, projectObjectsSelectedRoute } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { Project } from "$shared/app-schema";
@@ -68,7 +68,7 @@
     // expand the set first via `Select related`.
     function openDuplicate() {
         if (!calendarId) return;
-        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(calendarId)}`));
+        goto(projectObjectsSelectedRoute(projectName, calendarId));
     }
 
     async function loadCalendar() {

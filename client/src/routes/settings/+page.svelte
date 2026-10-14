@@ -1,8 +1,7 @@
 <script lang="ts">
-    import { resolvePath } from "../../utils/pathUtils";
     import { projectStore } from "../../stores/projectStore.svelte";
     import { userPreferencesStore } from "../../stores/UserPreferencesStore.svelte";
-    import { projectSettingsPath } from "../../lib/managementPaths";
+    import { projectSettingsRoute } from "../../lib/managementPaths";
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -17,7 +16,7 @@
                 {#each projectStore.projects as project (project.id)}
                     <li>
                         <a
-                            href={resolvePath(projectSettingsPath(project.name))}
+                            href={projectSettingsRoute(project.name)}
                             class="text-blue-600 hover:text-blue-800 hover:underline text-lg"
                         >
                             {project.name || project.id}

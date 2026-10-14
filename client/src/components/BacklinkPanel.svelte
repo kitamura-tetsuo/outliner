@@ -1,7 +1,7 @@
 <script lang="ts">
     import Loader from "./Loader.svelte";
 import { goto } from "$app/navigation";
-import { resolvePath } from "../utils/pathUtils";
+import { projectPageRoute, projectRoute } from "../lib/publicProject";
 import {
     collectBacklinks,
     getHighlightSegments,
@@ -64,10 +64,10 @@ function togglePanel() {
 function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
         // If no project name is specified, use the current project
-        goto(resolvePath(`/${encodeURIComponent(pageName)}`));
+        goto(projectRoute(pageName));
     }
     else {
-        goto(resolvePath(`/${projectName === 'demo' ? 'demo' : encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`));
+        goto(projectPageRoute(projectName, pageName));
     }
 }
 
