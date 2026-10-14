@@ -30,7 +30,7 @@ async function expectUnauthenticatedRefusals(page: import("@playwright/test").Pa
             setTimeout(() => reject(new Error("unauthenticated WebSocket was not refused")), 5000);
         });
     }, origin);
-    expect(closeCode).toBe(4001);
+    expect(closeCode).toBe(4205);
 }
 
 function inspectContainer(containerId: string, field: string) {
