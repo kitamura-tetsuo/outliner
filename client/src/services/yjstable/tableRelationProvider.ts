@@ -69,6 +69,18 @@ export class TableRelationProvider implements RelationProvider {
         });
     }
 
+    assertExistingRowWriteAllowed(write: Extract<RelationWrite, { op: "UPDATE" | "DELETE"; }>): void {
+        assertWriteAllowed(this.capabilities, write, this.sqlName || "table");
+        if (!this.handles.data.has(write.rowId)) {
+            throw new RelationWriteError(`Record "${write.rowId}" does not exist in this table`);
+        }
+        if (
+            write.op === "UPDATE" && !this.adapter.appliedSchema?.columns.some(column => column.name === write.column)
+        ) {
+            throw new RelationWriteError(`Column "${write.column}" is not writable in the current schema`);
+        }
+    }
+
     async applyWrite(write: RelationWrite): Promise<void> {
         assertWriteAllowed(this.capabilities, write, this.sqlName || "table");
         switch (write.op) {
