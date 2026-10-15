@@ -10,7 +10,7 @@ import {
     type ProjectSelectSession,
     type ProjectSelectState,
 } from "../../services/yjstable/projectSelectSession";
-import { getTableHandles, listTables, type TableHandles } from "../../services/yjstable/tableDocs";
+import { getTableHandles, getTableRegistry, listTables, type TableHandles } from "../../services/yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../../services/yjstable/tableSqlRewrite";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import YjsTableView from "./YjsTableView.svelte";
@@ -82,6 +82,9 @@ function resolveQueryDependencySource(nextQuery: string) {
 }
 
 const observer = () => refresh();
+const tableRegistryObserver = () => {
+    if (!actualSource) resolveQueryDependencySource(query);
+};
 const evidence = $derived(state.status === "success" ? state.evidence : state.previous);
 const displayColumns = $derived([
     ...columns.filter(column => evidence?.columns.some(item => item.name === column) && !hidden[column]),
@@ -125,10 +128,12 @@ onMount(() => {
         resolveActualSource(next);
     });
     mountedGrid.entry.observeDeep(observer);
+    getTableRegistry(projectDoc).observeDeep(tableRegistryObserver);
 });
 
 onDestroy(() => {
     mountedGrid.entry.unobserveDeep(observer);
+    getTableRegistry(projectDoc).unobserveDeep(tableRegistryObserver);
     unsubscribe?.();
     session?.dispose();
 });

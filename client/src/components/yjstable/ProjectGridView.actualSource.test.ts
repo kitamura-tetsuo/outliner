@@ -96,4 +96,17 @@ describe("ProjectGridView actual source", () => {
 
         expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId);
     });
+
+    it("mounts repair controls when the referenced Table registry entry arrives after the Grid", async () => {
+        const projectDoc = new Y.Doc({ guid: "project-grid-delayed-table" });
+        const gridId = createGrid(projectDoc, undefined, { query: "SELECT * FROM delayed_table" });
+        render(ProjectGridView, { props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc } });
+
+        const tableId = createTable(projectDoc, "Delayed", "delayed_table");
+
+        await waitFor(
+            () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId),
+            { timeout: 10_000 },
+        );
+    });
 });
