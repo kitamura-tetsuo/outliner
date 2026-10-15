@@ -97,6 +97,8 @@
     // the user can duplicate it alone from there, or expand the set first via
     // `Select related`.
     function openDuplicate() {
+        // The typed resolved pathname has an encoded query appended after resolve; the rule cannot infer that template type.
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
         goto(projectObjectsSelectedRoute(projectName, routeGridId));
     }
 

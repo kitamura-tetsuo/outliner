@@ -76,6 +76,8 @@
     // first via `Select related`.
     function openDuplicate() {
         if (!resolvedTableId) return;
+        // The typed resolved pathname has an encoded query appended after resolve; the rule cannot infer that template type.
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
         goto(projectObjectsSelectedRoute(projectName, resolvedTableId));
     }
 
