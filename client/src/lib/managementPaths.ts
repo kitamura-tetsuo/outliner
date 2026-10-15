@@ -142,12 +142,19 @@ export function projectObjectsRoute(projectName: string): ResolvedPathname {
 export function projectObjectsSelectedRoute(projectName: string, selected: string): ResolvedPathname {
     const query: `?selected=${string}` = `?selected=${encodeURIComponent(selected)}`;
     if (!projectName) return `${projectObjectsPath(projectName)}${query}` as ResolvedPathname;
+    // `resolve` only accepts a literal route ID from the generated RouteId
+    // union, so the query is appended after resolution instead of being
+    // embedded in the route ID.
     if (isPublicProject(projectName)) {
-        return resolve(`/[demoProject=demoProject]/-/objects${query}`, {
-            demoProject: encodeURIComponent(projectName),
-        });
+        return `${
+            resolve("/[demoProject=demoProject]/-/objects", {
+                demoProject: encodeURIComponent(projectName),
+            })
+        }${query}` as ResolvedPathname;
     }
-    return resolve(`/[project]/-/objects${query}`, { project: encodeURIComponent(projectName) });
+    return `${
+        resolve("/[project]/-/objects", { project: encodeURIComponent(projectName) })
+    }${query}` as ResolvedPathname;
 }
 
 /** The OPML/Markdown import-export panel as a typed SvelteKit resolution. */
