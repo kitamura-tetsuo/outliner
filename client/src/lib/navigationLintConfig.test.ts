@@ -26,6 +26,15 @@ function navigationMessages(messages: { ruleId: string | null; severity: number;
     return messages.filter(message => message.ruleId === "svelte/no-navigation-without-resolve");
 }
 
+const blanketNavigationSuppression = /eslint-disable(?!-next-line)\b[^\n]*\bsvelte\/no-navigation-without-resolve\b/;
+
+function blanketSuppressionFiles(sources: ReadonlyMap<string, string>): string[] {
+    return [...sources]
+        .filter(([, source]) => blanketNavigationSuppression.test(source))
+        .map(([file]) => file)
+        .sort();
+}
+
 describe("typed-navigation ESLint enforcement", () => {
     it("enables the official navigation rule globally in the production configuration", async () => {
         const eslint = new ESLint({ cwd: process.cwd() });
@@ -89,13 +98,24 @@ describe("typed-navigation ESLint enforcement", () => {
         expect(config).not.toMatch(/"svelte\/no-navigation-without-resolve"\s*:\s*"off"/);
         expect(config).not.toMatch(/no-navigation-without-resolve[^\n]*ignore(?:Goto|Links|PushState|ReplaceState)/);
         const exceptions: string[] = [];
+        const productionSources = new Map<string, string>();
         for (const file of files) {
             if (file.endsWith("navigationLintConfig.test.ts")) continue;
             const source = await readFile(file, "utf8");
+            const relativeFile = relative(root, file);
+            productionSources.set(relativeFile, source);
             if (source.includes("eslint-disable-next-line svelte/no-navigation-without-resolve")) {
-                exceptions.push(relative(root, file));
+                exceptions.push(relativeFile);
             }
         }
+        expect(blanketSuppressionFiles(productionSources)).toEqual([]);
+
+        const sidebarFile = "src/components/Sidebar.svelte";
+        const sidebarWithBlanketDisable = `${productionSources.get(sidebarFile)}
+<script>/* eslint-disable svelte/no-navigation-without-resolve */</script>
+<a href="/unresolved">unresolved</a>`;
+        const counterexampleSources = new Map(productionSources).set(sidebarFile, sidebarWithBlanketDisable);
+        expect(blanketSuppressionFiles(counterexampleSources)).toEqual([sidebarFile]);
         expect(exceptions.sort()).toEqual([
             "src/components/OutlinerItemAttachments.svelte",
             "src/lib/debug.ts",
