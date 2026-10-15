@@ -4,7 +4,7 @@ import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
 import { createProjectSelectSession } from "./projectSelectSession";
 import type { RelationProvider, RelationValue } from "./relationProvider";
 import type { TableColumnSchema } from "./schemaIntrospection";
-import { getTableSqlName } from "./tableDocs";
+import { getTableHandles, getTableSqlName, listTables } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector } from "./tableEngine";
 
 export type GridInsertOutcome =
@@ -62,6 +62,12 @@ export function createGridInsertController(options: {
         if (disposed) return refused("stale", "The Grid insertion controller is no longer active");
         const capturedQueryRevision = queryRevision;
         const capturedPreferenceRevision = preferenceRevision;
+        const capturedSchemas = new Map(
+            listTables(options.projectDoc).map(table => [
+                table.tableId,
+                getTableHandles(options.projectDoc, table.tableId)?.schemaText.toString(),
+            ]),
+        );
         const preference = readPreference(options.gridEntry);
         const evidence = await select.runNow();
         if (!evidence || stale()) return refused("stale", "The query changed while preparing the insertion");
@@ -99,6 +105,7 @@ export function createGridInsertController(options: {
             || queryRevision !== capturedQueryRevision || preferenceRevision !== capturedPreferenceRevision
             || readPreference(options.gridEntry) !== preference
             || getTableSqlName(options.projectDoc, target.id) !== target.sqlName
+            || capturedSchemas.get(target.id) !== schemaRevision
             || acquired.handles.schemaText.toString() !== schemaRevision
             || provider.evidence?.id !== target.id || provider.evidence.schemaRevision !== schemaRevision
             || !provider.capabilities.insert || provider.capabilities.insert.requiresDestination
@@ -147,13 +154,16 @@ function buildInsertValues(columns: readonly TableColumnSchema[]): Record<string
     for (const column of columns) {
         if (column.name === "id" && column.isPrimaryKey) continue;
         const choices = column.enumLabels ?? column.checkOptions;
-        if (choices?.length) values[column.name] = choices[0]!;
-        else if (column.defaultExpression !== undefined) {
+        if (column.defaultExpression !== undefined) {
             const value = parseDefault(column.defaultExpression, column.kind);
-            if (value === undefined) return undefined;
+            if (value === undefined || (choices?.length && !choices.includes(String(value)))) return undefined;
             values[column.name] = value;
-        } else if (column.isNullable) continue;
-        else if (column.kind === "text") values[column.name] = "";
+        } else if (choices?.length) values[column.name] = choices[0]!;
+        else if (column.isNullable) continue;
+        else if (
+            column.kind === "text" && column.dataType !== "uuid"
+            && !column.hasCheckConstraint
+        ) values[column.name] = "";
         else if (column.kind === "boolean") values[column.name] = false;
         else return undefined;
     }
@@ -161,12 +171,13 @@ function buildInsertValues(columns: readonly TableColumnSchema[]): Record<string
 }
 
 function parseDefault(expression: string, kind: TableColumnSchema["kind"]): RelationValue | undefined {
-    const value = expression.replace(/::[\w\s"]+(?:\[\])?$/u, "").trim();
+    const quoted = expression.trim().match(/^'((?:[^']|'')*)'(?:\s*::[\s\S]+)?$/);
+    if (quoted) return quoted[1]!.replace(/''/g, "'");
+    const value = expression.replace(/::[\s\S]+$/u, "").trim();
     if (/^null$/i.test(value)) return null;
     if (/^(true|false)$/i.test(value)) return value.toLowerCase() === "true";
     if ((kind === "integer" || kind === "number") && /^-?\d+(?:\.\d+)?$/.test(value)) return Number(value);
-    const quoted = value.match(/^'((?:[^']|'')*)'$/s);
-    return quoted ? quoted[1]!.replace(/''/g, "'") : undefined;
+    return undefined;
 }
 
 function refused(mode: InsertTargetMode | "invalid-record" | "stale", message: string): GridInsertOutcome {

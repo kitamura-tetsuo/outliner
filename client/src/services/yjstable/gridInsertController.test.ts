@@ -78,20 +78,29 @@ describe("Grid INSERT controller", { timeout: 30_000 }, () => {
         }
     });
 
-    it("does not replay an insertion when a controller is recreated", async () => {
+    it("does not replay an insertion after persisted Project and Table state reload", async () => {
         const doc = new Y.Doc({ guid: "grid-insert-remount" });
         const a = table(doc, "a", "CREATE TABLE a (id TEXT PRIMARY KEY, title TEXT NOT NULL)");
         const run = controller(doc, "SELECT * FROM a LIMIT 0", a.id);
         expect((await run.value.submit()).status).toBe("inserted");
         run.value.dispose();
+        const projectUpdate = Y.encodeStateAsUpdate(doc);
+        const tableUpdate = Y.encodeStateAsUpdate(a.handles.doc);
+        const restoredDoc = new Y.Doc({ guid: doc.guid });
+        Y.applyUpdate(restoredDoc, projectUpdate);
+        const restoredTable = getTableHandles(restoredDoc, a.id)!;
+        Y.applyUpdate(restoredTable.doc, tableUpdate);
+        const restoredGrid = getGridHandles(restoredDoc, run.grid.gridId)!;
+        const restoredHistory = restoredTable.undo.undoStack.length;
         const restored = createGridInsertController({
-            projectDoc: doc,
-            gridEntry: run.grid.entry,
+            projectDoc: restoredDoc,
+            gridEntry: restoredGrid.entry,
             query: "SELECT * FROM a LIMIT 0",
             connect,
         });
         try {
-            expect(a.handles.data.size).toBe(1);
+            expect(restoredTable.data.size).toBe(1);
+            expect(restoredTable.undo.undoStack.length).toBe(restoredHistory);
         } finally {
             restored.dispose();
         }

@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { createGrid, getGridHandles } from "./gridDocs";
 import { createGridInsertController } from "./gridInsertController";
 import { resetPgliteForTests } from "./pgliteService";
+import { TABLE_RELATION_CAPABILITIES } from "./relationProvider";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
 
@@ -73,10 +74,54 @@ describe("Grid INSERT refusal boundaries", { timeout: 30_000 }, () => {
         }
     });
 
-    it("refuses a delayed intent after query, target, and schema authority change", async () => {
-        const doc = new Y.Doc({ guid: "grid-insert-delayed-refusal" });
+    it.each(["query-a-b-a", "preference", "schema"] as const)(
+        "refuses a delayed intent after an independent %s authority change",
+        async (change) => {
+            const doc = new Y.Doc({ guid: `grid-insert-delayed-${change}` });
+            const a = table(doc, "a");
+            const b = table(doc, "b");
+            let acquisitionStarted!: () => void;
+            const started = new Promise<void>(resolve => acquisitionStarted = resolve);
+            let resumeAcquisition!: () => void;
+            const resume = new Promise<void>(resolve => resumeAcquisition = resolve);
+            const delayed: TableDocConnector = async () => ({
+                waitForInitialSync: async () => {
+                    acquisitionStarted();
+                    await resume;
+                    return { synced: true };
+                },
+                dispose() {},
+            });
+            const query = "SELECT * FROM a WHERE false";
+            const run = insertController(doc, query, a.id, delayed, "delayed-project");
+            try {
+                const pending = run.controller.submit();
+                await started;
+                if (change === "query-a-b-a") {
+                    const otherQuery = "SELECT * FROM b WHERE false";
+                    run.grid.entry.set("query", otherQuery);
+                    run.controller.setQuery(otherQuery);
+                    run.grid.entry.set("query", query);
+                    run.controller.setQuery(query);
+                } else if (change === "preference") {
+                    run.grid.entry.set("insertTargetTableId", b.id);
+                } else {
+                    setSchemaText(a.handles, "CREATE TABLE a (id TEXT PRIMARY KEY, changed TEXT NOT NULL)");
+                }
+                const effectsAfterAuthorityChanges = tableEffects(a, b);
+                resumeAcquisition();
+                expect(await pending).toMatchObject({ status: "refused", mode: "stale" });
+                expect(tableEffects(a, b)).toEqual(effectsAfterAuthorityChanges);
+            } finally {
+                resumeAcquisition();
+                run.controller.dispose();
+            }
+        },
+    );
+
+    it("refuses a delayed intent after provider INSERT permission is revoked", async () => {
+        const doc = new Y.Doc({ guid: "grid-insert-delayed-permission" });
         const a = table(doc, "a");
-        const b = table(doc, "b");
         let acquisitionStarted!: () => void;
         const started = new Promise<void>(resolve => acquisitionStarted = resolve);
         let resumeAcquisition!: () => void;
@@ -89,21 +134,18 @@ describe("Grid INSERT refusal boundaries", { timeout: 30_000 }, () => {
             },
             dispose() {},
         });
-        const query = "SELECT * FROM a WHERE false";
-        const run = insertController(doc, query, a.id, delayed, "delayed-project");
+        const run = insertController(doc, "SELECT * FROM a WHERE false", a.id, delayed, "permission-project");
+        const insertCapability = TABLE_RELATION_CAPABILITIES.insert;
         try {
             const pending = run.controller.submit();
             await started;
-            const nextQuery = "SELECT * FROM b WHERE false";
-            run.grid.entry.set("query", nextQuery);
-            run.grid.entry.set("insertTargetTableId", b.id);
-            setSchemaText(a.handles, "CREATE TABLE a (id TEXT PRIMARY KEY, changed TEXT NOT NULL)");
-            run.controller.setQuery(nextQuery);
-            const effectsAfterAuthorityChanges = tableEffects(a, b);
+            delete TABLE_RELATION_CAPABILITIES.insert;
+            const effectsAfterRevocation = tableEffects(a);
             resumeAcquisition();
-            expect(await pending).toMatchObject({ status: "refused", mode: "stale" });
-            expect(tableEffects(a, b)).toEqual(effectsAfterAuthorityChanges);
+            expect(await pending).toMatchObject({ status: "refused", mode: "unavailable" });
+            expect(tableEffects(a)).toEqual(effectsAfterRevocation);
         } finally {
+            TABLE_RELATION_CAPABILITIES.insert = insertCapability;
             resumeAcquisition();
             run.controller.dispose();
         }

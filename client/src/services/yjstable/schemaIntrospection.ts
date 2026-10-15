@@ -29,6 +29,8 @@ export interface TableColumnSchema {
     isPrimaryKey: boolean;
     /** PostgreSQL's normalized DEFAULT expression, when the field has one. */
     defaultExpression?: string;
+    /** True when PostgreSQL applies at least one CHECK constraint to this field. */
+    hasCheckConstraint?: boolean;
     /**
      * Allowed values extracted from a `CHECK (col IN (...))` constraint.
      * `select` cell components read their options from here, never from the
@@ -216,15 +218,19 @@ export async function introspectTable(
     );
     const pkColumns = new Set(pk.rows.map((r) => r.column_name));
 
-    const checks = await db.query<{ def: string; }>(
-        "SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c "
+    const checks = await db.query<{ def: string; columns: string[]; }>(
+        "SELECT pg_get_constraintdef(c.oid) AS def, "
+            + "ARRAY(SELECT a.attname FROM pg_attribute a WHERE a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)) AS columns "
+            + "FROM pg_constraint c "
             + "JOIN pg_class t ON t.oid = c.conrelid "
             + "JOIN pg_namespace n ON n.oid = t.relnamespace "
             + "WHERE n.nspname = $1 AND t.relname = $2 AND c.contype = 'c'",
         [schema, tableName],
     );
     const optionsByColumn = new Map<string, string[]>();
+    const checkedColumns = new Set<string>();
     for (const row of checks.rows) {
+        for (const column of row.columns) checkedColumns.add(column);
         const parsed = extractCheckInOptions(row.def);
         if (parsed) optionsByColumn.set(parsed.column, parsed.options);
     }
@@ -239,6 +245,7 @@ export async function introspectTable(
             isNullable: row.is_nullable !== "NO",
             isPrimaryKey: pkColumns.has(row.column_name),
             defaultExpression: row.column_default ?? undefined,
+            hasCheckConstraint: checkedColumns.has(row.column_name),
             checkOptions: optionsByColumn.get(row.column_name),
             enumLabels: row.typtype === "e" ? row.enum_labels : undefined,
         })),

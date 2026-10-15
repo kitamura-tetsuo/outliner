@@ -11,3 +11,4 @@ acceptance:
 tests:
 - client/src/services/yjstable/gridInsertController.test.ts
 - client/src/services/yjstable/gridInsertController.refusal.test.ts
+- client/src/services/yjstable/gridInsertController.validation.test.ts
