@@ -45,11 +45,12 @@ new navigation on the typed path.
 ## Enforcement and exception inventory
 
 The navigation rule is enabled globally at error severity with no category-wide
-ignore options or directory exclusions. Two documented line-scoped exceptions remain at genuine opaque boundaries:
+ignore options or directory exclusions. Two documented line-scoped exceptions remain at genuine opaque
+boundaries:
 Paraglide-owned localized URLs and debug-bridge URLs. Each exception names its
 production-origin regression. Attachment resource URLs are explicitly marked
-external and need no navigation-rule exception. The debug bridge applies the configured base through the official path
-primitive. Shared internal-link props, including the Grid source
+external and need no navigation-rule exception. The debug bridge applies the configured base through the official
+path primitive. Shared internal-link props, including the Grid source
 Table link, retain `ResolvedPathname` through rendering without a second resolve.
 
 ## Regression coverage
