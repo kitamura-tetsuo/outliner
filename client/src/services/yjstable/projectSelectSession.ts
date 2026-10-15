@@ -51,6 +51,8 @@ export type ProjectSelectState =
 
 export interface ProjectSelectSession {
     readonly state: ProjectSelectState;
+    /** True only for the Project identity whose SQL environment this session owns. */
+    isProjectContext(projectDoc: Y.Doc, projectId?: string): boolean;
     /** True only while this exact completed execution remains the live query/catalog authority. */
     isEvidenceCurrent(evidence: ProjectSelectEvidence): boolean;
     subscribe(listener: (state: ProjectSelectState) => void): () => void;
@@ -118,6 +120,10 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
 
     get state(): ProjectSelectState {
         return this._state;
+    }
+
+    isProjectContext(projectDoc: Y.Doc, projectId?: string): boolean {
+        return this.projectDoc === projectDoc && this.pgSchema === projectSchemaName(projectId);
     }
 
     isEvidenceCurrent(evidence: ProjectSelectEvidence): boolean {

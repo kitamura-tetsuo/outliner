@@ -165,8 +165,9 @@ function handleImageError(att: AttachmentData) {
 {#if attachments.length > 0}
     <div class="attachments">
         {#each attachments as att (att.url)}
-            <a
-                href={att.url}
+            <!-- Opaque resource URL (e.g. signed storage URL with query/fragment): rendered verbatim, never passed to route resolution. -->
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- att.url is an opaque resource URL covered by OutlinerItemAttachments.test.ts. -->
+            <a href={att.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="attachment-link"

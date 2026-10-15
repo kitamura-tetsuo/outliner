@@ -5,20 +5,21 @@
     // tools, not a new data model (issue: "Unify project-scoped management
     // routes under /:project/-/...").
     import Breadcrumb from "../Breadcrumb.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
+    import { resolve } from "$app/paths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
     import {
-        projectCalendarsPath,
-        projectGraphPath,
-        projectGridsPath,
-        projectImportExportPath,
-        projectKanbansPath,
-        projectObjectsPath,
-        projectSchedulesPath,
-        projectSettingsPath,
-        projectTablesPath,
-        projectTypesPath,
+        projectCalendarsRoute,
+        projectGraphRoute,
+        projectGridsRoute,
+        projectImportExportRoute,
+        projectKanbansRoute,
+        projectObjectsRoute,
+        projectSchedulesRoute,
+        projectSettingsRoute,
+        projectTablesRoute,
+        projectTypesRoute,
     } from "../../lib/managementPaths";
+    import type { ResolvedPathname } from "$app/types";
     import { isOnPrem } from "../../lib/deployment";
 
     interface Props {
@@ -32,7 +33,7 @@
     interface Tool {
         label: string;
         description: string;
-        href: string;
+        href: ResolvedPathname;
     }
 
     // Project rename/sharing and OPML/Markdown import-export operate on the
@@ -40,14 +41,14 @@
     // neither of — those two tools stay out of the demo's landing page.
     let tools = $derived.by((): Tool[] => {
         const items: Tool[] = [
-            { label: "Objects", description: "Browse, rename and delete Tables, Grids, Calendars and Schedules.", href: resolvePath(projectObjectsPath(projectName)) },
-            { label: "Tables", description: "Structured data tables.", href: resolvePath(projectTablesPath(projectName)) },
-            { label: "Grids", description: "Saved queries over your tables.", href: resolvePath(projectGridsPath(projectName)) },
-            { label: "Kanbans", description: "Grouped boards over saved table queries.", href: resolvePath(projectKanbansPath(projectName)) },
-            { label: "Calendars", description: "Calendar views over your data.", href: resolvePath(projectCalendarsPath(projectName)) },
-            { label: "Schedules", description: "Scheduled SQL that runs on a recurring rule.", href: resolvePath(projectSchedulesPath(projectName)) },
-            { label: "Types", description: "Project SQL ENUM types for table columns.", href: resolvePath(projectTypesPath(projectName)) },
-            { label: "Graph", description: "The link graph between this project's pages.", href: resolvePath(projectGraphPath(projectName)) },
+            { label: "Objects", description: "Browse, rename and delete Tables, Grids, Calendars and Schedules.", href: projectObjectsRoute(projectName) },
+            { label: "Tables", description: "Structured data tables.", href: projectTablesRoute(projectName) },
+            { label: "Grids", description: "Saved queries over your tables.", href: projectGridsRoute(projectName) },
+            { label: "Kanbans", description: "Grouped boards over saved table queries.", href: projectKanbansRoute(projectName) },
+            { label: "Calendars", description: "Calendar views over your data.", href: projectCalendarsRoute(projectName) },
+            { label: "Schedules", description: "Scheduled SQL that runs on a recurring rule.", href: projectSchedulesRoute(projectName) },
+            { label: "Types", description: "Project SQL ENUM types for table columns.", href: projectTypesRoute(projectName) },
+            { label: "Graph", description: "The link graph between this project's pages.", href: projectGraphRoute(projectName) },
         ];
         if (isOnPrem) {
             return [
@@ -55,14 +56,14 @@
                 {
                     label: "Settings",
                     description: "Rename this project.",
-                    href: resolvePath(projectSettingsPath(projectName)),
+                    href: projectSettingsRoute(projectName),
                 },
             ];
         }
         if (!isDemo) {
             items.push(
-                { label: "Import / Export", description: "Import or export this project as OPML or Markdown.", href: resolvePath(projectImportExportPath(projectName)) },
-                { label: "Settings", description: "Project title and sharing.", href: resolvePath(projectSettingsPath(projectName)) },
+                { label: "Import / Export", description: "Import or export this project as OPML or Markdown.", href: projectImportExportRoute(projectName) },
+                { label: "Settings", description: "Project title and sharing.", href: projectSettingsRoute(projectName) },
             );
         }
         return items;
@@ -76,8 +77,8 @@
 <main class="container mx-auto px-4 py-8 max-w-3xl">
     <div class="mb-4">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName, href: resolvePath(projectBasePath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName, href: projectRoute(projectName) },
             { label: "Manage" }
         ]} />
     </div>

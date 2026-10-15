@@ -1,4 +1,5 @@
 <script lang="ts">
+import type { ResolvedPathname } from "$app/types";
 // Orchestrates one Grid: owns the sync-adapter/query-runner lifecycle, keeps
 // plain $state mirrors of the Yjs structures (AGENTS.md §11 mirror pattern),
 // and lets the user switch/parallel-display the Grid Definition editor, grid
@@ -52,6 +53,10 @@ import {
     type TableQueryExecution,
 } from "../../services/yjstable/tableQueryRunner";
 import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
+import {
+    createGridInsertController,
+    type GridInsertOutcome,
+} from "../../services/yjstable/gridInsertController";
 
 const logger = getLogger("YjsTableView");
 
@@ -73,7 +78,7 @@ interface Props {
     /** Provenance info from whence this table was copied */
     sourceProjectId?: string;
     /** Link to the source Table's own page. Undefined without a project route. */
-    sourceTableHref?: string;
+    sourceTableHref?: ResolvedPathname;
     /**
      * Host surface restriction (outline read-only state). Forwarded to the
      * UI Definition editor's width controls and the Grid's header resize
@@ -114,6 +119,7 @@ let adapterReady = $state(false);
 let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
+let insertOutcome = $state<GridInsertOutcome | undefined>(undefined);
 // Authority is revoked only by material changes from the authoritative Yjs
 // configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
@@ -171,6 +177,7 @@ const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
         // action captured against the first A.
         if (nextQuery !== observedQuery) {
             queryExecution = undefined;
+            insertController.setQuery(nextQuery);
             revalidateMutationAuthority();
         }
         observedQuery = nextQuery;
@@ -221,6 +228,14 @@ const clipboardSource: TableClipboardSource = {
 // handles/projectDoc are static within the component lifecycle due to `{#key}`
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
+// This component is remounted for a changed Project/Grid identity.
+// svelte-ignore state_referenced_locally
+const insertController = createGridInsertController({
+    projectDoc,
+    projectId,
+    gridEntry: mountedGrid.entry,
+    query: observedQuery,
+});
 let unsubscribeAdapter: (() => void) | undefined;
 let unsubscribeRunner: (() => void) | undefined;
 let cleanupWebMCP: (() => void) | undefined;
@@ -317,6 +332,7 @@ onDestroy(() => {
     runner?.dispose();
     unregisterTableClipboardSource(mountedHandles.tableId, clipboardSource);
     session.dispose();
+    insertController.dispose();
     destroyTableUndoManager(mountedHandles.doc);
     destroyGridUndoManager(mountedGrid.entry);
     if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
@@ -456,10 +472,22 @@ function stateVectorRevision(doc: Y.Doc): string {
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                     {isReadOnly}
+                    onAddRow={async () => {
+                        insertOutcome = await insertController.submit();
+                    }}
                     onColumnWidthPreview={(preview) => {
                         widthPreview = preview;
                     }}
                 />
+                {#if insertOutcome}
+                    <p
+                        class:error={insertOutcome.status !== "inserted"}
+                        data-testid="yjs-grid-insert-status"
+                        role="status"
+                    >{insertOutcome.status === "inserted"
+                        ? `Added row to ${insertOutcome.targetSqlName}`
+                        : insertOutcome.message}</p>
+                {/if}
             {:else}
                 <p class="loading">Loading table...</p>
             {/if}

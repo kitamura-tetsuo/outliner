@@ -3,6 +3,7 @@ import { onDestroy, onMount } from "svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { getItemKanbanId, observeItemKanbanId, type KanbanPlacementItem } from "../../services/yjstable/kanbanBinding";
 import { getKanbanHandles } from "../../services/yjstable/kanbanDocs";
+import { projectKanbanRoute } from "../../lib/managementPaths";
 import KanbanBoard from "./KanbanBoard.svelte";
 
 interface Props { item: KanbanPlacementItem & { ydoc: import("yjs").Doc; }; isReadOnly?: boolean; }
@@ -23,7 +24,11 @@ onDestroy(() => stop?.());
             {@const handles = getKanbanHandles(item.ydoc, kanbanId)}
             {#if handles}
                 <KanbanBoard projectDoc={item.ydoc} {projectId} kanban={handles} {isReadOnly} />
-                <a href={`/${encodeURIComponent(projectId ?? "")}/-/kanbans/${encodeURIComponent(kanbanId)}`}>Open standalone board</a>
+                <!-- The typed resolver rejects an empty project identity, so
+                     the action appears once the connected project is known. -->
+                {#if projectId}
+                    <a href={projectKanbanRoute(projectId, kanbanId)}>Open standalone board</a>
+                {/if}
             {:else}
                 <p role="alert" data-testid="kanban-missing">Kanban unavailable</p>
             {/if}

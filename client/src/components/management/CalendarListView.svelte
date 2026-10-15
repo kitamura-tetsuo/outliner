@@ -6,11 +6,12 @@
     import Breadcrumb from "../Breadcrumb.svelte";
     import Loader from "../Loader.svelte";
     import { getLogger } from "../../lib/logger";
-    import { resolvePath } from "../../utils/pathUtils";
+    import { resolve } from "$app/paths";
     import { store } from "../../stores/store.svelte";
     import { listCalendars, type CalendarListEntry } from "../../services/calendar/calendarService";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectCalendarPath } from "../../lib/managementPaths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
+    import { projectCalendarRoute } from "../../lib/managementPaths";
+    import type { ResolvedPathname } from "$app/types";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { Project } from "$shared/app-schema";
@@ -125,8 +126,8 @@
     // Addressed by id, not display name: names are not unique (createCalendar
     // and renameCalendar both permit duplicates), so two calendars sharing a
     // name must still resolve to distinct links.
-    function calendarHref(id: string): string {
-        return resolvePath(projectCalendarPath(projectName, id));
+    function calendarHref(id: string): ResolvedPathname {
+        return projectCalendarRoute(projectName, id);
     }
 </script>
 
@@ -137,8 +138,8 @@
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
             { label: "Calendars" }
         ]} />
     </div>

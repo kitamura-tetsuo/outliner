@@ -2,15 +2,14 @@
     import Loader from "../../../components/Loader.svelte";
     import { page } from "$app/state";
 import { goto } from "$app/navigation";
-    import { resolvePath } from "../../../utils/pathUtils";
     import { onDestroy, untrack } from "svelte";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
     import SearchPanel from "../../../components/SearchPanel.svelte";
     import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
-    import { projectPagePath } from "../../../lib/publicProject";
-    import { projectGraphPath } from "../../../lib/managementPaths";
+    import { projectPageRoute } from "../../../lib/publicProject";
+    import { projectGraphRoute } from "../../../lib/managementPaths";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByKey, isPageNamed, findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
@@ -177,7 +176,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 
         const decodedPageName = safeDecodeURIComponent(pageName).trim();
         if (trimmedTitle && trimmedTitle !== decodedPageName && pageName) {
-            const newRoute = resolvePath(projectPagePath(demoProject, trimmedTitle));
+            const newRoute = projectPageRoute(demoProject, trimmedTitle);
             logger.info(`Title changed from "${decodedPageName}" to "${trimmedTitle}", updating URL to ${newRoute}`);
             // The visitor is typing in the title this route is following:
             // `reset: false` stops SvelteKit's post-navigation focus and
@@ -262,7 +261,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 >
                     Search
                 </button>
-                <a href={resolvePath(projectGraphPath(demoProject))} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
+                <a href={projectGraphRoute(demoProject)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
         <p class="mt-1 text-sm text-gray-500">

@@ -8,14 +8,15 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchBox");
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
+    import type { ResolvedPathname } from "$app/types";
     import { page as pageState } from "$app/state";
-    import { resolvePath } from "../utils/pathUtils";
     import type { Project } from "../schema/app-schema";
     import type { ItemLike } from "../types/yjs-types";
     import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
     import { store } from "../stores/store.svelte";
     import { iterateItems } from "../utils/itemTraversal";
-    import { projectPagePath } from "../lib/publicProject";
+    import { projectPageRoute } from "../lib/publicProject";
 
     // Type alias for backward compatibility
     type Item = ItemLike;
@@ -226,6 +227,11 @@ const logger = getLogger("SearchBox");
         return "";
     }
 
+    function searchRoute(query: string): ResolvedPathname {
+        const pathname = resolve("/[project]", { project: "search" });
+        return `${pathname}?query=${encodeURIComponent(query)}`;
+    }
+
     function navigateToPage(page?: Item) {
         // If query has changed but results haven't updated yet, treat results as stale
         const isStale = query !== debouncedQuery;
@@ -246,9 +252,11 @@ const logger = getLogger("SearchBox");
             // `projTitle` is already the demo's own slug when we are in a demo,
             // so no special case is needed. The pathname test that used to be
             // here also matched `/demo-ja`, sending those visitors to `/demo`.
-            goto(resolvePath(projectPagePath(projTitle, title)));
+            goto(projectPageRoute(projTitle, title));
         } else if (query) {
-            goto(resolvePath(`/search?query=${encodeURIComponent(query)}`));
+            // `/search` is the `[project]` route. Resolve the pathname before
+            // appending its independently encoded query value.
+            goto(searchRoute(query));
         }
     }
 

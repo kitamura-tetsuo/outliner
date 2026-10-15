@@ -7,12 +7,12 @@
     import { getLogger } from "../../lib/logger";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
+    import { resolve } from "$app/paths";
     import Breadcrumb from "../Breadcrumb.svelte";
     import CalendarView from "../calendar/CalendarView.svelte";
     import { listCalendars } from "../../services/calendar/calendarService";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectCalendarsPath, projectObjectsPath } from "../../lib/managementPaths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
+    import { projectCalendarsRoute, projectObjectsSelectedRoute } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { Project } from "$shared/app-schema";
@@ -68,7 +68,7 @@
     // expand the set first via `Select related`.
     function openDuplicate() {
         if (!calendarId) return;
-        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(calendarId)}`));
+        goto(projectObjectsSelectedRoute(projectName, calendarId));
     }
 
     async function loadCalendar() {
@@ -147,9 +147,9 @@
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
-            { label: "Calendars", href: resolvePath(projectCalendarsPath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
+            { label: "Calendars", href: projectCalendarsRoute(projectName) },
             { label: displayName }
         ]} />
     </div>

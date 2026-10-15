@@ -7,14 +7,13 @@ import {
     Project,
 } from "../schema/app-schema";
 import PageListItem from "./PageListItem.svelte";
-import { resolvePath } from "../utils/pathUtils";
 import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
 import { pageViewStore } from "../stores/PageViewStore.svelte";
 import { getBacklinkCount } from "../lib/backlinkCollector";
 import { store } from "../stores/store.svelte";
 import { allocatePageTitle, findPageByName, generateDefaultPageTitle } from "../utils/pageUtils";
 import { DEFAULT_DEMO_SLUG } from "$shared/demoProjects";
-import { projectBasePath, projectPagePath } from "../lib/publicProject";
+import { projectPageRoute } from "../lib/publicProject";
 
 interface Props {
     projectName?: string;
@@ -107,9 +106,7 @@ function handleCreatePage() {
         const existingPage = findPageByName(project.items, pageTitle);
         if (existingPage) {
             selectPage(existingPage);
-            const encodedTitle = encodeURIComponent(existingPage.text.trimEnd());
-            const basePath = projectBasePath(projectName);
-            goto(resolvePath(`${basePath}/${encodedTitle}`));
+            goto(projectPageRoute(projectName, existingPage.text.trimEnd()));
             pageTitle = "";
             return;
         }
@@ -121,9 +118,7 @@ function handleCreatePage() {
     selectPage(newPage);
 
     // Also explicitly route to the new page when created via UI (e.g. hitting Enter)
-    const encodedTitle = encodeURIComponent(newPage.text.trimEnd());
-    const basePath = projectBasePath(projectName);
-    goto(resolvePath(`${basePath}/${encodedTitle}`));
+    goto(projectPageRoute(projectName, newPage.text.trimEnd()));
 
     pageTitle = isDev ? generateDefaultPageTitle() : "";
 }
@@ -229,7 +224,10 @@ function selectPage(page: Item) {
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each sortedItems as page (page.id)}
-            <PageListItem {page} {isGridView} href={resolvePath(projectPagePath(projectName, page.text.trimEnd()))} onPageClick={() => selectPage(page)} />
+            {@const pageName = page.text.trimEnd()}
+            {#if pageName}
+                <PageListItem {page} {isGridView} href={projectPageRoute(projectName, pageName)} onPageClick={() => selectPage(page)} />
+            {/if}
         {/each}
 
         {#if sortedItems.length === 0}

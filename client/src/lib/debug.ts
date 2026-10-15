@@ -1,13 +1,50 @@
 import { goto, type GotoOptions } from "$app/navigation";
+import { resolve } from "$app/paths";
 import { userManager } from "../auth/UserManager";
 import * as yjsHighService from "../lib/yjsService.svelte";
 import { Items } from "../schema/app-schema";
 import * as snapshotService from "../services/snapshotService";
 import { yjsStore } from "../stores/yjsStore.svelte";
-import { resolvePath } from "../utils/pathUtils";
 import { getLogger } from "./logger";
 
 const logger = getLogger();
+
+/**
+ * Base prefix of this deployment, derived from the official path-resolution
+ * primitive: resolve("/") is the base-prefixed root ("/" when no base is
+ * configured). Kept behind a function so tests can observe the real value.
+ */
+export function deploymentBase(): string {
+    const root = resolve("/");
+    return root === "/" ? "" : root.replace(/\/$/, "");
+}
+
+/**
+ * Prepends the configured application base to an app-root-relative debug
+ * target exactly once, preserving its query/fragment suffix.
+ *
+ * SvelteKit's goto() resolves root-relative URLs against the origin without
+ * applying the base itself, so the bridge must carry it. Only a single
+ * leading slash marks an app-root-relative target (protocol-relative `//`
+ * URLs, relative paths and absolute URLs pass through untouched). The base
+ * always comes from deploymentBase(): there is deliberately no
+ * already-based passthrough and no caller-supplied base parameter, because
+ * prefix-sniffing cannot tell an app-root-relative target whose first
+ * segment equals the deployment base (base `/app` plus project `app`)
+ * apart from an already-based one, and would then drop the base and reach
+ * the wrong route. This is pure base-prefixing: the opaque caller-supplied
+ * URL is never passed through route-ID resolution, so encoded characters
+ * and query/fragment data are never reinterpreted as route parameters.
+ */
+export function withConfiguredBase(url: string): string {
+    const configuredBase = deploymentBase();
+    if (!configuredBase) return url;
+    if (!url.startsWith("/") || url.startsWith("//")) return url;
+    const boundary = url.search(/[?#]/);
+    const pathname = boundary === -1 ? url : url.slice(0, boundary);
+    const suffix = boundary === -1 ? "" : url.slice(boundary);
+    return `${configuredBase}${pathname}${suffix}`;
+}
 
 export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
@@ -20,7 +57,10 @@ export function setupGlobalDebugFunctions() {
             ) => {
                 await Promise.resolve();
                 return new Promise<void>((resolve, reject) => {
-                    goto(resolvePath(url), opts).then(() => resolve()).catch(reject);
+                    // Opaque debug URL: already app-root-relative, never a
+                    // route ID. The configured base is applied once above.
+                    // eslint-disable-next-line svelte/no-navigation-without-resolve -- production debug input is opaque and covered by debug.nonempty-base.test.ts.
+                    goto(withConfiguredBase(url), opts).then(() => resolve()).catch(reject);
                 });
             };
         } else {

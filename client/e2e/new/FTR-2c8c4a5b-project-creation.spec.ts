@@ -30,7 +30,7 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
         await page.goto("/projects/new");
 
         // 3. Fill in the project name
-        const projectName = `Test Project ${Date.now()}`;
+        const projectName = `設計 / 100% ? # ${Date.now()}`;
         await page.fill("#containerName", projectName);
 
         // 4. Click create button
@@ -44,7 +44,9 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
 
         // 6. Verify we are effectively on a project page or have the project in the list
         const url = page.url();
-        const decodedPath = decodeURIComponent(new URL(url).pathname);
+        const pathname = new URL(url).pathname;
+        expect(pathname).toBe(`/${encodeURIComponent(projectName)}`);
+        const decodedPath = decodeURIComponent(pathname);
 
         // Check if we are on the project page (URL contains project name)
         if (decodedPath.includes(projectName)) {

@@ -1,8 +1,8 @@
 <script lang="ts">
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
-import { resolvePath } from "../../../../utils/pathUtils";
 import { formatDateTime } from "../../../../utils/dateUtils";
+import { projectPageRoute } from "../../../../lib/publicProject";
 
 
 import { page } from "$app/state";
@@ -264,7 +264,9 @@ function toLocalISOString(timestamp: number): string {
         <label for="publish-time" class="mr-2">Publish Time:</label>
         <input id="publish-time" type="datetime-local" bind:value={publishTime} class="border p-1" />
         <button type="button" onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
-        <a href={resolvePath(`/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`)} class="ml-2 px-2 py-1 bg-gray-300 rounded inline-block" style="text-decoration:none; color:black">Back</a>
+        {#if project && pageTitle}
+            <a href={projectPageRoute(project, pageTitle)} class="ml-2 px-2 py-1 bg-gray-300 rounded inline-block" style="text-decoration:none; color:black">Back</a>
+        {/if}
         <button type="button"
             onclick={downloadIcs}
             class="ml-2 px-2 py-1 bg-green-700 text-white rounded disabled:opacity-60"

@@ -7,8 +7,7 @@
     import { getYjsClientByProjectTitle } from "../../services";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
-    import { projectCalendarPath, projectGridPath, projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
+    import { projectCalendarRoute, projectGridRoute, projectScheduleRoute, projectTableRoute } from "../../lib/managementPaths";
     import {
         duplicateObjects,
         previewObjectDuplication,
@@ -113,14 +112,14 @@
                 yjsStore.yjsClient = destinationClient as unknown as NonNullable<typeof yjsStore.yjsClient>;
                 store.project = destinationClient.project as unknown as NonNullable<typeof store.project>;
             }
-            const destinationPath = object.type === "grid"
-                ? projectGridPath(destinationTitle, result.primaryId)
+            const destination = object.type === "grid"
+                ? projectGridRoute(destinationTitle, result.primaryId)
                 : object.type === "table"
-                ? projectTablePath(destinationTitle, result.primaryId)
+                ? projectTableRoute(destinationTitle, result.primaryId)
                 : object.type === "calendar"
-                ? projectCalendarPath(destinationTitle, result.primaryId)
-                : projectSchedulePath(destinationTitle, result.primaryId);
-            await goto(resolvePath(destinationPath));
+                ? projectCalendarRoute(destinationTitle, result.primaryId)
+                : projectScheduleRoute(destinationTitle, result.primaryId);
+            await goto(destination);
             onclose();
         } catch (error) {
             actionError = error instanceof Error ? error.message : "Duplication failed.";

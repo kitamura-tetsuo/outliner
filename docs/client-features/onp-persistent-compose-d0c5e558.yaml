@@ -5,12 +5,12 @@ description: The production on-premises client and server run from one loopback-
 category: deployment
 status: implemented
 acceptance:
-- The production client, APIs, and WebSockets share one configurable loopback origin
-- Required password and persistent directory configuration fail closed
-- Project metadata and project/Table documents survive container recreation and complete-directory restore
 - Operator documentation covers startup, health, restart, password replacement, backup, restore, and initial feature boundaries
+- Project metadata and project/Table documents survive container recreation and complete-directory restore
+- Required password and persistent directory configuration fail closed
+- The production client, APIs, and WebSockets share one configurable loopback origin
 tests:
-- server/tests/onprem-production-server.test.ts
+- client/e2e/compose-onprem/onp-compose-recovery-d0c5e558.spec.ts
 - client/e2e/onprem/onp-local-workspace-5586c10d.spec.ts
 - client/e2e/onprem/onp-table-grid-sync-5586c10d.spec.ts
-- client/e2e/compose-onprem/onp-compose-recovery-d0c5e558.spec.ts
+- server/tests/onprem-production-server.test.ts

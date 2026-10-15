@@ -12,11 +12,11 @@
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../services/yjstable/tableDocs";
     import { getTableDependencies, removeTableWithPolicy, type TableDependencies, type DeleteTablePolicy } from "../../services/yjstable/tableDependencies";
     import { goto } from "$app/navigation";
-    import { resolvePath } from "../../utils/pathUtils";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
+    import { resolve } from "$app/paths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
-    import { projectObjectsPath, projectTablesPath } from "../../lib/managementPaths";
+    import { projectObjectsSelectedRoute, projectTablesRoute } from "../../lib/managementPaths";
 
     const logger = getLogger("TableStandalonePage");
 
@@ -76,7 +76,7 @@
     // first via `Select related`.
     function openDuplicate() {
         if (!resolvedTableId) return;
-        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(resolvedTableId)}`));
+        goto(projectObjectsSelectedRoute(projectName, resolvedTableId));
     }
 
     function startDelete() {
@@ -111,7 +111,7 @@
                 logger.info(`Deleted table ${tableId} with policy ${policy}`);
             }
             showDeleteDialog = false;
-            goto(resolvePath(projectBasePath(projectName)));
+            goto(projectRoute(projectName));
         } catch (err) {
             logger.error({ error: err }, "Failed to delete table");
             deleteActionError = err instanceof Error ? err.message : "An error occurred while deleting the table.";
@@ -228,9 +228,9 @@
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
-            { label: "Tables", href: resolvePath(projectTablesPath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
+            { label: "Tables", href: projectTablesRoute(projectName) },
             { label: tableName || "Table" }
         ]} />
     </div>

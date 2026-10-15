@@ -14,7 +14,7 @@
     import { getLogger } from "../../lib/logger";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
+    import { resolve } from "$app/paths";
     import Breadcrumb from "../Breadcrumb.svelte";
     import YjsTableView from "../yjstable/YjsTableView.svelte";
     import ProjectGridView from "../yjstable/ProjectGridView.svelte";
@@ -22,8 +22,8 @@
     // The mounted YjsTableView retains/releases the Grid's shared undo manager
     // and the Table's for its own lifetime, so this page only resolves handles.
     import { type GridHandles, getGridHandles, getGridSourceTableId } from "../../services/yjstable/gridDocs";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectGridsPath, projectObjectsPath, projectTablePath } from "../../lib/managementPaths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
+    import { projectGridsRoute, projectObjectsSelectedRoute, projectTableRoute } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -98,11 +98,11 @@
     // the user can duplicate it alone from there, or expand the set first via
     // `Select related`.
     function openDuplicate() {
-        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(routeGridId)}`));
+        goto(projectObjectsSelectedRoute(projectName, routeGridId));
     }
 
     let sourceTableHref = $derived(
-        sourceTableId ? resolvePath(projectTablePath(projectName, sourceTableId)) : undefined,
+        sourceTableId ? projectTableRoute(projectName, sourceTableId) : undefined,
     );
 
     async function handleAuthSuccess() {
@@ -191,9 +191,9 @@
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
-            { label: "Grids", href: resolvePath(projectGridsPath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
+            { label: "Grids", href: projectGridsRoute(projectName) },
             { label: gridName || "Grid" }
         ]} />
     </div>

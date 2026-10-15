@@ -2,7 +2,6 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("GraphView");
     import { goto } from "$app/navigation";
-    import { resolvePath } from "../utils/pathUtils";
 
 
     import * as echarts from "echarts";
@@ -14,7 +13,8 @@ const logger = getLogger("GraphView");
     import { getYjsClientByProjectTitle } from "../services";
     import { yjsStore } from "../stores/yjsStore.svelte";
     import { page } from "$app/state";
-    import { projectPagePath } from "../lib/publicProject";
+    import { projectPageRoute, projectRoute } from "../lib/publicProject";
+    import type { ResolvedPathname } from "$app/types";
 
     let graphDiv: HTMLDivElement;
     let chart: echarts.ECharts | undefined = $state(undefined);
@@ -237,17 +237,16 @@ const logger = getLogger("GraphView");
         }, 0);
     }
 
-    function getPageUrl(pageName: string) {
-        if (!pageName) return "#";
+    function getPageUrl(pageName: string): ResolvedPathname {
         // The demo routes name their project `demoProject`; reading the param
         // avoids the prefix test that also matched `/demo-ja`.
         const projectName = page.params.demoProject
             || page.params.project
             || store.project?.title;
         if (projectName) {
-            return resolvePath(projectPagePath(projectName, pageName));
+            return projectPageRoute(projectName, pageName);
         }
-        return resolvePath(`/${encodeURIComponent(pageName)}`);
+        return projectRoute(pageName);
     }
 
     onMount(() => {
@@ -323,17 +322,17 @@ const logger = getLogger("GraphView");
     <ul>
         {#each graphNodes as node (node.id)}
             <li>
-                <a href={getPageUrl(node.name)}>{node.name}</a>
+                {#if node.name}
+                    {@const nodeUrl = getPageUrl(node.name)}
+                    <a href={nodeUrl}>{node.name}</a>
+                {/if}
                 {#if graphLinks.some(link => link.source === node.id)}
                     <ul>
                         {#each graphLinks.filter(link => link.source === node.id) as link (link.target)}
                             {@const targetNode = graphNodes.find(n => n.id === link.target)}
-                            {#if targetNode}
-                                <li>
-                                    <a href={getPageUrl(targetNode.name)}>
-                                        {targetNode.name}
-                                    </a>
-                                </li>
+                            {#if targetNode?.name}
+                                {@const targetUrl = getPageUrl(targetNode.name)}
+                                <li><a href={targetUrl}>{targetNode.name}</a></li>
                             {/if}
                         {/each}
                     </ul>

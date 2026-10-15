@@ -5,13 +5,12 @@
 // project-management namespace instead.
 import { page } from "$app/state";
 import { goto } from "$app/navigation";
-import { resolvePath } from "../../../../../../utils/pathUtils";
-import { projectSchedulesPath } from "../../../../../../lib/managementPaths";
+import { projectSchedulesRoute } from "../../../../../../lib/managementPaths";
 import { onMount } from "svelte";
 
 let projectName = $derived(page.params.project ?? "");
 
 onMount(() => {
-    goto(resolvePath(projectSchedulesPath(projectName)), { replace: true });
+    goto(projectSchedulesRoute(projectName), { replace: true });
 });
 </script>

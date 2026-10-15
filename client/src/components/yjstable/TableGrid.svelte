@@ -93,6 +93,8 @@ interface Props {
      * "table": row creation relies only on a valid, writable schema existing, used for raw table data browsers.
      */
     rowCreationMode?: "query" | "table";
+    /** Project-query INSERT action. Raw Table browsers intentionally omit it. */
+    onAddRow?: () => Promise<void> | void;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
@@ -134,6 +136,7 @@ let {
     columnWidths = {},
     showAddRowButton = true,
     rowCreationMode = "query",
+    onAddRow,
     loading = false,
     session,
     confirmRowDelete = false,
@@ -1119,7 +1122,11 @@ function newRecordDefaults(): Record<string, TableRecordValue> {
     return defaults;
 }
 
-function addRow() {
+async function addRow() {
+    if (onAddRow) {
+        await onAddRow();
+        return;
+    }
     if (rowCreationMode === "query" && (!editability.editable || editability.rowIdentity !== "id")) return;
     addRecord(handles, newRecordDefaults());
 }
@@ -1547,7 +1554,7 @@ function handleCancelDelete() {
 
     {#if (rowCreationMode === "table"
         ? !!schema && (!editability.readOnlyReason || editability.readOnlyReason === "Query result has no id column")
-        : schema && editability.editable && editability.rowIdentity === "id") && showAddRowButton !== false}
+        : onAddRow !== undefined || (schema && editability.editable && editability.rowIdentity === "id")) && showAddRowButton !== false}
         <button type="button" class="add-row" data-testid="yjs-table-add-row" onclick={addRow}>
             + Add row
         </button>

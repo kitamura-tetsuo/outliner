@@ -45,8 +45,7 @@ import {
 } from "../../services/yjstable/gridDocs";
 import { createTableFromPreset } from "../../services/yjstable/tablePresets";
 import { sqlNameError } from "../../services/yjstable/sqlNames";
-import { resolvePath } from "../../utils/pathUtils";
-import { projectTablePath } from "../../lib/managementPaths";
+import { projectTableRoute } from "../../lib/managementPaths";
 import { page as pageState } from "$app/state";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
@@ -156,7 +155,7 @@ const routeProjectName = $derived(
 );
 const sourceTableHref = $derived(
     routeProjectName && sourceTableId
-        ? resolvePath(projectTablePath(routeProjectName, sourceTableId))
+        ? projectTableRoute(routeProjectName, sourceTableId)
         : undefined,
 );
 

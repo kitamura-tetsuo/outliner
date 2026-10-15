@@ -6,6 +6,7 @@
     // this list is scoped to the project and never to one Table. The former
     // Table-nested list (/tables/<project>/<tableId>/schedule) redirects here.
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { onMount } from "svelte";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../AuthComponent.svelte";
@@ -13,7 +14,6 @@
     import Loader from "../Loader.svelte";
     import ScheduleRuleList from "../schedule/ScheduleRuleList.svelte";
     import { getLogger } from "../../lib/logger";
-    import { resolvePath } from "../../utils/pathUtils";
     import { store } from "../../stores/store.svelte";
     import type * as Y from "yjs";
     import { getTableRegistry, listTables, type TableRegistryEntry } from "../../services/yjstable/tableDocs";
@@ -25,8 +25,9 @@
         updateScheduleRule,
     } from "../../services/schedule/scheduleRuleService";
     import { runScheduleRuleNow } from "../../services/schedule/scheduleRunService";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
+    import { projectScheduleRoute, projectTableRoute } from "../../lib/managementPaths";
+    import type { ResolvedPathname } from "$app/types";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -51,7 +52,7 @@
     let tables = $state<TableRegistryEntry[]>([]);
     // Table references per rule: a Schedule may reference several Tables, and
     // this list shows them all rather than pretending one is its owner.
-    let referencedTables = $state<Record<string, { tableId: string; name: string; kind: string; href: string; }[]>>({});
+    let referencedTables = $state<Record<string, { tableId: string; name: string; kind: string; href: ResolvedPathname; }[]>>({});
 
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
@@ -91,7 +92,7 @@
         const tableNames = new Map(tables.map(t => [t.tableId, t.name || "Untitled table"]));
 
         const nextRules: { id: string; rule: ScheduleRule; }[] = [];
-        const nextReferences: Record<string, { tableId: string; name: string; kind: string; href: string; }[]> = {};
+        const nextReferences: Record<string, { tableId: string; name: string; kind: string; href: ResolvedPathname; }[]> = {};
 
         project.schedules.forEach((ruleMap, ruleId) => {
             nextRules.push({
@@ -126,7 +127,7 @@
                 tableId: reference.tableId,
                 name: tableNames.get(reference.tableId) ?? reference.tableId,
                 kind: reference.kind === "write-target" ? "writes" : "reads",
-                href: resolvePath(projectTablePath(projectName, reference.tableId)),
+                href: projectTableRoute(projectName, reference.tableId),
             }));
         });
 
@@ -199,8 +200,8 @@
         };
     });
 
-    function scheduleHref(ruleId: string): string {
-        return resolvePath(projectSchedulePath(projectName, ruleId));
+    function scheduleHref(ruleId: string): ResolvedPathname {
+        return projectScheduleRoute(projectName, ruleId);
     }
 
     function startCreate() {
@@ -274,8 +275,8 @@
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
             { label: "Schedules" }
         ]} />
     </div>

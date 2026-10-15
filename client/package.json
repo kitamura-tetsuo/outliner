@@ -18,7 +18,7 @@
         "github:test:e2e": "NODE_OPTIONS='--dns-result-order=ipv4first' NODE_ENV=test TEST_ENV=127.0.0.1 dotenvx run --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'playwright test \"$@\"' --",
         "github:test:integration": "vitest run --project integration --coverage --reporter=github-actions --reporter=dot",
         "github:test:production": "vitest run --project production --reporter=github-actions --reporter=dot",
-        "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot",
+        "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot && npm run test:base",
         "lint": "npx dprint fmt && stylelint \"**/*.css\" && eslint . --max-warnings=-1",
         "lint:diff-lines": "node ../scripts/lint-changed-lines.js",
         "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
@@ -45,7 +45,8 @@
         "test:mutation": "NODE_ENV=test dotenvx run --overload --env-file=.env.test -- stryker run --incremental",
         "analyze:polling": "node ../scripts/analyze-polling.mjs",
         "test:polling": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'npx playwright test ./e2e/env/env-polling-analysis-test-removability-a1b2c3d4.spec.ts' --",
-        "coverage:cleanup": "node scripts/cleanup-coverage.js"
+        "coverage:cleanup": "node scripts/cleanup-coverage.js",
+        "test:base": "vitest run --config vitest.base.config.ts"
     },
     "overrides": {
         "find-process": {
@@ -54,12 +55,12 @@
         "typescript": "$typescript"
     },
     "dependencies": {
-        "@electric-sql/pglite": "^0.5.8",
-        "@hocuspocus/provider": "^4.7.0",
+        "@electric-sql/pglite": "^0.5.9",
+        "@hocuspocus/provider": "^4.7.1",
         "@sentry/sveltekit": "^11.6.0",
         "@sinclair/typebox": "^0.34.52",
         "diff-match-patch": "^1.0.5",
-        "dompurify": "^3.4.16",
+        "dompurify": "^3.4.17",
         "echarts": "^6.1.0",
         "firebase": "^13.0.0",
         "jsonwebtoken": "^9.0.2",
@@ -88,8 +89,8 @@
         "@inlang/message-lint-rule-valid-js-identifier": "^1.0.8",
         "@inlang/message-lint-rule-without-source": "^1.4.8",
         "@inlang/paraglide-js": "2.27.0",
-        "@inlang/plugin-m-function-matcher": "^2.3.0",
-        "@inlang/plugin-message-format": "^4.5.0",
+        "@inlang/plugin-m-function-matcher": "^2.3.2",
+        "@inlang/plugin-message-format": "^4.5.2",
         "@modelcontextprotocol/sdk": "^1.32.1",
         "@playwright/mcp": "^0.0.83",
         "@playwright/test": "^1.64.0",
@@ -112,11 +113,11 @@
         "@types/jsdom": "^30.0.0",
         "@types/node": "^26.6.5",
         "@types/ws": "^8.18.2",
-        "@vitest/coverage-v8": "5.0.3",
-        "@vitest/ui": "5.0.3",
+        "@vitest/coverage-v8": "5.0.4",
+        "@vitest/ui": "5.0.4",
         "chokidar-cli": "^3.0.0",
         "concurrently": "^10.0.6",
-        "dprint": "^0.62.0",
+        "dprint": "^0.63.0",
         "eslint": "^10.12.0",
         "eslint-formatter-unix": "^9.0.1",
         "eslint-plugin-svelte": "^3.23.1",
@@ -143,7 +144,7 @@
         "typescript": "^6.0.3",
         "typescript-eslint": "^8.71.1",
         "vite": "^8.3.4",
-        "vitest": "5.0.3",
+        "vitest": "5.0.4",
         "ws": "^8.22.0"
     }
 }
