@@ -226,7 +226,10 @@ export class KanbanQueryRunner {
 }
 function identity(row: Record<string, unknown>, p: ProjectQueryProvenance): KanbanCard["sourceIdentity"] {
     if (typeof row.source_kind === "string" && typeof row.source_id === "string") {
-        const b = p.branches.find(x => x.source.sqlName === row.source_kind && x.routedIdentity);
+        const claiming = p.branches.filter(x => x.claimedSourceKind === row.source_kind);
+        const b = claiming.length > 0 && claiming.every(x => x.routedIdentity)
+            ? claiming.find(x => x.source.sqlName === row.source_kind)
+            : undefined;
         return b ? { kind: b.source.sqlName, id: row.source_id } : undefined;
     }
     return p.bareIdSource && typeof row.id === "string" ? { kind: p.bareIdSource.sqlName, id: row.id } : undefined;

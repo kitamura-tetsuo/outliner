@@ -25,6 +25,8 @@ export interface ProvenanceBranch {
     columns: readonly ProvenanceColumnWrite[];
     /** True only when this branch carries a verified source_kind/source_id pair. */
     routedIdentity: boolean;
+    /** Literal source_kind emitted by this branch, including unverified claims. */
+    claimedSourceKind?: string;
 }
 
 export interface ProjectQueryProvenance {
@@ -239,6 +241,7 @@ function branchProvenance(shape: BranchShape, outputNames: string[], duplicateNa
         source,
         columns,
         routedIdentity: !duplicateNames && kind === shape.relation.sqlName && id === "id",
+        claimedSourceKind: kind,
     };
 }
 
