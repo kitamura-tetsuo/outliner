@@ -512,6 +512,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                     {mutationBoundary}
+                    prepareMutationAuthority={refreshGuardedMutationAuthority}
                     {isReadOnly}
                     onAddRow={async () => {
                         insertOutcome = await insertController.submit();

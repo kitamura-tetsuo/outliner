@@ -110,6 +110,8 @@ interface Props {
     session: RelationResolver;
     /** Guarded source-aware boundary used by saved Project Grid commands. */
     mutationBoundary?: GridExistingRowMutationBoundary;
+    /** Refreshes completed SELECT/provenance metadata before a guarded command captures targets. */
+    prepareMutationAuthority?: () => Promise<void>;
     /** Whether deleting a row requires confirmation (default false). */
     confirmRowDelete?: boolean;
     /**
@@ -151,6 +153,7 @@ let {
     loading = false,
     session,
     mutationBoundary,
+    prepareMutationAuthority,
     confirmRowDelete = false,
     isReadOnly = false,
     onColumnWidthPreview,
@@ -824,6 +827,7 @@ async function commitCell(row: Record<string, unknown>, column: string, value: T
             const summary = summarizeSelection(selection, commandContext);
             if (summary.writableTargets.length > 1) {
                 if (mutationBoundary) {
+                    await prepareMutationAuthority?.();
                     if (summary.writableTargets.some(target => !isValueValidForCell(commandContext, target.columnId, value))) {
                         cellEditStatus = "The selected cells cannot all accept that value.";
                         return;
@@ -995,10 +999,21 @@ function pasteStatusMessage(plan: GridPastePlan): string | undefined {
  */
 async function pasteClipboardIntoSelection(): Promise<void> {
     if (typeof navigator === "undefined" || !navigator.clipboard?.readText) return;
+    const capturedSelectionRevision = selectionRevision;
+    const capturedResult = result;
     let text: string;
     try {
         text = await navigator.clipboard.readText();
     } catch {
+        return;
+    }
+    if (selectionRevision !== capturedSelectionRevision || result !== capturedResult) {
+        pasteStatus = "Paste cancelled because the selection or query result changed.";
+        return;
+    }
+    await prepareMutationAuthority?.();
+    if (selectionRevision !== capturedSelectionRevision || result !== capturedResult) {
+        pasteStatus = "Paste cancelled because the selection or query result changed.";
         return;
     }
     // An empty clipboard is a legitimate one-blank-cell source (a copied
@@ -1188,6 +1203,7 @@ function deleteRow(recordId: string) {
  * row removal.
  */
 async function runDeleteCommand(): Promise<void> {
+    await prepareMutationAuthority?.();
     if (mutationBoundary && classifySelectionKind(selection.regions) !== "rows") {
         const writes = planSelectionClearWrites(selection, commandContext);
         const outcome = await executeGridWrites(
@@ -1214,6 +1230,7 @@ async function runDeleteCommand(): Promise<void> {
 
 async function handleConfirmDelete() {
     if (bulkRowsToDelete) {
+        await prepareMutationAuthority?.();
         if (mutationBoundary) {
             await executeGridRowDeletion(
                 { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
