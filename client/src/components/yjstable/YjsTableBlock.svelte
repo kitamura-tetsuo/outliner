@@ -86,6 +86,7 @@ let creationMode = $state<"new" | "query" | "existing-table" | "existing-grid">(
 let selectedExistingTableId = $state<string | undefined>(undefined);
 let selectedExistingGridId = $state<string | undefined>(undefined);
 let selectedExistingTableSqlName = $state<string | undefined>(undefined);
+let bootstrapSourceTableId = $state<string | undefined>(undefined);
 
 const existingTables = $derived.by(() => {
     void registryVersion;
@@ -203,6 +204,7 @@ function selectExistingTable() {
         name: table.name || "Grid",
         query: `SELECT * FROM ${table.sqlName}`,
     });
+    bootstrapSourceTableId = table.tableId;
     bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
 }
@@ -215,6 +217,7 @@ function selectExistingGrid() {
         return;
     }
     sourceError = undefined;
+    bootstrapSourceTableId = undefined;
     bindItemToGrid(item, selectedGrid.gridId, undefined);
     gridId = selectedExistingGridId;
 }
@@ -225,18 +228,20 @@ function createFromPreset(input: TableCreationInput): string | undefined {
     if (listTables(item.ydoc).some(table => table.sqlName === input.sqlName)) {
         return `SQL name "${input.sqlName}" is already used in this project`;
     }
-    const { gridId: newGridId } = createTableFromPreset(
+    const { gridId: newGridId, tableId } = createTableFromPreset(
         item.ydoc,
         input.preset,
         input.name,
         input.sqlName,
     );
+    bootstrapSourceTableId = tableId;
     bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
     return undefined;
 }
 
 function createQueryGrid() {
+    bootstrapSourceTableId = undefined;
     const newGridId = createGrid(item.ydoc, undefined, {
         name: "Query Grid",
         query: "SELECT 1 AS value",
@@ -277,10 +282,10 @@ function createQueryGrid() {
         {/key}
     {:else if grid && !sourceTableId}
         {#key `${grid.gridId}::${gridEntryToken}`}
-            <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} />
+            <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} {bootstrapSourceTableId} />
         {/key}
     {:else if grid && !handles}
-        <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} />
+        <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} {bootstrapSourceTableId} />
     {:else if gridId}
         <p class="loading" data-testid="yjs-table-waiting">Loading grid...</p>
     {:else}

@@ -21,9 +21,11 @@ interface Props {
     projectId?: string;
     projectName?: string;
     isReadOnly?: boolean;
+    /** Ephemeral creation-time hint; current SELECT evidence replaces it. */
+    bootstrapSourceTableId?: string;
 }
 
-let { grid, projectDoc, projectId, projectName, isReadOnly = false }: Props = $props();
+let { grid, projectDoc, projectId, projectName, isReadOnly = false, bootstrapSourceTableId }: Props = $props();
 // The parent keys this component by Grid identity. Preserve the mounted
 // handles because Svelte may update a disappearing parent's derived prop to
 // undefined before this component's teardown runs.
@@ -59,6 +61,19 @@ function refresh() {
     types = settings.types;
     if (!actualSource) resolveQueryDependencySource(next);
     session?.setQuery(next);
+}
+
+function resolveBootstrapSource() {
+    if (!bootstrapSourceTableId || actualSource) return;
+    const entry = listTables(projectDoc).find(table => table.tableId === bootstrapSourceTableId);
+    const handles = getTableHandles(projectDoc, bootstrapSourceTableId);
+    if (!entry || !handles) return;
+    actualSource = {
+        handles,
+        name: entry.name || entry.sqlName,
+        sqlName: entry.sqlName,
+        href: projectName ? resolve(projectTablePath(projectName, entry.tableId)) : undefined,
+    };
 }
 
 function resolveQueryDependencySource(nextQuery: string) {
@@ -121,6 +136,7 @@ function resolveActualSource(next: ProjectSelectState) {
 }
 
 onMount(() => {
+    resolveBootstrapSource();
     refresh();
     session = createProjectSelectSession({ projectDoc, projectId, query });
     unsubscribe = session.subscribe(next => {
