@@ -200,11 +200,11 @@ function selectExistingTable() {
         return;
     }
     sourceError = undefined;
-    const newGridId = createGrid(item.ydoc, undefined, {
+    const newGridId = createGrid(item.ydoc, table.tableId, {
         name: table.name || "Grid",
         query: `SELECT * FROM ${table.sqlName}`,
     });
-    bindItemToGrid(item, newGridId, undefined);
+    bindItemToGrid(item, newGridId, table.tableId);
     gridId = newGridId;
 }
 
@@ -216,7 +216,7 @@ function selectExistingGrid() {
         return;
     }
     sourceError = undefined;
-    bindItemToGrid(item, selectedGrid.gridId, undefined);
+    bindItemToGrid(item, selectedGrid.gridId, selectedGrid.sourceTableId);
     gridId = selectedExistingGridId;
 }
 
