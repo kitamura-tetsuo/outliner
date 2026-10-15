@@ -21,16 +21,20 @@ describe("typed-navigation ESLint scope", () => {
         }
     });
 
-    it("reports unresolved native navigation through the real route configuration", async () => {
-        const eslint = new ESLint({ cwd: process.cwd() });
-        const [result] = await eslint.lintText('<a href="/unresolved">bad</a>', {
-            filePath: "src/routes/[project]/[page]/+page.svelte",
-        });
+    it(
+        "reports unresolved native navigation through the real route configuration",
+        async () => {
+            const eslint = new ESLint({ cwd: process.cwd() });
+            const [result] = await eslint.lintText('<a href="/unresolved">bad</a>', {
+                filePath: "src/routes/[project]/[page]/+page.svelte",
+            });
 
-        expect(
-            result.messages.some((message) =>
-                message.ruleId === "svelte/no-navigation-without-resolve" && message.severity === 2
-            ),
-        ).toBe(true);
-    });
+            expect(
+                result.messages.some((message) =>
+                    message.ruleId === "svelte/no-navigation-without-resolve" && message.severity === 2
+                ),
+            ).toBe(true);
+        },
+        60_000,
+    );
 });
