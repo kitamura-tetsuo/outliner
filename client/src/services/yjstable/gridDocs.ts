@@ -1,7 +1,7 @@
 // Yjs data model for the Grid feature.
 //
-// A Grid is a project-level presentation/query definition that references one
-// primary Table (its `sourceTableId`, i.e. the write target). Multiple Grids
+// A Grid is a project-level presentation/query definition. Older definitions
+// may retain `sourceTableId` as creation/migration metadata. Multiple Grids
 // may reference the same Table so several filtered/labeled views can share the
 // same underlying schema/data without cloning it.
 //
@@ -59,8 +59,8 @@ export interface GridRegistryEntry {
     gridId: string;
     /** Free-form label (never appears in SQL). */
     name: string;
-    /** The primary/writable Table this Grid targets. */
-    sourceTableId: string;
+    /** Optional legacy creation Table; never query or mutation authority. */
+    sourceTableId?: string;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
     /** Whether deleting a row requires confirmation (default false). */
@@ -92,7 +92,9 @@ export function listGrids(projectDoc: Y.Doc): GridRegistryEntry[] {
         entries.push({
             gridId,
             name: String(entry.get("name") ?? ""),
-            sourceTableId: String(entry.get("sourceTableId") ?? ""),
+            sourceTableId: typeof entry.get("sourceTableId") === "string"
+                ? String(entry.get("sourceTableId"))
+                : undefined,
             showAddRowButton: entry.get("showAddRowButton") !== false,
             confirmRowDelete: entry.get("confirmRowDelete") === true,
         });
@@ -121,7 +123,7 @@ export interface CreateGridOptions extends GridDefinitionSeed {
  */
 export function createGrid(
     projectDoc: Y.Doc,
-    sourceTableId: string,
+    sourceTableId: string | undefined,
     options: CreateGridOptions = {},
 ): string {
     const gridId = options.gridId ?? uuidv4();

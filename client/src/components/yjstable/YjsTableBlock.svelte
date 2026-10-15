@@ -50,6 +50,7 @@ import { projectTablePath } from "../../lib/managementPaths";
 import { page as pageState } from "$app/state";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
+import ProjectGridView from "./ProjectGridView.svelte";
 import { isForeignInput } from "../../lib/KeyEventHandler";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { store } from "../../stores/store.svelte";
@@ -82,7 +83,7 @@ let sourceError = $state<string | undefined>();
 // Three creation modes: brand-new Table+Grid, new Grid over an existing Table,
 // or bind to an existing Grid. The last one is the "many Grids per outline"
 // side of the many-Grids-per-Table story.
-let creationMode = $state<"new" | "existing-table" | "existing-grid">("new");
+let creationMode = $state<"new" | "query" | "existing-table" | "existing-grid">("new");
 let selectedExistingTableId = $state<string | undefined>(undefined);
 let selectedExistingGridId = $state<string | undefined>(undefined);
 let selectedExistingTableSqlName = $state<string | undefined>(undefined);
@@ -245,6 +246,15 @@ function createFromPreset(input: TableCreationInput): string | undefined {
     gridId = newGridId;
     return undefined;
 }
+
+function createQueryGrid() {
+    const newGridId = createGrid(item.ydoc, undefined, {
+        name: "Query Grid",
+        query: "SELECT 1 AS value",
+    });
+    bindItemToGrid(item, newGridId, undefined);
+    gridId = newGridId;
+}
 </script>
 
 <div
@@ -276,17 +286,19 @@ function createFromPreset(input: TableCreationInput): string | undefined {
                 {isReadOnly}
             />
         {/key}
+    {:else if grid && !sourceTableId}
+        {#key `${grid.gridId}::${gridEntryToken}`}
+            <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} {isReadOnly} />
+        {/key}
     {:else if grid && !handles}
-        <!-- Missing source Table: explicit error, not a silent empty grid. -->
-        <p class="error" data-testid="yjs-grid-missing-source">
-            This Grid references a Table that no longer exists in this project.
-        </p>
+        <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} {isReadOnly} />
     {:else if gridId}
         <p class="loading" data-testid="yjs-table-waiting">Loading grid...</p>
     {:else}
         <div class="create-panel" data-testid="yjs-table-create-panel">
             <div class="mode-tabs">
                 <button type="button" class="mode-tab" class:active={creationMode === "new"} onclick={() => creationMode = "new"}>New Table</button>
+                <button type="button" class="mode-tab" class:active={creationMode === "query"} onclick={() => creationMode = "query"}>New Query Grid</button>
                 {#if existingTables.length > 0}
                     <button type="button" class="mode-tab" class:active={creationMode === "existing-table"} onclick={showExistingTables}>New Grid over Existing Table</button>
                 {/if}
@@ -300,7 +312,12 @@ function createFromPreset(input: TableCreationInput): string | undefined {
             <div hidden={creationMode !== "new"}>
                 <TableCreationForm {takenSqlNames} oncreate={createFromPreset} />
             </div>
-            {#if creationMode === "existing-table"}
+            {#if creationMode === "query"}
+                <div class="create-form">
+                    <button type="button" data-testid="yjs-grid-create-query" onclick={createQueryGrid}>Create Query Grid</button>
+                </div>
+                <p class="hint">Create an independent Grid and edit its SQL without creating a Table.</p>
+            {:else if creationMode === "existing-table"}
                 <div class="create-form">
                     <select
                         aria-label="Existing Table"
@@ -379,12 +396,6 @@ function createFromPreset(input: TableCreationInput): string | undefined {
     padding: 8px;
     margin-top: 8px;
     background: white;
-}
-
-.error {
-    color: #dc2626;
-    font-size: 0.85rem;
-    margin: 0;
 }
 
 .create-panel {
