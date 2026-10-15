@@ -10,3 +10,4 @@ acceptance:
 - Query, preference, Table identity, schema, and capability changes revoke a pending intent before its first write; duplicate pending activation is coalesced.
 tests:
 - client/src/services/yjstable/gridInsertController.test.ts
+- client/src/services/yjstable/gridInsertController.refusal.test.ts
