@@ -32,6 +32,10 @@ export class TableRelationProvider implements RelationProvider {
         this.ready = ready;
     }
 
+    get schema() {
+        return this.adapter.appliedSchema;
+    }
+
     get sqlName(): string {
         return this.adapter.appliedSchema?.tableName ?? "";
     }

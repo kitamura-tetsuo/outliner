@@ -179,6 +179,22 @@ describe("Kanban reconstruction through document persistence", () => {
 });
 
 describe("Kanban validation and missing identities", () => {
+    it("persists a SQL-only definition without manufacturing a primary Table binding", () => {
+        const doc = new Y.Doc();
+        const kanbanId = createKanban(doc, undefined, {
+            kanbanId: "sql-only",
+            query: "SELECT id, text, status FROM outline_items",
+            groupField: "status",
+            titleField: "text",
+        });
+        expect(getKanban(doc, kanbanId)).toMatchObject({
+            query: "SELECT id, text, status FROM outline_items",
+            groupField: "status",
+            titleField: "text",
+        });
+        expect(getKanbanRegistry(doc).get(kanbanId)?.has("sourceTableId")).toBe(false);
+    });
+
     it("rejects creation against a missing or foreign Table before partial changes", () => {
         const { doc } = tasksProject();
         const foreign = new Y.Doc();

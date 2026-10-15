@@ -56,6 +56,7 @@ export interface ProjectSelectSession {
     subscribe(listener: (state: ProjectSelectState) => void): () => void;
     setQuery(query: string): void;
     runNow(): Promise<ProjectSelectEvidence | undefined>;
+    resolveRelation(sqlName: string): Promise<RelationProvider | undefined>;
     dispose(): void;
 }
 
@@ -154,6 +155,10 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
             this.timer = undefined;
             void this.runNow();
         }, REQUERY_DEBOUNCE_MS);
+    }
+
+    resolveRelation(sqlName: string): Promise<RelationProvider | undefined> {
+        return this.engine.resolveRelation(sqlName);
     }
 
     async runNow(): Promise<ProjectSelectEvidence | undefined> {

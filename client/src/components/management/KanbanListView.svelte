@@ -47,8 +47,8 @@ async function load() {
     finally { if (generation === loadGeneration) isLoading = false; }
 }
 function create() {
-    if (!store.project?.ydoc || !sourceTableId || !isAuthenticated) return;
-    const id = createKanban(store.project.ydoc, sourceTableId, { name: name.trim() || "Kanban" });
+    if (!store.project?.ydoc || !isAuthenticated) return;
+    const id = createKanban(store.project.ydoc, sourceTableId || undefined, { name: name.trim() || "Kanban" });
     goto(projectKanbanRoute(projectName, id));
 }
 $effect(() => { if (projectName && canAccess) void load(); else { unload(); isLoading = false; } });
@@ -62,7 +62,7 @@ onMount(() => { isAuthenticated = userManager.getCurrentUser() !== null; return 
 {#if isLoading}<Loader />{:else if error}<p role="alert">{error}</p>{:else if notFound}<p>Project not found.</p>{:else if !canAccess}<p>Please log in.</p>{:else}
 {#if isAuthenticated}
 <form class="create" onsubmit={e => { e.preventDefault(); create(); }} data-testid="kanban-create-form">
-    <label>Name <input bind:value={name} /></label><label>Source table <select bind:value={sourceTableId}>{#each tables as table (table.tableId)}<option value={table.tableId}>{table.name} ({table.tableId})</option>{/each}</select></label><button disabled={!sourceTableId}>Create Kanban</button>
+    <label>Name <input bind:value={name} /></label><label>Initial SQL source (optional) <select bind:value={sourceTableId}><option value="">No primary Table</option>{#each tables as table (table.tableId)}<option value={table.tableId}>{table.name} ({table.tableId})</option>{/each}</select></label><button disabled={!isAuthenticated}>Create Kanban</button>
 </form>
 {/if}
 {#if boards.length === 0}<p data-testid="project-kanban-list-empty">No Kanbans in this project yet.</p>{:else}<ul data-testid="project-kanban-list">{#each boards as board (board.kanbanId)}<li><a href={projectKanbanRoute(projectName,board.kanbanId)}>{board.name || "Untitled Kanban"} <code>{board.kanbanId}</code></a></li>{/each}</ul>{/if}

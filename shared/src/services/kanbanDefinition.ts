@@ -57,7 +57,7 @@ export type KanbanUpdates = KanbanDefinitionSeed & {
 /** Plain-JS copy of a Kanban definition, detached from the Y.Doc. */
 export interface KanbanSettings {
     name: string;
-    sourceTableId: string;
+    sourceTableId?: string;
     query: string;
     groupField?: string;
     titleField?: string;
@@ -140,20 +140,20 @@ export function validateKanbanFields(fields: KanbanUpdates): void {
 export function createKanbanEntry(
     projectDoc: Y.Doc,
     kanbanId: string,
-    sourceTableId: string,
+    sourceTableId: string | undefined,
     options: KanbanDefinitionSeed = {},
 ): void {
     if (typeof kanbanId !== "string" || kanbanId.length === 0) {
         throw new Error("Kanban id must be a non-empty string");
     }
-    assertKanbanSourceTableId(sourceTableId);
+    if (sourceTableId !== undefined) assertKanbanSourceTableId(sourceTableId);
     validateKanbanFields(options);
     if (getKanbanRegistry(projectDoc).has(kanbanId)) {
         throw new Error(`Kanban with id ${kanbanId} already exists`);
     }
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
-        entry.set("sourceTableId", sourceTableId);
+        if (sourceTableId !== undefined) entry.set("sourceTableId", sourceTableId);
         entry.set("name", options.name ?? "Kanban");
         if (options.query !== undefined) entry.set("query", options.query);
         if (options.groupField) entry.set("groupField", options.groupField);
@@ -192,7 +192,9 @@ export function readKanbanSettings(entry: Y.Map<unknown>): KanbanSettings {
     const titleField = readRoleField(entry, "titleField");
     return {
         name: String(entry.get("name") ?? "Kanban"),
-        sourceTableId: String(entry.get("sourceTableId") ?? ""),
+        ...(typeof entry.get("sourceTableId") === "string" && entry.get("sourceTableId") !== ""
+            ? { sourceTableId: String(entry.get("sourceTableId")) }
+            : {}),
         query: String(entry.get("query") ?? ""),
         ...(groupField !== undefined ? { groupField } : {}),
         ...(titleField !== undefined ? { titleField } : {}),

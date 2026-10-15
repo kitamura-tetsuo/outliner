@@ -138,9 +138,8 @@ function ownInput(event: Event) { event.stopPropagation(); }
 onMount(() => {
     retainKanbanUndoManager(kanban.entry);
     kanban.entry.observeDeep(observer);
-    void session.acquire(committed.sourceTableId).then(acquired => {
-        if (!acquired) { projection = { status: "unavailable", lanes: [], columns: [], current: false, message: "Kanban source Table is missing" }; return; }
-        runner = new KanbanQueryRunner({ projectDoc, kanbanId: kanban.kanbanId, kanban, sourceAdapter: acquired.adapter });
+    void Promise.resolve().then(() => {
+        runner = new KanbanQueryRunner({ projectDoc, projectId, kanbanId: kanban.kanbanId, kanban });
         operations = new KanbanCardOperationController({
             resolver: session,
             schema: () => runner?.sourceSchema,

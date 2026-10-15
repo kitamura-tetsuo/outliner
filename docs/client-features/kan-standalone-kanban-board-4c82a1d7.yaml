@@ -1,11 +1,11 @@
 id: KAN-4c82a1d7
 title: Standalone Kanban boards
 title-ja: スタンドアロン Kanban ボード
-description: Users can create a named Kanban over an existing Table, configure its SELECT and result-column roles, and view the live grouped result at a stable identity-based route.
+description: Users can create and render a named Kanban from Project SQL without a persisted primary Table, configure its result-column roles, and view the live grouped result at a stable identity-based route.
 category: tables
 status: implemented
 acceptance:
-- A Kanban links to its source Table instead of embedding Table schema management
+- A Kanban executes its exact SELECT through Project-scoped dependencies without requiring a persisted primary Table
 - Configuration drafts change nothing until Apply, Cancel discards the draft, and a peer change to the same dirty setting produces a conflict instead of being overwritten
 - Loading, incomplete, invalid, missing and successful empty states remain distinct
 - Project management lists every Kanban by stable identity and creates a definition without cloning its source Table or creating a Grid or Page placement

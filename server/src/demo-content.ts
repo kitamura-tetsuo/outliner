@@ -932,7 +932,7 @@ export function registerDemoTables(
         // Kanban surface, editable card controls, and lane moves over the same real Table records and SQL engine.
         if (template.sqlName === "tasks") {
             const kanban = new Y.Map<unknown>();
-            kanban.set("sourceTableId", template.tableId);
+            // The demo board deliberately persists no primary binding: its SQL dependency is authoritative.
             kanban.set("name", "Tasks by status");
             kanban.set("query", "SELECT id, title, status, priority, due_date FROM tasks ORDER BY priority, id");
             kanban.set("groupField", "status");

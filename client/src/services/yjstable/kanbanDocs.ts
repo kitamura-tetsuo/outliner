@@ -62,7 +62,7 @@ export interface KanbanRegistryEntry {
     /** Free-form label (never appears in SQL; never identity). */
     name: string;
     /** The Table this board views. */
-    sourceTableId: string;
+    sourceTableId?: string;
 }
 
 /** Structural handles for one Kanban definition. */
@@ -104,7 +104,9 @@ export function listKanbans(projectDoc: Y.Doc): KanbanRegistryEntry[] {
         entries.push({
             kanbanId,
             name: String(entry.get("name") ?? ""),
-            sourceTableId: String(entry.get("sourceTableId") ?? ""),
+            ...(typeof entry.get("sourceTableId") === "string" && entry.get("sourceTableId") !== ""
+                ? { sourceTableId: String(entry.get("sourceTableId")) }
+                : {}),
         });
     });
     return entries;
@@ -136,16 +138,18 @@ function assertSourceTableExists(projectDoc: Y.Doc, sourceTableId: string): void
  */
 export function createKanban(
     projectDoc: Y.Doc,
-    sourceTableId: string,
+    sourceTableId: string | undefined,
     options: CreateKanbanOptions = {},
 ): string {
     // Validated before the operation has any effect: a missing/foreign Table
     // or a structurally invalid seed rejects the whole creation rather than
     // partially seeding a definition.
-    if (typeof sourceTableId !== "string" || sourceTableId.length === 0) {
-        throw new Error("Kanban sourceTableId must be a non-empty string");
+    if (sourceTableId !== undefined) {
+        if (typeof sourceTableId !== "string" || sourceTableId.length === 0) {
+            throw new Error("Kanban sourceTableId must be a non-empty string");
+        }
+        assertSourceTableExists(projectDoc, sourceTableId);
     }
-    assertSourceTableExists(projectDoc, sourceTableId);
     const { kanbanId, ...seed } = options;
     const newId = kanbanId ?? uuidv4();
     if (typeof newId !== "string" || newId.length === 0) {
