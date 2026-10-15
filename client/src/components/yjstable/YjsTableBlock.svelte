@@ -200,11 +200,11 @@ function selectExistingTable() {
         return;
     }
     sourceError = undefined;
-    const newGridId = createGrid(item.ydoc, table.tableId, {
+    const newGridId = createGrid(item.ydoc, undefined, {
         name: table.name || "Grid",
         query: `SELECT * FROM ${table.sqlName}`,
     });
-    bindItemToGrid(item, newGridId, table.tableId);
+    bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
 }
 
@@ -216,7 +216,7 @@ function selectExistingGrid() {
         return;
     }
     sourceError = undefined;
-    bindItemToGrid(item, selectedGrid.gridId, selectedGrid.sourceTableId);
+    bindItemToGrid(item, selectedGrid.gridId, undefined);
     gridId = selectedExistingGridId;
 }
 
@@ -226,13 +226,13 @@ function createFromPreset(input: TableCreationInput): string | undefined {
     if (listTables(item.ydoc).some(table => table.sqlName === input.sqlName)) {
         return `SQL name "${input.sqlName}" is already used in this project`;
     }
-    const { tableId, gridId: newGridId } = createTableFromPreset(
+    const { gridId: newGridId } = createTableFromPreset(
         item.ydoc,
         input.preset,
         input.name,
         input.sqlName,
     );
-    bindItemToGrid(item, newGridId, tableId);
+    bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
     return undefined;
 }
