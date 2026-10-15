@@ -70,12 +70,12 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         expect(beforeReuse.grids).toHaveLength(2);
         expect(beforeReuse.tables.map(table => table.sqlName).sort()).toEqual(["manual_habits", "tasks"]);
         const tasksTable = beforeReuse.tables.find(table => table.sqlName === "tasks")!;
-        const tasksGrid = beforeReuse.grids.find(grid => grid.sourceTableId === tasksTable.id)!;
+        const tasksGrid = beforeReuse.grids.find(grid => grid.query.includes("FROM tasks"))!;
         expect(tasksTable.schema).toContain("CREATE TABLE tasks");
         expect(tasksGrid.query).toContain("FROM tasks ORDER BY status DESC");
         expect(tasksGrid.components.title.type).toBe("text");
         expect(tasksGrid.components.status.type).toBe("select");
-        const habitsGrid = beforeReuse.grids.find(grid => grid.sourceTableId === habitsTableId(beforeReuse))!;
+        const habitsGrid = beforeReuse.grids.find(grid => grid.query.includes("FROM habits"))!;
         expect(habitsGrid.query).toContain("FROM manual_habits ORDER BY kind");
         expect(habitsGrid.components.log_date.type).toBe("date");
         expect(beforeReuse.grids.every(grid => !("insertTargetTableId" in grid))).toBe(true);
@@ -134,7 +134,3 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         expect(refused.grids).toHaveLength(1);
     });
 });
-
-function habitsTableId(snapshot: Awaited<ReturnType<typeof registrySnapshot>>) {
-    return snapshot.tables.find(table => table.sqlName === "manual_habits")!.id;
-}

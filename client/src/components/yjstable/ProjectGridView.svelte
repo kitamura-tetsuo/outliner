@@ -23,6 +23,11 @@ interface Props {
 }
 
 let { grid, projectDoc, projectId, projectName, isReadOnly = false }: Props = $props();
+// The parent keys this component by Grid identity. Preserve the mounted
+// handles because Svelte may update a disappearing parent's derived prop to
+// undefined before this component's teardown runs.
+// svelte-ignore state_referenced_locally
+const mountedGrid = grid;
 let query = $state("");
 let state = $state<ProjectSelectState>({ status: "loading" });
 let showDefinition = $state(false);
@@ -41,10 +46,12 @@ let widths = $state<Record<string, number>>({});
 let types = $state<Record<string, string | undefined>>({});
 
 function refresh() {
-    const next = getGridQuery(grid);
-    const settings = readGridComponents(grid);
+    const next = getGridQuery(mountedGrid);
+    const settings = readGridComponents(mountedGrid);
     query = next;
-    columns = Array.isArray(grid.entry.get("columnOrder")) ? grid.entry.get("columnOrder") as string[] : [];
+    columns = Array.isArray(mountedGrid.entry.get("columnOrder"))
+        ? mountedGrid.entry.get("columnOrder") as string[]
+        : [];
     labels = settings.labels;
     hidden = settings.hidden;
     widths = settings.widths;
@@ -84,11 +91,11 @@ onMount(() => {
         state = next;
         resolveActualSource(next);
     });
-    grid.entry.observeDeep(observer);
+    mountedGrid.entry.observeDeep(observer);
 });
 
 onDestroy(() => {
-    grid.entry.unobserveDeep(observer);
+    mountedGrid.entry.unobserveDeep(observer);
     unsubscribe?.();
     session?.dispose();
 });
@@ -97,7 +104,7 @@ onDestroy(() => {
 {#if actualSource}
     {#key `${actualSource.handles.tableId}:${actualSource.handles.doc.guid}`}
         <YjsTableView
-            {grid}
+            grid={mountedGrid}
             handles={actualSource.handles}
             {projectDoc}
             {projectId}
@@ -108,9 +115,9 @@ onDestroy(() => {
         />
     {/key}
 {:else}
-<div class="project-grid-view" data-testid="yjs-table-view" data-grid-id={grid.gridId}>
+<div class="project-grid-view" data-testid="yjs-table-view" data-grid-id={mountedGrid.gridId}>
     <div class="toolbar">
-        <strong>{String(grid.entry.get("name") ?? "Grid")}</strong>
+        <strong>{String(mountedGrid.entry.get("name") ?? "Grid")}</strong>
         <button type="button" aria-pressed={showDefinition} onclick={() => showDefinition = !showDefinition}>UI</button>
     </div>
     <div class="dependencies" data-testid="grid-query-dependencies">
@@ -131,7 +138,7 @@ onDestroy(() => {
     </div>
     {#if showDefinition}
         <TableUiDefEditor
-            {grid}
+            grid={mountedGrid}
             schema={undefined}
             {query}
             componentTypes={types}

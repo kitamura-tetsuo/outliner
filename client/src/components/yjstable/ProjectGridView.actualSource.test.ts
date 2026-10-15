@@ -37,4 +37,15 @@ describe("ProjectGridView actual source", () => {
             { timeout: 10_000 },
         );
     });
+
+    it("keeps mounted handles stable while a disappearing parent clears its derived Grid prop", async () => {
+        const projectDoc = new Y.Doc({ guid: "project-grid-teardown" });
+        const gridId = createGrid(projectDoc, undefined, { query: "SELECT 1 AS value" });
+        const rendered = render(ProjectGridView, {
+            props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc },
+        });
+
+        await expect(rendered.rerender({ grid: undefined as never, projectDoc })).resolves.toBeUndefined();
+        expect(screen.getByTestId("yjs-table-view").getAttribute("data-grid-id")).toBe(gridId);
+    });
 });
