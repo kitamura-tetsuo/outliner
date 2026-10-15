@@ -5,8 +5,8 @@
     // tools, not a new data model (issue: "Unify project-scoped management
     // routes under /:project/-/...").
     import Breadcrumb from "../Breadcrumb.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
+    import { resolve } from "$app/paths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
     import {
         projectCalendarsRoute,
         projectGraphRoute,
@@ -77,8 +77,8 @@
 <main class="container mx-auto px-4 py-8 max-w-3xl">
     <div class="mb-4">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName, href: resolvePath(projectBasePath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName, href: projectRoute(projectName) },
             { label: "Manage" }
         ]} />
     </div>

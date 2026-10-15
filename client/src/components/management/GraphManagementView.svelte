@@ -1,8 +1,8 @@
 <script lang="ts">
 import GraphView from "../GraphView.svelte";
 import Breadcrumb from "../Breadcrumb.svelte";
-import { resolvePath } from "../../utils/pathUtils";
-import { projectBasePath } from "../../lib/publicProject";
+import { resolve } from "$app/paths";
+import { projectRoute } from "../../lib/publicProject";
 
 interface Props {
     projectName: string;
@@ -14,8 +14,8 @@ let { projectName }: Props = $props();
 <main class="container mx-auto px-4 py-8">
     <div class="mb-4">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName, href: resolvePath(projectBasePath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName, href: projectRoute(projectName) },
             { label: "Graph View" }
         ]} />
 

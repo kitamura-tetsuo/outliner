@@ -13,6 +13,7 @@ function switchToLanguage(newLanguage: "en" | "ja") {
     // reach SvelteKit navigation unchanged, without a second locale/base
     // prefix or parameter-encoding pass.
     const localisedPath = localizeHref(page.url.pathname, { locale: newLanguage });
+    // eslint-disable-next-line svelte/no-navigation-without-resolve -- Paraglide output is already localized; page.svelte.test.ts covers it.
     goto(localisedPath);
 }
 </script>

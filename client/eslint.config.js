@@ -60,16 +60,7 @@ export default ts.config(
             "no-irregular-whitespace": "error",
             "no-undef": "error",
             "no-case-declarations": "error",
-            // Temporarily disabled globally while the deferred consumers migrate
-            // to typed $app/paths resolve() (issue #5629: Breadcrumb's second
-            // resolution, the YjsTableBlock prop contract, list-record hrefs,
-            // the opaque debug bridge and Paraglide output keep the generic
-            // wrapper until their owning stages migrate them).
-            // eslint-plugin-svelte 3.23.1 enables this check on SvelteKit 3;
-            // restore it globally once those stages land. Fully migrated
-            // producers are enforced at error severity in the scoped block
-            // below instead.
-            "svelte/no-navigation-without-resolve": "off",
+            "svelte/no-navigation-without-resolve": "error",
             "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
             "svelte/require-each-key": "error",
             "svelte/no-at-html-tags": "error",
@@ -83,61 +74,6 @@ export default ts.config(
         files: ["**/*.d.ts"],
         rules: {
             "no-undef": "off",
-        },
-    },
-    // Issue #5629 scoped enforcement: every producer below navigates only
-    // through the official `$app/paths` resolve API (direct calls or helpers
-    // retaining the official `ResolvedPathname` result), so the navigation
-    // rule holds at error severity here while the global temporary disable
-    // still covers the deferred stages. Files with a documented reason to
-    // keep a non-resolve destination stay out: SearchBox (`/search` is not a
-    // route), GraphView and ObjectManagerView (`"#"` fallbacks),
-    // KanbanBlock (transient legacy fallback), Breadcrumb and its item
-    // callers, the YjsTableBlock prop contract, ScheduleListView reference
-    // records, the opaque debug bridge, Paraglide output and debug-test.
-    {
-        files: [
-            "src/components/AuthenticatedHome.svelte",
-            "src/components/BacklinkPanel.svelte",
-            "src/components/OutlinerItem.svelte",
-            "src/components/OutlinerToolbar.svelte",
-            "src/components/PageList.svelte",
-            "src/components/ProjectSelector.svelte",
-            "src/components/SearchPanel.svelte",
-            "src/components/Sidebar.svelte",
-            "src/components/Toolbar.svelte",
-            "src/components/management/CalendarDetailView.svelte",
-            "src/components/management/CalendarListView.svelte",
-            "src/components/management/GridDetailView.svelte",
-            "src/components/management/GridListView.svelte",
-            "src/components/management/ImportExportView.svelte",
-            "src/components/management/KanbanDetailView.svelte",
-            "src/components/management/KanbanListView.svelte",
-            "src/components/management/ManagementLanding.svelte",
-            "src/components/management/ObjectSetDuplicationDialog.svelte",
-            "src/components/management/ProjectSettingsView.svelte",
-            "src/components/management/ScheduleDetailView.svelte",
-            "src/components/management/ScheduleListView.svelte",
-            "src/components/management/TableDetailView.svelte",
-            "src/components/management/TableListView.svelte",
-            "src/components/schedule/TableScheduleReferences.svelte",
-            "src/components/yjstable/ObjectDuplicationDialog.svelte",
-            "src/components/yjstable/TableGridReferences.svelte",
-            "src/services/navigation/outlineItemNavigation.ts",
-            "src/routes/[[]project[]]/+layout.svelte",
-            "src/routes/[[]project[]]/[[]page[]]/+page.svelte",
-            "src/routes/[[]project[]]/[[]page[]]/schedule/+page.svelte",
-            "src/routes/[[]project[]]/-/tables/[[]tableId[]]/schedule/+page.svelte",
-            "src/routes/[[]demoProject=demoProject[]]/[[]page[]]/+page.svelte",
-            "src/routes/[[]demoProject=demoProject[]]/-/tables/[[]tableId[]]/schedule/+page.svelte",
-            "src/routes/share/[[]token[]]/+page.svelte",
-            "src/routes/projects/new/+page.svelte",
-            "src/routes/settings/+page.svelte",
-            "src/routes/error/project-unavailable/+page.svelte",
-            "src/routes/debug/+page.svelte",
-        ],
-        rules: {
-            "svelte/no-navigation-without-resolve": "error",
         },
     },
     {

@@ -1,10 +1,10 @@
 <script lang="ts">
-    import { resolvePath } from "../utils/pathUtils";
+    import type { ResolvedPathname } from "$app/types";
 
     interface Props {
         items: {
             label: string;
-            href?: string;
+            href?: ResolvedPathname;
         }[];
     }
 
@@ -17,7 +17,7 @@
             <li>
                 {#if item.href && i < items.length - 1}
                     <a
-                        href={resolvePath(item.href)}
+                        href={item.href}
                         class="text-blue-600 hover:text-blue-800 hover:underline min-h-[24px] min-w-[24px] inline-flex items-center justify-center py-0.5"
                     >
                         {item.label}

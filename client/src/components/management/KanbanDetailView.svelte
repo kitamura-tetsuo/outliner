@@ -8,9 +8,9 @@ import KanbanBoard from "../kanban/KanbanBoard.svelte";
 import { store } from "../../stores/store.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { getKanban, getKanbanHandles, getKanbanRegistry, type KanbanHandles } from "../../services/yjstable/kanbanDocs";
-import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-import { projectKanbansPath } from "../../lib/managementPaths";
-import { resolvePath } from "../../utils/pathUtils";
+import { isPublicProject, projectRoute } from "../../lib/publicProject";
+import { projectKanbansRoute } from "../../lib/managementPaths";
+import { resolve } from "$app/paths";
 import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 interface Props { projectName:string; kanbanId:string; }
 let { projectName, kanbanId }: Props = $props();
@@ -29,7 +29,7 @@ $effect(()=>{if(projectName&&kanbanId&&canAccess)void load();else{unload();loadi
 onMount(()=>{authenticated=userManager.getCurrentUser()!==null;return()=>{destroyed=true;unload();};});
 </script>
 <svelte:head><title>{name} | Outliner</title></svelte:head>
-<main class="w-full max-w-7xl mx-auto px-4 py-8"><Breadcrumb items={[{label:"Home",href:"/"},{label:projectName,href:resolvePath(projectBasePath(projectName))},{label:"Kanbans",href:resolvePath(projectKanbansPath(projectName))},{label:name}]} /><div class="heading"><h1>{name}</h1></div>
+<main class="w-full max-w-7xl mx-auto px-4 py-8"><Breadcrumb items={[{label:"Home",href:resolve("/")},{label:projectName,href:projectRoute(projectName)},{label:"Kanbans",href:projectKanbansRoute(projectName)},{label:name}]} /><div class="heading"><h1>{name}</h1></div>
 {#if demo}<p>Public demo / Guest access</p>{:else}<AuthComponent onAuthSuccess={()=>authenticated=true} onAuthLogout={handleLogout}/>{/if}
 {#if loading}<Loader/>{:else if error}<p role="alert">{error}</p>{:else if notFound}<p data-testid="kanban-not-found">Kanban not found.</p>{:else if canAccess&&handles&&projectDoc}{#key `${handles.kanbanId}:${bindingRevision}`}<KanbanBoard kanban={handles} {projectDoc} projectId={yjsStore.currentProjectId??undefined} isReadOnly={demo}/>{/key}{/if}</main>
 <style>.heading{display:flex;gap:1rem;align-items:baseline;margin:1rem 0}.heading h1{font-size:1.5rem;font-weight:700}.heading a{color:#2563eb}</style>

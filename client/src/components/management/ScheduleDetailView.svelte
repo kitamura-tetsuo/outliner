@@ -5,7 +5,7 @@
     import AuthComponent from "../AuthComponent.svelte";
     import { getLogger } from "../../lib/logger";
     import { store } from "../../stores/store.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
+    import { resolve } from "$app/paths";
     import Breadcrumb from "../Breadcrumb.svelte";
     import { listTables, type TableRegistryEntry } from "../../services/yjstable/tableDocs";
     import ScheduleRuleEditor from "../schedule/ScheduleRuleEditor.svelte";
@@ -17,7 +17,7 @@
         type ScheduleRule,
     } from "../../services/schedule/scheduleRuleService";
     import { runScheduleRuleNow } from "../../services/schedule/scheduleRunService";
-    import { isPublicProject, projectBasePath, projectRoute } from "../../lib/publicProject";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { projectObjectsSelectedRoute } from "../../lib/managementPaths";
@@ -191,8 +191,6 @@
     // (issue #5153 §10): the user can duplicate it alone from there, or
     // expand the set first via `Select related`.
     function openDuplicate() {
-        // The typed resolved pathname has an encoded query appended after resolve; the rule cannot infer that template type.
-        // eslint-disable-next-line svelte/no-navigation-without-resolve
         goto(projectObjectsSelectedRoute(projectName, ruleId));
     }
 
@@ -237,8 +235,8 @@
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
             { label: "Scheduled SQL" }
         ]} />
     </div>
