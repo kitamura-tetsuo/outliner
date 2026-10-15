@@ -1,7 +1,9 @@
 <script lang="ts">
 import { onDestroy, onMount } from "svelte";
 import type * as Y from "yjs";
+import { projectTablePath } from "../../lib/managementPaths";
 import { getGridQuery, readGridComponents, type GridHandles } from "../../services/yjstable/gridDocs";
+import { resolvePath } from "../../utils/pathUtils";
 import {
     createProjectSelectSession,
     type ProjectSelectSession,
@@ -13,10 +15,11 @@ interface Props {
     grid: GridHandles;
     projectDoc: Y.Doc;
     projectId?: string;
+    projectName?: string;
     isReadOnly?: boolean;
 }
 
-let { grid, projectDoc, projectId, isReadOnly = false }: Props = $props();
+let { grid, projectDoc, projectId, projectName, isReadOnly = false }: Props = $props();
 let query = $state("");
 let state = $state<ProjectSelectState>({ status: "loading" });
 let showDefinition = $state(false);
@@ -66,6 +69,22 @@ onDestroy(() => {
         <strong>{String(grid.entry.get("name") ?? "Grid")}</strong>
         <button type="button" aria-pressed={showDefinition} onclick={() => showDefinition = !showDefinition}>UI</button>
     </div>
+    <div class="dependencies" data-testid="grid-query-dependencies">
+        {#if state.status === "success" && state.evidence.sources.length === 0}
+            <span>No project Table dependencies</span>
+        {:else if evidence?.sources.length}
+            <span>Sources:</span>
+            {#each evidence.sources as source (`${source.kind}:${source.id}`)}
+                {#if source.kind === "table" && projectName}
+                    <a href={resolvePath(projectTablePath(projectName, source.id))}>{source.sqlName}</a>
+                {:else}
+                    <span>{source.sqlName} ({source.kind})</span>
+                {/if}
+            {/each}
+        {:else}
+            <span>SQL dependencies unavailable</span>
+        {/if}
+    </div>
     {#if showDefinition}
         <TableUiDefEditor
             {grid}
@@ -104,4 +123,6 @@ table { border-collapse:collapse; min-width:100%; }
 th,td { border:1px solid #d1d5db; padding:6px 8px; text-align:left; }
 .error { color:#b91c1c; }
 .refreshing,.readonly { color:#6b7280; font-size:.8rem; }
+.dependencies { display:flex; gap:6px; color:#4b5563; font-size:.8rem; }
+.dependencies a { color:#2563eb; text-decoration:underline; }
 </style>

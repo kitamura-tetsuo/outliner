@@ -254,7 +254,7 @@
     {:else if missingSource && gridHandles && projectDoc}
         <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
             {#key `${gridHandles.gridId}:${projectDoc.guid}`}
-                <ProjectGridView grid={gridHandles} {projectDoc} projectId={yjsStore.currentProjectId ?? undefined} />
+                <ProjectGridView grid={gridHandles} {projectDoc} projectId={yjsStore.currentProjectId ?? undefined} projectName={projectName} />
             {/key}
         </div>
     {:else if !canAccess}

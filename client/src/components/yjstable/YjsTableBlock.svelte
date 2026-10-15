@@ -87,7 +87,6 @@ let creationMode = $state<"new" | "query" | "existing-table" | "existing-grid">(
 let selectedExistingTableId = $state<string | undefined>(undefined);
 let selectedExistingGridId = $state<string | undefined>(undefined);
 let selectedExistingTableSqlName = $state<string | undefined>(undefined);
-let selectedExistingGridSourceTableId = $state<string | undefined>(undefined);
 
 const existingTables = $derived.by(() => {
     void registryVersion;
@@ -106,8 +105,6 @@ function showExistingTables() {
 function showExistingGrids() {
     creationMode = "existing-grid";
     if (!selectedExistingGridId) selectedExistingGridId = existingGrids[0]?.gridId;
-    selectedExistingGridSourceTableId = existingGrids.find(grid => grid.gridId === selectedExistingGridId)
-        ?.sourceTableId;
 }
 
 const grid = $derived.by(() => {
@@ -203,30 +200,23 @@ function selectExistingTable() {
         return;
     }
     sourceError = undefined;
-    const newGridId = createGrid(item.ydoc, table.tableId, {
+    const newGridId = createGrid(item.ydoc, undefined, {
         name: table.name || "Grid",
         query: `SELECT * FROM ${table.sqlName}`,
     });
-    bindItemToGrid(item, newGridId, table.tableId);
+    bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
 }
 
 function selectExistingGrid() {
     if (!selectedExistingGridId) return;
     const selectedGrid = listGrids(item.ydoc).find(candidate => candidate.gridId === selectedExistingGridId);
-    const selectedTable = selectedGrid
-        ? listTables(item.ydoc).find(candidate => candidate.tableId === selectedGrid.sourceTableId)
-        : undefined;
-    if (!selectedGrid || !selectedTable) {
-        sourceError = "The selected Grid or its source Table is no longer available. Choose an existing Grid.";
-        return;
-    }
-    if (selectedGrid.sourceTableId !== selectedExistingGridSourceTableId) {
-        sourceError = "The selected Grid's source Table changed after selection. Select the current Grid again before placing it.";
+    if (!selectedGrid) {
+        sourceError = "The selected Grid is no longer available. Choose an existing Grid.";
         return;
     }
     sourceError = undefined;
-    bindItemToGrid(item, selectedGrid.gridId, selectedTable.tableId);
+    bindItemToGrid(item, selectedGrid.gridId, undefined);
     gridId = selectedExistingGridId;
 }
 
@@ -288,10 +278,10 @@ function createQueryGrid() {
         {/key}
     {:else if grid && !sourceTableId}
         {#key `${grid.gridId}::${gridEntryToken}`}
-            <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} {isReadOnly} />
+            <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} />
         {/key}
     {:else if grid && !handles}
-        <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} {isReadOnly} />
+        <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} />
     {:else if gridId}
         <p class="loading" data-testid="yjs-table-waiting">Loading grid...</p>
     {:else}
@@ -364,9 +354,6 @@ function createQueryGrid() {
                         }}
                         onchange={(e) => {
                             selectedExistingGridId = (e.target as HTMLSelectElement).value;
-                            selectedExistingGridSourceTableId = existingGrids.find(
-                                grid => grid.gridId === selectedExistingGridId,
-                            )?.sourceTableId;
                             sourceError = undefined;
                         }}
                     >
