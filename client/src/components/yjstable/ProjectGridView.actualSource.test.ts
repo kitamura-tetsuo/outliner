@@ -109,4 +109,22 @@ describe("ProjectGridView actual source", () => {
             { timeout: 10_000 },
         );
     });
+
+    it("keeps creation-time query and schema repair controls available before source handles arrive", () => {
+        const projectDoc = new Y.Doc({ guid: "project-grid-bootstrap-controls" });
+        const gridId = createGrid(projectDoc, undefined, { query: "SELECT * FROM pending_table" });
+
+        render(ProjectGridView, {
+            props: {
+                grid: getGridHandles(projectDoc, gridId)!,
+                projectDoc,
+                projectName: "Project",
+                bootstrapSourceTableId: "pending-table-id",
+            },
+        });
+
+        expect(screen.getByTestId("yjs-table-toggle-ui")).toBeTruthy();
+        expect(screen.getByTestId("yjs-grid-source-table-link").getAttribute("href"))
+            .toContain("pending-table-id");
+    });
 });

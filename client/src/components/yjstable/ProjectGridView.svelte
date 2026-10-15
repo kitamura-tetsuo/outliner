@@ -101,6 +101,15 @@ const tableRegistryObserver = () => {
     if (!actualSource) resolveQueryDependencySource(query);
 };
 const evidence = $derived(state.status === "success" ? state.evidence : state.previous);
+const bootstrapDependency = $derived.by(() => {
+    if (!bootstrapSourceTableId) return undefined;
+    const entry = listTables(projectDoc).find(table => table.tableId === bootstrapSourceTableId);
+    return {
+        id: bootstrapSourceTableId,
+        sqlName: entry?.sqlName ?? "Table",
+        href: projectName ? resolve(projectTablePath(projectName, bootstrapSourceTableId)) : undefined,
+    };
+});
 const displayColumns = $derived([
     ...columns.filter(column => evidence?.columns.some(item => item.name === column) && !hidden[column]),
     ...(evidence?.columns.map(item => item.name).filter(column => !columns.includes(column) && !hidden[column]) ?? []),
@@ -172,7 +181,7 @@ onDestroy(() => {
 <div class="project-grid-view" data-testid="yjs-table-view" data-grid-id={mountedGrid.gridId}>
     <div class="toolbar">
         <strong>{String(mountedGrid.entry.get("name") ?? "Grid")}</strong>
-        <button type="button" aria-pressed={showDefinition} onclick={() => showDefinition = !showDefinition}>UI</button>
+        <button data-testid="yjs-table-toggle-ui" type="button" aria-pressed={showDefinition} onclick={() => showDefinition = !showDefinition}>UI</button>
     </div>
     <div class="dependencies" data-testid="grid-query-dependencies">
         {#if state.status === "success" && state.evidence.sources.length === 0}
@@ -186,6 +195,13 @@ onDestroy(() => {
                     <span>{source.sqlName} ({source.kind})</span>
                 {/if}
             {/each}
+        {:else if bootstrapDependency}
+            <span>Sources:</span>
+            {#if bootstrapDependency.href}
+                <a data-testid="yjs-grid-source-table-link" href={bootstrapDependency.href}>{bootstrapDependency.sqlName}</a>
+            {:else}
+                <span>{bootstrapDependency.sqlName} (table)</span>
+            {/if}
         {:else}
             <span>SQL dependencies unavailable</span>
         {/if}
