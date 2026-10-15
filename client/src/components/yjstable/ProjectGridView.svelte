@@ -4,7 +4,6 @@ import type * as Y from "yjs";
 import { projectTablePath } from "../../lib/managementPaths";
 import { getGridQuery, readGridComponents, type GridHandles } from "../../services/yjstable/gridDocs";
 import { analyzeProjectQueryProvenance } from "../../services/yjstable/projectQueryProvenance";
-import { resolvePath } from "../../utils/pathUtils";
 import {
     createProjectSelectSession,
     type ProjectSelectSession,
@@ -80,7 +79,7 @@ function resolveActualSource(next: ProjectSelectState) {
         handles,
         name: entry.name || source.sqlName,
         sqlName: source.sqlName,
-        href: projectName ? resolvePath(projectTablePath(projectName, source.id)) : undefined,
+        href: projectName ? projectTablePath(projectName, source.id) : undefined,
     };
 }
 
@@ -127,7 +126,7 @@ onDestroy(() => {
             <span>Sources:</span>
             {#each evidence.sources as source (`${source.kind}:${source.id}`)}
                 {#if source.kind === "table" && projectName}
-                    <a href={resolvePath(projectTablePath(projectName, source.id))}>{source.sqlName}</a>
+                    <a href={projectTablePath(projectName, source.id)}>{source.sqlName}</a>
                 {:else}
                     <span>{source.sqlName} ({source.kind})</span>
                 {/if}
