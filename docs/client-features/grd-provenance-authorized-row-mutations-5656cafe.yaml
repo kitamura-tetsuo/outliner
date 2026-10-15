@@ -11,3 +11,6 @@ acceptance:
 - Successful UPDATE and supported DELETE operations use the owning RelationProvider and preserve that document's Undo and Redo behavior
 tests:
 - client/src/services/yjstable/gridExistingRowMutation.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.lifecycle.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.unionAuthority.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.liveChecks.test.ts
