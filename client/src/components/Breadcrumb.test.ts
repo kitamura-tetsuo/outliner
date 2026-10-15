@@ -15,7 +15,7 @@ describe("Breadcrumb", () => {
                 items: [
                     { label: "Home", href: resolve("/") },
                     { label: "Encoded", href: encoded },
-                    { label: "Selected", href: selected },
+                    { label: "Selected", href: selected as any },
                     { label: "Current" },
                 ],
             },
