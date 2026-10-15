@@ -56,6 +56,7 @@ export interface KanbanRunnerOptions {
 export class KanbanQueryRunner {
     private listeners = new Set<(p: KanbanProjection) => void>();
     private projection: KanbanProjection = { status: "loading", lanes: [], columns: [], current: false };
+    private resolvedSourceSchema: ParsedTableSchema | undefined;
     private pendingProjection: Promise<void> = Promise.resolve();
     private session: ProjectSelectSession;
     private unsub?: () => void;
@@ -77,7 +78,7 @@ export class KanbanQueryRunner {
         };
     }
     get sourceSchema() {
-        return this.options.sourceAdapter?.appliedSchema;
+        return this.resolvedSourceSchema ?? this.options.sourceAdapter?.appliedSchema;
     }
     subscribeProjection(fn: (p: KanbanProjection) => void) {
         this.listeners.add(fn);
@@ -176,6 +177,7 @@ export class KanbanQueryRunner {
         if (!this.session.isEvidenceCurrent(e)) return;
         const fallbackSchema = this.options.sourceAdapter?.appliedSchema;
         if (!schema && supplier?.sqlName === fallbackSchema?.tableName) schema = fallbackSchema;
+        this.resolvedSourceSchema = schema;
         const groupRoute = analysis.branches.length === 1
             ? analysis.branches[0]?.columns.find(column => column.outputColumn === s.groupField)
             : undefined;
