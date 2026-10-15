@@ -67,8 +67,13 @@ const displayColumns = $derived([
 ]);
 
 function resolveActualSource(next: ProjectSelectState) {
-    actualSource = undefined;
+    // Keep the mounted rich surface while a changed query is being evaluated.
+    // Clearing it for the session's transient loading state destroys the SQL
+    // editor before its blur/commit handler finishes and turns an ordinary
+    // refresh into a permanent loss of Grid controls. A completed result below
+    // is the only state allowed to replace the current source decision.
     if (next.status !== "success") return;
+    actualSource = undefined;
     const proof = analyzeProjectQueryProvenance(next.evidence);
     // A plain SELECT has one proven bare-id source. More complex readable
     // results still use the rich Grid surface for selection/copy/search and

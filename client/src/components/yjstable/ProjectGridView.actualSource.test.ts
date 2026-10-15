@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/svelte";
+import { tick } from "svelte";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { createGrid, getGridHandles } from "../../services/yjstable/gridDocs";
+import { createGrid, getGridHandles, setGridQuery } from "../../services/yjstable/gridDocs";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
 import { addRecord, createTable, getTableHandles, setSchemaText } from "../../services/yjstable/tableDocs";
 import { resetTableEngineForTests } from "../../services/yjstable/tableEngine";
@@ -67,5 +68,22 @@ describe("ProjectGridView actual source", () => {
             () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(aId),
             { timeout: 10_000 },
         );
+    });
+
+    it("keeps the rich surface mounted while a changed query is evaluated", async () => {
+        const projectDoc = new Y.Doc({ guid: "project-grid-refresh" });
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        const table = getTableHandles(projectDoc, tableId)!;
+        setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, value TEXT)");
+        const gridId = createGrid(projectDoc, undefined, { query: "SELECT id, value FROM tasks" });
+        const grid = getGridHandles(projectDoc, gridId)!;
+
+        render(ProjectGridView, { props: { grid, projectDoc } });
+        await waitFor(() => expect(screen.getByTestId("grid-view-stub")).toBeTruthy(), { timeout: 10_000 });
+
+        setGridQuery(grid, "SELECT id, value || '!' AS value FROM tasks");
+        await tick();
+
+        expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId);
     });
 });
