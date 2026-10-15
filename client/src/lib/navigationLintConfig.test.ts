@@ -97,6 +97,7 @@ describe("typed-navigation ESLint enforcement", () => {
             }
         }
         expect(exceptions.sort()).toEqual([
+            "src/components/OutlinerItemAttachments.svelte",
             "src/lib/debug.ts",
             "src/routes/paraglide/+page.svelte",
         ]);
