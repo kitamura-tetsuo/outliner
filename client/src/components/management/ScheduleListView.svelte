@@ -26,7 +26,8 @@
     } from "../../services/schedule/scheduleRuleService";
     import { runScheduleRuleNow } from "../../services/schedule/scheduleRunService";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
+    import { projectScheduleRoute, projectTablePath } from "../../lib/managementPaths";
+    import type { ResolvedPathname } from "$app/types";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -199,8 +200,8 @@
         };
     });
 
-    function scheduleHref(ruleId: string): string {
-        return resolvePath(projectSchedulePath(projectName, ruleId));
+    function scheduleHref(ruleId: string): ResolvedPathname {
+        return projectScheduleRoute(projectName, ruleId);
     }
 
     function startCreate() {

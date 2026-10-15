@@ -1,7 +1,12 @@
 // The real `navigateToOutlineItem` — no stand-in for any of this repository's
 // own code. Only SvelteKit's `$app/navigation` / `$app/state` are replaced,
 // the framework boundary every routing test here already replaces
-// (BacklinkPanel.test.ts, SearchBox.test.ts, routes/[project]/graph/page.test.ts).
+// (BacklinkPanel.test.ts, routes/[project]/graph/page.test.ts).
+//
+// `$app/paths` is deliberately NOT mocked: the destination must come out of
+// the real SvelteKit resolver through the migrated typed route IDs. An
+// identity-function `resolve` mock would make any string, including a wrong
+// route ID, look correct.
 //
 // The outline itself is a real `Project`, the collapse state a real
 // `OutlinerViewModel` behind the same controller `OutlinerTree` registers, and
@@ -23,13 +28,13 @@ vi.mock("$app/state", () => ({
         },
     },
 }));
-vi.mock("$app/paths", () => ({ resolve: (path: string) => path }));
 
 const { navigateToOutlineItem } = await import("./outlineItemNavigation");
 const { registerPageOutline } = await import("./outlinePageRegistry");
 const { OutlinerViewModel } = await import("../../stores/OutlinerViewModel");
 const { store: generalStore } = await import("../../stores/store.svelte");
 const { editorOverlayStore } = await import("../../stores/EditorOverlayStore.svelte");
+const { projectPageRoute } = await import("../../lib/publicProject");
 
 /** One `.outliner` root holding a row per id, mimicking a rendered page. */
 function renderOutline(itemIds: string[], options: { embedded?: boolean; } = {}): HTMLElement {
@@ -132,7 +137,34 @@ describe("navigateToOutlineItem", () => {
 
         expect(revealed).toBe(true);
         expect(goto).toHaveBeenCalledTimes(1);
+        // Through the real SvelteKit resolver, not an identity mock.
         expect(goto.mock.calls[0][0]).toBe("/Workspace/%E8%A8%AD%E8%A8%88%E3%83%A1%E3%83%A2%20%26%20plans");
+        expect(goto.mock.calls[0][0]).toBe(projectPageRoute("Workspace", "設計メモ & plans"));
+        expect(editorOverlayStore.getActiveItem()).toBe(task.id);
+    });
+
+    it("routes through the demo matcher route for a registered demo slug", async () => {
+        const project = Project.createInstance("demo-ja");
+        const page = project.addPage("書式", "tester");
+        const section = page.items.addNode("tester");
+        section.updateText("Q3");
+        const task = section.items.addNode("tester");
+        task.updateText("Ship it");
+        const otherPage = project.addPage("Elsewhere", "tester");
+        openPage(project, otherPage);
+        unregister = registerPageOutline(page.key, controllerFor(viewModelFor(page)));
+        renderOutline([page.id, task.id]);
+
+        const revealed = await navigateToOutlineItem(project, task.key, {
+            projectName: "demo-ja",
+            timeoutMs: 2000,
+        });
+
+        expect(revealed).toBe(true);
+        expect(goto).toHaveBeenCalledTimes(1);
+        // The demo slug keeps its own segment; it is never collapsed to `demo`.
+        expect(goto.mock.calls[0][0]).toBe("/demo-ja/%E6%9B%B8%E5%BC%8F");
+        expect(goto.mock.calls[0][0]).toBe(projectPageRoute("demo-ja", "書式"));
         expect(editorOverlayStore.getActiveItem()).toBe(task.id);
     });
 

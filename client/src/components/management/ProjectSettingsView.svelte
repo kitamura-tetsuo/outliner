@@ -3,14 +3,12 @@
     import { getLogger } from "../../lib/logger";
     const logger = getLogger("Route");
     import { goto } from "$app/navigation";
-    import { resolvePath } from "../../utils/pathUtils";
-
     import { renameProjectDescriptor } from "../../services/projectDirectoryService";
     import { projectStore } from "../../stores/projectStore.svelte";
     import { getFirebaseFunctionUrl } from "../../lib/firebaseFunctionsUrl";
     import { userManager } from "../../auth/UserManager";
-    import { projectBasePath } from "../../lib/publicProject";
-    import { projectSettingsPath } from "../../lib/managementPaths";
+    import { projectRoute } from "../../lib/publicProject";
+    import { projectSettingsRoute } from "../../lib/managementPaths";
     import { isOnPrem } from "../../lib/deployment";
 
     interface Props {
@@ -58,7 +56,7 @@
         try {
             const renamed = await renameProjectDescriptor(projectId, newTitle);
             await projectStore.refresh();
-            goto(resolvePath(projectSettingsPath(renamed.title)), { replace: true });
+            goto(projectSettingsRoute(renamed.title), { replace: true });
         } catch (e) {
             logger.error({ error: e }, "Error");
             error = "An error occurred while saving.";
@@ -119,7 +117,7 @@
 
 <div class="container mx-auto px-4 py-8">
     <div class="mb-4">
-        <a href={resolvePath(projectBasePath(currentTitle))} class="text-blue-600 hover:underline">&larr; Back to project</a>
+        <a href={projectRoute(currentTitle)} class="text-blue-600 hover:underline">&larr; Back to project</a>
     </div>
 
     {#if isLoading}

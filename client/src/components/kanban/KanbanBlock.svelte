@@ -3,6 +3,7 @@ import { onDestroy, onMount } from "svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { getItemKanbanId, observeItemKanbanId, type KanbanPlacementItem } from "../../services/yjstable/kanbanBinding";
 import { getKanbanHandles } from "../../services/yjstable/kanbanDocs";
+import { projectKanbanRoute } from "../../lib/managementPaths";
 import KanbanBoard from "./KanbanBoard.svelte";
 
 interface Props { item: KanbanPlacementItem & { ydoc: import("yjs").Doc; }; isReadOnly?: boolean; }
@@ -23,7 +24,10 @@ onDestroy(() => stop?.());
             {@const handles = getKanbanHandles(item.ydoc, kanbanId)}
             {#if handles}
                 <KanbanBoard projectDoc={item.ydoc} {projectId} kanban={handles} {isReadOnly} />
-                <a href={`/${encodeURIComponent(projectId ?? "")}/-/kanbans/${encodeURIComponent(kanbanId)}`}>Open standalone board</a>
+                <!-- `projectId` is unset until the client connects; the typed
+                     resolver rejects empty params, so the legacy shape is kept
+                     for that transient state instead of rendering nothing. -->
+                <a href={projectId ? projectKanbanRoute(projectId, kanbanId) : `/${encodeURIComponent(projectId ?? "")}/-/kanbans/${encodeURIComponent(kanbanId)}`}>Open standalone board</a>
             {:else}
                 <p role="alert" data-testid="kanban-missing">Kanban unavailable</p>
             {/if}

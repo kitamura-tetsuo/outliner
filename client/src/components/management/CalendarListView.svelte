@@ -10,7 +10,8 @@
     import { store } from "../../stores/store.svelte";
     import { listCalendars, type CalendarListEntry } from "../../services/calendar/calendarService";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectCalendarPath } from "../../lib/managementPaths";
+    import { projectCalendarRoute } from "../../lib/managementPaths";
+    import type { ResolvedPathname } from "$app/types";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { Project } from "$shared/app-schema";
@@ -125,8 +126,8 @@
     // Addressed by id, not display name: names are not unique (createCalendar
     // and renameCalendar both permit duplicates), so two calendars sharing a
     // name must still resolve to distinct links.
-    function calendarHref(id: string): string {
-        return resolvePath(projectCalendarPath(projectName, id));
+    function calendarHref(id: string): ResolvedPathname {
+        return projectCalendarRoute(projectName, id);
     }
 </script>
 

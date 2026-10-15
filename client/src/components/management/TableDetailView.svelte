@@ -13,10 +13,10 @@
     import { getTableDependencies, removeTableWithPolicy, type TableDependencies, type DeleteTablePolicy } from "../../services/yjstable/tableDependencies";
     import { goto } from "$app/navigation";
     import { resolvePath } from "../../utils/pathUtils";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
+    import { isPublicProject, projectBasePath, projectRoute } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
-    import { projectObjectsPath, projectTablesPath } from "../../lib/managementPaths";
+    import { projectObjectsSelectedRoute, projectTablesPath } from "../../lib/managementPaths";
 
     const logger = getLogger("TableStandalonePage");
 
@@ -76,7 +76,9 @@
     // first via `Select related`.
     function openDuplicate() {
         if (!resolvedTableId) return;
-        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(resolvedTableId)}`));
+        // The typed resolved pathname has an encoded query appended after resolve; the rule cannot infer that template type.
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
+        goto(projectObjectsSelectedRoute(projectName, resolvedTableId));
     }
 
     function startDelete() {
@@ -111,7 +113,7 @@
                 logger.info(`Deleted table ${tableId} with policy ${policy}`);
             }
             showDeleteDialog = false;
-            goto(resolvePath(projectBasePath(projectName)));
+            goto(projectRoute(projectName));
         } catch (err) {
             logger.error({ error: err }, "Failed to delete table");
             deleteActionError = err instanceof Error ? err.message : "An error occurred while deleting the table.";

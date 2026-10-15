@@ -1,6 +1,5 @@
 <script lang="ts">
     import Loader from "../../../components/Loader.svelte";
-    import { resolvePath } from "../../../utils/pathUtils";
     import { page } from "$app/state";
 import { goto } from "$app/navigation";
     import { onDestroy, onMount } from "svelte";
@@ -19,8 +18,8 @@ import { goto } from "$app/navigation";
     import { iterateItems } from "../../../utils/itemTraversal";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
-    import { projectPagePath } from "../../../lib/publicProject";
-    import { projectGraphPath } from "../../../lib/managementPaths";
+    import { projectPageRoute, projectPageScheduleRoute } from "../../../lib/publicProject";
+    import { projectGraphRoute } from "../../../lib/managementPaths";
     import { isOnPrem } from "../../../lib/deployment";
     import { getAuthorizedClientByProjectTitle } from "../../../lib/yjsService.svelte";
     const logger = getLogger("+page");
@@ -381,7 +380,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         routedPageTitle = title;
         if (namesEqual(title, pageName)) return;
 
-        const newRoute = resolvePath(projectPagePath(projectName, title));
+        const newRoute = projectPageRoute(projectName, title);
         logger.info(`Title changed from "${previousTitle}" to "${title}", updating URL to ${newRoute}`);
         if (previousTitle) {
             searchHistoryStore.rename(previousTitle, title);
@@ -617,9 +616,9 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                     Search
                 </button>
                 {#if !isOnPrem}
-                    <a href={resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
+                    <a href={projectPageScheduleRoute(projectName, pageName)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
                 {/if}
-                <a href={resolvePath(projectGraphPath(projectName))} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
+                <a href={projectGraphRoute(projectName)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
     </div>

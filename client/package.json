@@ -18,7 +18,7 @@
         "github:test:e2e": "NODE_OPTIONS='--dns-result-order=ipv4first' NODE_ENV=test TEST_ENV=127.0.0.1 dotenvx run --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'playwright test \"$@\"' --",
         "github:test:integration": "vitest run --project integration --coverage --reporter=github-actions --reporter=dot",
         "github:test:production": "vitest run --project production --reporter=github-actions --reporter=dot",
-        "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot",
+        "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot && npm run test:base",
         "lint": "npx dprint fmt && stylelint \"**/*.css\" && eslint . --max-warnings=-1",
         "lint:diff-lines": "node ../scripts/lint-changed-lines.js",
         "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
@@ -45,7 +45,8 @@
         "test:mutation": "NODE_ENV=test dotenvx run --overload --env-file=.env.test -- stryker run --incremental",
         "analyze:polling": "node ../scripts/analyze-polling.mjs",
         "test:polling": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'npx playwright test ./e2e/env/env-polling-analysis-test-removability-a1b2c3d4.spec.ts' --",
-        "coverage:cleanup": "node scripts/cleanup-coverage.js"
+        "coverage:cleanup": "node scripts/cleanup-coverage.js",
+        "test:base": "vitest run --config vitest.base.config.ts"
     },
     "overrides": {
         "find-process": {

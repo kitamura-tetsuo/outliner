@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import {
     assertRecovered,
     captureIdentities,
@@ -12,6 +13,7 @@ import {
     observeExternalRequests,
     origin,
 } from "./onpremComposeHelpers";
+registerCoverageHooks();
 
 async function expectUnauthenticatedRefusals(page: import("@playwright/test").Page) {
     const request = page.context().request;

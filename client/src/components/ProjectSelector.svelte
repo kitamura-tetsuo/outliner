@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { resolvePath } from "../utils/pathUtils";
+    import { resolve } from "$app/paths";
 
 
     import { createClient as createYjsClient } from "../lib/yjsService.svelte";
@@ -224,7 +224,7 @@
                 Reload current project
             </button>
 
-            <a href={resolvePath("/projects/new")} class="new-project-link">
+            <a href={resolve("/projects/new")} class="new-project-link">
                 Create New
             </a>
         </div>

@@ -1,8 +1,7 @@
 <script lang="ts">
-    import { resolvePath } from "../../utils/pathUtils";
     import { projectStore } from "../../stores/projectStore.svelte";
     import { userPreferencesStore } from "../../stores/UserPreferencesStore.svelte";
-    import { projectSettingsPath } from "../../lib/managementPaths";
+    import { projectSettingsRoute } from "../../lib/managementPaths";
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -16,12 +15,16 @@
             <ul class="space-y-2">
                 {#each projectStore.projects as project (project.id)}
                     <li>
-                        <a
-                            href={resolvePath(projectSettingsPath(project.name))}
-                            class="text-blue-600 hover:text-blue-800 hover:underline text-lg"
-                        >
-                            {project.name || project.id}
-                        </a>
+                        {#if project.name}
+                            <a
+                                href={projectSettingsRoute(project.name)}
+                                class="text-blue-600 hover:text-blue-800 hover:underline text-lg"
+                            >
+                                {project.name}
+                            </a>
+                        {:else}
+                            <span class="text-lg">{project.id}</span>
+                        {/if}
                         {#if project.isDefault}
                             <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Default</span>
                         {/if}
