@@ -51,6 +51,8 @@ export type ProjectSelectState =
 
 export interface ProjectSelectSession {
     readonly state: ProjectSelectState;
+    /** True only while this exact completed execution remains the live query/catalog authority. */
+    isEvidenceCurrent(evidence: ProjectSelectEvidence): boolean;
     subscribe(listener: (state: ProjectSelectState) => void): () => void;
     setQuery(query: string): void;
     runNow(): Promise<ProjectSelectEvidence | undefined>;
@@ -116,6 +118,14 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
 
     get state(): ProjectSelectState {
         return this._state;
+    }
+
+    isEvidenceCurrent(evidence: ProjectSelectEvidence): boolean {
+        return this._state.status === "success"
+            && this._state.evidence === evidence
+            && this.catalog.status === "ready"
+            && this.catalog.generation === evidence.catalogGeneration
+            && this.catalog.snapshot.revision === evidence.catalogRevision;
     }
 
     subscribe(listener: (state: ProjectSelectState) => void): () => void {
