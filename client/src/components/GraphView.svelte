@@ -237,8 +237,7 @@ const logger = getLogger("GraphView");
         }, 0);
     }
 
-    function getPageUrl(pageName: string): ResolvedPathname | "#" {
-        if (!pageName) return "#";
+    function getPageUrl(pageName: string): ResolvedPathname {
         // The demo routes name their project `demoProject`; reading the param
         // avoids the prefix test that also matched `/demo-ja`.
         const projectName = page.params.demoProject
@@ -323,17 +322,17 @@ const logger = getLogger("GraphView");
     <ul>
         {#each graphNodes as node (node.id)}
             <li>
-                <a href={getPageUrl(node.name)}>{node.name}</a>
+                {#if node.name}
+                    {@const nodeUrl = getPageUrl(node.name)}
+                    <a href={nodeUrl}>{node.name}</a>
+                {/if}
                 {#if graphLinks.some(link => link.source === node.id)}
                     <ul>
                         {#each graphLinks.filter(link => link.source === node.id) as link (link.target)}
                             {@const targetNode = graphNodes.find(n => n.id === link.target)}
-                            {#if targetNode}
-                                <li>
-                                    <a href={getPageUrl(targetNode.name)}>
-                                        {targetNode.name}
-                                    </a>
-                                </li>
+                            {#if targetNode?.name}
+                                {@const targetUrl = getPageUrl(targetNode.name)}
+                                <li><a href={targetUrl}>{targetNode.name}</a></li>
                             {/if}
                         {/each}
                     </ul>

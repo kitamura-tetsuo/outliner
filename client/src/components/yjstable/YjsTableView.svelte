@@ -1,4 +1,5 @@
 <script lang="ts">
+import type { ResolvedPathname } from "$app/types";
 // Orchestrates one Grid: owns the sync-adapter/query-runner lifecycle, keeps
 // plain $state mirrors of the Yjs structures (AGENTS.md §11 mirror pattern),
 // and lets the user switch/parallel-display the Grid Definition editor, grid
@@ -73,7 +74,7 @@ interface Props {
     /** Provenance info from whence this table was copied */
     sourceProjectId?: string;
     /** Link to the source Table's own page. Undefined without a project route. */
-    sourceTableHref?: string;
+    sourceTableHref?: ResolvedPathname;
     /**
      * Host surface restriction (outline read-only state). Forwarded to the
      * UI Definition editor's width controls and the Grid's header resize

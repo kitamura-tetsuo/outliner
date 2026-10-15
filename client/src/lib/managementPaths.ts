@@ -137,7 +137,7 @@ export function projectObjectsRoute(projectName: string): ResolvedPathname {
 export function projectObjectsSelectedRoute(
     projectName: string,
     selected: string,
-): `${ResolvedPathname}?selected=${string}` {
+): ResolvedPathname {
     const query: `?selected=${string}` = `?selected=${encodeURIComponent(selected)}`;
     // `resolve` only accepts a literal route ID from the generated RouteId
     // union, so the query is appended after resolution instead of being

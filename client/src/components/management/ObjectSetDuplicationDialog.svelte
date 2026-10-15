@@ -129,8 +129,6 @@
                 yjsStore.yjsClient = destinationClient as unknown as NonNullable<typeof yjsStore.yjsClient>;
                 store.project = destinationClient.project as unknown as NonNullable<typeof store.project>;
                 const ids = result.createdObjects.map(object => object.id);
-                // The typed resolved pathname has an encoded query appended after resolve; the rule cannot infer that template type.
-                // eslint-disable-next-line svelte/no-navigation-without-resolve
                 await goto(projectObjectsSelectedRoute(destinationTitle, ids.join(",")));
             }
             onclose();

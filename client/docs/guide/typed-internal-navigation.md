@@ -1,10 +1,9 @@
 # Typed internal navigation (issue #5629)
 
 Application-owned internal URLs are built with SvelteKit's typed
-`resolve()` API from `$app/paths`, not the generic `resolvePath()` wrapper
-in `client/src/utils/pathUtils.ts`. Incorrect route IDs or parameter names
-fail `tsc`, and the `svelte/no-navigation-without-resolve` rule (error
-severity for migrated producers, scoped in `client/eslint.config.js`) keeps
+`resolve()` API from `$app/paths`. The retired generic `resolvePath()`
+wrapper has been removed. Incorrect route IDs or parameter names fail `tsc`,
+and the globally enabled `svelte/no-navigation-without-resolve` rule keeps
 new navigation on the typed path.
 
 ## Where the helpers live
@@ -39,18 +38,18 @@ new navigation on the typed path.
 4. Destinations without a demo twin (import-export, settings, types,
    page-schedule) resolve through the generic route ID; demo slugs fall
    through to it at runtime, which is the same destination as before.
-5. Destinations that are not SvelteKit routes (`/search?query=`,
-   `/test`) cannot use typed `resolve()` and stay on `resolvePath()` with a
-   comment saying so.
+5. Query-bearing internal destinations resolve their registered pathname and
+   preserve the encoded query. Opaque resource and already-localized URLs stay
+   outside route-ID coercion; document such boundaries at their call sites.
 
-## Deferred stages (not this migration)
+## Enforcement and exception inventory
 
-`resolvePath()` stays until its remaining owning stages migrate: the
-`YjsTableBlock → YjsTableView` `sourceTableHref` prop contract, attachment
-URLs, Paraglide output, and the opaque debug bridge in
-`client/src/lib/debug.ts`. Breadcrumb, PageListItem and ScheduleRuleList now
-retain `ResolvedPathname` values across their shared prop/record boundaries.
-Final wrapper deletion and global rule restoration are separate work.
+The navigation rule is enabled globally at error severity with no category-wide
+ignore options or directory exclusions. Three documented line-scoped exceptions remain at genuine opaque
+boundaries: attachment resource URLs, Paraglide-owned localized URLs, and
+debug-bridge URLs. Each exception names its production-origin regression. The debug bridge applies the configured base through the official
+path primitive. Shared internal-link props, including the Grid source
+Table link, retain `ResolvedPathname` through rendering without a second resolve.
 
 ## Regression coverage
 

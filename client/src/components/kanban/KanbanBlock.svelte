@@ -24,10 +24,11 @@ onDestroy(() => stop?.());
             {@const handles = getKanbanHandles(item.ydoc, kanbanId)}
             {#if handles}
                 <KanbanBoard projectDoc={item.ydoc} {projectId} kanban={handles} {isReadOnly} />
-                <!-- `projectId` is unset until the client connects; the typed
-                     resolver rejects empty params, so the legacy shape is kept
-                     for that transient state instead of rendering nothing. -->
-                <a href={projectId ? projectKanbanRoute(projectId, kanbanId) : `/${encodeURIComponent(projectId ?? "")}/-/kanbans/${encodeURIComponent(kanbanId)}`}>Open standalone board</a>
+                <!-- The typed resolver rejects an empty project identity, so
+                     the action appears once the connected project is known. -->
+                {#if projectId}
+                    <a href={projectKanbanRoute(projectId, kanbanId)}>Open standalone board</a>
+                {/if}
             {:else}
                 <p role="alert" data-testid="kanban-missing">Kanban unavailable</p>
             {/if}
