@@ -58,7 +58,7 @@ export async function openKanbanList(page: Page, projectName: string): Promise<v
 export async function createKanbanThroughUi(page: Page, name: string, tableId: string): Promise<string> {
     const form = page.getByTestId("kanban-create-form");
     await form.getByLabel("Name").fill(name);
-    await form.getByLabel("Source table").selectOption(tableId);
+    await form.getByLabel("Initial SQL source (optional)").selectOption(tableId);
     await form.getByRole("button", { name: "Create Kanban" }).click();
     await expect(page.getByTestId("kanban-board")).toBeVisible({ timeout: 30000 });
     const id = await page.getByTestId("kanban-board").getAttribute("data-kanban-id");
