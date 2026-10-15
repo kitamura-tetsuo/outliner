@@ -105,6 +105,21 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
+    it("refuses a computed UNION kind that borrows another branch proof", async () => {
+        const c = await fixture(
+            "SELECT ('other_' || 'tasks') AS source_kind, id AS source_id, title, status FROM tasks UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+        );
+        const forged = c.projection.lanes.flatMap(lane => lane.cards).find(card => card.row.title === "Beta")!;
+        expect(forged.sourceIdentity).toBeUndefined();
+        const operation = c.controller();
+        expect(operation.begin(forged, "status")).toBe(false);
+        await expect(operation.commit("done")).resolves.toMatchObject({ ok: false });
+        expect(c.table.data.get("one")?.get("status")).toBe("todo");
+        expect(c.other.data.get("one")?.get("status")).toBe("todo");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
     it("refuses readonly saved-SELECT families", async () => {
         const c = await fixture();
         for (

@@ -55,6 +55,7 @@ export class KanbanQueryRunner {
     private listeners = new Set<(p: KanbanProjection) => void>();
     private projection: KanbanProjection = { status: "loading", lanes: [], columns: [], current: false };
     private resolvedSourceSchema: ParsedTableSchema | undefined;
+    private resolvedSchemas = new Map<string, ParsedTableSchema>();
     private pendingProjection: Promise<void> = Promise.resolve();
     private session: ProjectSelectSession;
     private unsub?: () => void;
@@ -77,6 +78,14 @@ export class KanbanQueryRunner {
     }
     get sourceSchema() {
         return this.resolvedSourceSchema;
+    }
+    columnSchema(card: KanbanCard, output: string) {
+        const kind = card.sourceIdentity?.kind;
+        const analysis = this.projection.provenance?.analysis;
+        if (!kind || analysis?.status !== "proven") return undefined;
+        const physical = analysis.branches.find(branch => branch.source.sqlName === kind)?.columns
+            .find(column => column.outputColumn === output)?.physicalColumn;
+        return physical ? this.resolvedSchemas.get(kind)?.columns.find(column => column.name === physical) : undefined;
     }
     subscribeProjection(fn: (p: KanbanProjection) => void) {
         this.listeners.add(fn);
@@ -109,10 +118,14 @@ export class KanbanQueryRunner {
     private definitionObserver = () => {
         const s = getKanban(this.options.projectDoc, this.options.kanbanId);
         if (!s) return this.publish(this.fail("unavailable", "Kanban definition is missing"));
+        const evidence = this.projection.evidence;
+        const queryUnchanged = evidence?.query === s.query;
         this.markStale();
         this.session.setQuery(s.query);
         if (!s.query.trim() || !s.groupField) {
             this.publish(this.fail("incomplete", "Kanban query and grouping column are required"));
+        } else if (queryUnchanged && evidence && this.session.isEvidenceCurrent(evidence)) {
+            this.pendingProjection = this.project(evidence);
         }
     };
     private consume(state: ProjectSelectState) {
@@ -171,8 +184,14 @@ export class KanbanQueryRunner {
             }
         }
         const supplier = analysis.bareIdSource;
-        const schema = supplier ? (await this.session.resolveRelation(supplier.sqlName))?.schema : undefined;
+        const schemas = new Map<string, ParsedTableSchema>();
+        await Promise.all(analysis.suppliers.map(async source => {
+            const schema = (await this.session.resolveRelation(source.sqlName))?.schema;
+            if (schema) schemas.set(source.sqlName, schema);
+        }));
         if (!this.session.isEvidenceCurrent(e)) return;
+        this.resolvedSchemas = schemas;
+        const schema = supplier ? schemas.get(supplier.sqlName) : undefined;
         this.resolvedSourceSchema = schema;
         const groupRoute = analysis.branches.length === 1
             ? analysis.branches[0]?.columns.find(column => column.outputColumn === s.groupField)
@@ -227,7 +246,8 @@ export class KanbanQueryRunner {
 function identity(row: Record<string, unknown>, p: ProjectQueryProvenance): KanbanCard["sourceIdentity"] {
     if (typeof row.source_kind === "string" && typeof row.source_id === "string") {
         const claiming = p.branches.filter(x => x.claimedSourceKind === row.source_kind);
-        const b = claiming.length > 0 && claiming.every(x => x.routedIdentity)
+        const b = p.branches.every(x => x.claimedSourceKind !== undefined)
+                && claiming.length > 0 && claiming.every(x => x.routedIdentity)
             ? claiming.find(x => x.source.sqlName === row.source_kind)
             : undefined;
         return b ? { kind: b.source.sqlName, id: row.source_id } : undefined;

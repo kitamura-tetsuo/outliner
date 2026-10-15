@@ -23,6 +23,7 @@ interface PendingOperation {
     identity: CardIdentity;
     field: string;
     observedValue: unknown;
+    schemaRevision?: string;
     destination?: KanbanLaneValue;
 }
 export interface KanbanCardOperationOptions {
@@ -57,6 +58,7 @@ export class KanbanCardOperationController {
             identity: id,
             field,
             observedValue: card.row[field],
+            schemaRevision: sourceRevision(p, id.sourceKind),
             destination,
         };
         this.options.onState?.("pending");
@@ -129,6 +131,9 @@ export class KanbanCardOperationController {
         if (reason) return reason;
         const route = columnRoute(p, op.identity.sourceKind, op.field);
         if (!route) return `Column "${op.field}" is read-only.`;
+        if (sourceRevision(p, op.identity.sourceKind) !== op.schemaRevision) {
+            return "The source schema changed during this interaction.";
+        }
         const schema = this.options.schema?.(), column = schema?.columns.find(c => c.name === route);
         if (column) {
             const v = {
@@ -172,6 +177,9 @@ function columnRoute(p: KanbanProjection, kind: string, output: string) {
     if (p.provenance.analysis.status !== "proven") return undefined;
     const branch = p.provenance.analysis.branches.find(b => b.source.sqlName === kind);
     return branch?.columns.find(c => c.outputColumn === output)?.physicalColumn;
+}
+function sourceRevision(p: KanbanProjection, kind: string) {
+    return p.provenance?.analysis?.branches.find(branch => branch.source.sqlName === kind)?.source.schemaRevision;
 }
 function identityOf(c: KanbanCard, p: KanbanProjection): CardIdentity | undefined {
     if (!c.sourceIdentity?.id) return undefined;
