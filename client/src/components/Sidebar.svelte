@@ -405,8 +405,10 @@ import { isPublicProject } from "../lib/publicProject";
                         <li class="sidebar-placeholder">No pages available</li>
                     {:else}
                         {#each pages as page (page.id)}
-                            {@const pageHref = projectPageRoute(currentProjectName, page.text.trimEnd())}
-                            <li>
+                            {@const pageName = page.text.trimEnd()}
+                            {#if pageName}
+                                {@const pageHref = projectPageRoute(currentProjectName, pageName)}
+                                <li>
                                 <a
                                     class="page-item"
                                     href={pageHref}
@@ -440,7 +442,8 @@ import { isPublicProject } from "../lib/publicProject";
                                         </span>
                                     {/if}
                                 </a>
-                            </li>
+                                </li>
+                            {/if}
                         {/each}
                     {/if}
                 </ul>

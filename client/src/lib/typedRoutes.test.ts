@@ -101,15 +101,12 @@ describe("typed project/page routes", () => {
         expect(projectPageScheduleRoute("acme", "My Page")).toBe("/acme/My%20Page/schedule");
     });
 
-    it("falls back to the legacy builders instead of throwing for empty segments", () => {
-        // The legacy string builders never threw for degenerate inputs, so a
-        // transiently empty title during clear-to-type editing must keep
-        // producing a string rather than crashing the rendering component.
-        expect(projectRoute("")).toBe(projectBasePath(""));
-        expect(projectPageRoute("", "page")).toBe(projectPagePath("", "page"));
-        expect(projectPageRoute("acme", "")).toBe(projectPagePath("acme", ""));
-        expect(projectPageDiffRoute("acme", "")).toBe(`${projectPagePath("acme", "")}/diff`);
-        expect(projectPageScheduleRoute("", "page")).toBe("//page/schedule");
+    it("rejects empty route parameters instead of forging resolved paths", () => {
+        expect(() => projectRoute("")).toThrow();
+        expect(() => projectPageRoute("", "page")).toThrow();
+        expect(() => projectPageRoute("acme", "")).toThrow();
+        expect(() => projectPageDiffRoute("acme", "")).toThrow();
+        expect(() => projectPageScheduleRoute("", "page")).toThrow();
     });
 });
 
@@ -146,15 +143,15 @@ describe("typed management routes", () => {
         expect(projectManagementRoute("demo")).toBe("/demo/-");
     });
 
-    it("falls back to the legacy builders instead of throwing for empty ids", () => {
-        expect(projectManagementRoute("")).toBe(projectManagementPath(""));
-        expect(projectObjectsRoute("")).toBe(projectObjectsPath(""));
-        expect(projectTablesRoute("")).toBe(projectTablesPath(""));
-        expect(projectTableRoute("acme", "")).toBe(projectTablePath("acme", ""));
-        expect(projectGridRoute("acme", "")).toBe(projectGridPath("acme", ""));
-        expect(projectKanbanRoute("acme", "")).toBe(projectKanbanPath("acme", ""));
-        expect(projectCalendarRoute("acme", "")).toBe(projectCalendarPath("acme", ""));
-        expect(projectScheduleRoute("acme", "")).toBe(projectSchedulePath("acme", ""));
+    it("rejects empty ids instead of forging resolved paths", () => {
+        expect(() => projectManagementRoute("")).toThrow();
+        expect(() => projectObjectsRoute("")).toThrow();
+        expect(() => projectTablesRoute("")).toThrow();
+        expect(() => projectTableRoute("acme", "")).toThrow();
+        expect(() => projectGridRoute("acme", "")).toThrow();
+        expect(() => projectKanbanRoute("acme", "")).toThrow();
+        expect(() => projectCalendarRoute("acme", "")).toThrow();
+        expect(() => projectScheduleRoute("acme", "")).toThrow();
     });
 
     it("builds the query-bearing management link without escaping the separator", () => {

@@ -224,7 +224,10 @@ function selectPage(page: Item) {
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each sortedItems as page (page.id)}
-            <PageListItem {page} {isGridView} href={projectPageRoute(projectName, page.text.trimEnd())} onPageClick={() => selectPage(page)} />
+            {@const pageName = page.text.trimEnd()}
+            {#if pageName}
+                <PageListItem {page} {isGridView} href={projectPageRoute(projectName, pageName)} onPageClick={() => selectPage(page)} />
+            {/if}
         {/each}
 
         {#if sortedItems.length === 0}

@@ -10,7 +10,10 @@
  * honest.
  */
 import { resolve } from "$app/paths";
+import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
+import PageList from "../components/PageList.svelte";
+import { Project } from "../schema/app-schema";
 import { resolvePath } from "../utils/pathUtils";
 import { projectObjectsSelectedRoute, projectSchedulesRoute, projectTableRoute } from "./managementPaths";
 import { projectPageRoute, projectRoute } from "./publicProject";
@@ -45,5 +48,17 @@ describe("typed routes under a nonempty base", () => {
         // The Breadcrumb/second-resolution consumers still use the wrapper;
         // a single application of the base is what the framework gives them.
         expect(resolvePath("/acme/-/objects")).toBe("/test-base/acme/-/objects");
+    });
+
+    it("does not emit an unresolved href for a legacy empty-title page", () => {
+        const project = Project.createInstance("acme");
+        project.addPage("", "user-1");
+
+        const { container } = render(PageList, {
+            props: { project, projectName: "acme", rootItems: project.items },
+        });
+
+        expect(container.querySelector('a[href="/acme/"]')).toBeNull();
+        expect(container.querySelector('a[href="/test-base/acme/"]')).toBeNull();
     });
 });

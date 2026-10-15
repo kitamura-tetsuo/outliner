@@ -107,16 +107,12 @@ export function projectTypesPath(projectName: string): string {
 // (import-export, settings, types) resolve through the generic route, which is
 // the same destination the previous string builder produced. The official
 // `ResolvedPathname` result is retained so incorrect route IDs or parameter
-// names fail type checking. An empty project or entity id falls back to the
-// legacy builder instead of throwing the resolver's missing-parameter error,
-// restoring the previous never-throws contract for transient render states.
+// names fail type checking. Callers guard transient empty identities rather
+// than manufacturing an unresolved string with a resolved-path cast.
 // ---------------------------------------------------------------------------
 
 /** The project-management landing page as a typed SvelteKit resolution. */
 export function projectManagementRoute(projectName: string): ResolvedPathname {
-    // The legacy builder never threw for an empty project; keep producing its
-    // string so a transiently empty name cannot crash a rendering component.
-    if (!projectName) return projectManagementPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-", { demoProject: encodeURIComponent(projectName) });
     }
@@ -125,7 +121,6 @@ export function projectManagementRoute(projectName: string): ResolvedPathname {
 
 /** The Object Manager as a typed SvelteKit resolution. */
 export function projectObjectsRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectObjectsPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/objects", { demoProject: encodeURIComponent(projectName) });
     }
@@ -139,9 +134,11 @@ export function projectObjectsRoute(projectName: string): ResolvedPathname {
  * `` `${projectObjectsPath(...)}?selected=${encodeURIComponent(...)}` ``
  * construction.
  */
-export function projectObjectsSelectedRoute(projectName: string, selected: string): ResolvedPathname {
+export function projectObjectsSelectedRoute(
+    projectName: string,
+    selected: string,
+): `${ResolvedPathname}?selected=${string}` {
     const query: `?selected=${string}` = `?selected=${encodeURIComponent(selected)}`;
-    if (!projectName) return `${projectObjectsPath(projectName)}${query}` as ResolvedPathname;
     // `resolve` only accepts a literal route ID from the generated RouteId
     // union, so the query is appended after resolution instead of being
     // embedded in the route ID.
@@ -150,28 +147,23 @@ export function projectObjectsSelectedRoute(projectName: string, selected: strin
             resolve("/[demoProject=demoProject]/-/objects", {
                 demoProject: encodeURIComponent(projectName),
             })
-        }${query}` as ResolvedPathname;
+        }${query}`;
     }
-    return `${
-        resolve("/[project]/-/objects", { project: encodeURIComponent(projectName) })
-    }${query}` as ResolvedPathname;
+    return `${resolve("/[project]/-/objects", { project: encodeURIComponent(projectName) })}${query}`;
 }
 
 /** The OPML/Markdown import-export panel as a typed SvelteKit resolution. */
 export function projectImportExportRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectImportExportPath(projectName) as ResolvedPathname;
     return resolve("/[project]/-/import-export", { project: encodeURIComponent(projectName) });
 }
 
 /** Project title/sharing settings as a typed SvelteKit resolution. */
 export function projectSettingsRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectSettingsPath(projectName) as ResolvedPathname;
     return resolve("/[project]/-/settings", { project: encodeURIComponent(projectName) });
 }
 
 /** The project's link graph as a typed SvelteKit resolution. */
 export function projectGraphRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectGraphPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/graph", { demoProject: encodeURIComponent(projectName) });
     }
@@ -180,7 +172,6 @@ export function projectGraphRoute(projectName: string): ResolvedPathname {
 
 /** The Table list as a typed SvelteKit resolution. */
 export function projectTablesRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectTablesPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/tables", { demoProject: encodeURIComponent(projectName) });
     }
@@ -189,7 +180,6 @@ export function projectTablesRoute(projectName: string): ResolvedPathname {
 
 /** One standalone Table page as a typed SvelteKit resolution. */
 export function projectTableRoute(projectName: string, tableId: string): ResolvedPathname {
-    if (!projectName || !tableId) return projectTablePath(projectName, tableId) as ResolvedPathname;
     const id = encodeURIComponent(tableId);
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/tables/[tableId]", {
@@ -202,7 +192,6 @@ export function projectTableRoute(projectName: string, tableId: string): Resolve
 
 /** The Grid list as a typed SvelteKit resolution. */
 export function projectGridsRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectGridsPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/grids", { demoProject: encodeURIComponent(projectName) });
     }
@@ -211,7 +200,6 @@ export function projectGridsRoute(projectName: string): ResolvedPathname {
 
 /** One standalone Grid page as a typed SvelteKit resolution. */
 export function projectGridRoute(projectName: string, gridId: string): ResolvedPathname {
-    if (!projectName || !gridId) return projectGridPath(projectName, gridId) as ResolvedPathname;
     const id = encodeURIComponent(gridId);
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/grids/[gridId]", {
@@ -224,7 +212,6 @@ export function projectGridRoute(projectName: string, gridId: string): ResolvedP
 
 /** The Kanban list as a typed SvelteKit resolution. */
 export function projectKanbansRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectKanbansPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/kanbans", { demoProject: encodeURIComponent(projectName) });
     }
@@ -233,7 +220,6 @@ export function projectKanbansRoute(projectName: string): ResolvedPathname {
 
 /** One standalone Kanban page as a typed SvelteKit resolution. */
 export function projectKanbanRoute(projectName: string, kanbanId: string): ResolvedPathname {
-    if (!projectName || !kanbanId) return projectKanbanPath(projectName, kanbanId) as ResolvedPathname;
     const id = encodeURIComponent(kanbanId);
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/kanbans/[kanbanId]", {
@@ -246,7 +232,6 @@ export function projectKanbanRoute(projectName: string, kanbanId: string): Resol
 
 /** The Calendar list as a typed SvelteKit resolution. */
 export function projectCalendarsRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectCalendarsPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/calendars", { demoProject: encodeURIComponent(projectName) });
     }
@@ -255,7 +240,6 @@ export function projectCalendarsRoute(projectName: string): ResolvedPathname {
 
 /** One standalone Calendar page as a typed SvelteKit resolution. */
 export function projectCalendarRoute(projectName: string, calendarName: string): ResolvedPathname {
-    if (!projectName || !calendarName) return projectCalendarPath(projectName, calendarName) as ResolvedPathname;
     const calendar = encodeURIComponent(calendarName);
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/calendars/[calendar]", {
@@ -271,7 +255,6 @@ export function projectCalendarRoute(projectName: string, calendarName: string):
 
 /** The Schedule list as a typed SvelteKit resolution. */
 export function projectSchedulesRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectSchedulesPath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/schedules", { demoProject: encodeURIComponent(projectName) });
     }
@@ -280,7 +263,6 @@ export function projectSchedulesRoute(projectName: string): ResolvedPathname {
 
 /** One Schedule rule editor as a typed SvelteKit resolution. */
 export function projectScheduleRoute(projectName: string, ruleId: string): ResolvedPathname {
-    if (!projectName || !ruleId) return projectSchedulePath(projectName, ruleId) as ResolvedPathname;
     const id = encodeURIComponent(ruleId);
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/-/schedules/[ruleId]", {
@@ -293,6 +275,5 @@ export function projectScheduleRoute(projectName: string, ruleId: string): Resol
 
 /** The Project SQL type catalog as a typed SvelteKit resolution. */
 export function projectTypesRoute(projectName: string): ResolvedPathname {
-    if (!projectName) return projectTypesPath(projectName) as ResolvedPathname;
     return resolve("/[project]/-/types", { project: encodeURIComponent(projectName) });
 }

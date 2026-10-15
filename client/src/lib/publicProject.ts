@@ -41,11 +41,6 @@ export function projectPagePath(projectName: string, pageTitle: string): string 
  * and the configured application base is applied once by `resolve`.
  */
 export function projectRoute(projectName: string): ResolvedPathname {
-    // The legacy builder never threw for degenerate inputs, and render paths
-    // can evaluate this while a name is transiently empty (for example while
-    // clearing a title). Keep producing that same string instead of letting
-    // the typed resolver's missing-parameter error crash the component.
-    if (!projectName) return projectBasePath(projectName) as ResolvedPathname;
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]", { demoProject: encodeURIComponent(projectName) });
     }
@@ -62,7 +57,6 @@ export function projectRoute(projectName: string): ResolvedPathname {
  * slug such as `demo-ja` keeps its own segment.
  */
 export function projectPageRoute(projectName: string, pageTitle: string): ResolvedPathname {
-    if (!projectName || !pageTitle) return projectPagePath(projectName, pageTitle) as ResolvedPathname;
     const page = encodeURIComponent(pageTitle);
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/[page]", { demoProject: encodeURIComponent(projectName), page });
@@ -72,7 +66,6 @@ export function projectPageRoute(projectName: string, pageTitle: string): Resolv
 
 /** The page-history/diff route as a typed SvelteKit resolution. */
 export function projectPageDiffRoute(projectName: string, pageTitle: string): ResolvedPathname {
-    if (!projectName || !pageTitle) return `${projectPagePath(projectName, pageTitle)}/diff` as ResolvedPathname;
     const page = encodeURIComponent(pageTitle);
     if (isPublicProject(projectName)) {
         return resolve("/[demoProject=demoProject]/[page]/diff", {
@@ -90,9 +83,6 @@ export function projectPageDiffRoute(projectName: string, pageTitle: string): Re
  * generic route — the same destination the previous string builder produced.
  */
 export function projectPageScheduleRoute(projectName: string, pageTitle: string): ResolvedPathname {
-    if (!projectName || !pageTitle) {
-        return `/${encodeURIComponent(projectName)}/${encodeURIComponent(pageTitle)}/schedule` as ResolvedPathname;
-    }
     return resolve("/[project]/[page]/schedule", {
         project: encodeURIComponent(projectName),
         page: encodeURIComponent(pageTitle),

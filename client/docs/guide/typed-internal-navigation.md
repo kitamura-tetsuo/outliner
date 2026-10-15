@@ -19,9 +19,8 @@ new navigation on the typed path.
   destination, plus `projectObjectsSelectedRoute()` for the
   `?selected=`-bearing Object Manager links.
 - Static destinations (`/`) call `resolve()` directly at the call site.
-  (`/settings`, `/projects/new`, `/error/project-unavailable`, the debug
-  back-link, and the non-demo table-schedule redirect stub stay on the
-  generic wrapper until the scope follow-up migrates them.)
+  Project creation and settings links use the typed project helpers, and the
+  legacy table-schedule route redirects through `projectSchedulesRoute()`.
 
 ## Rules for new producers
 
@@ -49,11 +48,9 @@ new navigation on the typed path.
 `resolvePath()` stays until its owning stages migrate: Breadcrumb's second
 resolution (and its item call sites), the `YjsTableBlock → YjsTableView`
 `sourceTableHref` prop contract, `ScheduleRuleList` reference records,
-attachment URLs, Paraglide output, the opaque debug bridge in
-`client/src/lib/debug.ts`, and the scope follow-up routes (debug,
-error/project-unavailable, projects/new, settings, and the non-demo
-table-schedule redirect stub). Final wrapper deletion and global rule
-restoration are separate work.
+attachment URLs, Paraglide output, and the opaque debug bridge in
+`client/src/lib/debug.ts`. Final wrapper deletion and global rule restoration
+are separate work.
 
 ## Regression coverage
 
