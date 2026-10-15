@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { resolve } from "$app/paths";
     import Loader from "../../components/Loader.svelte";
         import { page } from "$app/state";
     import { onDestroy, onMount } from "svelte";
@@ -126,7 +127,7 @@
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
     <div class="mb-4">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
+            { label: "Home", href: resolve("/") },
             { label: projectName || "Project" }
         ]} />
     </div>

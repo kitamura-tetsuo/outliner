@@ -5,16 +5,14 @@
  * configured with `paths.base = "/test-base"`, the real `$app/paths`
  * resolver (no mocks anywhere in this file), and the actual migrated
  * production producers. Every direct internal link must contain the base
- * exactly once; resolving twice (the deferred Breadcrumb pattern) would
- * duplicate it, which this file also pins so the deferred stages stay
- * honest.
+ * exactly once, including after it crosses the Breadcrumb prop boundary.
  */
 import { resolve } from "$app/paths";
 import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
+import GraphManagementView from "../components/management/GraphManagementView.svelte";
 import PageList from "../components/PageList.svelte";
 import { Project } from "../schema/app-schema";
-import { resolvePath } from "../utils/pathUtils";
 import { projectObjectsSelectedRoute, projectSchedulesRoute, projectTableRoute } from "./managementPaths";
 import { projectPageRoute, projectRoute } from "./publicProject";
 
@@ -44,10 +42,16 @@ describe("typed routes under a nonempty base", () => {
         );
     });
 
-    it("keeps the deferred generic wrapper working for its remaining consumers", () => {
-        // The Breadcrumb/second-resolution consumers still use the wrapper;
-        // a single application of the base is what the framework gives them.
-        expect(resolvePath("/acme/-/objects")).toBe("/test-base/acme/-/objects");
+    it("preserves an encoded project URL from a real Breadcrumb parent", () => {
+        const projectName = "設計 / 50%?#";
+        const { container } = render(GraphManagementView, {
+            props: { projectName },
+        });
+
+        const projectLink = container.querySelectorAll(`nav[aria-label="Breadcrumb"] a`)[1];
+        const renderedHref = projectLink?.getAttribute("href");
+        expect(renderedHref).toBe("/test-base/%E8%A8%AD%E8%A8%88%20%2F%2050%25%3F%23");
+        expect(occurrences(renderedHref ?? "", "/test-base")).toBe(1);
     });
 
     it("does not emit an unresolved href for a legacy empty-title page", () => {

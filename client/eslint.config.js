@@ -92,16 +92,17 @@ export default ts.config(
     // still covers the deferred stages. Files with a documented reason to
     // keep a non-resolve destination stay out: SearchBox (`/search` is not a
     // route), GraphView and ObjectManagerView (`"#"` fallbacks),
-    // KanbanBlock (transient legacy fallback), Breadcrumb and its item
-    // callers, the YjsTableBlock prop contract, ScheduleListView reference
-    // records, the opaque debug bridge, Paraglide output and debug-test.
+    // KanbanBlock (transient legacy fallback), the YjsTableBlock prop
+    // contract, the opaque debug bridge, Paraglide output and debug-test.
     {
         files: [
             "src/components/AuthenticatedHome.svelte",
             "src/components/BacklinkPanel.svelte",
+            "src/components/Breadcrumb.svelte",
             "src/components/OutlinerItem.svelte",
             "src/components/OutlinerToolbar.svelte",
             "src/components/PageList.svelte",
+            "src/components/PageListItem.svelte",
             "src/components/ProjectSelector.svelte",
             "src/components/SearchPanel.svelte",
             "src/components/Sidebar.svelte",
@@ -110,6 +111,7 @@ export default ts.config(
             "src/components/management/CalendarListView.svelte",
             "src/components/management/GridDetailView.svelte",
             "src/components/management/GridListView.svelte",
+            "src/components/management/GraphManagementView.svelte",
             "src/components/management/ImportExportView.svelte",
             "src/components/management/KanbanDetailView.svelte",
             "src/components/management/KanbanListView.svelte",
@@ -120,15 +122,21 @@ export default ts.config(
             "src/components/management/ScheduleListView.svelte",
             "src/components/management/TableDetailView.svelte",
             "src/components/management/TableListView.svelte",
+            "src/components/management/TypeListView.svelte",
+            "src/components/schedule/ScheduleRuleList.svelte",
             "src/components/schedule/TableScheduleReferences.svelte",
             "src/components/yjstable/ObjectDuplicationDialog.svelte",
             "src/components/yjstable/TableGridReferences.svelte",
             "src/services/navigation/outlineItemNavigation.ts",
             "src/routes/[[]project[]]/+layout.svelte",
+            "src/routes/[[]project[]]/+page.svelte",
             "src/routes/[[]project[]]/[[]page[]]/+page.svelte",
+            "src/routes/[[]project[]]/[[]page[]]/diff/+page.svelte",
             "src/routes/[[]project[]]/[[]page[]]/schedule/+page.svelte",
             "src/routes/[[]project[]]/-/tables/[[]tableId[]]/schedule/+page.svelte",
             "src/routes/[[]demoProject=demoProject[]]/[[]page[]]/+page.svelte",
+            "src/routes/[[]demoProject=demoProject[]]/+page.svelte",
+            "src/routes/[[]demoProject=demoProject[]]/[[]page[]]/diff/+page.svelte",
             "src/routes/[[]demoProject=demoProject[]]/-/tables/[[]tableId[]]/schedule/+page.svelte",
             "src/routes/share/[[]token[]]/+page.svelte",
             "src/routes/projects/new/+page.svelte",

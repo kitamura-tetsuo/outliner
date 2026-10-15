@@ -9,6 +9,8 @@ import { exportItemToMarkdown, getYjsClientByProjectTitle, removeYjsClientByProj
 import { Project as AppProject } from "../../../../schema/app-schema";
 import { findPageByName } from "../../../../utils/pageUtils";
 import { userManager } from "../../../../auth/UserManager";
+import { resolve } from "$app/paths";
+import { projectPageRoute, projectRoute } from "../../../../lib/publicProject";
 
 let project = $state("");
 let pageTitle = $state("");
@@ -99,9 +101,9 @@ onDestroy(() => {
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
     <div class="mb-4">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            ...(project ? [{ label: project, href: `/${encodeURIComponent(project)}` }] : []),
-            ...(pageTitle ? [{ label: pageTitle, href: `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}` }] : []),
+            { label: "Home", href: resolve("/") },
+            ...(project ? [{ label: project, href: projectRoute(project) }] : []),
+            ...(project && pageTitle ? [{ label: pageTitle, href: projectPageRoute(project, pageTitle) }] : []),
             { label: "History" }
         ]} />
     </div>

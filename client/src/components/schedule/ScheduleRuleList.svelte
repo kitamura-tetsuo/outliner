@@ -24,6 +24,7 @@ import {
     type ScheduleRunResult,
 } from "$shared/services/scheduleStatus";
 import { formatDateTime } from "../../utils/dateUtils";
+import type { ResolvedPathname } from "$app/types";
 
 interface Props {
     rules: { id: string, rule: ScheduleRule }[];
@@ -34,13 +35,13 @@ interface Props {
     /** Turn one Schedule on or off. Absent when the manager is read-only. */
     onToggleEnabled?: (id: string, enabled: boolean) => void;
     /** Detail-page link for a Schedule, so row navigation stays available. */
-    detailHref?: (id: string) => string;
+    detailHref?: (id: string) => ResolvedPathname;
     /**
      * Tables each rule references, keyed by rule id. A Schedule belongs to the
      * project and may touch several Tables (issue #5012), so this is a list of
      * links, never a single "owning" table.
      */
-    tableReferences?: Record<string, { tableId: string; name: string; kind: string; href: string; }[]>;
+    tableReferences?: Record<string, { tableId: string; name: string; kind: string; href: ResolvedPathname; }[]>;
     /**
      * Whether the viewer may mutate. False for a read-only viewer, who may
      * read every status column and open a Schedule but must not enable, run or
