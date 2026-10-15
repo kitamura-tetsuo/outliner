@@ -23,11 +23,18 @@ const snapshot = (page: Page) =>
     page.evaluate(() => {
         const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
         const read = (key: string) =>
-            [...project.ydoc.getMap(key).entries()].map(([id, entry]: any) => ({
-                id,
-                ...entry.toJSON(),
-                data: key === "yjsTables" ? entry.get("doc").getMap("data").toJSON() : undefined,
-            }));
+            [...project.ydoc.getMap(key).entries()].map(([id, entry]: any) => {
+                const definition = entry.toJSON();
+                // The Table subdoc is a live Y.Doc whose observer internals
+                // change when a Grid mounts. Compare its authoritative data
+                // separately instead of snapshotting the runtime object.
+                delete definition.doc;
+                return {
+                    id,
+                    ...definition,
+                    data: key === "yjsTables" ? entry.get("doc").getMap("data").toJSON() : undefined,
+                };
+            });
         const placements = [...(globalThis as any).generalStore.currentPage.items].map((item: any) => ({
             id: item.id,
             gridId: item.yjsGridId ?? null,
