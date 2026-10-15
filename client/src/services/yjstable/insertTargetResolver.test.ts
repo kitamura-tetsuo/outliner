@@ -132,7 +132,7 @@ describe("INSERT target resolver", { timeout: 30_000 }, () => {
     it("does not resurrect a selected Table by SQL name", async () => {
         const doc = new Y.Doc({ guid: "insert-target-recreated" });
         const oldA = table(doc, "a");
-        const b = table(doc, "b");
+        table(doc, "b");
         const run = await fixture(doc, "SELECT * FROM a UNION ALL SELECT * FROM b", oldA);
         removeTable(doc, oldA);
         const newA = table(doc, "a");
