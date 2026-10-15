@@ -70,7 +70,13 @@ function resolveActualSource(next: ProjectSelectState) {
     actualSource = undefined;
     if (next.status !== "success") return;
     const proof = analyzeProjectQueryProvenance(next.evidence);
-    const source = proof.status === "proven" ? proof.bareIdSource : undefined;
+    // A plain SELECT has one proven bare-id source. More complex readable
+    // results still use the rich Grid surface for selection/copy/search and
+    // source-addressed operations; its existing query authority fails closed
+    // for bare-id writes. The first current dependency supplies only the
+    // renderer's schema/adapter lifecycle, never primary ownership.
+    const source = (proof.status === "proven" ? proof.bareIdSource : undefined)
+        ?? next.evidence.sources.find(candidate => candidate.kind === "table");
     if (!source || source.kind !== "table" || !session?.isEvidenceCurrent(next.evidence)) return;
     const handles = getTableHandles(projectDoc, source.id);
     if (!handles || !session?.isEvidenceCurrent(next.evidence)) return;

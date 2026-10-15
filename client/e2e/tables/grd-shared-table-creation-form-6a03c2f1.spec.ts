@@ -75,7 +75,7 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         expect(tasksGrid.query).toContain("FROM tasks ORDER BY status DESC");
         expect(tasksGrid.components.title.type).toBe("text");
         expect(tasksGrid.components.status.type).toBe("select");
-        const habitsGrid = beforeReuse.grids.find(grid => grid.query.includes("FROM habits"))!;
+        const habitsGrid = beforeReuse.grids.find(grid => grid.query.includes("FROM manual_habits"))!;
         expect(habitsGrid.query).toContain("FROM manual_habits ORDER BY kind");
         expect(habitsGrid.components.log_date.type).toBe("date");
         expect(beforeReuse.grids.every(grid => !("insertTargetTableId" in grid))).toBe(true);

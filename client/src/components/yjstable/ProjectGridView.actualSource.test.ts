@@ -48,4 +48,24 @@ describe("ProjectGridView actual source", () => {
         await expect(rendered.rerender({ grid: undefined as never, projectDoc })).resolves.toBeUndefined();
         expect(screen.getByTestId("yjs-table-view").getAttribute("data-grid-id")).toBe(gridId);
     });
+
+    it("keeps the rich selection surface for a multi-source readable result", async () => {
+        const projectDoc = new Y.Doc({ guid: "project-grid-multi-source" });
+        const aId = createTable(projectDoc, "A", "a");
+        const a = getTableHandles(projectDoc, aId)!;
+        setSchemaText(a, "CREATE TABLE a (id TEXT PRIMARY KEY, value TEXT)");
+        const bId = createTable(projectDoc, "B", "b");
+        const b = getTableHandles(projectDoc, bId)!;
+        setSchemaText(b, "CREATE TABLE b (id TEXT PRIMARY KEY, value TEXT)");
+        const gridId = createGrid(projectDoc, undefined, {
+            query: "SELECT id, value FROM a UNION ALL SELECT id, value FROM b",
+        });
+
+        render(ProjectGridView, { props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc } });
+
+        await waitFor(
+            () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(aId),
+            { timeout: 10_000 },
+        );
+    });
 });
