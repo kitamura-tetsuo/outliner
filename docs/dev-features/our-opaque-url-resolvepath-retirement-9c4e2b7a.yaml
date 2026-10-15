@@ -10,6 +10,7 @@ changes:
 - client/src/routes/paraglide/+page.svelte calls goto with localizeHref output directly instead of resolvePath(localisedPath)
 - client/src/lib/debug.ts calls goto with withConfiguredBase(url), a documented base-prefixing helper whose base always comes from the official resolve primitive (resolve("/")) instead of resolvePath; the opaque URL never enters route-ID resolution. The helper has no already-based passthrough; every leading-single-slash target is app-root-relative, so a project whose title equals the deployment base still navigates with the base applied once
 tests:
+- client/e2e/new/our-opaque-url-framework-navigation-9c4e2b7a.spec.ts
 - client/src/components/OutlinerItemAttachments.test.ts
 - client/src/lib/debug.nonempty-base.test.ts
 - client/src/lib/debug.test.ts
