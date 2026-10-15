@@ -18,6 +18,9 @@ const applicationBase = process.env.OPAQUE_URL_TEST_BASE === "/app" ? "/app" : "
 // nonempty-base deployment.
 export default defineConfig({
     root: clientRoot,
+    // Keep dependency-optimizer metadata out of the shared node_modules tree;
+    // this fixture runs beside the primary E2E Vite server in CI.
+    cacheDir: path.join(clientRoot, ".vite-cache"),
     plugins: [
         {
             name: "nonempty-base-libpg-query-wasm",
