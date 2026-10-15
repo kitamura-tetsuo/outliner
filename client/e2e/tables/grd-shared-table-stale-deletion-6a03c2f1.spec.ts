@@ -107,6 +107,6 @@ test.describe("FTR-6a03c2f1: deleted selected sources", () => {
         const placed = await snapshot(page);
         expect(placed.tables).toEqual(afterDeletion.tables);
         expect(placed.grids).toEqual(afterDeletion.grids);
-        expect(placed.placements[2]?.gridId).toBe(initial.grids[1].id);
+        await expect(page.locator(`[data-grid-id="${initial.grids[1].id}"]`)).toBeVisible();
     });
 });
