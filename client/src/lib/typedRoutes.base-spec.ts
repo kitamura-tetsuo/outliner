@@ -10,7 +10,7 @@
 import { resolve } from "$app/paths";
 import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import Breadcrumb from "../components/Breadcrumb.svelte";
+import GraphManagementView from "../components/management/GraphManagementView.svelte";
 import PageList from "../components/PageList.svelte";
 import { Project } from "../schema/app-schema";
 import { projectObjectsSelectedRoute, projectSchedulesRoute, projectTableRoute } from "./managementPaths";
@@ -42,14 +42,15 @@ describe("typed routes under a nonempty base", () => {
         );
     });
 
-    it("does not resolve an already-resolved Breadcrumb item a second time", () => {
-        const href = projectPageRoute("demo-ja", "書式 / 例");
-        const { container } = render(Breadcrumb, {
-            props: { items: [{ label: "Demo", href }, { label: "Current" }] },
+    it("preserves an encoded project URL from a real Breadcrumb parent", () => {
+        const projectName = "設計 / 50%?#";
+        const { container } = render(GraphManagementView, {
+            props: { projectName },
         });
 
-        const renderedHref = container.querySelector("a")?.getAttribute("href");
-        expect(renderedHref).toBe("/test-base/demo-ja/%E6%9B%B8%E5%BC%8F%20%2F%20%E4%BE%8B");
+        const projectLink = container.querySelectorAll(`nav[aria-label="Breadcrumb"] a`)[1];
+        const renderedHref = projectLink?.getAttribute("href");
+        expect(renderedHref).toBe("/test-base/%E8%A8%AD%E8%A8%88%20%2F%2050%25%3F%23");
         expect(occurrences(renderedHref ?? "", "/test-base")).toBe(1);
     });
 
