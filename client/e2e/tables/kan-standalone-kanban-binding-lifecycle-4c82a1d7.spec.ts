@@ -14,7 +14,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 test(
-    "source rebinding and same-ID replacement invalidate mounted drafts and subscriptions",
+    "query rebinding and same-ID replacement invalidate mounted drafts and subscriptions",
     async ({ page, context }, testInfo) => {
         test.setTimeout(180000);
         const fixture = await createSourceThroughUi(page, testInfo);
@@ -38,32 +38,38 @@ test(
 
         await page.getByRole("button", { name: "Configure" }).click();
         await page.getByTestId("kanban-config").getByLabel("Name").fill("Stale source draft");
-        await peer.evaluate(({ kanbanId, sourceTableId }) => {
+        await peer.evaluate(({ kanbanId }) => {
             const doc = (globalThis as any).__YJS_STORE__.yjsClient.getProject().ydoc;
-            doc.getMap("yjsKanbans").get(kanbanId).set("sourceTableId", sourceTableId);
-        }, { kanbanId: id, sourceTableId: tableB.id });
+            doc.getMap("yjsKanbans").get(kanbanId).set(
+                "query",
+                "SELECT id, title, status, detail FROM tasks_b ORDER BY id",
+            );
+        }, { kanbanId: id });
         await expect(page.getByTestId("kanban-config")).toHaveCount(0);
-        await expect(page.getByTestId("kanban-source-table-link")).toHaveAttribute("href", new RegExp(tableB.id));
-        expect((await readKanbans(page))[0]).toMatchObject({ name: "Binding board", sourceTableId: tableB.id });
+        expect((await readKanbans(page))[0]).toMatchObject({
+            name: "Binding board",
+            query: "SELECT id, title, status, detail FROM tasks_b ORDER BY id",
+        });
 
         await page.getByRole("button", { name: "Configure" }).click();
         await page.getByTestId("kanban-config").getByLabel("Name").fill("Stale replacement draft");
-        await peer.evaluate(({ kanbanId, sourceTableId }) => {
+        await peer.evaluate(({ kanbanId }) => {
             const doc = (globalThis as any).__YJS_STORE__.yjsClient.getProject().ydoc;
             const registry = doc.getMap("yjsKanbans");
             const prior = registry.get(kanbanId);
             const replacement = new prior.constructor();
             replacement.set("name", "Binding board");
-            replacement.set("sourceTableId", sourceTableId);
             replacement.set("query", "SELECT id, title, status, detail FROM tasks_b ORDER BY id");
             replacement.set("groupField", "status");
             replacement.set("titleField", "title");
             replacement.set("detailFields", []);
             replacement.set("laneOrder", []);
             doc.transact(() => registry.set(kanbanId, replacement));
-        }, { kanbanId: id, sourceTableId: tableB.id });
+        }, { kanbanId: id });
         await expect(page.getByTestId("kanban-config")).toHaveCount(0);
-        await expect(page.getByTestId("kanban-source-table-link")).toHaveAttribute("href", new RegExp(tableB.id));
-        expect((await readKanbans(page))[0]).toMatchObject({ name: "Binding board", sourceTableId: tableB.id });
+        expect((await readKanbans(page))[0]).toMatchObject({
+            name: "Binding board",
+            query: "SELECT id, title, status, detail FROM tasks_b ORDER BY id",
+        });
     },
 );

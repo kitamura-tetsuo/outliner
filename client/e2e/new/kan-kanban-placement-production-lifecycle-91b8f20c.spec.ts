@@ -113,22 +113,21 @@ test.describe("FTR-91b8f20c: Kanban production placement lifecycle", () => {
     });
 
     for (const policy of ["keep references", "remove direct references"] as const) {
-        test(`applies the Table ${policy} policy to Kanban through its deletion dialog`, async ({ page }) => {
+        test(`preserves SQL-dependent Kanbans under the Table ${policy} policy`, async ({ page }) => {
             await createBoardOnPage(page);
             const table = objectRow(page, "table");
             await table.locator('[data-testid^="object-open-"]').click();
             await page.getByRole("button", { name: "Delete table" }).click();
             const dialog = page.getByRole("dialog", { name: /Delete table/ });
-            await expect(dialog).toContainText("Kanbans sourced from this table (1)");
+            await expect(dialog).toContainText("Kanbans sourced from this table (0)");
+            await expect(dialog).toContainText("Indirect SQL dependencies (1)");
             await dialog.getByRole("button", { name: `Delete table and ${policy}` }).click();
             await expect(dialog).toHaveCount(0);
 
             await openObjects(page);
             await expect(objectRow(page, "table")).toHaveCount(0);
-            await expect(objectRow(page, "kanban")).toHaveCount(policy === "keep references" ? 1 : 0);
-            if (policy === "keep references") {
-                await expect(objectRow(page, "kanban").locator('[data-testid^="object-placement-"]')).toHaveCount(1);
-            }
+            await expect(objectRow(page, "kanban")).toHaveCount(1);
+            await expect(objectRow(page, "kanban").locator('[data-testid^="object-placement-"]')).toHaveCount(1);
         });
     }
 });

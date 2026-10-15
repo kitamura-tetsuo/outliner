@@ -1,6 +1,6 @@
 <script lang="ts">
 import { onDestroy, onMount } from "svelte";
-import type * as Y from "yjs";
+import * as Y from "yjs";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import {
     destroyKanbanUndoManager,
