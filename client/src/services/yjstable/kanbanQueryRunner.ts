@@ -56,6 +56,7 @@ export interface KanbanRunnerOptions {
 export class KanbanQueryRunner {
     private listeners = new Set<(p: KanbanProjection) => void>();
     private projection: KanbanProjection = { status: "loading", lanes: [], columns: [], current: false };
+    private pendingProjection: Promise<void> = Promise.resolve();
     private session: ProjectSelectSession;
     private unsub?: () => void;
     private registryObserver: (e: Y.YMapEvent<Y.Map<unknown>>) => void;
@@ -66,6 +67,7 @@ export class KanbanQueryRunner {
             projectId: options.projectId ?? options.projectDoc.guid,
             query,
             connect: options.connect,
+            registry: options.registry,
             requireExplicitAliases: false,
         });
         this.registryObserver = e => {
@@ -91,7 +93,9 @@ export class KanbanQueryRunner {
         this.unsub = this.session.subscribe(s => this.consume(s));
     }
     async runQueryNow() {
-        return await this.session.runNow();
+        const evidence = await this.session.runNow();
+        if (evidence) await this.pendingProjection;
+        return evidence;
     }
     dispose() {
         this.unsub?.();
@@ -123,7 +127,7 @@ export class KanbanQueryRunner {
         if (state.status === "error") {
             return this.publish({ status: "error", message: state.message, lanes: [], columns: [], current: false });
         }
-        if (state.status === "success") void this.project(state.evidence);
+        if (state.status === "success") this.pendingProjection = this.project(state.evidence);
     }
     private async project(e: ProjectSelectEvidence) {
         const s = getKanban(this.options.projectDoc, this.options.kanbanId);

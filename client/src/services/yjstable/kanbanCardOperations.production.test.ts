@@ -93,7 +93,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
-    it("refuses every readonly saved-SELECT family and wrong-table bare ids", async () => {
+    it("refuses readonly saved-SELECT families", async () => {
         const c = await fixture();
         for (
             const query of [
@@ -101,7 +101,6 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
                 "SELECT id, max(title) AS title, status FROM tasks GROUP BY id, status",
                 "SELECT DISTINCT id, title, status FROM tasks",
                 "SELECT id, upper(title) AS title, status FROM tasks",
-                "SELECT id, title, status FROM other_tasks",
             ]
         ) {
             updateKanban(c.projectDoc, c.kanbanId, { query });
@@ -113,6 +112,19 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
             }
             expect(c.table.data.get("one")?.get("title")).toBe("Beta");
         }
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("routes a bare id to the actual supplier instead of the legacy primary Table", async () => {
+        const c = await fixture("SELECT id, title, status FROM other_tasks");
+        const card = c.projection.lanes.flatMap(lane => lane.cards)[0]!;
+        const operation = c.controller();
+
+        expect(operation.begin(card, "title")).toBe(true);
+        await expect(operation.commit("Edited actual source")).resolves.toMatchObject({ ok: true });
+        expect(c.other.data.get("one")?.get("title")).toBe("Edited actual source");
+        expect(c.table.data.get("one")?.get("title")).toBe("Beta");
         c.runner.dispose();
         c.session.dispose();
     });

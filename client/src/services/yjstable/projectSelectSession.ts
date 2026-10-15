@@ -9,7 +9,7 @@ import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { type CatalogRuntimeState } from "./catalogRuntime";
 import { TableSqlError, toTableSqlError } from "./pgliteService";
-import type { RelationEvidence, RelationProvider } from "./relationProvider";
+import type { RelationEvidence, RelationProvider, RelationRegistryPort } from "./relationProvider";
 import { projectSchemaName } from "./sqlNames";
 import { getTableRegistry } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
@@ -66,12 +66,14 @@ export function createProjectSelectSession(options: {
     query: string;
     requireExplicitAliases?: boolean;
     connect?: TableDocConnector;
+    registry?: RelationRegistryPort;
 }): ProjectSelectSession {
     const engine = createTableEngineSession(options);
     return new ProjectSelectSessionImpl(
         options.projectDoc,
         projectSchemaName(options.projectId),
         engine,
+        options.registry,
         options.query,
         options.requireExplicitAliases ?? true,
     );
@@ -96,6 +98,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         private readonly projectDoc: Y.Doc,
         private readonly pgSchema: string,
         private readonly engine: TableEngineSession,
+        private readonly registry: RelationRegistryPort | undefined,
         query: string,
         private readonly requireExplicitAliases: boolean,
     ) {
@@ -158,7 +161,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
     }
 
     resolveRelation(sqlName: string): Promise<RelationProvider | undefined> {
-        return this.engine.resolveRelation(sqlName);
+        return this.registry?.resolveRelation?.(sqlName) ?? this.engine.resolveRelation(sqlName);
     }
 
     async runNow(): Promise<ProjectSelectEvidence | undefined> {
@@ -262,7 +265,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
             this.observeDependency(name, existing);
             return existing;
         }
-        const provider = await this.engine.resolveRelation(name);
+        const provider = await this.resolveRelation(name);
         if (!provider) return undefined;
         this.dependencyProviders.set(name, provider);
         this.observeDependency(name, provider);
