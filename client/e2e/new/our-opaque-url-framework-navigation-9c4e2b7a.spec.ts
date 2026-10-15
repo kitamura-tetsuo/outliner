@@ -28,7 +28,8 @@ async function waitForServer(origin: string, pathname: string): Promise<void> {
 }
 
 function createFixtureRoot(): string {
-    const fixtureRoot = mkdtempSync(path.join(tmpdir(), "outliner-opaque-url-"));
+    const fixtureWorkspace = mkdtempSync(path.join(tmpdir(), "outliner-opaque-url-"));
+    const fixtureRoot = path.join(fixtureWorkspace, "client");
     cpSync(clientRoot, fixtureRoot, {
         recursive: true,
         filter: source => {
@@ -38,6 +39,9 @@ function createFixtureRoot(): string {
             );
         },
     });
+    // Preserve the repository layout because client source files import the
+    // shared package through paths relative to the client directory.
+    symlinkSync(path.resolve(clientRoot, "../shared"), path.join(fixtureWorkspace, "shared"), "dir");
     symlinkSync(path.join(clientRoot, "node_modules"), path.join(fixtureRoot, "node_modules"), "dir");
     return fixtureRoot;
 }
@@ -95,7 +99,7 @@ test.describe("language switch framework navigation", () => {
 
     test.afterAll(async () => {
         await stopFixture(server);
-        if (fixtureRoot) rmSync(fixtureRoot, { recursive: true, force: true });
+        if (fixtureRoot) rmSync(path.dirname(fixtureRoot), { recursive: true, force: true });
     });
 
     test("uses SvelteKit navigation for the supported language switch", async ({ page }) => {
@@ -119,7 +123,7 @@ test.describe("debug bridge framework navigation", () => {
 
     test.afterAll(async () => {
         await stopFixture(server);
-        if (fixtureRoot) rmSync(fixtureRoot, { recursive: true, force: true });
+        if (fixtureRoot) rmSync(path.dirname(fixtureRoot), { recursive: true, force: true });
     });
 
     test("navigates an encoded opaque URL from a nested route under /app", async ({ page }) => {
