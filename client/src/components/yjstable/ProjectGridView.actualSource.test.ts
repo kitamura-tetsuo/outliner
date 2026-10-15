@@ -86,4 +86,14 @@ describe("ProjectGridView actual source", () => {
 
         expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId);
     });
+
+    it("mounts the Table-owned repair controls from a single registered SQL dependency", async () => {
+        const projectDoc = new Y.Doc({ guid: "project-grid-schema-repair" });
+        const tableId = createTable(projectDoc, "Unconfigured", "unconfigured");
+        const gridId = createGrid(projectDoc, undefined, { query: "SELECT * FROM unconfigured" });
+
+        render(ProjectGridView, { props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc } });
+
+        expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId);
+    });
 });

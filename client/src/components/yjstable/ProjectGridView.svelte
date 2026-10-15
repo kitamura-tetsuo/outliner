@@ -11,6 +11,7 @@ import {
     type ProjectSelectState,
 } from "../../services/yjstable/projectSelectSession";
 import { getTableHandles, listTables, type TableHandles } from "../../services/yjstable/tableDocs";
+import { rewriteTableQuerySql } from "../../services/yjstable/tableSqlRewrite";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 
@@ -56,7 +57,28 @@ function refresh() {
     hidden = settings.hidden;
     widths = settings.widths;
     types = settings.types;
+    if (!actualSource) resolveQueryDependencySource(next);
     session?.setQuery(next);
+}
+
+function resolveQueryDependencySource(nextQuery: string) {
+    let dependencies: string[];
+    try {
+        dependencies = rewriteTableQuerySql(nextQuery, new Map()).actualRelationDependencies;
+    } catch {
+        return;
+    }
+    if (dependencies.length !== 1) return;
+    const entry = listTables(projectDoc).find(table => table.sqlName === dependencies[0]);
+    if (!entry) return;
+    const handles = getTableHandles(projectDoc, entry.tableId);
+    if (!handles) return;
+    actualSource = {
+        handles,
+        name: entry.name || entry.sqlName,
+        sqlName: entry.sqlName,
+        href: projectName ? resolve(projectTablePath(projectName, entry.tableId)) : undefined,
+    };
 }
 
 const observer = () => refresh();
