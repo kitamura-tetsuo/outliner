@@ -35,6 +35,29 @@ describe("source-aware Grid command execution", { timeout: 30_000 }, () => {
         }
     });
 
+    it("clears a non-null text cell to the empty string through the guarded boundary", async () => {
+        const doc = new Y.Doc({ guid: "grid-command-clear-text" });
+        const table = createTestTable(
+            doc,
+            "items",
+            "CREATE TABLE items (id TEXT PRIMARY KEY, title TEXT NOT NULL)",
+            "one",
+            { title: "Alpha" },
+        );
+        const harness = await createMutationHarness(doc, "SELECT id, title FROM items");
+        const target = { row: harness.evidence().rows[0]!, rowIndex: 0, recordId: "one" };
+        try {
+            const outcome = await executeGridWrites(
+                { boundary: harness.boundary, rowTargets: new Map([["one", target]]) },
+                [{ target: { rowTarget: target, columnId: "title" }, value: "" }],
+            );
+            expect(outcome.status).toBe("applied");
+            expect(table.handles.data.get("one")?.get("title")).toBe("");
+        } finally {
+            harness.dispose();
+        }
+    });
+
     it("refuses the complete plan when authority changes during provider resolution", async () => {
         const doc = new Y.Doc({ guid: "grid-command-stale" });
         const b = createTestTable(doc, "b", "CREATE TABLE b (id TEXT PRIMARY KEY, value TEXT)", "one", {

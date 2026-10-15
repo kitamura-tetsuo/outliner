@@ -329,7 +329,9 @@ function assertProviderIdentity(provider: RelationProvider, source: ProvenanceRe
 }
 
 function validateValue(value: unknown, field: TableColumnSchema): void {
-    if ((value === null || value === undefined || value === "") && !field.isNullable) {
+    // Empty text is the schema-valid cleared value for a NOT NULL text field.
+    // Only SQL NULL (or a missing value) violates nullability here.
+    if ((value === null || value === undefined) && !field.isNullable) {
         refuse(`Column "${field.name}" does not accept an empty value`);
     }
     try {
