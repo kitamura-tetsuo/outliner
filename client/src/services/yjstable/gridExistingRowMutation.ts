@@ -3,7 +3,13 @@ import type { GridMetadataResolution, GridPhysicalColumnMetadata } from "./gridM
 import type { ProjectQueryProvenance, ProvenanceRelation } from "./projectQueryProvenance";
 import { isProjectQueryProvenanceCurrent } from "./projectQueryProvenance";
 import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelectSession";
-import { assertWriteAllowed, type RelationProvider, type RelationValue, RelationWriteError } from "./relationProvider";
+import {
+    assertWriteAllowed,
+    type RelationProvider,
+    type RelationValue,
+    type RelationWrite,
+    RelationWriteError,
+} from "./relationProvider";
 import type { TableColumnSchema } from "./schemaIntrospection";
 import { getTableSqlName } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
@@ -28,7 +34,17 @@ export interface GridExistingRowMutationBoundary {
     captureUpdate(rowIndex: number, outputColumn: string, value: RelationValue): GridMutationIntent;
     captureDelete(rowIndex: number): GridMutationIntent;
     commit(intent: GridMutationIntent): Promise<GridMutationResult>;
+    /**
+     * Revalidates and resolves a complete command before its first effect,
+     * then awaits every provider write in command order.
+     */
+    commitMany(intents: readonly GridMutationIntent[]): Promise<GridMutationBatchResult>;
     dispose(): void;
+}
+
+export interface GridMutationBatchResult {
+    applied: GridMutationResult[];
+    failed?: { intent: GridMutationIntent; error: unknown; };
 }
 
 export interface GridExistingRowMutationOptions {
@@ -163,6 +179,74 @@ export function createGridExistingRowMutationBoundary(
                 };
             } finally {
                 if (provider) engine.releaseRelation(provider);
+            }
+        },
+        async commitMany(intents) {
+            const operations = intents.map(intent => {
+                if (!captured.has(intent as object)) refuse("The mutation intent was not created by this boundary");
+                const operation = intent as CapturedIntent;
+                assertCurrent(options, operation);
+                return operation;
+            });
+            const resolved: Array<
+                {
+                    operation: CapturedIntent;
+                    provider: RelationProvider;
+                    write: Extract<RelationWrite, { op: "UPDATE" | "DELETE"; }>;
+                }
+            > = [];
+            try {
+                // Provider lookup may be asynchronous. Finish every lookup and
+                // live-target check before allowing the first write, so a
+                // rejected target cannot leave a paste or bulk edit partial.
+                for (const operation of operations) {
+                    const provider = await engine.resolveRelation(operation.source.sqlName);
+                    if (!provider) refuse(`The source relation "${operation.source.sqlName}" is unavailable`);
+                    assertCurrent(options, operation);
+                    assertProviderIdentity(provider, operation.source, options.projectDoc);
+                    const write = operation.operation === "UPDATE"
+                        ? {
+                            op: "UPDATE" as const,
+                            rowId: operation.rowId,
+                            column: operation.physical!.physicalColumn,
+                            value: operation.value!,
+                        }
+                        : { op: "DELETE" as const, rowId: operation.rowId };
+                    assertWriteAllowed(provider.capabilities, write, provider.sqlName);
+                    if (operation.operation === "DELETE" && provider.capabilities.delete?.requiresDisposition) {
+                        refuse(`DELETE from "${provider.sqlName}" requires a user disposition`);
+                    }
+                    if (!provider.assertExistingRowWriteAllowed) {
+                        refuse(`Relation "${provider.sqlName}" cannot prove its live write target`);
+                    }
+                    provider.assertExistingRowWriteAllowed(write);
+                    resolved.push({ operation, provider, write });
+                }
+
+                const applied: GridMutationResult[] = [];
+                for (const entry of resolved) {
+                    try {
+                        // The complete batch was revalidated above immediately
+                        // before this effect phase. Its own first write may
+                        // invalidate SELECT materialization; that is not an
+                        // intervening external authority change and must not
+                        // cancel the remaining captured targets.
+                        assertProviderIdentity(entry.provider, entry.operation.source, options.projectDoc);
+                        entry.provider.assertExistingRowWriteAllowed!(entry.write);
+                        await entry.provider.applyWrite(entry.write);
+                        captured.delete(entry.operation);
+                        applied.push({
+                            source: entry.operation.source,
+                            rowId: entry.operation.rowId,
+                            physicalColumn: entry.operation.physical?.physicalColumn,
+                        });
+                    } catch (error) {
+                        return { applied, failed: { intent: entry.operation, error } };
+                    }
+                }
+                return { applied };
+            } finally {
+                for (const { provider } of resolved) engine.releaseRelation(provider);
             }
         },
         dispose() {

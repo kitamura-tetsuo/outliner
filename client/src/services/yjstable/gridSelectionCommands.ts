@@ -50,6 +50,8 @@ export function classifySelectionKind(regions: readonly GridSelectionRegion[]): 
 /** How a selected row is written back: a plain Table record, or a unioned/relation row addressed by source. */
 export interface GridCommandRowTarget {
     row: Record<string, unknown>;
+    /** Exact occurrence in the completed result; ids may repeat across joins. */
+    rowIndex?: number;
     recordId?: string;
     source?: { sourceKind: string; sourceId: string; };
 }
@@ -78,6 +80,8 @@ export interface GridCommandContext {
     /** Revalidated at the final write boundary for delayed bare-id actions. */
     canMutateBareId?: () => boolean;
     writeBareCell?: (recordId: string, columnId: string, value: TableRecordValue) => void;
+    /** Source rows are executed through the guarded boundary, including capability checks. */
+    guardedSourceWrites?: boolean;
 }
 
 export interface GridWritableCellTarget {
@@ -264,6 +268,16 @@ function clearedValueFor(
     return ctx.valueKindOf(columnId) === "text" ? "" : undefined;
 }
 
+export function planSelectionClearWrites(
+    selection: GridSelection,
+    ctx: GridCommandContext,
+): Array<{ target: GridWritableCellTarget; value: TableRecordValue; }> {
+    return summarizeSelection(selection, ctx).writableTargets.flatMap(target => {
+        const value = clearedValueFor(ctx, target.columnId);
+        return value === undefined ? [] : [{ target, value }];
+    });
+}
+
 /**
  * Clears every writable selected cell's content (the default Delete/
  * Backspace behavior outside a `rows` selection). Unlike `applyValueToSelection`,
@@ -273,11 +287,7 @@ function clearedValueFor(
  * other selected cell from clearing too.
  */
 export function clearSelectionToNull(selection: GridSelection, ctx: GridCommandContext): GridCommandOutcome {
-    const { writableTargets } = summarizeSelection(selection, ctx);
-    const clearable = writableTargets.flatMap(target => {
-        const value = clearedValueFor(ctx, target.columnId);
-        return value === undefined ? [] : [{ target, value }];
-    });
+    const clearable = planSelectionClearWrites(selection, ctx);
     if (clearable.length === 0) return { applied: false, reason: "no-writable-cells" };
     const idEntries = clearable.filter(entry => entry.target.rowTarget.recordId !== undefined);
     const sourceEntries = clearable.filter(entry => entry.target.rowTarget.source !== undefined);
@@ -346,7 +356,9 @@ export function planGridDeleteCommand(selection: GridSelection, ctx: GridCommand
         // keyboard-driven command has no prompt for, so such a row is simply
         // not a target -- mirroring the single-row delete button, which was
         // never shown for source-addressed rows either.
-        const targets = collectSelectedRowTargets(selection, ctx).filter(target => target.recordId !== undefined);
+        const targets = collectSelectedRowTargets(selection, ctx).filter(target =>
+            target.recordId !== undefined || (ctx.guardedSourceWrites === true && target.source !== undefined)
+        );
         return { kind: "remove-rows", targets };
     }
     return { kind: "clear-cells", outcome: clearSelectionToNull(selection, ctx) };

@@ -3,6 +3,7 @@ import { createGridExistingRowMutationBoundary } from "./gridExistingRowMutation
 import { createGridMetadataResolver, type GridMetadataResolution } from "./gridMetadataResolver";
 import { analyzeProjectQueryProvenance, type ProjectQueryProvenance } from "./projectQueryProvenance";
 import { createProjectSelectSession, type ProjectSelectEvidence } from "./projectSelectSession";
+import type { RelationProvider } from "./relationProvider";
 import { addRecord, createTable, getTableHandles, setSchemaText, type TableRecordValue } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector } from "./tableEngine";
 
@@ -26,7 +27,11 @@ export function createTestTable(
     return { tableId, handles };
 }
 
-export async function createMutationHarness(doc: Y.Doc, query: string, options: { gatedResolution?: boolean; } = {}) {
+export async function createMutationHarness(
+    doc: Y.Doc,
+    query: string,
+    options: { gatedResolution?: boolean; failWriteNumber?: number; } = {},
+) {
     const session = createProjectSelectSession({
         projectDoc: doc,
         query,
@@ -38,9 +43,11 @@ export async function createMutationHarness(doc: Y.Doc, query: string, options: 
     let provenance: ProjectQueryProvenance | undefined;
     let metadata: GridMetadataResolution | undefined;
     let allowed = true;
-    const relationEngine = options.gatedResolution
+    const relationEngine = options.gatedResolution || options.failWriteNumber !== undefined
         ? createTableEngineSession({ projectDoc: doc, connect: localConnector })
         : undefined;
+    let writeNumber = 0;
+    const wrappedProviders = new WeakMap<object, RelationProvider>();
     let releaseResolution: (() => void) | undefined;
     let resolutionStarted: (() => void) | undefined;
     const resolutionPending = options.gatedResolution
@@ -77,9 +84,18 @@ export async function createMutationHarness(doc: Y.Doc, query: string, options: 
                 async resolveRelation(sqlName) {
                     resolutionStarted?.();
                     await resolutionGate;
-                    return await relationEngine.resolveRelation(sqlName);
+                    const provider = await relationEngine.resolveRelation(sqlName);
+                    if (!provider || options.failWriteNumber === undefined) return provider;
+                    const wrapped = Object.create(provider) as typeof provider;
+                    wrapped.applyWrite = async (write) => {
+                        writeNumber++;
+                        if (writeNumber === options.failWriteNumber) throw new Error("controlled provider failure");
+                        await provider.applyWrite(write);
+                    };
+                    wrappedProviders.set(wrapped, provider);
+                    return wrapped;
                 },
-                releaseRelation: provider => relationEngine.releaseRelation(provider),
+                releaseRelation: provider => relationEngine.releaseRelation(wrappedProviders.get(provider) ?? provider),
             }
             : undefined,
     });

@@ -19,6 +19,7 @@ acceptance:
 - An empty clipboard is a valid one-blank-cell source and can clear a target cell, the same as an explicit blank paste
 - Ctrl/Cmd+C and Ctrl/Cmd+V trigger Grid copy/paste from the keyboard, standing down while an individual cell's own text editor owns the keystroke
 - Only writable target cells (a writable row and an editable column) are mutation candidates; computed/read-only/non-writable cells are silently excluded, never written
+- A guarded paste resolves and revalidates every source-addressed physical target before its first write and reports any later provider failure as partial
 - Row and column selections copy the selected visible Grid result cells in their logical order
 - The Grid's own clipboard ownership boundary (`data-foreign-editor`) keeps the outliner's document-level item clipboard from double-handling a Grid copy/paste
 - The touch selection toolbar exposes Copy and Paste, calling the exact same functions as the keyboard shortcuts
@@ -28,3 +29,4 @@ tests:
 - client/e2e/tables/grd-grid-clipboard-paste-2f474991.spec.ts
 - client/src/components/yjstable/TableGrid.clipboard.test.ts
 - client/src/services/yjstable/gridClipboard.test.ts
+- client/src/services/yjstable/gridCommandExecution.test.ts

@@ -57,6 +57,10 @@ import {
     createGridInsertController,
     type GridInsertOutcome,
 } from "../../services/yjstable/gridInsertController";
+import { createProjectSelectSession, type ProjectSelectEvidence } from "../../services/yjstable/projectSelectSession";
+import { analyzeProjectQueryProvenance, type ProjectQueryProvenance } from "../../services/yjstable/projectQueryProvenance";
+import { createGridMetadataResolver, type GridMetadataResolution } from "../../services/yjstable/gridMetadataResolver";
+import { createGridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
 
 const logger = getLogger("YjsTableView");
 
@@ -178,6 +182,8 @@ const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
         if (nextQuery !== observedQuery) {
             queryExecution = undefined;
             insertController.setQuery(nextQuery);
+            guardedSelect.setQuery(nextQuery);
+            void refreshGuardedMutationAuthority();
             revalidateMutationAuthority();
         }
         observedQuery = nextQuery;
@@ -192,6 +198,7 @@ const schemaTextObserver = () => {
     // replay; an actual intervening schema value still revokes authority.
     if (nextSchemaSql !== observedSchemaSql) {
         queryExecution = undefined;
+        void refreshGuardedMutationAuthority();
         revalidateMutationAuthority();
     }
     observedSchemaSql = nextSchemaSql;
@@ -228,6 +235,37 @@ const clipboardSource: TableClipboardSource = {
 // handles/projectDoc are static within the component lifecycle due to `{#key}`
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
+// This component is remounted when the Project identity changes.
+// svelte-ignore state_referenced_locally
+const guardedSelect = createProjectSelectSession({ projectDoc, projectId, query: observedQuery });
+// svelte-ignore state_referenced_locally
+const guardedMetadataResolver = createGridMetadataResolver({ projectDoc, projectId });
+let guardedEvidence: ProjectSelectEvidence | undefined;
+let guardedProvenance: ProjectQueryProvenance | undefined;
+let guardedMetadata: GridMetadataResolution | undefined;
+async function refreshGuardedMutationAuthority(): Promise<void> {
+    const evidence = await guardedSelect.runNow();
+    if (!evidence) return;
+    const provenance = analyzeProjectQueryProvenance(evidence);
+    const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
+    if (!guardedSelect.isEvidenceCurrent(evidence)) return;
+    guardedEvidence = evidence;
+    guardedProvenance = provenance;
+    guardedMetadata = metadata;
+}
+const mutationBoundary = createGridExistingRowMutationBoundary({
+    // svelte-ignore state_referenced_locally
+    projectDoc,
+    // svelte-ignore state_referenced_locally
+    projectId,
+    session: guardedSelect,
+    evidence: () => guardedEvidence,
+    provenance: () => guardedProvenance,
+    metadata: () => guardedMetadata,
+    canWrite: () => true,
+    allows: () => true,
+    relationSession: session,
+});
 // This component is remounted for a changed Project/Grid identity.
 // svelte-ignore state_referenced_locally
 const insertController = createGridInsertController({
@@ -320,11 +358,15 @@ onMount(() => {
             },
         });
         runner.start();
+        await refreshGuardedMutationAuthority();
         adapterReady = true;
     })();
 });
 
 onDestroy(() => {
+    mutationBoundary.dispose();
+    guardedMetadataResolver.dispose();
+    guardedSelect.dispose();
     mountedGrid.entry.unobserveDeep(gridMirrorObserver);
     mountedHandles.schemaText.unobserve(schemaTextObserver);
     unsubscribeAdapter?.();
@@ -471,6 +513,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {confirmRowDelete}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
+                    {mutationBoundary}
                     {isReadOnly}
                     onAddRow={async () => {
                         insertOutcome = await insertController.submit();
