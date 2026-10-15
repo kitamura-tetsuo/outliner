@@ -907,7 +907,8 @@ export function registerDemoTables(
         entry.set("doc", new Y.Doc({ guid: `demo--${slug}--table--${template.tableId}`, autoLoad: true }));
 
         // One Grid per demo Table, seeded alongside it. Outline items bind to
-        // this Grid; the Grid points at the Table for schema+data.
+        // this Grid; the legacy source link identifies its browser, while Add
+        // row resolves the effective supplier from this current query.
         const gridId = demoGridIdFor(template.tableId);
         const gridEntry = new Y.Map<unknown>();
         gridEntry.set("sourceTableId", template.tableId);
