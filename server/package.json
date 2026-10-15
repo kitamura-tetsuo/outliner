@@ -25,11 +25,11 @@
     },
     "dependencies": {
         "@dotenvx/dotenvx": "^2.34.2",
-        "@electric-sql/pglite": "^0.5.8",
+        "@electric-sql/pglite": "^0.5.9",
         "@google-cloud/firestore": "^9.3.1",
         "@google-cloud/secret-manager": "^7.1.1",
-        "@hocuspocus/extension-logger": "^4.7.0",
-        "@hocuspocus/extension-sqlite": "^4.7.0",
+        "@hocuspocus/extension-logger": "^4.7.1",
+        "@hocuspocus/extension-sqlite": "^4.7.1",
         "@hocuspocus/server": "^4.2.0",
         "@modelcontextprotocol/node": "2.1.1",
         "@modelcontextprotocol/sdk": "1.32.1",
@@ -58,7 +58,7 @@
         "zod": "^4.6.6"
     },
     "devDependencies": {
-        "@hocuspocus/provider": "^4.7.0",
+        "@hocuspocus/provider": "^4.7.1",
         "@jest/globals": "^30.2.0",
         "@types/better-sqlite3": "^9.6.0",
         "@types/body-parser": "^1.19.6",
