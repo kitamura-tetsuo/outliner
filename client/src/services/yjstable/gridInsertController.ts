@@ -1,11 +1,11 @@
 import type * as Y from "yjs";
 import { type InsertTargetMode, resolveInsertTarget } from "./insertTargetResolver";
 import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
-import { createProjectSelectSession, type ProjectSelectSession } from "./projectSelectSession";
+import { createProjectSelectSession } from "./projectSelectSession";
 import type { RelationProvider, RelationValue } from "./relationProvider";
 import type { TableColumnSchema } from "./schemaIntrospection";
 import { getTableSqlName } from "./tableDocs";
-import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
+import { createTableEngineSession, type TableDocConnector } from "./tableEngine";
 
 export type GridInsertOutcome =
     | { status: "inserted"; targetId: string; targetSqlName: string; }
