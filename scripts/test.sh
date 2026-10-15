@@ -161,6 +161,11 @@ normalize_to_client() {
 infer_test_type() {
   local rel="$1"
 
+  if [[ "$rel" == *.base-spec.ts ]]; then
+    echo "base"
+    return 0
+  fi
+
   if [[ "$rel" == e2e || "$rel" == e2e/* ]]; then
     echo "e2e"
     return 0
@@ -218,6 +223,9 @@ echo "Detected test type: $detected_type"
 cd "$CLIENT_DIR"
 
 case "$detected_type" in
+  base)
+    npm run test:base -- "${normalized_paths[@]}" "${pass_through[@]}"
+    ;;
   unit)
     npm run test:unit -- "${normalized_paths[@]}" "${pass_through[@]}" --reporter=default --reporter=json --outputFile="${LOGS_DIR}/unit-${TIMESTAMP}.json"
     ;;
