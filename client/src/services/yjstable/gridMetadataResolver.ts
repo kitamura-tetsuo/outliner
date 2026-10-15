@@ -36,7 +36,7 @@ export interface GridMetadataResolver {
     resolve(
         evidence: ProjectSelectEvidence,
         provenance: ProjectQueryProvenance,
-        session: Pick<ProjectSelectSession, "isEvidenceCurrent">,
+        session: Pick<ProjectSelectSession, "isEvidenceCurrent" | "isProjectContext">,
     ): Promise<GridMetadataResolution>;
     dispose(): void;
 }
@@ -65,7 +65,10 @@ export function createGridMetadataResolver(options: {
             const request = ++generation;
             release();
             const base = resultEvidence(evidence);
-            if (disposed || !current(evidence, provenance, session)) {
+            if (
+                disposed || !session.isProjectContext(options.projectDoc, options.projectId)
+                || !current(evidence, provenance, session)
+            ) {
                 return unavailable(base, "The query, catalog, or source evidence is no longer current");
             }
             if (evidence.sources.length === 0) {
