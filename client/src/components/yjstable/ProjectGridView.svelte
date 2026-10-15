@@ -3,13 +3,17 @@ import { onDestroy, onMount } from "svelte";
 import type * as Y from "yjs";
 import { projectTablePath } from "../../lib/managementPaths";
 import { getGridQuery, readGridComponents, type GridHandles } from "../../services/yjstable/gridDocs";
+import { analyzeProjectQueryProvenance } from "../../services/yjstable/projectQueryProvenance";
 import { resolvePath } from "../../utils/pathUtils";
 import {
     createProjectSelectSession,
     type ProjectSelectSession,
     type ProjectSelectState,
 } from "../../services/yjstable/projectSelectSession";
+import { createTableEngineSession, type AcquiredTable } from "../../services/yjstable/tableEngine";
+import { listTables } from "../../services/yjstable/tableDocs";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
+import YjsTableView from "./YjsTableView.svelte";
 
 interface Props {
     grid: GridHandles;
@@ -25,6 +29,20 @@ let state = $state<ProjectSelectState>({ status: "loading" });
 let showDefinition = $state(false);
 let session: ProjectSelectSession | undefined;
 let unsubscribe: (() => void) | undefined;
+// This component is mounted under a project/Grid identity key; these inputs
+// are therefore intentionally fixed for the lifetime of the engine session.
+// svelte-ignore state_referenced_locally
+const mountedProjectDoc = projectDoc;
+// svelte-ignore state_referenced_locally
+const mountedProjectId = projectId;
+const engine = createTableEngineSession({ projectDoc: mountedProjectDoc, projectId: mountedProjectId });
+let actualSource = $state<{
+    acquired: AcquiredTable;
+    name: string;
+    sqlName: string;
+    href?: string;
+} | undefined>();
+let sourceResolution = 0;
 let columns = $state<string[]>([]);
 let labels = $state<Record<string, string | undefined>>({});
 let hidden = $state<Record<string, boolean>>({});
@@ -50,10 +68,32 @@ const displayColumns = $derived([
     ...(evidence?.columns.map(item => item.name).filter(column => !columns.includes(column) && !hidden[column]) ?? []),
 ]);
 
+async function resolveActualSource(next: ProjectSelectState) {
+    const generation = ++sourceResolution;
+    actualSource = undefined;
+    if (next.status !== "success") return;
+    const proof = analyzeProjectQueryProvenance(next.evidence);
+    const source = proof.status === "proven" ? proof.bareIdSource : undefined;
+    if (!source || source.kind !== "table" || !session?.isEvidenceCurrent(next.evidence)) return;
+    const acquired = await engine.acquire(source.id);
+    if (generation !== sourceResolution || !acquired || !session?.isEvidenceCurrent(next.evidence)) return;
+    const entry = listTables(projectDoc).find(table => table.tableId === source.id);
+    if (!entry || entry.sqlName !== source.sqlName) return;
+    actualSource = {
+        acquired,
+        name: entry.name || source.sqlName,
+        sqlName: source.sqlName,
+        href: projectName ? resolvePath(projectTablePath(projectName, source.id)) : undefined,
+    };
+}
+
 onMount(() => {
     refresh();
     session = createProjectSelectSession({ projectDoc, projectId, query });
-    unsubscribe = session.subscribe(next => state = next);
+    unsubscribe = session.subscribe(next => {
+        state = next;
+        void resolveActualSource(next);
+    });
     grid.entry.observeDeep(observer);
 });
 
@@ -61,9 +101,24 @@ onDestroy(() => {
     grid.entry.unobserveDeep(observer);
     unsubscribe?.();
     session?.dispose();
+    engine.dispose();
 });
 </script>
 
+{#if actualSource}
+    {#key `${actualSource.acquired.handles.tableId}:${actualSource.acquired.handles.doc.guid}`}
+        <YjsTableView
+            {grid}
+            handles={actualSource.acquired.handles}
+            {projectDoc}
+            {projectId}
+            tableName={actualSource.name}
+            sqlName={actualSource.sqlName}
+            sourceTableHref={actualSource.href}
+            {isReadOnly}
+        />
+    {/key}
+{:else}
 <div class="project-grid-view" data-testid="yjs-table-view" data-grid-id={grid.gridId}>
     <div class="toolbar">
         <strong>{String(grid.entry.get("name") ?? "Grid")}</strong>
@@ -114,6 +169,7 @@ onDestroy(() => {
         <p class="readonly">This result is readable and copyable. Editing is unavailable until its physical source can be proven.</p>
     {/if}
 </div>
+{/if}
 
 <style>
 .project-grid-view { display:flex; flex-direction:column; gap:8px; width:100%; }

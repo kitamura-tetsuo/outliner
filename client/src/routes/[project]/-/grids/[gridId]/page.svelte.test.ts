@@ -176,8 +176,12 @@ describe("standalone grid route", () => {
         expect(screen.queryByTestId("grid-view-stub")).toBeNull();
     });
 
-    it("still gates a non-public project behind sign-in", async () => {
-        createGrid(projectDoc, "demo-table-sales", { gridId: "grid-a", name: "Open sales" });
+    it("gates a query-only Grid in a non-public project behind sign-in", async () => {
+        createGrid(projectDoc, undefined, {
+            gridId: "grid-a",
+            name: "Private query",
+            query: "SELECT 1 AS value",
+        });
         setPage({ params: { project: "private-project", gridId: "grid-a" } });
 
         render(GridStandalonePage);

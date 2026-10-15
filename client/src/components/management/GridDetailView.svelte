@@ -251,16 +251,16 @@
                 The specified grid does not exist in project "{projectName}".
             </p>
         </div>
+    {:else if !canAccess}
+        <div class="rounded-md bg-blue-50 p-4">
+            <h3 class="text-sm font-medium text-blue-800">Login required</h3>
+            <p class="mt-2 text-sm text-blue-700">Please log in to view this grid.</p>
+        </div>
     {:else if missingSource && gridHandles && projectDoc}
         <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
             {#key `${gridHandles.gridId}:${projectDoc.guid}`}
                 <ProjectGridView grid={gridHandles} {projectDoc} projectId={yjsStore.currentProjectId ?? undefined} projectName={projectName} />
             {/key}
-        </div>
-    {:else if !canAccess}
-        <div class="rounded-md bg-blue-50 p-4">
-            <h3 class="text-sm font-medium text-blue-800">Login required</h3>
-            <p class="mt-2 text-sm text-blue-700">Please log in to view this grid.</p>
         </div>
     {:else if gridHandles && tableHandles && projectDoc}
         <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
