@@ -132,7 +132,7 @@ describe("standalone grid route", () => {
         expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Sales by month");
     });
 
-    it("reacts when the resolved source Table is deleted while the Grid stays open", async () => {
+    it("keeps the Grid query surface open when legacy source metadata is deleted", async () => {
         createGrid(projectDoc, "demo-table-sales", {
             gridId: "grid-a",
             name: "Open sales",
@@ -149,20 +149,22 @@ describe("standalone grid route", () => {
         // resolver now reports the referenced identity as absent.
         getTableRegistry(projectDoc).set("registry-change", new Y.Map());
 
-        await waitFor(() => expect(screen.getByTestId("grid-missing-source")).toBeTruthy());
+        await waitFor(() => expect(screen.getByTestId("yjs-table-view")).toBeTruthy());
         expect(screen.queryByTestId("grid-view-stub")).toBeNull();
         expect(screen.queryByTestId("grid-source-table-link")).toBeNull();
+        expect(screen.getByRole("button", { name: "UI" })).toBeTruthy();
     });
 
-    it("shows an explicit missing-source state when the Table is gone", async () => {
+    it("keeps a repairable Grid surface when its legacy source Table is gone", async () => {
         createGrid(projectDoc, "deleted-table", { gridId: "grid-a", name: "Orphan" });
 
         render(GridStandalonePage);
 
         await waitFor(() => {
-            expect(screen.getByTestId("grid-missing-source")).toBeTruthy();
+            expect(screen.getByTestId("yjs-table-view")).toBeTruthy();
         });
         expect(screen.queryByTestId("grid-view-stub")).toBeNull();
+        expect(screen.getByRole("button", { name: "UI" })).toBeTruthy();
     });
 
     it("reports a Grid id that is not in the registry as not found", async () => {
