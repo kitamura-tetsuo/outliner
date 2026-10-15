@@ -171,7 +171,7 @@ export class KanbanQueryRunner {
             }
         }
         const supplier = analysis.bareIdSource;
-        let schema = supplier ? (await this.session.resolveRelation(supplier.sqlName))?.schema : undefined;
+        const schema = supplier ? (await this.session.resolveRelation(supplier.sqlName))?.schema : undefined;
         if (!this.session.isEvidenceCurrent(e)) return;
         this.resolvedSourceSchema = schema;
         const groupRoute = analysis.branches.length === 1
