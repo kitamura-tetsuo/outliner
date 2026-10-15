@@ -45,9 +45,11 @@ test(
                 "SELECT id, title, status, detail FROM tasks_b ORDER BY id",
             );
         }, { kanbanId: id });
+        await expect(page.getByTestId("kanban-config")).toHaveCount(1);
+        await page.getByTestId("kanban-config").getByRole("button", { name: "Apply" }).click();
         await expect(page.getByTestId("kanban-config")).toHaveCount(0);
         expect((await readKanbans(page))[0]).toMatchObject({
-            name: "Binding board",
+            name: "Stale source draft",
             query: "SELECT id, title, status, detail FROM tasks_b ORDER BY id",
         });
 
