@@ -51,7 +51,15 @@ function refresh() {
     const next = getKanban(projectDoc, kanban.kanbanId);
     if (next) committed = copy(next);
 }
-const observer = () => { operations?.invalidateDefinition(); refresh(); };
+const observer = (events: Y.YEvent<unknown>[]) => {
+    const meaningful = events.some(event =>
+        !(event instanceof Y.YMapEvent)
+        || [...event.changes.keys.keys()].some(key => key !== "sourceTableId")
+    );
+    if (!meaningful) return;
+    operations?.invalidateDefinition();
+    refresh();
+};
 function beginEdit() { baseline = copy(committed); draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = true; }
 function cancel() { draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = false; }
 function apply() {

@@ -23,7 +23,7 @@ let handle: RouteProjectHandle | undefined, registry: ReturnType<typeof getKanba
 let destroyed = false, loadGeneration = 0;
 let isDemo = $derived(isPublicProject(projectName));
 let canAccess = $derived(isAuthenticated || isDemo);
-function refresh() { if (store.project?.ydoc) { boards = listKanbans(store.project.ydoc); tables = listTables(store.project.ydoc); if (!sourceTableId) sourceTableId = tables[0]?.tableId ?? ""; } }
+function refresh() { if (store.project?.ydoc) { boards = listKanbans(store.project.ydoc); tables = listTables(store.project.ydoc); } }
 const observer = () => refresh();
 function unload() {
     loadGeneration++;

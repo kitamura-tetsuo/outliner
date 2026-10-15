@@ -32,13 +32,11 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
     addRecord(other, { title: "Union", status: "todo" }, "one");
     const kanbanId = createKanban(projectDoc, tableId, { query, groupField: "status", titleField: "title" });
     const session = createTableEngineSession({ projectDoc, projectId: projectDoc.guid, connect: localConnector });
-    const acquired = await session.acquire(tableId);
     const runner = new KanbanQueryRunner({
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
         connect: localConnector,
-        sourceAdapter: acquired!.adapter,
     });
     let projection: KanbanProjection = { status: "loading", current: false, lanes: [], columns: [] };
     runner.subscribeProjection(value => projection = value);

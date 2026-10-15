@@ -21,7 +21,6 @@ export interface KanbanFixture {
 export interface KanbanState {
     id: string;
     name: string;
-    sourceTableId: string;
     query: string;
     groupField?: string;
     titleField?: string;
@@ -98,7 +97,6 @@ export async function readKanbans(page: Page): Promise<KanbanState[]> {
             result.push({
                 id,
                 name: String(entry.get("name") ?? ""),
-                sourceTableId: String(entry.get("sourceTableId") ?? ""),
                 query: String(entry.get("query") ?? ""),
                 groupField: entry.get("groupField"),
                 titleField: entry.get("titleField"),

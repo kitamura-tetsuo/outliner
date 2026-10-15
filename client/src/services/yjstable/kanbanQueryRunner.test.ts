@@ -28,13 +28,11 @@ async function setup(schema = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TE
         titleField: "title",
     });
     const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
-    const acquired = await session.acquire(tableId);
     const runner = new KanbanQueryRunner({
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
         connect: localConnector,
-        sourceAdapter: acquired!.adapter,
     });
     return { projectDoc, tableId, table, kanbanId, session, runner };
 }

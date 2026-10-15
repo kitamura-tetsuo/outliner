@@ -190,5 +190,5 @@ function findCard(p: KanbanProjection, id: CardIdentity) {
     return undefined;
 }
 function definitionKey(s: KanbanSettings) {
-    return JSON.stringify([s.sourceTableId, s.query, s.groupField, s.titleField, s.detailFields]);
+    return JSON.stringify([s.query, s.groupField, s.titleField, s.detailFields]);
 }

@@ -1,10 +1,8 @@
 // Yjs data model for the Kanban feature.
 //
-// A Kanban is a project-level presentation/query definition that references
-// one Table (its `sourceTableId`). Multiple Kanbans may reference the same
-// Table so several grouped views can share the same underlying schema/data
-// without cloning it. Cards are produced later by executing the stored SELECT
-// against that shared data; this module persists only the definition.
+// A Kanban is a project-level presentation/query definition. Its exact SELECT
+// is the sole persisted source dependency; an optional Table chosen during
+// creation only initializes that SQL and is never stored on the definition.
 //
 // Kanban state is stored as a flat entry in a project-level registry (a
 // `yjsKanbans` Y.Map of id -> Y.Map of settings), not as a subdoc: a Kanban
@@ -15,7 +13,6 @@
 // (see `gridDocs.ts`).
 //
 // Each Kanban Y.Map holds:
-//   sourceTableId  string            - the Table this board views.
 //   name           string            - free-form label (never appears in SQL).
 //   query          string            - exact SELECT text ("" means incomplete).
 //   groupField     string | absent   - grouping result-column name.
@@ -41,7 +38,7 @@ import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { findKanbanPlacements } from "../objectManager/objectPlacements";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import { getTableRegistry } from "./tableDocs";
+import { getTableRegistry, getTableSqlName } from "./tableDocs";
 
 // The Kanban writers/readers are framework-neutral and shared with the
 // server (shared/src/services/kanbanDefinition.ts), so server-side
@@ -61,8 +58,6 @@ export interface KanbanRegistryEntry {
     kanbanId: string;
     /** Free-form label (never appears in SQL; never identity). */
     name: string;
-    /** The Table this board views. */
-    sourceTableId?: string;
 }
 
 /** Structural handles for one Kanban definition. */
@@ -104,9 +99,6 @@ export function listKanbans(projectDoc: Y.Doc): KanbanRegistryEntry[] {
         entries.push({
             kanbanId,
             name: String(entry.get("name") ?? ""),
-            ...(typeof entry.get("sourceTableId") === "string" && entry.get("sourceTableId") !== ""
-                ? { sourceTableId: String(entry.get("sourceTableId")) }
-                : {}),
         });
     });
     return entries;
@@ -151,6 +143,8 @@ export function createKanban(
         assertSourceTableExists(projectDoc, sourceTableId);
     }
     const { kanbanId, ...seed } = options;
+    const initialQuery = seed.query
+        ?? (sourceTableId ? `SELECT * FROM ${getTableSqlName(projectDoc, sourceTableId)}` : undefined);
     const newId = kanbanId ?? uuidv4();
     if (typeof newId !== "string" || newId.length === 0) {
         throw new Error("Kanban id must be a non-empty string");
@@ -158,7 +152,7 @@ export function createKanban(
     if (getKanbanRegistry(projectDoc).has(newId)) {
         throw new Error(`Kanban with id ${newId} already exists`);
     }
-    createKanbanEntry(projectDoc, newId, sourceTableId, seed);
+    createKanbanEntry(projectDoc, newId, undefined, { ...seed, query: initialQuery });
     return newId;
 }
 
@@ -184,12 +178,6 @@ function isolateKanbanHistory(entry: Y.Map<unknown>): void {
 export function updateKanban(projectDoc: Y.Doc, kanbanId: string, updates: KanbanUpdates): void {
     const entry = getKanbanRegistry(projectDoc).get(kanbanId);
     if (!entry) throw new Error(`Kanban with id ${kanbanId} not found`);
-    if (updates.sourceTableId !== undefined && updates.sourceTableId !== String(entry.get("sourceTableId") ?? "")) {
-        if (typeof updates.sourceTableId !== "string" || updates.sourceTableId.length === 0) {
-            throw new Error("Kanban sourceTableId must be a non-empty string");
-        }
-        assertSourceTableExists(projectDoc, updates.sourceTableId);
-    }
     const isolated = willKanbanUpdateChange(entry, updates);
     if (!isolated) return;
     isolateKanbanHistory(entry);
@@ -248,7 +236,7 @@ export function removeKanbanWithPlacements(project: Project, kanbanId: string): 
         });
     const applyRestore = () =>
         project.ydoc.transact(() => {
-            if (!registry.has(kanbanId)) createKanbanEntry(project.ydoc, kanbanId, settings.sourceTableId, settings);
+            if (!registry.has(kanbanId)) createKanbanEntry(project.ydoc, kanbanId, undefined, settings);
         });
     globalUndoRouter.captureManual(applyDelete, {
         type: "manual",
@@ -303,16 +291,6 @@ export function destroyKanbanUndoManager(entry: Y.Map<unknown>, force = false): 
 export function getKanbanName(projectDoc: Y.Doc, kanbanId: string): string | undefined {
     const entry = getKanbanRegistry(projectDoc).get(kanbanId);
     return entry ? String(entry.get("name") ?? "") : undefined;
-}
-
-export function getKanbanSourceTableId(projectDoc: Y.Doc, kanbanId: string): string | undefined {
-    const value = getKanbanRegistry(projectDoc).get(kanbanId)?.get("sourceTableId");
-    return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-/** Kanbans referencing a given source Table id. */
-export function findKanbansBySourceTable(projectDoc: Y.Doc, sourceTableId: string): KanbanRegistryEntry[] {
-    return listKanbans(projectDoc).filter(k => k.sourceTableId === sourceTableId);
 }
 
 /**

@@ -30,7 +30,6 @@ export interface KanbanExecutionProvenance {
     analysis?: ProjectQueryProvenance;
     execution: TableQueryExecution;
     schemaSql?: string;
-    sourceTableId?: string;
     sourceSqlName?: string;
 }
 export interface KanbanProjection {
@@ -49,7 +48,6 @@ export interface KanbanRunnerOptions {
     kanbanId: string;
     kanban: KanbanHandles;
     connect?: TableDocConnector;
-    sourceAdapter?: { appliedSchema?: ParsedTableSchema; };
     registry?: RelationRegistryPort;
 }
 
@@ -78,7 +76,7 @@ export class KanbanQueryRunner {
         };
     }
     get sourceSchema() {
-        return this.resolvedSourceSchema ?? this.options.sourceAdapter?.appliedSchema;
+        return this.resolvedSourceSchema;
     }
     subscribeProjection(fn: (p: KanbanProjection) => void) {
         this.listeners.add(fn);
@@ -175,8 +173,6 @@ export class KanbanQueryRunner {
         const supplier = analysis.bareIdSource;
         let schema = supplier ? (await this.session.resolveRelation(supplier.sqlName))?.schema : undefined;
         if (!this.session.isEvidenceCurrent(e)) return;
-        const fallbackSchema = this.options.sourceAdapter?.appliedSchema;
-        if (!schema && supplier?.sqlName === fallbackSchema?.tableName) schema = fallbackSchema;
         this.resolvedSourceSchema = schema;
         const groupRoute = analysis.branches.length === 1
             ? analysis.branches[0]?.columns.find(column => column.outputColumn === s.groupField)
@@ -212,7 +208,6 @@ export class KanbanQueryRunner {
                     rowCount: e.rows.length,
                     columnCount: columns.length,
                 },
-                sourceTableId: s.sourceTableId,
                 sourceSqlName: supplier?.sqlName,
             },
         });
