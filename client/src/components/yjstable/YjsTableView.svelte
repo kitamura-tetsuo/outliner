@@ -254,9 +254,7 @@ async function refreshGuardedMutationAuthority(): Promise<void> {
     guardedMetadata = metadata;
 }
 const mutationBoundary = createGridExistingRowMutationBoundary({
-    // svelte-ignore state_referenced_locally
     projectDoc,
-    // svelte-ignore state_referenced_locally
     projectId,
     session: guardedSelect,
     evidence: () => guardedEvidence,
