@@ -11,12 +11,12 @@ acceptance:
 - Delete/Backspace clears every writable selected cell's content to NULL for a cell/range, column, or select-all selection
 - Delete/Backspace removes the selected records instead when the selection kind is rows, honoring the per-Grid "Confirm before deleting rows" option from keyboard-triggered actions too
 - Read-only/computed cells and rows without a durable write identity are never mutation targets, even while selected
+- Source-aware multi-target commands capture logical result occurrences, prevalidate every physical target, await provider writes, and distinguish refusal from partial provider failure
 - The Grid can report a mixed selection's writable/total cell counts (e.g. "12 cells selected · 9 editable")
 - id-addressed bulk writes and row removals share a single Yjs transaction, collapsing to one Undo step
-- Source-aware multi-target commands capture logical result occurrences, prevalidate every physical target, await provider writes, and distinguish refusal from partial provider failure
 tests:
 - client/e2e/tables/grd-grid-bulk-clear-commands-b589b9f9.spec.ts
 - client/e2e/tables/grd-grid-bulk-row-select-commands-b589b9f9.spec.ts
 - client/src/components/yjstable/TableGrid.bulkCommands.test.ts
-- client/src/services/yjstable/gridSelectionCommands.test.ts
 - client/src/services/yjstable/gridCommandExecution.test.ts
+- client/src/services/yjstable/gridSelectionCommands.test.ts

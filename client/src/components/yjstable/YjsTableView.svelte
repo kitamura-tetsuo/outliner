@@ -237,7 +237,14 @@ const clipboardSource: TableClipboardSource = {
 const session = createTableEngineSession({ projectDoc, projectId });
 // This component is remounted when the Project identity changes.
 // svelte-ignore state_referenced_locally
-const guardedSelect = createProjectSelectSession({ projectDoc, projectId, query: observedQuery });
+const guardedSelect = createProjectSelectSession({
+    projectDoc,
+    projectId,
+    query: observedQuery,
+    // Match GridQueryRunner's persisted grammar version so legacy Grids with
+    // ordinary unaliased output columns receive the same execution evidence.
+    requireExplicitAliases: grid.entry.get("sqlAliasPolicyVersion") === 1,
+});
 // svelte-ignore state_referenced_locally
 const guardedMetadataResolver = createGridMetadataResolver({ projectDoc, projectId });
 let guardedEvidence: ProjectSelectEvidence | undefined;
