@@ -14,15 +14,15 @@
     import { getLogger } from "../../lib/logger";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
+    import { resolve } from "$app/paths";
     import Breadcrumb from "../Breadcrumb.svelte";
     import YjsTableView from "../yjstable/YjsTableView.svelte";
     import { getTableHandles, getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
     // The mounted YjsTableView retains/releases the Grid's shared undo manager
     // and the Table's for its own lifetime, so this page only resolves handles.
     import { type GridHandles, getGridHandles, getGridSourceTableId } from "../../services/yjstable/gridDocs";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectGridsPath, projectObjectsSelectedRoute, projectTableRoute } from "../../lib/managementPaths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
+    import { projectGridsRoute, projectObjectsSelectedRoute, projectTableRoute } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -192,9 +192,9 @@
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
-            { label: "Grids", href: resolvePath(projectGridsPath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
+            { label: "Grids", href: projectGridsRoute(projectName) },
             { label: gridName || "Grid" }
         ]} />
     </div>

@@ -8,9 +8,9 @@ import Loader from "../Loader.svelte";
 import { store } from "../../stores/store.svelte";
 import { createKanban, getKanbanRegistry, listKanbans, type KanbanRegistryEntry } from "../../services/yjstable/kanbanDocs";
 import { listTables, type TableRegistryEntry } from "../../services/yjstable/tableDocs";
-import { isPublicProject, projectBasePath } from "../../lib/publicProject";
+import { isPublicProject, projectRoute } from "../../lib/publicProject";
 import { projectKanbanRoute } from "../../lib/managementPaths";
-import { resolvePath } from "../../utils/pathUtils";
+import { resolve } from "$app/paths";
 import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
 interface Props { projectName: string; }
@@ -56,7 +56,7 @@ onMount(() => { isAuthenticated = userManager.getCurrentUser() !== null; return 
 </script>
 <svelte:head><title>Kanbans | Outliner</title></svelte:head>
 <main class="w-full max-w-5xl mx-auto px-4 py-8">
-<Breadcrumb items={[{label:"Home",href:"/"},{label:projectName,href:resolvePath(projectBasePath(projectName))},{label:"Kanbans"}]} />
+<Breadcrumb items={[{label:"Home",href:resolve("/")},{label:projectName,href:projectRoute(projectName)},{label:"Kanbans"}]} />
 <h1 class="text-2xl font-bold my-4">Kanbans</h1>
 {#if isDemo}<p class="mb-4">Public demo / Guest access</p>{:else}<AuthComponent onAuthSuccess={() => isAuthenticated = true} onAuthLogout={handleLogout} />{/if}
 {#if isLoading}<Loader />{:else if error}<p role="alert">{error}</p>{:else if notFound}<p>Project not found.</p>{:else if !canAccess}<p>Please log in.</p>{:else}

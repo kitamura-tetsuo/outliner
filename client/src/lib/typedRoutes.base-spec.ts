@@ -5,16 +5,14 @@
  * configured with `paths.base = "/test-base"`, the real `$app/paths`
  * resolver (no mocks anywhere in this file), and the actual migrated
  * production producers. Every direct internal link must contain the base
- * exactly once; resolving twice (the deferred Breadcrumb pattern) would
- * duplicate it, which this file also pins so the deferred stages stay
- * honest.
+ * exactly once, including after it crosses the Breadcrumb prop boundary.
  */
 import { resolve } from "$app/paths";
 import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
+import Breadcrumb from "../components/Breadcrumb.svelte";
 import PageList from "../components/PageList.svelte";
 import { Project } from "../schema/app-schema";
-import { resolvePath } from "../utils/pathUtils";
 import { projectObjectsSelectedRoute, projectSchedulesRoute, projectTableRoute } from "./managementPaths";
 import { projectPageRoute, projectRoute } from "./publicProject";
 
@@ -44,10 +42,15 @@ describe("typed routes under a nonempty base", () => {
         );
     });
 
-    it("keeps the deferred generic wrapper working for its remaining consumers", () => {
-        // The Breadcrumb/second-resolution consumers still use the wrapper;
-        // a single application of the base is what the framework gives them.
-        expect(resolvePath("/acme/-/objects")).toBe("/test-base/acme/-/objects");
+    it("does not resolve an already-resolved Breadcrumb item a second time", () => {
+        const href = projectPageRoute("demo-ja", "書式 / 例");
+        const { container } = render(Breadcrumb, {
+            props: { items: [{ label: "Demo", href }, { label: "Current" }] },
+        });
+
+        const renderedHref = container.querySelector("a")?.getAttribute("href");
+        expect(renderedHref).toBe("/test-base/demo-ja/%E6%9B%B8%E5%BC%8F%20%2F%20%E4%BE%8B");
+        expect(occurrences(renderedHref ?? "", "/test-base")).toBe(1);
     });
 
     it("does not emit an unresolved href for a legacy empty-title page", () => {

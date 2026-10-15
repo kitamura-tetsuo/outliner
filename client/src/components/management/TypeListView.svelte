@@ -11,8 +11,8 @@
     import Breadcrumb from "../Breadcrumb.svelte";
     import Loader from "../Loader.svelte";
     import { getLogger } from "../../lib/logger";
-    import { resolvePath } from "../../utils/pathUtils";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
+    import { resolve } from "$app/paths";
+    import { isPublicProject, projectRoute } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { store } from "../../stores/store.svelte";
@@ -106,8 +106,8 @@
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
     <div class="mb-4 flex-shrink-0">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: projectName || "Project", href: resolvePath(projectBasePath(projectName)) },
+            { label: "Home", href: resolve("/") },
+            { label: projectName || "Project", href: projectRoute(projectName) },
             { label: "SQL Types" }
         ]} />
     </div>

@@ -1,4 +1,5 @@
 import { ESLint } from "eslint";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 const bracketRouteFiles = [
@@ -32,5 +33,27 @@ describe("typed-navigation ESLint scope", () => {
                 message.ruleId === "svelte/no-navigation-without-resolve" && message.severity === 2
             ),
         ).toBe(true);
+    });
+
+    it("accepts resolved shared props and rejects the same props widened to string", async () => {
+        const eslint = new ESLint({ cwd: process.cwd() });
+
+        for (const file of ["src/components/Breadcrumb.svelte", "src/components/PageListItem.svelte"]) {
+            const source = await readFile(file, "utf8");
+            const [resolvedResult] = await eslint.lintText(source, { filePath: file });
+            expect(
+                resolvedResult.messages.filter((message) => message.ruleId === "svelte/no-navigation-without-resolve"),
+                file,
+            ).toEqual([]);
+
+            const unresolvedSource = source.replaceAll("ResolvedPathname", "string");
+            const [unresolvedResult] = await eslint.lintText(unresolvedSource, { filePath: file });
+            expect(
+                unresolvedResult.messages.some((message) =>
+                    message.ruleId === "svelte/no-navigation-without-resolve" && message.severity === 2
+                ),
+                file,
+            ).toBe(true);
+        }
     });
 });

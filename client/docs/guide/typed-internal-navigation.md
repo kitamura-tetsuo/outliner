@@ -45,12 +45,12 @@ new navigation on the typed path.
 
 ## Deferred stages (not this migration)
 
-`resolvePath()` stays until its owning stages migrate: Breadcrumb's second
-resolution (and its item call sites), the `YjsTableBlock → YjsTableView`
-`sourceTableHref` prop contract, `ScheduleRuleList` reference records,
-attachment URLs, Paraglide output, and the opaque debug bridge in
-`client/src/lib/debug.ts`. Final wrapper deletion and global rule restoration
-are separate work.
+`resolvePath()` stays until its remaining owning stages migrate: the
+`YjsTableBlock → YjsTableView` `sourceTableHref` prop contract, attachment
+URLs, Paraglide output, and the opaque debug bridge in
+`client/src/lib/debug.ts`. Breadcrumb, PageListItem and ScheduleRuleList now
+retain `ResolvedPathname` values across their shared prop/record boundaries.
+Final wrapper deletion and global rule restoration are separate work.
 
 ## Regression coverage
 

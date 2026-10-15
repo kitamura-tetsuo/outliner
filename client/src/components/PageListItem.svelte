@@ -4,9 +4,10 @@ const logger = getLogger("PageListItem");
 import type { Item } from "../schema/app-schema";
 import { extractPagePreview } from "../lib/pagePreview";
 import { formatDate } from "../utils/dateUtils";
+import type { ResolvedPathname } from "$app/types";
 
 interface Props {
-    href?: string;
+    href?: ResolvedPathname;
     page: Item;
     isGridView: boolean;
     onPageClick?: () => void;

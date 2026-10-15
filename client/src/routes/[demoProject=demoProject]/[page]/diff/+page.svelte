@@ -10,7 +10,8 @@ import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../.
 import type { DemoProjectHandle } from "../../../../lib/demoInit";
 import { findPageByName } from "../../../../utils/pageUtils";
 import { userManager } from "../../../../auth/UserManager";
-import { projectBasePath, projectPagePath } from "../../../../lib/publicProject";
+import { projectPageRoute, projectRoute } from "../../../../lib/publicProject";
+import { resolve } from "$app/paths";
 
 // Which demo project this route is showing (`demo`, `demo-ja`, …).
 let project = $derived(page.params.demoProject as string);
@@ -115,9 +116,9 @@ onDestroy(() => {
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
     <div class="mb-4">
         <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: "Demo Project", href: projectBasePath(project) },
-            ...(pageTitle ? [{ label: pageTitle, href: projectPagePath(project, pageTitle) }] : []),
+            { label: "Home", href: resolve("/") },
+            { label: "Demo Project", href: projectRoute(project) },
+            ...(pageTitle ? [{ label: pageTitle, href: projectPageRoute(project, pageTitle) }] : []),
             { label: "History" }
         ]} />
     </div>
