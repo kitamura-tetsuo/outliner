@@ -54,9 +54,9 @@
         error = "";
 
         try {
-            await renameProjectDescriptor(projectId, newTitle);
+            const renamed = await renameProjectDescriptor(projectId, newTitle);
             await projectStore.refresh();
-            goto(projectSettingsRoute(newTitle), { replace: true });
+            goto(projectSettingsRoute(renamed.title), { replace: true });
         } catch (e) {
             logger.error({ error: e }, "Error");
             error = "An error occurred while saving.";

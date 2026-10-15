@@ -17,7 +17,10 @@ vi.mock("$app/navigation", () => ({
 }));
 
 vi.mock("../../services/projectDirectoryService", () => ({
-    renameProjectDescriptor: vi.fn(async (_projectId: string, title: string) => ({ id: "project-1", title })),
+    renameProjectDescriptor: vi.fn(async (_projectId: string, title: string) => ({
+        id: "project-1",
+        title: title.trim(),
+    })),
 }));
 
 vi.mock("../../stores/projectStore.svelte", () => ({
@@ -77,5 +80,21 @@ describe("ProjectSettingsView title rename", () => {
         // Same title: the rename refuses to run, so the route never changes.
         expect(vi.mocked(renameProjectDescriptor)).not.toHaveBeenCalled();
         expect(vi.mocked(goto)).not.toHaveBeenCalled();
+    });
+
+    it("builds the replacement URL from the canonical title returned by persistence", async () => {
+        const { container } = render(ProjectSettingsView, {
+            props: { projectName: "Old Project" },
+        });
+        await tick();
+
+        const input = container.querySelector("#title") as HTMLInputElement;
+        await fireEvent.input(input, { target: { value: "  Renamed Project  " } });
+        await fireEvent.click(container.querySelector("button")!);
+        await tick();
+        await tick();
+
+        expect(renameProjectDescriptor).toHaveBeenCalledWith("project-1", "  Renamed Project  ");
+        expect(vi.mocked(goto)).toHaveBeenCalledWith("/Renamed%20Project/-/settings", { replace: true });
     });
 });
