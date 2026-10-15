@@ -86,7 +86,7 @@ test.describe("FTR-6a03c2f1: deleted selected sources", () => {
         expect(afterDeletion.grids.map(grid => grid.id)).toEqual([initial.grids[0].id]);
     });
 
-    test("refuses a Grid whose selected source Table was deleted", async ({ page }) => {
+    test("places a Grid whose legacy source Table was deleted", async ({ page }) => {
         const initial = await createSources(page);
         const panel = await slashGrid(page, 2);
         await panel.getByRole("button", { name: "Existing Grid", exact: true }).click();
@@ -96,7 +96,10 @@ test.describe("FTR-6a03c2f1: deleted selected sources", () => {
                 .ydoc.getMap("yjsTables").delete(id), initial.tables[1].id);
         const afterDeletion = await snapshot(page);
         await panel.getByTestId("yjs-grid-select-existing").click();
-        await expectRefused(page, panel, afterDeletion);
-        expect(afterDeletion.tables.map(table => table.id)).toEqual([initial.tables[0].id]);
+        await expect(panel).toBeHidden();
+        const placed = await snapshot(page);
+        expect(placed.tables).toEqual(afterDeletion.tables);
+        expect(placed.grids).toEqual(afterDeletion.grids);
+        expect(placed.placements[2]?.gridId).toBe(initial.grids[1].id);
     });
 });

@@ -74,7 +74,7 @@ test.describe("FTR-6a03c2f1: live source revalidation", () => {
         expect(await registries(page)).toEqual(reserved);
     });
 
-    test("refuses an existing Grid whose live source Table changed", async ({ page }) => {
+    test("places an existing Grid when legacy source metadata changes", async ({ page }) => {
         await createBlank(page, 0, "One", "one");
         await createBlank(page, 1, "Two", "two");
         const initial = await registries(page);
@@ -87,7 +87,9 @@ test.describe("FTR-6a03c2f1: live source revalidation", () => {
         }, { gridId: initial.grids[0].id, tableId: initial.tables[1].id });
         const rebound = await registries(page);
         await panel.getByTestId("yjs-grid-select-existing").click();
-        await expect(panel.getByTestId("yjs-table-source-error")).toContainText("changed after selection");
-        expect(await registries(page)).toEqual(rebound);
+        await expect(panel).toBeHidden();
+        const placed = await registries(page);
+        expect(placed).toEqual(rebound);
+        await expect(page.getByTestId("yjs-table-view")).toHaveCount(3);
     });
 });
