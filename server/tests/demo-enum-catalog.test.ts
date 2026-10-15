@@ -215,9 +215,7 @@ describe("Demo ENUM declaration-order example", function() {
             const grids = project.ydoc.getMap("yjsGrids");
             const gridEntry = grids.get(expectedGridId) as Y.Map<unknown> | undefined;
             expect(gridEntry, `${slug}: ENUM Grid is registered`).to.not.equal(undefined);
-            expect(gridEntry!.get("sourceTableId"), `${slug}: Grid reads the ENUM table`).to.equal(
-                DEMO_ENUM_PRIORITIES_TABLE_ID,
-            );
+            expect(gridEntry!.has("sourceTableId"), `${slug}: Grid has no primary Table owner`).to.equal(false);
             expect(gridEntry!.get("query"), `${slug}: Grid keeps the ordinary ORDER BY`).to.equal(
                 "SELECT id, title, priority FROM enum_priorities ORDER BY priority, id",
             );

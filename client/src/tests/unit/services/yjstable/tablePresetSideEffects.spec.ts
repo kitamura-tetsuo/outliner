@@ -91,7 +91,7 @@ describe("preset creation side-effect boundaries", () => {
         expectOnlyExistingKanban(doc, kanbanId, kanbansBefore, tableId);
         expectNoInsertPreference(tableEntry);
         expectNoInsertPreference(gridEntry);
-        expect(gridEntry.get("sourceTableId")).toBe(tableId);
+        expect(gridEntry.has("sourceTableId")).toBe(false);
         expect(gridEntry.get("query")).toBe(preset.query(sqlName));
         expect(gridEntry.get("components")).toBeInstanceOf(Y.Map);
     });

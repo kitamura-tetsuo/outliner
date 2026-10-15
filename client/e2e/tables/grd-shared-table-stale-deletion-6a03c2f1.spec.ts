@@ -88,8 +88,8 @@ test.describe("FTR-6a03c2f1: deleted selected sources", () => {
             (globalThis as any).__YJS_STORE__.yjsClient.getProject()
                 .ydoc.getMap("yjsGrids").delete(id), initial.grids[1].id);
         const afterDeletion = await snapshot(page);
-        await panel.getByTestId("yjs-grid-select-existing").click();
-        await expectRefused(page, panel, afterDeletion);
+        await expect(panel.getByTestId("yjs-grid-select-existing")).toHaveCount(0);
+        expect(await snapshot(page)).toEqual(afterDeletion);
         expect(afterDeletion.grids.map(grid => grid.id)).toEqual([initial.grids[0].id]);
     });
 

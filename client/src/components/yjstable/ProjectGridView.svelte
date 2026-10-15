@@ -10,8 +10,7 @@ import {
     type ProjectSelectSession,
     type ProjectSelectState,
 } from "../../services/yjstable/projectSelectSession";
-import { createTableEngineSession, type AcquiredTable } from "../../services/yjstable/tableEngine";
-import { listTables } from "../../services/yjstable/tableDocs";
+import { getTableHandles, listTables, type TableHandles } from "../../services/yjstable/tableDocs";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 
@@ -29,20 +28,12 @@ let state = $state<ProjectSelectState>({ status: "loading" });
 let showDefinition = $state(false);
 let session: ProjectSelectSession | undefined;
 let unsubscribe: (() => void) | undefined;
-// This component is mounted under a project/Grid identity key; these inputs
-// are therefore intentionally fixed for the lifetime of the engine session.
-// svelte-ignore state_referenced_locally
-const mountedProjectDoc = projectDoc;
-// svelte-ignore state_referenced_locally
-const mountedProjectId = projectId;
-const engine = createTableEngineSession({ projectDoc: mountedProjectDoc, projectId: mountedProjectId });
 let actualSource = $state<{
-    acquired: AcquiredTable;
+    handles: TableHandles;
     name: string;
     sqlName: string;
     href?: string;
 } | undefined>();
-let sourceResolution = 0;
 let columns = $state<string[]>([]);
 let labels = $state<Record<string, string | undefined>>({});
 let hidden = $state<Record<string, boolean>>({});
@@ -68,19 +59,18 @@ const displayColumns = $derived([
     ...(evidence?.columns.map(item => item.name).filter(column => !columns.includes(column) && !hidden[column]) ?? []),
 ]);
 
-async function resolveActualSource(next: ProjectSelectState) {
-    const generation = ++sourceResolution;
+function resolveActualSource(next: ProjectSelectState) {
     actualSource = undefined;
     if (next.status !== "success") return;
     const proof = analyzeProjectQueryProvenance(next.evidence);
     const source = proof.status === "proven" ? proof.bareIdSource : undefined;
     if (!source || source.kind !== "table" || !session?.isEvidenceCurrent(next.evidence)) return;
-    const acquired = await engine.acquire(source.id);
-    if (generation !== sourceResolution || !acquired || !session?.isEvidenceCurrent(next.evidence)) return;
+    const handles = getTableHandles(projectDoc, source.id);
+    if (!handles || !session?.isEvidenceCurrent(next.evidence)) return;
     const entry = listTables(projectDoc).find(table => table.tableId === source.id);
     if (!entry || entry.sqlName !== source.sqlName) return;
     actualSource = {
-        acquired,
+        handles,
         name: entry.name || source.sqlName,
         sqlName: source.sqlName,
         href: projectName ? resolvePath(projectTablePath(projectName, source.id)) : undefined,
@@ -92,7 +82,7 @@ onMount(() => {
     session = createProjectSelectSession({ projectDoc, projectId, query });
     unsubscribe = session.subscribe(next => {
         state = next;
-        void resolveActualSource(next);
+        resolveActualSource(next);
     });
     grid.entry.observeDeep(observer);
 });
@@ -101,15 +91,14 @@ onDestroy(() => {
     grid.entry.unobserveDeep(observer);
     unsubscribe?.();
     session?.dispose();
-    engine.dispose();
 });
 </script>
 
 {#if actualSource}
-    {#key `${actualSource.acquired.handles.tableId}:${actualSource.acquired.handles.doc.guid}`}
+    {#key `${actualSource.handles.tableId}:${actualSource.handles.doc.guid}`}
         <YjsTableView
             {grid}
-            handles={actualSource.acquired.handles}
+            handles={actualSource.handles}
             {projectDoc}
             {projectId}
             tableName={actualSource.name}

@@ -465,7 +465,7 @@ describe("Demo seed content", () => {
         for (const template of demoTables) {
             const grid = grids.get(`${template.tableId}-grid`);
             expect(grid, `Grid seeded for ${template.tableId}`).to.not.equal(undefined);
-            expect(grid!.get("sourceTableId")).to.equal(template.tableId);
+            expect(grid!.has("sourceTableId")).to.equal(false);
             expect(grid!.get("query")).to.equal(template.query);
             const components = grid!.get("components") as Y.Map<Y.Map<unknown>>;
             expect(components).to.be.instanceOf(Y.Map);
@@ -486,15 +486,8 @@ describe("Demo seed content", () => {
 
         const history = grids.get(DEMO_ROUTINE_HISTORY_GRID_ID);
         expect(history, "second Grid over the occurrences Table").to.not.equal(undefined);
-        expect(history!.get("sourceTableId")).to.equal(DEMO_ROUTINE_OCCURRENCES_TABLE_ID);
-
-        const overOccurrences: string[] = [];
-        grids.forEach((grid, gridId) => {
-            if (grid.get("sourceTableId") === DEMO_ROUTINE_OCCURRENCES_TABLE_ID) overOccurrences.push(gridId);
-        });
-        expect(overOccurrences.sort()).to.deep.equal(
-            [`${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}-grid`, DEMO_ROUTINE_HISTORY_GRID_ID].sort(),
-        );
+        expect(history!.has("sourceTableId")).to.equal(false);
+        expect(grids.has(`${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}-grid`)).to.equal(true);
 
         // The two Grids are independent presentations of one Table.
         const dflt = grids.get(`${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}-grid`)!;
@@ -513,7 +506,7 @@ describe("Demo seed content", () => {
         const grids = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
         const semanticGrid = grids.get(DEMO_TASKS_PRIORITY_GRID_ID);
         expect(semanticGrid).to.not.equal(undefined);
-        expect(semanticGrid!.get("sourceTableId")).to.equal(DEMO_TASKS_TABLE_ID);
+        expect(semanticGrid!.has("sourceTableId")).to.equal(false);
         expect(semanticGrid!.get("name")).to.equal("Tasks · semantic priority order");
         expect(semanticGrid!.get("query")).to.equal(
             "SELECT id, title, priority\n"

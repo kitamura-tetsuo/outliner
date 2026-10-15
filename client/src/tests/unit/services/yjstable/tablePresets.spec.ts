@@ -74,7 +74,7 @@ describe("tablePresets", () => {
             const gridRegistry = doc.getMap(GRID_REGISTRY_KEY);
             const gridEntry = gridRegistry.get(result.gridId) as Y.Map<unknown>;
             expect(gridEntry).toBeDefined();
-            expect(gridEntry.get("sourceTableId")).toBe(result.tableId);
+            expect(gridEntry.has("sourceTableId")).toBe(false);
             expect(gridEntry.get("name")).toBe("My Blank Table");
             expect(gridEntry.get("query")).toBe(BLANK_PRESET.query("custom_sql_name"));
 
