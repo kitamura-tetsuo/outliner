@@ -2,7 +2,6 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
-    import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, untrack } from "svelte";
     import { page as pageState } from "$app/state";
     import { store } from "../stores/store.svelte";
@@ -29,7 +28,7 @@ const logger = getLogger("SearchPanel");
     import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
     import type { Item, Project } from "../schema/app-schema";
     import ConfirmDialog from "./ConfirmDialog.svelte";
-    import { projectPagePath } from "../lib/publicProject";
+    import { projectPageRoute } from "../lib/publicProject";
 
     interface Props {
         isVisible?: boolean;
@@ -247,7 +246,7 @@ const logger = getLogger("SearchPanel");
         // A rename rewrites where the open page lives; it is not a visit to a
         // different page, so it replaces the entry instead of stacking history.
         const options = { replace: true, reset: false };
-        if (routedProject) goto(resolvePath(projectPagePath(routedProject, newTitle)), options);
+        if (routedProject) goto(projectPageRoute(routedProject, newTitle), options);
     }
 
     /** The single page a Grid replace runs against; Grid participates in Page and Selection scope only, matching Find (FTR-5193). */
@@ -395,7 +394,7 @@ const logger = getLogger("SearchPanel");
             document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(match.itemId)}"]`)
                 ?.scrollIntoView({ block: "center" });
         } else {
-            goto(resolvePath(projectPagePath(routedProject, pageName)));
+            goto(projectPageRoute(routedProject, pageName));
         }
     }
 

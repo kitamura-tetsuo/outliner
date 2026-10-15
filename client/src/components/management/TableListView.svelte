@@ -10,7 +10,8 @@
     import { store } from "../../stores/store.svelte";
     import { getTableRegistry, listTables, type TableRegistryEntry } from "../../services/yjstable/tableDocs";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectTablePath } from "../../lib/managementPaths";
+    import { projectTableRoute } from "../../lib/managementPaths";
+    import type { ResolvedPathname } from "$app/types";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -122,8 +123,8 @@
         };
     });
 
-    function tableHref(tableId: string): string {
-        return resolvePath(projectTablePath(projectName, tableId));
+    function tableHref(tableId: string): ResolvedPathname {
+        return projectTableRoute(projectName, tableId);
     }
 </script>
 

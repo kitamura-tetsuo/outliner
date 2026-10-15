@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { createProject, login, stackFor } from "./helpers";
 import type { OnPremProductionStack } from "./onpremProductionStack";
+registerCoverageHooks();
 
 test.describe("production on-premises Table and Grid rooms", () => {
     let stack: OnPremProductionStack;

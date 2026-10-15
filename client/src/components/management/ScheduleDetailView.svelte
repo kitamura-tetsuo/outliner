@@ -17,10 +17,10 @@
         type ScheduleRule,
     } from "../../services/schedule/scheduleRuleService";
     import { runScheduleRuleNow } from "../../services/schedule/scheduleRunService";
-    import { isPublicProject, projectBasePath } from "../../lib/publicProject";
+    import { isPublicProject, projectBasePath, projectRoute } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
-    import { projectObjectsPath } from "../../lib/managementPaths";
+    import { projectObjectsSelectedRoute } from "../../lib/managementPaths";
 
     const logger = getLogger("ProjectScheduleEditPage");
 
@@ -183,7 +183,7 @@
     });
 
     function backToProject() {
-        goto(resolvePath(projectBasePath(projectName)));
+        goto(projectRoute(projectName));
     }
 
     // Duplicate now opens Object Manager with this Schedule preselected
@@ -191,7 +191,9 @@
     // (issue #5153 §10): the user can duplicate it alone from there, or
     // expand the set first via `Select related`.
     function openDuplicate() {
-        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(ruleId)}`));
+        // The typed resolved pathname has an encoded query appended after resolve; the rule cannot infer that template type.
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
+        goto(projectObjectsSelectedRoute(projectName, ruleId));
     }
 
     function saveRule(ruleData: Partial<ScheduleRule> & { sql: string; rrule: string; targetTableId: string }) {

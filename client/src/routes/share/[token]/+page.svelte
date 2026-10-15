@@ -4,7 +4,8 @@
     import { authStore } from "$stores/authStore.svelte";
     import { userManager } from "../../../auth/UserManager";
     import { goto } from "$app/navigation";
-    import { resolvePath } from "../../../utils/pathUtils";
+    import { resolve } from "$app/paths";
+    import { projectRoute } from "../../../lib/publicProject";
 
     let token = $derived(page.params.token);
     let status = $state<"loading" | "success" | "error" | "unauthenticated">("loading");
@@ -51,8 +52,14 @@
             status = "success";
             message = "Successfully joined! Redirecting to project...";
             setTimeout(() => {
-                const navPath = data.projectTitle ? `/${encodeURIComponent(data.projectTitle)}` : `/${data.projectId}`;
-                goto(resolvePath(navPath));
+                // The invitation API returns either a display title (encoded
+                // per parameter) or an already-safe project id, which keeps
+                // its legacy unencoded shape.
+                goto(
+                    data.projectTitle
+                        ? projectRoute(data.projectTitle)
+                        : resolve("/[project]", { project: data.projectId }),
+                );
             }, 1500);
         } catch (e: unknown) {
             status = "error";
@@ -70,13 +77,13 @@
         
         {#if status === 'unauthenticated'}
             <div class="actions">
-                <a href={resolvePath("/")} class="login-btn">Go to Login</a>
+                <a href={resolve("/")} class="login-btn">Go to Login</a>
             </div>
         {/if}
 
         {#if status === 'error'}
             <div class="actions">
-                <a href={resolvePath("/")} class="home-btn">Go Home</a>
+                <a href={resolve("/")} class="home-btn">Go Home</a>
             </div>
         {/if}
         

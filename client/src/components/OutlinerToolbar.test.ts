@@ -2,9 +2,8 @@ import { fireEvent, render } from "@testing-library/svelte";
 import { describe, expect, test, vi } from "vitest";
 import OutlinerToolbar from "./OutlinerToolbar.svelte";
 
-vi.mock("../utils/pathUtils", () => ({
-    resolvePath: vi.fn((path) => `/resolved${path}`),
-}));
+// `$app/paths` is deliberately NOT mocked: the History / Diff href must come
+// out of the real SvelteKit resolver through the migrated typed route IDs.
 
 describe("OutlinerToolbar", () => {
     test("renders desktop toolbar with expected buttons", () => {
@@ -26,7 +25,23 @@ describe("OutlinerToolbar", () => {
 
         const historyBtn = getByText("History / Diff");
         expect(historyBtn).toBeTruthy();
-        expect((historyBtn as HTMLAnchorElement).href).toContain("/resolved/TestProject/TestPage/diff");
+        expect(historyBtn.getAttribute("href")).toBe("/TestProject/TestPage/diff");
+    });
+
+    test("renders the encoded diff href for special-character names", () => {
+        const { getByText } = render(OutlinerToolbar, {
+            props: {
+                mode: "desktop",
+                projectName: "demo-ja",
+                pageName: "設計メモ & plans",
+                onAddItem: vi.fn(),
+            },
+        });
+
+        const historyBtn = getByText("History / Diff");
+        expect(historyBtn.getAttribute("href")).toBe(
+            "/demo-ja/%E8%A8%AD%E8%A8%88%E3%83%A1%E3%83%A2%20%26%20plans/diff",
+        );
     });
 
     test("desktop mode 'Add Item' button calls onAddItem", async () => {
@@ -54,7 +69,7 @@ describe("OutlinerToolbar", () => {
         });
 
         const historyBtn = getByText("History / Diff");
-        expect((historyBtn as HTMLAnchorElement).href).toContain("/resolved/demo/TestPage/diff");
+        expect(historyBtn.getAttribute("href")).toBe("/demo/TestPage/diff");
     });
 
     test("renders mobile toolbar with expected buttons and offset", () => {

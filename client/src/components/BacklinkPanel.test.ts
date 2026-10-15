@@ -7,9 +7,8 @@ vi.mock("$app/navigation", () => ({
     goto: vi.fn(),
 }));
 
-vi.mock("$app/paths", () => ({
-    resolve: (path: string) => path,
-}));
+// `$app/paths` is deliberately NOT mocked: navigation destinations must come
+// out of the real SvelteKit resolver through the migrated typed route IDs.
 
 vi.mock("$lib/backlinkCollector", () => ({
     collectBacklinks: vi.fn(() => [

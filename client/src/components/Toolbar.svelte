@@ -11,8 +11,7 @@ import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { preventEditorBlur, restoreEditorFocus } from "../lib/editorFocus";
-import { projectBasePath } from "../lib/publicProject";
-import { resolvePath } from "../utils/pathUtils";
+import { projectRoute } from "../lib/publicProject";
 
 interface Props {
     onToggleDatabaseSidebar?: () => void;
@@ -192,7 +191,7 @@ function handleRedo() {
                 <a
                     class="project-name"
                     data-testid="toolbar-project-name"
-                    href={resolvePath(projectBasePath(projectTitle))}
+                    href={projectRoute(projectTitle)}
                     title={projectTitle}
                     aria-label={`Project: ${projectTitle}`}
                 >{projectTitle}</a>

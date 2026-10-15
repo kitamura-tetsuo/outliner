@@ -12,8 +12,8 @@ import {
     findSchedulesReferencingTable,
     type ScheduleTableReference,
 } from "../../services/schedule/scheduleRuleService";
-import { resolvePath } from "../../utils/pathUtils";
-import { projectSchedulePath, projectSchedulesPath } from "../../lib/managementPaths";
+import { projectScheduleRoute, projectSchedulesRoute } from "../../lib/managementPaths";
+import type { ResolvedPathname } from "$app/types";
 
 interface Props {
     project: Project | undefined;
@@ -42,8 +42,8 @@ onDestroy(() => {
     project?.schedules?.unobserveDeep(schedulesObserver);
 });
 
-function scheduleHref(ruleId: string): string {
-    return resolvePath(projectSchedulePath(projectName, ruleId));
+function scheduleHref(ruleId: string): ResolvedPathname {
+    return projectScheduleRoute(projectName, ruleId);
 }
 
 function kindLabel(kind: ScheduleTableReference["kind"]): string {
@@ -81,7 +81,7 @@ function kindLabel(kind: ScheduleTableReference["kind"]): string {
             {/each}
         </ul>
     {/if}
-    <a class="all-schedules-link" href={resolvePath(projectSchedulesPath(projectName))}>
+    <a class="all-schedules-link" href={projectSchedulesRoute(projectName)}>
         All schedules in this project
     </a>
 </section>

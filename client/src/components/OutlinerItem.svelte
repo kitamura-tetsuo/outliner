@@ -100,7 +100,6 @@ import { isReservedPageSegment } from "../lib/managementPaths";
 import { shouldYieldToNativeContextMenu } from "../lib/nativeContextMenu";
 import CommentThread from "./CommentThread.svelte";
 import { goto } from "$app/navigation";
-import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
@@ -114,7 +113,7 @@ import { nodeKindOfComponentType } from "$shared/services/outlineNodeKind";
 import { unwrapLayout } from "../services/layout/layoutTree";
 import { canPlaceBeside } from "../services/outline/nodeTree";
 import { writeGridPlacementDrag } from "../services/yjstable/gridPlacement";
-    import { projectPagePath } from "../lib/publicProject";
+    import { projectPageRoute } from "../lib/publicProject";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
@@ -371,7 +370,7 @@ function handleAliasNavigation(pageTitle: string, targetId: string, e: Event) {
     isAliasDropdownOpen = false;
     const projectTitle = generalStore.project?.title;
     if (projectTitle && pageTitle) {
-        goto(resolvePath(projectPagePath(projectTitle, pageTitle)));
+        goto(projectPageRoute(projectTitle, pageTitle));
     }
 }
 

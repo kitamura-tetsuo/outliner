@@ -5,12 +5,12 @@ description: Grid creation uses a reusable preset, display-name, and SQL-name fo
 category: client
 status: implemented
 acceptance:
-- Tasks remains the default preset, blank display names use the preset name, and manually edited SQL names survive subsequent name and preset changes.
 - Invalid or occupied SQL names and sources removed before confirmation are refused without creating or silently substituting registry entries.
 - Reusing a Table creates only an independent Grid, while placing an existing Grid creates no Table or Grid definition and stores no INSERT preference.
+- Tasks remains the default preset, blank display names use the preset name, and manually edited SQL names survive subsequent name and preset changes.
 tests:
-- client/src/components/yjstable/TableCreationForm.test.ts
 - client/e2e/tables/grd-shared-table-creation-form-6a03c2f1.spec.ts
 - client/e2e/tables/grd-shared-table-live-source-6a03c2f1.spec.ts
 - client/e2e/tables/grd-shared-table-selected-relation-6a03c2f1.spec.ts
 - client/e2e/tables/grd-shared-table-stale-deletion-6a03c2f1.spec.ts
+- client/src/components/yjstable/TableCreationForm.test.ts

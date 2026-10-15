@@ -10,8 +10,8 @@
 import * as Y from "yjs";
 import { onDestroy, onMount } from "svelte";
 import { findGridsBySourceTable, getGridRegistry } from "../../services/yjstable/gridDocs";
-import { resolvePath } from "../../utils/pathUtils";
-import { projectGridPath } from "../../lib/managementPaths";
+import { projectGridRoute } from "../../lib/managementPaths";
+import type { ResolvedPathname } from "$app/types";
 
 interface Props {
     projectDoc: Y.Doc;
@@ -45,8 +45,8 @@ onDestroy(() => {
     getGridRegistry(projectDoc).unobserveDeep(registryObserver);
 });
 
-function gridHref(gridId: string): string {
-    return resolvePath(projectGridPath(projectName, gridId));
+function gridHref(gridId: string): ResolvedPathname {
+    return projectGridRoute(projectName, gridId);
 }
 
 /** One line of a Grid's SELECT, enough to tell two Grids apart in a list. */

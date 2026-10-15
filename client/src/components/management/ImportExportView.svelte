@@ -2,7 +2,6 @@
     import { goto } from "$app/navigation";
     import { getLogger } from "../../lib/logger";
     const logger = getLogger("SettingsPage");
-    import { resolvePath } from "../../utils/pathUtils";
     import { onMount } from "svelte";
     import {
         exportProjectToMarkdown,
@@ -14,7 +13,7 @@
     import { yjsStore } from "../../stores/yjsStore.svelte";
 
     import { store } from "../../stores/store.svelte";
-    import { projectPagePath } from "../../lib/publicProject";
+    import { projectPagePath, projectPageRoute } from "../../lib/publicProject";
     import {
         createSnapshotClient,
         loadProjectSnapshot,
@@ -266,7 +265,7 @@
                     logger.debug(
                         `doImport: Navigating to ${projectPagePath(projectName, pageName)}`,
                     );
-                    await goto(resolvePath(projectPagePath(projectName, pageName)));
+                    await goto(projectPageRoute(projectName, pageName));
                 } else {
                     logger.debug(
                         "doImport: First page has no title, cannot navigate",
