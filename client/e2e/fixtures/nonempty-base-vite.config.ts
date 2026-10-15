@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { sveltekitOptions } from "../../sveltekit.options.js";
 
-const clientRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const sourceClientRoot = process.env.OPAQUE_URL_SOURCE_CLIENT_ROOT
+    || path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const clientRoot = process.env.OPAQUE_URL_TEST_ROOT || sourceClientRoot;
 const applicationBase = process.env.OPAQUE_URL_TEST_BASE === "/app" ? "/app" : "";
 
 // This fixture boots the real application router with a deployment base. It
@@ -15,6 +17,7 @@ const applicationBase = process.env.OPAQUE_URL_TEST_BASE === "/app" ? "/app" : "
 // so browser tests exercise the same generated framework boundary as a
 // nonempty-base deployment.
 export default defineConfig({
+    root: clientRoot,
     plugins: [
         {
             name: "nonempty-base-libpg-query-wasm",
@@ -22,7 +25,7 @@ export default defineConfig({
                 server.middlewares.use((request, response, next) => {
                     if (!request.url?.split("?", 1)[0].endsWith("/libpg-query.wasm")) return next();
                     response.setHeader("Content-Type", "application/wasm");
-                    fs.createReadStream(path.join(clientRoot, "node_modules/libpg-query/wasm/libpg-query.wasm"))
+                    fs.createReadStream(path.join(sourceClientRoot, "node_modules/libpg-query/wasm/libpg-query.wasm"))
                         .pipe(response);
                 });
             },
@@ -43,8 +46,8 @@ export default defineConfig({
         alias: {
             "$lib": path.join(clientRoot, "src/lib"),
             "$stores": path.join(clientRoot, "src/stores"),
-            "$shared": path.resolve(clientRoot, "../shared/src"),
-            "yjs": path.join(clientRoot, "node_modules/yjs"),
+            "$shared": path.resolve(sourceClientRoot, "../shared/src"),
+            "yjs": path.join(sourceClientRoot, "node_modules/yjs"),
         },
     },
     server: { strictPort: true },

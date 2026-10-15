@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { type ChildProcess, spawn } from "node:child_process";
 import { once } from "node:events";
+import { cpSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
@@ -25,7 +27,27 @@ async function waitForServer(origin: string, pathname: string): Promise<void> {
     throw new Error(`Vite fixture did not start at ${origin}`);
 }
 
-function launchFixture(port: number, nodeEnv: "test" | "development", base = ""): ChildProcess {
+function createFixtureRoot(): string {
+    const fixtureRoot = mkdtempSync(path.join(tmpdir(), "outliner-opaque-url-"));
+    cpSync(clientRoot, fixtureRoot, {
+        recursive: true,
+        filter: source => {
+            const relative = path.relative(clientRoot, source);
+            return !["node_modules", ".svelte-kit", "test-results", "playwright-report", "coverage"].some(
+                ignored => relative === ignored || relative.startsWith(`${ignored}${path.sep}`),
+            );
+        },
+    });
+    symlinkSync(path.join(clientRoot, "node_modules"), path.join(fixtureRoot, "node_modules"), "dir");
+    return fixtureRoot;
+}
+
+function launchFixture(
+    fixtureRoot: string,
+    port: number,
+    nodeEnv: "test" | "development",
+    base = "",
+): ChildProcess {
     return spawn(
         path.join(clientRoot, "node_modules/.bin/vite"),
         [
@@ -40,11 +62,13 @@ function launchFixture(port: number, nodeEnv: "test" | "development", base = "")
             "test",
         ],
         {
-            cwd: clientRoot,
+            cwd: fixtureRoot,
             env: {
                 ...process.env,
                 NODE_ENV: nodeEnv,
                 OPAQUE_URL_TEST_BASE: base,
+                OPAQUE_URL_TEST_ROOT: fixtureRoot,
+                OPAQUE_URL_SOURCE_CLIENT_ROOT: clientRoot,
                 VITE_IS_TEST: "true",
                 VITE_USE_FIREBASE_EMULATOR: "true",
             },
@@ -61,14 +85,17 @@ async function stopFixture(server: ChildProcess | undefined): Promise<void> {
 
 test.describe("language switch framework navigation", () => {
     let server: ChildProcess | undefined;
+    let fixtureRoot: string | undefined;
 
     test.beforeAll(async () => {
-        server = launchFixture(7189, "test");
+        fixtureRoot = createFixtureRoot();
+        server = launchFixture(fixtureRoot, 7189, "test");
         await waitForServer(languageOrigin, "/paraglide");
     });
 
     test.afterAll(async () => {
         await stopFixture(server);
+        if (fixtureRoot) rmSync(fixtureRoot, { recursive: true, force: true });
     });
 
     test("uses SvelteKit navigation for the supported language switch", async ({ page }) => {
@@ -82,14 +109,17 @@ test.describe("language switch framework navigation", () => {
 
 test.describe("debug bridge framework navigation", () => {
     let server: ChildProcess | undefined;
+    let fixtureRoot: string | undefined;
 
     test.beforeAll(async () => {
-        server = launchFixture(7190, "development", "/app");
+        fixtureRoot = createFixtureRoot();
+        server = launchFixture(fixtureRoot, 7190, "development", "/app");
         await waitForServer(debugOrigin, "/app/paraglide");
     });
 
     test.afterAll(async () => {
         await stopFixture(server);
+        if (fixtureRoot) rmSync(fixtureRoot, { recursive: true, force: true });
     });
 
     test("navigates an encoded opaque URL from a nested route under /app", async ({ page }) => {
