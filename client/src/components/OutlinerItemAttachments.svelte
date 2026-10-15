@@ -165,6 +165,7 @@ function handleImageError(att: AttachmentData) {
 {#if attachments.length > 0}
     <div class="attachments">
         {#each attachments as att (att.url)}
+            <!-- Opaque resource URL (e.g. signed storage URL with query/fragment): rendered verbatim, never passed to route resolution. -->
             <a
                 href={att.url}
                 target="_blank"
