@@ -1,7 +1,7 @@
 import type * as Y from "yjs";
 import type { ProjectQueryProvenance, ProvenanceRelation } from "./projectQueryProvenance";
 import { isProjectQueryProvenanceCurrent } from "./projectQueryProvenance";
-import type { ProjectSelectEvidence } from "./projectSelectSession";
+import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelectSession";
 import type { RelationProvider } from "./relationProvider";
 import { getTableSqlName } from "./tableDocs";
 
@@ -41,6 +41,8 @@ export interface InsertTargetResolverOptions {
     evidence: ProjectSelectEvidence;
     provenance: ProjectQueryProvenance;
     insertTargetTableId?: string;
+    /** Live query/catalog authority which produced `evidence`. */
+    session: Pick<ProjectSelectSession, "isEvidenceCurrent">;
     /** Resolves the live provider admitted to this Project; the caller retains ownership. */
     resolveRelation: (sqlName: string) => Promise<RelationProvider | undefined>;
 }
@@ -52,7 +54,7 @@ export interface InsertTargetResolverOptions {
  */
 export async function resolveInsertTarget(options: InsertTargetResolverOptions): Promise<InsertTargetResolution> {
     const { evidence, provenance, insertTargetTableId } = options;
-    if (!isProjectQueryProvenanceCurrent(provenance, evidence)) {
+    if (!options.session.isEvidenceCurrent(evidence) || !isProjectQueryProvenanceCurrent(provenance, evidence)) {
         return unavailable("The query or execution generation changed; run the query again");
     }
     if (provenance.status === "unsupported") {
@@ -127,6 +129,8 @@ async function liveTarget(
         || live.sqlName !== supplier.sqlName || live.schemaRevision !== supplier.schemaRevision
         || !provider.capabilities.insert
     ) return undefined;
+    // Provider resolution can cross an async catalog/query invalidation.
+    if (!options.session.isEvidenceCurrent(options.evidence)) return undefined;
     return {
         kind: live.kind,
         id: live.id,

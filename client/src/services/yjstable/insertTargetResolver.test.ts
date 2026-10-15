@@ -4,14 +4,16 @@ import { resolveInsertTarget, validateInsertTargetPreference } from "./insertTar
 import { resetPgliteForTests } from "./pgliteService";
 import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
 import { createProjectSelectSession, type ProjectSelectEvidence } from "./projectSelectSession";
-import { createTable, getTableHandles, removeTable, setSchemaText } from "./tableDocs";
+import { addRecord, createTable, getTableHandles, removeTable, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
 
 const connect: TableDocConnector = async () => ({ waitForInitialSync: async () => ({ synced: true }), dispose() {} });
 
-function table(doc: Y.Doc, name: string, id?: string): string {
+function table(doc: Y.Doc, name: string, id?: string, value?: number): string {
     const tableId = createTable(doc, name.toUpperCase(), name, id ? { tableId: id } : undefined);
-    setSchemaText(getTableHandles(doc, tableId)!, `CREATE TABLE ${name} (id TEXT PRIMARY KEY, value INTEGER)`);
+    const handles = getTableHandles(doc, tableId)!;
+    setSchemaText(handles, `CREATE TABLE ${name} (id TEXT PRIMARY KEY, value INTEGER)`);
+    if (value !== undefined) addRecord(handles, { value });
     return tableId;
 }
 
@@ -26,6 +28,7 @@ async function fixture(doc: Y.Doc, query: string, preference?: string) {
         evidence: evidence!,
         provenance,
         insertTargetTableId: preference,
+        session,
         resolveRelation: engine.resolveRelation,
     };
     return {
@@ -34,6 +37,8 @@ async function fixture(doc: Y.Doc, query: string, preference?: string) {
         options,
         resolve: () => resolveInsertTarget(options),
         resolveRelation: engine.resolveRelation,
+        session,
+        rebuildCatalog: engine.rebuildCatalog,
         dispose: () => {
             session.dispose();
             engine.dispose();
@@ -96,6 +101,31 @@ describe("INSERT target resolver", { timeout: 30_000 }, () => {
         }
     });
 
+    it("preserves ambiguity when only A contributes visible rows", async () => {
+        for (
+            const [guid, query, populateB] of [
+                ["empty-b", "SELECT * FROM a UNION ALL SELECT * FROM b", false],
+                ["filtered-b", "SELECT * FROM a UNION ALL SELECT * FROM b WHERE false", true],
+                ["limited-b", "SELECT * FROM a UNION ALL SELECT * FROM b LIMIT 1", true],
+            ] as const
+        ) {
+            const doc = new Y.Doc({ guid: `insert-target-${guid}` });
+            table(doc, "a", undefined, 1);
+            const b = table(doc, "b", undefined, populateB ? 2 : undefined);
+            const run = await fixture(doc, query);
+            try {
+                expect(run.evidence.rows).toHaveLength(1);
+                expect(await run.resolve()).toEqual({ mode: "selection-required" });
+                expect(await resolveInsertTarget({ ...run.options, insertTargetTableId: b })).toEqual({
+                    mode: "configured",
+                    target: { kind: "table", id: b, sqlName: "b", requiresDestination: false },
+                });
+            } finally {
+                run.dispose();
+            }
+        }
+    });
+
     it("uses supplier proof rather than filter-only read dependencies", async () => {
         const doc = new Y.Doc({ guid: "insert-target-exists" });
         const a = table(doc, "a");
@@ -111,7 +141,7 @@ describe("INSERT target resolver", { timeout: 30_000 }, () => {
         }
     });
 
-    it("refuses unsupported and stale execution proof", async () => {
+    it("refuses unsupported and mismatched execution proof", async () => {
         const doc = new Y.Doc({ guid: "insert-target-proof" });
         table(doc, "a");
         const unsupported = await fixture(doc, "SELECT count(*) FROM a");
@@ -126,6 +156,44 @@ describe("INSERT target resolver", { timeout: 30_000 }, () => {
             expect((await resolveInsertTarget({ ...current.options, evidence: changed })).mode).toBe("unavailable");
         } finally {
             current.dispose();
+        }
+    });
+
+    it("rejects evidence superseded by the live query or catalog generation", async () => {
+        const doc = new Y.Doc({ guid: "insert-target-live-authority" });
+        table(doc, "a");
+        table(doc, "b");
+        const changedQuery = await fixture(doc, "SELECT * FROM a");
+        try {
+            changedQuery.session.setQuery("SELECT * FROM b");
+            expect(await changedQuery.resolve()).toEqual({
+                mode: "unavailable",
+                reason: "The query or execution generation changed; run the query again",
+            });
+            const current = await changedQuery.session.runNow();
+            expect(current?.query).toBe("SELECT * FROM b");
+            expect(await changedQuery.resolve()).toEqual({
+                mode: "unavailable",
+                reason: "The query or execution generation changed; run the query again",
+            });
+        } finally {
+            changedQuery.dispose();
+        }
+
+        const rebuiltCatalog = await fixture(doc, "SELECT * FROM a");
+        try {
+            rebuiltCatalog.rebuildCatalog();
+            expect(await rebuiltCatalog.resolve()).toEqual({
+                mode: "unavailable",
+                reason: "The query or execution generation changed; run the query again",
+            });
+            await rebuiltCatalog.session.runNow();
+            expect(await rebuiltCatalog.resolve()).toEqual({
+                mode: "unavailable",
+                reason: "The query or execution generation changed; run the query again",
+            });
+        } finally {
+            rebuiltCatalog.dispose();
         }
     });
 
