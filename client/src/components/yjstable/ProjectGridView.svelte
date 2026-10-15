@@ -89,8 +89,8 @@ onDestroy(() => {
     {:else}
         {#if state.status === "loading"}<p class="refreshing">Refreshing…</p>{/if}
         <div class="scroll"><table>
-            <thead><tr>{#each displayColumns as column}<th style:width={widths[column] ? `${widths[column]}px` : undefined}>{labels[column] || column}</th>{/each}</tr></thead>
-            <tbody>{#each evidence.rows as row}<tr>{#each displayColumns as column}<td>{row[column] == null ? "" : String(row[column])}</td>{/each}</tr>{/each}</tbody>
+            <thead><tr>{#each displayColumns as column (column)}<th style:width={widths[column] ? `${widths[column]}px` : undefined}>{labels[column] || column}</th>{/each}</tr></thead>
+            <tbody>{#each evidence.rows as row, rowIndex (rowIndex)}<tr>{#each displayColumns as column (column)}<td>{row[column] == null ? "" : String(row[column])}</td>{/each}</tr>{/each}</tbody>
         </table></div>
         <p class="readonly">This result is readable and copyable. Editing is unavailable until its physical source can be proven.</p>
     {/if}
