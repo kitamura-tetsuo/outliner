@@ -6,7 +6,7 @@ import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelec
 import { assertWriteAllowed, type RelationProvider, type RelationValue, RelationWriteError } from "./relationProvider";
 import type { TableColumnSchema } from "./schemaIntrospection";
 import { getTableSqlName } from "./tableDocs";
-import { createTableEngineSession, type TableDocConnector } from "./tableEngine";
+import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
 import { castValueForColumn } from "./valueCasting";
 
 export type GridExistingRowOperation = "UPDATE" | "DELETE";
@@ -43,6 +43,8 @@ export interface GridExistingRowMutationOptions {
     canWrite: () => boolean;
     /** The invoking surface may independently restrict an otherwise capable provider. */
     allows: (operation: GridExistingRowOperation, source: ProvenanceRelation, physicalColumn?: string) => boolean;
+    /** Optional externally owned relation session, useful when resolution must be coordinated by a caller. */
+    relationSession?: Pick<TableEngineSession, "resolveRelation" | "releaseRelation">;
 }
 
 interface CapturedIntent extends GridMutationIntent {
@@ -63,7 +65,8 @@ interface CapturedIntent extends GridMutationIntent {
 export function createGridExistingRowMutationBoundary(
     options: GridExistingRowMutationOptions,
 ): GridExistingRowMutationBoundary {
-    const engine = createTableEngineSession(options);
+    const ownedEngine = options.relationSession ? undefined : createTableEngineSession(options);
+    const engine = options.relationSession ?? ownedEngine!;
     let disposed = false;
     const captured = new WeakSet<object>();
 
@@ -84,9 +87,19 @@ export function createGridExistingRowMutationBoundary(
                 metadata.reason ?? provenance.reason ?? "Grid source provenance or physical metadata is unavailable",
             );
         }
+        if (metadata.evidenceFingerprint !== provenance.fingerprint) {
+            refuse("Physical metadata does not belong to the current Grid execution");
+        }
         if (!options.canWrite()) refuse("Project write access is unavailable");
         const row = evidence.rows[rowIndex];
         if (!row) refuse("The selected result row no longer exists");
+        const identity = evidence.rowIdentities[rowIndex];
+        if (
+            !identity || row.id !== identity.id || row.source_kind !== identity.sourceKind
+            || row.source_id !== identity.sourceId
+        ) {
+            refuse("The result row identity differs from the completed execution");
+        }
         const target = resolveTarget(operation, row, outputColumn, provenance, metadata);
         if (!options.allows(operation, target.source, target.physical?.physicalColumn)) {
             refuse("This Grid surface does not allow the requested source mutation");
@@ -154,7 +167,7 @@ export function createGridExistingRowMutationBoundary(
         },
         dispose() {
             disposed = true;
-            engine.dispose();
+            ownedEngine?.dispose();
         },
     };
 }
@@ -195,6 +208,14 @@ function assertCurrent(options: GridExistingRowMutationOptions, intent: Captured
         || options.metadata() !== intent.metadata || intent.evidence.rows[intent.rowIndex] !== intent.row
         || !current(options, intent.evidence, intent.provenance)
     ) refuse("The Grid query, result, catalog, or source authority changed while the mutation was pending");
+    if (intent.metadata.evidenceFingerprint !== intent.provenance.fingerprint) {
+        refuse("Physical metadata no longer belongs to the captured Grid execution");
+    }
+    const identity = intent.evidence.rowIdentities[intent.rowIndex];
+    if (
+        !identity || intent.row.id !== identity.id || intent.row.source_kind !== identity.sourceKind
+        || intent.row.source_id !== identity.sourceId
+    ) refuse("The result row identity changed while the mutation was pending");
     if (!options.canWrite()) refuse("Project write access was revoked");
     if (!options.allows(intent.operation, intent.source, intent.physical?.physicalColumn)) {
         refuse("This Grid surface no longer allows the requested source mutation");

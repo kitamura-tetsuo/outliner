@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { createGrid, getGridRegistry } from "./gridDocs";
+import { createGrid, GRID_REGISTRY_KEY } from "./gridDocs";
 import { createMutationHarness, createTestTable } from "./gridExistingRowMutation.testSupport";
 import { resetPgliteForTests } from "./pgliteService";
 import { deleteRecord, setSchemaText } from "./tableDocs";
@@ -73,11 +73,11 @@ describe("Grid mutation live target checks", { timeout: 30_000 }, () => {
         const other = createTestTable(doc, "other", "CREATE TABLE other (id TEXT PRIMARY KEY, value TEXT)", "o1", {
             value: "other",
         });
-        const gridId = createGrid(doc, "Grid", b.tableId, "SELECT id, value, peer FROM b");
+        const gridId = createGrid(doc, b.tableId, { name: "Grid", query: "SELECT id, value, peer FROM b" });
         const h = await createMutationHarness(doc, "SELECT id, value, peer FROM b");
         try {
             const pending = h.boundary.captureUpdate(0, "value", "after");
-            getGridRegistry(doc).get(gridId)!.set("insertTargetTableId", other.tableId);
+            doc.getMap<Y.Map<unknown>>(GRID_REGISTRY_KEY).get(gridId)!.set("insertTargetTableId", other.tableId);
             await h.boundary.commit(pending);
             expect(b.handles.data.get("b1")?.toJSON()).toEqual({ id: "b1", value: "after", peer: "keep" });
             expect(other.handles.data.get("o1")?.get("value")).toBe("other");

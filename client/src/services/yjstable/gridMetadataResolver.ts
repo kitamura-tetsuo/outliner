@@ -30,6 +30,8 @@ export interface GridMetadataResolution {
     columns: GridResultColumnMetadata[];
     rows: Record<string, unknown>[];
     physicalColumns: GridPhysicalColumnMetadata[];
+    /** Exact completed execution/provenance incarnation this metadata describes. */
+    evidenceFingerprint: string;
 }
 
 export interface GridMetadataResolver {
@@ -64,7 +66,7 @@ export function createGridMetadataResolver(options: {
         async resolve(evidence, provenance, session) {
             const request = ++generation;
             release();
-            const base = resultEvidence(evidence);
+            const base = resultEvidence(evidence, provenance);
             if (
                 disposed || !session.isProjectContext(options.projectDoc, options.projectId)
                 || !current(evidence, provenance, session)
@@ -151,8 +153,9 @@ function current(
     return session.isEvidenceCurrent(evidence) && isProjectQueryProvenanceCurrent(provenance, evidence);
 }
 
-function resultEvidence(evidence: ProjectSelectEvidence) {
+function resultEvidence(evidence: ProjectSelectEvidence, provenance: ProjectQueryProvenance) {
     return {
+        evidenceFingerprint: provenance.fingerprint,
         columns: evidence.columns.map((column, index) => ({ index, name: column.name, typeId: column.typeId })),
         rows: evidence.rows,
     };

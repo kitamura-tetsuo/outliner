@@ -14,3 +14,5 @@ tests:
 - client/src/services/yjstable/gridExistingRowMutation.lifecycle.test.ts
 - client/src/services/yjstable/gridExistingRowMutation.unionAuthority.test.ts
 - client/src/services/yjstable/gridExistingRowMutation.liveChecks.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.evidenceIntegrity.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.inFlight.test.ts
