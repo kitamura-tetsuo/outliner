@@ -67,6 +67,7 @@ interface Props {
 
 let { item, isReadOnly = false }: Props = $props();
 let kanbanDialogOpen = $state(false);
+let kanbanDialogElement: HTMLDialogElement | undefined = $state();
 let kanbanMode = $state<"new" | "existing">("new");
 let selectedTableId = $state("");
 let selectedKanbanId = $state("");
@@ -424,6 +425,20 @@ function openKanbanDialog() {
     kanbanDialogOpen = true;
 }
 
+$effect(() => {
+    if (kanbanDialogElement) {
+        if (kanbanDialogOpen) {
+            if (!kanbanDialogElement.open && typeof kanbanDialogElement.showModal === 'function') {
+                kanbanDialogElement.showModal();
+            }
+        } else {
+            if (kanbanDialogElement.open && typeof kanbanDialogElement.close === 'function') {
+                kanbanDialogElement.close();
+            }
+        }
+    }
+});
+
 function confirmKanbanPlacement() {
     if (isReadOnly) return;
     const project = Project.fromDoc(item.ydoc);
@@ -618,7 +633,8 @@ function confirmKanbanPlacement() {
         />
     {/if}
     {#if kanbanDialogOpen}
-        <dialog open class="kanban-placement-dialog" data-testid="layout-kanban-dialog">
+        <dialog bind:this={kanbanDialogElement} class="kanban-placement-dialog" data-testid="layout-kanban-dialog" oncancel={(e) => { e.preventDefault(); kanbanDialogOpen = false; }} onclick={(e) => { if (e.target === kanbanDialogElement) kanbanDialogOpen = false; }}>
+            <div class="dialog-content" role="presentation" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()}>
             <h3>Add Kanban to Layout</h3>
             <label><input type="radio" bind:group={kanbanMode} value="new" /> New board over Table</label>
             <select bind:value={selectedTableId} disabled={kanbanMode !== "new"}>
@@ -630,6 +646,7 @@ function confirmKanbanPlacement() {
             </select>
             <button type="button" onclick={() => { kanbanDialogOpen = false; }}>Cancel</button>
             <button type="button" data-testid="layout-kanban-confirm" onclick={confirmKanbanPlacement}>Add</button>
+            </div>
         </dialog>
     {/if}
 </div>
@@ -642,15 +659,21 @@ function confirmKanbanPlacement() {
 }
 
 .kanban-placement-dialog {
-    position: fixed;
-    z-index: 100;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
+    margin: auto;
+    width: min(32rem, calc(100vw - 2rem));
+    padding: 0;
+    border: none;
+    border-radius: 0.75rem;
     background: white;
+    box-shadow: 0 18px 48px rgb(0 0 0 / 25%);
+}
+
+.kanban-placement-dialog::backdrop {
+    background: rgb(0 0 0 / 35%);
+}
+
+.kanban-placement-dialog .dialog-content {
+    padding: 1.25rem;
 }
 
 /* The responsive threshold is the Layout's own width, not the viewport's, so a
