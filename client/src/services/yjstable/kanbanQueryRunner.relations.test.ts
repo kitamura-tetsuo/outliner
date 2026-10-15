@@ -51,6 +51,7 @@ describe("Kanban additional-relation invalidation", { timeout: 30000 }, () => {
             projectDoc,
             kanbanId,
             kanban: getKanbanHandles(projectDoc, kanbanId)!,
+            connect: localConnector,
             sourceAdapter: acquired!.adapter,
         });
         const projections: KanbanProjection[] = [];

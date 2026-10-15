@@ -28,6 +28,7 @@ async function setup() {
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
+        connect: localConnector,
         sourceAdapter: acquired!.adapter,
     });
     const published: KanbanProjection[] = [];

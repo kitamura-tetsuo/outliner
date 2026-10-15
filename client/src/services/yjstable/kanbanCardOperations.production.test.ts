@@ -37,6 +37,7 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
+        connect: localConnector,
         sourceAdapter: acquired!.adapter,
     });
     let projection: KanbanProjection = { status: "loading", current: false, lanes: [], columns: [] };

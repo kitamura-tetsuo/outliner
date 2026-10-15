@@ -33,6 +33,7 @@ async function setup(schema = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TE
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
+        connect: localConnector,
         sourceAdapter: acquired!.adapter,
     });
     return { projectDoc, tableId, table, kanbanId, session, runner };
