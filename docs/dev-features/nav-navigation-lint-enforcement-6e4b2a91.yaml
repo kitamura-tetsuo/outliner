@@ -1,0 +1,15 @@
+id: FTR-6e4b2a91
+title: Restore typed navigation lint enforcement
+title-ja: 型付きナビゲーションのリント強制を復元
+description: The retired generic resolvePath wrapper is removed after all internal and opaque URL consumers migrated, and the production ESLint configuration now enforces SvelteKit navigation resolution globally at error severity.
+category: routing
+status: implemented
+changes:
+- Removed client/src/utils/pathUtils.ts and its stale wrapper tests
+- Enabled svelte/no-navigation-without-resolve globally without category-wide ignores or migration-only scoped overrides
+- Migrated SearchBox, debug-test and Grid source-Table navigation to generated-route-typed resolve values
+- Removed empty-fragment Graph fallbacks and preserved typed query-bearing Object Manager destinations
+- Recorded the final zero-exception inventory in client/docs/guide/typed-internal-navigation.md
+tests:
+- client/src/lib/navigationLintConfig.test.ts
+notes: The automated inventory rejects wrapper reintroduction and blanket navigation-rule suppression. Opaque attachment, localization and debug boundaries retain their distinct production contracts.

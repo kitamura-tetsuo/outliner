@@ -1,10 +1,10 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { userManager } from "../../auth/UserManager";
     import { getLogger } from "../../lib/logger";
 
-    import { resolvePath } from "../../utils/pathUtils";
 
     const logger = getLogger();
 
@@ -13,7 +13,7 @@
         try {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             logger.info("[debug-test] Logged in successfully, redirecting to /test");
-            await goto(resolvePath("/test"));
+            await goto(resolve("/[project]", { project: "test" }));
         } catch (error) {
             logger.error({ error }, "[debug-test] Login failed");
         }

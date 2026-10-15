@@ -3,7 +3,7 @@ import { onMount, tick } from "svelte";
 import { SvelteSet } from "svelte/reactivity";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { isPublicProject } from "../../lib/publicProject";
-import { projectTableRoute, projectGridRoute, projectCalendarRoute, projectScheduleRoute } from "../../lib/managementPaths";
+import { projectTableRoute, projectGridRoute, projectCalendarRoute, projectScheduleRoute, projectKanbanRoute } from "../../lib/managementPaths";
 import type { ResolvedPathname } from "$app/types";
 import { userPreferencesStore } from "../../stores/UserPreferencesStore.svelte";
 import { navigateToOutlineItem } from "../../services/navigation/outlineItemNavigation";
@@ -66,12 +66,12 @@ let duplicateTargets = $state<NamedObject[]>([]);
 let preselectionApplied = $state<string | null>(null);
 let placementTarget = $state<NamedObject | null>(null);
 
-function getObjectHref(object: NamedObject): ResolvedPathname | "#" {
+function getObjectHref(object: NamedObject): ResolvedPathname {
     if (object.type === "Table") return projectTableRoute(projectName, object.id);
     if (object.type === "Grid") return projectGridRoute(projectName, object.id);
     if (object.type === "Calendar") return projectCalendarRoute(projectName, object.id);
     if (object.type === "Schedule") return projectScheduleRoute(projectName, object.id);
-    return "#";
+    return projectKanbanRoute(projectName, object.id);
 }
 
 function handleSortClick(col: string) {

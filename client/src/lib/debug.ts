@@ -59,6 +59,7 @@ export function setupGlobalDebugFunctions() {
                 return new Promise<void>((resolve, reject) => {
                     // Opaque debug URL: already app-root-relative, never a
                     // route ID. The configured base is applied once above.
+                    // eslint-disable-next-line svelte/no-navigation-without-resolve -- production debug input is opaque and covered by debug.nonempty-base.test.ts.
                     goto(withConfiguredBase(url), opts).then(() => resolve()).catch(reject);
                 });
             };

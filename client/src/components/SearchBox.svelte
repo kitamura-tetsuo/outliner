@@ -8,8 +8,9 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchBox");
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
+    import type { ResolvedPathname } from "$app/types";
     import { page as pageState } from "$app/state";
-    import { resolvePath } from "../utils/pathUtils";
     import type { Project } from "../schema/app-schema";
     import type { ItemLike } from "../types/yjs-types";
     import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
@@ -226,6 +227,11 @@ const logger = getLogger("SearchBox");
         return "";
     }
 
+    function searchRoute(query: string): ResolvedPathname {
+        const pathname = resolve("/[project]", { project: "search" });
+        return `${pathname}?query=${encodeURIComponent(query)}`;
+    }
+
     function navigateToPage(page?: Item) {
         // If query has changed but results haven't updated yet, treat results as stale
         const isStale = query !== debouncedQuery;
@@ -248,9 +254,9 @@ const logger = getLogger("SearchBox");
             // here also matched `/demo-ja`, sending those visitors to `/demo`.
             goto(projectPageRoute(projTitle, title));
         } else if (query) {
-            // `/search` is not a SvelteKit route, so the typed resolver cannot
-            // express it; the generic wrapper stays for this one destination.
-            goto(resolvePath(`/search?query=${encodeURIComponent(query)}`));
+            // `/search` is the `[project]` route. Resolve the pathname before
+            // appending its independently encoded query value.
+            goto(searchRoute(query));
         }
     }
 

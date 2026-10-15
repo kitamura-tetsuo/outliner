@@ -169,7 +169,7 @@ function handleImageError(att: AttachmentData) {
             <a
                 href={att.url}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="external noopener noreferrer"
                 class="attachment-link"
                 aria-label={getAttachmentLabel(att.url, att.name)}
                 title={getAttachmentLabel(att.url, att.name)}
