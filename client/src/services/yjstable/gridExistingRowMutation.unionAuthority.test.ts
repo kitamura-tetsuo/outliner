@@ -23,7 +23,7 @@ describe("Grid UNION mutation authority", { timeout: 30_000 }, () => {
             const aIndex = h.evidence().rows.findIndex(candidate => candidate.source_kind === "a");
             const row = h.evidence().rows[aIndex]!;
             row.source_kind = "not_a_supplier";
-            expect(() => h.boundary.captureUpdate(aIndex, "shown", "wrong")).toThrow(/verified branch identity/);
+            expect(() => h.boundary.captureUpdate(aIndex, "shown", "wrong")).toThrow(/completed execution/);
             expect(a.handles.data.get("same")?.get("title")).toBe("A");
             expect(b.handles.data.get("same")?.get("label")).toBe("B");
             expect(a.handles.undo.undoStack).toHaveLength(0);
