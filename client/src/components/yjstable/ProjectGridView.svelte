@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onDestroy, onMount } from "svelte";
 import type * as Y from "yjs";
+import { resolve } from "$app/paths";
 import { projectTablePath } from "../../lib/managementPaths";
 import { getGridQuery, readGridComponents, type GridHandles } from "../../services/yjstable/gridDocs";
 import { analyzeProjectQueryProvenance } from "../../services/yjstable/projectQueryProvenance";
@@ -79,7 +80,7 @@ function resolveActualSource(next: ProjectSelectState) {
         handles,
         name: entry.name || source.sqlName,
         sqlName: source.sqlName,
-        href: projectName ? projectTablePath(projectName, source.id) : undefined,
+        href: projectName ? resolve(projectTablePath(projectName, source.id)) : undefined,
     };
 }
 
@@ -126,7 +127,7 @@ onDestroy(() => {
             <span>Sources:</span>
             {#each evidence.sources as source (`${source.kind}:${source.id}`)}
                 {#if source.kind === "table" && projectName}
-                    <a href={projectTablePath(projectName, source.id)}>{source.sqlName}</a>
+                    <a href={resolve(projectTablePath(projectName, source.id))}>{source.sqlName}</a>
                 {:else}
                     <span>{source.sqlName} ({source.kind})</span>
                 {/if}
