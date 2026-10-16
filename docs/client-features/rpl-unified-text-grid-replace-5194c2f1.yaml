@@ -6,5 +6,6 @@ description: Replace and Replace All work across outline text and writable Grid 
 tests:
 - client/e2e/new/rpl-grid-source-authority-5194c2f1.spec.ts
 - client/e2e/new/rpl-unified-text-grid-replace-5194c2f1.spec.ts
+- client/e2e/new/tbl-unioned-row-identity-editability-1cdf0ceb.spec.ts
 - client/src/lib/search/unifiedSearch.test.ts
 - client/src/services/yjstable/gridSelectionCommands.test.ts
