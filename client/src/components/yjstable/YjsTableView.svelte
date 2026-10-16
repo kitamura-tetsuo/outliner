@@ -263,6 +263,10 @@ async function refreshGuardedMutationAuthority(): Promise<void> {
 
 function refreshDisplayedResultAfterGuardedMutation(): void {
     if (!adapter || !runner) return;
+    // The source flush can settle just before or just after the awaited
+    // provider promise. Schedule against an already-settled flush, and keep a
+    // one-shot data-applied listener for the still-pending case.
+    runner.scheduleRequery();
     let unsubscribe = () => {};
     unsubscribe = adapter.subscribe({
         onDataApplied: () => {
