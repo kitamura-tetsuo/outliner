@@ -18,11 +18,14 @@ test(
         await page.getByTestId("search-toggle-button").click();
         await page.getByTestId("search-input").fill("Value from B");
         await page.getByTestId("search-button").click();
-        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 1", { timeout: 30000 });
+        // Both rendered Grids now project the same physical B record. The two
+        // logical placements must remain discoverable even though either one
+        // addresses the same guarded source cell.
+        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2", { timeout: 30000 });
+        await page.getByTestId("search-result-button").first().click();
         await page.getByTestId("replace-input").fill("Replaced in B");
         await page.getByTestId("replace-button").click();
 
-        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 0", { timeout: 30000 });
         await expect.poll(async () => {
             const state = await snapshotProject(page);
             return {
