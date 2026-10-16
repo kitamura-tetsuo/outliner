@@ -80,14 +80,25 @@ test.describe("Grid selection-aware Delete removes rows; bulk checkbox commit (F
         await firstCheckbox.click();
         await expect(firstCheckbox).toBeChecked({ timeout: 15000 });
 
-        const secondLabel = await doneCheckbox(1).getAttribute("aria-label");
+        // The un-ordered SELECT may reorder after the first write. Choose the
+        // checkbox adjacent to the durable first record in the refreshed
+        // result, and retain the remaining record as the outside-range oracle.
+        const currentLabels = await rows.locator("td[data-col='done'] input[type=checkbox]")
+            .evaluateAll(inputs => inputs.map(input => input.getAttribute("aria-label") ?? ""));
+        const firstIndex = currentLabels.indexOf(firstLabel!);
+        expect(firstIndex).toBeGreaterThanOrEqual(0);
+        const secondIndex = firstIndex === 0 ? 1 : firstIndex - 1;
+        const secondLabel = currentLabels[secondIndex];
+        const outsideLabel = currentLabels.find((_, index) => index !== firstIndex && index !== secondIndex);
         expect(secondLabel).toBeTruthy();
-        const secondCheckbox = grid.getByLabel(secondLabel!);
+        expect(outsideLabel).toBeTruthy();
+        const secondCheckbox = grid.getByLabel(secondLabel);
+        const outsideCheckbox = grid.getByLabel(outsideLabel!);
         await secondCheckbox.click({ modifiers: ["Shift"] });
 
         await expect(firstCheckbox).toBeChecked({ timeout: 15000 });
         await expect(secondCheckbox).toBeChecked({ timeout: 15000 });
         // The selection never covered the third row -- it is untouched.
-        await expect(doneCheckbox(2)).not.toBeChecked();
+        await expect(outsideCheckbox).not.toBeChecked();
     });
 });
