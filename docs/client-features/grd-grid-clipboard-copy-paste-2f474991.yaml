@@ -24,11 +24,11 @@ acceptance:
 - The Grid's own clipboard ownership boundary (`data-foreign-editor`) keeps the outliner's document-level item clipboard from double-handling a Grid copy/paste
 - The touch selection toolbar exposes Copy and Paste, calling the exact same functions as the keyboard shortcuts
 tests:
-- client/src/components/yjstable/TableGrid.guardedClipboard.test.ts
-- client/src/services/yjstable/gridCommandExecution.origins.test.ts
 - client/e2e/tables/grd-grid-clipboard-copy-2f474991.spec.ts
 - client/e2e/tables/grd-grid-clipboard-mobile-2f474991.spec.ts
 - client/e2e/tables/grd-grid-clipboard-paste-2f474991.spec.ts
 - client/src/components/yjstable/TableGrid.clipboard.test.ts
+- client/src/components/yjstable/TableGrid.guardedClipboard.test.ts
 - client/src/services/yjstable/gridClipboard.test.ts
+- client/src/services/yjstable/gridCommandExecution.origins.test.ts
 - client/src/services/yjstable/gridCommandExecution.test.ts

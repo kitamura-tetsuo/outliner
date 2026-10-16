@@ -20,7 +20,7 @@ tests:
 - client/src/components/yjstable/TableGrid.bulkCommands.test.ts
 - client/src/components/yjstable/TableGrid.guardedCommands.test.ts
 - client/src/components/yjstable/TableGrid.guardedConfirmation.test.ts
-- client/src/services/yjstable/gridCommandExecution.test.ts
 - client/src/services/yjstable/gridCommandExecution.history.test.ts
 - client/src/services/yjstable/gridCommandExecution.origins.test.ts
+- client/src/services/yjstable/gridCommandExecution.test.ts
 - client/src/services/yjstable/gridSelectionCommands.test.ts
