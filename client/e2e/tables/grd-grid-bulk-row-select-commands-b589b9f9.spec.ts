@@ -74,11 +74,19 @@ test.describe("Grid selection-aware Delete removes rows; bulk checkbox commit (F
         // behavior); a Shift-click extends the selection to include the newly
         // clicked cell *before* its own toggle commits, so that commit applies
         // to every writable cell the selection now covers.
-        await doneCheckbox(0).click();
-        await doneCheckbox(1).click({ modifiers: ["Shift"] });
+        const firstLabel = await doneCheckbox(0).getAttribute("aria-label");
+        expect(firstLabel).toBeTruthy();
+        const firstCheckbox = grid.getByLabel(firstLabel!);
+        await firstCheckbox.click();
+        await expect(firstCheckbox).toBeChecked({ timeout: 15000 });
 
-        await expect(doneCheckbox(0)).toBeChecked({ timeout: 15000 });
-        await expect(doneCheckbox(1)).toBeChecked({ timeout: 15000 });
+        const secondLabel = await doneCheckbox(1).getAttribute("aria-label");
+        expect(secondLabel).toBeTruthy();
+        const secondCheckbox = grid.getByLabel(secondLabel!);
+        await secondCheckbox.click({ modifiers: ["Shift"] });
+
+        await expect(firstCheckbox).toBeChecked({ timeout: 15000 });
+        await expect(secondCheckbox).toBeChecked({ timeout: 15000 });
         // The selection never covered the third row -- it is untouched.
         await expect(doneCheckbox(2)).not.toBeChecked();
     });
