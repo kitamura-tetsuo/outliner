@@ -44,6 +44,8 @@ export interface GridSearchSnapshot {
     rows: readonly Record<string, unknown>[];
     selection?: GridSelectionSnapshot;
     rowId(row: Record<string, unknown>, rowIndex: number): string | undefined;
+    /** Stable physical-source identity used to deduplicate one cell across distinct Grid placements. */
+    cellKey(row: Record<string, unknown>, rowIndex: number, columnId: string): string;
 }
 
 /** One Replace target: `newText` is the cell's full display text after the substitution, ready to be re-typed and validated. */
@@ -263,7 +265,7 @@ export async function replaceGridMatches(
             const rowId = view.rowId(row, rowIndex);
             if (!rowId) continue;
             for (const columnId of view.columns) {
-                const dedupeKey = `${view.gridId}:${rowId}:${columnId}`;
+                const dedupeKey = view.cellKey(row, rowIndex, columnId);
                 const text = gridValueText(row[columnId]);
                 if (findMatches(text, query, options).length === 0) continue;
                 const placements = placementsByCell.get(dedupeKey) ?? [];
@@ -296,7 +298,12 @@ export async function replaceGridMatches(
         for (const result of await provider.replaceCells(entries)) {
             if (result.applied) {
                 outcome.appliedCells++;
-                const dedupeKey = `${gridId}:${result.rowId}:${result.columnId}`;
+                const liveView = provider.snapshot();
+                const rowIndex = liveView.rows.findIndex((row, index) => liveView.rowId(row, index) === result.rowId);
+                const row = rowIndex >= 0 ? liveView.rows[rowIndex] : undefined;
+                const dedupeKey = row
+                    ? liveView.cellKey(row, rowIndex, result.columnId)
+                    : `${gridId}:${result.rowId}:${result.columnId}`;
                 outcome.applied.push(
                     ...(placementsByCell.get(dedupeKey)?.map(placement => ({
                         ...placement,

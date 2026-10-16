@@ -554,6 +554,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {session}
                     {mutationBoundary}
                     {mutationIncarnation}
+                    mutationPhysicalColumns={guardedAuthority?.metadata.physicalColumns}
                     prepareMutationAuthority={refreshGuardedMutationAuthority}
                     onGuardedEffects={refreshAfterGuardedEffects}
                     {isReadOnly}

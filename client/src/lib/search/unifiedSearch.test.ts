@@ -41,6 +41,7 @@ describe("unified Grid search", () => {
                 rows,
                 selection,
                 rowId: row => String(row.id),
+                cellKey: (row, _rowIndex, columnId) => `${gridId}:${String(row.id)}:${columnId}`,
             }),
             navigate: match => {
                 navigated = `${match.rowId}:${match.columnId}`;
@@ -119,6 +120,7 @@ describe("unified Grid replace", () => {
         placementId: string,
         rows: Record<string, unknown>[],
         selection?: import("../../services/yjstable/gridSelection").GridSelectionSnapshot,
+        physicalGridId = gridId,
     ) {
         cleanups.push(registerGridSearchProvider({
             snapshot: () => ({
@@ -131,6 +133,7 @@ describe("unified Grid replace", () => {
                 rows,
                 selection,
                 rowId: row => String(row.id),
+                cellKey: (row, _rowIndex, columnId) => `${physicalGridId}:${String(row.id)}:${columnId}`,
             }),
             navigate: () => {},
             clearHighlight: () => {},
@@ -170,10 +173,9 @@ describe("unified Grid replace", () => {
 
     it("Replace All deduplicates the same Grid placed twice on a page", async () => {
         const rows = [{ id: "row-1", name: "duplicate target", computed: 1 }];
-        // Two placements of the same underlying Grid share `gridId`/`rows` but
-        // register separately, mirroring two TableGrid instances on one page.
-        register("grid-shared", "placement-a", rows);
-        register("grid-shared", "placement-b", rows);
+        // Distinct Grid definitions can project the same proven physical cell.
+        register("grid-a", "placement-a", rows, undefined, "table-source");
+        register("grid-b", "placement-b", rows, undefined, "table-source");
         const heldMatches = gridSearchMatches("page-1", "duplicate", {});
         expect(heldMatches).toHaveLength(2);
 
@@ -184,7 +186,7 @@ describe("unified Grid replace", () => {
         expect(outcome.applied).toEqual([
             {
                 placementId: "placement-a",
-                gridId: "grid-shared",
+                gridId: "grid-a",
                 rowId: "row-1",
                 columnId: "name",
                 newText: "single target",
@@ -192,7 +194,7 @@ describe("unified Grid replace", () => {
             },
             {
                 placementId: "placement-b",
-                gridId: "grid-shared",
+                gridId: "grid-b",
                 rowId: "row-1",
                 columnId: "name",
                 newText: "single target",
@@ -241,6 +243,7 @@ describe("unified Grid replace", () => {
                 columns: ["name"],
                 rows,
                 rowId: row => String(row.id),
+                cellKey: (row, _rowIndex, columnId) => `grid-delayed:${String(row.id)}:${columnId}`,
             }),
             navigate: () => {},
             clearHighlight: () => {},
@@ -274,6 +277,7 @@ describe("unified Grid replace", () => {
                 columns: ["name"],
                 rows,
                 rowId: row => String(row.id),
+                cellKey: (row, _rowIndex, columnId) => `grid-error:${String(row.id)}:${columnId}`,
             }),
             navigate: () => {},
             clearHighlight: () => {},

@@ -24,7 +24,6 @@ test("Replace Current refuses a held match after its physical source record is r
     // Remove the record through the same guarded production Grid boundary
     // after SearchPanel captured it, leaving the held match intentionally stale.
     await fixture.gridA.getByRole("button", { name: `Delete row ${fixture.recordId}` }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
     await expect.poll(async () => {
         const state = await snapshotProject(page);
         return state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId];

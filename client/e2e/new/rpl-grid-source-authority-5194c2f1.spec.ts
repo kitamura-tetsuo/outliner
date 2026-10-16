@@ -92,6 +92,10 @@ test(
         const selectedCell = fixture.gridA.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await selectedCell.click();
+        const otherGrid = page.getByTestId("yjs-table-view").filter({ hasNot: fixture.gridA }).getByTestId(
+            "yjs-table-grid",
+        );
+        await otherGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`).click();
 
         await openSearch(page, "Value from B", "Selected only");
         await page.locator("#search-scope").selectOption("selection");

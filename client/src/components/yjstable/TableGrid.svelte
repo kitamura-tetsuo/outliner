@@ -41,6 +41,7 @@ import {
     writeWritableCell,
 } from "../../services/yjstable/gridSelectionCommands";
 import type { GridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
+import type { GridPhysicalColumnMetadata } from "../../services/yjstable/gridMetadataResolver";
 import {
     captureGridRowDeletion,
     executeCapturedGridRowDeletion,
@@ -117,6 +118,8 @@ interface Props {
     mutationBoundary?: GridExistingRowMutationBoundary;
     /** Identity of the completed SELECT authority backing the displayed rows. */
     mutationIncarnation?: string;
+    /** Physical SELECT provenance used only to identify duplicate source cells across placements. */
+    mutationPhysicalColumns?: readonly GridPhysicalColumnMetadata[];
     /** Refreshes completed SELECT/provenance metadata before a guarded command captures targets. */
     prepareMutationAuthority?: () => Promise<void>;
     onGuardedEffects?: () => Promise<void> | void;
@@ -162,6 +165,7 @@ let {
     session,
     mutationBoundary,
     mutationIncarnation = "local-grid",
+    mutationPhysicalColumns = [],
     prepareMutationAuthority,
     onGuardedEffects,
     confirmRowDelete = false,
@@ -490,6 +494,21 @@ function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
     return readableRowId(row, rowIndex);
 }
 
+function searchCellKey(row: Record<string, unknown>, rowIndex: number, columnId: string): string {
+    const rowId = searchRowId(row, rowIndex);
+    const target = commandContext.rowTargets.get(rowId);
+    const candidates = mutationPhysicalColumns.filter(column => column.outputColumn === columnId);
+    const physical = target?.source
+        ? candidates.find(column => column.source.sqlName === target.source?.sourceKind)
+        : candidates.length === 1
+        ? candidates[0]
+        : undefined;
+    const sourceRowId = target?.source?.sourceId ?? target?.recordId;
+    return physical && sourceRowId
+        ? `${physical.source.kind}:${physical.source.id}:${sourceRowId}:${physical.physicalColumn}`
+        : `${grid?.gridId ?? "local"}:${rowId}:${columnId}`;
+}
+
 /** Durable identity used only when a write path needs an actual record address. */
 function selectableRowId(row: Record<string, unknown>): string | undefined {
     return durableRowIdBase(row);
@@ -543,6 +562,7 @@ onMount(() => {
             rows: result.rows,
             selection: selection.snapshot(),
             rowId: searchRowId,
+            cellKey: searchCellKey,
         }),
         navigate: (match) => {
             findMatch = match;
