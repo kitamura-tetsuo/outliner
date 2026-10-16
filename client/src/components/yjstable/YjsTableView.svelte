@@ -275,9 +275,17 @@ async function refreshGuardedMutationAuthority(): Promise<void> {
     guardedAuthority = { evidence, provenance, metadata };
 }
 
-async function refreshAfterGuardedEffects(): Promise<void> {
-    await runner?.runQueryNow();
-    await refreshGuardedMutationAuthority();
+let guardedEffectsRefresh = Promise.resolve();
+function refreshAfterGuardedEffects(): Promise<void> {
+    const refresh = async () => {
+        await runner?.runQueryNow();
+        await refreshGuardedMutationAuthority();
+    };
+    // A second command may start as soon as its source write is observable,
+    // before the preceding UI refresh finishes. Preserve effect order so an
+    // older query result cannot overwrite the newer command's result.
+    guardedEffectsRefresh = guardedEffectsRefresh.then(refresh, refresh);
+    return guardedEffectsRefresh;
 }
 
 const mutationBoundary = createGridExistingRowMutationBoundary({
