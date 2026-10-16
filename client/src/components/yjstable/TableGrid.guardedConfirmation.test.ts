@@ -25,6 +25,39 @@ describe("mounted guarded Grid confirmation", { timeout: 30_000 }, () => {
         HTMLDialogElement.prototype.close = () => {};
     });
 
+    it("preserves captured intent identity while confirmation is stored in component state", async () => {
+        const doc = new Y.Doc({ guid: "mounted-guarded-confirmation-success" });
+        const table = createTestTable(doc, "b", schema.createSql, "one", { value: "B" });
+        const harness = await createMutationHarness(doc, "SELECT id, value FROM b");
+        const relationSession = createTableEngineSession({ projectDoc: doc });
+        const view = render(TableGrid, {
+            props: {
+                handles: table.handles,
+                schema,
+                query: "SELECT id, value FROM b",
+                result: { columns: ["id", "value"], rows: harness.evidence().rows },
+                componentTypes: {},
+                columnLabels: {},
+                hiddenColumns: { id: true },
+                columnOrder: ["value"],
+                session: relationSession,
+                mutationBoundary: harness.boundary,
+                prepareMutationAuthority: async () => {},
+                confirmRowDelete: true,
+            },
+        });
+        try {
+            await fireEvent.click(view.getByRole("button", { name: "Delete row one" }));
+            await fireEvent.click(view.getByText("Delete", { selector: "button" }));
+            await waitFor(() => expect(table.handles.data.has("one")).toBe(false));
+            expect(view.queryByTestId("grid-edit-status")).toBeNull();
+        } finally {
+            view.unmount();
+            relationSession.dispose();
+            harness.dispose();
+        }
+    });
+
     it("refuses confirmation after query A-to-B-to-A instead of recapturing authority", async () => {
         const doc = new Y.Doc({ guid: "mounted-guarded-confirmation" });
         const a = createTestTable(doc, "a", "CREATE TABLE a (id TEXT PRIMARY KEY, value TEXT)", "same", {

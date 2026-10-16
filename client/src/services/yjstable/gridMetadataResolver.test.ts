@@ -1,5 +1,6 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { Items, Project } from "../../schema/app-schema";
 import { createGridMetadataResolver } from "./gridMetadataResolver";
 import { resetPgliteForTests } from "./pgliteService";
 import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
@@ -117,6 +118,45 @@ describe("Grid metadata resolution", { timeout: 30_000 }, () => {
                     column.physicalColumn,
                 ]),
             ).toEqual([[b.tableId, "score"]]);
+        } finally {
+            resolver.dispose();
+            select.dispose();
+        }
+    });
+
+    it("resolves writable metadata for a Table and outline_items UNION", async () => {
+        const doc = new Y.Doc({ guid: "grid-metadata-system-union" });
+        const tree = Project.fromDoc(doc).tree;
+        const page = new Items(doc, tree, "root").addNode("tester");
+        page.text = "Tasks";
+        const item = new Items(doc, tree, page.key).addNode("tester");
+        item.text = "Outline";
+        item.due = "2026-08-01T09:00:00Z";
+        table(
+            doc,
+            "Occurrences",
+            "routine_occurrences",
+            "CREATE TABLE routine_occurrences (id TEXT PRIMARY KEY, text TEXT, due TIMESTAMPTZ)",
+            "table-row",
+            { text: "Table", due: "2026-08-01T09:00:00Z" },
+        );
+        const query = "SELECT 'routine_occurrences' AS source_kind, id AS source_id, text, due "
+            + "FROM routine_occurrences UNION ALL "
+            + "SELECT 'outline_items', id, text, due FROM outline_items";
+        const select = createProjectSelectSession({ projectDoc: doc, query, connect, requireExplicitAliases: false });
+        const resolver = createGridMetadataResolver({ projectDoc: doc, connect });
+        try {
+            const evidence = (await select.runNow())!;
+            const result = await resolver.resolve(evidence, analyzeProjectQueryProvenance(evidence), select);
+            expect(result.status).toBe("resolved");
+            expect(
+                result.physicalColumns
+                    .filter(column => column.outputColumn === "text")
+                    .map(column => [column.source.sqlName, column.field?.kind]),
+            ).toEqual([
+                ["routine_occurrences", "text"],
+                ["outline_items", "text"],
+            ]);
         } finally {
             resolver.dispose();
             select.dispose();

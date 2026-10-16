@@ -116,8 +116,6 @@ interface Props {
     mutationBoundary?: GridExistingRowMutationBoundary;
     /** Refreshes completed SELECT/provenance metadata before a guarded command captures targets. */
     prepareMutationAuthority?: () => Promise<void>;
-    /** Re-runs the displayed query after an awaited guarded effect changes a source. */
-    onGuardedMutationApplied?: () => void;
     /** Whether deleting a row requires confirmation (default false). */
     confirmRowDelete?: boolean;
     /**
@@ -160,7 +158,6 @@ let {
     session,
     mutationBoundary,
     prepareMutationAuthority,
-    onGuardedMutationApplied,
     confirmRowDelete = false,
     isReadOnly = false,
     onColumnWidthPreview,
@@ -171,9 +168,9 @@ interface PendingRowDeletion {
     captured?: GridCapturedRowDeletion;
 }
 
-let rowToDelete: PendingRowDeletion | undefined = $state(undefined);
+let rowToDelete: PendingRowDeletion | undefined = $state.raw(undefined);
 /** Pending selection-aware row removal (FTR-5191), awaiting the same confirmation as a single row delete. */
-let bulkRowsToDelete: PendingRowDeletion | undefined = $state(undefined);
+let bulkRowsToDelete: PendingRowDeletion | undefined = $state.raw(undefined);
 let isConfirmDialogOpen: boolean = $state(false);
 const selection = new GridSelection();
 let selectionRevision = $state(0);
@@ -828,7 +825,6 @@ $effect.pre(() => {
 const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
 
 function reportGuardedOutcome(action: string, outcome: GridExecutionOutcome): void {
-    if (outcome.applied.length > 0) onGuardedMutationApplied?.();
     if (outcome.status === "applied") {
         cellEditStatus = undefined;
         return;
