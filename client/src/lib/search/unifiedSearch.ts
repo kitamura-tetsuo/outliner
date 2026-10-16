@@ -251,6 +251,7 @@ export async function replaceGridMatches(
     if (!query) return outcome;
     const regex = buildRegExp(query, options);
     const seenCells = new Set<string>();
+    const placementsByCell = new Map<string, GridCellReplaceDetail[]>();
     const byProvider = new Map<
         GridSearchProvider,
         { placementId: string; gridId: string; entries: GridCellReplacement[]; }
@@ -262,11 +263,21 @@ export async function replaceGridMatches(
             const rowId = view.rowId(row, rowIndex);
             if (!rowId) continue;
             for (const columnId of view.columns) {
-                if (selectionOnly && !selectionContains(view.selection, rowId, columnId)) continue;
                 const dedupeKey = `${view.gridId}:${rowId}:${columnId}`;
-                if (seenCells.has(dedupeKey)) continue;
                 const text = gridValueText(row[columnId]);
                 if (findMatches(text, query, options).length === 0) continue;
+                const placements = placementsByCell.get(dedupeKey) ?? [];
+                placements.push({
+                    placementId: view.placementId,
+                    gridId: view.gridId,
+                    rowId,
+                    columnId,
+                    newText: replaceLiteral(text, regex, replacement),
+                    incarnation: view.incarnation,
+                });
+                placementsByCell.set(dedupeKey, placements);
+                if (selectionOnly && !selectionContains(view.selection, rowId, columnId)) continue;
+                if (seenCells.has(dedupeKey)) continue;
                 seenCells.add(dedupeKey);
                 const providerEntry = byProvider.get(provider)
                     ?? { placementId: view.placementId, gridId: view.gridId, entries: [] };
@@ -285,14 +296,20 @@ export async function replaceGridMatches(
         for (const result of await provider.replaceCells(entries)) {
             if (result.applied) {
                 outcome.appliedCells++;
-                outcome.applied.push({
-                    placementId,
-                    gridId,
-                    rowId: result.rowId,
-                    columnId: result.columnId,
-                    newText: result.newText,
-                    incarnation: result.incarnation,
-                });
+                const dedupeKey = `${gridId}:${result.rowId}:${result.columnId}`;
+                outcome.applied.push(
+                    ...(placementsByCell.get(dedupeKey)?.map(placement => ({
+                        ...placement,
+                        newText: result.newText,
+                    })) ?? [{
+                        placementId,
+                        gridId,
+                        rowId: result.rowId,
+                        columnId: result.columnId,
+                        newText: result.newText,
+                        incarnation: result.incarnation,
+                    }]),
+                );
             } else if (result.reason === "invalid-value") outcome.skippedInvalid++;
             else if (result.reason === "read-only") outcome.skippedReadOnly++;
             else {

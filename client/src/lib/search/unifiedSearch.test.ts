@@ -174,7 +174,8 @@ describe("unified Grid replace", () => {
         // register separately, mirroring two TableGrid instances on one page.
         register("grid-shared", "placement-a", rows);
         register("grid-shared", "placement-b", rows);
-        expect(gridSearchMatches("page-1", "duplicate", {})).toHaveLength(2);
+        const heldMatches = gridSearchMatches("page-1", "duplicate", {});
+        expect(heldMatches).toHaveLength(2);
 
         const outcome = await replaceGridMatches("page-1", "duplicate", "single", {});
         expect(outcome.appliedCells).toBe(1);
@@ -189,8 +190,17 @@ describe("unified Grid replace", () => {
                 newText: "single target",
                 incarnation: "incarnation-1",
             },
+            {
+                placementId: "placement-b",
+                gridId: "grid-shared",
+                rowId: "row-1",
+                columnId: "name",
+                newText: "single target",
+                incarnation: "incarnation-1",
+            },
         ]);
         expect(rows[0].name).toBe("single target");
+        expect(applyGridReplaceToMatches(heldMatches, outcome.applied, "page-1", "Page", "duplicate", {})).toEqual([]);
     });
 
     it("Replace All respects Selection scope and counts read-only hits separately", async () => {
@@ -294,6 +304,7 @@ describe("unified Grid replace", () => {
                 rowId: "row-1",
                 columnId: "name",
                 newText: "hello there",
+                incarnation: "incarnation-1",
             }],
             "page-1",
             "Page",
