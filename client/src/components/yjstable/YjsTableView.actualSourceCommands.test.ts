@@ -56,6 +56,7 @@ describe("saved Grid commands use the verified actual source", { timeout: 60_000
             await fireEvent.click(cell()!);
             await fireEvent.keyDown(cell()!.querySelector("button")!, { key: "v", ctrlKey: true });
             await waitFor(() => expect(handlesB.data.get("same")?.get("value")).toBe("Pasted B"));
+            await waitFor(() => expect(cell()?.querySelector("button")?.textContent).toBe("Pasted B"));
             expect(handlesA.data.get("same")?.get("value")).toBe("A value");
             expect(handlesA.undo.undoStack).toHaveLength(0);
         } finally {

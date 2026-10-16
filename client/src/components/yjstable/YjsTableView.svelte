@@ -275,6 +275,11 @@ async function refreshGuardedMutationAuthority(): Promise<void> {
     guardedAuthority = { evidence, provenance, metadata };
 }
 
+async function refreshAfterGuardedEffects(): Promise<void> {
+    await runner?.runQueryNow();
+    await refreshGuardedMutationAuthority();
+}
+
 const mutationBoundary = createGridExistingRowMutationBoundary({
     projectDoc,
     projectId,
@@ -535,6 +540,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {session}
                     {mutationBoundary}
                     prepareMutationAuthority={refreshGuardedMutationAuthority}
+                    onGuardedEffects={refreshAfterGuardedEffects}
                     {isReadOnly}
                     onAddRow={async () => {
                         insertOutcome = await insertController.submit();
