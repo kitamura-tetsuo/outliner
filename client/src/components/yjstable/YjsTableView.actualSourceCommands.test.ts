@@ -51,6 +51,7 @@ describe("saved Grid commands use the verified actual source", { timeout: 60_000
             await fireEvent.click(cell()!);
             await fireEvent.keyDown(cell()!.querySelector("button")!, { key: "Delete" });
             await waitFor(() => expect(handlesB.data.get("same")?.get("value")).toBe(null));
+            await waitFor(() => expect(cell()?.querySelector("button")?.textContent).toBe(""));
             expect(handlesA.data.get("same")?.get("value")).toBe("A value");
 
             await fireEvent.click(cell()!);
