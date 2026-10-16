@@ -30,6 +30,8 @@ export interface GridCellSearchMatch {
      * flag: their only replace guard is the page-title `skipRoot` option.
      */
     replaceable: boolean;
+    /** Exact completed Grid execution that produced this displayed hit. */
+    incarnation: string;
 }
 
 export interface GridSearchSnapshot {
@@ -37,6 +39,7 @@ export interface GridSearchSnapshot {
     pageTitle: string;
     placementId: string;
     gridId: string;
+    incarnation: string;
     columns: readonly string[];
     rows: readonly Record<string, unknown>[];
     selection?: GridSelectionSnapshot;
@@ -48,12 +51,15 @@ export interface GridCellReplacement {
     rowId: string;
     columnId: string;
     newText: string;
+    expectedText: string;
+    incarnation: string;
 }
 
 export interface GridCellReplaceOutcome extends GridCellReplacement {
     applied: boolean;
     /** Set when `applied` is false: the cell was never a writable target, or `newText` has no deterministic, valid typed value. */
-    reason?: "read-only" | "invalid-value";
+    reason?: "read-only" | "invalid-value" | "refused";
+    error?: unknown;
 }
 
 export interface GridSearchProvider {
@@ -68,7 +74,7 @@ export interface GridSearchProvider {
      * a rejected entry (read-only, or no valid conversion) is left completely
      * unmutated rather than blocking the rest of the batch.
      */
-    replaceCells(entries: readonly GridCellReplacement[]): GridCellReplaceOutcome[];
+    replaceCells(entries: readonly GridCellReplacement[]): Promise<GridCellReplaceOutcome[]>;
 }
 
 const providers = new Map<string, GridSearchProvider>();
@@ -110,6 +116,7 @@ export function gridSearchMatches(
                         text,
                         range,
                         replaceable,
+                        incarnation: view.incarnation,
                     });
                 }
             }
@@ -145,6 +152,7 @@ export interface GridCellReplaceDetail {
     rowId: string;
     columnId: string;
     newText: string;
+    incarnation: string;
 }
 
 /**
@@ -154,19 +162,51 @@ export interface GridCellReplaceDetail {
  * it. Returns `undefined` only when the match's placement is no longer
  * registered (its Grid unmounted between Find and Replace).
  */
-export function replaceGridMatch(
+export async function replaceGridMatch(
     match: GridCellSearchMatch,
     query: string,
     replacement: string,
     options: SearchOptions,
-): (GridCellReplaceOutcome & GridCellReplaceDetail) | undefined {
+): Promise<(GridCellReplaceOutcome & GridCellReplaceDetail) | undefined> {
     const provider = providers.get(match.placementId);
     if (!provider) return undefined;
     const view = provider.snapshot();
     const row = view.rows.find((candidate, index) => view.rowId(candidate, index) === match.rowId);
-    const currentText = row ? gridValueText(row[match.columnId]) : match.text;
+    if (!row || view.incarnation !== match.incarnation) {
+        return {
+            rowId: match.rowId,
+            columnId: match.columnId,
+            newText: match.text,
+            expectedText: match.text,
+            incarnation: match.incarnation,
+            applied: false,
+            reason: "refused",
+            placementId: match.placementId,
+            gridId: match.gridId,
+        };
+    }
+    const currentText = gridValueText(row[match.columnId]);
+    if (currentText !== match.text) {
+        return {
+            rowId: match.rowId,
+            columnId: match.columnId,
+            newText: currentText,
+            expectedText: match.text,
+            incarnation: match.incarnation,
+            applied: false,
+            reason: "refused",
+            placementId: match.placementId,
+            gridId: match.gridId,
+        };
+    }
     const newText = replaceLiteral(currentText, buildRegExp(query, options), replacement);
-    const [outcome] = provider.replaceCells([{ rowId: match.rowId, columnId: match.columnId, newText }]);
+    const [outcome] = await provider.replaceCells([{
+        rowId: match.rowId,
+        columnId: match.columnId,
+        newText,
+        expectedText: currentText,
+        incarnation: match.incarnation,
+    }]);
     return outcome && { ...outcome, placementId: match.placementId, gridId: match.gridId };
 }
 
@@ -177,6 +217,9 @@ export interface GridReplaceAllOutcome {
     skippedReadOnly: number;
     /** Hits whose substituted text has no deterministic, schema-valid typed value for that column. */
     skippedInvalid: number;
+    refused: number;
+    /** Unexpected provider failures returned after a partially completed batch. */
+    errors: unknown[];
     /** Every cell actually rewritten, for patching a held match list synchronously (see `applyGridReplaceToMatches`). */
     applied: GridCellReplaceDetail[];
 }
@@ -190,14 +233,21 @@ export interface GridReplaceAllOutcome {
  * one Undo step; a cell whose substitution fails validation is left
  * unmutated instead of blocking the rest of the page.
  */
-export function replaceGridMatches(
+export async function replaceGridMatches(
     pageId: string,
     query: string,
     replacement: string,
     options: SearchOptions,
     selectionOnly = false,
-): GridReplaceAllOutcome {
-    const outcome: GridReplaceAllOutcome = { appliedCells: 0, skippedReadOnly: 0, skippedInvalid: 0, applied: [] };
+): Promise<GridReplaceAllOutcome> {
+    const outcome: GridReplaceAllOutcome = {
+        appliedCells: 0,
+        skippedReadOnly: 0,
+        skippedInvalid: 0,
+        refused: 0,
+        errors: [],
+        applied: [],
+    };
     if (!query) return outcome;
     const regex = buildRegExp(query, options);
     const seenCells = new Set<string>();
@@ -220,13 +270,19 @@ export function replaceGridMatches(
                 seenCells.add(dedupeKey);
                 const providerEntry = byProvider.get(provider)
                     ?? { placementId: view.placementId, gridId: view.gridId, entries: [] };
-                providerEntry.entries.push({ rowId, columnId, newText: replaceLiteral(text, regex, replacement) });
+                providerEntry.entries.push({
+                    rowId,
+                    columnId,
+                    newText: replaceLiteral(text, regex, replacement),
+                    expectedText: text,
+                    incarnation: view.incarnation,
+                });
                 byProvider.set(provider, providerEntry);
             }
         }
     }
     for (const [provider, { placementId, gridId, entries }] of byProvider) {
-        for (const result of provider.replaceCells(entries)) {
+        for (const result of await provider.replaceCells(entries)) {
             if (result.applied) {
                 outcome.appliedCells++;
                 outcome.applied.push({
@@ -235,9 +291,14 @@ export function replaceGridMatches(
                     rowId: result.rowId,
                     columnId: result.columnId,
                     newText: result.newText,
+                    incarnation: result.incarnation,
                 });
             } else if (result.reason === "invalid-value") outcome.skippedInvalid++;
-            else outcome.skippedReadOnly++;
+            else if (result.reason === "read-only") outcome.skippedReadOnly++;
+            else {
+                outcome.refused++;
+                if (result.error !== undefined) outcome.errors.push(result.error);
+            }
         }
     }
     return outcome;
@@ -291,6 +352,7 @@ export function applyGridReplaceToMatches(
                 text: cell.newText,
                 range,
                 replaceable: m.replaceable,
+                incarnation: cell.incarnation,
             });
         }
     }
@@ -313,6 +375,7 @@ export function applyGridReplaceToMatches(
                 text: cell.newText,
                 range,
                 replaceable: true,
+                incarnation: cell.incarnation,
             });
         }
     }

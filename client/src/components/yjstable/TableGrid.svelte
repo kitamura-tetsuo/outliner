@@ -59,6 +59,7 @@ import {
     type GridCellReplaceOutcome,
     type GridCellReplacement,
     type GridCellSearchMatch,
+    gridValueText,
     registerGridSearchProvider,
 } from "../../lib/search/unifiedSearch";
 
@@ -114,6 +115,8 @@ interface Props {
     session: RelationResolver;
     /** Guarded source-aware boundary used by saved Project Grid commands. */
     mutationBoundary?: GridExistingRowMutationBoundary;
+    /** Identity of the completed SELECT authority backing the displayed rows. */
+    mutationIncarnation?: string;
     /** Refreshes completed SELECT/provenance metadata before a guarded command captures targets. */
     prepareMutationAuthority?: () => Promise<void>;
     onGuardedEffects?: () => Promise<void> | void;
@@ -158,6 +161,7 @@ let {
     loading = false,
     session,
     mutationBoundary,
+    mutationIncarnation = "local-grid",
     prepareMutationAuthority,
     onGuardedEffects,
     confirmRowDelete = false,
@@ -534,6 +538,7 @@ onMount(() => {
             pageTitle: pageTitle ?? "",
             placementId,
             gridId: grid.gridId,
+            incarnation: mutationIncarnation,
             columns: displayColumns,
             rows: result.rows,
             selection: selection.snapshot(),
@@ -559,11 +564,19 @@ onMount(() => {
             const rowTarget = commandContext.rowTargets.get(rowId);
             return rowTarget !== undefined && isWritableRow(rowTarget) && commandContext.editableColumns.has(columnId);
         },
-        replaceCells: (entries: readonly GridCellReplacement[]): GridCellReplaceOutcome[] => {
+        replaceCells: async (entries: readonly GridCellReplacement[]): Promise<GridCellReplaceOutcome[]> => {
             const outcomes: GridCellReplaceOutcome[] = [];
             const idWrites: Array<{ rowTarget: GridCommandRowTarget; columnId: string; value: TableRecordValue; }> = [];
             const sourceWrites: typeof idWrites = [];
             for (const entry of entries) {
+                const liveRow = result.rows.find((row, index) => searchRowId(row, index) === entry.rowId);
+                if (
+                    entry.incarnation !== mutationIncarnation || !liveRow
+                    || gridValueText(liveRow[entry.columnId]) !== entry.expectedText
+                ) {
+                    outcomes.push({ ...entry, applied: false, reason: "refused" });
+                    continue;
+                }
                 const rowTarget = commandContext.rowTargets.get(entry.rowId);
                 if (!rowTarget || !isWritableRow(rowTarget) || !commandContext.editableColumns.has(entry.columnId)) {
                     outcomes.push({ ...entry, applied: false, reason: "read-only" });
@@ -575,7 +588,29 @@ onMount(() => {
                     continue;
                 }
                 (rowTarget.recordId !== undefined ? idWrites : sourceWrites).push({ rowTarget, columnId: entry.columnId, value });
-                outcomes.push({ ...entry, applied: true });
+            }
+            const writes = [...idWrites, ...sourceWrites];
+            if (mutationBoundary && writes.length > 0) {
+                // Capture against the exact execution that produced the hit.
+                // executeGridWrites then revalidates that capture after every
+                // asynchronous provider lookup; refreshing first would instead
+                // grant a stale click fresh authority.
+                const executed = await executeGridWrites(
+                    { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                    writes.map(write => ({ target: { rowTarget: write.rowTarget, columnId: write.columnId }, value: write.value })),
+                );
+                if (executed.applied.length > 0) await onGuardedEffects?.();
+                const appliedCount = executed.applied.length;
+                let writableIndex = 0;
+                return entries.map(entry => {
+                    if (outcomes.some(result => result.rowId === entry.rowId && result.columnId === entry.columnId)) {
+                        return outcomes.find(result => result.rowId === entry.rowId && result.columnId === entry.columnId)!;
+                    }
+                    const index = writableIndex++;
+                    return index < appliedCount
+                        ? { ...entry, applied: true }
+                        : { ...entry, applied: false, reason: "refused", error: executed.status === "partial" ? executed.error : executed.status === "refused" ? executed.reason : undefined };
+                });
             }
             if (idWrites.length > 0) {
                 handles.doc.transact(() => {
@@ -586,6 +621,11 @@ onMount(() => {
             }
             for (const write of sourceWrites) {
                 writeWritableCell(commandContext, { rowTarget: write.rowTarget, columnId: write.columnId }, write.value);
+            }
+            for (const entry of entries) {
+                if (!outcomes.some(result => result.rowId === entry.rowId && result.columnId === entry.columnId)) {
+                    outcomes.push({ ...entry, applied: true });
+                }
             }
             return outcomes;
         },

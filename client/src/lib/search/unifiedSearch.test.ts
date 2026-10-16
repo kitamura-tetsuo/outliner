@@ -36,6 +36,7 @@ describe("unified Grid search", () => {
                 pageTitle: "Page",
                 placementId,
                 gridId,
+                incarnation: "incarnation-1",
                 columns: ["name", "computed"],
                 rows,
                 selection,
@@ -46,7 +47,7 @@ describe("unified Grid search", () => {
             },
             clearHighlight: () => {},
             isCellReplaceable: (_rowId, columnId) => WRITABLE_COLUMNS.has(columnId),
-            replaceCells: (entries: readonly GridCellReplacement[]): GridCellReplaceOutcome[] =>
+            replaceCells: async (entries: readonly GridCellReplacement[]): Promise<GridCellReplaceOutcome[]> =>
                 entries.map(entry => {
                     if (!WRITABLE_COLUMNS.has(entry.columnId)) {
                         return { ...entry, applied: false, reason: "read-only" };
@@ -125,6 +126,7 @@ describe("unified Grid replace", () => {
                 pageTitle: "Page",
                 placementId,
                 gridId,
+                incarnation: "incarnation-1",
                 columns: ["name", "computed"],
                 rows,
                 selection,
@@ -133,7 +135,7 @@ describe("unified Grid replace", () => {
             navigate: () => {},
             clearHighlight: () => {},
             isCellReplaceable: (_rowId, columnId) => WRITABLE_COLUMNS.has(columnId),
-            replaceCells: (entries: readonly GridCellReplacement[]): GridCellReplaceOutcome[] =>
+            replaceCells: async (entries: readonly GridCellReplacement[]): Promise<GridCellReplaceOutcome[]> =>
                 entries.map(entry => {
                     if (!WRITABLE_COLUMNS.has(entry.columnId)) {
                         return { ...entry, applied: false, reason: "read-only" };
@@ -147,26 +149,26 @@ describe("unified Grid replace", () => {
         }));
     }
 
-    it("replaces one located match against the live cell value", () => {
+    it("replaces one located match against the live cell value", async () => {
         const rows = [{ id: "row-1", name: "hello world", computed: 1 }];
         register("grid-1", "placement-1", rows);
         const [match] = gridSearchMatches("page-1", "world", {});
-        const outcome = replaceGridMatch(match, "world", "there", {});
+        const outcome = await replaceGridMatch(match, "world", "there", {});
         expect(outcome?.applied).toBe(true);
         expect(rows[0].name).toBe("hello there");
     });
 
-    it("leaves a read-only/computed hit unmutated and reports why", () => {
+    it("leaves a read-only/computed hit unmutated and reports why", async () => {
         const rows = [{ id: "row-1", name: "hello", computed: "world value" }];
         register("grid-1", "placement-1", rows);
         const [match] = gridSearchMatches("page-1", "world", {});
-        const outcome = replaceGridMatch(match, "world", "there", {});
+        const outcome = await replaceGridMatch(match, "world", "there", {});
         expect(outcome?.applied).toBe(false);
         expect(outcome?.reason).toBe("read-only");
         expect(rows[0].computed).toBe("world value");
     });
 
-    it("Replace All deduplicates the same Grid placed twice on a page", () => {
+    it("Replace All deduplicates the same Grid placed twice on a page", async () => {
         const rows = [{ id: "row-1", name: "duplicate target", computed: 1 }];
         // Two placements of the same underlying Grid share `gridId`/`rows` but
         // register separately, mirroring two TableGrid instances on one page.
@@ -174,7 +176,7 @@ describe("unified Grid replace", () => {
         register("grid-shared", "placement-b", rows);
         expect(gridSearchMatches("page-1", "duplicate", {})).toHaveLength(2);
 
-        const outcome = replaceGridMatches("page-1", "duplicate", "single", {});
+        const outcome = await replaceGridMatches("page-1", "duplicate", "single", {});
         expect(outcome.appliedCells).toBe(1);
         expect(outcome.skippedReadOnly).toBe(0);
         expect(outcome.skippedInvalid).toBe(0);
@@ -185,12 +187,13 @@ describe("unified Grid replace", () => {
                 rowId: "row-1",
                 columnId: "name",
                 newText: "single target",
+                incarnation: "incarnation-1",
             },
         ]);
         expect(rows[0].name).toBe("single target");
     });
 
-    it("Replace All respects Selection scope and counts read-only hits separately", () => {
+    it("Replace All respects Selection scope and counts read-only hits separately", async () => {
         const rows = [
             { id: "row-1", name: "match here", computed: "match too" },
             { id: "row-2", name: "no hit", computed: "also no hit" },
@@ -198,7 +201,7 @@ describe("unified Grid replace", () => {
         register("grid-1", "placement-1", rows, {
             regions: [{ kind: "cells", rowIds: ["row-1"], columnIds: ["name", "computed"] }],
         });
-        const outcome = replaceGridMatches("page-1", "match", "found", {}, true);
+        const outcome = await replaceGridMatches("page-1", "match", "found", {}, true);
         expect(outcome.appliedCells).toBe(1);
         expect(outcome.skippedReadOnly).toBe(1);
         expect(outcome.skippedInvalid).toBe(0);
@@ -206,11 +209,71 @@ describe("unified Grid replace", () => {
         expect(rows[0].computed).toBe("match too");
     });
 
-    it("never expands $&/$1-style patterns in the replacement text (matches outline Replace semantics)", () => {
+    it("never expands $&/$1-style patterns in the replacement text (matches outline Replace semantics)", async () => {
         const rows = [{ id: "row-1", name: "hello world", computed: 1 }];
         register("grid-1", "placement-1", rows);
-        replaceGridMatches("page-1", "world", "[$&]", {});
+        await replaceGridMatches("page-1", "world", "[$&]", {});
         expect(rows[0].name).toBe("hello [$&]");
+    });
+
+    it("awaits settlement and refuses a stale incarnation without patch evidence", async () => {
+        const rows = [{ id: "row-1", name: "before", computed: 1 }];
+        let incarnation = "execution-a";
+        let release!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        cleanups.push(registerGridSearchProvider({
+            snapshot: () => ({
+                pageId: "page-1",
+                pageTitle: "Page",
+                placementId: "placement-delayed",
+                gridId: "grid-delayed",
+                incarnation,
+                columns: ["name"],
+                rows,
+                rowId: row => String(row.id),
+            }),
+            navigate: () => {},
+            clearHighlight: () => {},
+            isCellReplaceable: () => true,
+            replaceCells: async entries => {
+                await held;
+                return entries.map(entry =>
+                    entry.incarnation === incarnation
+                        ? { ...entry, applied: true }
+                        : { ...entry, applied: false, reason: "refused" }
+                );
+            },
+        }));
+        const [match] = gridSearchMatches("page-1", "before", {});
+        const pending = replaceGridMatch(match, "before", "after", {});
+        incarnation = "execution-b";
+        release();
+        await expect(pending).resolves.toMatchObject({ applied: false, reason: "refused" });
+        expect(rows[0].name).toBe("before");
+    });
+
+    it("surfaces an asynchronous provider rejection", async () => {
+        const rows = [{ id: "row-1", name: "before", computed: 1 }];
+        cleanups.push(registerGridSearchProvider({
+            snapshot: () => ({
+                pageId: "page-1",
+                pageTitle: "Page",
+                placementId: "placement-error",
+                gridId: "grid-error",
+                incarnation: "execution-a",
+                columns: ["name"],
+                rows,
+                rowId: row => String(row.id),
+            }),
+            navigate: () => {},
+            clearHighlight: () => {},
+            isCellReplaceable: () => true,
+            replaceCells: async () => {
+                throw new Error("provider unavailable");
+            },
+        }));
+        await expect(replaceGridMatches("page-1", "before", "after", {})).rejects.toThrow("provider unavailable");
+        expect(rows[0].name).toBe("before");
     });
 
     it("applyGridReplaceToMatches patches a held match list from the write outcome, not the (possibly stale) query result", () => {

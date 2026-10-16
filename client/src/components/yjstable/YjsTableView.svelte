@@ -129,6 +129,12 @@ let guardedAuthority = $state.raw<{
     provenance: ProjectQueryProvenance;
     metadata: GridMetadataResolution;
 } | undefined>(undefined);
+const mutationIncarnation = $derived.by(() => {
+    const evidence = guardedAuthority?.evidence;
+    return evidence
+        ? `${evidence.queryId}:${evidence.queryRevision}:${evidence.executionGeneration}:${evidence.catalogGeneration}:${evidence.catalogRevision ?? ""}`
+        : "unavailable";
+});
 // Authority is revoked only by material changes from the authoritative Yjs
 // configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
@@ -547,6 +553,7 @@ function stateVectorRevision(doc: Y.Doc): string {
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                     {mutationBoundary}
+                    {mutationIncarnation}
                     prepareMutationAuthority={refreshGuardedMutationAuthority}
                     onGuardedEffects={refreshAfterGuardedEffects}
                     {isReadOnly}
