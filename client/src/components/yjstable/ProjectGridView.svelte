@@ -36,12 +36,14 @@ let state = $state<ProjectSelectState>({ status: "loading" });
 let showDefinition = $state(false);
 let session: ProjectSelectSession | undefined;
 let unsubscribe: (() => void) | undefined;
+let fallbackHasFocus = $state(false);
 let actualSource = $state<{
     handles: TableHandles;
     name: string;
     sqlName: string;
     href?: string;
 } | undefined>();
+let pendingActualSource: typeof actualSource;
 let columns = $state<string[]>([]);
 let labels = $state<Record<string, string | undefined>>({});
 let hidden = $state<Record<string, boolean>>({});
@@ -122,7 +124,6 @@ function resolveActualSource(next: ProjectSelectState) {
     // refresh into a permanent loss of Grid controls. A completed result below
     // is the only state allowed to replace the current source decision.
     if (next.status !== "success") return;
-    actualSource = undefined;
     const proof = analyzeProjectQueryProvenance(next.evidence);
     // A plain SELECT has one proven bare-id source. More complex readable
     // results still use the rich Grid surface for selection/copy/search and
@@ -136,12 +137,27 @@ function resolveActualSource(next: ProjectSelectState) {
     if (!handles || !session?.isEvidenceCurrent(next.evidence)) return;
     const entry = listTables(projectDoc).find(table => table.tableId === source.id);
     if (!entry || entry.sqlName !== source.sqlName) return;
-    actualSource = {
+    const resolved = {
         handles,
         name: entry.name || source.sqlName,
         sqlName: source.sqlName,
         href: projectName ? resolve(projectTablePath(projectName, source.id)) : undefined,
     };
+    if (fallbackHasFocus) {
+        pendingActualSource = resolved;
+        return;
+    }
+    actualSource = resolved;
+}
+
+function finishFallbackInteraction() {
+    fallbackHasFocus = false;
+    if (!pendingActualSource) return;
+    requestAnimationFrame(() => {
+        if (fallbackHasFocus || !pendingActualSource) return;
+        actualSource = pendingActualSource;
+        pendingActualSource = undefined;
+    });
 }
 
 onMount(() => {
@@ -178,7 +194,13 @@ onDestroy(() => {
         />
     {/key}
 {:else}
-<div class="project-grid-view" data-testid="yjs-table-view" data-grid-id={mountedGrid.gridId}>
+<div
+    class="project-grid-view"
+    data-testid="yjs-table-view"
+    data-grid-id={mountedGrid.gridId}
+    onfocusin={() => fallbackHasFocus = true}
+    onfocusout={finishFallbackInteraction}
+>
     <div class="toolbar">
         <strong>{String(mountedGrid.entry.get("name") ?? "Grid")}</strong>
         <button data-testid="yjs-table-toggle-ui" type="button" aria-pressed={showDefinition} onclick={() => showDefinition = !showDefinition}>UI</button>
