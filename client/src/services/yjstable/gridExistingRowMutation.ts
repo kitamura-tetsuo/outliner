@@ -226,7 +226,8 @@ export function createGridExistingRowMutationBoundary(
                 const applied: GridMutationResult[] = [];
                 const oneProvider = resolved[0]?.provider;
                 if (
-                    oneProvider?.applyWriteBatch
+                    resolved.length > 1
+                    && oneProvider?.applyWriteBatch
                     && resolved.every(entry => entry.provider === oneProvider)
                 ) {
                     for (const entry of resolved) {

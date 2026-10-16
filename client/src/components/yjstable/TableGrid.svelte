@@ -1232,7 +1232,7 @@ async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
         return;
     }
     if (confirmRowDelete) {
-        await prepareMutationAuthority?.();
+        if (mutationBoundary) await prepareMutationAuthority?.();
         const captured = mutationBoundary
             ? captureGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, [target])
             : undefined;
