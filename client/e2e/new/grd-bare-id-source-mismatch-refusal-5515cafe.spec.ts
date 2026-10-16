@@ -24,8 +24,11 @@ test(
         await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toHaveCount(0);
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         const before = await snapshotProject(page);
+        // Address the editable cell by its durable record identity. A row
+        // text filter stops matching while CellComponent replaces the value
+        // button with an input, which would make the editor locator disappear.
         const cell = fixture.gridA.getByTestId("yjs-table-grid")
-            .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
+            .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
         await cell.locator("button.cell-value").click();
         const embeddedEditor = cell.locator("input.cell-input");
