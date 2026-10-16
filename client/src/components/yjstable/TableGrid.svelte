@@ -116,6 +116,8 @@ interface Props {
     mutationBoundary?: GridExistingRowMutationBoundary;
     /** Refreshes completed SELECT/provenance metadata before a guarded command captures targets. */
     prepareMutationAuthority?: () => Promise<void>;
+    /** Re-runs the displayed query after an awaited guarded effect changes a source. */
+    onGuardedMutationApplied?: () => void;
     /** Whether deleting a row requires confirmation (default false). */
     confirmRowDelete?: boolean;
     /**
@@ -158,6 +160,7 @@ let {
     session,
     mutationBoundary,
     prepareMutationAuthority,
+    onGuardedMutationApplied,
     confirmRowDelete = false,
     isReadOnly = false,
     onColumnWidthPreview,
@@ -825,6 +828,7 @@ $effect.pre(() => {
 const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
 
 function reportGuardedOutcome(action: string, outcome: GridExecutionOutcome): void {
+    if (outcome.applied.length > 0) onGuardedMutationApplied?.();
     if (outcome.status === "applied") {
         cellEditStatus = undefined;
         return;
