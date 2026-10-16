@@ -124,23 +124,39 @@ export class TableRelationProvider implements RelationProvider {
     }
 
     async applyWrite(write: RelationWrite): Promise<void> {
-        this.applyWriteNow(write);
+        let settle!: () => void;
+        const applied = new Promise<void>(resolve => settle = resolve);
+        const unsubscribe = this.adapter.subscribe({ onDataApplied: settle });
+        try {
+            this.applyWriteNow(write);
+            await applied;
+        } finally {
+            unsubscribe();
+        }
     }
 
     async applyWriteBatch(writes: readonly RelationWrite[]) {
         let applied = 0;
         let error: unknown;
-        this.handles.doc.transact(() => {
-            for (const write of writes) {
-                try {
-                    this.applyWriteNow(write);
-                    applied++;
-                } catch (caught) {
-                    error = caught;
-                    break;
+        let settle!: () => void;
+        const dataApplied = new Promise<void>(resolve => settle = resolve);
+        const unsubscribe = this.adapter.subscribe({ onDataApplied: settle });
+        try {
+            this.handles.doc.transact(() => {
+                for (const write of writes) {
+                    try {
+                        this.applyWriteNow(write);
+                        applied++;
+                    } catch (caught) {
+                        error = caught;
+                        break;
+                    }
                 }
-            }
-        });
+            });
+            if (applied > 0) await dataApplied;
+        } finally {
+            unsubscribe();
+        }
         return error === undefined ? { applied } : { applied, error };
     }
 
