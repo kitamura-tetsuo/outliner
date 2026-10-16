@@ -227,7 +227,9 @@ const bareIdAuthority = $derived.by(() => {
         return {
             status: "compatible" as const,
             editableColumns: new Set(guardedAuthority.metadata.physicalColumns.flatMap(column =>
-                column.field && column.physicalColumn !== "id" ? [column.outputColumn] : []
+                column.field && column.physicalColumn !== "id" && column.outputColumn === column.physicalColumn
+                    ? [column.outputColumn]
+                    : []
             )),
         };
     }

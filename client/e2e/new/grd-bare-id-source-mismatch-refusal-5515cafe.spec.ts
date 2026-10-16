@@ -10,7 +10,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 test(
-    "a mismatched saved Grid refuses ordinary edits on embedded and standalone surfaces",
+    "a saved Grid writes its verified actual source on embedded and standalone surfaces",
     async ({ page }, testInfo) => {
         test.setTimeout(240000);
         const fixture = await seedOverlappingTableFixture(page, testInfo);
@@ -18,44 +18,47 @@ test(
 
         const gridId = await fixture.gridA.getAttribute("data-grid-id");
         expect(gridId).toBeTruthy();
-        // Reload after fixture configuration so a refused edit starts from a
-        // clean undo history while retaining the persisted mismatched query.
+        // Reload after fixture configuration so the command starts from a
+        // clean history while retaining the persisted cross-Table query.
         await page.reload();
-        await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toContainText(
-            "not the Grid's source Table",
-            { timeout: 30000 },
-        );
+        await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toHaveCount(0);
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         const before = await snapshotProject(page);
         const cell = fixture.gridA.getByTestId("yjs-table-grid")
             .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
-        await expect(cell.locator("button.cell-value")).toHaveAttribute("aria-disabled", "true");
-        await cell.click();
-        await page.keyboard.press("Enter");
-        await expect(cell.locator("input.cell-input")).toHaveCount(0);
-        expect(await snapshotProject(page)).toEqual(before);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
+        await cell.locator("button.cell-value").click();
+        await cell.locator("input.cell-input").fill("Embedded B edit");
+        await cell.locator("input.cell-input").press("Enter");
+        await expect(cell.locator("button.cell-value")).toHaveText("Embedded B edit");
+        let after = await snapshotProject(page);
+        expect(after.tables.find(table => table.id === fixture.tableA.id)?.data).toEqual(
+            before.tables.find(table => table.id === fixture.tableA.id)?.data,
+        );
+        expect(after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
+            .toBe("Embedded B edit");
 
         // Read-only results remain selectable/copyable even though they have no
         // mutation authority.
         await page.keyboard.press("Control+c");
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Value from B");
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Embedded B edit");
 
         await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/grids/${gridId}`);
         await page.reload();
         const standalone = page.getByTestId("yjs-table-view");
-        await expect(standalone.getByTestId("grid-readonly-reason")).toContainText("not the Grid's source Table", {
-            timeout: 30000,
-        });
+        await expect(standalone.getByTestId("grid-readonly-reason")).toHaveCount(0);
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
-        const standaloneBefore = await snapshotProject(page);
         const standaloneCell = standalone.getByTestId("yjs-table-grid")
-            .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
-        await standaloneCell.click();
-        await page.keyboard.press("Enter");
-        await expect(standaloneCell.locator("input.cell-input")).toHaveCount(0);
-        expect(await snapshotProject(page)).toEqual(standaloneBefore);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
+            .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
+        await standaloneCell.locator("button.cell-value").click();
+        await standaloneCell.locator("input.cell-input").fill("Standalone B edit");
+        await standaloneCell.locator("input.cell-input").press("Enter");
+        await expect(standaloneCell.locator("button.cell-value")).toHaveText("Standalone B edit");
+        after = await snapshotProject(page);
+        expect(after.tables.find(table => table.id === fixture.tableA.id)?.data).toEqual(
+            before.tables.find(table => table.id === fixture.tableA.id)?.data,
+        );
+        expect(after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
+            .toBe("Standalone B edit");
     },
 );

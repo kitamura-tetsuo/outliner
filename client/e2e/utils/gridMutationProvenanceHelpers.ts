@@ -83,13 +83,12 @@ export async function pointGridAToTableB(page: Page, fixture: OverlappingTableFi
         `SELECT id, title, done FROM ${fixture.tableB.sqlName}`,
     );
     const grid = fixture.gridA.getByTestId("yjs-table-grid");
-    // A refused result deliberately withholds a writable recordId from its
-    // cells. Locate the displayed B row by its distinguishable value instead
-    // of assuming that read-only DOM carries write-addressing metadata.
+    // The Grid remains bound to A for presentation, while guarded command
+    // authority follows the verified physical supplier B.
     await expect(grid.locator("tbody tr").filter({ hasText: "Value from B" })).toBeVisible({
         timeout: 30000,
     });
-    await expect(grid.getByTestId("grid-readonly-reason")).toContainText("not the Grid's source Table");
+    await expect(grid.getByTestId("grid-readonly-reason")).toHaveCount(0);
 }
 
 export async function snapshotProject(page: Page): Promise<GridProjectState> {
