@@ -38,8 +38,7 @@ test(
         expect(after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
             .toBe("Embedded B edit");
 
-        // Read-only results remain selectable/copyable even though they have no
-        // mutation authority.
+        // Actual-source results retain the ordinary selection/copy workflow.
         await page.keyboard.press("Control+c");
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Embedded B edit");
 
