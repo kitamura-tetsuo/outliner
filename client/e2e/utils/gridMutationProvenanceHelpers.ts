@@ -92,5 +92,13 @@ export async function pointGridAToTableB(page: Page, fixture: OverlappingTableFi
 }
 
 export async function snapshotProject(page: Page): Promise<GridProjectState> {
+    await expect.poll(
+        () =>
+            page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
+                return Boolean((window as any).__YJS_STORE__?.yjsClient?.getProject()?.ydoc);
+            }),
+        { timeout: 30000 },
+    ).toBe(true);
     return await readGridProjectState(page);
 }

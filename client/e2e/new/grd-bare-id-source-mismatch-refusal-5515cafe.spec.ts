@@ -28,8 +28,10 @@ test(
             .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
         await cell.locator("button.cell-value").click();
-        await cell.locator("input.cell-input").fill("Embedded B edit");
-        await cell.locator("input.cell-input").press("Enter");
+        const embeddedEditor = cell.locator("input.cell-input");
+        await expect(embeddedEditor).toBeVisible({ timeout: 30000 });
+        await embeddedEditor.fill("Embedded B edit");
+        await embeddedEditor.press("Enter");
         await expect(cell.locator("button.cell-value")).toHaveText("Embedded B edit");
         let after = await snapshotProject(page);
         expect(after.tables.find(table => table.id === fixture.tableA.id)?.data).toEqual(
@@ -50,8 +52,10 @@ test(
         const standaloneCell = standalone.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await standaloneCell.locator("button.cell-value").click();
-        await standaloneCell.locator("input.cell-input").fill("Standalone B edit");
-        await standaloneCell.locator("input.cell-input").press("Enter");
+        const standaloneEditor = standaloneCell.locator("input.cell-input");
+        await expect(standaloneEditor).toBeVisible({ timeout: 30000 });
+        await standaloneEditor.fill("Standalone B edit");
+        await standaloneEditor.press("Enter");
         await expect(standaloneCell.locator("button.cell-value")).toHaveText("Standalone B edit");
         after = await snapshotProject(page);
         expect(after.tables.find(table => table.id === fixture.tableA.id)?.data).toEqual(
