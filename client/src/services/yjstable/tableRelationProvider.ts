@@ -81,7 +81,7 @@ export class TableRelationProvider implements RelationProvider {
         }
     }
 
-    async applyWrite(write: RelationWrite): Promise<void> {
+    private applyWriteNow(write: RelationWrite): void {
         assertWriteAllowed(this.capabilities, write, this.sqlName || "table");
         switch (write.op) {
             case "UPDATE": {
@@ -121,6 +121,43 @@ export class TableRelationProvider implements RelationProvider {
                 return;
             }
         }
+    }
+
+    async applyWrite(write: RelationWrite): Promise<void> {
+        let settle!: () => void;
+        const applied = new Promise<void>(resolve => settle = resolve);
+        const unsubscribe = this.adapter.subscribe({ onDataApplied: settle });
+        try {
+            this.applyWriteNow(write);
+            await applied;
+        } finally {
+            unsubscribe();
+        }
+    }
+
+    async applyWriteBatch(writes: readonly RelationWrite[]) {
+        let applied = 0;
+        let error: unknown;
+        let settle!: () => void;
+        const dataApplied = new Promise<void>(resolve => settle = resolve);
+        const unsubscribe = this.adapter.subscribe({ onDataApplied: settle });
+        try {
+            this.handles.doc.transact(() => {
+                for (const write of writes) {
+                    try {
+                        this.applyWriteNow(write);
+                        applied++;
+                    } catch (caught) {
+                        error = caught;
+                        break;
+                    }
+                }
+            });
+            if (applied > 0) await dataApplied;
+        } finally {
+            unsubscribe();
+        }
+        return error === undefined ? { applied } : { applied, error };
     }
 
     dispose(): void {

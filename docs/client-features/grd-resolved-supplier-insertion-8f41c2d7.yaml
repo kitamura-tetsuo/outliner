@@ -9,6 +9,6 @@ acceptance:
 - Multi-supplier queries require a valid explicit supplier preference, while filter-only dependencies and system relations are never invented as destinations.
 - Query, preference, Table identity, schema, and capability changes revoke a pending intent before its first write; duplicate pending activation is coalesced.
 tests:
-- client/src/services/yjstable/gridInsertController.test.ts
 - client/src/services/yjstable/gridInsertController.refusal.test.ts
+- client/src/services/yjstable/gridInsertController.test.ts
 - client/src/services/yjstable/gridInsertController.validation.test.ts

@@ -7,6 +7,7 @@ status: implemented
 acceptance:
 - A cell value containing a tab, newline, or quote is RFC-4180-quoted so it round-trips through paste
 - A cell/range copies as rows separated by newlines and columns separated by tabs, with no header row
+- A guarded paste resolves and revalidates every source-addressed physical target before its first write and reports any later provider failure as partial
 - A paste that writes id-addressed cells shares one Yjs transaction, collapsing to one Undo step
 - A pasted date value must be a real calendar date; an invalid date string (e.g. Feb 30, or non-date text) is rejected the same way a bulk edit's date value is
 - A pasted value is validated against its column's type before anything is written; an incompatible value anywhere in the target rectangle aborts the whole paste
@@ -27,4 +28,7 @@ tests:
 - client/e2e/tables/grd-grid-clipboard-mobile-2f474991.spec.ts
 - client/e2e/tables/grd-grid-clipboard-paste-2f474991.spec.ts
 - client/src/components/yjstable/TableGrid.clipboard.test.ts
+- client/src/components/yjstable/TableGrid.guardedClipboard.test.ts
 - client/src/services/yjstable/gridClipboard.test.ts
+- client/src/services/yjstable/gridCommandExecution.origins.test.ts
+- client/src/services/yjstable/gridCommandExecution.test.ts
