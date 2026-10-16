@@ -224,6 +224,26 @@ export function createGridExistingRowMutationBoundary(
                 }
 
                 const applied: GridMutationResult[] = [];
+                const oneProvider = resolved[0]?.provider;
+                if (
+                    oneProvider?.applyWriteBatch
+                    && resolved.every(entry => entry.provider === oneProvider)
+                ) {
+                    for (const entry of resolved) {
+                        assertProviderIdentity(oneProvider, entry.operation.source, options.projectDoc);
+                        oneProvider.assertExistingRowWriteAllowed!(entry.write);
+                    }
+                    const batch = await oneProvider.applyWriteBatch(resolved.map(entry => entry.write));
+                    for (const entry of resolved.slice(0, batch.applied)) {
+                        captured.delete(entry.operation);
+                        applied.push(resultOf(entry.operation));
+                    }
+                    if (batch.error !== undefined) {
+                        const failed = resolved[batch.applied];
+                        if (failed) return { applied, failed: { intent: failed.operation, error: batch.error } };
+                    }
+                    return { applied };
+                }
                 for (const entry of resolved) {
                     try {
                         // The complete batch was revalidated above immediately
@@ -235,11 +255,7 @@ export function createGridExistingRowMutationBoundary(
                         entry.provider.assertExistingRowWriteAllowed!(entry.write);
                         await entry.provider.applyWrite(entry.write);
                         captured.delete(entry.operation);
-                        applied.push({
-                            source: entry.operation.source,
-                            rowId: entry.operation.rowId,
-                            physicalColumn: entry.operation.physical?.physicalColumn,
-                        });
+                        applied.push(resultOf(entry.operation));
                     } catch (error) {
                         return { applied, failed: { intent: entry.operation, error } };
                     }
@@ -253,6 +269,14 @@ export function createGridExistingRowMutationBoundary(
             disposed = true;
             ownedEngine?.dispose();
         },
+    };
+}
+
+function resultOf(operation: CapturedIntent): GridMutationResult {
+    return {
+        source: operation.source,
+        rowId: operation.rowId,
+        physicalColumn: operation.physical?.physicalColumn,
     };
 }
 

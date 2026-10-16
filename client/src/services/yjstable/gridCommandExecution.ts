@@ -22,6 +22,10 @@ export interface GridGuardedCommandContext extends Pick<GridCommandContext, "row
     boundary: GridExistingRowMutationBoundary;
 }
 
+export type GridCapturedRowDeletion =
+    | { status: "captured"; intents: GridMutationIntent[]; }
+    | { status: "refused"; reason: string; };
+
 function rowIndexOf(ctx: GridGuardedCommandContext, target: GridCommandRowTarget): number {
     for (const candidate of ctx.rowTargets.values()) {
         if (candidate === target && candidate.rowIndex !== undefined) return candidate.rowIndex;
@@ -82,15 +86,33 @@ export async function executeGridRowDeletion(
     ctx: GridGuardedCommandContext,
     targets: readonly GridCommandRowTarget[],
 ): Promise<GridExecutionOutcome> {
-    if (targets.length === 0) return { status: "refused", applied: [], reason: "no-writable-rows" };
-    let intents: GridMutationIntent[];
+    const captured = captureGridRowDeletion(ctx, targets);
+    if (captured.status === "refused") return { status: "refused", applied: [], reason: captured.reason };
+    return executeCapturedGridRowDeletion(ctx.boundary, captured.intents);
+}
+
+/** Capture confirmation authority at command initiation, before the dialog delay. */
+export function captureGridRowDeletion(
+    ctx: GridGuardedCommandContext,
+    targets: readonly GridCommandRowTarget[],
+): GridCapturedRowDeletion {
+    if (targets.length === 0) return { status: "refused", reason: "no-writable-rows" };
     try {
-        intents = targets.map(target => ctx.boundary.captureDelete(rowIndexOf(ctx, target)));
+        return {
+            status: "captured",
+            intents: targets.map(target => ctx.boundary.captureDelete(rowIndexOf(ctx, target))),
+        };
     } catch (error) {
-        return { status: "refused", applied: [], reason: error instanceof Error ? error.message : String(error) };
+        return { status: "refused", reason: error instanceof Error ? error.message : String(error) };
     }
+}
+
+export async function executeCapturedGridRowDeletion(
+    boundary: GridExistingRowMutationBoundary,
+    intents: readonly GridMutationIntent[],
+): Promise<GridExecutionOutcome> {
     try {
-        const result = await ctx.boundary.commitMany(intents);
+        const result = await boundary.commitMany(intents);
         if (result.failed) {
             return {
                 status: "partial",

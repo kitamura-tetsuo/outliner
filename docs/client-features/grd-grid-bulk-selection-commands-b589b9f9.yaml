@@ -18,5 +18,9 @@ tests:
 - client/e2e/tables/grd-grid-bulk-clear-commands-b589b9f9.spec.ts
 - client/e2e/tables/grd-grid-bulk-row-select-commands-b589b9f9.spec.ts
 - client/src/components/yjstable/TableGrid.bulkCommands.test.ts
+- client/src/components/yjstable/TableGrid.guardedCommands.test.ts
+- client/src/components/yjstable/TableGrid.guardedConfirmation.test.ts
 - client/src/services/yjstable/gridCommandExecution.test.ts
+- client/src/services/yjstable/gridCommandExecution.history.test.ts
+- client/src/services/yjstable/gridCommandExecution.origins.test.ts
 - client/src/services/yjstable/gridSelectionCommands.test.ts

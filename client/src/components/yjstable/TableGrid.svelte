@@ -42,9 +42,13 @@ import {
 } from "../../services/yjstable/gridSelectionCommands";
 import type { GridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
 import {
+    captureGridRowDeletion,
+    executeCapturedGridRowDeletion,
     executeGridPastePlan,
     executeGridRowDeletion,
     executeGridWrites,
+    type GridExecutionOutcome,
+    type GridCapturedRowDeletion,
 } from "../../services/yjstable/gridCommandExecution";
 import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
@@ -159,9 +163,14 @@ let {
     onColumnWidthPreview,
 }: Props = $props();
 
-let rowToDelete: string | null = $state(null);
+interface PendingRowDeletion {
+    targets: GridCommandRowTarget[];
+    captured?: GridCapturedRowDeletion;
+}
+
+let rowToDelete: PendingRowDeletion | undefined = $state(undefined);
 /** Pending selection-aware row removal (FTR-5191), awaiting the same confirmation as a single row delete. */
-let bulkRowsToDelete: GridCommandRowTarget[] | undefined = $state(undefined);
+let bulkRowsToDelete: PendingRowDeletion | undefined = $state(undefined);
 let isConfirmDialogOpen: boolean = $state(false);
 const selection = new GridSelection();
 let selectionRevision = $state(0);
@@ -815,6 +824,26 @@ $effect.pre(() => {
 /** Bulk-safe value kinds: committing one of these while several writable cells are selected applies the value to all of them (FTR-5191). */
 const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
 
+function reportGuardedOutcome(action: string, outcome: GridExecutionOutcome): void {
+    if (outcome.status === "applied") {
+        cellEditStatus = undefined;
+        return;
+    }
+    if (outcome.status === "refused") {
+        cellEditStatus = `${action} refused: ${outcome.reason}`;
+        return;
+    }
+    const applied = outcome.applied.map(result =>
+        `${result.source.sqlName}:${result.rowId}${result.physicalColumn ? `.${result.physicalColumn}` : ""}`
+    ).join(", ");
+    const failed = `result row ${outcome.failedIntent.rowIndex + 1}${
+        outcome.failedIntent.outputColumn ? `.${outcome.failedIntent.outputColumn}` : ""
+    }`;
+    cellEditStatus = `${action} partially applied to ${outcome.applied.length} target${
+        outcome.applied.length === 1 ? "" : "s"
+    } (${applied || "none"}); provider write failed for ${failed}.`;
+}
+
 async function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
     if (!editability.editable || !editability.editableColumns.has(column)) return;
     const rowIndex = result.rows.indexOf(row);
@@ -836,15 +865,27 @@ async function commitCell(row: Record<string, unknown>, column: string, value: T
                         { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
                         summary.writableTargets.map(target => ({ target, value })),
                     );
-                    if (outcome.status !== "applied") cellEditStatus = outcome.status === "refused"
-                        ? outcome.reason
-                        : `Edit partially applied (${outcome.applied.length} cells); a provider write failed.`;
+                    reportGuardedOutcome("Edit", outcome);
                     return;
                 }
                 // The captured origin is checked before the synchronous batch can write any target.
                 applyValueToSelection(selection, commandContext, value);
                 return;
             }
+        }
+        if (mutationBoundary && cell) {
+            const rowTarget = commandContext.rowTargets.get(cell.rowId);
+            if (!rowTarget) {
+                cellEditStatus = "Edit refused: the current logical row occurrence is unavailable.";
+                return;
+            }
+            await prepareMutationAuthority?.();
+            const outcome = await executeGridWrites(
+                { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                [{ target: { rowTarget, columnId: column }, value }],
+            );
+            reportGuardedOutcome("Edit", outcome);
+            return;
         }
         const recordId = recordIdOf(row);
         if (recordId !== undefined) {
@@ -1025,9 +1066,8 @@ async function pasteClipboardIntoSelection(): Promise<void> {
         if (mutationBoundary) {
             const outcome = await executeGridPastePlan({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, plan);
             if (outcome.status !== "applied") {
-                pasteStatus = outcome.status === "refused"
-                    ? outcome.reason
-                    : `Paste partially applied (${outcome.applied.length} cells); a provider write failed.`;
+                reportGuardedOutcome("Paste", outcome);
+                pasteStatus = cellEditStatus;
                 return;
             }
         } else commitGridPaste(commandContext, plan.writes);
@@ -1183,14 +1223,34 @@ async function addRow() {
     addRecord(handles, newRecordDefaults());
 }
 
-function deleteRow(recordId: string) {
+async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
     if (!editability.editable || editability.rowIdentity !== "id") return;
-    if (confirmRowDelete) {
-        rowToDelete = recordId;
-        isConfirmDialogOpen = true;
-    } else {
-        removeRowTargets(commandContext, [{ row: {}, recordId }]);
+    const logicalRowId = selectionRowId(row, rowIndex);
+    const target = logicalRowId ? commandContext.rowTargets.get(logicalRowId) : undefined;
+    if (!target) {
+        cellEditStatus = "Delete refused: the current logical row occurrence is unavailable.";
+        return;
     }
+    if (confirmRowDelete) {
+        await prepareMutationAuthority?.();
+        const captured = mutationBoundary
+            ? captureGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, [target])
+            : undefined;
+        if (captured?.status === "refused") {
+            cellEditStatus = `Delete refused: ${captured.reason}`;
+            return;
+        }
+        rowToDelete = { targets: [target], captured };
+        isConfirmDialogOpen = true;
+        return;
+    }
+    if (mutationBoundary) {
+        await prepareMutationAuthority?.();
+        reportGuardedOutcome(
+            "Delete",
+            await executeGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, [target]),
+        );
+    } else removeRowTargets(commandContext, [target]);
 }
 
 /**
@@ -1210,44 +1270,65 @@ async function runDeleteCommand(): Promise<void> {
             { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
             writes,
         );
-        if (outcome.status !== "applied") cellEditStatus = outcome.status === "refused"
-            ? outcome.reason
-            : `Delete partially applied (${outcome.applied.length} cells); a provider write failed.`;
+        reportGuardedOutcome("Delete", outcome);
         return;
     }
     const plan = planGridDeleteCommand(selection, commandContext);
     if (plan.kind === "clear-cells") return;
     if (plan.targets.length === 0) return;
     if (confirmRowDelete) {
-        bulkRowsToDelete = plan.targets;
+        const captured = mutationBoundary
+            ? captureGridRowDeletion(
+                { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                plan.targets,
+            )
+            : undefined;
+        if (captured?.status === "refused") {
+            cellEditStatus = `Delete refused: ${captured.reason}`;
+            return;
+        }
+        bulkRowsToDelete = { targets: plan.targets, captured };
         isConfirmDialogOpen = true;
         return;
     }
     if (mutationBoundary) {
-        void executeGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, plan.targets);
+        reportGuardedOutcome(
+            "Delete",
+            await executeGridRowDeletion(
+                { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                plan.targets,
+            ),
+        );
     } else removeRowTargets(commandContext, plan.targets);
 }
 
 async function handleConfirmDelete() {
     if (bulkRowsToDelete) {
-        await prepareMutationAuthority?.();
         if (mutationBoundary) {
-            await executeGridRowDeletion(
-                { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
-                bulkRowsToDelete,
-            );
-        } else removeRowTargets(commandContext, bulkRowsToDelete);
+            const outcome = bulkRowsToDelete.captured?.status === "captured"
+                ? await executeCapturedGridRowDeletion(mutationBoundary, bulkRowsToDelete.captured.intents)
+                : { status: "refused" as const, applied: [] as [], reason: "Delete authority was not captured." };
+            reportGuardedOutcome("Delete", outcome);
+        } else removeRowTargets(commandContext, bulkRowsToDelete.targets);
         bulkRowsToDelete = undefined;
         return;
     }
     if (rowToDelete) {
-        removeRowTargets(commandContext, [{ row: {}, recordId: rowToDelete }]);
-        rowToDelete = null;
+        if (mutationBoundary) {
+            const outcome = rowToDelete.captured?.status === "captured"
+                ? await executeCapturedGridRowDeletion(mutationBoundary, rowToDelete.captured.intents)
+                : { status: "refused" as const, applied: [] as [], reason: "Delete authority was not captured." };
+            reportGuardedOutcome(
+                "Delete",
+                outcome,
+            );
+        } else removeRowTargets(commandContext, rowToDelete.targets);
+        rowToDelete = undefined;
     }
 }
 
 function handleCancelDelete() {
-    rowToDelete = null;
+    rowToDelete = undefined;
     bulkRowsToDelete = undefined;
 }
 </script>
@@ -1567,7 +1648,7 @@ function handleCancelDelete() {
                                         type="button"
                                         class="delete-row"
                                         aria-label={`Delete row ${recordId}`}
-                                        onclick={() => deleteRow(recordId)}
+                                        onclick={() => deleteRow(row, rowIndex)}
                                         title="Delete row"
                                     >🗑️</button>
                                 {/if}
@@ -1636,9 +1717,9 @@ function handleCancelDelete() {
         bind:isOpen={isConfirmDialogOpen}
         title="Delete row"
         message={bulkRowsToDelete
-            ? `Are you sure you want to delete ${bulkRowsToDelete.length} selected row${bulkRowsToDelete.length === 1 ? "" : "s"}?`
+            ? `Are you sure you want to delete ${bulkRowsToDelete.targets.length} selected row${bulkRowsToDelete.targets.length === 1 ? "" : "s"}?`
             : rowToDelete
-            ? `Are you sure you want to delete row ${rowToDelete}?`
+            ? `Are you sure you want to delete row ${rowToDelete.targets[0]?.recordId ?? rowToDelete.targets[0]?.source?.sourceId ?? ""}?`
             : "Are you sure you want to delete this row?"}
         confirmText="Delete"
         cancelText="Cancel"
