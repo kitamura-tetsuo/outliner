@@ -471,16 +471,20 @@ function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
 }
 
-/** Search/navigation identity for read-only projections that have no writable record identity. */
-function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
-    const durableId = selectionRowId(row, rowIndex);
+/** Logical identity for readable result occurrences; it never grants write authority. */
+function readableRowId(row: Record<string, unknown>, rowIndex: number): string {
+    const durableId = durableSelectionRowId(row, rowIndex);
     if (durableId !== undefined) return durableId;
     const value = JSON.stringify(row);
     const duplicateIndex = result.rows.slice(0, rowIndex).filter(candidate => JSON.stringify(candidate) === value).length;
     return `result:${value}:${duplicateIndex}`;
 }
 
-/** Rows without a durable query identity are intentionally not selectable. */
+function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
+    return readableRowId(row, rowIndex);
+}
+
+/** Durable identity used only when a write path needs an actual record address. */
 function selectableRowId(row: Record<string, unknown>): string | undefined {
     return durableRowIdBase(row);
 }
@@ -507,13 +511,17 @@ function durableRowIdBase(row: Record<string, unknown>): string | undefined {
  * uses for Svelte DOM keys, keeping the first occurrence exactly as before
  * so unique-identity results behave identically.
  */
-function selectionRowId(row: Record<string, unknown>, rowIndex: number): string | undefined {
+function durableSelectionRowId(row: Record<string, unknown>, rowIndex: number): string | undefined {
     const base = durableRowIdBase(row);
     if (base === undefined) return undefined;
     const repeatsBefore = result.rows.slice(0, rowIndex).filter(candidate =>
         durableRowIdBase(candidate) === base
     ).length;
     return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
+}
+
+function selectionRowId(row: Record<string, unknown>, rowIndex: number): string {
+    return readableRowId(row, rowIndex);
 }
 
 onMount(() => {
@@ -1263,8 +1271,14 @@ async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
  * row removal.
  */
 async function runDeleteCommand(): Promise<void> {
+    const capturedSelectionRevision = selectionRevision;
+    const capturedKind = classifySelectionKind(selection.regions);
     await prepareMutationAuthority?.();
-    if (mutationBoundary && classifySelectionKind(selection.regions) !== "rows") {
+    if (selectionRevision !== capturedSelectionRevision || classifySelectionKind(selection.regions) !== capturedKind) {
+        cellEditStatus = "Delete refused: the selection changed while write authority was being prepared.";
+        return;
+    }
+    if (mutationBoundary && capturedKind !== "rows") {
         const writes = planSelectionClearWrites(selection, commandContext);
         const outcome = await executeGridWrites(
             { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },

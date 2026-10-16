@@ -124,6 +124,11 @@ let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
 let insertOutcome = $state<GridInsertOutcome | undefined>(undefined);
+let guardedAuthority = $state.raw<{
+    evidence: ProjectSelectEvidence;
+    provenance: ProjectQueryProvenance;
+    metadata: GridMetadataResolution;
+} | undefined>(undefined);
 // Authority is revoked only by material changes from the authoritative Yjs
 // configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
@@ -214,6 +219,18 @@ const bareIdAuthority = $derived.by(() => {
     if (!schema || !sqlName || !execution || !isCurrentExecutionForQuery(execution, gridQuery)) {
         return undefined;
     }
+    if (
+        guardedAuthority?.provenance.status === "proven" && guardedAuthority.provenance.bareIdSource
+        && guardedAuthority.metadata.status === "resolved"
+        && guardedAuthority.evidence.query === execution.query
+    ) {
+        return {
+            status: "compatible" as const,
+            editableColumns: new Set(guardedAuthority.metadata.physicalColumns.flatMap(column =>
+                column.field && column.physicalColumn !== "id" ? [column.outputColumn] : []
+            )),
+        };
+    }
     return resolveBareIdMutationAuthority(execution.query, sqlName, schema, result.columns);
 });
 
@@ -247,27 +264,22 @@ const guardedSelect = createProjectSelectSession({
 });
 // svelte-ignore state_referenced_locally
 const guardedMetadataResolver = createGridMetadataResolver({ projectDoc, projectId });
-let guardedEvidence: ProjectSelectEvidence | undefined;
-let guardedProvenance: ProjectQueryProvenance | undefined;
-let guardedMetadata: GridMetadataResolution | undefined;
 async function refreshGuardedMutationAuthority(): Promise<void> {
     const evidence = await guardedSelect.runNow();
     if (!evidence) return;
     const provenance = analyzeProjectQueryProvenance(evidence);
     const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
     if (!guardedSelect.isEvidenceCurrent(evidence)) return;
-    guardedEvidence = evidence;
-    guardedProvenance = provenance;
-    guardedMetadata = metadata;
+    guardedAuthority = { evidence, provenance, metadata };
 }
 
 const mutationBoundary = createGridExistingRowMutationBoundary({
     projectDoc,
     projectId,
     session: guardedSelect,
-    evidence: () => guardedEvidence,
-    provenance: () => guardedProvenance,
-    metadata: () => guardedMetadata,
+    evidence: () => guardedAuthority?.evidence,
+    provenance: () => guardedAuthority?.provenance,
+    metadata: () => guardedAuthority?.metadata,
     canWrite: () => true,
     allows: () => true,
     relationSession: session,
