@@ -33,12 +33,21 @@ function rowIndexOf(ctx: GridGuardedCommandContext, target: GridCommandRowTarget
     throw new Error("Grid command refused: the selected row has no captured result occurrence");
 }
 
+function expectedOccurrence(target: GridCommandRowTarget) {
+    return target.source ? { source: target.source } : { recordId: target.recordId };
+}
+
 function captureUpdates(
     ctx: GridGuardedCommandContext,
     writes: readonly { target: GridWritableCellTarget; value: TableRecordValue; }[],
 ): GridMutationIntent[] {
     return writes.map(write =>
-        ctx.boundary.captureUpdate(rowIndexOf(ctx, write.target.rowTarget), write.target.columnId, write.value)
+        ctx.boundary.captureUpdate(
+            rowIndexOf(ctx, write.target.rowTarget),
+            write.target.columnId,
+            write.value,
+            expectedOccurrence(write.target.rowTarget),
+        )
     );
 }
 
@@ -100,7 +109,9 @@ export function captureGridRowDeletion(
     try {
         return {
             status: "captured",
-            intents: targets.map(target => ctx.boundary.captureDelete(rowIndexOf(ctx, target))),
+            intents: targets.map(target =>
+                ctx.boundary.captureDelete(rowIndexOf(ctx, target), expectedOccurrence(target))
+            ),
         };
     } catch (error) {
         return { status: "refused", reason: error instanceof Error ? error.message : String(error) };

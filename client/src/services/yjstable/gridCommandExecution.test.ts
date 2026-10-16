@@ -58,6 +58,38 @@ describe("source-aware Grid command execution", { timeout: 30_000 }, () => {
         }
     });
 
+    it("keeps an intended logical row when refreshed authority reorders the result", async () => {
+        const doc = new Y.Doc({ guid: "grid-command-reorder" });
+        const table = createTestTable(
+            doc,
+            "items",
+            "CREATE TABLE items (id TEXT PRIMARY KEY, title TEXT)",
+            "one",
+            { title: "Alpha" },
+        );
+        addRecord(table.handles, { title: "Beta" }, "two");
+        const harness = await createMutationHarness(doc, "SELECT id, title FROM items ORDER BY title");
+        const displayedRows = harness.evidence().rows;
+        const targets = displayedRows.map((row, rowIndex) => ({ row, rowIndex, recordId: row.id as string }));
+        const intended = targets.find(target => target.recordId === "two")!;
+        try {
+            table.handles.data.get("one")!.set("title", "Zulu");
+            await harness.refresh();
+            expect(harness.evidence().rows[0]?.id).toBe("two");
+
+            const outcome = await executeGridWrites(
+                { boundary: harness.boundary, rowTargets: new Map(targets.map(target => [target.recordId, target])) },
+                [{ target: { rowTarget: intended, columnId: "title" }, value: "Edited Beta" }],
+            );
+
+            expect(outcome.status).toBe("applied");
+            expect(table.handles.data.get("two")?.get("title")).toBe("Edited Beta");
+            expect(table.handles.data.get("one")?.get("title")).toBe("Zulu");
+        } finally {
+            harness.dispose();
+        }
+    });
+
     it("refuses the complete plan when authority changes during provider resolution", async () => {
         const doc = new Y.Doc({ guid: "grid-command-stale" });
         const b = createTestTable(doc, "b", "CREATE TABLE b (id TEXT PRIMARY KEY, value TEXT)", "one", {

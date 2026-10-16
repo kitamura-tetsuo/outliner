@@ -30,9 +30,19 @@ export interface GridMutationIntent {
     readonly value?: RelationValue;
 }
 
+export interface GridExpectedRowOccurrence {
+    readonly recordId?: string;
+    readonly source?: { readonly sourceKind: string; readonly sourceId: string; };
+}
+
 export interface GridExistingRowMutationBoundary {
-    captureUpdate(rowIndex: number, outputColumn: string, value: RelationValue): GridMutationIntent;
-    captureDelete(rowIndex: number): GridMutationIntent;
+    captureUpdate(
+        rowIndex: number,
+        outputColumn: string,
+        value: RelationValue,
+        expected?: GridExpectedRowOccurrence,
+    ): GridMutationIntent;
+    captureDelete(rowIndex: number, expected?: GridExpectedRowOccurrence): GridMutationIntent;
     commit(intent: GridMutationIntent): Promise<GridMutationResult>;
     /**
      * Revalidates and resolves a complete command before its first effect,
@@ -91,6 +101,7 @@ export function createGridExistingRowMutationBoundary(
         rowIndex: number,
         outputColumn?: string,
         value?: RelationValue,
+        expected?: GridExpectedRowOccurrence,
     ): CapturedIntent {
         if (disposed) refuse("The mutation boundary is disposed");
         const evidence = options.evidence();
@@ -107,6 +118,7 @@ export function createGridExistingRowMutationBoundary(
             refuse("Physical metadata does not belong to the current Grid execution");
         }
         if (!options.canWrite()) refuse("Project write access is unavailable");
+        rowIndex = resolveCurrentRowIndex(evidence, rowIndex, expected);
         const row = evidence.rows[rowIndex];
         if (!row) refuse("The selected result row no longer exists");
         const identity = evidence.rowIdentities[rowIndex];
@@ -139,8 +151,9 @@ export function createGridExistingRowMutationBoundary(
     }
 
     return {
-        captureUpdate: (rowIndex, outputColumn, value) => capture("UPDATE", rowIndex, outputColumn, value),
-        captureDelete: rowIndex => capture("DELETE", rowIndex),
+        captureUpdate: (rowIndex, outputColumn, value, expected) =>
+            capture("UPDATE", rowIndex, outputColumn, value, expected),
+        captureDelete: (rowIndex, expected) => capture("DELETE", rowIndex, undefined, undefined, expected),
         async commit(intent) {
             if (!captured.has(intent as object)) refuse("The mutation intent was not created by this boundary");
             const operation = intent as CapturedIntent;
@@ -279,6 +292,32 @@ function resultOf(operation: CapturedIntent): GridMutationResult {
         rowId: operation.rowId,
         physicalColumn: operation.physical?.physicalColumn,
     };
+}
+
+function resolveCurrentRowIndex(
+    evidence: ProjectSelectEvidence,
+    fallbackIndex: number,
+    expected: GridExpectedRowOccurrence | undefined,
+): number {
+    if (!expected) return fallbackIndex;
+    const matches: number[] = [];
+    for (let index = 0; index < evidence.rows.length; index++) {
+        const identity = evidence.rowIdentities[index];
+        if (!identity) continue;
+        const matchesBare = expected.recordId !== undefined && identity.id === expected.recordId;
+        const matchesSource = expected.source !== undefined
+            && identity.sourceKind === expected.source.sourceKind
+            && identity.sourceId === expected.source.sourceId;
+        if (matchesBare || matchesSource) matches.push(index);
+    }
+    if (matches.length !== 1) {
+        refuse(
+            matches.length === 0
+                ? "The selected logical row occurrence is no longer present"
+                : "The selected logical row occurrence is no longer unique",
+        );
+    }
+    return matches[0]!;
 }
 
 function resolveTarget(
