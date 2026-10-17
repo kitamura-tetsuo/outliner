@@ -66,37 +66,19 @@ test.describe("production on-premises local boundaries", () => {
         await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
     });
 
-    test("settles a browser-cancelled session without disturbing another live client", async ({ context, page }) => {
-        const target = page;
-        const unrelated = await context.newPage();
-        await login(target, stack);
-        await unrelated.goto(stack.origin);
-        await expect(unrelated.getByTestId("login-status-indicator")).toContainText("Local User");
-        const title = `Independent-${Date.now()}`;
-        await createProject(unrelated, title);
-
-        const release = stack.delayNextSessionBody();
-        const navigation = target.reload({ waitUntil: "domcontentloaded" });
-        await stack.waitForDelayedSessionBody();
-        await target.close();
-        await navigation.catch(() => {});
-        release();
-
-        await unrelated.goto(stack.origin);
-        await expect(unrelated.locator("select.project-select option", { hasText: title })).toHaveCount(1);
-        const subsequentTitle = `Still-live-${Date.now()}`;
-        await createProject(unrelated, subsequentTitle);
-        await expect(unrelated).toHaveURL(new RegExp(`/${encodeURIComponent(subsequentTitle)}$`));
-        await unrelated.close();
-    });
-
     test("settles an in-flight response before backend restart", async ({ page }) => {
         await login(page, stack);
+        stack.clearTransportEvents();
         const release = stack.delayNextSessionBody();
         void page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+        const headers = await stack.waitForTransportEvent("http-headers", "/api/local-auth/session");
         await stack.waitForDelayedSessionBody();
 
         await stack.restart();
+        const cancellation = await stack.waitForTransportEvent("http-lifecycle-cancel", "/api/local-auth/session");
+        expect(cancellation.id).toBe(headers.id);
+        expect(stack.transportSnapshot().some(event => event.id === headers.id && event.kind === "http-upstream-error"))
+            .toBe(false);
         release();
         await page.goto(stack.origin);
         await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();

@@ -16,13 +16,30 @@ const MIME: Record<string, string> = {
     ".svg": "image/svg+xml",
     ".wasm": "application/wasm",
 };
+export interface TransportEvent {
+    id: number;
+    kind:
+        | "http-start"
+        | "http-headers"
+        | "http-client-abort"
+        | "http-lifecycle-cancel"
+        | "http-upstream-error"
+        | "ws-open"
+        | "ws-client-close"
+        | "ws-upstream-close";
+    url: string;
+}
 interface Exchange {
+    id: number;
+    url: string;
     downstreamResponse: http.ServerResponse;
     upstreamRequest: http.ClientRequest;
     upstreamResponse?: http.IncomingMessage;
     terminal: boolean;
 }
 interface Tunnel {
+    id: number;
+    url: string;
     client: Duplex;
     upstream: net.Socket;
 }
@@ -40,6 +57,39 @@ export class OnPremProductionStack {
     private readonly exchanges = new Set<Exchange>();
     private readonly tunnels = new Set<Tunnel>();
     private stopping = false;
+    private nextTransportId = 1;
+    private readonly transportEvents: TransportEvent[] = [];
+    private readonly transportWaiters = new Set<(event: TransportEvent) => void>();
+
+    transportSnapshot() {
+        return [...this.transportEvents];
+    }
+
+    clearTransportEvents() {
+        this.transportEvents.length = 0;
+    }
+
+    waitForTransportEvent(kind: TransportEvent["kind"], url: string): Promise<TransportEvent> {
+        const existing = this.transportEvents.find(event => event.kind === kind && event.url.includes(url));
+        if (existing) return Promise.resolve(existing);
+        return new Promise(resolve => {
+            const waiter = (event: TransportEvent) => {
+                if (event.kind !== kind || !event.url.includes(url)) return;
+                this.transportWaiters.delete(waiter);
+                resolve(event);
+            };
+            this.transportWaiters.add(waiter);
+        });
+    }
+
+    isTunnelOpen(id: number) {
+        return [...this.tunnels].some(tunnel => tunnel.id === id);
+    }
+
+    private recordTransport(event: TransportEvent) {
+        this.transportEvents.push(event);
+        for (const waiter of [...this.transportWaiters]) waiter(event);
+    }
 
     delayNextSessionBody(): () => void {
         let release!: () => void;
@@ -111,13 +161,14 @@ export class OnPremProductionStack {
     }
     private cancelBackendWork() {
         this.sessionBodyGate = undefined;
-        for (const exchange of [...this.exchanges]) this.cancelExchange(exchange);
+        for (const exchange of [...this.exchanges]) this.cancelExchange(exchange, "http-lifecycle-cancel");
         for (const tunnel of [...this.tunnels]) this.closeTunnel(tunnel);
     }
-    private cancelExchange(exchange: Exchange) {
+    private cancelExchange(exchange: Exchange, cancellation?: "http-client-abort" | "http-lifecycle-cancel") {
         if (exchange.terminal) return;
         exchange.terminal = true;
         this.exchanges.delete(exchange);
+        if (cancellation) this.recordTransport({ id: exchange.id, kind: cancellation, url: exchange.url });
         exchange.upstreamResponse?.destroy();
         exchange.upstreamRequest.destroy();
         if (!exchange.downstreamResponse.destroyed) exchange.downstreamResponse.destroy();
@@ -137,10 +188,17 @@ export class OnPremProductionStack {
                 method: request.method,
                 headers: { ...request.headers, host: `127.0.0.1:${this.backendPort}` },
             });
-            const exchange: Exchange = { downstreamResponse: response, upstreamRequest: upstream, terminal: false };
+            const exchange: Exchange = {
+                id: this.nextTransportId++,
+                url: request.url,
+                downstreamResponse: response,
+                upstreamRequest: upstream,
+                terminal: false,
+            };
             this.exchanges.add(exchange);
+            this.recordTransport({ id: exchange.id, kind: "http-start", url: exchange.url });
             const canceledByClient = () => {
-                if (!response.writableFinished) this.cancelExchange(exchange);
+                if (!response.writableFinished) this.cancelExchange(exchange, "http-client-abort");
             };
             request.once("aborted", canceledByClient);
             response.once("close", canceledByClient);
@@ -153,6 +211,7 @@ export class OnPremProductionStack {
                     return;
                 }
                 exchange.upstreamResponse = result;
+                this.recordTransport({ id: exchange.id, kind: "http-headers", url: exchange.url });
                 const failedBody = () => {
                     if (!exchange.terminal) response.destroy();
                     this.cancelExchange(exchange);
@@ -173,6 +232,7 @@ export class OnPremProductionStack {
             });
             upstream.once("error", () => {
                 if (exchange.terminal) return;
+                this.recordTransport({ id: exchange.id, kind: "http-upstream-error", url: exchange.url });
                 if (!response.headersSent) {
                     response.writeHead(503);
                     response.end("Backend unavailable");
@@ -208,15 +268,16 @@ export class OnPremProductionStack {
     }
     private upgrade(request: http.IncomingMessage, socket: Duplex, head: Buffer) {
         const upstream = net.connect(this.backendPort, "127.0.0.1");
-        const tunnel: Tunnel = { client: socket, upstream };
+        const tunnel: Tunnel = { id: this.nextTransportId++, url: request.url ?? "/", client: socket, upstream };
         this.tunnels.add(tunnel);
-        const close = () => this.closeTunnel(tunnel);
-        socket.once("error", close);
-        socket.once("close", close);
-        upstream.once("error", close);
-        upstream.once("close", close);
+        const clientClose = () => this.closeTunnel(tunnel, "ws-client-close");
+        const upstreamClose = () => this.closeTunnel(tunnel, "ws-upstream-close");
+        socket.once("error", clientClose);
+        socket.once("close", clientClose);
+        upstream.once("error", upstreamClose);
+        upstream.once("close", upstreamClose);
         upstream.once("connect", () => {
-            if (!this.tunnels.has(tunnel) || this.stopping) return close();
+            if (!this.tunnels.has(tunnel) || this.stopping) return this.closeTunnel(tunnel);
             upstream.write(`${request.method} ${request.url} HTTP/${request.httpVersion}\r\n`);
             for (const [name, value] of Object.entries(request.headers)) {
                 if (value !== undefined) {
@@ -226,10 +287,12 @@ export class OnPremProductionStack {
             upstream.write("\r\n");
             if (head.length) upstream.write(head);
             socket.pipe(upstream).pipe(socket);
+            this.recordTransport({ id: tunnel.id, kind: "ws-open", url: tunnel.url });
         });
     }
-    private closeTunnel(tunnel: Tunnel) {
+    private closeTunnel(tunnel: Tunnel, kind?: "ws-client-close" | "ws-upstream-close") {
         if (!this.tunnels.delete(tunnel)) return;
+        if (kind) this.recordTransport({ id: tunnel.id, kind, url: tunnel.url });
         tunnel.client.unpipe(tunnel.upstream);
         tunnel.upstream.unpipe(tunnel.client);
         tunnel.client.destroy();
