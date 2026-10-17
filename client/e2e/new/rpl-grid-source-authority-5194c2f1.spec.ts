@@ -53,7 +53,13 @@ test(
         test.setTimeout(180000);
         const fixture = await seedOverlappingTableFixture(page, testInfo);
         await pointGridAToTableB(page, fixture);
-        const undoBefore = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+        const undoBefore = await page.evaluate(() => {
+            const router = (globalThis as any).globalUndoRouter;
+            // Isolate the user-facing Replace command from fixture edits that
+            // may still be inside Yjs UndoManager's capture window.
+            router.stopCapturing();
+            return router.undoDepth;
+        });
 
         await openSearch(page, "Value from B", "Settled once");
         await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2", { timeout: 30000 });

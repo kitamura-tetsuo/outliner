@@ -629,7 +629,15 @@ onMount(() => {
                     const index = writableIndex++;
                     return index < appliedCount
                         ? { ...entry, applied: true }
-                        : { ...entry, applied: false, reason: "refused", error: executed.status === "partial" ? executed.error : executed.status === "refused" ? executed.reason : undefined };
+                        : {
+                            ...entry,
+                            applied: false,
+                            reason: "refused",
+                            // A guarded stale-authority refusal is an expected
+                            // no-effect outcome, not an unexpected provider
+                            // failure for SearchPanel to surface as an error.
+                            error: executed.status === "partial" ? executed.error : undefined,
+                        };
                 });
             }
             if (idWrites.length > 0) {
