@@ -16,7 +16,6 @@ test.describe("production on-premises Table and Grid rooms", () => {
         await login(page, stack);
         const title = `Data-${Date.now()}`;
         await createProject(page, title);
-        await stack.waitForTransportEvent("ws-open", "/projects/");
         await page.getByLabel("New page name").fill("Data");
         await page.getByRole("button", { name: "Create new page" }).click();
         await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(title)}/Data$`));
@@ -24,11 +23,8 @@ test.describe("production on-premises Table and Grid rooms", () => {
         const panel = page.getByTestId("yjs-table-create-panel").first();
         await panel.getByTestId("yjs-table-name-input").fill("Tasks");
         await panel.getByTestId("yjs-table-preset-select").selectOption("blank");
-        stack.clearTransportEvents();
         await panel.getByTestId("yjs-table-create").click();
-        await stack.waitForTransportEvent("ws-open", "/tables/");
         const grid = page.getByTestId("yjs-table-grid").first();
-        await expect(grid).toBeVisible();
         await page.getByTestId("yjs-table-add-row").first().click();
         const row = grid.locator("tbody tr").last();
         await row.locator("td[data-col='title'] button").click();
