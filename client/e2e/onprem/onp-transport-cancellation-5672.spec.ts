@@ -41,10 +41,11 @@ test.describe("production on-premises transport cancellation", () => {
         // Closing the owning context deterministically closes its pooled HTTP
         // connection as well as the page, rather than allowing Chromium to keep
         // the interrupted response's socket alive for reuse.
-        await targetContext.close();
-        await navigation.catch(() => {});
-        release();
+        const closingTarget = targetContext.close();
         const cancellation = await stack.waitForTransportEvent("http-client-abort", "/api/local-auth/session");
+        release();
+        await closingTarget;
+        await navigation.catch(() => {});
         expect(cancellation.id).toBe(headers.id);
         expect(stack.isTunnelOpen(unrelatedTunnel!.id)).toBe(true);
 
