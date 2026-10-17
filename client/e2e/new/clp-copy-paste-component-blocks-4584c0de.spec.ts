@@ -1,5 +1,5 @@
 /** @feature CLP-4584c0de */
-import { expect, test } from "../fixtures/grid-render-trace";
+import { expect, readClipboardAndRecord, recordGridClipboardDiagnostic, test } from "../fixtures/grid-render-trace";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
@@ -28,13 +28,15 @@ test.describe("component block clipboard", () => {
             };
             const sample = () => {
                 const grid = document.querySelector('[data-testid="yjs-table-grid"]');
+                if (!grid) return;
                 const columns = [...(grid?.querySelectorAll("thead th[data-col]") ?? [])]
                     .map(element => element.getAttribute("data-col"));
                 const rowCount = grid?.querySelectorAll("tbody tr").length ?? 0;
-                (globalThis as any).__gridClipboardDiagnostic.readinessSamples.push({ columns, rowCount });
+                const sourceId = grid.closest<HTMLElement>(".outliner-item[data-item-id]")?.dataset.itemId;
+                (globalThis as any).__gridClipboardDiagnostic.readinessSamples.push({ sourceId, columns, rowCount });
             };
+            (globalThis as any).__sampleGridClipboardReadiness = sample;
             new MutationObserver(sample).observe(document.body, { childList: true, subtree: true });
-            sample();
         });
         const host = page.locator(".outliner-item").nth(1);
         await expect(host).toBeVisible();
@@ -45,6 +47,9 @@ test.describe("component block clipboard", () => {
         await page.getByTestId("yjs-table-create").first().click();
         const firstView = page.getByTestId("yjs-table-view").first();
         await expect(firstView).toBeVisible({ timeout: 30000 });
+        // Capture this real source Grid before its source record is added. An
+        // absent pre-creation page is deliberately not a readiness sample.
+        await page.evaluate(() => (globalThis as any).__sampleGridClipboardReadiness());
         await firstView.getByTestId("yjs-table-add-row").click();
 
         const grid = firstView.getByTestId("yjs-table-grid");
@@ -65,6 +70,9 @@ test.describe("component block clipboard", () => {
             "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' outliner-item ') and @data-item-id][1]",
         );
         const hostId = await renderedHost.getAttribute("data-item-id");
+        const sourceGridId = await page.evaluate(id =>
+            [...(globalThis as any).generalStore.currentPage.items]
+                .find((item: any) => item.id === id)?.yjsGridId, hostId);
         const itemIds = await items.evaluateAll(elements =>
             elements.map(element => element.getAttribute("data-item-id"))
         );
@@ -78,19 +86,18 @@ test.describe("component block clipboard", () => {
         // offset 0 of its row - which is the whole block.
         const hostTextLength = 0;
         expect(hostId).toBeTruthy();
+        expect(sourceGridId).toBeTruthy();
         expect(neighborId).toBeTruthy();
         expect(destinationId).toBeTruthy();
         const neighborText = await page.locator(`.outliner-item[data-item-id="${neighborId}"] .item-content`)
             .innerText();
-        await page.evaluate(({ hostId, neighborId, destinationId, columns, rowCount }) => {
-            Object.assign((globalThis as any).__gridClipboardDiagnostic, {
-                sourceId: hostId,
-                neighborId,
-                destinationId,
-                renderedColumns: columns,
-                rowCount,
-            });
-        }, { hostId, neighborId, destinationId, columns: expectedColumns, rowCount: 1 });
+        await recordGridClipboardDiagnostic(page, {
+            sourceId: hostId,
+            neighborId,
+            destinationId,
+            renderedColumns: expectedColumns,
+            rowCount: 1,
+        });
         await page.locator("textarea.global-textarea").focus();
         await page.evaluate(({ start, end, endOffset }) => {
             // eslint-disable-next-line no-restricted-globals
@@ -114,33 +121,33 @@ test.describe("component block clipboard", () => {
                     && selection?.endItemId === end && selection?.endOffset === 0,
             };
         }, { start: neighborId, end: hostId });
+        await recordGridClipboardDiagnostic(page, { selection: preCopy.selection, focus: preCopy.focus });
         expect(preCopy.valid).toBe(true);
         expect(preCopy.focus).toBe(true);
         const readinessSamples = await page.evaluate(() =>
             (globalThis as any).__gridClipboardDiagnostic.readinessSamples as Array<
-                { columns: string[]; rowCount: number; }
+                { sourceId?: string; columns: string[]; rowCount: number; }
             >
         );
-        expect(readinessSamples.some(sample => sample.columns.length === 0 || sample.rowCount === 0)).toBe(true);
-        expect(
-            readinessSamples.some(sample =>
-                sample.rowCount === 1 && sample.columns.join("\t") === expectedColumns.join("\t")
-            ),
-        ).toBe(true);
-        await page.evaluate(({ selection, focus }) =>
-            Object.assign(
-                (globalThis as any).__gridClipboardDiagnostic,
-                { selection, focus, copyingReached: true },
-            ), preCopy);
+        const sourceSamples = readinessSamples.filter(sample => sample.sourceId === hostId);
+        const unreadyIndex = sourceSamples.findIndex(sample =>
+            sample.columns.length !== expectedColumns.length || sample.rowCount !== 1
+        );
+        const readyIndex = sourceSamples.findIndex((sample, index) =>
+            index > unreadyIndex && sample.rowCount === 1
+            && sample.columns.join("\t") === expectedColumns.join("\t")
+        );
+        expect(unreadyIndex).toBeGreaterThanOrEqual(0);
+        expect(readyIndex).toBeGreaterThan(unreadyIndex);
+        await recordGridClipboardDiagnostic(page, { copyingReached: true });
         await page.keyboard.press("Control+c");
         // Outside Outliner a Grid is its rendered result: the header row of the
         // visible columns, not the table's display name.
         const expectedHeader = expectedColumns.join("\t");
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
+        await expect.poll(() => readClipboardAndRecord(page))
             .toContain(`${neighborText}\n${expectedHeader}`);
-        const copiedText = await page.evaluate(() => navigator.clipboard.readText());
+        const copiedText = await readClipboardAndRecord(page);
         expect(copiedText).not.toContain("\nTasks");
-        await page.evaluate(text => (globalThis as any).__gridClipboardDiagnostic.clipboardText = text, copiedText);
 
         // Use the trusted browser paste event. The portable HTML payload is
         // independently round-tripped in itemClipboard.test.ts so this E2E
@@ -157,9 +164,12 @@ test.describe("component block clipboard", () => {
                 .map((item: any) => ({ id: item.id, yjsGridId: item.yjsGridId }))
         );
         expect(occurrences).toHaveLength(2);
-        expect(new Set(occurrences.map((item: any) => item.id)).size).toBe(2);
-        expect(occurrences[0].yjsGridId).toBeTruthy();
-        expect(occurrences[1].yjsGridId).toBe(occurrences[0].yjsGridId);
+        const preservedSource = occurrences.find((item: any) => item.id === hostId);
+        expect(preservedSource).toEqual({ id: hostId, yjsGridId: sourceGridId });
+        const createdOccurrences = occurrences.filter((item: any) => item.id !== hostId);
+        expect(createdOccurrences).toHaveLength(1);
+        expect(createdOccurrences[0].id).not.toBe(hostId);
+        expect(createdOccurrences[0].yjsGridId).toBe(sourceGridId);
         for (const view of await page.getByTestId("yjs-table-grid").all()) {
             await expect(view.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
             // The generated record ID is the authoritative identity of the

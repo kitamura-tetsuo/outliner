@@ -22,6 +22,22 @@ interface GridRenderTraceGlobal {
     __gridClipboardDiagnostic?: unknown;
 }
 
+export async function recordGridClipboardDiagnostic(page: Page, patch: Record<string, unknown>): Promise<void> {
+    await page.evaluate(value => {
+        Object.assign((globalThis as unknown as GridRenderTraceGlobal).__gridClipboardDiagnostic as object, value);
+    }, patch);
+}
+
+export async function readClipboardAndRecord(page: Page): Promise<string> {
+    return page.evaluate(async () => {
+        const text = await navigator.clipboard.readText();
+        Object.assign((globalThis as unknown as GridRenderTraceGlobal).__gridClipboardDiagnostic as object, {
+            clipboardText: text,
+        });
+        return text;
+    });
+}
+
 /**
  * Pulls every currently-registered Grid render trace out of the page via the
  * always-on bridge installed by `gridRenderTraceRegistry.ts`. Returns `[]`
