@@ -12,7 +12,7 @@ test.describe("production on-premises workspace", () => {
     });
     test.afterAll(async () => stack.stop());
 
-    test("uses password sessions and canonical project registration, outline, reload, and rename", async ({ page }) => {
+    test("uses password sessions and canonical project registration, outline, reload, and rename", async ({ page, browser }) => {
         const cloudRequests: string[] = [];
         page.on("request", request => {
             if (/googleapis\.com|firebaseio\.com|google-analytics\.com/.test(request.url())) {
@@ -36,7 +36,19 @@ test.describe("production on-premises workspace", () => {
         await page.keyboard.type("Persistent outline");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Nested item");
-        await page.waitForTimeout(5_000); // Allow the real websocket provider to persist both edits before reload.
+        await page.keyboard.press("Enter");
+        await expect(page.getByText("Persistent outline")).toBeVisible();
+        await expect(page.getByText("Nested item")).toBeVisible();
+
+        // A visible peer is the production-path persistence barrier: it proves
+        // the real backend has received both edits before this client reloads.
+        const peerContext = await browser.newContext();
+        const peer = await peerContext.newPage();
+        await login(peer, stack);
+        await peer.goto(page.url());
+        await expect(peer.getByText("Persistent outline")).toBeVisible();
+        await expect(peer.getByText("Nested item")).toBeVisible();
+        await peerContext.close();
 
         await page.reload();
         await expect(page.getByText("Persistent outline")).toBeVisible();
