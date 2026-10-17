@@ -103,7 +103,13 @@ test(
         }).getByTestId("yjs-table-grid");
         await otherGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`).click();
 
-        const undoBefore = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+        const undoBefore = await page.evaluate(() => {
+            const router = (globalThis as any).globalUndoRouter;
+            // Keep the Replace command in its own history item rather than
+            // sharing the fixture selection's Yjs capture window.
+            router.stopCapturing();
+            return router.undoDepth;
+        });
         await openSearch(page, "Value from B", "Value from B!");
         await page.locator("#search-scope").selectOption("selection");
         await page.getByTestId("search-button").click();
