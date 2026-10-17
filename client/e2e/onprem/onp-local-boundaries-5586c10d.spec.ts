@@ -70,7 +70,8 @@ test.describe("production on-premises local boundaries", () => {
         const target = page;
         const unrelated = await context.newPage();
         await login(target, stack);
-        await login(unrelated, stack);
+        await unrelated.goto(stack.origin);
+        await expect(unrelated.getByTestId("login-status-indicator")).toContainText("Local User");
         const title = `Independent-${Date.now()}`;
         await createProject(unrelated, title);
 
@@ -83,9 +84,9 @@ test.describe("production on-premises local boundaries", () => {
 
         await unrelated.goto(stack.origin);
         await expect(unrelated.locator("select.project-select option", { hasText: title })).toHaveCount(1);
-        await unrelated.getByLabel("New page name").fill("Still live");
-        await unrelated.getByRole("button", { name: "Create new page" }).click();
-        await expect(unrelated).toHaveURL(new RegExp(`${encodeURIComponent(title)}/Still%20live$`));
+        const subsequentTitle = `Still-live-${Date.now()}`;
+        await createProject(unrelated, subsequentTitle);
+        await expect(unrelated).toHaveURL(new RegExp(`/${encodeURIComponent(subsequentTitle)}$`));
         await unrelated.close();
     });
 
