@@ -80,12 +80,13 @@ const logger = getLogger("SearchPanel");
     // read-only/computed cell, or a substitution with no deterministic typed
     // value for that column (FTR-5194). Cleared on the next search/replace.
     let replaceStatus: string | undefined = $state();
+    let replacePending = $state(false);
     // Page titles are the depth-0 item of a page tree. Rewriting one renames the
     // page, changing its URL and dangling every incoming [Page Title] link, so it
     // is opt-in and always confirmed.
     let includePageTitles = $state(false);
     let showRenameConfirm = $state(false);
-    let pendingRename: { pages: Item[]; run: () => void } | undefined = $state(undefined);
+    let pendingRename: { pages: Item[]; run: () => void | Promise<void> } | undefined = $state(undefined);
 
     $effect(() => {
         if (isVisible && inputEl) {
@@ -230,7 +231,7 @@ const logger = getLogger("SearchPanel");
             + `and this action cannot be undone.`;
     }
 
-    function confirmRename(pages: Item[], run: () => void) {
+    function confirmRename(pages: Item[], run: () => void | Promise<void>) {
         pendingRename = { pages, run };
         showRenameConfirm = true;
     }
@@ -256,13 +257,23 @@ const logger = getLogger("SearchPanel");
     }
 
     function summarizeGridReplaceStatus(
-        outcome: { appliedCells: number; skippedReadOnly: number; skippedInvalid: number },
+        outcome: {
+            appliedCells: number;
+            skippedReadOnly: number;
+            skippedInvalid: number;
+            refused: number;
+            errors: unknown[];
+        },
     ): string | undefined {
-        const skipped = outcome.skippedReadOnly + outcome.skippedInvalid;
+        const skipped = outcome.skippedReadOnly + outcome.skippedInvalid + outcome.refused;
         if (skipped === 0) return undefined;
         const parts: string[] = [];
         if (outcome.skippedReadOnly) parts.push(`${outcome.skippedReadOnly} read-only`);
         if (outcome.skippedInvalid) parts.push(`${outcome.skippedInvalid} not convertible for their column`);
+        if (outcome.refused) parts.push(`${outcome.refused} refused after live-source validation`);
+        if (outcome.errors.length) {
+            parts.push(`provider failure: ${outcome.errors.map(error => error instanceof Error ? error.message : String(error)).join(", ")}`);
+        }
         return `${outcome.appliedCells} Grid cell${outcome.appliedCells === 1 ? "" : "s"} replaced; `
             + `${skipped} left unchanged (${parts.join(", ")}).`;
     }
@@ -279,13 +290,30 @@ const logger = getLogger("SearchPanel");
      * from the write's own outcome instead of re-deriving it from that
      * not-yet-refreshed query result.
      */
-    function replaceCurrentGridMatch(match: GridCellSearchMatch, index: number) {
-        const outcome = replaceGridMatch(match, searchQuery, replaceText, replaceOptions());
+    async function replaceCurrentGridMatch(match: GridCellSearchMatch, index: number) {
+        if (replacePending) return;
+        replacePending = true;
+        let outcome;
+        try {
+            outcome = await replaceGridMatch(match, searchQuery, replaceText, replaceOptions());
+        } catch (error) {
+            logger.error({ error }, "Grid Replace failed");
+            replaceStatus = `Grid Replace failed: ${error instanceof Error ? error.message : String(error)}`;
+            return;
+        } finally {
+            replacePending = false;
+        }
         if (!outcome) return;
         if (!outcome.applied) {
+            if (outcome.error !== undefined) {
+                replaceStatus = `Grid Replace failed: ${outcome.error instanceof Error ? outcome.error.message : String(outcome.error)}`;
+                return;
+            }
             replaceStatus = outcome.reason === "invalid-value"
                 ? "That result isn't a valid value for this column, so the cell was left unchanged."
-                : "That cell is read-only and can't be replaced.";
+                : outcome.reason === "read-only"
+                ? "That cell is read-only and can't be replaced."
+                : "That Grid result changed or could not be revalidated, so it was left unchanged.";
             return;
         }
         replaceStatus = undefined;
@@ -296,6 +324,7 @@ const logger = getLogger("SearchPanel");
     }
 
     function handleReplace() {
+        if (replacePending) return;
         if (!searchQuery) return;
 
         const current = activeMatchIndex >= 0 ? matches[activeMatchIndex] : undefined;
@@ -337,20 +366,35 @@ const logger = getLogger("SearchPanel");
         showReplaceAllConfirm = true;
     }
 
-    function confirmReplaceAll() {
+    async function confirmReplaceAll() {
+        if (replacePending) return;
         showReplaceAllConfirm = false;
         const options = replaceOptions();
         const roots = replacementRoots();
         const gridPageId = gridPageScope();
 
-        const run = () => {
+        const run = async () => {
+            replacePending = true;
             const previousTitle = textOf(pageItem);
             for (const p of roots) {
                 replaceAll(p, searchQuery, replaceText, options);
             }
-            const gridOutcome = gridPageId
-                ? replaceGridMatches(gridPageId, searchQuery, replaceText, options, searchScope === "selection")
-                : undefined;
+            let gridOutcome;
+            try {
+                gridOutcome = gridPageId
+                    ? await replaceGridMatches(gridPageId, searchQuery, replaceText, options, searchScope === "selection")
+                    : undefined;
+            } catch (error) {
+                logger.error({ error }, "Grid Replace All failed");
+                replaceStatus = `Text replacements were applied, but Grid Replace All failed: ${
+                    error instanceof Error ? error.message : String(error)
+                }`;
+                handleSearch();
+                followRenameIfNeeded(previousTitle);
+                return;
+            } finally {
+                replacePending = false;
+            }
             // handleSearch() re-derives text hits correctly (Yjs item text is
             // synchronous) but, like replaceCurrentGridMatch, would still see
             // pre-replace Grid values from that Grid's own debounced query
@@ -468,11 +512,13 @@ const logger = getLogger("SearchPanel");
                 />
                 <button type="button"
                     onclick={handleReplace}
+                    disabled={replacePending}
                     class="replace-btn"
                     data-testid="replace-button">Replace</button
                 >
                 <button type="button"
                     onclick={handleReplaceAll}
+                    disabled={replacePending}
                     class="replace-all-btn"
                     data-testid="replace-all-button">Replace All</button
                 >
@@ -574,7 +620,7 @@ const logger = getLogger("SearchPanel");
             const pending = pendingRename;
             showRenameConfirm = false;
             pendingRename = undefined;
-            pending?.run();
+            void pending?.run();
         }}
         onCancel={() => {
             showRenameConfirm = false;
