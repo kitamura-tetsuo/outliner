@@ -119,10 +119,10 @@ test(
         test.setTimeout(180000);
         const fixture = await seedOverlappingTableFixture(page, testInfo);
         await pointGridAToTableB(page, fixture);
-        const grid = page.getByTestId("yjs-table-view").filter({
+        const sourceGrid = page.getByTestId("yjs-table-view").filter({
             has: page.getByTestId("yjs-table-sql-name").filter({ hasText: new RegExp(`^${fixture.tableB.sqlName}$`) }),
         }).getByTestId("yjs-table-grid");
-        const doneCell = grid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`);
+        const doneCell = sourceGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`);
         await doneCell.locator('input[type="checkbox"]').check();
         await expect.poll(async () => {
             const state = await snapshotProject(page);
@@ -138,13 +138,16 @@ test(
         let state = await snapshotProject(page);
         expect(state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.done).toBe(true);
 
-        await page.getByTestId("search-toggle-button").click();
+        await page.getByTestId("search-panel").getByRole("button", { name: "Close Search Panel" }).click();
         const query = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
         await query.fillAndCommit(
             page,
             `SELECT id, title, done, title || ' computed' AS summary FROM ${fixture.tableB.sqlName}`,
         );
-        await expect(grid.locator('td[data-col="summary"]')).toContainText("Value from B computed", { timeout: 30000 });
+        const projectedGrid = fixture.gridA.getByTestId("yjs-table-grid");
+        await expect(projectedGrid.locator('td[data-col="summary"]')).toContainText("Value from B computed", {
+            timeout: 30000,
+        });
         const historyBeforeComputedRefusal = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
 
         await openSearch(page, "computed", "changed");
