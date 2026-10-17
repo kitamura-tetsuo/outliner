@@ -117,6 +117,13 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from B", { timeout: 30000 });
     const historyAfterRefresh = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
 
+    // A Grid remount can hide (but does not destroy) the shared SearchPanel.
+    // Reopen the same held session without running Find again, so Replace still
+    // carries the pre-refresh incarnation captured above.
+    if (!await page.getByTestId("replace-button").isVisible().catch(() => false)) {
+        await page.getByTestId("search-toggle-button").click();
+        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
+    }
     await page.getByTestId("replace-button").click();
     await expect(page.getByTestId("replace-status")).toContainText("changed or could not be revalidated");
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");

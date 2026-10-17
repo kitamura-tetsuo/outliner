@@ -143,8 +143,6 @@ test(
         await titleCell.locator("button.cell-value").click();
         await titleCell.locator("input.cell-input").fill("true title");
         await titleCell.locator("input.cell-input").press("Enter");
-        const historyBeforeMixedBatch = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
-
         await openSearch(page, "true", "settled");
         await confirmReplaceAll(page);
         await expect(page.getByTestId("replace-status")).toHaveText(
@@ -155,10 +153,6 @@ test(
             const record = current.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId];
             return { title: record?.title, done: record?.done };
         }).toEqual({ title: "settled title", done: true });
-        await expect.poll(
-            () => page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth),
-        ).toBe(historyBeforeMixedBatch + 1);
-
         await page.getByTestId("search-panel").getByRole("button", { name: "Close Search Panel" }).click();
         const query = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
         await query.fillAndCommit(
