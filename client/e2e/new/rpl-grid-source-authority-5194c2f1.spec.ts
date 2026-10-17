@@ -139,13 +139,34 @@ test(
         expect(state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.done).toBe(true);
 
         await page.getByTestId("search-panel").getByRole("button", { name: "Close Search Panel" }).click();
+        const titleCell = sourceGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
+        await titleCell.locator("button.cell-value").click();
+        await titleCell.locator("input.cell-input").fill("true title");
+        await titleCell.locator("input.cell-input").press("Enter");
+        const historyBeforeMixedBatch = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+
+        await openSearch(page, "true", "settled");
+        await confirmReplaceAll(page);
+        await expect(page.getByTestId("replace-status")).toHaveText(
+            "1 Grid cell replaced; 1 left unchanged (1 not convertible for their column).",
+        );
+        await expect.poll(async () => {
+            const current = await snapshotProject(page);
+            const record = current.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId];
+            return { title: record?.title, done: record?.done };
+        }).toEqual({ title: "settled title", done: true });
+        await expect.poll(
+            () => page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth),
+        ).toBe(historyBeforeMixedBatch + 1);
+
+        await page.getByTestId("search-panel").getByRole("button", { name: "Close Search Panel" }).click();
         const query = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
         await query.fillAndCommit(
             page,
             `SELECT id, title, done, title || ' computed' AS summary FROM ${fixture.tableB.sqlName}`,
         );
         const projectedGrid = fixture.gridA.getByTestId("yjs-table-grid");
-        await expect(projectedGrid.locator('td[data-col="summary"]')).toContainText("Value from B computed", {
+        await expect(projectedGrid.locator('td[data-col="summary"]')).toContainText("settled title computed", {
             timeout: 30000,
         });
         const historyBeforeComputedRefusal = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
@@ -160,7 +181,7 @@ test(
         );
         state = await snapshotProject(page);
         expect(state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title).toBe(
-            "Value from B",
+            "settled title",
         );
     },
 );

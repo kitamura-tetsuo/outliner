@@ -9,6 +9,46 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 registerCoverageHooks();
 
+test(
+    "an asynchronous physical-source failure is surfaced without false success or history",
+    async ({ page }, testInfo) => {
+        test.setTimeout(180000);
+        const fixture = await seedOverlappingTableFixture(page, testInfo);
+        await pointGridAToTableB(page, fixture);
+
+        await page.getByTestId("search-toggle-button").click();
+        await page.locator("#search-scope").selectOption("page");
+        await page.getByTestId("search-input").fill("Value from B");
+        await page.getByTestId("replace-input").fill("Must not be reported");
+        await page.getByTestId("search-button").click();
+        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2", { timeout: 30000 });
+        await page.getByTestId("search-result-button").first().click();
+        const historyBeforeFailure = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+
+        // Fault-inject at the real physical Y.Map write boundary. The registered
+        // TableGrid provider still captures and commits through Project SELECT and
+        // GridExistingRowMutationBoundary; only the final source effect rejects.
+        await page.evaluate(({ tableId, recordId }) => {
+            const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
+            const table = project.ydoc.getMap("yjsTables").get(tableId);
+            const record = table.get("doc").getMap("data").get(recordId);
+            record.set = () => {
+                throw new Error("injected physical-source failure");
+            };
+        }, { tableId: fixture.tableB.id, recordId: fixture.recordId });
+
+        await page.getByTestId("replace-button").click();
+        await expect(page.getByTestId("replace-status")).toContainText("Grid Replace failed");
+        await expect(page.getByTestId("replace-status")).toContainText("injected physical-source failure");
+        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
+        expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(historyBeforeFailure);
+        const state = await snapshotProject(page);
+        expect(state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title).toBe(
+            "Value from B",
+        );
+    },
+);
+
 async function commitQueryWithoutClosingSearch(
     page: import("@playwright/test").Page,
     editor: SqlEditorHelper,
