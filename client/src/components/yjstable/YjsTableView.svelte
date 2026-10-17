@@ -430,6 +430,7 @@ function stateVectorRevision(doc: Y.Doc): string {
     data-testid="yjs-table-view"
     data-grid-id={grid.gridId}
     data-source-table-id={handles.tableId}
+    data-mutation-incarnation={mutationIncarnation}
     data-ui-editor-open={showUiDef}
     onfocusin={(e) => {
         if (isForeignInput(e.target)) {

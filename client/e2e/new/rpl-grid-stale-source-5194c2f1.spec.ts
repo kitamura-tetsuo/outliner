@@ -75,7 +75,6 @@ test("Replace Current refuses a held match after its physical source record is r
     await page.getByTestId("search-button").click();
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2", { timeout: 30000 });
     await page.getByTestId("search-result-button").first().click();
-
     // Remove the record through the same guarded production Grid boundary
     // after SearchPanel captured it, leaving the held match intentionally stale.
     await fixture.gridA.getByRole("button", { name: `Delete row ${fixture.recordId}` }).click();
@@ -106,6 +105,8 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
     await page.getByTestId("search-button").click();
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2", { timeout: 30000 });
     await page.getByTestId("search-result-button").first().click();
+    const heldIncarnation = await fixture.gridA.getAttribute("data-mutation-incarnation");
+    expect(heldIncarnation).not.toBeNull();
 
     // Re-run the placement through a different source and then restore the
     // displayed SQL. Although the final rows look identical to the held hit,
@@ -113,8 +114,13 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
     const query = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
     await commitQueryWithoutClosingSearch(page, query, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
+    await expect.poll(() => fixture.gridA.getAttribute("data-mutation-incarnation"))
+        .not.toBe(heldIncarnation);
+    const intermediateIncarnation = await fixture.gridA.getAttribute("data-mutation-incarnation");
     await commitQueryWithoutClosingSearch(page, query, `SELECT id, title, done FROM ${fixture.tableB.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from B", { timeout: 30000 });
+    await expect.poll(() => fixture.gridA.getAttribute("data-mutation-incarnation"))
+        .not.toBe(intermediateIncarnation);
     const historyAfterRefresh = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
 
     // A Grid remount can hide (but does not destroy) the shared SearchPanel.
