@@ -11,8 +11,10 @@ acceptance:
 - Project and Table rooms use same-origin WebSocket connections without Firebase tokens
 - Project creation, listing, resolution, and rename use canonical server descriptors
 tests:
+- client/e2e/onprem/onp-http-lifecycle-5672.spec.ts
 - client/e2e/onprem/onp-local-boundaries-5586c10d.spec.ts
 - client/e2e/onprem/onp-local-workspace-5586c10d.spec.ts
 - client/e2e/onprem/onp-session-failures-5586c10d.spec.ts
 - client/e2e/onprem/onp-table-grid-sync-5586c10d.spec.ts
+- client/e2e/onprem/onp-transport-cancellation-5672.spec.ts
 - client/src/lib/deployment.test.ts
