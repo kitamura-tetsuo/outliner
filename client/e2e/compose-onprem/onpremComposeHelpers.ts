@@ -63,6 +63,8 @@ export async function captureIdentities(page: Page, title: string): Promise<Pers
         elements.map(element => element.getAttribute("data-item-id")!).sort()
     );
     const grids = page.getByTestId("yjs-table-view");
+    const gridCount = await grids.count();
+    await expect(page.locator('[data-testid="yjs-table-view"][data-source-table-id]')).toHaveCount(gridCount);
     const gridIds =
         (await grids.evaluateAll(elements => elements.map(element => element.getAttribute("data-grid-id")!)))
             .sort();

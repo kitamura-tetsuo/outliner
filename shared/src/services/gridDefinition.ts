@@ -66,7 +66,7 @@ export function getGridRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> {
 export function createGridEntry(
     projectDoc: Y.Doc,
     gridId: string,
-    sourceTableId: string,
+    sourceTableId: string | undefined,
     options: GridDefinitionSeed = {},
 ): void {
     if (options.query?.trim()) validateExplicitSelectAliases(options.query);
@@ -83,7 +83,10 @@ export function createGridEntry(
     }
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
-        entry.set("sourceTableId", sourceTableId);
+        // New query-only Grids deliberately have no legacy primary owner.
+        // Do not serialize an empty sentinel: absence is what lets consumers
+        // distinguish these definitions from old broken references.
+        if (sourceTableId) entry.set("sourceTableId", sourceTableId);
         entry.set("name", options.name ?? "Grid");
         if (options.query !== undefined) {
             entry.set("query", options.query);

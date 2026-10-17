@@ -17,6 +17,7 @@
     import { resolve } from "$app/paths";
     import Breadcrumb from "../Breadcrumb.svelte";
     import YjsTableView from "../yjstable/YjsTableView.svelte";
+    import ProjectGridView from "../yjstable/ProjectGridView.svelte";
     import { getTableHandles, getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
     // The mounted YjsTableView retains/releases the Grid's shared undo manager
     // and the Table's for its own lifetime, so this page only resolves handles.
@@ -250,18 +251,16 @@
                 The specified grid does not exist in project "{projectName}".
             </p>
         </div>
-    {:else if missingSource}
-        <div class="rounded-md bg-yellow-50 p-4" data-testid="grid-missing-source">
-            <h3 class="text-sm font-medium text-yellow-800">Source table missing</h3>
-            <p class="mt-2 text-sm text-yellow-700">
-                This grid selects from a table that no longer exists in project "{projectName}".
-                Point it at an existing table, or delete the grid.
-            </p>
-        </div>
     {:else if !canAccess}
         <div class="rounded-md bg-blue-50 p-4">
             <h3 class="text-sm font-medium text-blue-800">Login required</h3>
             <p class="mt-2 text-sm text-blue-700">Please log in to view this grid.</p>
+        </div>
+    {:else if missingSource && gridHandles && projectDoc}
+        <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
+            {#key `${gridHandles.gridId}:${projectDoc.guid}`}
+                <ProjectGridView grid={gridHandles} {projectDoc} projectId={yjsStore.currentProjectId ?? undefined} projectName={projectName} />
+            {/key}
         </div>
     {:else if gridHandles && tableHandles && projectDoc}
         <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">

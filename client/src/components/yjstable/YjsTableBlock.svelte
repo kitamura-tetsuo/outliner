@@ -49,6 +49,7 @@ import { projectTableRoute } from "../../lib/managementPaths";
 import { page as pageState } from "$app/state";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
+import ProjectGridView from "./ProjectGridView.svelte";
 import { isForeignInput } from "../../lib/KeyEventHandler";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { store } from "../../stores/store.svelte";
@@ -81,11 +82,11 @@ let sourceError = $state<string | undefined>();
 // Three creation modes: brand-new Table+Grid, new Grid over an existing Table,
 // or bind to an existing Grid. The last one is the "many Grids per outline"
 // side of the many-Grids-per-Table story.
-let creationMode = $state<"new" | "existing-table" | "existing-grid">("new");
+let creationMode = $state<"new" | "query" | "existing-table" | "existing-grid">("new");
 let selectedExistingTableId = $state<string | undefined>(undefined);
 let selectedExistingGridId = $state<string | undefined>(undefined);
 let selectedExistingTableSqlName = $state<string | undefined>(undefined);
-let selectedExistingGridSourceTableId = $state<string | undefined>(undefined);
+let bootstrapSourceTableId = $state<string | undefined>(undefined);
 
 const existingTables = $derived.by(() => {
     void registryVersion;
@@ -104,8 +105,6 @@ function showExistingTables() {
 function showExistingGrids() {
     creationMode = "existing-grid";
     if (!selectedExistingGridId) selectedExistingGridId = existingGrids[0]?.gridId;
-    selectedExistingGridSourceTableId = existingGrids.find(grid => grid.gridId === selectedExistingGridId)
-        ?.sourceTableId;
 }
 
 const grid = $derived.by(() => {
@@ -201,30 +200,25 @@ function selectExistingTable() {
         return;
     }
     sourceError = undefined;
-    const newGridId = createGrid(item.ydoc, table.tableId, {
+    const newGridId = createGrid(item.ydoc, undefined, {
         name: table.name || "Grid",
         query: `SELECT * FROM ${table.sqlName}`,
     });
-    bindItemToGrid(item, newGridId, table.tableId);
+    bootstrapSourceTableId = table.tableId;
+    bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
 }
 
 function selectExistingGrid() {
     if (!selectedExistingGridId) return;
     const selectedGrid = listGrids(item.ydoc).find(candidate => candidate.gridId === selectedExistingGridId);
-    const selectedTable = selectedGrid
-        ? listTables(item.ydoc).find(candidate => candidate.tableId === selectedGrid.sourceTableId)
-        : undefined;
-    if (!selectedGrid || !selectedTable) {
-        sourceError = "The selected Grid or its source Table is no longer available. Choose an existing Grid.";
-        return;
-    }
-    if (selectedGrid.sourceTableId !== selectedExistingGridSourceTableId) {
-        sourceError = "The selected Grid's source Table changed after selection. Select the current Grid again before placing it.";
+    if (!selectedGrid) {
+        sourceError = "The selected Grid is no longer available. Choose an existing Grid.";
         return;
     }
     sourceError = undefined;
-    bindItemToGrid(item, selectedGrid.gridId, selectedTable.tableId);
+    bootstrapSourceTableId = undefined;
+    bindItemToGrid(item, selectedGrid.gridId, undefined);
     gridId = selectedExistingGridId;
 }
 
@@ -234,15 +228,26 @@ function createFromPreset(input: TableCreationInput): string | undefined {
     if (listTables(item.ydoc).some(table => table.sqlName === input.sqlName)) {
         return `SQL name "${input.sqlName}" is already used in this project`;
     }
-    const { tableId, gridId: newGridId } = createTableFromPreset(
+    const { gridId: newGridId, tableId } = createTableFromPreset(
         item.ydoc,
         input.preset,
         input.name,
         input.sqlName,
     );
-    bindItemToGrid(item, newGridId, tableId);
+    bootstrapSourceTableId = tableId;
+    bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
     return undefined;
+}
+
+function createQueryGrid() {
+    bootstrapSourceTableId = undefined;
+    const newGridId = createGrid(item.ydoc, undefined, {
+        name: "Query Grid",
+        query: "SELECT 1 AS value",
+    });
+    bindItemToGrid(item, newGridId, undefined);
+    gridId = newGridId;
 }
 </script>
 
@@ -275,17 +280,19 @@ function createFromPreset(input: TableCreationInput): string | undefined {
                 {isReadOnly}
             />
         {/key}
+    {:else if grid && !sourceTableId}
+        {#key `${grid.gridId}::${gridEntryToken}`}
+            <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} {bootstrapSourceTableId} />
+        {/key}
     {:else if grid && !handles}
-        <!-- Missing source Table: explicit error, not a silent empty grid. -->
-        <p class="error" data-testid="yjs-grid-missing-source">
-            This Grid references a Table that no longer exists in this project.
-        </p>
+        <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} {bootstrapSourceTableId} />
     {:else if gridId}
         <p class="loading" data-testid="yjs-table-waiting">Loading grid...</p>
     {:else}
         <div class="create-panel" data-testid="yjs-table-create-panel">
             <div class="mode-tabs">
                 <button type="button" class="mode-tab" class:active={creationMode === "new"} onclick={() => creationMode = "new"}>New Table</button>
+                <button type="button" class="mode-tab" class:active={creationMode === "query"} onclick={() => creationMode = "query"}>New Query Grid</button>
                 {#if existingTables.length > 0}
                     <button type="button" class="mode-tab" class:active={creationMode === "existing-table"} onclick={showExistingTables}>New Grid over Existing Table</button>
                 {/if}
@@ -299,7 +306,12 @@ function createFromPreset(input: TableCreationInput): string | undefined {
             <div hidden={creationMode !== "new"}>
                 <TableCreationForm {takenSqlNames} oncreate={createFromPreset} />
             </div>
-            {#if creationMode === "existing-table"}
+            {#if creationMode === "query"}
+                <div class="create-form">
+                    <button type="button" data-testid="yjs-grid-create-query" onclick={createQueryGrid}>Create Query Grid</button>
+                </div>
+                <p class="hint">Create an independent Grid and edit its SQL without creating a Table.</p>
+            {:else if creationMode === "existing-table"}
                 <div class="create-form">
                     <select
                         aria-label="Existing Table"
@@ -346,9 +358,6 @@ function createFromPreset(input: TableCreationInput): string | undefined {
                         }}
                         onchange={(e) => {
                             selectedExistingGridId = (e.target as HTMLSelectElement).value;
-                            selectedExistingGridSourceTableId = existingGrids.find(
-                                grid => grid.gridId === selectedExistingGridId,
-                            )?.sourceTableId;
                             sourceError = undefined;
                         }}
                     >
@@ -378,12 +387,6 @@ function createFromPreset(input: TableCreationInput): string | undefined {
     padding: 8px;
     margin-top: 8px;
     background: white;
-}
-
-.error {
-    color: #dc2626;
-    font-size: 0.85rem;
-    margin: 0;
 }
 
 .create-panel {
