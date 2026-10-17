@@ -10,15 +10,15 @@ interface TransferResult {
     body?: string;
 }
 
-function readSession(page: import("@playwright/test").Page): Promise<TransferResult> {
-    return page.evaluate(async () => {
+function readSession(page: import("@playwright/test").Page, marker?: string): Promise<TransferResult> {
+    return page.evaluate(async marker => {
         try {
-            const response = await fetch("/api/local-auth/session");
+            const response = await fetch(`/api/local-auth/session${marker ? `?transport=${marker}` : ""}`);
             return { failed: false, status: response.status, body: await response.text() };
         } catch {
             return { failed: true };
         }
-    });
+    }, marker);
 }
 
 test.describe("production on-premises HTTP lifecycle", () => {
@@ -33,14 +33,16 @@ test.describe("production on-premises HTTP lifecycle", () => {
         await login(page, stack);
         stack.clearTransportEvents();
         const release = stack.delayNextSessionBody();
-        const browserHeaders = page.waitForResponse(response => response.url().endsWith("/api/local-auth/session"));
-        const transfer = readSession(page);
-        const gatewayHeaders = await stack.waitForTransportEvent("http-headers", "/api/local-auth/session");
+        const marker = String(Date.now());
+        const requestUrl = `/api/local-auth/session?transport=${marker}`;
+        const browserHeaders = page.waitForResponse(response => response.url().endsWith(requestUrl));
+        const transfer = readSession(page, marker);
+        const gatewayHeaders = await stack.waitForTransportEvent("http-headers", requestUrl);
         expect((await browserHeaders).status()).toBe(200);
         await stack.waitForDelayedSessionBody();
 
         stack.interruptUpstreamResponse(gatewayHeaders.id);
-        await stack.waitForTransportEvent("http-upstream-error", "/api/local-auth/session");
+        await stack.waitForTransportEvent("http-upstream-error", requestUrl);
         const result = await transfer;
         expect(result).toEqual({ failed: true });
         expect(

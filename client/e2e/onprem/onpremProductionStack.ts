@@ -228,7 +228,10 @@ export class OnPremProductionStack {
                 result.once("error", failedBody);
                 result.once("aborted", failedBody);
                 response.writeHead(result.statusCode ?? 502, result.headers);
-                if (request.method === "GET" && request.url === "/api/local-auth/session" && this.sessionBodyGate) {
+                if (
+                    request.method === "GET" && request.url.startsWith("/api/local-auth/session")
+                    && this.sessionBodyGate
+                ) {
                     // Make the delayed transfer a real post-header transport boundary.
                     response.flushHeaders();
                     const gate = this.sessionBodyGate;
