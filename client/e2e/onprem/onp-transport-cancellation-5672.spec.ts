@@ -78,6 +78,8 @@ test.describe("production on-premises transport cancellation", () => {
         expect(failure, "the isolated expected-success control must fail").toBeDefined();
         expect(failure!.code).toBe(1);
         expect(failure!.stdout).toContain("negative control preserves unexpected active-path failure");
+        expect(failure!.stdout).toContain("ACTIVE_PATH_RESPONSE_STATUS=503");
+        expect(failure!.stdout).toContain("ACTIVE_PATH_EXPECTED_SUCCESS_ASSERTION");
         expect(failure!.stdout).toContain("1 failed");
     });
 
@@ -107,20 +109,29 @@ test.describe("production on-premises transport cancellation", () => {
         expect(stack.isTunnelOpen(targetTunnel.id)).toBe(true);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
 
-        const closingTarget = targetContext.close();
-        const closed = await stack.waitForTransportEvent("ws-client-close", targetTunnel.url);
-        await closingTarget;
+        const closedPromise = stack.waitForTransportEvent("ws-client-close", targetTunnel.url);
+        await target.close();
+        const closed = await closedPromise;
+        await targetContext.close();
         expect(closed.id).toBe(targetTunnel.id);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
         expect(stack.transportSnapshot().some(event => event.id === unrelatedTunnel.id && event.kind.includes("close")))
             .toBe(false);
 
+        stack.clearTransportEvents();
         await unrelated.getByTestId("add-item-button").click();
         const item = unrelated.getByTestId("outliner-base").locator(".outliner-item[data-item-id]").nth(1);
         await item.click();
         await unrelated.keyboard.type("Same tunnel remains live");
+        await unrelated.keyboard.press("Enter");
+        await unrelated.keyboard.type("Transfer barrier");
+        await unrelated.keyboard.press("Enter");
         await expect(unrelated.getByText("Same tunnel remains live")).toBeVisible();
+        const roundTrip = await stack.waitForTransportEvent("ws-upstream-data", unrelatedTunnel.url);
+        expect(roundTrip.id, "the same surviving tunnel must carry a real backend round trip").toBe(unrelatedTunnel.id);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
+        expect(stack.transportSnapshot().some(event => event.id === unrelatedTunnel.id && event.kind.includes("close")))
+            .toBe(false);
         await unrelatedContext.close();
     });
 });

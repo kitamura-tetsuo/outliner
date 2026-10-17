@@ -25,6 +25,7 @@ export interface TransportEvent {
         | "http-lifecycle-cancel"
         | "http-upstream-error"
         | "ws-open"
+        | "ws-upstream-data"
         | "ws-client-close"
         | "ws-upstream-close";
     url: string;
@@ -301,6 +302,11 @@ export class OnPremProductionStack {
             upstream.write("\r\n");
             if (head.length) upstream.write(head);
             socket.pipe(upstream).pipe(socket);
+            upstream.on("data", () => {
+                if (this.tunnels.has(tunnel)) {
+                    this.recordTransport({ id: tunnel.id, kind: "ws-upstream-data", url: tunnel.url });
+                }
+            });
             this.recordTransport({ id: tunnel.id, kind: "ws-open", url: tunnel.url });
         });
     }
