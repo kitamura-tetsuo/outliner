@@ -582,13 +582,18 @@ onMount(() => {
         },
         isCellReplaceable: (rowId, columnId) => {
             const rowTarget = commandContext.rowTargets.get(rowId);
-            return rowTarget !== undefined && isWritableRow(rowTarget) && commandContext.editableColumns.has(columnId);
+            return !isReadOnly && rowTarget !== undefined && isWritableRow(rowTarget)
+                && commandContext.editableColumns.has(columnId);
         },
         replaceCells: async (entries: readonly GridCellReplacement[]): Promise<GridCellReplaceOutcome[]> => {
             const outcomes: GridCellReplaceOutcome[] = [];
             const idWrites: Array<{ rowTarget: GridCommandRowTarget; columnId: string; value: TableRecordValue; }> = [];
             const sourceWrites: typeof idWrites = [];
             for (const entry of entries) {
+                if (isReadOnly) {
+                    outcomes.push({ ...entry, applied: false, reason: "read-only" });
+                    continue;
+                }
                 const liveRow = result.rows.find((row, index) => searchRowId(row, index) === entry.rowId);
                 if (
                     entry.incarnation !== mutationIncarnation || !liveRow
@@ -636,7 +641,9 @@ onMount(() => {
                             // A guarded stale-authority refusal is an expected
                             // no-effect outcome, not an unexpected provider
                             // failure for SearchPanel to surface as an error.
-                            error: executed.status === "partial" ? executed.error : undefined,
+                            error: executed.status === "partial" || executed.status === "error"
+                                ? executed.error
+                                : undefined,
                         };
                 });
             }
@@ -910,6 +917,10 @@ function reportGuardedOutcome(action: string, outcome: GridExecutionOutcome): vo
     }
     if (outcome.status === "refused") {
         cellEditStatus = `${action} refused: ${outcome.reason}`;
+        return;
+    }
+    if (outcome.status === "error") {
+        cellEditStatus = `${action} failed: ${outcome.error instanceof Error ? outcome.error.message : String(outcome.error)}`;
         return;
     }
     const applied = outcome.applied.map(result =>

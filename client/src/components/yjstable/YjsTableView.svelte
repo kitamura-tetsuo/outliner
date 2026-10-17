@@ -301,8 +301,8 @@ const mutationBoundary = createGridExistingRowMutationBoundary({
     evidence: () => guardedAuthority?.evidence,
     provenance: () => guardedAuthority?.provenance,
     metadata: () => guardedAuthority?.metadata,
-    canWrite: () => true,
-    allows: () => true,
+    canWrite: () => !isReadOnly,
+    allows: () => !isReadOnly,
     relationSession: session,
 });
 // This component is remounted for a changed Project/Grid identity.
