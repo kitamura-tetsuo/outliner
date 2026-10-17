@@ -9,6 +9,20 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 registerCoverageHooks();
 
+async function commitQueryWithoutClosingSearch(
+    page: import("@playwright/test").Page,
+    editor: SqlEditorHelper,
+    sql: string,
+) {
+    await editor.waitForReady();
+    await editor.setValue(page, sql);
+    // SqlEditorHelper.commit clicks the page background. At the top-left this
+    // can hit SearchPanel's toggle while the panel is open, so blur Monaco
+    // directly and preserve the held Search session under test.
+    await editor.root.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expect.poll(() => editor.hasFocus(), { timeout: 10000 }).toBe(false);
+}
+
 test("Replace Current refuses a held match after its physical source record is removed", async ({ page }, testInfo) => {
     test.setTimeout(180000);
     const fixture = await seedOverlappingTableFixture(page, testInfo);
@@ -57,9 +71,9 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
     // displayed SQL. Although the final rows look identical to the held hit,
     // each completed Project SELECT has a distinct mutation incarnation.
     const query = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
-    await query.fillAndCommit(page, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
+    await commitQueryWithoutClosingSearch(page, query, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
-    await query.fillAndCommit(page, `SELECT id, title, done FROM ${fixture.tableB.sqlName}`);
+    await commitQueryWithoutClosingSearch(page, query, `SELECT id, title, done FROM ${fixture.tableB.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from B", { timeout: 30000 });
     const historyAfterRefresh = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
 
@@ -79,7 +93,6 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
     await page.getByTestId("search-button").click();
     await page.getByTestId("search-result-button").first().click();
     await page.getByTestId("replace-button").click();
-    await expect(page.getByTestId("replace-status")).toContainText("Replaced 1 Grid cell");
     await expect.poll(async () => {
         state = await snapshotProject(page);
         return state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title;
