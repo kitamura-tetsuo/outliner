@@ -39,22 +39,28 @@ test.describe("production on-premises HTTP lifecycle", () => {
         expect((await browserHeaders).status()).toBe(200);
         await stack.waitForDelayedSessionBody();
 
-        await stack.restart();
+        stack.interruptUpstreamResponse(gatewayHeaders.id);
+        await stack.waitForTransportEvent("http-upstream-error", "/api/local-auth/session");
         const result = await transfer;
         expect(result).toEqual({ failed: true });
         expect(
             stack.transportSnapshot().filter(event => event.id === gatewayHeaders.id && event.kind === "http-headers"),
         ).toHaveLength(1);
-        expect(stack.transportSnapshot()).toContainEqual({
-            id: gatewayHeaders.id,
-            kind: "http-lifecycle-cancel",
-            url: "/api/local-auth/session",
-        });
+        expect(
+            stack.transportSnapshot().filter(
+                event => event.id === gatewayHeaders.id && event.kind === "http-upstream-error",
+            ),
+        ).toHaveLength(1);
+        expect(
+            stack.transportSnapshot().filter(
+                event => event.id === gatewayHeaders.id && event.kind === "http-lifecycle-cancel",
+            ),
+        ).toHaveLength(0);
         release();
 
-        await page.goto(stack.origin);
-        await login(page, stack);
-        await expect(page.getByTestId("login-status-indicator")).toContainText("Local User");
+        const session = await page.request.get(`${stack.origin}/api/local-auth/session`);
+        expect(session.status()).toBe(200);
+        expect(await session.json()).toMatchObject({ user: { id: "local-user", name: "Local User" } });
     });
 
     test("a stopped stack cannot leak delayed work into its replacement", async ({ page }, testInfo) => {

@@ -86,6 +86,12 @@ export class OnPremProductionStack {
         return [...this.tunnels].some(tunnel => tunnel.id === id);
     }
 
+    interruptUpstreamResponse(id: number) {
+        const exchange = [...this.exchanges].find(candidate => candidate.id === id);
+        if (!exchange?.upstreamResponse) throw new Error(`No active upstream response for exchange ${id}`);
+        exchange.upstreamResponse.destroy(new Error("controlled upstream transport interruption"));
+    }
+
     private recordTransport(event: TransportEvent) {
         this.transportEvents.push(event);
         for (const waiter of [...this.transportWaiters]) waiter(event);
@@ -213,6 +219,9 @@ export class OnPremProductionStack {
                 exchange.upstreamResponse = result;
                 this.recordTransport({ id: exchange.id, kind: "http-headers", url: exchange.url });
                 const failedBody = () => {
+                    if (!exchange.terminal) {
+                        this.recordTransport({ id: exchange.id, kind: "http-upstream-error", url: exchange.url });
+                    }
                     if (!exchange.terminal) response.destroy();
                     this.cancelExchange(exchange);
                 };
