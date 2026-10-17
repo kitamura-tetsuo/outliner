@@ -57,7 +57,8 @@ test.describe("component block clipboard", () => {
             { timeout: 30000 },
         ).toEqual(expectedColumns);
         await expect(grid.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
-        const sourceRowText = await grid.locator("tbody tr").innerText();
+        const sourceRecordId = await grid.locator("tbody tr").getAttribute("data-record-id");
+        expect(sourceRecordId).toBeTruthy();
 
         const items = page.locator(".outliner-item[data-item-id]");
         const renderedHost = firstView.locator(
@@ -161,7 +162,10 @@ test.describe("component block clipboard", () => {
         expect(occurrences[1].yjsGridId).toBe(occurrences[0].yjsGridId);
         for (const view of await page.getByTestId("yjs-table-grid").all()) {
             await expect(view.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
-            await expect(view.locator("tbody tr")).toHaveText(sourceRowText);
+            // The generated record ID is the authoritative identity of the
+            // row. Comparing innerText here is incorrect because Playwright's
+            // text matcher normalizes the tabs/newlines returned by innerText.
+            await expect(view.locator("tbody tr")).toHaveAttribute("data-record-id", sourceRecordId!);
         }
     });
 
