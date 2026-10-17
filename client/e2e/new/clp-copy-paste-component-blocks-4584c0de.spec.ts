@@ -13,6 +13,29 @@ test.describe("component block clipboard", () => {
     });
 
     test("copy and paste creates a second live view of the same Grid", async ({ page }) => {
+        await page.evaluate(() => {
+            (globalThis as any).__gridClipboardDiagnostic = {
+                sourceId: "unavailable",
+                neighborId: "unavailable",
+                destinationId: "unavailable",
+                selection: "unavailable",
+                focus: "unavailable",
+                renderedColumns: [],
+                rowCount: 0,
+                copyingReached: false,
+                clipboardText: "unavailable",
+                readinessSamples: [],
+            };
+            const sample = () => {
+                const grid = document.querySelector('[data-testid="yjs-table-grid"]');
+                const columns = [...(grid?.querySelectorAll("thead th[data-col]") ?? [])]
+                    .map(element => element.getAttribute("data-col"));
+                const rowCount = grid?.querySelectorAll("tbody tr").length ?? 0;
+                (globalThis as any).__gridClipboardDiagnostic.readinessSamples.push({ columns, rowCount });
+            };
+            new MutationObserver(sample).observe(document.body, { childList: true, subtree: true });
+            sample();
+        });
         const host = page.locator(".outliner-item").nth(1);
         await expect(host).toBeVisible();
         await host.click();
@@ -23,6 +46,18 @@ test.describe("component block clipboard", () => {
         const firstView = page.getByTestId("yjs-table-view").first();
         await expect(firstView).toBeVisible({ timeout: 30000 });
         await firstView.getByTestId("yjs-table-add-row").click();
+
+        const grid = firstView.getByTestId("yjs-table-grid");
+        const expectedColumns = ["id", "title", "status", "priority", "due_date", "repeat_days"];
+        await expect.poll(
+            () =>
+                grid.locator("thead th[data-col]").evaluateAll(headers =>
+                    headers.map(header => header.getAttribute("data-col"))
+                ),
+            { timeout: 30000 },
+        ).toEqual(expectedColumns);
+        await expect(grid.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
+        const sourceRowText = await grid.locator("tbody tr").innerText();
 
         const items = page.locator(".outliner-item[data-item-id]");
         const renderedHost = firstView.locator(
@@ -35,11 +70,26 @@ test.describe("component block clipboard", () => {
         const hostIndex = itemIds.indexOf(hostId);
         expect(hostIndex).toBeGreaterThan(0);
         const neighborId = itemIds[hostIndex - 1];
+        const destinationId = await page.locator(".outliner-item[data-item-id]")
+            .filter({ has: page.getByText("Paste below", { exact: true }) })
+            .getAttribute("data-item-id");
         // A Grid node owns no outline text (#5015), so the selection ends at
         // offset 0 of its row - which is the whole block.
         const hostTextLength = 0;
         expect(hostId).toBeTruthy();
         expect(neighborId).toBeTruthy();
+        expect(destinationId).toBeTruthy();
+        const neighborText = await page.locator(`.outliner-item[data-item-id="${neighborId}"] .item-content`)
+            .innerText();
+        await page.evaluate(({ hostId, neighborId, destinationId, columns, rowCount }) => {
+            Object.assign((globalThis as any).__gridClipboardDiagnostic, {
+                sourceId: hostId,
+                neighborId,
+                destinationId,
+                renderedColumns: columns,
+                rowCount,
+            });
+        }, { hostId, neighborId, destinationId, columns: expectedColumns, rowCount: 1 });
         await page.locator("textarea.global-textarea").focus();
         await page.evaluate(({ start, end, endOffset }) => {
             // eslint-disable-next-line no-restricted-globals
@@ -53,28 +103,66 @@ test.describe("component block clipboard", () => {
                 userId: "local",
             });
         }, { start: neighborId, end: hostId, endOffset: hostTextLength });
+        const preCopy = await page.evaluate(({ start, end }) => {
+            const editor = (globalThis as any).editorOverlayStore;
+            const selection = Object.values(editor.selections)[0] as any;
+            return {
+                selection,
+                focus: document.activeElement?.matches("textarea.global-textarea") ?? false,
+                valid: selection?.startItemId === start && selection?.startOffset === 0
+                    && selection?.endItemId === end && selection?.endOffset === 0,
+            };
+        }, { start: neighborId, end: hostId });
+        expect(preCopy.valid).toBe(true);
+        expect(preCopy.focus).toBe(true);
+        const readinessSamples = await page.evaluate(() =>
+            (globalThis as any).__gridClipboardDiagnostic.readinessSamples as Array<
+                { columns: string[]; rowCount: number; }
+            >
+        );
+        expect(readinessSamples.some(sample => sample.columns.length === 0 || sample.rowCount === 0)).toBe(true);
+        expect(
+            readinessSamples.some(sample =>
+                sample.rowCount === 1 && sample.columns.join("\t") === expectedColumns.join("\t")
+            ),
+        ).toBe(true);
+        await page.evaluate(({ selection, focus }) =>
+            Object.assign(
+                (globalThis as any).__gridClipboardDiagnostic,
+                { selection, focus, copyingReached: true },
+            ), preCopy);
         await page.keyboard.press("Control+c");
         // Outside Outliner a Grid is its rendered result: the header row of the
         // visible columns, not the table's display name.
+        const expectedHeader = expectedColumns.join("\t");
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
-            .toContain("id\ttitle\tstatus\tpriority\tdue_date\trepeat_days");
+            .toContain(`${neighborText}\n${expectedHeader}`);
         const copiedText = await page.evaluate(() => navigator.clipboard.readText());
         expect(copiedText).not.toContain("\nTasks");
+        await page.evaluate(text => (globalThis as any).__gridClipboardDiagnostic.clipboardText = text, copiedText);
 
         // Use the trusted browser paste event. The portable HTML payload is
         // independently round-tripped in itemClipboard.test.ts so this E2E
         // remains focused on the operating-system clipboard path.
-        const target = page.locator(".outliner-item[data-item-id]").nth(1);
+        const target = page.locator(`.outliner-item[data-item-id="${destinationId}"]`);
         await target.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Control+v");
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
-        const sqlNames = await page.locator("[data-testid='yjs-table-sql-name']").allTextContents();
-        expect(sqlNames[1]).toBe(sqlNames[0]);
-        await expect(page.getByTestId("yjs-table-grid").nth(1).locator("tbody tr")).toHaveCount(1, {
-            timeout: 30000,
-        });
+        const occurrences = await page.evaluate(() =>
+            [...(globalThis as any).generalStore.currentPage.items]
+                .filter((item: any) => item.yjsGridId)
+                .map((item: any) => ({ id: item.id, yjsGridId: item.yjsGridId }))
+        );
+        expect(occurrences).toHaveLength(2);
+        expect(new Set(occurrences.map((item: any) => item.id)).size).toBe(2);
+        expect(occurrences[0].yjsGridId).toBeTruthy();
+        expect(occurrences[1].yjsGridId).toBe(occurrences[0].yjsGridId);
+        for (const view of await page.getByTestId("yjs-table-grid").all()) {
+            await expect(view.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
+            await expect(view.locator("tbody tr")).toHaveText(sourceRowText);
+        }
     });
 
     test("copy and paste carries a Calendar's binding onto a fresh, text-less node", async ({ page }) => {

@@ -19,6 +19,7 @@ export interface GridRenderTraceSnapshot {
 
 interface GridRenderTraceGlobal {
     __outlinerGridRenderTraces?: { collect: () => GridRenderTraceSnapshot[]; };
+    __gridClipboardDiagnostic?: unknown;
 }
 
 /**
@@ -100,6 +101,11 @@ export const test = base.extend({
         try {
             const traces = await collectGridRenderTraces(page);
             await attachGridRenderTraces(testInfo, traces, { url: page.url() });
+            const diagnostic = await page.evaluate(() =>
+                (globalThis as unknown as GridRenderTraceGlobal).__gridClipboardDiagnostic
+                    ?? { unavailable: "Grid clipboard diagnostic was not initialized" }
+            );
+            await writeJsonAttachment(testInfo, "grid-clipboard-diagnostic.json", diagnostic);
         } catch (error) {
             // Best-effort diagnostics: a page already closed/crashed after a
             // failure must never mask the original failure or fail the test
