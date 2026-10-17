@@ -216,6 +216,30 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
+      - name: Record retry-free Grid clipboard verification
+        if: matrix.project == 'new-2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/test.sh client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts -- \
+            --project=new-2 \
+            --grep='copy and paste creates a second live view of the same Grid' \
+            --repeat-each=10 \
+            --retries=0 \
+            2>&1 | tee job_logs/grid-clipboard-repeat-10.log
+          scripts/test.sh client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts -- \
+            --project=new-2 \
+            --retries=0 \
+            2>&1 | tee job_logs/grid-clipboard-full-spec.log
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          SKIP_AUTO_SETUP: '1'
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+
       - name: Summarise failures
         if: failure()
         run: |
