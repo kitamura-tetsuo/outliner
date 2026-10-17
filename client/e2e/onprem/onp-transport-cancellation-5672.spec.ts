@@ -107,8 +107,9 @@ test.describe("production on-premises transport cancellation", () => {
         expect(stack.isTunnelOpen(targetTunnel.id)).toBe(true);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
 
-        await targetContext.close();
+        const closingTarget = targetContext.close();
         const closed = await stack.waitForTransportEvent("ws-client-close", targetTunnel.url);
+        await closingTarget;
         expect(closed.id).toBe(targetTunnel.id);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
         expect(stack.transportSnapshot().some(event => event.id === unrelatedTunnel.id && event.kind.includes("close")))
