@@ -31,7 +31,8 @@ test("Replace Current refuses a held match after its physical source record is r
     const historyAfterDelete = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
 
     await page.getByTestId("replace-button").click();
-    await expect(page.getByTestId("replace-status")).toContainText("changed or could not be revalidated");
+    await expect(page.getByTestId("replace-status")).toContainText("Grid Replace failed");
+    await expect(page.getByTestId("replace-status")).toContainText("execution evidence is stale");
     expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(historyAfterDelete);
     const state = await snapshotProject(page);
     expect(state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]).toBeUndefined();

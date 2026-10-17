@@ -92,9 +92,9 @@ test(
         const selectedCell = fixture.gridA.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await selectedCell.click();
-        const otherGrid = page.getByTestId("yjs-table-view").filter({ hasNot: fixture.gridA }).getByTestId(
-            "yjs-table-grid",
-        );
+        const otherGrid = page.getByTestId("yjs-table-view").filter({
+            has: page.getByTestId("yjs-table-sql-name").filter({ hasText: new RegExp(`^${fixture.tableB.sqlName}$`) }),
+        }).getByTestId("yjs-table-grid");
         await otherGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`).click();
 
         await openSearch(page, "Value from B", "Selected only");
@@ -119,7 +119,9 @@ test(
         test.setTimeout(180000);
         const fixture = await seedOverlappingTableFixture(page, testInfo);
         await pointGridAToTableB(page, fixture);
-        const grid = fixture.gridA.getByTestId("yjs-table-grid");
+        const grid = page.getByTestId("yjs-table-view").filter({
+            has: page.getByTestId("yjs-table-sql-name").filter({ hasText: new RegExp(`^${fixture.tableB.sqlName}$`) }),
+        }).getByTestId("yjs-table-grid");
         const doneCell = grid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`);
         await doneCell.locator('input[type="checkbox"]').check();
         await expect.poll(async () => {
