@@ -15,8 +15,9 @@ test.describe("production on-premises transport cancellation", () => {
     });
     test.afterAll(async () => stack.stop());
 
-    test("settles a browser-cancelled session without disturbing another live client", async ({ browser, page }) => {
-        const target = page;
+    test("settles a browser-cancelled session without disturbing another live client", async ({ browser }) => {
+        const targetContext = await browser.newContext();
+        const target = await targetContext.newPage();
         const unrelatedContext = await browser.newContext();
         const unrelated = await unrelatedContext.newPage();
         await login(target, stack);
@@ -37,7 +38,10 @@ test.describe("production on-premises transport cancellation", () => {
         const navigation = target.reload({ waitUntil: "domcontentloaded" });
         const headers = await stack.waitForTransportEvent("http-headers", "/api/local-auth/session");
         await stack.waitForDelayedSessionBody();
-        await target.close();
+        // Closing the owning context deterministically closes its pooled HTTP
+        // connection as well as the page, rather than allowing Chromium to keep
+        // the interrupted response's socket alive for reuse.
+        await targetContext.close();
         await navigation.catch(() => {});
         release();
         const cancellation = await stack.waitForTransportEvent("http-client-abort", "/api/local-auth/session");
