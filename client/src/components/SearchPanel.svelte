@@ -409,6 +409,7 @@ const logger = getLogger("SearchPanel");
                     textOf(pageItem),
                     searchQuery,
                     options,
+                    searchScope !== "selection",
                 );
                 matchCount = matches.length;
                 activeMatchIndex = matchCount ? Math.min(activeMatchIndex, matchCount - 1) : -1;

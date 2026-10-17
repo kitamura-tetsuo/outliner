@@ -221,6 +221,46 @@ describe("unified Grid replace", () => {
         expect(rows[0].computed).toBe("match too");
     });
 
+    it("does not append an unselected duplicate placement while patching Selection results", () => {
+        const rows = [{ id: "row-1", name: "needle", computed: 1 }];
+        register("grid-a", "placement-a", rows, undefined, "table-source");
+        register("grid-b", "placement-b", rows, undefined, "table-source");
+        const selectedMatches = gridSearchMatches("page-1", "needle", {});
+        const replaced = [
+            {
+                placementId: "placement-a",
+                gridId: "grid-a",
+                rowId: "row-1",
+                columnId: "name",
+                newText: "needle!",
+                incarnation: "incarnation-1",
+            },
+            {
+                placementId: "placement-b",
+                gridId: "grid-b",
+                rowId: "row-1",
+                columnId: "name",
+                newText: "needle!",
+                incarnation: "incarnation-1",
+            },
+        ];
+        const selectedOnly = selectedMatches.filter(match =>
+            match.kind === "grid-cell" && match.placementId === "placement-a"
+        );
+
+        expect(
+            applyGridReplaceToMatches(
+                selectedOnly,
+                replaced,
+                "page-1",
+                "Page",
+                "needle",
+                {},
+                false,
+            ),
+        ).toMatchObject([{ kind: "grid-cell", placementId: "placement-a", text: "needle!" }]);
+    });
+
     it("never expands $&/$1-style patterns in the replacement text (matches outline Replace semantics)", async () => {
         const rows = [{ id: "row-1", name: "hello world", computed: 1 }];
         register("grid-1", "placement-1", rows);

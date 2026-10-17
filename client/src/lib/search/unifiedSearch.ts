@@ -345,6 +345,10 @@ export function applyGridReplaceToMatches(
     pageTitle: string,
     query: string,
     options: SearchOptions,
+    // Selection searches may patch only occurrences already admitted by the
+    // placement-local selection filter; confirmed aliases outside that set
+    // are presentation updates, not new matches in the held session.
+    appendMissingPlacements = true,
 ): UnifiedSearchMatch[] {
     if (replaced.length === 0) return [...matches];
     const cellKey = (placementId: string, rowId: string, columnId: string) => `${placementId}:${rowId}:${columnId}`;
@@ -383,6 +387,7 @@ export function applyGridReplaceToMatches(
     // A cell rewritten via Replace All may not have had a stale entry in
     // `matches` at all yet (Replace All can run without a prior Search), so
     // append any it didn't already patch.
+    if (!appendMissingPlacements) return result;
     for (const cell of replaced) {
         const key = cellKey(cell.placementId, cell.rowId, cell.columnId);
         if (patched.has(key)) continue;

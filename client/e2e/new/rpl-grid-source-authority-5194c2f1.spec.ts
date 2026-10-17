@@ -97,11 +97,22 @@ test(
         }).getByTestId("yjs-table-grid");
         await otherGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`).click();
 
-        await openSearch(page, "Value from B", "Selected only");
+        const undoBefore = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+        await openSearch(page, "Value from B", "Value from B!");
         await page.locator("#search-scope").selectOption("selection");
         await page.getByTestId("search-button").click();
         await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 1", { timeout: 30000 });
         await confirmReplaceAll(page);
+
+        await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 1", { timeout: 30000 });
+        await expect(page.getByTestId("search-result-button")).toHaveCount(1);
+        await page.getByTestId("search-result-button").click();
+        await expect(selectedCell).toHaveClass(/grid-find-match/);
+        await expect(otherGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`))
+            .not.toHaveClass(/grid-find-match/);
+        await expect.poll(
+            () => page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth),
+        ).toBe(undoBefore + 1);
 
         await expect.poll(async () => {
             const state = await snapshotProject(page);
@@ -109,7 +120,7 @@ test(
                 a: state.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title,
                 b: state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title,
             };
-        }).toEqual({ a: "Value from A", b: "Selected only" });
+        }).toEqual({ a: "Value from A", b: "Value from B!" });
     },
 );
 
