@@ -66,6 +66,51 @@ test.describe("production on-premises local boundaries", () => {
         await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
     });
 
+    test("settles a browser-cancelled session without disturbing another live client", async ({ context, page }) => {
+        const target = page;
+        const unrelated = await context.newPage();
+        await login(target, stack);
+        await login(unrelated, stack);
+        const title = `Independent-${Date.now()}`;
+        await createProject(unrelated, title);
+
+        const release = stack.delayNextSessionBody();
+        const navigation = target.reload({ waitUntil: "domcontentloaded" });
+        await stack.waitForDelayedSessionBody();
+        await target.close();
+        await navigation.catch(() => {});
+        release();
+
+        await unrelated.goto(stack.origin);
+        await expect(unrelated.locator("select.project-select option", { hasText: title })).toHaveCount(1);
+        await unrelated.getByLabel("New page name").fill("Still live");
+        await unrelated.getByRole("button", { name: "Create new page" }).click();
+        await expect(unrelated).toHaveURL(new RegExp(`${encodeURIComponent(title)}/Still%20live$`));
+        await unrelated.close();
+    });
+
+    test("settles an in-flight response before backend restart", async ({ page }) => {
+        await login(page, stack);
+        const release = stack.delayNextSessionBody();
+        void page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+        await stack.waitForDelayedSessionBody();
+
+        await stack.restart();
+        release();
+        await page.goto(stack.origin);
+        await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
+        await login(page, stack);
+        await expect(page.getByTestId("login-status-indicator")).toContainText("Local User");
+    });
+
+    test("returns 503 when a fresh request cannot reach the backend", async ({ request }) => {
+        await stack.shutdownBackend();
+        const response = await request.get(`${stack.origin}/api/deployment`);
+        expect(response.status()).toBe(503);
+        expect(await response.text()).toBe("Backend unavailable");
+        await stack.restart();
+    });
+
     for (const demo of ["demo", "demo-ja"]) {
         test(`blocks ${demo} without reseeding or opening a document`, async ({ page }) => {
             const forbidden: string[] = [];
