@@ -50,7 +50,7 @@ describe("Kanban execution currentness", { timeout: 30000 }, () => {
             projectDoc,
             kanbanId,
             kanban: getKanbanHandles(projectDoc, kanbanId)!,
-            sourceAdapter: acquired!.adapter,
+            connect: localConnector,
             registry: {
                 resolveRelation: async sqlName => {
                     resolutionCount++;

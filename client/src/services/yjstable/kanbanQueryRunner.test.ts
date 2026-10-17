@@ -28,12 +28,11 @@ async function setup(schema = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TE
         titleField: "title",
     });
     const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
-    const acquired = await session.acquire(tableId);
     const runner = new KanbanQueryRunner({
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
-        sourceAdapter: acquired!.adapter,
+        connect: localConnector,
     });
     return { projectDoc, tableId, table, kanbanId, session, runner };
 }
@@ -69,7 +68,8 @@ describe("Kanban SQL result projection", { timeout: 30000 }, () => {
         expect(value.lanes.map(lane => lane.key)).toEqual(["todo", "doing"]);
         expect(value.lanes.map(lane => lane.cards.map(card => card.sourceIdentity?.id))).toEqual([["c", "a"], ["b"]]);
         expect(new Set(value.lanes.flatMap(lane => lane.cards.map(card => card.occurrenceKey))).size).toBe(3);
-        expect(value.provenance).toMatchObject({ sourceTableId: context.tableId, sourceSqlName: "tasks" });
+        expect(value.provenance).toMatchObject({ sourceSqlName: "tasks" });
+        expect(value.provenance).not.toHaveProperty("sourceTableId");
         context.runner.dispose();
         context.session.dispose();
         await waitForTableEngineIdle();

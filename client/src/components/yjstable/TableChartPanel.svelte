@@ -93,10 +93,10 @@ onDestroy(() => {
 <div
     class="table-chart-panel"
     data-testid="yjs-table-chart"
-    bind:this={chartDiv}
     role="img"
     aria-label={ariaLabel}
 >
+    <div class="chart-canvas" bind:this={chartDiv}></div>
     {#if !hasData}
         <p class="no-data">No data</p>
     {/if}
@@ -107,6 +107,11 @@ onDestroy(() => {
     width: 100%;
     height: 300px;
     position: relative;
+}
+
+.chart-canvas {
+    width: 100%;
+    height: 100%;
 }
 
 .no-data {

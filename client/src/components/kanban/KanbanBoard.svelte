@@ -1,6 +1,6 @@
 <script lang="ts">
 import { onDestroy, onMount } from "svelte";
-import type * as Y from "yjs";
+import * as Y from "yjs";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import {
     destroyKanbanUndoManager,
@@ -51,7 +51,15 @@ function refresh() {
     const next = getKanban(projectDoc, kanban.kanbanId);
     if (next) committed = copy(next);
 }
-const observer = () => { operations?.invalidateDefinition(); refresh(); };
+const observer = (events: Y.YEvent<unknown>[]) => {
+    const meaningful = events.some(event =>
+        !(event instanceof Y.YMapEvent)
+        || [...event.changes.keys.keys()].some(key => key !== "sourceTableId")
+    );
+    if (!meaningful) return;
+    operations?.invalidateDefinition();
+    refresh();
+};
 function beginEdit() { baseline = copy(committed); draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = true; }
 function cancel() { draft = copy(committed); queryDraft = committed.query; conflict = undefined; editing = false; }
 function apply() {
@@ -83,8 +91,8 @@ function laneKindLabel(value: string | null): string {
 }
 function display(value: unknown): string { return value === null ? "NULL" : value === undefined ? "" : String(value); }
 
-function fieldValue(text: string, field: string): TableRecordValue | undefined {
-    const column = runner?.sourceSchema?.columns.find(candidate => candidate.name === field);
+function fieldValue(text: string, card: KanbanCard, field: string): TableRecordValue | undefined {
+    const column = runner?.columnSchema(card, field);
     if (!column) return undefined;
     if (column.kind === "integer" || column.kind === "number") {
         const value = Number(text);
@@ -110,7 +118,12 @@ function isEditing(card: KanbanCard, field: string): boolean {
 }
 async function commitFieldEdit() {
     if (!editingCard || !operations) return;
-    const value = fieldValue(editingCard.value, editingCard.field);
+    const card = projection.lanes.flatMap(lane => lane.cards).find(candidate =>
+        candidate.sourceIdentity?.id === editingCard?.sourceId
+        && candidate.sourceIdentity?.kind === editingCard?.sourceKind
+    );
+    if (!card) return;
+    const value = fieldValue(editingCard.value, card, editingCard.field);
     if (value === undefined) { operationState = "refused"; operationMessage = "The value is invalid for this field."; return; }
     const result = await operations.commit(value);
     if (result.ok) editingCard = undefined;
@@ -138,9 +151,8 @@ function ownInput(event: Event) { event.stopPropagation(); }
 onMount(() => {
     retainKanbanUndoManager(kanban.entry);
     kanban.entry.observeDeep(observer);
-    void session.acquire(committed.sourceTableId).then(acquired => {
-        if (!acquired) { projection = { status: "unavailable", lanes: [], columns: [], current: false, message: "Kanban source Table is missing" }; return; }
-        runner = new KanbanQueryRunner({ projectDoc, kanbanId: kanban.kanbanId, kanban, sourceAdapter: acquired.adapter });
+    void Promise.resolve().then(() => {
+        runner = new KanbanQueryRunner({ projectDoc, projectId, kanbanId: kanban.kanbanId, kanban });
         operations = new KanbanCardOperationController({
             resolver: session,
             schema: () => runner?.sourceSchema,

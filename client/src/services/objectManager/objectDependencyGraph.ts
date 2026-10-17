@@ -100,7 +100,7 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
     for (const kanban of listKanbans(doc)) {
         const object: GraphObject = { type: "kanban", id: kanban.kanbanId };
         const settings = getKanban(doc, kanban.kanbanId);
-        const references = new Set<string>([kanban.sourceTableId]);
+        const references = new Set<string>();
         for (const tableId of relationTableIds(settings?.query ?? "")) references.add(tableId);
         for (const tableId of references) {
             if (tableIds.has(tableId)) addEdge(object, { type: "table", id: tableId });

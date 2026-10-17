@@ -46,12 +46,11 @@ describe("Kanban additional-relation invalidation", { timeout: 30000 }, () => {
             groupField: "status",
         });
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
-        const acquired = await session.acquire(tasksId);
         const runner = new KanbanQueryRunner({
             projectDoc,
             kanbanId,
             kanban: getKanbanHandles(projectDoc, kanbanId)!,
-            sourceAdapter: acquired!.adapter,
+            connect: localConnector,
         });
         const projections: KanbanProjection[] = [];
         runner.subscribeProjection(value => projections.push(value));

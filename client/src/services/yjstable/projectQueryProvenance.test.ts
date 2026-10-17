@@ -95,7 +95,13 @@ describe("Project query provenance", { timeout: 30_000 }, () => {
         const query = "SELECT 'b' AS source_kind, id AS source_id, title AS shown, points + 1 AS calculated FROM a "
             + "UNION ALL SELECT 'b', id, label, score FROM b";
         const { result } = await analyze(doc, query);
-        expect(result.branches.map(branch => branch.routedIdentity)).toEqual([false, true]);
+        expect(result.branches.map(branch => ({
+            claimedSourceKind: branch.claimedSourceKind,
+            routedIdentity: branch.routedIdentity,
+        }))).toEqual([
+            { claimedSourceKind: "b", routedIdentity: false },
+            { claimedSourceKind: "b", routedIdentity: true },
+        ]);
         expect(result.branches[0]?.columns.map(column => [column.outputColumn, column.physicalColumn])).toEqual([
             ["source_id", "id"],
             ["shown", "title"],

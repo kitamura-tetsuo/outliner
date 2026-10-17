@@ -88,6 +88,8 @@ export class RelationWriteError extends Error {
     }
 }
 
+import type { ParsedTableSchema } from "./schemaIntrospection";
+
 export interface RelationProvider {
     /**
      * The SQL name under which the relation is currently materialized, or ""
@@ -95,6 +97,8 @@ export interface RelationProvider {
      */
     readonly sqlName: string;
     readonly capabilities: RelationCapabilities;
+    /** Current physical schema metadata when this provider is a Table. */
+    readonly schema?: ParsedTableSchema;
     /** Stable source description for result provenance; it grants no write authority. */
     readonly evidence?: RelationEvidence;
     /**

@@ -10,12 +10,10 @@ import { createGrid, getGridHandles, getGridQuery, GRID_REGISTRY_KEY, listGrids 
 import {
     createKanban,
     destroyKanbanUndoManager,
-    findKanbansBySourceTable,
     getKanban,
     getKanbanHandles,
     getKanbanName,
     getKanbanRegistry,
-    getKanbanSourceTableId,
     KANBAN_REGISTRY_KEY,
     listKanbans,
     observeKanbans,
@@ -58,13 +56,10 @@ describe("Kanban creation over an existing Table", () => {
             titleField: "id",
         });
 
-        // Same display name, distinct identities, one shared source.
+        // Same display name and distinct identities; SQL owns dependencies.
         expect(first).not.toBe(second);
-        expect(getKanbanSourceTableId(doc, first)).toBe(tableId);
-        expect(getKanbanSourceTableId(doc, second)).toBe(tableId);
         expect(getKanbanName(doc, first)).toBe("Board");
         expect(listKanbans(doc).map(k => k.kanbanId).sort()).toEqual([first, second].sort());
-        expect(findKanbansBySourceTable(doc, tableId)).toHaveLength(2);
 
         // Updating one board leaves the other board and the Grid untouched.
         updateKanban(doc, first, { query: "SELECT id FROM tasks WHERE status = 'open'" });
@@ -83,7 +78,7 @@ describe("Kanban creation over an existing Table", () => {
             expect(keys).toEqual(Array.from(new Set(keys)));
             for (const key of keys) {
                 expect(
-                    ["sourceTableId", "name", "query", "groupField", "titleField", "detailFields", "laneOrder"],
+                    ["name", "query", "groupField", "titleField", "detailFields", "laneOrder"],
                 ).toContain(key);
             }
         }
@@ -103,7 +98,6 @@ describe("Kanban creation over an existing Table", () => {
 
         expect(getKanban(doc, kanbanId)).toEqual({
             name: "Sprint",
-            sourceTableId: tableId,
             query: "SELECT id, status, title FROM tasks ORDER BY id",
             groupField: "status",
             titleField: "title",
@@ -118,7 +112,6 @@ describe("Kanban creation over an existing Table", () => {
 
         expect(getKanban(doc, kanbanId)).toEqual({
             name: "Draft",
-            sourceTableId: tableId,
             query: "",
             detailFields: [],
             laneOrder: [],
@@ -130,13 +123,12 @@ describe("Kanban creation over an existing Table", () => {
         expect(getKanban(doc, kanbanId)?.titleField).toBeUndefined();
     });
 
-    it("leaves a dangling source reference unrepaired on reads", () => {
+    it("keeps a SQL definition readable after its dependency is removed", () => {
         const { doc, tableId } = tasksProject();
         const kanbanId = createKanban(doc, tableId, { name: "Board" });
         expect(removeTable(doc, tableId)).toBe(true);
 
-        // Reads report the stored reference as-is; nothing is substituted or pruned.
-        expect(getKanban(doc, kanbanId)?.sourceTableId).toBe(tableId);
+        expect(getKanbanRegistry(doc).get(kanbanId)?.has("sourceTableId")).toBe(false);
         expect(listKanbans(doc)).toHaveLength(1);
         expect(getKanbanHandles(doc, kanbanId)).toBeDefined();
     });
@@ -159,11 +151,10 @@ describe("Kanban reconstruction through document persistence", () => {
         const restarted = new Y.Doc();
         Y.applyUpdate(restarted, bytes);
 
-        // The same identity, source reference and exact settings are
+        // The same identity and exact settings are
         // available on a document that never ran the creator.
         expect(getKanban(restarted, kanbanId)).toEqual({
             name: "Exact",
-            sourceTableId: tableId,
             query,
             groupField: "status",
             titleField: "Title",
@@ -179,6 +170,22 @@ describe("Kanban reconstruction through document persistence", () => {
 });
 
 describe("Kanban validation and missing identities", () => {
+    it("persists a SQL-only definition without manufacturing a primary Table binding", () => {
+        const doc = new Y.Doc();
+        const kanbanId = createKanban(doc, undefined, {
+            kanbanId: "sql-only",
+            query: "SELECT id, text, status FROM outline_items",
+            groupField: "status",
+            titleField: "text",
+        });
+        expect(getKanban(doc, kanbanId)).toMatchObject({
+            query: "SELECT id, text, status FROM outline_items",
+            groupField: "status",
+            titleField: "text",
+        });
+        expect(getKanbanRegistry(doc).get(kanbanId)?.has("sourceTableId")).toBe(false);
+    });
+
     it("rejects creation against a missing or foreign Table before partial changes", () => {
         const { doc } = tasksProject();
         const foreign = new Y.Doc();
@@ -261,7 +268,6 @@ describe("Kanban validation and missing identities", () => {
         expect(getKanban(doc, kanbanId)).toBeUndefined();
         expect(getKanbanHandles(doc, kanbanId)).toBeUndefined();
         expect(getKanbanName(doc, kanbanId)).toBeUndefined();
-        expect(getKanbanSourceTableId(doc, kanbanId)).toBeUndefined();
         expect(listKanbans(doc)).toEqual([]);
         expect(() => updateKanban(doc, kanbanId, { name: "Ghost" })).toThrow(/not found/);
         expect(() => updateKanban(doc, "missing-id", { name: "Ghost" })).toThrow(/not found/);
@@ -285,16 +291,12 @@ describe("Kanban validation and missing identities", () => {
         expect(getKanbanRegistry(doc).has("absent")).toBe(false);
     });
 
-    it("re-points the source reference only at an existing Table of the same project", () => {
+    it("uses a selected Table only to initialize SQL", () => {
         const { doc, tableId } = tasksProject();
-        const otherTable = createTable(doc, "Notes", "notes");
-        const kanbanId = createKanban(doc, tableId, { name: "Board", query: "SELECT id FROM tasks" });
+        const kanbanId = createKanban(doc, tableId, { name: "Board" });
 
-        updateKanban(doc, kanbanId, { sourceTableId: otherTable });
-        expect(getKanbanSourceTableId(doc, kanbanId)).toBe(otherTable);
-
-        expect(() => updateKanban(doc, kanbanId, { sourceTableId: "missing-table" })).toThrow(/does not exist/);
-        expect(getKanbanSourceTableId(doc, kanbanId)).toBe(otherTable);
+        expect(getKanban(doc, kanbanId)?.query).toBe("SELECT * FROM tasks");
+        expect(getKanbanRegistry(doc).get(kanbanId)?.has("sourceTableId")).toBe(false);
     });
 });
 

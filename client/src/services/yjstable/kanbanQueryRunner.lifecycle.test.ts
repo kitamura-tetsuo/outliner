@@ -23,12 +23,11 @@ async function setup() {
         groupField: "status",
     });
     const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
-    const acquired = await session.acquire(tableId);
     const runner = new KanbanQueryRunner({
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
-        sourceAdapter: acquired!.adapter,
+        connect: localConnector,
     });
     const published: KanbanProjection[] = [];
     runner.subscribeProjection(value => published.push(value));

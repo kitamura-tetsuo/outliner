@@ -13,7 +13,7 @@ import type { ResolvedPathname } from "$app/types";
 // the source Table's Y.Doc guid (see YjsTableBlock), so switching either one
 // remounts everything — no rebinding logic in here.
 
-import { onDestroy, onMount } from "svelte";
+import { onDestroy, onMount, tick } from "svelte";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { isForeignInput } from "../../lib/KeyEventHandler";
@@ -469,8 +469,12 @@ function stateVectorRevision(doc: Y.Doc): string {
                 class:active={showChart}
                 aria-pressed={showChart}
                 data-testid="yjs-table-toggle-chart"
-                onclick={() => {
+                onclick={async () => {
                     showChart = !showChart;
+                    if (showChart) {
+                        await tick();
+                        chartPanel?.update(result);
+                    }
                 }}
             >Chart</button>
             <button
@@ -574,7 +578,9 @@ function stateVectorRevision(doc: Y.Doc): string {
 
     {#if showChart}
         <section class="panel">
-            <TableChartPanel bind:this={chartPanel} initial={result} />
+            {#key clientRevision}
+                <TableChartPanel bind:this={chartPanel} initial={result} />
+            {/key}
         </section>
     {/if}
 </div>
