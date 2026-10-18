@@ -1,6 +1,7 @@
 /** @feature CLP-4584c0de */
 import { type Page } from "@playwright/test";
 import { expect, test } from "../fixtures/grid-render-trace";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
@@ -25,9 +26,13 @@ test.describe("mouse drag clipboard with component blocks", () => {
         const sourceId = await itemIdByText(page, "Alpha item");
         const seededHostId = await itemIdByText(page, "Block host");
         const endId = await itemIdByText(page, "Omega");
-        await page.locator(`.outliner-item[data-item-id="${seededHostId}"] .item-content`).click();
-        const addDatabase = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
-        await addDatabase.click();
+        const host = await createBlockFromItem(
+            page,
+            page.locator(`.outliner-item[data-item-id="${seededHostId}"]`),
+            "Grid",
+        );
+        const hostId = await host.getAttribute("data-item-id");
+        expect(hostId).toBeTruthy();
         await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
         await page.getByTestId("yjs-table-create").first().click();
         await expect(page.getByTestId("yjs-table-view").first()).toBeVisible({ timeout: 30000 });
@@ -36,6 +41,36 @@ test.describe("mouse drag clipboard with component blocks", () => {
         // Grid result rather than its temporary display-name fallback.
         await expect(page.getByTestId("yjs-table-grid").first().locator("thead th").first())
             .toBeVisible({ timeout: 30000 });
+
+        const gridId = await host.getByTestId("yjs-table-view").getAttribute("data-grid-id");
+        const before = await page.evaluate(({ hostId, sourceId, endId }) => {
+            const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
+            const items = (globalThis as any).generalStore.activeViewModel.getVisibleItems().map((entry: any) =>
+                entry.model.original
+            );
+            const item = items.find((item: any) => item.id === hostId);
+            const value = item.tree.getNodeValueFromKey(item.key);
+            return {
+                binding: {
+                    componentType: value.get("componentType"),
+                    gridId: value.get("yjsGridId"),
+                    hasTable: value.has("yjsTableId"),
+                },
+                order: items.map((item: any) => item.id).filter((id: string) => [sourceId, hostId, endId].includes(id)),
+                grids: project.ydoc.getMap("yjsGrids").toJSON(),
+                tables: Array.from(project.ydoc.getMap("yjsTables"), ([id, entry]: any) => {
+                    const doc = entry.get("doc");
+                    return {
+                        id,
+                        guid: doc.guid,
+                        schema: doc.getText("schema").toString(),
+                        data: doc.getMap("data").toJSON(),
+                    };
+                }),
+            };
+        }, { hostId, sourceId, endId });
+        expect(before.binding).toEqual({ componentType: "yjstable", gridId, hasTable: false });
+        expect(before.order).toEqual([sourceId, hostId, endId]);
 
         const source = page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-text`);
         // A Grid is an atomic visual node with no outline text (#5015). Drag
@@ -59,19 +94,20 @@ test.describe("mouse drag clipboard with component blocks", () => {
         });
         await page.mouse.up();
 
+        const selected = await page.evaluate(() => {
+            const selection = (Object.values((globalThis as any).editorOverlayStore.selections) as any[]).find(
+                selection => !selection.isBoxSelection,
+            );
+            return selection && { start: selection.startItemId, end: selection.endItemId };
+        });
+        expect(selected).toEqual({ start: sourceId, end: endId });
         await page.keyboard.press("Control+c");
-        // The structured payload, rather than the browser-dependent visible
-        // text range, is the authoritative proof that the atomic Grid binding
-        // participated in the outline copy.
-        await expect.poll(() =>
-            page.evaluate(() => {
-                // eslint-disable-next-line no-restricted-globals
-                const encoded = (window as unknown as { lastCopiedStructuredItems?: string; })
-                    .lastCopiedStructuredItems;
-                if (!encoded) return [];
-                return (JSON.parse(encoded) as { items: Array<{ componentType?: string; }>; }).items
-                    .map(item => item.componentType);
-            }), { timeout: 15000 }).toContain("yjstable");
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(
+            "title\tstatus\tpriority",
+        );
+        const payload = await page.evaluate(() => JSON.parse((globalThis as any).lastCopiedStructuredItems));
+        expect(payload.items.filter((item: any) => item.componentType === "yjstable"))
+            .toEqual([expect.objectContaining({ text: "", depth: 0, componentType: "yjstable", yjsGridId: gridId })]);
 
         // Paste into a fresh item so no existing text merges with the payload.
         await page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-content`).click();
@@ -84,7 +120,27 @@ test.describe("mouse drag clipboard with component blocks", () => {
         await page.keyboard.press("Control+v");
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
-        const sqlNames = await page.locator("[data-testid='yjs-table-sql-name']").allTextContents();
-        expect(sqlNames[1]).toBe(sqlNames[0]);
+        expect(
+            await page.getByTestId("yjs-table-view").evaluateAll(nodes =>
+                nodes.map(node => node.getAttribute("data-grid-id"))
+            ),
+        )
+            .toEqual([gridId, gridId]);
+        const after = await page.evaluate(() => {
+            const doc = (globalThis as any).__YJS_STORE__.yjsClient.getProject().ydoc;
+            return {
+                grids: doc.getMap("yjsGrids").toJSON(),
+                tables: Array.from(doc.getMap("yjsTables"), ([id, entry]: any) => {
+                    const table = entry.get("doc");
+                    return {
+                        id,
+                        guid: table.guid,
+                        schema: table.getText("schema").toString(),
+                        data: table.getMap("data").toJSON(),
+                    };
+                }),
+            };
+        });
+        expect(after).toEqual({ grids: before.grids, tables: before.tables });
     });
 });

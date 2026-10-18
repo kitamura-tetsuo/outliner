@@ -1,7 +1,7 @@
 id: FTR-5514c0de
 title: Table-owned schema editing
 title-ja: Table ページ専用のスキーマ編集
-description: Embedded and standalone Grids identify their primary Table by display and SQL name and provide a separate keyboard-accessible link to its Table page. Grid surfaces retain SELECT, presentation, chart, and record controls, but never mount or expose CREATE TABLE editing. A missing primary Table remains explicitly unavailable without substitution. Table pages continue to own schema editing and their implicit raw-data browser.
+description: Embedded, Page, Layout and standalone Grids render their own Project SELECT and Grid-owned name and presentation through one primary-independent rich runtime. Actual SQL dependencies are a collection of links to Table-owned schema and raw-data pages, with explicit empty or unavailable states. Constants and outline_items require no user Table. Source-specific metadata describes typed cells and validation; guarded execution evidence independently authorizes physical-source writes. Grid controls never expose CREATE TABLE editing.
 category: client
 status: implemented
 components:
@@ -10,13 +10,27 @@ components:
 - client/src/components/yjstable/YjsTableBlock.svelte
 - client/src/components/yjstable/YjsTableView.svelte
 acceptance:
-- A separate keyboard-accessible action opens the Table identified by sourceTableId while its displayed name remains selectable
-- Each resolved Grid identifies its source Table by display name and SQL name
-- Embedded and standalone Grid surfaces do not mount or expose a CREATE TABLE editor
-- Missing source Tables remain unavailable and are not substituted
-- Table pages retain CREATE TABLE editing and editable raw data without requiring a Grid
+- A Grid displays its own name independently of the SQL suppliers
+- Actual SQL dependencies have keyboard-accessible Table links; multiple, empty and unavailable dependency states are explicit
+- Changing a Table query to a constant clears the previous Table claim
+- Embedded and standalone Grid surfaces do not expose a CREATE TABLE editor
+- Embedded and standalone Grids retain typed display, settings, charts, logical selection and copy without a mandatory Table
+- Grid cell, bulk, paste, search, delete and Add row effects use captured current execution evidence and refuse stale intent
+- Live supplier changes preserve Grid and Table Undo history; peer refresh permits separately initiated current operations
+- Proven physical metadata supplies per-row UNION choices, nullability and input validation without granting write authority
+- Replacing or removing a Grid ends the old occurrence authority and updates standalone identity
+- Standalone private Grid data and pending actions are gated after logout or access revocation
+- Table pages retain schema editing and editable raw data without requiring a Grid
 tests:
+- client/e2e/new/grd-delayed-editor-runtime-5610cafe.spec.ts
+- client/e2e/new/grd-live-source-runtime-5610cafe.spec.ts
 - client/e2e/new/grd-primary-table-reference-5514c0de.spec.ts
+- client/e2e/new/grd-query-only-runtime-5610cafe.spec.ts
+- client/e2e/new/grd-standalone-access-5610cafe.spec.ts
+- client/e2e/new/grd-union-runtime-5610cafe.spec.ts
 - client/e2e/new/tbl-grid-text-is-selectable-4669a11e.spec.ts
 - client/e2e/tables/tbl-standalone-grid-page-2e6b9f14.spec.ts
+- client/src/components/yjstable/ProjectGridView.actualSource.test.ts
+- client/src/components/yjstable/ProjectGridView.currentness.test.ts
+- client/src/components/yjstable/ProjectGridView.history.test.ts
 - client/src/components/yjstable/YjsTableView.test.ts

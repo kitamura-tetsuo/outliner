@@ -232,7 +232,8 @@ export async function configureGrid(
     query: string,
     titleLabel: string,
 ): Promise<void> {
-    const view = page.getByTestId("yjs-table-view").nth(viewIndex);
+    const gridId = await page.getByTestId("yjs-table-view").nth(viewIndex).getAttribute("data-grid-id");
+    const view = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
 
     const returnUrl = page.url();
     const schemaHost = await openGridSourceSchema(page, view);
@@ -240,11 +241,20 @@ export async function configureGrid(
     await schemaEditor.waitForReady();
     await schemaEditor.setValue(page, schema);
     await schemaHost.getByTestId("yjs-table-schema-apply").click();
+    const tableId = await page.getByTestId("table-entity-view").getAttribute("data-table-id");
+    const savedSchema = () =>
+        page.evaluate(id => {
+            const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
+            return project.ydoc.getMap("yjsTables").get(id)?.get("doc").getText("schema").toString();
+        }, tableId);
     const warning = schemaHost.getByTestId("yjs-table-schema-warning");
-    if (await warning.isVisible().catch(() => false)) {
-        await schemaHost.getByTestId("yjs-table-schema-confirm").click();
-    }
-    await expect.poll(async () => await schemaEditor.value(), { timeout: 30000 }).toBe(schema);
+    // Schema analysis is asynchronous. Do not leave the Table route before
+    // its real apply/confirmation boundary has settled.
+    await expect.poll(async () => await savedSchema() === schema.trim() || await warning.isVisible(), {
+        timeout: 30000,
+    }).toBe(true);
+    if (await warning.isVisible()) await schemaHost.getByTestId("yjs-table-schema-confirm").click();
+    await expect.poll(savedSchema, { timeout: 30000 }).toBe(schema.trim());
     await page.goto(returnUrl);
     await expect(view).toBeVisible({ timeout: 30000 });
 
@@ -253,6 +263,13 @@ export async function configureGrid(
     }
     const queryEditor = new SqlEditorHelper(view.getByTestId("yjs-table-query-input"));
     await queryEditor.fillAndCommit(page, query);
+    await expect.poll(() =>
+        page.evaluate(id => {
+            const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
+            return project.ydoc.getMap("yjsGrids").get(id)?.get("query");
+        }, gridId)
+    ).toBe(query);
+
     const titleInput = view.getByTestId("yjs-table-label-title");
     await expect(titleInput).toBeVisible({ timeout: 30000 });
     await titleInput.fill(titleLabel);

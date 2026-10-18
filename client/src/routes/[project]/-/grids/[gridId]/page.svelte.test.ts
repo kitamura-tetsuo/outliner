@@ -1,201 +1,113 @@
-// The standalone Grid route (issue #5012): /grids/<project>/<gridId> is a page
-// about one Grid — its own SELECT and presentation over a source Table it
-// references but does not own.
-
-import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
 vi.mock("$app/state", () => import("../../../../../tests/mocks/appState.svelte"));
-setPage({ params: { project: "demo", gridId: "grid-a" } });
-
+// Route admission fixture: public demo cases remain anonymous; the browser
+// access regression exercises the real authentication and ACL consumers.
 vi.mock("../../../../../auth/UserManager", () => ({
-    userManager: {
-        getCurrentUser: () => null,
-        addEventListener: () => () => {},
-    },
+    userManager: { getCurrentUser: () => null, addEventListener: () => () => {} },
 }));
-
-const salesDoc = new Y.Doc();
 let projectDoc = new Y.Doc();
-let registeredTables: { tableId: string; name: string; sqlName: string; }[] = [];
-
 vi.mock("../../../../../lib/routeProject", async () => {
     const { store } = await import("../../../../../stores/store.svelte");
     return {
         openRouteProject: vi.fn(async () => {
-            // Asynchronous on purpose: a synchronous store write would land
-            // inside the caller's tracked effect and re-trigger it forever.
             await Promise.resolve();
-            store.project = {
-                ydoc: projectDoc,
-                schedules: projectDoc.getMap("schedules"),
-            } as unknown as NonNullable<typeof store.project>;
-            return { release: vi.fn() };
+            store.project = { ydoc: projectDoc, schedules: projectDoc.getMap("schedules") } as unknown as NonNullable<
+                typeof store.project
+            >;
+            return { projectId: projectDoc.guid, release: vi.fn() };
         }),
     };
 });
-
-vi.mock("../../../../../lib/demoInit", () => ({
-    DemoInitAborted: class DemoInitAborted extends Error {},
+// Only Monaco is substituted in jsdom. SELECT, metadata and the Grid renderer
+// stay real, including when the route observes a registry-entry replacement.
+vi.mock("../../../../../lib/monaco/monacoLoader", () => ({
+    loadMonaco: () => import("../../../../../tests/mocks/fakeMonaco").then(module => module.fakeMonaco),
 }));
-
-vi.mock("../../../../../services/yjstable/tableDocs", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../../../../../services/yjstable/tableDocs")>();
-    return {
-        ...actual,
-        listTables: () => registeredTables,
-        getTableHandles: (_doc: Y.Doc, tableId: string) =>
-            registeredTables.some(t => t.tableId === tableId)
-                ? { doc: salesDoc, tableId }
-                : undefined,
-        destroyTableUndoManager: vi.fn(),
-    };
-});
-
-// YjsTableView drives the PGlite engine; the route's own resolution is what is
-// under test here.
-vi.mock("../../../../../components/yjstable/YjsTableView.svelte", async () => {
-    const Stub = (await import("./__fixtures__/GridViewStub.svelte")).default;
-    return { default: Stub };
-});
-
-import { createGrid } from "../../../../../services/yjstable/gridDocs";
-import { getTableRegistry } from "../../../../../services/yjstable/tableDocs";
+import { createGrid, getGridRegistry, removeGrid } from "../../../../../services/yjstable/gridDocs";
+import { resetPgliteForTests } from "../../../../../services/yjstable/pgliteService";
+import { resetTableEngineForTests } from "../../../../../services/yjstable/tableEngine";
 import { setPage } from "../../../../../tests/mocks/appState.svelte";
 import GridStandalonePage from "./+page.svelte";
 
-describe("standalone grid route", () => {
-    beforeEach(() => {
-        setPage({ params: { project: "demo", gridId: "grid-a" } });
-        projectDoc = new Y.Doc();
-        registeredTables = [{ tableId: "demo-table-sales", name: "Sales", sqlName: "sales" }];
-    });
+beforeEach(() => {
+    setPage({ params: { project: "demo", gridId: "grid-a" } });
+    projectDoc = new Y.Doc();
+});
+afterEach(async () => {
+    cleanup();
+    projectDoc.destroy();
+    await resetTableEngineForTests();
+});
+afterAll(resetPgliteForTests);
+const cell = () => screen.getByTestId("yjs-table-view").querySelector('td[data-col="value"] button');
+const seed = (id = "grid-a", name = "Independent", value = 42) =>
+    createGrid(projectDoc, undefined, { gridId: id, name, query: `SELECT ${value} AS value` });
 
-    afterEach(() => {
-        cleanup();
-    });
-
-    it("renders the requested Grid over its own source Table", async () => {
-        createGrid(projectDoc, "demo-table-sales", {
-            gridId: "grid-a",
-            name: "Open sales",
-            query: "SELECT * FROM sales WHERE revenue > 100",
-        });
-
+describe("current-format standalone Grid route", { timeout: 60000 }, () => {
+    it("renders its own SELECT and identity without any Table", async () => {
+        seed();
         render(GridStandalonePage);
-
-        await waitFor(() => {
-            expect(screen.getByTestId("grid-view-stub")).toBeTruthy();
-        });
-        expect(screen.getByTestId("grid-view-stub").getAttribute("data-grid-id")).toBe("grid-a");
-        expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id"))
-            .toBe("demo-table-sales");
+        await waitFor(() => expect(cell()?.textContent).toBe("42"), { timeout: 30000 });
+        expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Independent");
+        expect(screen.getByTestId("yjs-table-view")).toHaveAttribute("data-grid-id", "grid-a");
+        expect(projectDoc.getMap("yjsTables").size).toBe(0);
+        expect(getGridRegistry(projectDoc).get("grid-a")?.has("sourceTableId")).toBe(false);
     });
 
-    it("passes the query dependency link to the unified Grid runtime", async () => {
-        createGrid(projectDoc, "demo-table-sales", {
-            gridId: "grid-a",
-            name: "Open sales",
-            query: "SELECT * FROM sales",
-        });
-
-        render(GridStandalonePage);
-
-        await waitFor(() => {
-            expect(screen.getByTestId("grid-view-stub")).toBeTruthy();
-        });
-        expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-href"))
-            .toBe("/demo/-/tables/demo-table-sales");
-        expect(screen.getByTestId("grid-source-table-link").getAttribute("href"))
-            .toBe("/demo/-/tables/demo-table-sales");
-    });
-
-    it("keeps two Grids over one Table independent", async () => {
-        createGrid(projectDoc, "demo-table-sales", {
-            gridId: "grid-a",
-            name: "Open sales",
-            query: "SELECT * FROM sales WHERE revenue > 100",
-        });
-        createGrid(projectDoc, "demo-table-sales", {
-            gridId: "grid-b",
-            name: "Sales by month",
-            query: "SELECT month FROM sales",
-        });
-
+    it("keeps two independent Grids on their requested standalone routes", async () => {
+        seed();
+        seed("grid-b", "Second", 7);
         const first = render(GridStandalonePage);
-        await waitFor(() => {
-            expect(screen.getByTestId("grid-view-stub").getAttribute("data-grid-id")).toBe("grid-a");
-        });
-        expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Open sales");
+        await waitFor(() => expect(cell()?.textContent).toBe("42"), { timeout: 30000 });
         first.unmount();
-
         setPage({ params: { project: "demo", gridId: "grid-b" } });
         render(GridStandalonePage);
-        await waitFor(() => {
-            expect(screen.getByTestId("grid-view-stub").getAttribute("data-grid-id")).toBe("grid-b");
-        });
-        expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Sales by month");
+        await waitFor(() => expect(cell()?.textContent).toBe("7"), { timeout: 30000 });
+        expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Second");
     });
 
-    it("keeps the Grid query surface open when legacy source metadata is deleted", async () => {
-        createGrid(projectDoc, "demo-table-sales", {
-            gridId: "grid-a",
-            name: "Open sales",
-            query: "SELECT * FROM another_relation",
-        });
-
+    it("observes names, removal and a replacement entry under the same Grid ID", async () => {
+        seed();
+        const oldEntry = getGridRegistry(projectDoc).get("grid-a")!;
         render(GridStandalonePage);
-        await waitFor(() => expect(screen.getByTestId("yjs-table-view")).toBeTruthy());
-        // The legacy owner is not a dependency of this query, so it must not
-        // be presented as the current source while provenance is unresolved.
-        expect(screen.queryByTestId("grid-source-table-link")).toBeNull();
-
-        registeredTables = [];
-        // Mirror the production registry deletion notification. The mocked
-        // resolver now reports the referenced identity as absent.
-        getTableRegistry(projectDoc).set("registry-change", new Y.Map());
-
-        await waitFor(() => expect(screen.getByTestId("yjs-table-view")).toBeTruthy());
-        expect(screen.queryByTestId("grid-view-stub")).toBeNull();
-        expect(screen.queryByTestId("grid-source-table-link")).toBeNull();
-        expect(screen.getByRole("button", { name: "UI" })).toBeTruthy();
+        await waitFor(() => expect(cell()?.textContent).toBe("42"), { timeout: 30000 });
+        oldEntry.set("name", "Renamed");
+        await waitFor(() => expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Renamed"));
+        removeGrid(projectDoc, "grid-a");
+        await waitFor(() => expect(screen.getByText("Grid not found")).toBeTruthy());
+        expect(screen.queryByTestId("yjs-table-view")).toBeNull();
+        seed("grid-a", "Replacement", 7);
+        await waitFor(() => expect(cell()?.textContent).toBe("7"), { timeout: 30000 });
+        expect(getGridRegistry(projectDoc).get("grid-a")).not.toBe(oldEntry);
+        expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe("Replacement");
     });
 
-    it("keeps a repairable Grid surface when its legacy source Table is gone", async () => {
-        createGrid(projectDoc, "deleted-table", { gridId: "grid-a", name: "Orphan" });
-
+    it("keeps a broken SELECT editable without a fallback Table", async () => {
+        createGrid(projectDoc, undefined, { gridId: "grid-a", query: "SELECT * FROM missing_relation" });
         render(GridStandalonePage);
-
-        await waitFor(() => {
-            expect(screen.getByTestId("yjs-table-view")).toBeTruthy();
-        });
-        expect(screen.queryByTestId("grid-view-stub")).toBeNull();
-        expect(screen.getByRole("button", { name: "UI" })).toBeTruthy();
+        await waitFor(
+            () => expect(screen.getByTestId("yjs-table-query-error").textContent).toContain("missing_relation"),
+            { timeout: 30000 },
+        );
+        await fireEvent.click(screen.getByTestId("yjs-table-toggle-ui"));
+        expect(screen.getByTestId("yjs-table-query-input")).toBeTruthy();
+        expect(projectDoc.getMap("yjsTables").size).toBe(0);
     });
 
-    it("reports a Grid id that is not in the registry as not found", async () => {
+    it("reports a missing Grid without creating one", async () => {
         render(GridStandalonePage);
-
-        await waitFor(() => {
-            expect(screen.getByText("Grid not found")).toBeTruthy();
-        });
-        expect(screen.queryByTestId("grid-view-stub")).toBeNull();
+        await waitFor(() => expect(screen.getByText("Grid not found")).toBeTruthy());
+        expect(getGridRegistry(projectDoc).size).toBe(0);
     });
 
-    it("gates a query-only Grid in a non-public project behind sign-in", async () => {
-        createGrid(projectDoc, undefined, {
-            gridId: "grid-a",
-            name: "Private query",
-            query: "SELECT 1 AS value",
-        });
+    it("gates private cached definitions before rendering query rows", async () => {
+        seed();
         setPage({ params: { project: "private-project", gridId: "grid-a" } });
-
         render(GridStandalonePage);
-
-        await waitFor(() => {
-            expect(screen.getByText("Login required")).toBeTruthy();
-        });
-        expect(screen.queryByTestId("grid-view-stub")).toBeNull();
+        await waitFor(() => expect(screen.getByText("Login required")).toBeTruthy());
+        expect(screen.queryByTestId("yjs-table-view")).toBeNull();
     });
 });

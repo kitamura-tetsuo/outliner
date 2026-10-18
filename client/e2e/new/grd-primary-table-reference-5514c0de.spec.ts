@@ -3,6 +3,7 @@ import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "../fixtures/grid-render-trace";
 import { createBlankGrid, readGridProjectState } from "../utils/crossProjectGridHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
@@ -14,34 +15,54 @@ test(
         await createBlankGrid(page, "Table B", "table_b");
         await createBlankGrid(page, "Table A", "table_a");
 
-        const tableAView = page.getByTestId("yjs-table-view").filter({
+        const initialAView = page.getByTestId("yjs-table-view").filter({
             has: page.getByTestId("yjs-table-sql-name").filter({ hasText: /^table_a$/ }),
         });
-        const gridId = await tableAView.getAttribute("data-grid-id");
+        const gridId = await initialAView.getAttribute("data-grid-id");
         expect(gridId).toBeTruthy();
+        const tableAView = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+        const savedQuery = () =>
+            page.evaluate(
+                id =>
+                    (globalThis as any).__YJS_STORE__.yjsClient.getProject().ydoc.getMap("yjsGrids").get(id).get(
+                        "query",
+                    ),
+                gridId,
+            );
 
         const state = await readGridProjectState(page);
         const tableB = state.tables.find(table => table.sqlName === "table_b")!;
-        await page.evaluate(({ gridId, tableBSql }) => {
-            const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
-            project.ydoc.getMap("yjsGrids").get(gridId).set("query", `SELECT * FROM ${tableBSql}`);
-        }, { gridId, tableBSql: tableB.sqlName });
-
-        const embedded = page.getByTestId("yjs-table-view").filter({
-            has: page.getByTestId("yjs-table-name").filter({ hasText: "Table B" }),
-        });
+        await tableAView.getByTestId("yjs-table-toggle-ui").click();
+        await new SqlEditorHelper(tableAView.getByTestId("yjs-table-query-input")).fillAndCommit(
+            page,
+            `SELECT * FROM ${tableB.sqlName}`,
+        );
+        await expect.poll(savedQuery).toBe(`SELECT * FROM ${tableB.sqlName}`);
+        const embedded = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+        await expect(embedded.getByTestId("yjs-table-name")).toHaveText("Table A");
         await expect(embedded.getByTestId("yjs-table-sql-name")).toHaveText("table_b");
         const embeddedAction = embedded.getByTestId("yjs-grid-source-table-link");
         await embeddedAction.focus();
+        await expect(embeddedAction).toBeFocused();
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(new RegExp(`/-/tables/${tableB.id}$`), { timeout: 30000 });
 
         await page.goto(`/${encodeURIComponent(projectName)}/-/grids/${gridId}`);
         const standalone = page.getByTestId("yjs-table-view");
-        await expect(standalone.getByTestId("yjs-table-name")).toHaveText("Table B", { timeout: 30000 });
+        await expect(standalone.getByTestId("yjs-table-name")).toHaveText("Table A", { timeout: 30000 });
         await expect(standalone.getByTestId("yjs-table-sql-name")).toHaveText("table_b");
+        await standalone.getByTestId("yjs-table-toggle-ui").click();
+        const editor = new SqlEditorHelper(standalone.getByTestId("yjs-table-query-input"));
+        await editor.fillAndCommit(page, "SELECT 1 AS value");
+        await expect.poll(savedQuery).toBe("SELECT 1 AS value");
+        await expect(standalone.getByTestId("grid-query-dependencies")).toHaveText("No project Table dependencies");
+        await expect(standalone.getByTestId("yjs-grid-source-table-link")).toHaveCount(0);
+        await expect(standalone.getByTestId("yjs-table-name")).toHaveText("Table A");
+        await editor.fillAndCommit(page, "SELECT * FROM table_b");
+        await expect.poll(savedQuery).toBe("SELECT * FROM table_b");
         const standaloneAction = standalone.getByTestId("yjs-grid-source-table-link");
         await standaloneAction.focus();
+        await expect(standaloneAction).toBeFocused();
         await page.keyboard.press("Enter");
         await expect(page.getByTestId("table-entity-view")).toHaveAttribute("data-table-id", tableB.id, {
             timeout: 30000,

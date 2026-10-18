@@ -428,7 +428,7 @@ export function validateGridPresentationRequest(request: unknown): ValidatedRequ
                     throw invalid(`components["${column}"].label must be a string or null`);
                 }
                 if (typeof settings.label === "string") assertBytes(settings.label, MAX_GRID_TEXT_BYTES, "label");
-                change.label = settings.label;
+                change.label = settings.label as string | null;
             }
             if ("type" in settings) {
                 if (settings.type !== null && !(GRID_COMPONENT_TYPES as readonly unknown[]).includes(settings.type)) {
@@ -458,7 +458,7 @@ export function validateGridPresentationRequest(request: unknown): ValidatedRequ
         gridId: gridId as string,
         expectedPresentationRevision,
         changes: validated,
-        dryRun: dryRun ?? false,
+        dryRun: (dryRun as boolean | undefined) ?? false,
     };
 }
 

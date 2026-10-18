@@ -1,6 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/svelte";
-import { tick } from "svelte";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, waitFor } from "@testing-library/svelte";
+import { afterAll, afterEach, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createGrid, getGridHandles, setGridQuery } from "../../services/yjstable/gridDocs";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
@@ -8,137 +7,99 @@ import { addRecord, createTable, getTableHandles, setSchemaText } from "../../se
 import { resetTableEngineForTests } from "../../services/yjstable/tableEngine";
 import ProjectGridView from "./ProjectGridView.svelte";
 
-vi.mock("./YjsTableView.svelte", async () => {
-    const Stub = (await import("../../routes/[project]/-/grids/[gridId]/__fixtures__/GridViewStub.svelte")).default;
-    return { default: Stub };
-});
-
 afterEach(async () => await resetTableEngineForTests());
 afterAll(async () => await resetPgliteForTests());
 
-describe("ProjectGridView actual source", () => {
-    it("mounts the rich Grid against the Table proven by the current SELECT", async () => {
-        const projectDoc = new Y.Doc({ guid: "project-grid-actual-source" });
-        const aId = createTable(projectDoc, "A", "a");
-        const a = getTableHandles(projectDoc, aId)!;
-        setSchemaText(a, "CREATE TABLE a (id TEXT PRIMARY KEY, value TEXT)");
-        addRecord(a, { value: "from-a" }, "same-id");
-        const bId = createTable(projectDoc, "B", "b");
-        const b = getTableHandles(projectDoc, bId)!;
-        setSchemaText(b, "CREATE TABLE b (id TEXT PRIMARY KEY, value TEXT)");
-        addRecord(b, { value: "from-b" }, "same-id");
-        const gridId = createGrid(projectDoc, undefined, {
-            query: "SELECT id, value FROM b",
-        });
-
-        const onSourceResolved = vi.fn();
-        render(ProjectGridView, {
-            props: {
-                grid: getGridHandles(projectDoc, gridId)!,
-                projectDoc,
-                placementId: "placement-1",
-                pageId: "page-1",
-                pageTitle: "Page One",
-                onSourceResolved,
-            },
-        });
-
-        await waitFor(
-            () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(bId),
-            { timeout: 10_000 },
+it("renders source-specific UNION choices and routes its verified branch edit", { timeout: 60000 }, async () => {
+    const projectDoc = new Y.Doc({ guid: "grid-branch-metadata" });
+    const sources = ["a", "b"].map(name => {
+        const handles = getTableHandles(projectDoc, createTable(projectDoc, name, name))!;
+        setSchemaText(
+            handles,
+            `CREATE TABLE ${name} (id TEXT PRIMARY KEY, status TEXT NOT NULL CHECK (status IN ('${name}_open', '${name}_done')))`,
         );
-        expect(screen.getByTestId("grid-view-stub")).toHaveAttribute("data-placement-id", "placement-1");
-        expect(screen.getByTestId("grid-view-stub")).toHaveAttribute("data-page-id", "page-1");
-        expect(screen.getByTestId("grid-view-stub")).toHaveAttribute("data-page-title", "Page One");
-        expect(onSourceResolved).toHaveBeenLastCalledWith({ tableId: bId, name: "B", sqlName: "b" });
+        addRecord(handles, { status: `${name}_open` }, "same");
+        return handles;
     });
-
-    it("keeps mounted handles stable while a disappearing parent clears its derived Grid prop", async () => {
-        const projectDoc = new Y.Doc({ guid: "project-grid-teardown" });
-        const gridId = createGrid(projectDoc, undefined, { query: "SELECT 1 AS value" });
-        const rendered = render(ProjectGridView, {
-            props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc },
-        });
-
-        await expect(rendered.rerender({ grid: undefined as never, projectDoc })).resolves.toBeUndefined();
-        expect(screen.getByTestId("yjs-table-view").getAttribute("data-grid-id")).toBe(gridId);
-    });
-
-    it("keeps the rich selection surface for a multi-source readable result", async () => {
-        const projectDoc = new Y.Doc({ guid: "project-grid-multi-source" });
-        const aId = createTable(projectDoc, "A", "a");
-        const a = getTableHandles(projectDoc, aId)!;
-        setSchemaText(a, "CREATE TABLE a (id TEXT PRIMARY KEY, value TEXT)");
-        const bId = createTable(projectDoc, "B", "b");
-        const b = getTableHandles(projectDoc, bId)!;
-        setSchemaText(b, "CREATE TABLE b (id TEXT PRIMARY KEY, value TEXT)");
-        const gridId = createGrid(projectDoc, undefined, {
-            query: "SELECT id, value FROM a UNION ALL SELECT id, value FROM b",
-        });
-
-        render(ProjectGridView, { props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc } });
-
-        await waitFor(
-            () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(aId),
-            { timeout: 10_000 },
-        );
-    });
-
-    it("keeps the rich surface mounted while a changed query is evaluated", async () => {
-        const projectDoc = new Y.Doc({ guid: "project-grid-refresh" });
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
-        const table = getTableHandles(projectDoc, tableId)!;
-        setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, value TEXT)");
-        const gridId = createGrid(projectDoc, undefined, { query: "SELECT id, value FROM tasks" });
-        const grid = getGridHandles(projectDoc, gridId)!;
-
-        render(ProjectGridView, { props: { grid, projectDoc } });
-        await waitFor(() => expect(screen.getByTestId("grid-view-stub")).toBeTruthy(), { timeout: 10_000 });
-
-        setGridQuery(grid, "SELECT id, value || '!' AS value FROM tasks");
-        await tick();
-
-        expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId);
-    });
-
-    it("mounts the Table-owned repair controls from a single registered SQL dependency", async () => {
-        const projectDoc = new Y.Doc({ guid: "project-grid-schema-repair" });
-        const tableId = createTable(projectDoc, "Unconfigured", "unconfigured");
-        const gridId = createGrid(projectDoc, undefined, { query: "SELECT * FROM unconfigured" });
-
-        render(ProjectGridView, { props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc } });
-
-        expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId);
-    });
-
-    it("mounts repair controls when the referenced Table registry entry arrives after the Grid", async () => {
-        const projectDoc = new Y.Doc({ guid: "project-grid-delayed-table" });
-        const gridId = createGrid(projectDoc, undefined, { query: "SELECT * FROM delayed_table" });
-        render(ProjectGridView, { props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc } });
-
-        const tableId = createTable(projectDoc, "Delayed", "delayed_table");
-
-        await waitFor(
-            () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(tableId),
-            { timeout: 10_000 },
-        );
-    });
-
-    it("keeps creation-time query and schema repair controls available before source handles arrive", () => {
-        const projectDoc = new Y.Doc({ guid: "project-grid-bootstrap-controls" });
-        const gridId = createGrid(projectDoc, undefined, { query: "SELECT * FROM pending_table" });
-
-        render(ProjectGridView, {
-            props: {
-                grid: getGridHandles(projectDoc, gridId)!,
-                projectDoc,
-                projectName: "Project",
-                bootstrapSourceTableId: "pending-table-id",
-            },
-        });
-
-        expect(screen.getByTestId("yjs-table-toggle-ui")).toBeTruthy();
-        expect(screen.getByTestId("yjs-grid-source-table-link").getAttribute("href"))
-            .toContain("pending-table-id");
-    });
+    const query =
+        "SELECT 'a' AS source_kind, id AS source_id, status AS status FROM a UNION ALL SELECT 'b' AS source_kind, id AS source_id, status AS status FROM b";
+    const grid = getGridHandles(projectDoc, createGrid(projectDoc, undefined, { name: "Independent", query }))!;
+    const view = render(ProjectGridView, { props: { grid, projectDoc, projectName: "Project" } });
+    await waitFor(() => expect(view.container.querySelectorAll("td select")).toHaveLength(2), { timeout: 30000 });
+    const selects = view.container.querySelectorAll<HTMLSelectElement>("td select");
+    expect(Array.from(selects[0].options).filter(option => option.textContent).map(option => option.value)).toEqual([
+        "a_open",
+        "a_done",
+    ]);
+    expect(Array.from(selects[1].options).filter(option => option.textContent).map(option => option.value)).toEqual([
+        "b_open",
+        "b_done",
+    ]);
+    await fireEvent.pointerDown(selects[1]);
+    await fireEvent.change(selects[1], { target: { value: "b_done" } });
+    await waitFor(() => expect(sources[1].data.get("same")?.get("status")).toBe("b_done"));
+    expect(sources[0].data.get("same")?.get("status")).toBe("a_open");
+    expect(view.getByTestId("yjs-table-name")).toHaveTextContent("Independent");
+    await waitFor(() => expect(view.getByTestId("grid-query-dependencies").querySelectorAll("a")).toHaveLength(2));
+    await fireEvent.click(view.getByTestId("yjs-table-add-row"));
+    await waitFor(() =>
+        expect(view.getByTestId("yjs-grid-insert-status")).toHaveTextContent(/select|choose|ambiguous/i)
+    );
+    expect(sources.map(source => source.data.size)).toEqual([1, 1]);
+    view.unmount();
+    projectDoc.destroy();
 });
+
+it("keeps zero-Table computed results in the rich Grid and clears dependencies", { timeout: 60000 }, async () => {
+    const projectDoc = new Y.Doc({ guid: "grid-no-tables" });
+    const grid = getGridHandles(
+        projectDoc,
+        createGrid(projectDoc, undefined, { name: "Numbers", query: "SELECT 42 AS value, true AS flag" }),
+    )!;
+    const view = render(ProjectGridView, { props: { grid, projectDoc } });
+    await waitFor(() => expect(view.getByTestId("yjs-table-grid").textContent).toContain("42"), { timeout: 30000 });
+    expect(view.getByTestId("yjs-table-name")).toHaveTextContent("Numbers");
+    expect(view.container.querySelector('td[data-col="flag"] input[type="checkbox"]')).toBeTruthy();
+    expect(view.getByTestId("grid-query-dependencies")).toHaveTextContent("No project Table dependencies");
+    expect(projectDoc.getMap("yjsTables").size).toBe(0);
+    setGridQuery(grid, "SELECT broken AS broken FROM missing_table");
+    await waitFor(() => expect(view.getByTestId("yjs-table-query-error")).toBeTruthy());
+    expect(view.getByTestId("yjs-table-toggle-ui")).toBeTruthy();
+    view.unmount();
+    projectDoc.destroy();
+});
+
+it(
+    "retains choice metadata for repeated occurrences of the same physical UNION field",
+    { timeout: 60000 },
+    async () => {
+        const projectDoc = new Y.Doc({ guid: "grid-repeated-field" });
+        const table = getTableHandles(projectDoc, createTable(projectDoc, "A", "a"))!;
+        setSchemaText(
+            table,
+            "CREATE TABLE a (id TEXT PRIMARY KEY, status TEXT NOT NULL CHECK (status IN ('open', 'done')))",
+        );
+        addRecord(table, { status: "open" }, "same");
+        const branch = "SELECT 'a' AS source_kind, id AS source_id, status AS status FROM a";
+        const grid = getGridHandles(
+            projectDoc,
+            createGrid(projectDoc, undefined, { query: `${branch} UNION ALL ${branch}` }),
+        )!;
+        const view = render(ProjectGridView, { props: { grid, projectDoc } });
+        try {
+            await waitFor(() => expect(view.container.querySelectorAll("tbody tr")).toHaveLength(2), {
+                timeout: 30000,
+            });
+            const choices = view.container.querySelectorAll<HTMLSelectElement>('td[data-col="status"] select');
+            expect(choices).toHaveLength(2);
+            for (const choice of choices) {
+                expect(
+                    Array.from(choice.options).filter(option => option.textContent).map(option => option.value),
+                ).toEqual(["open", "done"]);
+            }
+        } finally {
+            view.unmount();
+            projectDoc.destroy();
+        }
+    },
+);

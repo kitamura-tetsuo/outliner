@@ -97,14 +97,11 @@ export class SeedClient {
                 );
 
                 // Handle specific error types
-                if (error.name === "AbortError") {
+                if (error instanceof Error && error.name === "AbortError") {
                     console.error("[SeedClient] Seeding timed out after 30 seconds");
                 } else if (
-                    error instanceof Error
-                        ? error.message
-                        : String(error).includes("Failed to fetch") || error instanceof Error
-                        ? error.message
-                        : String(error).includes("fetch error")
+                    (error instanceof Error ? error.message : String(error)).includes("Failed to fetch")
+                    || (error instanceof Error ? error.message : String(error)).includes("fetch error")
                 ) {
                     console.error(
                         `[SeedClient] Network error during seeding: ${

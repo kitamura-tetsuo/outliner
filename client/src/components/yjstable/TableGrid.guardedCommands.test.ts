@@ -43,7 +43,6 @@ describe("mounted guarded Grid command dispatch", { timeout: 30_000 }, () => {
                 columnOrder: ["done"],
                 session: relationSession,
                 mutationBoundary: harness.boundary,
-                prepareMutationAuthority: async () => {},
             },
         });
         try {
@@ -82,7 +81,6 @@ describe("mounted guarded Grid command dispatch", { timeout: 30_000 }, () => {
                 columnOrder: ["done"],
                 session: relationSession,
                 mutationBoundary: harness.boundary,
-                prepareMutationAuthority: async () => {},
             },
         });
         try {
@@ -115,7 +113,6 @@ describe("mounted guarded Grid command dispatch", { timeout: 30_000 }, () => {
                 columnOrder: ["done"],
                 session: relationSession,
                 mutationBoundary: harness.boundary,
-                prepareMutationAuthority: async () => {},
             },
         });
         try {

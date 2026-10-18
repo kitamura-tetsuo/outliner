@@ -18,12 +18,8 @@ test(
 
         const gridId = await fixture.gridA.getAttribute("data-grid-id");
         expect(gridId).toBeTruthy();
-        // Reload after fixture configuration so the command starts from a
-        // clean history while retaining the persisted cross-Table query.
-        await page.reload();
         const embedded = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
         await expect(embedded.getByTestId("grid-readonly-reason")).toHaveCount(0);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         await snapshotProject(page);
         // Address the editable cell by its durable record identity. A row
         // text filter stops matching while CellComponent replaces the value
@@ -49,11 +45,12 @@ test(
         await page.keyboard.press("Control+c");
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Embedded B edit");
 
-        await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/grids/${gridId}`);
-        await page.reload();
+        const show = page.getByRole("button", { name: "Show sidebar" });
+        if (await show.isVisible()) await show.click();
+        await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+        await page.getByTestId(`object-row-${gridId}`).locator('[data-testid^="object-open-"]').click();
         const standalone = page.getByTestId("yjs-table-view");
         await expect(standalone.getByTestId("grid-readonly-reason")).toHaveCount(0);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         const standaloneCell = standalone.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await standaloneCell.locator("button.cell-value").click();

@@ -116,7 +116,9 @@ test.describe("Grid fixed widths hold inside a partial-span Layout", () => {
         expect((await storedSpans(page)).map((entry) => entry.span)).toEqual([6, 6]);
 
         // Focusing an inline editor inside the Layout keeps every fixed track.
-        await grid.locator('td[data-col="title"] button.cell-value').first().click();
+        const titleButton = grid.locator('td[data-col="title"] button.cell-value').first();
+        await titleButton.evaluate(element => element.scrollIntoView({ block: "center", inline: "center" }));
+        await titleButton.click();
         await expect(grid.locator('td[data-col="title"] input.cell-input').first()).toBeVisible({
             timeout: 15000,
         });

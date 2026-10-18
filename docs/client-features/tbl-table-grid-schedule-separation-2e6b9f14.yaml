@@ -1,7 +1,7 @@
 id: FTR-2e6b9f14
 title: Standalone Table, Grid and Schedule entities
 title-ja: Table・Grid・Schedule の独立エンティティ化
-description: 'Table, Grid and Schedule are three independent entities and each has a URL whose subject matches the page. A Table owns schema and data: /<project>/-/tables/<tableId> shows the schema editor and a raw, editable data browser driven by an implicit and ephemeral `SELECT * FROM <sqlName>`, never a persisted Grid. Opening a Table never creates or selects a Grid; the resolve-or-create bridge (`ensureGridForTable`) is removed, so a Table with zero Grids is fully viewable and editable. The Table page lists the Grids whose `sourceTableId` points at it, as links to /<project>/-/grids/<gridId>, and the Schedules that reference it, as links to /<project>/-/schedules/<ruleId> — reference lists, not child lists, and no Grid result is mounted on the Table page. A Grid owns its SELECT, column order, labels, hidden columns, cell component settings and chart over one source Table; /<project>/-/grids/<gridId> renders exactly that and links back to the source Table instead of owning its schema, with an explicit missing-source state when the Table is gone. A Schedule is a project-level entity: it may reference several Tables (a write target plus whatever its SQL reads), so it is addressed at /<project>/-/schedules/<ruleId>, listed at /<project>/-/schedules, and appears in the dependency list of every Table it references. The old Table-nested schedule URL only forwards to the project-level list.'
+description: Table, Grid and Schedule are independent project entities. A Table owns schema and raw records; its standalone page offers CREATE TABLE editing and an implicit, ephemeral SELECT * browser without creating a Grid. Its Grid reference list follows actual current SQL dependencies. A Grid owns its identity, SELECT, labels, order, visibility, widths, component settings and charts. Embedded and standalone Grids use the same primary-independent Project SELECT runtime over zero, one or several Tables or outline_items. They link to actual dependencies or report empty/unavailable dependencies, and keep broken-query editing accessible. Existing-row effects use verified physical sources, while Add row uses the independent guarded INSERT resolver. Grid presentation metadata never establishes mutation authority. Schedules remain project-level objects with their own write targets and SQL dependencies; the retired Table-nested Schedule URL forwards to the project Schedule list.
 category: client
 status: implemented
 components:
@@ -16,13 +16,14 @@ components:
 - client/src/routes/[project]/-/tables/[tableId]/schedule/+page.svelte
 - client/src/services/schedule/scheduleRuleService.ts
 - client/src/services/yjstable/gridDocs.ts
-- client/src/services/yjstable/gridQueryRunner.ts
+- client/src/services/yjstable/gridMetadataResolver.ts
+- client/src/services/yjstable/projectSelectSession.ts
 - client/src/services/yjstable/tableDependencies.ts
 - client/src/services/yjstable/tableQueryRunner.ts
 acceptance:
 - /<project>/-/grids/<gridId> renders that Grid's own query, presentation and result
 - /<project>/-/tables/<tableId> is a page about the Table entity, showing its schema and its raw rows
-- A Grid page links back to its source Table and shows an explicit missing-source state when the Table is gone
+- A Grid page shows its own name and actual SQL dependency links, or explicit empty/unavailable dependencies; a broken query retains its editor
 - A Schedule is addressable at the project level and may reference several Tables without one owning it
 - A Table with zero Grid entities is still viewable and editable
 - A persisted Table opened directly on a cold standalone route restores its schema and rows from its Table subdoc room
@@ -30,14 +31,20 @@ acceptance:
 - Edits made in the raw data browser write directly to the Table through the Table write paths
 - Every Table a Schedule references reports it in its dependency/reference list
 - Opening a Table never creates a Grid and never mutates the Grid registry
+- Replacing or removing a Grid ends the old occurrence authority and updates standalone identity
+- Standalone private Grid data and pending actions are gated after logout or access revocation
 - Table data edits propagate to every Grid result and embedded Grid block
 - The Table data browser runs an implicit `SELECT * FROM <sqlName>` and persists no query or presentation state
-- The Table page lists every Grid whose sourceTableId is the Table, as links, without mounting their results
+- The Table page lists every current Grid whose SQL depends on that Table, as links, without mounting their results
 - The demo occurrences table page shows raw data plus links to both of its Grids
 - The project schedule list follows a table rename made while it is open
 - The table deletion dialog reports Grids and Schedules as dependencies rather than as contents
 - Two Grids over one Table stay independent on their standalone pages
 tests:
+- client/e2e/new/grd-delayed-editor-runtime-5610cafe.spec.ts
+- client/e2e/new/grd-live-source-runtime-5610cafe.spec.ts
+- client/e2e/new/grd-standalone-access-5610cafe.spec.ts
+- client/e2e/new/grd-union-runtime-5610cafe.spec.ts
 - client/e2e/schedule/sch-schedule-table-references-5d1c8a37.spec.ts
 - client/e2e/tables/tbl-standalone-grid-page-2e6b9f14.spec.ts
 - client/e2e/tables/tbl-table-grid-separation-2e6b9f14.spec.ts

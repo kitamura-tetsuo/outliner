@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { KeyEventHandler } from "./KeyEventHandler";
+import { isForeignInput, KeyEventHandler } from "./KeyEventHandler";
 
 describe("KeyEventHandler DOM methods", () => {
     beforeEach(() => {
@@ -22,6 +22,20 @@ describe("KeyEventHandler DOM methods", () => {
                 </div>
             </div>
         `;
+    });
+
+    it("leaves keyboard activation to a focused native dependency link", () => {
+        const link = document.createElement("a");
+        link.href = "/project/-/tables/table-b";
+        document.querySelector(".outliner-item")!.append(link);
+        link.focus();
+        expect(isForeignInput(link)).toBe(true);
+        const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+        link.addEventListener("keydown", event => KeyEventHandler.handleKeyDown(event));
+        link.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(false);
+        expect(document.activeElement).toBe(link);
+        expect(document.querySelectorAll(".outliner-item")).toHaveLength(3);
     });
 
     it("getItemText returns correct text", () => {

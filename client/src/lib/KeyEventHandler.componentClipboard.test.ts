@@ -13,6 +13,7 @@ import {
     pasteSpecialChoices,
     type PasteSpecialRequest,
 } from "../services/clipboard/pasteSpecial";
+import { createGrid } from "../services/yjstable/gridDocs";
 import { createTable, listTables } from "../services/yjstable/tableDocs";
 import {
     getTableClipboardSource,
@@ -223,6 +224,25 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         // Outward, an unrendered block contributes no line at all: its Table
         // name is not a caption the outline owns (#5024).
         expect(data.get("text/plain")).toBe("text\nTrailing");
+    });
+
+    it("copies a current Grid binding across partial text endpoints without a Table placement field", () => {
+        const gridId = createGrid(state.doc, undefined, { query: "SELECT id FROM sales" });
+        const value = new Map<string, unknown>([["componentType", "yjstable"], ["yjsGridId", gridId]]);
+        state.visible[1].model.original = {
+            id: "b",
+            key: "b",
+            text: "",
+            tree: { getNodeValueFromKey: () => value },
+        };
+        state.selection = { startItemId: "a", startOffset: 6, endItemId: "c", endOffset: 8, userId: "local" };
+        const { event, data } = copyEvent();
+        KeyEventHandler.handleCopy(event);
+        expect(copiedItems(data)).toEqual([
+            { text: "text", depth: 0 },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: gridId, yjsTableId: tableId },
+            { text: "Trailing", depth: 0 },
+        ]);
     });
 
     it("copies a lone Grid selected between its own boundaries (#5025)", () => {

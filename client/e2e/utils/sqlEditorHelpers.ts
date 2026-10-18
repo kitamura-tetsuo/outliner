@@ -69,14 +69,10 @@ export class SqlEditorHelper {
     }
 
     /** Moves focus out of the editor, which is what commits its value. */
-    async commit(_page: Page): Promise<void> {
-        // Monaco's active input differs between its textarea and EditContext
-        // implementations. Blur whichever descendant currently owns focus so
-        // every embedding surface exercises Monaco's normal focusout commit.
-        await this.root.evaluate((el) => {
-            const active = document.activeElement;
-            if (active instanceof HTMLElement && el.contains(active)) active.blur();
-        });
+    async commit(page: Page): Promise<void> {
+        // Move to an existing native control without activating it. This uses
+        // the browser's focus transition and Monaco's real widget blur event.
+        await page.getByTestId("main-toolbar").locator("button:visible:enabled").first().focus();
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })
             .toBe(false);

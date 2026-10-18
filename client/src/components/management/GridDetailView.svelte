@@ -1,11 +1,8 @@
 <script lang="ts">
     // Standalone Grid page: /:project/-/grids/:gridId.
     //
-    // A Grid is an independent SELECT + presentation over one source Table
-    // (issue #5012). This page owns exactly that — query, column UI, result,
-    // chart — and links to the source Table rather than editing its schema.
-    // Two Grids over the same Table are two independent pages; both write into
-    // the same Table data, because Table data is Table-owned.
+    // A Grid owns its query and presentation. The shared runtime resolves
+    // its actual SQL dependencies; Table pages retain schema ownership.
     import Loader from "../Loader.svelte";
     import { onMount, untrack } from "svelte";
     import { goto } from "$app/navigation";
@@ -13,18 +10,17 @@
     import AuthComponent from "../AuthComponent.svelte";
     import { getLogger } from "../../lib/logger";
     import { store } from "../../stores/store.svelte";
+    import { projectStore } from "../../stores/projectStore.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { resolve } from "$app/paths";
     import Breadcrumb from "../Breadcrumb.svelte";
     import ProjectGridView from "../yjstable/ProjectGridView.svelte";
-    // The mounted YjsTableView retains/releases the Grid's shared undo manager
-    // and the Table's for its own lifetime, so this page only resolves handles.
-    import { type GridHandles, getGridHandles } from "../../services/yjstable/gridDocs";
+    // History follows Project/Grid/Table ownership, not this route renderer.
+    import { type GridHandles, getGridHandles, getGridRegistry } from "../../services/yjstable/gridDocs";
     import { isPublicProject, projectRoute } from "../../lib/publicProject";
     import {
         projectGridsRoute,
         projectObjectsSelectedRoute,
-        projectTableRoute,
     } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
@@ -46,14 +42,19 @@
     let gridName: string | undefined = $state(undefined);
     let gridHandles: GridHandles | undefined = $state(undefined);
     let projectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
-    let resolvedQuerySource: { tableId: string; name: string; sqlName: string; } | undefined = $state(undefined);
+    let admittedProjectId = $state<string | undefined>();
+    let accessDenied = $state(false);
+    let releaseGridObserver: (() => void) | undefined;
+    let releaseAccessListener: (() => void) | undefined;
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
 
     // Public projects stay readable for anonymous visitors, matching the
     // standalone Table and Calendar routes.
     let isPublicDemo = $derived(isPublicProject(projectName));
-    let canAccess = $derived(isAuthenticated || isPublicDemo);
+    let canAccess = $derived(isPublicDemo || (isAuthenticated && !accessDenied && (!admittedProjectId
+        || (projectStore.isLoaded && projectStore.projects.some(project => project.id === admittedProjectId)))));
+
 
     // Duplicate now opens Object Manager with this Grid preselected instead of
     // the old per-object recursive dependency-scope chooser (issue #5153 §10):
@@ -63,11 +64,8 @@
         goto(projectObjectsSelectedRoute(projectName, routeGridId));
     }
 
-    function acceptResolvedQuerySource(source: { tableId: string; name: string; sqlName: string; }) {
-        resolvedQuerySource = source;
-    }
-
     async function handleAuthSuccess() {
+        if (!isAuthenticated) accessDenied = false;
         isAuthenticated = true;
     }
 
@@ -82,7 +80,6 @@
         isLoading = true;
         error = undefined;
         notFound = false;
-        resolvedQuerySource = undefined;
 
         try {
             // Releases the previous reference before taking another, so a
@@ -94,22 +91,26 @@
                 notFound = true;
                 return;
             }
-            if (isDestroyed) return;
+            if (isDestroyed || !canAccess) return;
+            admittedProjectId = projectHandle.projectId;
+            releaseAccessListener?.();
+            const client = yjsStore.yjsClient;
+            if (client && !isPublicDemo) {
+                const previous = client.onAccessDenied;
+                const denied = () => { previous?.(); accessDenied = true; };
+                client.onAccessDenied = denied;
+                releaseAccessListener = () => {
+                    if (client.onAccessDenied === denied) client.onAccessDenied = previous;
+                };
+            }
 
             if (!store.project?.ydoc) {
                 error = "Failed to load project document.";
                 return;
             }
 
-            const handles = getGridHandles(store.project.ydoc, routeGridId);
-            if (!handles) {
-                logger.warn(`Grid "${routeGridId}" not found in project "${projectName}"`);
-                notFound = true;
-                return;
-            }
-            gridHandles = handles;
-            gridName = String(handles.entry.get("name") ?? "") || "Grid";
             projectDoc = store.project.ydoc;
+            observeGrid(projectDoc, routeGridId);
 
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
@@ -118,6 +119,27 @@
         } finally {
             isLoading = false;
         }
+    }
+
+    function observeGrid(doc: NonNullable<typeof projectDoc>, id: string): void {
+        releaseGridObserver?.();
+        const registry = getGridRegistry(doc);
+        let observed: GridHandles | undefined;
+        const syncName = () => gridName = observed ? String(observed.entry.get("name") ?? "") || "Grid" : undefined;
+        const sync = () => {
+            const next = getGridHandles(doc, id);
+            if (observed?.entry !== next?.entry) {
+                observed?.entry.unobserve(syncName);
+                observed = next;
+                gridHandles = next;
+                observed?.entry.observe(syncName);
+            }
+            syncName();
+            notFound = !next;
+        };
+        registry.observe(sync);
+        sync();
+        releaseGridObserver = () => { registry.unobserve(sync); observed?.entry.unobserve(syncName); };
     }
 
     $effect(() => {
@@ -134,9 +156,13 @@
 
     onMount(() => {
         isAuthenticated = userManager.getCurrentUser() !== null;
+        const unsubscribeAuth = userManager.addEventListener(result => isAuthenticated = result !== null);
 
         return () => {
             isDestroyed = true;
+            unsubscribeAuth();
+            releaseGridObserver?.();
+            releaseAccessListener?.();
             projectHandle?.release();
             projectHandle = undefined;
         };
@@ -144,7 +170,7 @@
 </script>
 
 <svelte:head>
-    <title>{gridName ? gridName : "Grid"} | Outliner</title>
+    <title>{canAccess && gridName ? gridName : "Grid"} | Outliner</title>
 </svelte:head>
 
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
@@ -153,21 +179,14 @@
             { label: "Home", href: resolve("/") },
             { label: projectName || "Project", href: projectRoute(projectName) },
             { label: "Grids", href: projectGridsRoute(projectName) },
-            { label: gridName || "Grid" }
+            { label: canAccess ? gridName || "Grid" : "Grid" }
         ]} />
     </div>
     <div class="mb-4 flex items-baseline gap-3 flex-shrink-0 flex-wrap">
         <h1 class="text-2xl font-bold">
-            {gridName || "Grid"}
+            {canAccess ? gridName || "Grid" : "Grid"}
         </h1>
-        {#if resolvedQuerySource}
-            <a
-                class="text-sm text-blue-600 hover:underline"
-                href={projectTableRoute(projectName, resolvedQuerySource.tableId)}
-                data-testid="grid-source-table-link"
-            >Source table: {resolvedQuerySource.name}</a>
-        {/if}
-        {#if isAuthenticated && !isLoading && gridHandles && projectDoc}
+        {#if canAccess && isAuthenticated && !isLoading && gridHandles && projectDoc}
             <button
                 class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 onclick={openDuplicate}
@@ -190,7 +209,12 @@
         {/if}
     </div>
 
-    {#if isLoading}
+    {#if !canAccess}
+        <div class="rounded-md bg-blue-50 p-4">
+            <h3 class="text-sm font-medium text-blue-800">{isAuthenticated ? "Access denied" : "Login required"}</h3>
+            <p class="mt-2 text-sm text-blue-700">Please log in to view this grid.</p>
+        </div>
+    {:else if isLoading}
         <div class="flex justify-center py-8">
             <div class="flex flex-col items-center justify-center space-y-4" aria-busy="true" aria-live="polite" role="status">
                 <Loader />
@@ -208,21 +232,18 @@
                 The specified grid does not exist in project "{projectName}".
             </p>
         </div>
-    {:else if !canAccess}
-        <div class="rounded-md bg-blue-50 p-4">
-            <h3 class="text-sm font-medium text-blue-800">Login required</h3>
-            <p class="mt-2 text-sm text-blue-700">Please log in to view this grid.</p>
-        </div>
     {:else if gridHandles && projectDoc}
         <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
-            {#key `${gridHandles.gridId}:${projectDoc.guid}`}
+            {#key projectDoc.guid}
+            {#key gridHandles.entry}
                 <ProjectGridView
                     grid={gridHandles}
                     {projectDoc}
                     projectId={yjsStore.currentProjectId ?? undefined}
                     projectName={projectName}
-                    onSourceResolved={acceptResolvedQuerySource}
+                    canWrite={() => Boolean(canAccess)}
                 />
+            {/key}
             {/key}
         </div>
     {/if}

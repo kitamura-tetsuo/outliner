@@ -290,7 +290,7 @@ export function setGridComponentField(
                     + `the range ${GRID_COLUMN_WIDTH_MIN}..${GRID_COLUMN_WIDTH_MAX}`,
             );
         }
-        setGridColumnWidth(target, column, value);
+        setGridColumnWidth(target, column, value as number | undefined);
         return;
     }
     target.projectDoc.transact(() => {

@@ -7,6 +7,7 @@ registerCoverageHooks();
 import { expect, type Page, test } from "@playwright/test";
 import { createBlankGrid } from "../utils/crossProjectGridHelpers";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
+import { confirmSqlOnlyTableDeletion, readIndependentViews } from "../utils/sqlOnlyTableDeletionHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 const objectRow = (page: Page, type: string) =>
@@ -20,7 +21,7 @@ async function openObjects(page: Page) {
 }
 
 test(
-    "FTR-91b8f20c: remove-direct-references preserves SQL-dependent Page and Layout placements",
+    "FTR-91b8f20c: SQL-only Table deletion preserves independent Grid/Kanban Page and Layout placements",
     async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Dashboard", "Unaffected neighbour"]);
@@ -50,9 +51,10 @@ test(
 
         await openObjects(page);
         await objectRow(page, "table").locator('[data-testid^="object-open-"]').click();
+        const beforeDeletion = await readIndependentViews(page);
         await page.getByRole("button", { name: "Delete table" }).click();
-        await page.getByRole("dialog", { name: /Delete table/ })
-            .getByRole("button", { name: "Delete table and remove direct references" }).click();
+        await confirmSqlOnlyTableDeletion(page);
+        expect(await readIndependentViews(page)).toEqual(beforeDeletion);
         await openObjects(page);
         await expect(objectRow(page, "table")).toHaveCount(0);
         await expect(objectRow(page, "kanban")).toHaveCount(1);

@@ -84,6 +84,7 @@ export interface GridHandles extends GridDefinitionTarget {
 interface GridUndoEntry {
     undo: Y.UndoManager;
     refs: number;
+    cleanup: () => void;
 }
 const gridUndoManagers = new WeakMap<Y.Map<unknown>, GridUndoEntry>();
 
@@ -159,7 +160,24 @@ export function getGridHandles(projectDoc: Y.Doc, gridId: string): GridHandles |
         const undo = new Y.UndoManager([entry, components], {
             trackedOrigins: new Set([null]),
         });
-        managed = { undo, refs: 0 };
+        const ownerEnded = () => {
+            const current = gridUndoManagers.get(entry);
+            if (current) current.refs = 0;
+            destroyGridUndoManager(entry);
+        };
+        const deleted = () => {
+            if (getGridRegistry(projectDoc).get(gridId) !== entry) ownerEnded();
+        };
+        projectDoc.on("destroy", ownerEnded);
+        getGridRegistry(projectDoc).observe(deleted);
+        managed = {
+            undo,
+            refs: 0,
+            cleanup: () => {
+                projectDoc.off("destroy", ownerEnded);
+                getGridRegistry(projectDoc).unobserve(deleted);
+            },
+        };
         gridUndoManagers.set(entry, managed);
         globalUndoRouter.register(undo);
     }
@@ -187,6 +205,7 @@ export function destroyGridUndoManager(entry: Y.Map<unknown>): void {
     if (!managed) return;
     if (managed.refs > 0) managed.refs--;
     if (managed.refs > 0) return;
+    managed.cleanup();
     globalUndoRouter.unregister(managed.undo);
     managed.undo.destroy();
     gridUndoManagers.delete(entry);
@@ -433,10 +452,6 @@ export function findGridsByTableDependency(projectDoc: Y.Doc, tableId: string): 
     const table = listTables(projectDoc).find(candidate => candidate.tableId === tableId);
     const registry = getGridRegistry(projectDoc);
     return listGrids(projectDoc).filter(grid => {
-        // Keep retained definitions discoverable from the Table inspector.
-        // This is only a reference-list association: runtime query and write
-        // authority still comes exclusively from completed SELECT evidence.
-        if (grid.sourceTableId === tableId) return true;
         if (!table) return false;
         const query = String(registry.get(grid.gridId)?.get("query") ?? "");
         try {

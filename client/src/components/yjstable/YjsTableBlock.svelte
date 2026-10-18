@@ -75,7 +75,6 @@ let creationMode = $state<"new" | "query" | "existing-table" | "existing-grid">(
 let selectedExistingTableId = $state<string | undefined>(undefined);
 let selectedExistingGridId = $state<string | undefined>(undefined);
 let selectedExistingTableSqlName = $state<string | undefined>(undefined);
-let bootstrapSourceTableId = $state<string | undefined>(undefined);
 
 const existingTables = $derived.by(() => {
     void registryVersion;
@@ -163,7 +162,6 @@ function selectExistingTable() {
         name: table.name || "Grid",
         query: `SELECT * FROM ${table.sqlName}`,
     });
-    bootstrapSourceTableId = table.tableId;
     bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
 }
@@ -176,7 +174,6 @@ function selectExistingGrid() {
         return;
     }
     sourceError = undefined;
-    bootstrapSourceTableId = undefined;
     bindItemToGrid(item, selectedGrid.gridId, undefined);
     gridId = selectedExistingGridId;
 }
@@ -187,20 +184,18 @@ function createFromPreset(input: TableCreationInput): string | undefined {
     if (listTables(item.ydoc).some(table => table.sqlName === input.sqlName)) {
         return `SQL name "${input.sqlName}" is already used in this project`;
     }
-    const { gridId: newGridId, tableId } = createTableFromPreset(
+    const { gridId: newGridId } = createTableFromPreset(
         item.ydoc,
         input.preset,
         input.name,
         input.sqlName,
     );
-    bootstrapSourceTableId = tableId;
     bindItemToGrid(item, newGridId, undefined);
     gridId = newGridId;
     return undefined;
 }
 
 function createQueryGrid() {
-    bootstrapSourceTableId = undefined;
     const newGridId = createGrid(item.ydoc, undefined, {
         name: "Query Grid",
         query: "SELECT 1 AS value",
@@ -223,7 +218,7 @@ function createQueryGrid() {
     role="presentation"
 >
     {#if grid}
-        {#key `${grid.gridId}::${gridEntryToken}`}
+        {#key `${item.ydoc.guid}::${grid.gridId}::${gridEntryToken}`}
             <ProjectGridView
                 {grid}
                 projectDoc={item.ydoc}
@@ -233,7 +228,6 @@ function createQueryGrid() {
                 pageId={store.currentPage?.id || store.currentPage?.key || ""}
                 pageTitle={store.currentPage?.text?.toString?.() ?? ""}
                 {isReadOnly}
-                bootstrapSourceTableId={bootstrapSourceTableId}
             />
         {/key}
     {:else if gridId}

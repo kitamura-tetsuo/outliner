@@ -222,11 +222,15 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     const gridExports = new Map<string, NonNullable<ReturnType<typeof renderedGridExport>>>();
     const entries = visible.slice(first, last + 1).flatMap((entry, offset) => {
         const item = entry.model.original;
+        const nodeValue = (item as { tree?: { getNodeValueFromKey?: (key: string) => unknown; }; })
+            .tree?.getNodeValueFromKey?.(item.key ?? "") as { get?: (k: string) => unknown; } | undefined;
+        const rawGridId = nodeValue?.get?.("yjsGridId");
+        const gridId = typeof rawGridId === "string" ? rawGridId : undefined;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
         const kanbanId = getItemKanbanId(item);
         const isLayout = isLayoutItem(item);
-        const isComponent = Boolean(tableId || calendarId || kanbanId) || isLayout || isDiagramNode(item);
+        const isComponent = Boolean(gridId || tableId || calendarId || kanbanId) || isLayout || isDiagramNode(item);
         const text = String(item.text ?? "");
         // What the endpoints select of this item: an interval for a Text node, the whole
         // block for a component - both read from the one traversal (#5025).
@@ -241,14 +245,11 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const sliceEnd = interval?.endOffset ?? text.length;
         // Component blocks are atomic: a partial overlap copies the whole block.
         if (isComponent) hasComponent = true;
-        const nodeValue = (item as { tree?: { getNodeValueFromKey?: (key: string) => unknown; }; })
-            .tree?.getNodeValueFromKey?.(item.key ?? "") as { get?: (k: string) => unknown; } | undefined;
-        const rawGridId = nodeValue?.get?.("yjsGridId");
-        const gridId = typeof rawGridId === "string" ? rawGridId : undefined;
         const currentTableId = tableId ?? currentGridTableId(project.ydoc, gridId);
         const exportId = gridId ?? currentTableId;
-        if (currentTableId && exportId && !gridExports.has(exportId)) {
-            const exported = renderedGridExport(currentTableId);
+        if (exportId && !gridExports.has(exportId)) {
+            const exported = (gridId ? renderedGridExport(gridId) : undefined)
+                ?? (currentTableId ? renderedGridExport(currentTableId) : undefined);
             if (exported) gridExports.set(exportId, exported);
         }
         const collected: Array<{ item: typeof item; depth: number; text?: string; collapsed?: boolean; }> = [{
@@ -513,7 +514,8 @@ export function isForeignInput(target: EventTarget | null): boolean {
     const tagName = el.tagName?.toUpperCase();
     if (
         tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || tagName === "OPTION"
-        || tagName === "BUTTON" || el.getAttribute?.("role") === "gridcell"
+        || tagName === "BUTTON" || (tagName === "A" && el.hasAttribute?.("href"))
+        || el.getAttribute?.("role") === "gridcell"
         || el.isContentEditable || el.hasAttribute?.("contenteditable")
     ) {
         if (el.classList && el.classList.contains("global-textarea")) {

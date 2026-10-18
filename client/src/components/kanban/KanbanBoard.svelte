@@ -51,7 +51,7 @@ function refresh() {
     const next = getKanban(projectDoc, kanban.kanbanId);
     if (next) committed = copy(next);
 }
-const observer = (events: Y.YEvent<unknown>[]) => {
+const observer = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
     const meaningful = events.some(event =>
         !(event instanceof Y.YMapEvent)
         || [...event.changes.keys.keys()].some(key => key !== "sourceTableId")

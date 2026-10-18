@@ -222,6 +222,7 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
             trackedOrigins: new Set([null, ADAPTER_ORIGIN]),
         });
         tableUndoManagers.set(ydoc, undo);
+        ydoc.once("destroy", () => destroyTableUndoManager(ydoc));
         globalUndoRouter.register(undo);
     }
 
