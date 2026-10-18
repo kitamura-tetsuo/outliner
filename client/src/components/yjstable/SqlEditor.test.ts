@@ -51,10 +51,6 @@ describe("SqlEditor", () => {
         const root = getByTestId("sql");
         expect(root.getAttribute(FOREIGN_EDITOR_ATTRIBUTE)).toBe("sql");
         expect(root.getAttribute("data-block-dnd-owner")).toBe("sql-editor");
-        const commitTarget = root.querySelector<HTMLButtonElement>("[data-sql-editor-commit-target]");
-        expect(commitTarget?.type).toBe("button");
-        expect(commitTarget?.tabIndex).toBe(-1);
-        expect(commitTarget?.getAttribute("aria-hidden")).toBe("true");
     });
 
     it("shows the initial value in a SQL model, newlines intact", async () => {

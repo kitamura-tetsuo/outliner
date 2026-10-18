@@ -38,10 +38,7 @@ export class SqlEditorHelper {
 
     /** True while the caret is inside this editor. */
     async hasFocus(): Promise<boolean> {
-        return await this.root.evaluate((el) =>
-            !document.activeElement?.hasAttribute("data-sql-editor-commit-target")
-            && el.contains(document.activeElement)
-        );
+        return await this.root.evaluate((el) => el.contains(document.activeElement));
     }
 
     /** The text Monaco currently shows, line breaks included. */
@@ -73,10 +70,13 @@ export class SqlEditorHelper {
 
     /** Moves focus out of the editor, which is what commits its value. */
     async commit(_page: Page): Promise<void> {
-        // Click the editor's persistent local target rather than relying on a
-        // page-specific toolbar. The pointer transition exercises the same
-        // focusout path as a user click and prevents Monaco restoring focus.
-        await this.root.locator("[data-sql-editor-commit-target]").click({ force: true });
+        // Monaco's active input differs between its textarea and EditContext
+        // implementations. Blur whichever descendant currently owns focus so
+        // every embedding surface exercises Monaco's normal focusout commit.
+        await this.root.evaluate((el) => {
+            const active = document.activeElement;
+            if (active instanceof HTMLElement && el.contains(active)) active.blur();
+        });
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })
             .toBe(false);
