@@ -61,22 +61,23 @@ test.describe("DUP-6799a6e2: Duplicate selected across projects and Undo", () =>
 
             // Selected-to-selected reference rewrite: the copied Grid points at the
             // copied Table, not the source project's original.
-            const { copiedGridSourceId, copiedTableId } = await page.evaluate(() => {
+            const { copiedGridQuery, copiedTableSqlName } = await page.evaluate(() => {
                 // eslint-disable-next-line no-restricted-globals
                 const client = (window as any).__YJS_STORE__?.yjsClient;
                 const project = client?.getProject();
-                let sourceId: string | undefined;
+                let query: string | undefined;
                 project?.ydoc.getMap("yjsGrids").forEach((entry: any) => {
-                    if (entry.get("name") === "Board") sourceId = entry.get("sourceTableId");
+                    if (entry.get("name") === "Board") query = entry.get("query");
                 });
-                let tableId: string | undefined;
-                project?.ydoc.getMap("yjsTables").forEach((entry: any, key: string) => {
-                    if (entry.get("name") === "Board") tableId = key;
+                let sqlName: string | undefined;
+                project?.ydoc.getMap("yjsTables").forEach((entry: any) => {
+                    if (entry.get("name") === "Board") sqlName = entry.get("sqlName");
                 });
-                return { copiedGridSourceId: sourceId, copiedTableId: tableId };
+                return { copiedGridQuery: query, copiedTableSqlName: sqlName };
             });
-            expect(copiedGridSourceId).toBeTruthy();
-            expect(copiedGridSourceId).toBe(copiedTableId);
+            expect(copiedGridQuery).toBeTruthy();
+            expect(copiedTableSqlName).toBeTruthy();
+            expect(copiedGridQuery).toContain(copiedTableSqlName);
 
             // One Undo removes the whole cross-project operation.
             await page.getByTestId("toolbar-undo").click();

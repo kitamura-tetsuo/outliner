@@ -42,7 +42,6 @@ describe("mounted guarded Grid confirmation", { timeout: 30_000 }, () => {
                 columnOrder: ["value"],
                 session: relationSession,
                 mutationBoundary: harness.boundary,
-                prepareMutationAuthority: async () => {},
                 confirmRowDelete: true,
             },
         });
@@ -79,7 +78,6 @@ describe("mounted guarded Grid confirmation", { timeout: 30_000 }, () => {
                 columnOrder: ["value"],
                 session: relationSession,
                 mutationBoundary: harness.boundary,
-                prepareMutationAuthority: async () => {},
                 confirmRowDelete: true,
             },
         });

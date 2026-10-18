@@ -11,7 +11,7 @@ test.describe("Table Grid Header Labeling", () => {
     test(
         "Setting a label overrides the header text but leaves data-col as the SQL name",
         async ({ page }, testInfo) => {
-            const { _projectName, _pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+            await TestHelpers.seedProjectAndNavigate(page, testInfo, [
                 "Table testing item",
             ]);
 

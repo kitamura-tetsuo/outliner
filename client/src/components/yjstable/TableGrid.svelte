@@ -12,7 +12,7 @@ import {
 } from "../../services/yjstable/queryAnalysis";
 import { applyUnionedRowEdit, type RelationResolver } from "../../services/yjstable/relationRowWrite";
 import { RelationWriteError } from "../../services/yjstable/relationProvider";
-import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
+import type { ParsedTableSchema, TableColumnSchema } from "../../services/yjstable/schemaIntrospection";
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
     addRecord,
@@ -41,7 +41,7 @@ import {
     writeWritableCell,
 } from "../../services/yjstable/gridSelectionCommands";
 import type { GridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
-import type { GridPhysicalColumnMetadata } from "../../services/yjstable/gridMetadataResolver";
+import type { GridPhysicalColumnMetadata, GridResultColumnMetadata } from "../../services/yjstable/gridMetadataResolver";
 import {
     captureGridRowDeletion,
     executeCapturedGridRowDeletion,
@@ -78,7 +78,7 @@ interface Props {
     /** Receives a reorder when there is no Grid to persist it into. */
     onColumnOrderChange?: (order: string[]) => void;
     /** Source Table handles: writes for editable cells go here. */
-    handles: TableHandles;
+    handles?: TableHandles;
     adapter?: TableSyncAdapter;
     schema: ParsedTableSchema | undefined;
     query: string;
@@ -120,8 +120,8 @@ interface Props {
     mutationIncarnation?: string;
     /** Physical SELECT provenance used only to identify duplicate source cells across placements. */
     mutationPhysicalColumns?: readonly GridPhysicalColumnMetadata[];
-    /** Refreshes completed SELECT/provenance metadata before a guarded command captures targets. */
-    prepareMutationAuthority?: () => Promise<void>;
+    resultColumnMetadata?: readonly GridResultColumnMetadata[];
+    /** Requests a normal SELECT refresh after successful guarded effects. */
     onGuardedEffects?: () => Promise<void> | void;
     /** Whether deleting a row requires confirmation (default false). */
     confirmRowDelete?: boolean;
@@ -166,7 +166,7 @@ let {
     mutationBoundary,
     mutationIncarnation = "local-grid",
     mutationPhysicalColumns = [],
-    prepareMutationAuthority,
+    resultColumnMetadata = [],
     onGuardedEffects,
     confirmRowDelete = false,
     isReadOnly = false,
@@ -198,7 +198,10 @@ let unregisterSearch: (() => void) | undefined;
 let editingCell: GridCellAddress | undefined = $state();
 interface CellWriteAuthority {
     readonly cell: GridCellAddress;
-    readonly handles: TableHandles;
+    readonly incarnation: string;
+    readonly presentation: string;
+    readonly targets: string;
+    readonly handles: TableHandles | undefined;
     readonly adapter: TableSyncAdapter | undefined;
     readonly token: number | undefined;
     readonly catalogBound: boolean;
@@ -231,17 +234,32 @@ let suppressClickUntil = 0;
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
-const editability = $derived(analyzeQueryEditability(
-    query,
-    schema,
-    result.columns,
-    grid ? bareIdAuthority ?? {
-        status: "unavailable",
-        editableColumns: new Set<string>(),
-        reason: "Read-only view: query provenance has not been validated",
-    } : undefined,
-));
+const editability = $derived(grid ? {
+    editable: bareIdAuthority?.status === "compatible",
+    editableColumns: bareIdAuthority?.editableColumns ?? new Set<string>(),
+    rowIdentity: result.columns.includes(SOURCE_KIND_COLUMN) && result.columns.includes(SOURCE_ID_COLUMN)
+        ? "source" as const : result.columns.includes("id") ? "id" as const : undefined,
+    readOnlyReason: bareIdAuthority?.status === "compatible" ? undefined : bareIdAuthority?.reason ?? "Current query source evidence is unavailable",
+} : analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
+/** Metadata is selected per result occurrence, including heterogeneous UNION branches. */
+function fieldFor(columnId: string, rowTarget?: GridCommandRowTarget): TableColumnSchema | undefined {
+    if (!grid) return columnByName.get(columnId);
+    const candidates = mutationPhysicalColumns.filter(column => column.outputColumn === columnId
+        && (!rowTarget?.source || column.source.sqlName === rowTarget.source.sourceKind));
+    const first = candidates[0];
+    // Repeated result branches may describe the same one physical field.
+    // Distinct source/field identities remain ambiguous presentation metadata.
+    if (first?.field && candidates.every(candidate => candidate.field
+        && candidate.source.kind === first.source.kind && candidate.source.id === first.source.id
+        && candidate.source.sqlName === first.source.sqlName
+        && candidate.source.schemaRevision === first.source.schemaRevision
+        && candidate.physicalColumn === first.physicalColumn)) return first.field;
+    const typeId = resultColumnMetadata.find(column => column.name === columnId)?.typeId;
+    const kind = typeId === 16 ? "boolean" : [20, 21, 23].includes(typeId ?? 0) ? "integer"
+        : [700, 701, 1700].includes(typeId ?? 0) ? "number" : typeId === 1082 ? "date" : "text";
+    return { name: columnId, dataType: kind, kind, isNullable: true, isPrimaryKey: false } as const;
+}
 const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
 const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
 
@@ -258,18 +276,34 @@ function commitBareRecordValue(
         if (token === undefined) throw new RelationWriteError("This cell has no current write authority");
         adapter.commitRecordValue(recordId, columnId, value, token);
     } else {
+        if (!handles) throw new RelationWriteError("Raw Table mutation requires Table-owned handles");
         setRecordValue(handles, recordId, columnId, value);
     }
+}
+
+function presentationFingerprint(): string {
+    return JSON.stringify([displayColumns, componentTypes]);
+}
+
+function editTargetFingerprint(cell: GridCellAddress): string {
+    if (selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(cell.columnId, commandContext.rowTargets.get(cell.rowId)))) {
+        const summary = summarizeSelection(selection, commandContext);
+        if (summary.writableTargets.length > 1) return JSON.stringify(summary.writableTargets);
+    }
+    return JSON.stringify([cell]);
 }
 
 function captureCellWriteAuthority(cell: GridCellAddress): void {
     cellWriteAuthorities.set(JSON.stringify([cell.rowId, cell.columnId]), {
         cell,
+        incarnation: mutationIncarnation,
+        presentation: presentationFingerprint(),
+        targets: editTargetFingerprint(cell),
         handles,
         adapter,
         token: adapter?.writeAuthorityToken,
         catalogBound: columnByName.get(cell.columnId)?.enumLabels !== undefined,
-        record: handles.data.get(cell.rowId),
+        record: handles?.data.get(cell.rowId),
     });
     cellEditStatus = undefined;
 }
@@ -279,10 +313,15 @@ function releaseCellWriteAuthority(cell: GridCellAddress): void {
 }
 
 function checkCellWriteAuthority(cell: GridCellAddress, authority: CellWriteAuthority | undefined): void {
+    if (grid) {
+        if (!authority || authority.incarnation !== mutationIncarnation
+            || authority.presentation !== presentationFingerprint() || authority.targets !== editTargetFingerprint(cell)) throw new RelationWriteError("This cell changed while you were editing. Please edit it again.");
+        return;
+    }
     if (!authority?.catalogBound && columnByName.get(cell.columnId)?.enumLabels === undefined) return;
     if (
         !authority || authority.handles !== handles || authority.adapter !== adapter || !adapter
-        || authority.token !== adapter.writeAuthorityToken || authority.record !== handles.data.get(cell.rowId)
+        || authority.token !== adapter.writeAuthorityToken || authority.record !== handles?.data.get(cell.rowId)
     ) {
         throw new RelationWriteError("This cell changed while you were editing. Please edit it again.");
     }
@@ -398,12 +437,12 @@ const commandContext = $derived<GridCommandContext>({
     rowTargets: new Map(rowTargetEntries),
     columnOrder: displayColumns,
     editableColumns: editability.editableColumns,
-    valueKindOf: (columnId) => cellComponentTypeFor(componentTypes[columnId], columnByName.get(columnId)),
-    checkOptionsOf: (columnId) => {
-        const column = columnByName.get(columnId);
+    valueKindOf: (columnId, rowTarget) => cellComponentTypeFor(componentTypes[columnId], fieldFor(columnId, rowTarget)),
+    checkOptionsOf: (columnId, rowTarget) => {
+        const column = fieldFor(columnId, rowTarget);
         return column?.enumLabels ?? column?.checkOptions;
     },
-    isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
+    isNullableOf: (columnId, rowTarget) => fieldFor(columnId, rowTarget)?.isNullable ?? true,
     canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
     writeBareCell: (recordId, columnId, value) => commitBareRecordValue(recordId, columnId, value),
     guardedSourceWrites: mutationBoundary !== undefined,
@@ -607,7 +646,7 @@ onMount(() => {
                     outcomes.push({ ...entry, applied: false, reason: "read-only" });
                     continue;
                 }
-                const value = convertReplacementText(commandContext, entry.columnId, entry.newText);
+                const value = convertReplacementText(commandContext, entry.columnId, entry.newText, rowTarget);
                 if (value === undefined) {
                     outcomes.push({ ...entry, applied: false, reason: "invalid-value" });
                     continue;
@@ -648,7 +687,7 @@ onMount(() => {
                 });
             }
             if (idWrites.length > 0) {
-                handles.doc.transact(() => {
+                handles?.doc.transact(() => {
                     for (const write of idWrites) {
                         writeWritableCell(commandContext, { rowTarget: write.rowTarget, columnId: write.columnId }, write.value);
                     }
@@ -692,6 +731,14 @@ function selectCell(event: MouseEvent, cell: GridCellAddress): void {
     }
     else selection.select(cell);
     selectionRevision++;
+    // The native control's click first establishes its selection (including
+    // Shift extension), before change commits. Preserve its captured execution
+    // while completing this same user interaction's target selection.
+    const key = JSON.stringify([cell.rowId, cell.columnId]);
+    const authority = cellWriteAuthorities.get(key);
+    if (authority?.incarnation === mutationIncarnation && authority.presentation === presentationFingerprint()) {
+        cellWriteAuthorities.set(key, { ...authority, targets: editTargetFingerprint(cell) });
+    }
     // A mouse click always picks its own target; never let a stale keyboard
     // edit session steal focus back onto a different cell afterwards.
     editingCell = undefined;
@@ -942,12 +989,11 @@ async function commitCell(row: Record<string, unknown>, column: string, value: T
     const authority = cell ? cellWriteAuthorities.get(JSON.stringify([cell.rowId, cell.columnId])) : undefined;
     try {
         if (cell) checkCellWriteAuthority(cell, authority);
-        if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
+        if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column, cell ? commandContext.rowTargets.get(cell.rowId) : undefined))) {
             const summary = summarizeSelection(selection, commandContext);
             if (summary.writableTargets.length > 1) {
                 if (mutationBoundary) {
-                    await prepareMutationAuthority?.();
-                    if (summary.writableTargets.some(target => !isValueValidForCell(commandContext, target.columnId, value))) {
+                    if (summary.writableTargets.some(target => !isValueValidForCell(commandContext, target.columnId, value, target.rowTarget))) {
                         cellEditStatus = "The selected cells cannot all accept that value.";
                         return;
                     }
@@ -969,7 +1015,6 @@ async function commitCell(row: Record<string, unknown>, column: string, value: T
                 cellEditStatus = "Edit refused: the current logical row occurrence is unavailable.";
                 return;
             }
-            await prepareMutationAuthority?.();
             const outcome = await executeGridWrites(
                 { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
                 [{ target: { rowTarget, columnId: column }, value }],
@@ -987,7 +1032,7 @@ async function commitCell(row: Record<string, unknown>, column: string, value: T
     } catch (error) {
         cellEditStatus = error instanceof Error ? error.message : String(error);
     } finally {
-        if (cell) releaseCellWriteAuthority(cell);
+        if (cell && cellWriteAuthorities.get(JSON.stringify([cell.rowId, cell.columnId])) === authority) releaseCellWriteAuthority(cell);
     }
 }
 
@@ -1132,19 +1177,17 @@ async function pasteClipboardIntoSelection(): Promise<void> {
     if (typeof navigator === "undefined" || !navigator.clipboard?.readText) return;
     const capturedSelectionRevision = selectionRevision;
     const capturedResult = result;
+    const capturedIncarnation = mutationIncarnation;
+    const capturedPresentation = presentationFingerprint();
     let text: string;
     try {
         text = await navigator.clipboard.readText();
     } catch {
         return;
     }
-    if (selectionRevision !== capturedSelectionRevision || result !== capturedResult) {
-        pasteStatus = "Paste cancelled because the selection or query result changed.";
-        return;
-    }
-    await prepareMutationAuthority?.();
-    if (selectionRevision !== capturedSelectionRevision || result !== capturedResult) {
-        pasteStatus = "Paste cancelled because the selection or query result changed.";
+    if (selectionRevision !== capturedSelectionRevision || result !== capturedResult
+        || mutationIncarnation !== capturedIncarnation || presentationFingerprint() !== capturedPresentation) {
+        pasteStatus = "Paste cancelled because the selection, presentation, or query result changed.";
         return;
     }
     // An empty clipboard is a legitimate one-blank-cell source (a copied
@@ -1305,12 +1348,13 @@ function newRecordDefaults(): Record<string, TableRecordValue> {
 }
 
 async function addRow() {
+    if (isReadOnly) return;
     if (onAddRow) {
         await onAddRow();
         return;
     }
     if (rowCreationMode === "query" && (!editability.editable || editability.rowIdentity !== "id")) return;
-    addRecord(handles, newRecordDefaults());
+    if (handles) addRecord(handles, newRecordDefaults());
 }
 
 async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
@@ -1322,7 +1366,6 @@ async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
         return;
     }
     if (confirmRowDelete) {
-        if (mutationBoundary) await prepareMutationAuthority?.();
         const captured = mutationBoundary
             ? captureGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, [target])
             : undefined;
@@ -1335,7 +1378,6 @@ async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
         return;
     }
     if (mutationBoundary) {
-        await prepareMutationAuthority?.();
         reportGuardedOutcome(
             "Delete",
             await executeGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, [target]),
@@ -1353,13 +1395,7 @@ async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
  * row removal.
  */
 async function runDeleteCommand(): Promise<void> {
-    const capturedSelectionRevision = selectionRevision;
     const capturedKind = classifySelectionKind(selection.regions);
-    await prepareMutationAuthority?.();
-    if (selectionRevision !== capturedSelectionRevision || classifySelectionKind(selection.regions) !== capturedKind) {
-        cellEditStatus = "Delete refused: the selection changed while write authority was being prepared.";
-        return;
-    }
     if (mutationBoundary && capturedKind !== "rows") {
         const writes = planSelectionClearWrites(selection, commandContext);
         const outcome = await executeGridWrites(
@@ -1660,7 +1696,7 @@ function handleCancelDelete() {
                         >{rowIndex + 1}</th>
                         {#each displayColumns as column (column)}
                             {@const logicalCell = logicalRowId ? { rowId: logicalRowId, columnId: column } : undefined}
-                            {@const schemaColumn = columnByName.get(column)}
+                            {@const schemaColumn = fieldFor(column, logicalRowId ? commandContext.rowTargets.get(logicalRowId) : undefined)}
                             {@const CellComponent = cellComponentFor(componentTypes[column], schemaColumn)}
                             <td
                                 role="gridcell"

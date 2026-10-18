@@ -78,6 +78,7 @@ function expectOnlyExistingKanban(
     expect(getKanbanRegistry(doc).size).toBe(1);
     expect([...getKanbanRegistry(doc).keys()]).toEqual([kanbanId]);
     expect(getKanbanRegistry(doc).get(kanbanId)?.toJSON()).toEqual(kanbanDefinitionBefore);
+    expect(getKanbanRegistry(doc).get(kanbanId)?.has("sourceTableId")).toBe(false);
     expect(getTableRegistry(doc).get(existingTableId)).toBe(existingTableEntry);
     expect(getTableHandles(doc, existingTableId)?.doc).toBe(existingTableHandles.doc);
     expect(existingTableHandles.schemaText.toString()).toBe(schemaBefore);
@@ -151,7 +152,7 @@ describe("preset creation side-effect boundaries", () => {
         );
         expectNoInsertPreference(tableEntry);
         expectNoInsertPreference(gridEntry);
-        expect(gridEntry.get("sourceTableId")).toBe(tableId);
+        expect(gridEntry.has("sourceTableId")).toBe(false);
         expect(gridEntry.get("query")).toBe(preset.query(sqlName));
         expect(gridEntry.get("components")).toBeInstanceOf(Y.Map);
     });

@@ -183,6 +183,9 @@ describe("ObjectManagerController — Duplicate selected", () => {
             const recopiedGridId = result!.createdObjects.find(o => o.type === "grid")!.id;
             expect(getGridHandles(project.ydoc, recopiedGridId)).toBeDefined();
             expect([...page.items].some(item => item.componentType === "yjstable")).toBe(true);
+            globalUndoRouter.undo();
+            expect(getGridHandles(project.ydoc, recopiedGridId)).toBeUndefined();
+            expect([...page.items].some(item => item.componentType === "yjstable")).toBe(false);
         });
 
         it("survives a second undo after redo — the redo does not leave an orphaned, untracked auto-capture", async () => {

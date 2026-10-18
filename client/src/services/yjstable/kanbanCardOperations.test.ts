@@ -63,6 +63,7 @@ async function setup() {
         ],
         provenance: {
             kanbanId: "board",
+            sourceSqlName: "tasks",
             query: QUERY,
             evidence,
             analysis,

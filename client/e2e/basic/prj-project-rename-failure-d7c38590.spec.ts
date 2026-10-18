@@ -95,7 +95,7 @@ test.describe("Project Rename Failure Handling", () => {
                         headers: { "Content-Type": "application/json" },
                     });
                 }
-                return originalFetch(...args);
+                return originalFetch(args[0], args[1]);
             };
         });
 

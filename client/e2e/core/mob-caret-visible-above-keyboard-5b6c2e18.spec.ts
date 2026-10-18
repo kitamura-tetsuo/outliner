@@ -45,9 +45,9 @@ test.describe("Mobile keyboard caret visibility", () => {
             });
 
             global.__simulateKeyboard = () => {
-                global.visualViewport.height = originalHeight - simulatedKeyboardHeight;
-                global.visualViewport.dispatchEvent("resize");
-                global.visualViewport.dispatchEvent("scroll");
+                vv.height = originalHeight - simulatedKeyboardHeight;
+                vv.dispatchEvent("resize");
+                vv.dispatchEvent("scroll");
             };
         });
 

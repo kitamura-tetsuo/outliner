@@ -70,12 +70,9 @@ export class SqlEditorHelper {
 
     /** Moves focus out of the editor, which is what commits its value. */
     async commit(page: Page): Promise<void> {
-        await page.locator("body").click({ position: { x: 2, y: 2 } }).catch(() => {});
-        if (await this.hasFocus()) {
-            // Some layouts cover the top-left corner. What the editor reacts to
-            // is losing focus, not which element received the click.
-            await this.root.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-        }
+        // Move to an existing native control without activating it. This uses
+        // the browser's focus transition and Monaco's real widget blur event.
+        await page.getByTestId("main-toolbar").locator("button:visible:enabled").first().focus();
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })
             .toBe(false);

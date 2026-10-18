@@ -42,7 +42,6 @@ describe("readable Grid projections without write identity", { timeout: 30_000 }
                 columnOrder: ["value"],
                 session,
                 mutationBoundary: harness.boundary,
-                prepareMutationAuthority: async () => {},
             },
         });
         try {

@@ -6,11 +6,15 @@ import type * as Y from "yjs";
 import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { createProjectDescriptor, type ProjectDescriptor, resolveProject } from "../services/projectDirectoryService";
+import { bindProjectHistoryAuthorization } from "../services/undo/projectHistoryAuthorization";
+import { projectStore } from "../stores/projectStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { isOnPrem } from "./deployment";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
 import { getLogger } from "./logger";
+import { projectRoomPath } from "./yjs/roomPath";
+import { getRoomSyncState } from "./yjs/roomSyncState";
 const logger = getLogger("yjsService");
 
 interface ClientKey {
@@ -191,6 +195,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     const project = Project.createInstance(canonicalTitle);
     logger.info(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);
     const client = await YjsClient.connect(projectId, project);
+    authorizeClientHistory(client, userId);
     if (userManager.getCurrentUser()?.id !== userId) {
         client.dispose();
         throw new Error("Project creation was cancelled because the session changed");
@@ -305,10 +310,25 @@ export async function acquireClientByProjectId(
     }
 }
 
+/** Retained history uses the admitted connection's principal and Project, never the active view. */
+function authorizeClientHistory(client: YjsClient, principalId: string | undefined): void {
+    const projectId = client.containerId;
+    bindProjectHistoryAuthorization(client.project.ydoc, () => {
+        if (client.isDestroyed || getRoomSyncState(projectRoomPath(projectId)) === "denied") return false;
+        if (isDemoProjectSlug(projectId)) return true;
+        return Boolean(
+            principalId && userManager.getCurrentUser()?.id === principalId
+                && projectStore.isLoaded && !projectStore.error
+                && projectStore.projects.some(project => project.id === projectId),
+        );
+    });
+}
+
 async function connectAndRegister(projectId: string, title: string, userId: string): Promise<YjsClient> {
     const project = Project.createInstance(title);
     logger.info(`[connectAndRegister] Calling YjsClient.connect for projectId=${projectId}`);
     const client = await YjsClient.connect(projectId, project);
+    authorizeClientHistory(client, userId);
     logger.info(`[connectAndRegister] YjsClient.connect completed`);
     registry.set(keyFor(userId, projectId), [client, project]);
 
@@ -471,6 +491,7 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
 
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
+    authorizeClientHistory(client, userId);
     registry.set(keyFor(userId, resolvedId), [client, project]);
 
     yjsStore.yjsClient = client;

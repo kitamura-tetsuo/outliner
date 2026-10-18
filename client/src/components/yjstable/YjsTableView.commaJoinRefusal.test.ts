@@ -76,10 +76,10 @@ function mountEmbedded(
     handlesA: TableHandles,
     query: string,
 ) {
-    const gridId = createGrid(projectDoc, tableA, { name: "Grid", query });
+    const gridId = createGrid(projectDoc, undefined, { name: "Grid", query });
     const grid = getGridHandles(projectDoc, gridId)!;
     const view = render(YjsTableView, {
-        props: { grid, handles: handlesA, projectDoc, tableName: "Table A", sqlName: "tasks_a" },
+        props: { grid, projectDoc },
     });
     return { gridId, grid, view };
 }
@@ -149,8 +149,8 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(render.sample.map((row) => row.id)).toEqual(["r1", "r1"]);
             await waitFor(
                 () =>
-                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toMatch(
-                        /multiple sources|several tables/,
+                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toBe(
+                        "A supplier branch must read exactly one plain relation",
                     ),
                 { timeout: 30000 },
             );
@@ -177,7 +177,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
 
             // Neither the saved query nor the source binding moved.
             expect(getGridQuery(grid)).toBe(COMMA_QUERY);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
         } finally {
             view.unmount();
             await waitForTableEngineIdle();
@@ -222,8 +222,8 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             await awaitCompletedQuery(gridId, COMMA_QUERY);
             await waitFor(
                 () =>
-                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toMatch(
-                        /multiple sources|several tables/,
+                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toBe(
+                        "A supplier branch must read exactly one plain relation",
                     ),
                 { timeout: 30000 },
             );
@@ -234,7 +234,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
             expect(getGridQuery(grid)).toBe(COMMA_QUERY);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
         } finally {
             view.unmount();
             await waitForTableEngineIdle();
@@ -264,8 +264,8 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             await awaitCompletedQuery(gridId, NESTED_COMMA_QUERY);
             await waitFor(
                 () =>
-                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toMatch(
-                        /multiple sources|several tables/,
+                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toBe(
+                        "A supplier branch must read exactly one plain relation",
                     ),
                 { timeout: 30000 },
             );
@@ -295,7 +295,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
             expect(getGridQuery(grid)).toBe(NESTED_COMMA_QUERY);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
         } finally {
             view.unmount();
             await waitForTableEngineIdle();
@@ -334,8 +334,8 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(render.sample.map((row) => row.id)).toEqual(["r1", "r1"]);
             await waitFor(
                 () =>
-                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toMatch(
-                        /multiple sources|several tables/,
+                    expect(view.queryByTestId("grid-readonly-reason")?.textContent).toBe(
+                        "A supplier branch must read exactly one plain relation",
                     ),
                 { timeout: 30000 },
             );
@@ -380,7 +380,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(handlesB.data.get("b2")?.get("title")).toBe("Second");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
             expect(getGridQuery(grid)).toBe(query);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
         } finally {
             view.unmount();
             await waitForTableEngineIdle();

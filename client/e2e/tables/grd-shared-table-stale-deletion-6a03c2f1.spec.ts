@@ -23,11 +23,18 @@ const snapshot = (page: Page) =>
     page.evaluate(() => {
         const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
         const read = (key: string) =>
-            [...project.ydoc.getMap(key).entries()].map(([id, entry]: any) => ({
-                id,
-                ...entry.toJSON(),
-                data: key === "yjsTables" ? entry.get("doc").getMap("data").toJSON() : undefined,
-            }));
+            [...project.ydoc.getMap(key).entries()].map(([id, entry]: any) => {
+                const definition = entry.toJSON();
+                // The Table subdoc is a live Y.Doc whose observer internals
+                // change when a Grid mounts. Compare its authoritative data
+                // separately instead of snapshotting the runtime object.
+                delete definition.doc;
+                return {
+                    id,
+                    ...definition,
+                    data: key === "yjsTables" ? entry.get("doc").getMap("data").toJSON() : undefined,
+                };
+            });
         const placements = [...(globalThis as any).generalStore.currentPage.items].map((item: any) => ({
             id: item.id,
             gridId: item.yjsGridId ?? null,
@@ -81,12 +88,12 @@ test.describe("FTR-6a03c2f1: deleted selected sources", () => {
             (globalThis as any).__YJS_STORE__.yjsClient.getProject()
                 .ydoc.getMap("yjsGrids").delete(id), initial.grids[1].id);
         const afterDeletion = await snapshot(page);
-        await panel.getByTestId("yjs-grid-select-existing").click();
-        await expectRefused(page, panel, afterDeletion);
+        await expect(panel.getByTestId("yjs-grid-select-existing")).toHaveCount(0);
+        expect(await snapshot(page)).toEqual(afterDeletion);
         expect(afterDeletion.grids.map(grid => grid.id)).toEqual([initial.grids[0].id]);
     });
 
-    test("refuses a Grid whose selected source Table was deleted", async ({ page }) => {
+    test("places a Grid whose legacy source Table was deleted", async ({ page }) => {
         const initial = await createSources(page);
         const panel = await slashGrid(page, 2);
         await panel.getByRole("button", { name: "Existing Grid", exact: true }).click();
@@ -96,7 +103,12 @@ test.describe("FTR-6a03c2f1: deleted selected sources", () => {
                 .ydoc.getMap("yjsTables").delete(id), initial.tables[1].id);
         const afterDeletion = await snapshot(page);
         await panel.getByTestId("yjs-grid-select-existing").click();
-        await expectRefused(page, panel, afterDeletion);
-        expect(afterDeletion.tables.map(table => table.id)).toEqual([initial.tables[0].id]);
+        await expect(panel).toBeHidden();
+        const placed = await snapshot(page);
+        expect(placed.tables).toEqual(afterDeletion.tables);
+        expect(placed.grids).toEqual(afterDeletion.grids);
+        const placements = page.locator(`[data-grid-id="${initial.grids[1].id}"]`);
+        await expect(placements).toHaveCount(2);
+        await expect(placements.last()).toBeVisible();
     });
 });
