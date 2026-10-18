@@ -251,13 +251,79 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         await reached;
 
         setRecordValue(c.table, "one", "title", "Peer B");
-        op.observeProjection(await c.refresh());
         setRecordValue(c.table, "one", "title", "Beta");
-        op.observeProjection(await c.refresh());
+        const historyDepth = c.table.undo.undoStack.length;
         release();
 
         await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
         expect(c.table.data.get("one")?.get("title")).toBe("Beta");
+        expect(c.table.undo.undoStack).toHaveLength(historyDepth);
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("permanently cancels a held write after the source schema changes", async () => {
+        const c = await fixture();
+        globalUndoRouter.clear();
+        let release!: () => void;
+        let observed!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        const reached = new Promise<void>(resolve => observed = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observed();
+                await held;
+                return provider;
+            },
+        };
+        const op = c.controller(resolver);
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        expect(op.begin(card, "title")).toBe(true);
+        const pending = op.commit("Stale draft");
+        await reached;
+
+        setSchemaText(
+            c.table,
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT CHECK (status IN ('', 'todo', 'done')), note TEXT)",
+        );
+        await c.refresh();
+        const historyDepth = c.table.undo.undoStack.length;
+        release();
+
+        await expect(pending).resolves.toMatchObject({ ok: false });
+        expect(c.table.data.get("one")?.get("title")).toBe("Beta");
+        expect(c.table.undo.undoStack).toHaveLength(historyDepth);
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("allows a held write after an unrelated peer field changes", async () => {
+        const c = await fixture();
+        let release!: () => void;
+        let observed!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        const reached = new Promise<void>(resolve => observed = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observed();
+                await held;
+                return provider;
+            },
+        };
+        const op = c.controller(resolver);
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        expect(op.begin(card, "title")).toBe(true);
+        const pending = op.commit("Current draft");
+        await reached;
+
+        setRecordValue(c.table, "one", "status", "done");
+        op.observeProjection(await c.refresh());
+        release();
+
+        await expect(pending).resolves.toMatchObject({ ok: true });
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Current draft", status: "done" });
         c.runner.dispose();
         c.session.dispose();
     });
@@ -326,6 +392,8 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
                     sqlName: provider.sqlName,
                     capabilities: provider.capabilities,
                     materialize: () => provider.materialize(),
+                    existingRowWriteRevision: (rowId, column) =>
+                        provider.existingRowWriteRevision?.(rowId, column) ?? "",
                     applyWrite: async (write: RelationWrite) => {
                         writes++;
                         await provider.applyWrite(write);

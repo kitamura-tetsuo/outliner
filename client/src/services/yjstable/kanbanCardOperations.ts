@@ -24,9 +24,11 @@ interface PendingOperation {
     identity: CardIdentity;
     field: string;
     observedValue: unknown;
+    writeRevision?: string;
     schemaRevision?: string;
     destination?: KanbanLaneValue;
 }
+class StaleCardOperationError extends Error {}
 export interface KanbanCardOperationOptions {
     resolver: RelationResolver;
     schema?: () => ParsedTableSchema | undefined;
@@ -59,6 +61,7 @@ export class KanbanCardOperationController {
             identity: id,
             field,
             observedValue: card.row[field],
+            writeRevision: card.writeRevisions?.[field],
             schemaRevision: sourceRevision(p, id.sourceKind),
             destination,
         };
@@ -101,12 +104,21 @@ export class KanbanCardOperationController {
                 op.identity.sourceId,
                 route,
                 value,
-                () => {
+                provider => {
                     refusal = this.validate(op, value);
-                    if (refusal) throw new Error(refusal);
+                    if (refusal) throw new StaleCardOperationError(refusal);
                     const currentRoute = columnRoute(this.options.projection(), op.identity.sourceKind, op.field);
                     if (currentRoute !== route) {
-                        throw new Error("The result column route changed during this interaction.");
+                        throw new StaleCardOperationError("The result column route changed during this interaction.");
+                    }
+                    if (
+                        op.writeRevision !== undefined
+                        && provider.existingRowWriteRevision
+                        && provider.existingRowWriteRevision(op.identity.sourceId, route) !== op.writeRevision
+                    ) {
+                        throw new StaleCardOperationError(
+                            "The source field or schema changed during this interaction.",
+                        );
                     }
                     this.options.beginHistoryAction?.();
                 },
@@ -117,7 +129,12 @@ export class KanbanCardOperationController {
             return this.finish(op, true, "success");
         } catch (e) {
             if (this.pending !== op) return this.result(false, "refused", "The card interaction was invalidated.");
-            return this.finish(op, false, "error", e instanceof Error ? e.message : String(e));
+            return this.finish(
+                op,
+                false,
+                e instanceof StaleCardOperationError ? "refused" : "error",
+                e instanceof Error ? e.message : String(e),
+            );
         }
     }
     private validate(op: PendingOperation, value: TableRecordValue) {
@@ -153,6 +170,9 @@ export class KanbanCardOperationController {
         const card = findCard(p, op.identity);
         if (!card) return "The source record is no longer in the current result.";
         if (!Object.is(card.row[op.field], op.observedValue)) return "The field changed during this interaction.";
+        if (op.writeRevision !== undefined && card.writeRevisions?.[op.field] !== op.writeRevision) {
+            return "The source field or schema changed during this interaction.";
+        }
         return undefined;
     }
     private refuse(message: string) {

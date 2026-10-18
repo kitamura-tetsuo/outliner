@@ -22,6 +22,8 @@ export interface KanbanCard {
     occurrenceKey: string;
     sourceIdentity?: { kind?: string; id: string; };
     row: Record<string, unknown>;
+    /** Result-column revisions captured from the actual supplier at execution. */
+    writeRevisions?: Record<string, string>;
 }
 export interface KanbanLane {
     key: KanbanLaneValue;
@@ -188,11 +190,28 @@ export class KanbanQueryRunner {
         }
         const supplier = analysis.bareIdSource;
         const schemas = new Map<string, ParsedTableSchema>();
+        const providers = new Map<string, Awaited<ReturnType<ProjectSelectSession["resolveRelation"]>>>();
         await Promise.all(analysis.suppliers.map(async source => {
-            const schema = (await this.session.resolveRelation(source.sqlName))?.schema;
+            const provider = await this.session.resolveRelation(source.sqlName);
+            providers.set(source.sqlName, provider);
+            const schema = provider?.schema;
             if (schema) schemas.set(source.sqlName, schema);
         }));
         if (!this.session.isEvidenceCurrent(e)) return;
+        for (const cards of by.values()) {
+            for (const card of cards) {
+                const kind = card.sourceIdentity?.kind;
+                const id = card.sourceIdentity?.id;
+                const provider = kind ? providers.get(kind) : undefined;
+                if (!kind || !id || !provider?.existingRowWriteRevision) continue;
+                const revisions: Record<string, string> = {};
+                for (const output of columns) {
+                    const physical = unambiguousPhysicalColumn(analysis, kind, output);
+                    if (physical) revisions[output] = provider.existingRowWriteRevision(id, physical);
+                }
+                card.writeRevisions = revisions;
+            }
+        }
         this.resolvedSchemas = schemas;
         const schema = supplier ? schemas.get(supplier.sqlName) : undefined;
         this.resolvedSourceSchema = schema;

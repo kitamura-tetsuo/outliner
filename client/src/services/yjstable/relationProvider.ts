@@ -115,6 +115,12 @@ export interface RelationProvider {
      * that live provider whether the concrete target still exists.
      */
     assertExistingRowWriteAllowed?(write: Extract<RelationWrite, { op: "UPDATE" | "DELETE"; }>): void;
+    /**
+     * Monotonic source-local evidence for a particular existing-row field.
+     * Unlike the current value or schema text, this changes even when a peer
+     * changes a field/schema away and back before a query refresh observes it.
+     */
+    existingRowWriteRevision?(rowId: string, column: string): string;
     /** Apply a write back to the Yjs structure that owns the row. */
     applyWrite(write: RelationWrite): Promise<void>;
     /**
