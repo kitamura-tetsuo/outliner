@@ -33,13 +33,23 @@ describe("ProjectGridView actual source", () => {
 
         const onSourceResolved = vi.fn();
         render(ProjectGridView, {
-            props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc, onSourceResolved },
+            props: {
+                grid: getGridHandles(projectDoc, gridId)!,
+                projectDoc,
+                placementId: "placement-1",
+                pageId: "page-1",
+                pageTitle: "Page One",
+                onSourceResolved,
+            },
         });
 
         await waitFor(
             () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(bId),
             { timeout: 10_000 },
         );
+        expect(screen.getByTestId("grid-view-stub")).toHaveAttribute("data-placement-id", "placement-1");
+        expect(screen.getByTestId("grid-view-stub")).toHaveAttribute("data-page-id", "page-1");
+        expect(screen.getByTestId("grid-view-stub")).toHaveAttribute("data-page-title", "Page One");
         expect(onSourceResolved).toHaveBeenLastCalledWith({ tableId: bId, name: "B", sqlName: "b" });
     });
 

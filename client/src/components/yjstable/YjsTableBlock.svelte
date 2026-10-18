@@ -282,10 +282,30 @@ function createQueryGrid() {
         {/key}
     {:else if grid && !sourceTableId}
         {#key `${grid.gridId}::${gridEntryToken}`}
-            <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} {bootstrapSourceTableId} />
+            <ProjectGridView
+                {grid}
+                projectDoc={item.ydoc}
+                {projectId}
+                projectName={routeProjectName}
+                placementId={item.key}
+                pageId={store.currentPage?.id || store.currentPage?.key || ""}
+                pageTitle={store.currentPage?.text?.toString?.() ?? ""}
+                {isReadOnly}
+                {bootstrapSourceTableId}
+            />
         {/key}
     {:else if grid && !handles}
-        <ProjectGridView {grid} projectDoc={item.ydoc} {projectId} projectName={routeProjectName} {isReadOnly} {bootstrapSourceTableId} />
+        <ProjectGridView
+            {grid}
+            projectDoc={item.ydoc}
+            {projectId}
+            projectName={routeProjectName}
+            placementId={item.key}
+            pageId={store.currentPage?.id || store.currentPage?.key || ""}
+            pageTitle={store.currentPage?.text?.toString?.() ?? ""}
+            {isReadOnly}
+            {bootstrapSourceTableId}
+        />
     {:else if gridId}
         <p class="loading" data-testid="yjs-table-waiting">Loading grid...</p>
     {:else}
@@ -367,9 +387,11 @@ function createQueryGrid() {
                             </option>
                         {/each}
                     </select>
-                    <button type="button" data-testid="yjs-grid-select-existing" onclick={selectExistingGrid}>
-                        Select Grid
-                    </button>
+                    {#if existingGrids.some(candidate => candidate.gridId === selectedExistingGridId)}
+                        <button type="button" data-testid="yjs-grid-select-existing" onclick={selectExistingGrid}>
+                            Select Grid
+                        </button>
+                    {/if}
                 </div>
                 <p class="hint">Show an existing Grid at this outline location too.</p>
             {/if}

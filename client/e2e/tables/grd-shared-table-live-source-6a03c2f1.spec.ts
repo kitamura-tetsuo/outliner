@@ -25,7 +25,18 @@ const registries = (page: Page) =>
     page.evaluate(() => {
         const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
         const read = (key: string) =>
-            [...project.ydoc.getMap(key).entries()].map(([id, entry]: any) => ({ id, ...entry.toJSON() }));
+            [...project.ydoc.getMap(key).entries()].map(([id, entry]: any) => {
+                const definition = entry.toJSON();
+                // A Table's nested Y.Doc acquires observer bookkeeping when a
+                // newly placed Grid mounts. That runtime state is not registry
+                // data and must not make a no-mutation assertion fail.
+                delete definition.doc;
+                return {
+                    id,
+                    ...definition,
+                    data: key === "yjsTables" ? entry.get("doc").getMap("data").toJSON() : undefined,
+                };
+            });
         return { tables: read("yjsTables"), grids: read("yjsGrids") };
     });
 

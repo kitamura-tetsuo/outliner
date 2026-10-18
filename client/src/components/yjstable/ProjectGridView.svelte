@@ -20,6 +20,9 @@ interface Props {
     projectDoc: Y.Doc;
     projectId?: string;
     projectName?: string;
+    placementId?: string;
+    pageId?: string;
+    pageTitle?: string;
     isReadOnly?: boolean;
     /** Ephemeral creation-time hint; current SELECT evidence replaces it. */
     bootstrapSourceTableId?: string;
@@ -31,6 +34,9 @@ let {
     projectDoc,
     projectId,
     projectName,
+    placementId,
+    pageId,
+    pageTitle,
     isReadOnly = false,
     bootstrapSourceTableId,
     onSourceResolved,
@@ -199,6 +205,9 @@ onDestroy(() => {
             handles={actualSource.handles}
             {projectDoc}
             {projectId}
+            {placementId}
+            {pageId}
+            {pageTitle}
             tableName={actualSource.name}
             sqlName={actualSource.sqlName}
             sourceTableHref={actualSource.href}

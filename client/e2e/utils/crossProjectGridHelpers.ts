@@ -375,8 +375,21 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
         // Report the first Grid over each Table as that Table's `ui` so the
         // cross-project assertions keep reading one presentation per Table.
         const gridUiBySourceTable = new Map<string, Record<string, unknown>>();
+        const tableIdBySqlName = new Map<string, string>();
+        project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
+            tableIdBySqlName.set(String(entry.get("sqlName") ?? "").toLowerCase(), id);
+        });
+        const gridSourceTableId = (grid: any): string => {
+            const legacySource = String(grid?.get("sourceTableId") ?? "");
+            if (legacySource) return legacySource;
+            const query = String(grid?.get("query") ?? "");
+            const match = /\bfrom\s+(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|([\w-]+))/i.exec(query);
+            const sqlName = (match?.[1] ?? match?.[2] ?? match?.[3] ?? match?.[4] ?? "").toLowerCase();
+            return tableIdBySqlName.get(sqlName) ?? "";
+        };
+        const gridsById = new Map<string, any>();
         project.ydoc.getMap("yjsGrids").forEach((grid: any) => {
-            const sourceTableId = String(grid.get("sourceTableId") ?? "");
+            const sourceTableId = gridSourceTableId(grid);
             if (!sourceTableId || gridUiBySourceTable.has(sourceTableId)) return;
             const componentsMap = grid.get("components");
             gridUiBySourceTable.set(sourceTableId, {
@@ -385,6 +398,7 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
                 columnOrder: grid.get("columnOrder") ?? [],
             });
         });
+        project.ydoc.getMap("yjsGrids").forEach((grid: any, id: string) => gridsById.set(id, grid));
         const tables: GridTableState[] = [];
         project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
             const doc = entry.get("doc");
@@ -403,7 +417,10 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
         const walk = (items: any) => {
             for (let i = 0; i < items.length; i++) {
                 const item = items.at(i);
-                if (item?.componentType === "yjstable" && item.yjsTableId) hostTableIds.push(item.yjsTableId);
+                if (item?.componentType === "yjstable") {
+                    const tableId = item.yjsTableId || gridSourceTableId(gridsById.get(item.yjsGridId));
+                    if (tableId) hostTableIds.push(tableId);
+                }
                 if (item?.items) walk(item.items);
             }
         };
