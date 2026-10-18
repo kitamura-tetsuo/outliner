@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editability", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        test.setTimeout(180000);
+        test.setTimeout(300000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table anchor", "Ship the feature"]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
@@ -96,6 +96,23 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         await page.keyboard.press("Enter");
         await expect(tableRow.locator('td[data-col="text"] .cell-value', { hasText: "Water the plants" }))
             .toBeVisible({ timeout: 15000 });
+
+        // Drive the same verified UNION provenance through the unified
+        // SearchPanel provider. Choosing the Grid hit (rather than the
+        // simultaneously discoverable outline-text hit) proves that the
+        // guarded Grid command routes source_kind/source_id to outline_items.
+        if (!await page.getByTestId("search-panel").isVisible().catch(() => false)) {
+            await page.getByTestId("search-toggle-button").click();
+        }
+        await page.locator("#search-scope").selectOption("page");
+        await page.getByTestId("search-input").fill("Ship the feature");
+        await page.getByTestId("replace-input").fill("Ship through UNION");
+        await page.getByTestId("search-button").click();
+        await page.getByTestId("search-result-button").filter({ hasText: "text: Ship the feature" }).click();
+        await page.getByTestId("replace-button").click();
+        await expect(page.locator(".item-content", { hasText: "Ship through UNION" }))
+            .toBeVisible({ timeout: 15000 });
+        await page.getByTestId("search-panel").getByRole("button", { name: "Close Search Panel" }).click();
 
         // Edit the outline_items branch's row: the write must reach the item,
         // not the table (issue #4273's write-routing requirement). The grid

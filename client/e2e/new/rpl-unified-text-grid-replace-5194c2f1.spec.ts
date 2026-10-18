@@ -1,5 +1,6 @@
 /** @feature FTR-5194c2f1 */
 import { expect, test } from "@playwright/test";
+import { readGridProjectState } from "../utils/crossProjectGridHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
@@ -22,6 +23,9 @@ test(
         await row.locator('td[data-col="title"] input.cell-input').fill("needle in Grid");
         await page.keyboard.press("Enter");
         await expect(row).toContainText("needle", { timeout: 30000 });
+        const beforeReplace = await readGridProjectState(page);
+        const sourceTableId = beforeReplace.hostTableIds[0];
+        const sourceRecordId = Object.keys(beforeReplace.tables.find(table => table.id === sourceTableId)!.data)[0];
 
         await page.getByTestId("search-toggle-button").click();
         await page.getByTestId("search-input").fill("needle");
@@ -40,6 +44,10 @@ test(
         // The Grid write routes through the shared Table command layer -- it
         // shows up in the cell without any dialog (writable text, no rename risk).
         await expect(row).toContainText("found in Grid", { timeout: 30000 });
+        await expect.poll(async () => {
+            const state = await readGridProjectState(page);
+            return state.tables.find(table => table.id === sourceTableId)?.data[sourceRecordId]?.title;
+        }).toBe("found in Grid");
 
         // The Grid's own query result only refreshes from a debounced PGlite
         // re-query, but the session must not show a hit it just replaced --
