@@ -18,6 +18,37 @@ import type { RelationEvidence } from "./relationProvider";
 import { addRecord, deleteRecord, setRecordValue, type TableHandles, type TableRecordValue } from "./tableDocs";
 import type { TableSyncAdapter } from "./tableSyncAdapter";
 
+interface TableMutationTracker {
+    schema: number;
+    rows: Map<string, number>;
+    fields: Map<string, number>;
+}
+
+const mutationTrackers = new WeakMap<TableHandles["data"], TableMutationTracker>();
+
+function mutationTracker(handles: TableHandles): TableMutationTracker {
+    const existing = mutationTrackers.get(handles.data);
+    if (existing) return existing;
+    const tracker: TableMutationTracker = { schema: 0, rows: new Map(), fields: new Map() };
+    handles.schemaText.observe(() => tracker.schema++);
+    handles.data.observeDeep(events => {
+        for (const event of events) {
+            const rowId = event.path[0];
+            if (typeof rowId === "string") {
+                for (const column of event.changes.keys.keys()) {
+                    tracker.fields.set(`${rowId}\0${column}`, (tracker.fields.get(`${rowId}\0${column}`) ?? 0) + 1);
+                }
+            } else {
+                for (const changedRow of event.changes.keys.keys()) {
+                    tracker.rows.set(changedRow, (tracker.rows.get(changedRow) ?? 0) + 1);
+                }
+            }
+        }
+    });
+    mutationTrackers.set(handles.data, tracker);
+    return tracker;
+}
+
 export class TableRelationProvider implements RelationProvider {
     readonly capabilities: RelationCapabilities = TABLE_RELATION_CAPABILITIES;
 
@@ -25,11 +56,17 @@ export class TableRelationProvider implements RelationProvider {
     private readonly adapter: TableSyncAdapter;
     /** Resolves once the adapter finished its first schema application. */
     private readonly ready: Promise<unknown>;
+    private readonly mutationTracker: TableMutationTracker;
 
     constructor(handles: TableHandles, adapter: TableSyncAdapter, ready: Promise<unknown>) {
         this.handles = handles;
         this.adapter = adapter;
         this.ready = ready;
+        this.mutationTracker = mutationTracker(handles);
+    }
+
+    get schema() {
+        return this.adapter.appliedSchema;
     }
 
     get sqlName(): string {
@@ -79,6 +116,12 @@ export class TableRelationProvider implements RelationProvider {
         ) {
             throw new RelationWriteError(`Column "${write.column}" is not writable in the current schema`);
         }
+    }
+
+    existingRowWriteRevision(rowId: string, column: string): string {
+        const row = this.mutationTracker.rows.get(rowId) ?? 0;
+        const field = this.mutationTracker.fields.get(`${rowId}\0${column}`) ?? 0;
+        return `${this.mutationTracker.schema}:${row}:${field}`;
     }
 
     private applyWriteNow(write: RelationWrite): void {

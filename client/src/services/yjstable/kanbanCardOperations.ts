@@ -2,7 +2,7 @@ import { cellComponentTypeFor } from "../../components/yjstable/cellComponents";
 import { isValueValidForCell } from "./gridSelectionCommands";
 import type { KanbanLaneValue, KanbanSettings } from "./kanbanDocs";
 import type { KanbanCard, KanbanProjection } from "./kanbanQueryRunner";
-import { analyzeQueryEditability, resolveBareIdMutationAuthority } from "./queryAnalysis";
+import { unambiguousPhysicalColumn } from "./projectQueryProvenance";
 import type { RelationResolver } from "./relationRowWrite";
 import { applyUnionedRowEdit } from "./relationRowWrite";
 import type { ParsedTableSchema } from "./schemaIntrospection";
@@ -14,10 +14,10 @@ export interface KanbanCardOperationResult {
     state: Exclude<KanbanCardOperationState, "idle" | "pending">;
     message?: string;
 }
-
 interface CardIdentity {
-    sourceKind?: string;
+    sourceKind: string;
     sourceId: string;
+    supplierId?: string;
 }
 interface PendingOperation {
     token: number;
@@ -25,211 +25,210 @@ interface PendingOperation {
     identity: CardIdentity;
     field: string;
     observedValue: unknown;
+    writeRevision?: string;
+    schemaRevision?: string;
     destination?: KanbanLaneValue;
 }
-
+class StaleCardOperationError extends Error {}
 export interface KanbanCardOperationOptions {
     resolver: RelationResolver;
-    schema: () => ParsedTableSchema | undefined;
+    schema?: (sourceKind: string) => ParsedTableSchema | undefined;
     settings: () => KanbanSettings | undefined;
     projection: () => KanbanProjection;
     canWrite: () => boolean;
     beginHistoryAction?: () => void;
     onState?: (state: KanbanCardOperationState, message?: string) => void;
 }
-
-/**
- * Local causal controller for a single mounted Kanban. It deliberately keeps
- * intent outside Yjs: only the final, revalidated single-cell write reaches a
- * relation provider. Query execution remains the authority for card position.
- */
 export class KanbanCardOperationController {
     private sequence = 0;
     private pending: PendingOperation | undefined;
-
-    constructor(private readonly options: KanbanCardOperationOptions) {}
-
-    begin(card: KanbanCard, field: string, destination?: KanbanLaneValue): boolean {
-        const settings = this.options.settings();
-        const projection = this.options.projection();
-        const identity = identityOf(card);
+    constructor(private options: KanbanCardOperationOptions) {}
+    begin(card: KanbanCard, field: string, destination?: KanbanLaneValue) {
+        const s = this.options.settings(), p = this.options.projection(), id = identityOf(card, p);
         if (
-            !settings || !identity || !projection.current || projection.status !== "success" || !this.options.canWrite()
+            !s || !id || !p.current || p.status !== "success" || !this.options.canWrite()
+            || !columnRoute(p, id.sourceKind, field)
         ) {
             this.refuse("This card is not currently writable.");
             return false;
         }
-        if (destination !== undefined && !projection.lanes.some(lane => Object.is(lane.key, destination))) {
+        if (destination !== undefined && !p.lanes.some(l => Object.is(l.key, destination))) {
             this.refuse("That lane is no longer available.");
             return false;
         }
         this.pending = {
             token: ++this.sequence,
-            definition: definitionKey(settings),
-            identity,
+            definition: definitionKey(s),
+            identity: id,
             field,
             observedValue: card.row[field],
+            writeRevision: card.writeRevisions?.[field],
+            schemaRevision: sourceRevision(p, id.sourceKind),
             destination,
         };
         this.options.onState?.("pending");
         return true;
     }
-
-    chooseDestination(destination: KanbanLaneValue): boolean {
-        if (!this.pending || !this.options.projection().lanes.some(lane => Object.is(lane.key, destination))) {
+    chooseDestination(d: KanbanLaneValue) {
+        if (!this.pending || !this.options.projection().lanes.some(l => Object.is(l.key, d))) {
             this.refuse("That lane is no longer available.");
             return false;
         }
-        this.pending.destination = destination;
+        this.pending.destination = d;
         return true;
     }
-
-    cancel(): void {
+    cancel() {
         this.sequence++;
         this.pending = undefined;
         this.options.onState?.("idle");
     }
-
-    /** Definition mutations are observed independently, so A→B→A cannot revive a gesture. */
-    invalidateDefinition(): void {
+    invalidateDefinition() {
         if (this.pending) this.refuse("The Kanban changed during this interaction.");
     }
-
-    /** Permanently invalidate intent as soon as an authoritative refresh contradicts it. */
-    observeProjection(projection: KanbanProjection): void {
-        const operation = this.pending;
-        if (!operation || projection.status !== "success" || !projection.current) return;
-        const reason = this.validateCurrentProjection(operation, projection);
-        if (reason) this.refuse(reason);
+    observeProjection(p: KanbanProjection) {
+        if (!this.pending || p.status !== "success" || !p.current) return;
+        const r = this.validateProjection(this.pending, p);
+        if (r) this.refuse(r);
     }
-
     async commit(value: TableRecordValue): Promise<KanbanCardOperationResult> {
-        const operation = this.pending;
-        if (!operation) return this.result(false, "refused", "The card interaction is no longer active.");
-        const refusal = this.validate(operation, value);
-        if (refusal) return this.finish(operation, false, "refused", refusal);
-        if (Object.is(operation.observedValue, value)) {
-            return this.finish(operation, false, "refused", "The value is unchanged.");
-        }
-
+        const op = this.pending;
+        if (!op) return this.result(false, "refused", "The card interaction is no longer active.");
+        let refusal = this.validate(op, value);
+        if (refusal) return this.finish(op, false, "refused", refusal);
+        if (Object.is(op.observedValue, value)) return this.finish(op, false, "refused", "The value is unchanged.");
         try {
+            const initial = this.options.projection();
+            const route = columnRoute(initial, op.identity.sourceKind, op.field)!;
             await applyUnionedRowEdit(
                 this.options.resolver,
-                operation.identity.sourceKind ?? this.options.projection().provenance!.sourceSqlName,
-                operation.identity.sourceId,
-                operation.field,
+                op.identity.sourceKind,
+                op.identity.sourceId,
+                route,
                 value,
-                () => {
-                    const reason = this.validate(operation, value);
-                    if (reason) throw new Error(reason);
+                provider => {
+                    refusal = this.validate(op, value);
+                    if (refusal) throw new StaleCardOperationError(refusal);
+                    const currentRoute = columnRoute(this.options.projection(), op.identity.sourceKind, op.field);
+                    if (currentRoute !== route) {
+                        throw new StaleCardOperationError("The result column route changed during this interaction.");
+                    }
+                    if (
+                        op.identity.supplierId !== undefined
+                        && provider.evidence?.id !== op.identity.supplierId
+                    ) {
+                        throw new StaleCardOperationError("The actual source changed during this interaction.");
+                    }
+                    if (
+                        op.writeRevision !== undefined
+                        && provider.existingRowWriteRevision
+                        && provider.existingRowWriteRevision(op.identity.sourceId, route) !== op.writeRevision
+                    ) {
+                        throw new StaleCardOperationError(
+                            "The source field or schema changed during this interaction.",
+                        );
+                    }
                     this.options.beginHistoryAction?.();
                 },
             );
-            if (this.pending !== operation || operation.token !== this.sequence) {
+            if (this.pending !== op || op.token !== this.sequence) {
                 return this.result(false, "refused", "The card interaction was invalidated.");
             }
-            return this.finish(operation, true, "success");
-        } catch (error) {
-            if (this.pending !== operation) {
-                return this.result(false, "refused", "The card interaction was invalidated.");
-            }
-            return this.finish(operation, false, "error", error instanceof Error ? error.message : String(error));
+            return this.finish(op, true, "success");
+        } catch (e) {
+            if (this.pending !== op) return this.result(false, "refused", "The card interaction was invalidated.");
+            return this.finish(
+                op,
+                false,
+                e instanceof StaleCardOperationError ? "refused" : "error",
+                e instanceof Error ? e.message : String(e),
+            );
         }
     }
-
-    private validate(operation: PendingOperation, value: TableRecordValue): string | undefined {
-        if (this.pending !== operation || operation.token !== this.sequence) {
-            return "The card interaction was invalidated.";
-        }
+    private validate(op: PendingOperation, value: TableRecordValue) {
+        if (this.pending !== op || op.token !== this.sequence) return "The card interaction was invalidated.";
         if (!this.options.canWrite()) return "Project write access is unavailable.";
-        const settings = this.options.settings();
-        const projection = this.options.projection();
-        const schema = this.options.schema();
-        if (!settings || definitionKey(settings) !== operation.definition) {
-            return "The Kanban changed during this interaction.";
-        }
-        if (projection.status !== "success" || !projection.current || !projection.provenance || !schema) {
+        const s = this.options.settings(), p = this.options.projection();
+        if (!s || definitionKey(s) !== op.definition) return "The Kanban changed during this interaction.";
+        if (p.status !== "success" || !p.current || !p.provenance) {
             return "Current query evidence is unavailable.";
         }
-        const projectionReason = this.validateCurrentProjection(operation, projection);
-        if (projectionReason) return projectionReason;
-
-        const authority = resolveBareIdMutationAuthority(
-            projection.provenance.query,
-            projection.provenance.sourceSqlName,
-            schema,
-            projection.result?.columns ?? projection.columns,
-        );
-        const editability = analyzeQueryEditability(
-            projection.provenance.query,
-            schema,
-            projection.result?.columns ?? projection.columns,
-            operation.identity.sourceKind ? undefined : authority,
-        );
-        if (!editability.editable || !editability.editableColumns.has(operation.field)) {
-            return editability.readOnlyReason ?? `Column "${operation.field}" is read-only.`;
+        const reason = this.validateProjection(op, p);
+        if (reason) return reason;
+        const route = columnRoute(p, op.identity.sourceKind, op.field);
+        if (!route) return `Column "${op.field}" is read-only.`;
+        if (sourceRevision(p, op.identity.sourceKind) !== op.schemaRevision) {
+            return "The source schema changed during this interaction.";
         }
-        if ((editability.rowIdentity === "source") !== Boolean(operation.identity.sourceKind)) {
-            return "The result identity route changed during this interaction.";
+        const schema = this.options.schema?.(op.identity.sourceKind),
+            column = schema?.columns.find(c => c.name === route);
+        if (this.options.schema && !column) return "Current source field metadata is unavailable.";
+        if (column) {
+            const v = {
+                valueKindOf: () => cellComponentTypeFor(undefined, column),
+                checkOptionsOf: () => column.enumLabels ?? column.checkOptions,
+                isNullableOf: () => column.isNullable,
+            };
+            if (!isValueValidForCell(v, route, value)) return "The value is invalid for this field.";
         }
-        const column = schema.columns.find(candidate => candidate.name === operation.field);
-        if (!column) return `Column "${operation.field}" is not in the applied schema.`;
-        const validation = {
-            valueKindOf: () => cellComponentTypeFor(undefined, column),
-            checkOptionsOf: () => column.enumLabels ?? column.checkOptions,
-            isNullableOf: () => column.isNullable,
-        };
-        if (!isValueValidForCell(validation, operation.field, value)) return "The value is invalid for this field.";
         return undefined;
     }
-
-    private validateCurrentProjection(
-        operation: PendingOperation,
-        projection: KanbanProjection,
-    ): string | undefined {
-        if (
-            operation.destination !== undefined
-            && !projection.lanes.some(lane => Object.is(lane.key, operation.destination))
-        ) return "That lane is no longer available.";
-        const card = findCard(projection, operation.identity);
+    private validateProjection(op: PendingOperation, p: KanbanProjection) {
+        if (op.destination !== undefined && !p.lanes.some(l => Object.is(l.key, op.destination))) {
+            return "That lane is no longer available.";
+        }
+        const card = findCard(p, op.identity);
         if (!card) return "The source record is no longer in the current result.";
-        if (!Object.is(card.row[operation.field], operation.observedValue)) {
-            return "The field changed during this interaction.";
+        if (!Object.is(card.row[op.field], op.observedValue)) return "The field changed during this interaction.";
+        if (op.writeRevision !== undefined && card.writeRevisions?.[op.field] !== op.writeRevision) {
+            return "The source field or schema changed during this interaction.";
         }
         return undefined;
     }
-
-    private refuse(message: string): void {
+    private refuse(message: string) {
         this.pending = undefined;
         this.options.onState?.("refused", message);
     }
-    private finish(operation: PendingOperation, ok: boolean, state: "success" | "refused" | "error", message?: string) {
-        if (this.pending === operation) this.pending = undefined;
+    private finish(op: PendingOperation, ok: boolean, state: "success" | "refused" | "error", message?: string) {
+        if (this.pending === op) this.pending = undefined;
         this.options.onState?.(state, message);
         return this.result(ok, state, message);
     }
-    private result(ok: boolean, state: "success" | "refused" | "error", message?: string): KanbanCardOperationResult {
+    private result(ok: boolean, state: "success" | "refused" | "error", message?: string) {
         return { ok, state, message };
     }
 }
-
-function identityOf(card: KanbanCard): CardIdentity | undefined {
-    if (!card.sourceIdentity?.id) return undefined;
-    return { sourceKind: card.sourceIdentity.kind, sourceId: card.sourceIdentity.id };
+function columnRoute(p: KanbanProjection, kind: string, output: string) {
+    if (!p.provenance) return undefined;
+    if (!p.provenance.analysis) {
+        return p.provenance.sourceSqlName && p.provenance.sourceSqlName === kind
+            ? output
+            : undefined;
+    }
+    if (p.provenance.analysis.status !== "proven") return undefined;
+    return unambiguousPhysicalColumn(p.provenance.analysis, kind, output);
 }
-function sameIdentity(card: KanbanCard, identity: CardIdentity): boolean {
-    return card.sourceIdentity?.id === identity.sourceId && card.sourceIdentity.kind === identity.sourceKind;
+function sourceRevision(p: KanbanProjection, kind: string) {
+    return p.provenance?.analysis?.branches.find(branch => branch.source.sqlName === kind)?.source.schemaRevision;
 }
-function findCard(projection: KanbanProjection, identity: CardIdentity): KanbanCard | undefined {
-    for (const lane of projection.lanes) for (const card of lane.cards) if (sameIdentity(card, identity)) return card;
+function identityOf(c: KanbanCard, p: KanbanProjection): CardIdentity | undefined {
+    if (!c.sourceIdentity?.id) return undefined;
+    const sourceKind = c.sourceIdentity.kind ?? p.provenance?.sourceSqlName;
+    return sourceKind
+        ? { sourceKind, sourceId: c.sourceIdentity.id, supplierId: c.sourceIdentity.supplierId }
+        : undefined;
+}
+function findCard(p: KanbanProjection, id: CardIdentity) {
+    for (const l of p.lanes) {
+        for (const c of l.cards) {
+            if (
+                c.sourceIdentity?.id === id.sourceId
+                && (c.sourceIdentity.kind === id.sourceKind || c.sourceIdentity.kind === undefined)
+                && (id.supplierId === undefined || c.sourceIdentity.supplierId === id.supplierId)
+            ) return c;
+        }
+    }
     return undefined;
 }
-function definitionKey(settings: KanbanSettings): string {
-    return JSON.stringify([
-        settings.sourceTableId,
-        settings.query,
-        settings.groupField,
-        settings.titleField,
-        settings.detailFields,
-    ]);
+function definitionKey(s: KanbanSettings) {
+    return JSON.stringify([s.query, s.groupField, s.titleField, s.detailFields]);
 }

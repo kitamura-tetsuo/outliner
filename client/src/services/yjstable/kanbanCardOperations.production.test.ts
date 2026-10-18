@@ -7,7 +7,7 @@ import { type KanbanProjection, KanbanQueryRunner } from "./kanbanQueryRunner";
 import { resetPgliteForTests } from "./pgliteService";
 import { type RelationProvider, type RelationWrite, RelationWriteError } from "./relationProvider";
 import type { RelationResolver } from "./relationRowWrite";
-import { addRecord, createTable, getTableHandles, setRecordValue, setSchemaText } from "./tableDocs";
+import { addRecord, createTable, getTableHandles, removeTable, setRecordValue, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
 
 const SCHEMA =
@@ -32,12 +32,11 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
     addRecord(other, { title: "Union", status: "todo" }, "one");
     const kanbanId = createKanban(projectDoc, tableId, { query, groupField: "status", titleField: "title" });
     const session = createTableEngineSession({ projectDoc, projectId: projectDoc.guid, connect: localConnector });
-    const acquired = await session.acquire(tableId);
     const runner = new KanbanQueryRunner({
         projectDoc,
         kanbanId,
         kanban: getKanbanHandles(projectDoc, kanbanId)!,
-        sourceAdapter: acquired!.adapter,
+        connect: localConnector,
     });
     let projection: KanbanProjection = { status: "loading", current: false, lanes: [], columns: [] };
     runner.subscribeProjection(value => projection = value);
@@ -52,7 +51,7 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
     const controller = (resolver: RelationResolver = session) =>
         new KanbanCardOperationController({
             resolver,
-            schema: () => runner.sourceSchema,
+            schema: sourceKind => runner.schemaForSource(sourceKind),
             settings: () => getKanban(projectDoc, kanbanId),
             projection: () => projection,
             canWrite: () => true,
@@ -60,6 +59,7 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
         });
     return {
         projectDoc,
+        tableId,
         table,
         other,
         kanbanId,
@@ -93,7 +93,100 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
-    it("refuses every readonly saved-SELECT family and wrong-table bare ids", async () => {
+    it("validates UNION lane moves against the selected supplier schema", async () => {
+        const c = await fixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title, status FROM tasks UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+        );
+        setSchemaText(
+            c.table,
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT CHECK (status IN ('open', 'done')))",
+        );
+        setSchemaText(
+            c.other,
+            "CREATE TABLE other_tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT CHECK (status IN ('todo', 'blocked')))",
+        );
+        setRecordValue(c.table, "one", "status", "open");
+        addRecord(c.other, { title: "Blocked", status: "blocked" }, "blocked");
+        await c.refresh();
+
+        const bCard = c.projection.lanes.find(lane => lane.key === "todo")!.cards
+            .find(card => card.sourceIdentity?.kind === "other_tasks")!;
+        const operation = c.controller();
+        const historyDepth = c.other.undo.undoStack.length;
+        expect(operation.begin(bCard, "status", "open")).toBe(true);
+        await expect(operation.commit("open")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.get("status")).toBe("open");
+        expect(c.other.data.get("one")?.get("status")).toBe("todo");
+        expect(c.other.undo.undoStack).toHaveLength(historyDepth);
+
+        const allowed = c.controller();
+        expect(allowed.begin(bCard, "status", "blocked")).toBe(true);
+        await expect(allowed.commit("blocked")).resolves.toMatchObject({ ok: true });
+        expect(c.other.data.get("one")?.get("status")).toBe("blocked");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("permanently invalidates an edit when its supplier is replaced under the same SQL name", async () => {
+        const c = await fixture();
+        globalUndoRouter.clear();
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        const oldSupplierId = card.sourceIdentity?.supplierId;
+        const stale = c.controller();
+        expect(stale.begin(card, "title")).toBe(true);
+
+        expect(removeTable(c.projectDoc, c.tableId)).toBe(true);
+        const replacementId = createTable(c.projectDoc, "Replacement", "tasks");
+        const replacement = getTableHandles(c.projectDoc, replacementId)!;
+        setSchemaText(replacement, SCHEMA);
+        addRecord(replacement, { title: "Beta", status: "todo" }, "one");
+        await c.refresh();
+        const replacementCard = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        expect(replacementCard.sourceIdentity?.supplierId).toBe(replacementId);
+        expect(replacementCard.sourceIdentity?.supplierId).not.toBe(oldSupplierId);
+        const historyDepth = replacement.undo.undoStack.length;
+
+        await expect(stale.commit("Stale draft")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(replacement.data.get("one")?.get("title")).toBe("Beta");
+        expect(replacement.undo.undoStack).toHaveLength(historyDepth);
+
+        const current = c.controller();
+        expect(current.begin(replacementCard, "title")).toBe(true);
+        await expect(current.commit("Current draft")).resolves.toMatchObject({ ok: true });
+        expect(replacement.data.get("one")?.get("title")).toBe("Current draft");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("refuses a forged UNION kind that collides with another branch", async () => {
+        const c = await fixture(
+            "SELECT 'other_tasks' AS source_kind, id AS source_id, title, status FROM tasks UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+        );
+        const forged = c.projection.lanes.flatMap(lane => lane.cards).find(card => card.row.title === "Beta")!;
+        expect(forged.sourceIdentity).toBeUndefined();
+        expect(c.controller().begin(forged, "title")).toBe(false);
+        expect(c.table.data.get("one")?.get("title")).toBe("Beta");
+        expect(c.other.data.get("one")?.get("title")).toBe("Union");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("refuses a computed UNION kind that borrows another branch proof", async () => {
+        const c = await fixture(
+            "SELECT ('other_' || 'tasks') AS source_kind, id AS source_id, title, status FROM tasks UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+        );
+        const forged = c.projection.lanes.flatMap(lane => lane.cards).find(card => card.row.title === "Beta")!;
+        expect(forged.sourceIdentity).toBeUndefined();
+        const operation = c.controller();
+        expect(operation.begin(forged, "status")).toBe(false);
+        await expect(operation.commit("done")).resolves.toMatchObject({ ok: false });
+        expect(c.table.data.get("one")?.get("status")).toBe("todo");
+        expect(c.other.data.get("one")?.get("status")).toBe("todo");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("refuses readonly saved-SELECT families", async () => {
         const c = await fixture();
         for (
             const query of [
@@ -101,7 +194,6 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
                 "SELECT id, max(title) AS title, status FROM tasks GROUP BY id, status",
                 "SELECT DISTINCT id, title, status FROM tasks",
                 "SELECT id, upper(title) AS title, status FROM tasks",
-                "SELECT id, title, status FROM other_tasks",
             ]
         ) {
             updateKanban(c.projectDoc, c.kanbanId, { query });
@@ -113,6 +205,19 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
             }
             expect(c.table.data.get("one")?.get("title")).toBe("Beta");
         }
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("routes a bare id to the actual supplier instead of the legacy primary Table", async () => {
+        const c = await fixture("SELECT id, title, status FROM other_tasks");
+        const card = c.projection.lanes.flatMap(lane => lane.cards)[0]!;
+        const operation = c.controller();
+
+        expect(operation.begin(card, "title")).toBe(true);
+        await expect(operation.commit("Edited actual source")).resolves.toMatchObject({ ok: true });
+        expect(c.other.data.get("one")?.get("title")).toBe("Edited actual source");
+        expect(c.table.data.get("one")?.get("title")).toBe("Beta");
         c.runner.dispose();
         c.session.dispose();
     });
@@ -190,7 +295,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
-    it("permanently cancels a held write after observing a field A-to-B-to-A cycle", async () => {
+    it("permanently cancels a held write after an unobserved field A-to-B-to-A cycle", async () => {
         const c = await fixture();
         globalUndoRouter.clear();
         let release!: () => void;
@@ -212,13 +317,80 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         await reached;
 
         setRecordValue(c.table, "one", "title", "Peer B");
-        op.observeProjection(await c.refresh());
         setRecordValue(c.table, "one", "title", "Beta");
-        op.observeProjection(await c.refresh());
+        expect(c.projection.lanes.find(lane => lane.key === "todo")!.cards[0].row.title).toBe("Beta");
+        const historyDepth = c.table.undo.undoStack.length;
         release();
 
         await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
         expect(c.table.data.get("one")?.get("title")).toBe("Beta");
+        expect(c.table.undo.undoStack).toHaveLength(historyDepth);
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("permanently cancels a held write after the source schema changes", async () => {
+        const c = await fixture();
+        globalUndoRouter.clear();
+        let release!: () => void;
+        let observed!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        const reached = new Promise<void>(resolve => observed = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observed();
+                await held;
+                return provider;
+            },
+        };
+        const op = c.controller(resolver);
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        expect(op.begin(card, "title")).toBe(true);
+        const pending = op.commit("Stale draft");
+        await reached;
+
+        setSchemaText(
+            c.table,
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT CHECK (status IN ('', 'todo', 'done')), note TEXT)",
+        );
+        await c.refresh();
+        const historyDepth = c.table.undo.undoStack.length;
+        release();
+
+        await expect(pending).resolves.toMatchObject({ ok: false });
+        expect(c.table.data.get("one")?.get("title")).toBe("Beta");
+        expect(c.table.undo.undoStack).toHaveLength(historyDepth);
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("allows a held write after an unrelated peer field changes", async () => {
+        const c = await fixture();
+        let release!: () => void;
+        let observed!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        const reached = new Promise<void>(resolve => observed = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observed();
+                await held;
+                return provider;
+            },
+        };
+        const op = c.controller(resolver);
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        expect(op.begin(card, "title")).toBe(true);
+        const pending = op.commit("Current draft");
+        await reached;
+
+        setRecordValue(c.table, "one", "status", "done");
+        op.observeProjection(await c.refresh());
+        release();
+
+        await expect(pending).resolves.toMatchObject({ ok: true });
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Current draft", status: "done" });
         c.runner.dispose();
         c.session.dispose();
     });
@@ -248,6 +420,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         const realProvider = await c.session.resolveRelation("tasks");
         const readonly: RelationProvider = {
             sqlName: realProvider!.sqlName,
+            evidence: realProvider!.evidence,
             capabilities: { update: false },
             materialize: () => realProvider!.materialize(),
             applyWrite: async () => {
@@ -285,8 +458,11 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
                 if (!provider) return undefined;
                 return {
                     sqlName: provider.sqlName,
+                    evidence: provider.evidence,
                     capabilities: provider.capabilities,
                     materialize: () => provider.materialize(),
+                    existingRowWriteRevision: (rowId, column) =>
+                        provider.existingRowWriteRevision?.(rowId, column) ?? "",
                     applyWrite: async (write: RelationWrite) => {
                         writes++;
                         await provider.applyWrite(write);
@@ -318,6 +494,31 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         await expect(move.commit("done")).resolves.toMatchObject({ ok: true });
         await c.refresh();
         expect(c.projection.lanes.flatMap(lane => lane.cards)).toEqual([]);
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("refuses duplicate source occurrences with conflicting physical column routes", async () => {
+        const schema = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, status TEXT)";
+        const c = await fixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title AS shown, 'first' AS lane FROM tasks "
+                + "UNION ALL SELECT 'tasks', id, description, 'second' FROM tasks",
+        );
+        setSchemaText(c.table, schema);
+        setRecordValue(c.table, "one", "description", "Beta");
+        updateKanban(c.projectDoc, c.kanbanId, { groupField: "lane", titleField: "shown" });
+        await c.refresh();
+        globalUndoRouter.clear();
+
+        const secondOccurrence = c.projection.lanes.find(lane => lane.key === "second")!.cards.find(card =>
+            card.sourceIdentity?.id === "one"
+        )!;
+        const operation = c.controller();
+        expect(operation.begin(secondOccurrence, "shown")).toBe(false);
+        await expect(operation.commit("changed")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta", description: "Beta" });
+        globalUndoRouter.undo();
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta", description: "Beta" });
         c.runner.dispose();
         c.session.dispose();
     });

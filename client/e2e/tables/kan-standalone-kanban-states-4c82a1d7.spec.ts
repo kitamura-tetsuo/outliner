@@ -86,11 +86,14 @@ test(
         });
         await expect(page.getByTestId("kanban-empty")).toBeVisible({ timeout: 30000 });
 
-        await page.getByTestId("kanban-source-table-link").click();
+        await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/tables/${fixture.tableId}`);
         await page.getByRole("button", { name: "Delete table", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "Delete table and keep references" }).click();
         await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
-        await expect(page.getByTestId("kanban-missing-source")).toBeVisible({ timeout: 30000 });
-        expect((await readKanbans(page))[0].sourceTableId).toBe(fixture.tableId);
+        await expect(page.getByTestId("kanban-unavailable")).toContainText(
+            "Kanban query source is missing",
+            { timeout: 30000 },
+        );
+        expect((await readKanbans(page))[0]).not.toHaveProperty("sourceTableId");
     },
 );

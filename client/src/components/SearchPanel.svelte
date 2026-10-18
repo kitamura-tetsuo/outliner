@@ -586,6 +586,7 @@ const logger = getLogger("SearchPanel");
                             <button type="button"
                                 class="result-button"
                                 data-testid="search-result-button"
+                                data-placement-id={m.kind === "grid-cell" ? m.placementId : undefined}
                                 onclick={() => { activeMatchIndex = index; jumpTo(m); }}
                             >
                                 <span

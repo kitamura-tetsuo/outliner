@@ -25,6 +25,8 @@ export interface ProvenanceBranch {
     columns: readonly ProvenanceColumnWrite[];
     /** True only when this branch carries a verified source_kind/source_id pair. */
     routedIdentity: boolean;
+    /** Literal source_kind emitted by this branch, including unverified claims. */
+    claimedSourceKind?: string;
 }
 
 export interface ProjectQueryProvenance {
@@ -207,6 +209,36 @@ export function isProjectQueryProvenanceCurrent(
     return proof.fingerprint === evidenceFingerprint(evidence);
 }
 
+/**
+ * Resolve a result column only when every branch which can produce the same
+ * row identity agrees on its physical source column.
+ *
+ * A UNION can contain multiple occurrences of one source row. Since result
+ * rows do not retain their branch index, a differing route cannot safely be
+ * attributed to the occurrence selected by the user.
+ */
+export function unambiguousPhysicalColumn(
+    proof: ProjectQueryProvenance,
+    sourceKind: string,
+    outputColumn: string,
+): string | undefined {
+    if (proof.status !== "proven") return undefined;
+    const branches = proof.branches.length === 1
+        ? proof.branches.filter(branch => branch.source.sqlName === sourceKind)
+        : proof.branches.filter(branch =>
+            branch.claimedSourceKind === sourceKind
+            && branch.routedIdentity
+            && branch.source.sqlName === sourceKind
+        );
+    if (branches.length === 0) return undefined;
+    const routes = branches.map(branch =>
+        branch.columns.find(column => column.outputColumn === outputColumn)?.physicalColumn
+    );
+    if (routes.some(route => route === undefined)) return undefined;
+    const physicalColumns = new Set(routes);
+    return physicalColumns.size === 1 ? routes[0] : undefined;
+}
+
 function branchProvenance(shape: BranchShape, outputNames: string[], duplicateNames: boolean): ProvenanceBranch {
     const source = relationIdentity(shape.relation);
     const columns: ProvenanceColumnWrite[] = [];
@@ -239,6 +271,7 @@ function branchProvenance(shape: BranchShape, outputNames: string[], duplicateNa
         source,
         columns,
         routedIdentity: !duplicateNames && kind === shape.relation.sqlName && id === "id",
+        claimedSourceKind: kind,
     };
 }
 
