@@ -46,13 +46,22 @@ test.describe("TBL-3c8d1f4a: multiline SQL survives the Query editor", () => {
         await queryEditor.waitForReady();
 
         // The seeded query is multiline and is shown as such.
-        expect(await queryEditor.value()).toContain(BOUNDARY);
+        const original = await queryEditor.value();
+        expect(original).toContain(BOUNDARY);
+        const gridId = await view.getAttribute("data-grid-id");
 
         // The regression gesture: one harmless space, then leave the editor.
         await queryEditor.focus();
         await page.keyboard.press("ControlOrMeta+End");
         await page.keyboard.type(" ");
         await queryEditor.commit(page);
+
+        await expect.poll(() =>
+            page.evaluate(id => {
+                const project = (globalThis as any).__YJS_STORE__?.yjsClient?.getProject();
+                return project?.ydoc.getMap("yjsGrids").get(id)?.get("query");
+            }, gridId)
+        ).toBe(`${original} `);
 
         // The Grid still runs: no `syntax error at or near "rWHERE"`.
         await expect(view.getByTestId("yjs-table-query-error")).toBeHidden({ timeout: 30000 });
@@ -68,6 +77,7 @@ test.describe("TBL-3c8d1f4a: multiline SQL survives the Query editor", () => {
         const reopened = new SqlEditorHelper(view.getByTestId("yjs-table-query-input"));
         await reopened.waitForReady();
         const stored = await reopened.value();
+        expect(stored).toBe(`${original} `);
         expect(stored).toContain(BOUNDARY);
         expect(stored).not.toContain("rWHERE");
     });

@@ -22,7 +22,7 @@ export class DataValidationHelpers {
             await DataValidationHelpers.saveSnapshotsAndCompare(page, label);
         } catch (e: unknown) {
             // Do not fail the test if snapshot saving fails
-            console.warn("[afterEach] snapshot skipped:", e?.message ?? e);
+            console.warn("[afterEach] snapshot skipped:", e instanceof Error ? e.message : e);
         } finally {
             try {
                 // Check if page is still open before trying to dump logs
@@ -39,7 +39,7 @@ export class DataValidationHelpers {
                     console.log("[afterEach] Page already closed, skipping log dump");
                 }
             } catch (e) {
-                console.warn("[afterEach] log dump skipped:", e?.message ?? e);
+                console.warn("[afterEach] log dump skipped:", e instanceof Error ? e.message : e);
             }
         }
     }
@@ -144,11 +144,11 @@ export class DataValidationHelpers {
                 }
             }, { timeout: 5000 }).catch((e) => {
                 // Ignore errors during cleanup evaluation
-                console.log("[afterEach] cleanup evaluation skipped:", e?.message ?? e);
+                console.log("[afterEach] cleanup evaluation skipped:", e instanceof Error ? e.message : e);
             });
         } catch (e: unknown) {
             // Do not fail the test if cleanup fails
-            console.warn("[afterEach] cleanup skipped:", e?.message ?? e);
+            console.warn("[afterEach] cleanup skipped:", e instanceof Error ? e.message : e);
         }
     }
 
@@ -166,7 +166,7 @@ export class DataValidationHelpers {
                 return !!(store && store.project);
             }, { timeout: 30000 });
         } catch (e: unknown) {
-            const errMsg = e?.message ?? String(e);
+            const errMsg = e instanceof Error ? e.message : String(e);
             if (
                 !errMsg.includes("Test ended.") && !errMsg.includes("Target page, context or browser has been closed")
             ) {
@@ -225,7 +225,7 @@ export class DataValidationHelpers {
                 };
             }, { timeout: 30000 });
         } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] evaluate failed:", e?.message ?? e);
+            console.warn("[saveSnapshotsAndCompare] evaluate failed:", e instanceof Error ? e.message : e);
             return; // Skip snapshot if evaluation fails
         }
 

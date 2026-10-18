@@ -16,8 +16,9 @@ import {
     readWriteProbe,
     resizeHandle,
 } from "../utils/gridResizeHelpers";
-import { expectAutoColumn, readWidthGridRegistry } from "../utils/gridWidthHelpers";
+import { expectAutoColumn, readWidthGridRegistry, singleGridId } from "../utils/gridWidthHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
@@ -27,7 +28,7 @@ registerCoverageHooks();
  *   not swallow the next, unrelated pointer sequence (also after unmount);
  * - a subpixel pen move that keeps the rounded measured width of an auto
  *   column is a zero-effect no-op;
- * - an observed in-place source-Table rebinding on the standalone Grid page
+ * - an observed in-place SQL supplier change on the standalone Grid page
  *   (which does not remount on rebinding) cancels for good, A -> B -> A.
  */
 const SCHEMA = "CREATE TABLE orders (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n"
@@ -140,12 +141,19 @@ test.describe("Grid header drag resize lifecycle edges", () => {
         await expectAutoColumn(page, 0, "title");
     });
 
-    test("an observed source-Table rebinding on the standalone Grid page cancels for good", async ({ page, browser }) => {
+    test("an observed SQL supplier change on the standalone Grid page cancels for good", async ({ page, browser }) => {
+        const gridId = await singleGridId(page);
         await createBlankGrid(page, "Other", "other_orders");
+        await configureGrid(
+            page,
+            1,
+            SCHEMA.replace("orders", "other_orders"),
+            QUERY.replace("orders", "other_orders"),
+            "Other title",
+        );
         const state = await readGridProjectState(page);
-        const tableA = state.tables.find((t) => t.name === "Widths")!.id;
-        const tableB = state.tables.find((t) => t.name === "Other")!.id;
-        const gridId = (await readWidthGridRegistry(page)).find((g) => g.sourceTableId === tableA)!.gridId;
+        const tableB = state.tables.find(t => t.name === "Other")!;
+        const queryB = `SELECT id, title, quantity, done FROM ${tableB.sqlName}`;
         const outlineUrl = page.url();
         const projectSegment = new URL(outlineUrl).pathname.split("/")[1];
         const { context, peer } = await openSyncedPeer(browser, page, TestHelpers.createTestStorageState());
@@ -158,24 +166,24 @@ test.describe("Grid header drag resize lifecycle edges", () => {
             const press = await pressResizeHandle(page, 0, "title");
             await page.mouse.move(press.x + 70, press.y, { steps: 4 });
             await expect(gridHeader(page, 0, "title")).toHaveClass(/col-fixed/);
-            // A second normal client rebinds the Grid in place (B), then back (A).
-            const rebind = (target: string) =>
-                peer.evaluate(({ id, source }) => {
-                    const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
-                    project.ydoc.getMap("yjsGrids").get(id).set("sourceTableId", source);
-                }, { id: gridId, source: target });
-            await rebind(tableB);
-            await expect.poll(async () => (await gridEntry(page, gridId)).sourceTableId, { timeout: 60000 })
-                .toBe(tableB);
+            // A peer commits real SQL A -> B -> A while the local pointer intent remains pending.
+            const peerView = peer.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+            if (!await peerView.getByTestId("yjs-table-query-input").isVisible()) {
+                await peerView.getByTestId("yjs-table-toggle-ui").click();
+            }
+            const commitQuery = (query: string) =>
+                new SqlEditorHelper(peerView.getByTestId("yjs-table-query-input")).fillAndCommit(peer, query);
+            await commitQuery(queryB);
+            await expect.poll(async () => (await gridEntry(page, gridId)).query).toBe(queryB);
             await expect(gridHeader(page, 0, "title")).not.toHaveClass(/col-fixed/);
-            await rebind(tableA);
-            await expect.poll(async () => (await gridEntry(page, gridId)).sourceTableId, { timeout: 60000 })
-                .toBe(tableA);
+            await expect(page.getByTestId("yjs-table-view")).toHaveAttribute("data-source-table-id", tableB.id);
+            await commitQuery(QUERY);
+            await expect.poll(async () => (await gridEntry(page, gridId)).query).toBe(QUERY);
+            await expect(gridHeader(page, 0, "title")).toBeVisible();
             const beforeRelease = (await readWriteProbe(page)).registry;
             await page.mouse.move(press.x + 90, press.y, { steps: 2 });
             await expect(gridHeader(page, 0, "title")).not.toHaveClass(/col-fixed/);
             await page.mouse.up();
-            await page.waitForTimeout(500);
             const after = await readWriteProbe(page);
             expect(after.registry).toBe(beforeRelease);
             expect(after.undoDepth).toBe(probe.undoDepth);

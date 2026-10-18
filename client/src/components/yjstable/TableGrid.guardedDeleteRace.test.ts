@@ -20,53 +20,61 @@ const schema: ParsedTableSchema = {
     ],
 };
 
-describe("mounted guarded Delete preparation", { timeout: 30_000 }, () => {
-    it.each(["row", "cell"] as const)("refuses when a row selection changes to a %s selection", async (next) => {
-        const doc = new Y.Doc({ guid: `guarded-delete-race-${next}` });
-        const table = createTestTable(doc, "b", schema.createSql, "one", { value: "first" });
-        addRecord(table.handles, { value: "second" }, "two");
-        table.handles.undo.clear();
-        const harness = await createMutationHarness(doc, "SELECT id, value FROM b ORDER BY id");
-        const session = createTableEngineSession({ projectDoc: doc });
-        let releasePreparation = () => {};
-        const preparation = new Promise<void>(resolve => releasePreparation = resolve);
-        const view = render(TableGrid, {
-            props: {
-                handles: table.handles,
-                schema,
-                query: "SELECT id, value FROM b ORDER BY id",
-                result: { columns: ["id", "value"], rows: harness.evidence().rows },
-                componentTypes: {},
-                columnLabels: {},
-                hiddenColumns: { id: true },
-                columnOrder: ["value"],
-                session,
-                mutationBoundary: harness.boundary,
-                prepareMutationAuthority: () => preparation,
-            },
-        });
-        try {
-            const headers = view.getAllByRole("rowheader");
-            await fireEvent.click(headers[0]!);
-            await fireEvent.keyDown(headers[0]!, { key: "Delete" });
-            if (next === "row") await fireEvent.click(headers[1]!);
-            else {
-                const cell = view.container.querySelector<HTMLElement>("td[data-row-id='two'][data-col='value']")!;
-                await fireEvent.click(cell);
-            }
-            releasePreparation();
+describe("mounted guarded Delete target capture", { timeout: 30_000 }, () => {
+    it.each(["row", "cell"] as const)(
+        "refuses a replaced captured row after selection moves to a %s selection",
+        async (next) => {
+            const doc = new Y.Doc({ guid: `guarded-delete-race-${next}` });
+            const table = createTestTable(doc, "b", schema.createSql, "one", { value: "first" });
+            addRecord(table.handles, { value: "second" }, "two");
+            table.handles.undo.clear();
+            const harness = await createMutationHarness(doc, "SELECT id, value FROM b ORDER BY id", {
+                gatedResolution: true,
+            });
+            const session = createTableEngineSession({ projectDoc: doc });
+            const view = render(TableGrid, {
+                props: {
+                    handles: table.handles,
+                    schema,
+                    query: "SELECT id, value FROM b ORDER BY id",
+                    result: { columns: ["id", "value"], rows: harness.evidence().rows },
+                    componentTypes: {},
+                    columnLabels: {},
+                    hiddenColumns: { id: true },
+                    columnOrder: ["value"],
+                    session,
+                    mutationBoundary: harness.boundary,
+                },
+            });
+            try {
+                const headers = view.getAllByRole("rowheader");
+                await fireEvent.click(headers[0]!);
+                await fireEvent.keyDown(headers[0]!, { key: "Delete" });
+                await harness.resolutionPending;
+                if (next === "row") await fireEvent.click(headers[1]!);
+                else {
+                    const cell = view.container.querySelector<HTMLElement>("td[data-row-id='two'][data-col='value']")!;
+                    await fireEvent.click(cell);
+                }
+                // Replace the captured physical row while provider acquisition waits.
+                table.handles.doc.transact(
+                    () => addRecord(table.handles, { value: "peer replacement" }, "one"),
+                    "peer",
+                );
+                harness.releaseResolution();
 
-            await waitFor(() =>
-                expect(view.getByTestId("grid-edit-status").textContent).toContain("selection changed")
-            );
-            expect(table.handles.data.has("one")).toBe(true);
-            expect(table.handles.data.has("two")).toBe(true);
-            expect(table.handles.data.get("two")?.get("value")).toBe("second");
-            expect(table.handles.undo.undoStack).toHaveLength(0);
-        } finally {
-            view.unmount();
-            session.dispose();
-            harness.dispose();
-        }
-    });
+                await waitFor(() =>
+                    expect(view.getByTestId("grid-edit-status").textContent).toContain("Delete refused")
+                );
+                expect(table.handles.data.get("one")?.get("value")).toBe("peer replacement");
+                expect(table.handles.data.has("two")).toBe(true);
+                expect(table.handles.data.get("two")?.get("value")).toBe("second");
+                expect(table.handles.undo.undoStack).toHaveLength(0);
+            } finally {
+                view.unmount();
+                session.dispose();
+                harness.dispose();
+            }
+        },
+    );
 });

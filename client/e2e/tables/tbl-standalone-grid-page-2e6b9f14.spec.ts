@@ -5,9 +5,9 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 // FTR-2e6b9f14 (issue #5012): /:project/-/grids/:gridId owns the Grid's own
-// SELECT, presentation and result, and references its source Table.
+// SELECT, presentation and result, with links to its actual SQL dependencies.
 test.describe("Standalone grid page", () => {
-    test("renders the grid's own query result and links back to its source table", async ({ page }) => {
+    test("renders the Grid-owned query and name with its actual SQL dependency", async ({ page }) => {
         await page.goto("/demo/-/grids/demo-table-routine-occurrences-history-grid");
 
         const gridView = page.getByTestId("yjs-table-view");
@@ -16,15 +16,12 @@ test.describe("Standalone grid page", () => {
             "data-source-table-id",
             "demo-table-routine-occurrences",
         );
-        await expect(page.getByTestId("grid-source-table-link")).toHaveAttribute(
-            "href",
-            "/demo/-/tables/demo-table-routine-occurrences",
-        );
+        await expect(gridView.getByTestId("grid-query-dependencies").getByRole("link")).toHaveCount(1);
         await expect(gridView.getByTestId("yjs-grid-source-table-link")).toHaveAttribute(
             "href",
             "/demo/-/tables/demo-table-routine-occurrences",
         );
-        await expect(gridView.getByTestId("yjs-table-name")).toHaveText("Routine Occurrences");
+        await expect(gridView.getByTestId("yjs-table-name")).toHaveText("Routine Occurrences · full history");
         await expect(gridView.getByTestId("yjs-table-sql-name")).toHaveText("routine_occurrences");
         await expect(gridView.getByTestId("yjs-table-toggle-schema")).toHaveCount(0);
         await expect(gridView.getByTestId("yjs-table-schema-input")).toHaveCount(0);

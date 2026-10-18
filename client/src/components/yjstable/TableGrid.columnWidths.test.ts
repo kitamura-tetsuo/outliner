@@ -186,7 +186,16 @@ describe("TableGrid fixed column widths", () => {
         expect(table.style.width).toBe("calc(365px + 4.5rem)");
         expect(readGridComponents(grid).widths).toEqual(widths);
 
-        await rerender({ ...props, query: "SELECT DISTINCT id, title, done, due_date FROM tasks" });
+        // The render boundary receives the query and its current authorization together.
+        await rerender({
+            ...props,
+            query: "SELECT DISTINCT id, title, done, due_date FROM tasks",
+            bareIdAuthority: {
+                status: "unavailable",
+                editableColumns: new Set(),
+                reason: "Unsupported row provenance",
+            },
+        });
         expect(container.querySelector("th.actions-col")).toBeNull();
         expect(table.style.width).toBe("calc(413px + 2.5rem)");
 

@@ -12,7 +12,6 @@ import {
     createGrid,
     getGridHandles,
     getGridQuery,
-    listGrids,
     setGridComponentField,
     setGridQuery,
 } from "../../services/yjstable/gridDocs";
@@ -143,9 +142,9 @@ const controls = {
         const result = await runSelect(`SELECT state FROM ${relation} ORDER BY state NULLS LAST`);
         return result.rows.map(row => row.state);
     },
-    createViews(tableId) {
+    createViews() {
         const doc = project().ydoc;
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, undefined, {
             name: "Catalog order",
             query: "SELECT id, state FROM catalog_tasks ORDER BY state NULLS LAST",
             components: { state: { type: "select" } },
@@ -173,14 +172,13 @@ const controls = {
             sql: "INSERT INTO catalog_tasks (id,title,done,state) VALUES ('scheduled','Scheduled',false,'medium') RETURNING *",
         });
     },
-    addSecondView(tableId) {
+    addSecondView(embeddedGridId) {
         if (!store.currentPage) throw new Error("Open the ordinary Project page first");
-        const grid = listGrids(project().ydoc).find(entry => entry.sourceTableId === tableId);
-        if (!grid) throw new Error("Primary Grid missing");
-        const handles = getGridHandles(project().ydoc, grid.gridId);
+        const handles = getGridHandles(project().ydoc, embeddedGridId);
+        if (!handles) throw new Error("The UI-created embedded Grid is missing");
         setGridQuery(handles, "SELECT id, state FROM catalog_tasks ORDER BY state NULLS LAST");
         setGridComponentField(handles, "state", "type", "select");
-        const secondGrid = createGrid(project().ydoc, tableId, {
+        const secondGrid = createGrid(project().ydoc, undefined, {
             query: getGridQuery(handles),
             components: { state: { type: "select" } },
         });

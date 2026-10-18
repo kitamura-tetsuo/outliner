@@ -31,7 +31,7 @@ describe("standalone preset Table creation", () => {
 
         expect(listTables(doc)).toHaveLength(1);
         expect(getTableHandles(doc, tableId)?.schemaText.toString()).toBe(preset.schemaSql(sqlName));
-        expect(grid.get("sourceTableId")).toBe(tableId);
+        expect(grid.has("sourceTableId")).toBe(false);
         expect(grid.get("query")).toBe(preset.query(sqlName));
         expect(Object.fromEntries(
             [...components].map(([column, config]) => [column, { type: config.get("type") }]),

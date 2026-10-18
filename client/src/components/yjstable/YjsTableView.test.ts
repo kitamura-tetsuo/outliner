@@ -28,7 +28,7 @@ function makeProps() {
     const projectDoc = new Y.Doc();
     const tableId = createTable(projectDoc, "T", "t");
     const handles = getTableHandles(projectDoc, tableId)!;
-    const gridId = createGrid(projectDoc, tableId, { name: "G", query: "SELECT 1" });
+    const gridId = createGrid(projectDoc, undefined, { name: "G", query: "SELECT 1 AS value" });
     const grid = getGridHandles(projectDoc, gridId)!;
     return { projectDoc, handles, grid };
 }
@@ -40,13 +40,11 @@ describe("YjsTableView focus handling", () => {
     });
 
     it("clears cursor and selection when a foreign input inside the table gets focusin", async () => {
-        const { projectDoc, handles, grid } = makeProps();
+        const { projectDoc, grid } = makeProps();
         const { getByTestId } = render(YjsTableView, {
             props: {
                 grid,
-                handles,
                 projectDoc,
-                tableName: "Test Table",
             },
         });
 
@@ -77,36 +75,28 @@ describe("YjsTableView focus handling", () => {
         expect(Object.keys(editorOverlayStore.selections).length).toBe(0);
     });
 
-    it("identifies its source Table without mounting schema editing", () => {
-        const { projectDoc, handles, grid } = makeProps();
+    it("identifies its own Grid without mounting Table schema editing", () => {
+        const { projectDoc, grid } = makeProps();
         const { getByTestId, queryByTestId } = render(YjsTableView, {
             props: {
                 grid,
-                handles,
                 projectDoc,
-                tableName: "Test Table",
-                sqlName: "test_table",
-                sourceTableHref: "/project/-/tables/table-1",
             },
         });
 
-        expect(getByTestId("yjs-table-name").textContent).toBe("Test Table");
-        expect(getByTestId("yjs-table-sql-name").textContent).toBe("test_table");
-        expect(getByTestId("yjs-grid-source-table-link").getAttribute("href"))
-            .toBe("/project/-/tables/table-1");
+        expect(getByTestId("yjs-table-name").textContent).toBe("G");
+        expect(queryByTestId("yjs-grid-source-table-link")).toBeNull();
         expect(queryByTestId("yjs-table-toggle-schema")).toBeNull();
         expect(queryByTestId("yjs-table-schema-panel")).toBeNull();
         expect(queryByTestId("yjs-table-schema-input")).toBeNull();
     });
 
     it("does not render table-local undo/redo buttons", () => {
-        const { projectDoc, handles, grid } = makeProps();
+        const { projectDoc, grid } = makeProps();
         const { queryByTestId } = render(YjsTableView, {
             props: {
                 grid,
-                handles,
                 projectDoc,
-                tableName: "Test Table",
             },
         });
 
@@ -115,13 +105,11 @@ describe("YjsTableView focus handling", () => {
     });
 
     it("does not clear cursor and selection when a non-input element inside the table gets focusin", async () => {
-        const { projectDoc, handles, grid } = makeProps();
+        const { projectDoc, grid } = makeProps();
         const { getByTestId } = render(YjsTableView, {
             props: {
                 grid,
-                handles,
                 projectDoc,
-                tableName: "Test Table",
             },
         });
 

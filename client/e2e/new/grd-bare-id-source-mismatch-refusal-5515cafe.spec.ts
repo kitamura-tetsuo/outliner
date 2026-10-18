@@ -18,16 +18,13 @@ test(
 
         const gridId = await fixture.gridA.getAttribute("data-grid-id");
         expect(gridId).toBeTruthy();
-        // Reload after fixture configuration so the command starts from a
-        // clean history while retaining the persisted cross-Table query.
-        await page.reload();
-        await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toHaveCount(0);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
+        const embedded = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+        await expect(embedded.getByTestId("grid-readonly-reason")).toHaveCount(0);
         await snapshotProject(page);
         // Address the editable cell by its durable record identity. A row
         // text filter stops matching while CellComponent replaces the value
         // button with an input, which would make the editor locator disappear.
-        const cell = fixture.gridA.getByTestId("yjs-table-grid")
+        const cell = embedded.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
         await cell.locator("button.cell-value").click();
@@ -36,21 +33,24 @@ test(
         await embeddedEditor.fill("Embedded B edit");
         await embeddedEditor.press("Enter");
         await expect(cell.locator("button.cell-value")).toHaveText("Embedded B edit");
-        let after = await snapshotProject(page);
-        expect(after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title)
-            .toBe("Value from A");
-        expect(after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
-            .toBe("Embedded B edit");
+        await expect.poll(async () => {
+            const after = await snapshotProject(page);
+            return {
+                a: after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title,
+                b: after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title,
+            };
+        }).toEqual({ a: "Value from A", b: "Embedded B edit" });
 
         // Actual-source results retain the ordinary selection/copy workflow.
         await page.keyboard.press("Control+c");
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Embedded B edit");
 
-        await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/grids/${gridId}`);
-        await page.reload();
+        const show = page.getByRole("button", { name: "Show sidebar" });
+        if (await show.isVisible()) await show.click();
+        await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+        await page.getByTestId(`object-row-${gridId}`).locator('[data-testid^="object-open-"]').click();
         const standalone = page.getByTestId("yjs-table-view");
         await expect(standalone.getByTestId("grid-readonly-reason")).toHaveCount(0);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         const standaloneCell = standalone.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await standaloneCell.locator("button.cell-value").click();
@@ -59,10 +59,12 @@ test(
         await standaloneEditor.fill("Standalone B edit");
         await standaloneEditor.press("Enter");
         await expect(standaloneCell.locator("button.cell-value")).toHaveText("Standalone B edit");
-        after = await snapshotProject(page);
-        expect(after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title)
-            .toBe("Value from A");
-        expect(after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
-            .toBe("Standalone B edit");
+        await expect.poll(async () => {
+            const after = await snapshotProject(page);
+            return {
+                a: after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title,
+                b: after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title,
+            };
+        }).toEqual({ a: "Value from A", b: "Standalone B edit" });
     },
 );

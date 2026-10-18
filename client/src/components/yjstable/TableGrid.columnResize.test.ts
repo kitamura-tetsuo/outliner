@@ -21,6 +21,7 @@ import {
     retainGridUndoManager,
     setGridColumnWidth,
     setGridComponentField,
+    setGridQuery,
 } from "../../services/yjstable/gridDocs";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
@@ -49,7 +50,7 @@ interface Fixture {
 function fixture(components: Record<string, { widthPx?: number; }> = {}): Fixture {
     const doc = new Y.Doc();
     const tableId = createTable(doc, "Tasks", "tasks");
-    const gridId = createGrid(doc, tableId, { name: "G", query: QUERY, components });
+    const gridId = createGrid(doc, undefined, { name: "G", query: QUERY, components });
     const grid = getGridHandles(doc, gridId)!;
     // Mounted views retain the shared manager; mirror that so the width
     // writer's history isolation is the one production uses.
@@ -395,23 +396,22 @@ describe("TableGrid header resize", () => {
         expect(f.updates()).toBe(0);
     });
 
-    it("an observed source-Table rebinding invalidates the gesture for good", async () => {
+    it("an observed query A-to-B-to-A invalidates the gesture for good", async () => {
         const f = fixture({ title: { widthPx: 150 } });
         const { container } = mount(f);
-        const original = f.grid.entry.get("sourceTableId");
-        const otherTable = createTable(f.doc, "Other", "other");
+        const original = QUERY;
         const handle = handleOf(container, "title");
         await pointer(handle, "pointerdown", { clientX: 100 });
         await pointer(handle, "pointermove", { clientX: 180 });
         await tick();
         // jsdom measures 0px: the candidate is the 80px displacement.
         expect(colStyle(container, "title")).toContain("width: 80px");
-        // A -> B -> A on the same live entry: the old binding returning does
+        // A -> B -> A on the same live entry: the old query returning does
         // not revive the gesture.
-        f.grid.entry.set("sourceTableId", otherTable);
+        setGridQuery(f.grid, "SELECT id, title FROM other");
         await tick();
         expect(colStyle(container, "title")).toContain("width: 150px");
-        f.grid.entry.set("sourceTableId", original);
+        setGridQuery(f.grid, original);
         const before = f.updates();
         const history = f.grid.undo.undoStack.length;
         await pointer(document.body, "pointerup", { clientX: 180 });

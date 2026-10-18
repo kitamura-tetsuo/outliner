@@ -28,15 +28,21 @@ async function registrySnapshot(page: import("@playwright/test").Page) {
         const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
         const tables = [...project.ydoc.getMap("yjsTables").entries()].map(([id, value]: any) => ({
             id,
-            ...value.toJSON(),
+            name: value.get("name"),
+            sqlName: value.get("sqlName"),
             schema: value.get("doc")?.getText("schema").toString(),
+            data: value.get("doc")?.getMap("data").toJSON(),
         }));
         const grids = [...project.ydoc.getMap("yjsGrids").entries()].map(([id, value]: any) => ({
             id,
             ...value.toJSON(),
         }));
         const placements = [...(globalThis as any).generalStore.currentPage.items]
-            .map((item: any) => ({ id: item.id, gridId: item.yjsGridId }))
+            .map((item: any) => ({
+                id: item.id,
+                gridId: item.yjsGridId,
+                hasTable: item.tree.getNodeValueFromKey(item.key).has("yjsTableId"),
+            }))
             .filter((item: any) => item.gridId);
         return { tables, grids, placements };
     });
@@ -70,12 +76,12 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         expect(beforeReuse.grids).toHaveLength(2);
         expect(beforeReuse.tables.map(table => table.sqlName).sort()).toEqual(["manual_habits", "tasks"]);
         const tasksTable = beforeReuse.tables.find(table => table.sqlName === "tasks")!;
-        const tasksGrid = beforeReuse.grids.find(grid => grid.sourceTableId === tasksTable.id)!;
+        const tasksGrid = beforeReuse.grids.find(grid => grid.query.includes("FROM tasks"))!;
         expect(tasksTable.schema).toContain("CREATE TABLE tasks");
         expect(tasksGrid.query).toContain("FROM tasks ORDER BY status DESC");
         expect(tasksGrid.components.title.type).toBe("text");
         expect(tasksGrid.components.status.type).toBe("select");
-        const habitsGrid = beforeReuse.grids.find(grid => grid.sourceTableId === habitsTableId(beforeReuse))!;
+        const habitsGrid = beforeReuse.grids.find(grid => grid.query.includes("FROM manual_habits"))!;
         expect(habitsGrid.query).toContain("FROM manual_habits ORDER BY kind");
         expect(habitsGrid.components.log_date.type).toBe("date");
         expect(beforeReuse.grids.every(grid => !("insertTargetTableId" in grid))).toBe(true);
@@ -103,6 +109,16 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         expect(afterReuse.grids).toHaveLength(3);
         expect(afterReuse.placements.map(placement => placement.gridId)).toContain(beforeReuse.grids[0].id);
         expect(afterReuse.grids.every(grid => !("insertTargetTableId" in grid))).toBe(true);
+        expect(afterReuse.grids.every(grid => !("sourceTableId" in grid))).toBe(true);
+        expect(afterReuse.placements.every(placement => !placement.hasTable)).toBe(true);
+        expect(afterReuse.tables).toEqual(beforeReuse.tables);
+        const originalIds = new Set(beforeReuse.grids.map(grid => grid.id));
+        const added = afterReuse.grids.filter(grid => !originalIds.has(grid.id));
+        expect(added.map(grid => ({ query: grid.query, components: grid.components }))).toEqual([{
+            query: "SELECT * FROM manual_habits",
+            components: {},
+        }]);
+        expect(afterReuse.grids.filter(grid => originalIds.has(grid.id))).toEqual(beforeReuse.grids);
     });
 
     test("refuses invalid names and a Table removed after selection without mutating registries", async ({ page }) => {
@@ -134,7 +150,3 @@ test.describe("FTR-6a03c2f1: shared Table creation form", () => {
         expect(refused.grids).toHaveLength(1);
     });
 });
-
-function habitsTableId(snapshot: Awaited<ReturnType<typeof registrySnapshot>>) {
-    return snapshot.tables.find(table => table.sqlName === "manual_habits")!.id;
-}

@@ -272,12 +272,14 @@ function isClipboardItem(value: unknown): value is ClipboardItem {
             && value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === "yjstable") {
-        // yjsTableId is the required identity (used to resolve/clone the
-        // source Table on paste). yjsGridId is optional — new payloads carry
-        // it so the paste can rewire the outline item to a fresh Grid.
-        return typeof value.yjsTableId === "string" && value.yjsTableId.length > 0
-            && (value.yjsGridId === undefined
-                || (typeof value.yjsGridId === "string" && value.yjsGridId.length > 0))
+        // New-format same-project payloads need only the Grid identity. A
+        // physical Table id is included when current query provenance proves
+        // one and a cross-project clone therefore has a snapshot to carry.
+        const hasGrid = typeof value.yjsGridId === "string" && value.yjsGridId.length > 0;
+        const hasTable = typeof value.yjsTableId === "string" && value.yjsTableId.length > 0;
+        return (hasGrid || hasTable)
+            && (value.yjsGridId === undefined || hasGrid)
+            && (value.yjsTableId === undefined || hasTable)
             && value.calendarId === undefined;
     }
     if (value.componentType === "calendar") {
@@ -447,6 +449,7 @@ export function serializeClipboardItems(
     operation?: "cut",
     diagramTransfer?: { diagrams?: Readonly<Record<string, DiagramSnapshot>>; transferId?: string; },
     catalog?: SqlCatalogSnapshot,
+    gridTableIds?: Readonly<Record<string, string>>,
 ): string {
     // Defense in depth for every structural-copy caller. Kanban placements
     // are references whose transfer semantics are outside this release.
@@ -460,13 +463,21 @@ export function serializeClipboardItems(
             || rawType === DIAGRAM_COMPONENT_TYPE;
         const componentType = isBoundComponent || rawType === LAYOUT_COMPONENT_TYPE ? rawType : undefined;
         const bindingField = isBoundComponent ? bindings[rawType] : undefined;
-        const binding = bindingField ? value?.get?.(bindingField) : undefined;
-        // A yjstable host also carries its Grid id so a cross-project paste can
-        // rebind the pasted item to the freshly created Grid (Grid owns the
-        // SELECT + presentation). The Table id stays the required identity used
-        // to resolve/clone the source relation.
+        // A yjstable host carries its Grid id so a same-project paste can keep
+        // the existing Grid and a cross-project paste can rebind the item to a
+        // fresh Grid. A proven Table id is optional transport metadata used to
+        // clone the source relation across projects.
         const rawGridId = rawType === "yjstable" ? value?.get?.("yjsGridId") : undefined;
         const gridId = typeof rawGridId === "string" && rawGridId.length > 0 ? rawGridId : undefined;
+        // New-format Grid hosts persist only their Grid identity. The current
+        // physical supplier is captured separately at copy time so the
+        // existing cross-project transfer format can carry a Table snapshot
+        // without restoring yjsTableId as durable placement ownership.
+        const binding = rawType === "yjstable" && gridId
+            ? gridTableIds?.[gridId] ?? value?.get?.("yjsTableId")
+            : bindingField
+            ? value?.get?.(bindingField)
+            : undefined;
         const rawSpan = value?.get?.("columnSpan");
         // Repaired on the way out, by the same rule rendering uses, so a broken
         // stored span cannot travel to another document.
@@ -479,6 +490,7 @@ export function serializeClipboardItems(
         // outward plain-text/HTML flavors, which are built separately.
         const text = componentType !== undefined ? "" : (textOverride ?? String(item.text ?? ""));
         const carriesComponent = componentType === LAYOUT_COMPONENT_TYPE
+            || (componentType === "yjstable" && gridId !== undefined)
             || (componentType !== undefined && typeof binding === "string" && binding.length > 0);
         return {
             text,

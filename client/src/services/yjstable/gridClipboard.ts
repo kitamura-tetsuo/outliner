@@ -27,8 +27,10 @@ import type { GridSelection } from "./gridSelection";
 import {
     classifySelectionKind,
     type GridCommandContext,
+    type GridCommandRowTarget,
     type GridWritableCellTarget,
     isValueValidForCell,
+    requireTableHandles,
     writeWritableCell,
 } from "./gridSelectionCommands";
 import type { TableRecordValue } from "./tableDocs";
@@ -215,12 +217,13 @@ function parseCellValue(
     ctx: Pick<GridCommandContext, "valueKindOf" | "isNullableOf">,
     columnId: string,
     raw: string,
+    rowTarget?: GridCommandRowTarget,
 ): TableRecordValue {
     if (raw === "") {
-        if (ctx.isNullableOf(columnId)) return null;
-        return ctx.valueKindOf(columnId) === "text" ? "" : null;
+        if (ctx.isNullableOf(columnId, rowTarget)) return null;
+        return ctx.valueKindOf(columnId, rowTarget) === "text" ? "" : null;
     }
-    switch (ctx.valueKindOf(columnId)) {
+    switch (ctx.valueKindOf(columnId, rowTarget)) {
         case "number":
             return Number(raw);
         case "checkbox": {
@@ -328,8 +331,10 @@ export function planGridPaste(
             if (requireSelected && !selection.contains({ rowId, columnId })) continue;
             if (!rowWritable || !ctx.editableColumns.has(columnId)) continue;
             const raw = source[i % sourceRows]?.[j % sourceColumns] ?? "";
-            const value = parseCellValue(ctx, columnId, raw);
-            if (!isValueValidForCell(ctx, columnId, value)) return { kind: "invalid-value", rowId, columnId };
+            const value = parseCellValue(ctx, columnId, raw, rowTarget);
+            if (!isValueValidForCell(ctx, columnId, value, rowTarget)) {
+                return { kind: "invalid-value", rowId, columnId };
+            }
             writes.push({ target: { rowTarget: rowTarget!, columnId }, value });
         }
     }
@@ -349,7 +354,7 @@ export function commitGridPaste(
     const idWrites = writes.filter(write => write.target.rowTarget.recordId !== undefined);
     const sourceWrites = writes.filter(write => write.target.rowTarget.source !== undefined);
     if (idWrites.length > 0) {
-        ctx.handles.doc.transact(() => {
+        requireTableHandles(ctx).doc.transact(() => {
             for (const write of idWrites) writeWritableCell(ctx, write.target, write.value);
         });
     }

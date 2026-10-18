@@ -45,7 +45,6 @@ describe("mounted guarded Grid clipboard dispatch", { timeout: 30_000 }, () => {
             columnOrder: ["value"],
             session: relationSession,
             mutationBoundary: harness.boundary,
-            prepareMutationAuthority: async () => {},
         };
         const view = render(TableGrid, { props });
         try {

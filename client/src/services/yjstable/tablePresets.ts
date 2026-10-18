@@ -158,7 +158,7 @@ export function createTableFromPreset(
         handles.schemaText.insert(0, schema);
     });
 
-    const gridId = createGrid(projectDoc, tableId, {
+    const gridId = createGrid(projectDoc, undefined, {
         name,
         query,
         components,

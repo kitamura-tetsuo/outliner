@@ -18,6 +18,7 @@
 
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
+import { canReplayProjectHistory } from "../undo/projectHistoryAuthorization";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 
 export const ADAPTER_ORIGIN = Symbol("adapter-origin");
@@ -66,6 +67,7 @@ export interface TableHandles {
 export type TableInitializationHandles = Omit<TableHandles, "undo">;
 
 const tableUndoManagers = new WeakMap<Y.Doc, Y.UndoManager>();
+const tableUndoCleanups = new WeakMap<Y.Doc, () => void>();
 
 /** The registry map in the project doc: tableId -> Y.Map entry. */
 export function getTableRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> {
@@ -222,7 +224,23 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
             trackedOrigins: new Set([null, ADAPTER_ORIGIN]),
         });
         tableUndoManagers.set(ydoc, undo);
-        globalUndoRouter.register(undo);
+        const registry = getTableRegistry(projectDoc);
+        const ownerEnded = () => destroyTableUndoManager(ydoc);
+        const removed = () => {
+            if (registry.get(tableId)?.get("doc") !== ydoc) ownerEnded();
+        };
+        const cleanup = () => {
+            registry.unobserve(removed);
+            projectDoc.off("destroy", ownerEnded);
+            ydoc.off("destroy", ownerEnded);
+        };
+        ydoc.once("destroy", ownerEnded);
+        projectDoc.once("destroy", ownerEnded);
+        registry.observe(removed);
+        tableUndoCleanups.set(ydoc, cleanup);
+        globalUndoRouter.register(undo, {
+            authorize: () => canReplayProjectHistory(projectDoc) && registry.get(tableId)?.get("doc") === ydoc,
+        });
     }
 
     return { tableId, doc: ydoc, schemaText, data, undo, uiDef };
@@ -231,6 +249,8 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
 export function destroyTableUndoManager(doc: Y.Doc): void {
     const undo = tableUndoManagers.get(doc);
     if (undo) {
+        tableUndoCleanups.get(doc)?.();
+        tableUndoCleanups.delete(doc);
         globalUndoRouter.unregister(undo);
         undo.destroy();
         tableUndoManagers.delete(doc);
