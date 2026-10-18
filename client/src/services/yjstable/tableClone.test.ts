@@ -107,6 +107,22 @@ describe("table structure export", () => {
         const { doc, ordersId } = sourceProject();
         expect(Object.keys(exportTableStructures(doc, [ordersId, ordersId]))).toEqual([ordersId]);
     });
+
+    it("exports the explicitly preferred query-only Grid slice", () => {
+        const { doc, ordersId } = sourceProject();
+        const queryOnlyGridId = createGrid(doc, undefined, {
+            name: "Query-only orders",
+            query: "SELECT id, amount FROM orders",
+            components: { amount: { type: "number", label: "Query amount" } },
+            columnOrder: ["amount", "id"],
+        });
+
+        expect(exportTableStructure(doc, ordersId, queryOnlyGridId).ui).toMatchObject({
+            query: "SELECT id, amount FROM orders",
+            components: { amount: { type: "number", label: "Query amount" } },
+            columnOrder: ["amount", "id"],
+        });
+    });
 });
 
 describe("computeTableClosure", () => {

@@ -140,9 +140,10 @@ describe("standalone grid route", () => {
         });
 
         render(GridStandalonePage);
-        await waitFor(() => expect(screen.getByTestId("grid-view-stub")).toBeTruthy());
-        expect(screen.getByTestId("grid-source-table-link").getAttribute("href"))
-            .toBe("/demo/-/tables/demo-table-sales");
+        await waitFor(() => expect(screen.getByTestId("yjs-table-view")).toBeTruthy());
+        // The legacy owner is not a dependency of this query, so it must not
+        // be presented as the current source while provenance is unresolved.
+        expect(screen.queryByTestId("grid-source-table-link")).toBeNull();
 
         registeredTables = [];
         // Mirror the production registry deletion notification. The mocked
