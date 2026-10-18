@@ -20,6 +20,7 @@ const LONG_WORD = `y`.repeat(120);
 const SCHEMA = "CREATE TABLE items (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  note TEXT\n)";
 const BASE_QUERY = "SELECT id, title, note FROM items";
 const ALIASED_QUERY = "SELECT id, title AS subject, note FROM items";
+const COMPUTED_QUERY = "SELECT id, upper(title) AS subject, note FROM items";
 const NARROW = 120;
 const WIDE = 480;
 
@@ -71,19 +72,28 @@ test.describe("Grid fixed-column wrapping shows every line and rows reflow", () 
         // row below the complete text.
         await expectTextWrappedWithin(titleCell(page, longId).locator("button.cell-value"));
 
-        // The same value through a read-only alias wraps under the same
-        // policy while staying read-only (issue #5502 REQ-001/REQ-006).
+        // A direct alias remains editable and writes the physical title.
         await setQuery(page, ALIASED_QUERY);
+        await expect(titleCell(page, longId, "subject").locator("button.cell-value")).toHaveAttribute(
+            "aria-disabled",
+            "false",
+        );
+        await setCellValue(page, 0, longId, "subject", LONG_WORD.toUpperCase());
+        await expect.poll(async () => (await readGridProjectState(page)).tables[0].data[longId]["title"])
+            .toBe(LONG_WORD.toUpperCase());
+        const beforeComputed = (await readGridProjectState(page)).tables[0].data;
+        // A computed expression preserves geometry but has no writable physical field.
+        await setQuery(page, COMPUTED_QUERY);
         await expect(grid.locator('th[data-col="subject"]')).toBeVisible({ timeout: 30000 });
         await commitWidthsProduction(page, await singleGridId(page), { subject: NARROW });
         await expectFixedWidth(page, 0, "subject", NARROW);
         const subjectCell = titleCell(page, longId, "subject");
-        await expect(subjectCell.locator("button.cell-value")).toHaveText(LONG_WORD, { timeout: 30000 });
+        await expect(subjectCell.locator("button.cell-value")).toHaveText(LONG_WORD.toUpperCase(), { timeout: 30000 });
         await expect(subjectCell.locator("button.cell-value")).toHaveAttribute("aria-disabled", "true");
         await expectTextWrappedWithin(subjectCell.locator("button.cell-value"));
         await subjectCell.locator("button.cell-value").click({ force: true });
         expect(await subjectCell.locator("input.cell-input").count()).toBe(0);
-        expect((await readGridProjectState(page)).tables[0].data[longId]["title"]).toBe(LONG_WORD);
+        expect((await readGridProjectState(page)).tables[0].data).toEqual(beforeComputed);
     });
 
     test("row height grows and contracts with width and value changes", async ({ page }) => {

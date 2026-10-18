@@ -19,13 +19,15 @@ acceptance:
 - Live supplier changes preserve Grid and Table Undo history; peer refresh permits separately initiated current operations
 - Proven physical metadata supplies per-row UNION choices, nullability and input validation without granting write authority
 - Replacing or removing a Grid ends the old occurrence authority and updates standalone identity
-- Standalone private Grid data and pending actions are gated after logout or access revocation
+- Standalone private Grid data, pending actions and retained Grid/Table Undo and Redo are gated after logout or access revocation
 - Table pages retain schema editing and editable raw data without requiring a Grid
+- Table reference lists react to current registered SQL names and Grid SQL changes
 tests:
 - client/e2e/new/grd-delayed-editor-runtime-5610cafe.spec.ts
 - client/e2e/new/grd-live-source-runtime-5610cafe.spec.ts
 - client/e2e/new/grd-primary-table-reference-5514c0de.spec.ts
 - client/e2e/new/grd-query-only-runtime-5610cafe.spec.ts
+- client/e2e/new/grd-retained-history-access-5610cafe.spec.ts
 - client/e2e/new/grd-standalone-access-5610cafe.spec.ts
 - client/e2e/new/grd-union-runtime-5610cafe.spec.ts
 - client/e2e/new/tbl-grid-text-is-selectable-4669a11e.spec.ts
@@ -33,4 +35,7 @@ tests:
 - client/src/components/yjstable/ProjectGridView.actualSource.test.ts
 - client/src/components/yjstable/ProjectGridView.currentness.test.ts
 - client/src/components/yjstable/ProjectGridView.history.test.ts
+- client/src/components/yjstable/TableGridReferences.test.ts
 - client/src/components/yjstable/YjsTableView.test.ts
+- client/src/services/undo/projectHistoryAuthorization.test.ts
+- client/src/services/undo/undoRouter.reentrant.test.ts

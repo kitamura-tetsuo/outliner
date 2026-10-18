@@ -24,7 +24,8 @@ registerCoverageHooks();
 const SCHEMA = "CREATE TABLE orders (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n"
     + "  quantity INTEGER,\n  done BOOLEAN NOT NULL\n)";
 const QUERY = "SELECT id, title, quantity, done FROM orders";
-const READONLY_QUERY = "SELECT id, title AS subject, done AS flag FROM orders";
+const ALIAS_QUERY = "SELECT id, title AS subject, done AS flag FROM orders";
+const READONLY_QUERY = "SELECT id, upper(title) AS subject, NOT done AS flag FROM orders";
 
 // Issue #5457 REQ-007 (AS-002/AS-003): fixed widths must preserve the
 // result's cell-component choice and SQL-derived write eligibility, and
@@ -90,13 +91,26 @@ test.describe("Grid fixed widths preserve cell components and write targets", ()
             [firstId]: { ...before[firstId], done: true },
             [secondId]: { ...before[secondId], title: "Edited title" },
         });
+        // Direct aliases retain physical provenance; the names are presentation only.
+        await setQuery(page, ALIAS_QUERY);
+        await expect(grid.locator(`td[data-record-id="${firstId}"][data-col="flag"] input`)).toBeEnabled();
+        await commitWidthsProduction(page, await singleGridId(page), { subject: 180, flag: 64 });
+        await setCellValue(page, 0, secondId, "subject", "Alias edit");
+        await grid.locator(`td[data-record-id="${firstId}"][data-col="flag"] input`).click();
+        await expect.poll(async () => (await readGridProjectState(page)).tables[0].data).toEqual({
+            ...before,
+            [firstId]: { ...before[firstId], done: false },
+            [secondId]: { ...before[secondId], title: "Alias edit" },
+        });
+        await expectFixedWidth(page, 0, "subject", 180);
+        await expectFixedWidth(page, 0, "flag", 64);
     });
 
-    test("fixed-width read-only aliases keep their components and reject writes", async ({ page }) => {
+    test("fixed-width computed expressions keep their components and reject writes", async ({ page }) => {
         await setQuery(page, READONLY_QUERY);
         const grid = page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-grid");
         await expect(grid.locator('th[data-col="subject"]')).toBeVisible({ timeout: 30000 });
-        // Aliases have no schema-derived default component. Choose the
+        // Computed fields have no physical-field metadata. Choose the
         // checkbox through the normal UI before checking width preservation.
         await page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-component-flag")
             .selectOption("checkbox");

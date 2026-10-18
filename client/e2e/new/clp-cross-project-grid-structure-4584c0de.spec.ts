@@ -116,6 +116,8 @@ test.describe("cross-project Grid paste clones table structure and data", () => 
             const preExistingState = await readGridProjectState(page);
             expect(preExistingState.tables).toHaveLength(1);
             const preExistingTable = preExistingState.tables[0];
+            const preExistingGridId = await page.getByTestId("yjs-table-view").getAttribute("data-grid-id");
+            expect(preExistingGridId).toBeTruthy();
 
             await pasteAtAnchor(page, 2);
 
@@ -131,11 +133,20 @@ test.describe("cross-project Grid paste clones table structure and data", () => 
             expect(preservedExisting.sqlName).toBe("orders");
 
             await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
-            const sqlNames = await page.locator("[data-testid='yjs-table-sql-name']").allTextContents();
-            // One view is the pre-existing table (sqlName "orders"), the
-            // other the freshly cloned one from paste.
-            expect(sqlNames).toContain("orders");
-            expect(sqlNames).toContain(clonedTable.sqlName);
+            const views = page.getByTestId("yjs-table-view");
+            const gridIds = await views.evaluateAll(elements =>
+                elements.map(element => element.getAttribute("data-grid-id"))
+            );
+            expect(new Set(gridIds).size).toBe(2);
+            const cloneGridId = gridIds.find(id => id !== preExistingGridId)!;
+            for (const [id, sqlName] of [[preExistingGridId, "orders"], [cloneGridId, clonedTable.sqlName]]) {
+                const view = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${id}"]`);
+                await expect(view.locator("thead th[data-col]").first()).toBeVisible();
+                await expect(view.getByTestId("yjs-table-sql-name")).toHaveText(sqlName!);
+            }
+            expect((await readGridProjectState(page)).tables.find(table => table.id === preExistingTable.id))
+                .toEqual(preExistingTable);
+            expect(clonedTable.ui.query).toContain(clonedTable.sqlName);
             expect(clonedTable.name).toBe(sourceTable.name);
             expect(clonedTable.dataSize).toBe(0);
         },

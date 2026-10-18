@@ -30,6 +30,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { findGridPlacements } from "../objectManager/objectPlacements";
+import { canReplayProjectHistory } from "../undo/projectHistoryAuthorization";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { listTables } from "./tableDocs";
 import { rewriteTableQuerySql } from "./tableSqlRewrite";
@@ -179,7 +180,9 @@ export function getGridHandles(projectDoc: Y.Doc, gridId: string): GridHandles |
             },
         };
         gridUndoManagers.set(entry, managed);
-        globalUndoRouter.register(undo);
+        globalUndoRouter.register(undo, {
+            authorize: () => canReplayProjectHistory(projectDoc) && getGridRegistry(projectDoc).get(gridId) === entry,
+        });
     }
 
     return { gridId, entry, components, undo: managed.undo, projectDoc };

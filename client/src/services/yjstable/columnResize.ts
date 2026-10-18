@@ -89,8 +89,8 @@ export class ColumnResizeGesture {
     private readonly registry: Y.Map<Y.Map<unknown>>;
     private readonly pointerId: number;
     private readonly startSaved: unknown;
-    /** The Grid's source Table binding at start; a rebinding invalidates. */
-    private readonly startSource: unknown;
+    /** The Grid's query at interaction start; an observed change invalidates permanently. */
+    private readonly startQuery: unknown;
     private readonly startContentX: number;
     private lastClientX: number;
     private candidate: number | undefined;
@@ -107,7 +107,7 @@ export class ColumnResizeGesture {
         this.registry = getGridRegistry(options.grid.projectDoc);
         this.pointerId = event.pointerId;
         this.startSaved = rawSavedWidth(this.entry, this.column);
-        this.startSource = this.entry.get("sourceTableId");
+        this.startQuery = this.entry.get("query");
         this.lastClientX = event.clientX;
         this.startContentX = this.contentX(event.clientX);
 
@@ -163,7 +163,7 @@ export class ColumnResizeGesture {
         if (grid.entry !== this.entry) return false;
         if (this.registry.get(grid.gridId) !== this.entry) return false;
         if (!Object.is(rawSavedWidth(this.entry, this.column), this.startSaved)) return false;
-        if (!Object.is(this.entry.get("sourceTableId"), this.startSource)) return false;
+        if (!Object.is(this.entry.get("query"), this.startQuery)) return false;
         if (isColumnHidden(this.entry, this.column)) return false;
         return canContinue();
     }
