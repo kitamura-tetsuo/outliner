@@ -36,6 +36,7 @@ test.describe("production on-premises workspace", () => {
         await page.keyboard.type("Persistent outline");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Nested item");
+        await page.keyboard.press("Enter");
         await page.waitForTimeout(5_000); // Allow the real websocket provider to persist both edits before reload.
 
         await page.reload();

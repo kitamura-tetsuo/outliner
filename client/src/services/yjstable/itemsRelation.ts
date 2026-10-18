@@ -286,6 +286,16 @@ export class ItemsRelationProvider implements RelationProvider {
     // Write-back
     // ------------------------------------------------------------------
 
+    assertExistingRowWriteAllowed(write: Extract<RelationWrite, { op: "UPDATE" | "DELETE"; }>): void {
+        assertWriteAllowed(this.capabilities, write, ITEMS_RELATION_NAME);
+        if (!this.hasNode(write.rowId)) {
+            throw new RelationWriteError(`Item "${write.rowId}" does not exist in this project`);
+        }
+        if (write.op === "UPDATE" && COLUMN_TO_FIELD[write.column] === undefined) {
+            throw new RelationWriteError(`Column "${write.column}" is not writable in ${ITEMS_RELATION_NAME}`);
+        }
+    }
+
     /**
      * Apply a write to the owning item. Every mutation runs under
      * `ITEMS_RELATION_ORIGIN` so the observer skips the echo; the rows the

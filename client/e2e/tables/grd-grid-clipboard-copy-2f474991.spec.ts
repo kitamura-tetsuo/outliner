@@ -62,8 +62,17 @@ test.describe("Grid cell-range clipboard copy (FTR-2f474991)", () => {
         const grid = await createBlankTableGrid(page);
         await addRowWithTitle(page, grid, "Alpha");
         await addRowWithTitle(page, grid, "Beta");
-        await grid.locator("tbody tr").nth(0).locator("td[data-col='done'] input").check();
-        await grid.locator("tbody tr").nth(1).locator("td[data-col='done'] input").check();
+        const checkboxes = grid.locator("tbody tr td[data-col='done'] input");
+        const firstLabel = await checkboxes.nth(0).getAttribute("aria-label");
+        const secondLabel = await checkboxes.nth(1).getAttribute("aria-label");
+        expect(firstLabel).toBeTruthy();
+        expect(secondLabel).toBeTruthy();
+        const firstCheckbox = grid.getByLabel(firstLabel!);
+        const secondCheckbox = grid.getByLabel(secondLabel!);
+        await firstCheckbox.check();
+        await expect(firstCheckbox).toBeChecked({ timeout: 15000 });
+        await secondCheckbox.check();
+        await expect(secondCheckbox).toBeChecked({ timeout: 15000 });
         // The query result refreshes on a debounce after each Yjs write; give
         // it a moment before reading the value back off the rendered grid.
         await page.waitForTimeout(500);

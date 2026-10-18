@@ -34,6 +34,14 @@ export interface ProjectSelectEvidence {
     sources: RelationEvidence[];
     columns: ProjectSelectColumn[];
     rows: Record<string, unknown>[];
+    /** Immutable row-address values captured from the completed execution. */
+    rowIdentities: readonly ProjectSelectRowIdentity[];
+}
+
+export interface ProjectSelectRowIdentity {
+    id?: unknown;
+    sourceKind?: unknown;
+    sourceId?: unknown;
 }
 
 export type ProjectSelectState =
@@ -51,6 +59,8 @@ export type ProjectSelectState =
 
 export interface ProjectSelectSession {
     readonly state: ProjectSelectState;
+    /** True only for the Project identity whose SQL environment this session owns. */
+    isProjectContext(projectDoc: Y.Doc, projectId?: string): boolean;
     /** True only while this exact completed execution remains the live query/catalog authority. */
     isEvidenceCurrent(evidence: ProjectSelectEvidence): boolean;
     subscribe(listener: (state: ProjectSelectState) => void): () => void;
@@ -122,6 +132,10 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
 
     get state(): ProjectSelectState {
         return this._state;
+    }
+
+    isProjectContext(projectDoc: Y.Doc, projectId?: string): boolean {
+        return this.projectDoc === projectDoc && this.pgSchema === projectSchemaName(projectId);
     }
 
     isEvidenceCurrent(evidence: ProjectSelectEvidence): boolean {
@@ -233,6 +247,11 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 sources,
                 columns: result.columns.map((name, index) => ({ name, typeId: result.columnTypes?.[index] })),
                 rows: result.rows,
+                rowIdentities: Object.freeze(
+                    result.rows.map(row =>
+                        Object.freeze({ id: row.id, sourceKind: row.source_kind, sourceId: row.source_id })
+                    ),
+                ),
             };
             this.currentEvidence = evidence;
             this.publish({ status: "success", evidence });

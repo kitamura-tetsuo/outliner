@@ -1,5 +1,5 @@
 /** @feature CLP-4584c0de */
-import { expect, test } from "../fixtures/grid-render-trace";
+import { expect, readClipboardAndRecord, recordGridClipboardDiagnostic, test } from "../fixtures/grid-render-trace";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
@@ -13,6 +13,31 @@ test.describe("component block clipboard", () => {
     });
 
     test("copy and paste creates a second live view of the same Grid", async ({ page }) => {
+        await page.evaluate(() => {
+            (globalThis as any).__gridClipboardDiagnostic = {
+                sourceId: "unavailable",
+                neighborId: "unavailable",
+                destinationId: "unavailable",
+                selection: "unavailable",
+                focus: "unavailable",
+                renderedColumns: [],
+                rowCount: 0,
+                copyingReached: false,
+                clipboardText: "unavailable",
+                readinessSamples: [],
+            };
+            const sample = () => {
+                const grid = document.querySelector('[data-testid="yjs-table-grid"]');
+                if (!grid) return;
+                const columns = [...(grid?.querySelectorAll("thead th[data-col]") ?? [])]
+                    .map(element => element.getAttribute("data-col"));
+                const rowCount = grid?.querySelectorAll("tbody tr").length ?? 0;
+                const sourceId = grid.closest<HTMLElement>(".outliner-item[data-item-id]")?.dataset.itemId;
+                (globalThis as any).__gridClipboardDiagnostic.readinessSamples.push({ sourceId, columns, rowCount });
+            };
+            (globalThis as any).__sampleGridClipboardReadiness = sample;
+            new MutationObserver(sample).observe(document.body, { childList: true, subtree: true });
+        });
         const host = page.locator(".outliner-item").nth(1);
         await expect(host).toBeVisible();
         await host.click();
@@ -22,24 +47,57 @@ test.describe("component block clipboard", () => {
         await page.getByTestId("yjs-table-create").first().click();
         const firstView = page.getByTestId("yjs-table-view").first();
         await expect(firstView).toBeVisible({ timeout: 30000 });
+        // Capture this real source Grid before its source record is added. An
+        // absent pre-creation page is deliberately not a readiness sample.
+        await page.evaluate(() => (globalThis as any).__sampleGridClipboardReadiness());
         await firstView.getByTestId("yjs-table-add-row").click();
+
+        const grid = firstView.getByTestId("yjs-table-grid");
+        const expectedColumns = ["id", "title", "status", "priority", "due_date", "repeat_days"];
+        await expect.poll(
+            () =>
+                grid.locator("thead th[data-col]").evaluateAll(headers =>
+                    headers.map(header => header.getAttribute("data-col"))
+                ),
+            { timeout: 30000 },
+        ).toEqual(expectedColumns);
+        await expect(grid.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
+        const sourceRecordId = await grid.locator("tbody tr").getAttribute("data-record-id");
+        expect(sourceRecordId).toBeTruthy();
 
         const items = page.locator(".outliner-item[data-item-id]");
         const renderedHost = firstView.locator(
             "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' outliner-item ') and @data-item-id][1]",
         );
         const hostId = await renderedHost.getAttribute("data-item-id");
+        const sourceGridId = await page.evaluate(id =>
+            [...(globalThis as any).generalStore.currentPage.items]
+                .find((item: any) => item.id === id)?.yjsGridId, hostId);
         const itemIds = await items.evaluateAll(elements =>
             elements.map(element => element.getAttribute("data-item-id"))
         );
         const hostIndex = itemIds.indexOf(hostId);
         expect(hostIndex).toBeGreaterThan(0);
         const neighborId = itemIds[hostIndex - 1];
+        const destinationId = await page.locator(".outliner-item[data-item-id]")
+            .filter({ has: page.getByText("Paste below", { exact: true }) })
+            .getAttribute("data-item-id");
         // A Grid node owns no outline text (#5015), so the selection ends at
         // offset 0 of its row - which is the whole block.
         const hostTextLength = 0;
         expect(hostId).toBeTruthy();
+        expect(sourceGridId).toBeTruthy();
         expect(neighborId).toBeTruthy();
+        expect(destinationId).toBeTruthy();
+        const neighborText = await page.locator(`.outliner-item[data-item-id="${neighborId}"] .item-content`)
+            .innerText();
+        await recordGridClipboardDiagnostic(page, {
+            sourceId: hostId,
+            neighborId,
+            destinationId,
+            renderedColumns: expectedColumns,
+            rowCount: 1,
+        });
         await page.locator("textarea.global-textarea").focus();
         await page.evaluate(({ start, end, endOffset }) => {
             // eslint-disable-next-line no-restricted-globals
@@ -53,28 +111,72 @@ test.describe("component block clipboard", () => {
                 userId: "local",
             });
         }, { start: neighborId, end: hostId, endOffset: hostTextLength });
+        const preCopy = await page.evaluate(({ start, end }) => {
+            const editor = (globalThis as any).editorOverlayStore;
+            const selection = Object.values(editor.selections)[0] as any;
+            return {
+                selection,
+                focus: document.activeElement?.matches("textarea.global-textarea") ?? false,
+                valid: selection?.startItemId === start && selection?.startOffset === 0
+                    && selection?.endItemId === end && selection?.endOffset === 0,
+            };
+        }, { start: neighborId, end: hostId });
+        await recordGridClipboardDiagnostic(page, { selection: preCopy.selection, focus: preCopy.focus });
+        expect(preCopy.valid).toBe(true);
+        expect(preCopy.focus).toBe(true);
+        const readinessSamples = await page.evaluate(() =>
+            (globalThis as any).__gridClipboardDiagnostic.readinessSamples as Array<
+                { sourceId?: string; columns: string[]; rowCount: number; }
+            >
+        );
+        const sourceSamples = readinessSamples.filter(sample => sample.sourceId === hostId);
+        const unreadyIndex = sourceSamples.findIndex(sample =>
+            sample.columns.length !== expectedColumns.length || sample.rowCount !== 1
+        );
+        const readyIndex = sourceSamples.findIndex((sample, index) =>
+            index > unreadyIndex && sample.rowCount === 1
+            && sample.columns.join("\t") === expectedColumns.join("\t")
+        );
+        expect(unreadyIndex).toBeGreaterThanOrEqual(0);
+        expect(readyIndex).toBeGreaterThan(unreadyIndex);
+        await recordGridClipboardDiagnostic(page, { copyingReached: true });
         await page.keyboard.press("Control+c");
         // Outside Outliner a Grid is its rendered result: the header row of the
         // visible columns, not the table's display name.
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
-            .toContain("id\ttitle\tstatus\tpriority\tdue_date\trepeat_days");
-        const copiedText = await page.evaluate(() => navigator.clipboard.readText());
+        const expectedHeader = expectedColumns.join("\t");
+        await expect.poll(() => readClipboardAndRecord(page))
+            .toContain(`${neighborText}\n${expectedHeader}`);
+        const copiedText = await readClipboardAndRecord(page);
         expect(copiedText).not.toContain("\nTasks");
 
         // Use the trusted browser paste event. The portable HTML payload is
         // independently round-tripped in itemClipboard.test.ts so this E2E
         // remains focused on the operating-system clipboard path.
-        const target = page.locator(".outliner-item[data-item-id]").nth(1);
+        const target = page.locator(`.outliner-item[data-item-id="${destinationId}"]`);
         await target.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Control+v");
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
-        const sqlNames = await page.locator("[data-testid='yjs-table-sql-name']").allTextContents();
-        expect(sqlNames[1]).toBe(sqlNames[0]);
-        await expect(page.getByTestId("yjs-table-grid").nth(1).locator("tbody tr")).toHaveCount(1, {
-            timeout: 30000,
-        });
+        const occurrences = await page.evaluate(() =>
+            [...(globalThis as any).generalStore.currentPage.items]
+                .filter((item: any) => item.yjsGridId)
+                .map((item: any) => ({ id: item.id, yjsGridId: item.yjsGridId }))
+        );
+        expect(occurrences).toHaveLength(2);
+        const preservedSource = occurrences.find((item: any) => item.id === hostId);
+        expect(preservedSource).toEqual({ id: hostId, yjsGridId: sourceGridId });
+        const createdOccurrences = occurrences.filter((item: any) => item.id !== hostId);
+        expect(createdOccurrences).toHaveLength(1);
+        expect(createdOccurrences[0].id).not.toBe(hostId);
+        expect(createdOccurrences[0].yjsGridId).toBe(sourceGridId);
+        for (const view of await page.getByTestId("yjs-table-grid").all()) {
+            await expect(view.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
+            // The generated record ID is the authoritative identity of the
+            // row. Comparing innerText here is incorrect because Playwright's
+            // text matcher normalizes the tabs/newlines returned by innerText.
+            await expect(view.locator("tbody tr")).toHaveAttribute("data-record-id", sourceRecordId!);
+        }
     });
 
     test("copy and paste carries a Calendar's binding onto a fresh, text-less node", async ({ page }) => {

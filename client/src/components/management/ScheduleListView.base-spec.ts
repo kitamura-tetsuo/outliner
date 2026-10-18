@@ -18,7 +18,7 @@ vi.mock("../../lib/routeProject", async () => {
         openRouteProject: vi.fn(async () => {
             await Promise.resolve();
             store.project = routeState.project;
-            return { projectId: routeState.project?.id ?? "test-project", release: vi.fn() };
+            return { projectId: routeState.project?.ydoc.guid ?? "test-project", release: vi.fn() };
         }),
     };
 });
