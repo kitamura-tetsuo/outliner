@@ -37,11 +37,13 @@ test(
         await embeddedEditor.fill("Embedded B edit");
         await embeddedEditor.press("Enter");
         await expect(cell.locator("button.cell-value")).toHaveText("Embedded B edit");
-        let after = await snapshotProject(page);
-        expect(after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title)
-            .toBe("Value from A");
-        expect(after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
-            .toBe("Embedded B edit");
+        await expect.poll(async () => {
+            const after = await snapshotProject(page);
+            return {
+                a: after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title,
+                b: after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title,
+            };
+        }).toEqual({ a: "Value from A", b: "Embedded B edit" });
 
         // Actual-source results retain the ordinary selection/copy workflow.
         await page.keyboard.press("Control+c");
@@ -60,10 +62,12 @@ test(
         await standaloneEditor.fill("Standalone B edit");
         await standaloneEditor.press("Enter");
         await expect(standaloneCell.locator("button.cell-value")).toHaveText("Standalone B edit");
-        after = await snapshotProject(page);
-        expect(after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title)
-            .toBe("Value from A");
-        expect(after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
-            .toBe("Standalone B edit");
+        await expect.poll(async () => {
+            const after = await snapshotProject(page);
+            return {
+                a: after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title,
+                b: after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title,
+            };
+        }).toEqual({ a: "Value from A", b: "Standalone B edit" });
     },
 );

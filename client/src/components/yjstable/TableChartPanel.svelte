@@ -86,13 +86,6 @@ onMount(() => {
     if (pendingResult ?? initial) update(pendingResult ?? initial!);
 });
 
-// A result can become available in the same flush that mounts the optional
-// chart. In that case the parent's imperative component binding is not ready
-// for its query callback, so replay the reactive input once the chart exists.
-$effect(() => {
-    if (chart && initial && initial !== pendingResult) update(initial);
-});
-
 onDestroy(() => {
     chart?.dispose();
     chart = undefined;

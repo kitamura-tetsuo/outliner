@@ -38,9 +38,10 @@ test.describe("mouse drag clipboard with component blocks", () => {
 
         const source = page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-text`);
         // A Grid is an atomic visual node with no outline text (#5015). End the
-        // gesture in its rendered view, rather than depending on the absent
-        // `.item-text` or the empty text-row strip above the component.
-        const target = page.getByTestId("yjs-table-grid").first().locator("thead th").first();
+        // gesture on its outline host, which is the production selection
+        // boundary; descendants such as a header cell may consume pointer
+        // events without advancing the outline selection to the host.
+        const target = page.locator(`.outliner-item[data-item-id="${seededHostId}"] .item-content`);
         const sourceBox = await source.boundingBox();
         const targetBox = await target.boundingBox();
         expect(sourceBox).not.toBeNull();
