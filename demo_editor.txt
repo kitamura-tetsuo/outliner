@@ -1,0 +1,42 @@
+Skip to content
+demo
+Add Database
+Undo
+Redo
+Search pages
+Databases
+Not signed in
+Search
+Graph View
+
+This is a public, collaborative demo space. Content resets every 24 hours.
+
+Add Item
+Add Image
+History / Diff
+Keyboard Shortcuts
+Outliner Basics
+•
+Every line is an item in an outline tree.
+Keyboard operations:
+•
+Press Enter to create a new item.
+•
+Press Tab to indent an item (make it a child of the item above).
+•
+Press Shift+Tab to unindent an item.
+•
+Move between items with the arrow keys; the cursor keeps its horizontal position.
+A nested example:
+Parent item
+Child item
+•
+Grandchild item
+•
+Another child
+•
+Try reorganizing the tree above with Tab and Shift+Tab.
+G
+2
+Backlinks
+▶

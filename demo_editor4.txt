@@ -1,0 +1,181 @@
+Skip to content
+demo
+Add Database
+Undo
+Redo
+Search pages
+Databases
+Not signed in
+Search
+Graph View
+
+This is a public, collaborative demo space. Content resets every 24 hours.
+
+Add Item
+Add Image
+History / Diff
+Keyboard Shortcuts
+Advanced Features
+•
+A quick tour of the more advanced capabilities. The items below are live components, not just descriptions.
+•
+Database tables: this item embeds a live table (Yjs data, SQL queries via PGlite). Toggle the Chart view to render the query result as a bar chart.
+•
+Sales
+sales
+Open Table
+Grid
+Chart
+UI
+▦
+month
+
+revenue
+
+Actions
+
+1
+Jan
+
+120
+	🗑️
+2
+Feb
+
+180
+	🗑️
+3
+Mar
+
+150
+	🗑️
+4
+Apr
+
+210
+	🗑️
++ Add row
+•
+Kanban placements reference one project board; removing this occurrence does not delete its source Table or records.
+•
+Configure
+open
+TEXT VALUE
+↕
+Reply to the design review
+priority: high
+due_date: 2026-10-16
+↕
+Water the plants
+priority: low
+due_date: 2026-10-18
+↕
+Prepare tomorrow's standup notes
+priority: medium
+due_date: 2026-10-17
+↕
+Book dentist appointment
+priority: medium
+due_date: 2026-10-21
+done
+TEXT VALUE
+↕
+Send the weekly report
+priority: high
+due_date: 2026-10-16
+Open standalone board
+•
+Unified Find: open Find on this page to search outline text and every visible Grid result cell in one session; choose Selection to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
+•
+On touch, tap a cell to activate it, double-tap to edit, or long-press for range mode. Drag the blue handles to resize the range; the floating toolbar provides additive selection without modifier keys. Ordinary swipes still scroll.
+•
+Column widths: drag the boundary at a column header's right edge to resize it — the Grid previews the width while you drag and saves it once on release as a single Undo step (Escape cancels). The UI panel's Width (px) field sets the same saved width from the keyboard; clear it to return the column to automatic sizing.
+•
+Cell clipboard: select a cell or range and press Ctrl/Cmd+C to copy it as tab/newline text (rows), no header row; row and column selections copy every cell they cover. Ctrl/Cmd+V pastes: a single copied cell repeats across a larger selection, a rectangle pasted at one active cell fills the corresponding cells starting there, and a smaller rectangle that evenly tiles a larger selection repeats to fill it — any other size mismatch is rejected rather than silently truncated. Only writable cells are touched, and an incompatible value cancels the whole paste as one Undo step. On touch, the selection toolbar's Copy and Paste buttons do the same thing.
+•
+Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another live view of the same table and Data Storage. Across projects, paste instead creates an independent Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL names are rewritten, and Calendar blocks retain their portable settings. Press Ctrl/Cmd+Shift+V for Paste Special: choose another live view, an independent copy with or without data, or plain values. Unavailable choices stay visible and explain why. This public demo has only one project, so try the same-project choices here. Cut and paste moves the view without deleting its data. When a cross-project paste has a hidden consequence—such as copying query dependencies, renaming SQL relations, rebinding outline_items, omitting schedule rules, or leaving a cut table in the source—a transient summary names exactly what happened. Outside Outliner the same copy pastes as what you see: a spreadsheet receives the Grid's rows as cells, a document receives them as a table, and with the Chart view open the picture travels with the numbers.
+•
+Dependency-aware duplication: Grid, Table, Schedule, and Calendar copies can include referenced, referencing, or all connected objects recursively—a duplicated Schedule brings along the Tables it reads and writes, and a duplicated Calendar brings along every Table its query reads. The confirmation previews the object count and omitted references; Table copies can include or omit their rows, cross-project Schedule copies start disabled, and cross-project copies clear excluded links (a Calendar's query included).
+•
+Grid placement: choose a destination Page when duplicating, or drag a Grid's outline handle to a Page in the sidebar. Hold Ctrl (Option on macOS) while dragging to copy instead of move.
+•
+Selecting across blocks: drag a selection from the text above, across the table, into this paragraph. The text keeps its character-level highlight at both ends, and the table between them is outlined as one selected block — a Layout is outlined as a single container rather than as its separate blocks. Copying such a selection keeps the block's live binding, while the plain text another application receives stays the selected text.
+•
+Aggregation across tables: this table stores only the monthly targets, but its query joins the Sales table above and compares both series. Every table of a project can be referenced by the name its schema declares.
+•
+Sales vs Target
+sales_targets
+Open Table
+Grid
+Chart
+UI
+▦
+month
+
+revenue
+
+target
+
+diff
+
+1
+Jan
+
+120
+
+150
+
+-30
+
+2
+Feb
+
+180
+
+150
+
+30
+
+3
+Mar
+
+150
+
+200
+
+-50
+
+4
+Apr
+
+210
+
+200
+
+10
+
+Read-only view: rows combined from several tables cannot be edited here
+
++ Add row
+•
+Aliases: an item can mirror another item and stay in sync with the original.
+•
+Original item: edit me and watch the alias below update.
+1
+•
+Alias (mirrors the original item above):
+Advanced Features
+/
+Original item: edit me and watch the alias below update.
+•
+Attachments: drag and drop images or files onto an item to attach them. This item has a seeded image attachment.
+•
+Schedule: the Schedule view shows date-tagged items as a timeline.
+•
+2026-07-12 Date tagged item for the schedule view
+•
+Object Manager: open it from the sidebar to browse every Grid, Calendar, Table and Schedule in this project. Each Grid/Calendar row lists the Pages it is directly placed on — click one to jump straight to that block. Click a name to rename it in place; select several objects and use the compact toolbar's literal find/replace, whose before/after preview opens as a popover so the object list never shifts; delete is undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the same dependency graph duplication uses — Dependencies, Dependents, or All connected — so selecting one Table and choosing Dependents adds every Grid, Schedule and Calendar that reads it. "Duplicate selected" then copies exactly that checked set — never a recomputed scope — into this or another project, with the same undo/redo as the rest of the toolbar; an individual Grid/Table/Schedule/Calendar page's own Duplicate button opens Object Manager with it preselected instead of asking for a scope itself. Use "Place on Page…" or drag a Grid/Calendar row onto a sidebar Page to add another placement of that existing object without duplicating its definition.
+G
+4
+Backlinks
+▶
