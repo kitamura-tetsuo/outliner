@@ -288,7 +288,7 @@ function refreshAfterGuardedEffects(): Promise<void> {
     return guardedEffectsRefresh;
 }
 
-const mutationBoundary = createGridExistingRowMutationBoundary({
+const mutationBoundary = $derived(createGridExistingRowMutationBoundary({
     projectDoc,
     projectId,
     session: guardedSelect,
@@ -298,7 +298,7 @@ const mutationBoundary = createGridExistingRowMutationBoundary({
     canWrite: () => true,
     allows: () => true,
     relationSession: session,
-});
+}));
 // This component is remounted for a changed Project/Grid identity.
 // svelte-ignore state_referenced_locally
 const insertController = createGridInsertController({
