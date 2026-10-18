@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { resolve } from "$app/paths";
+import type { ResolvedPathname } from "$app/types";
 import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import { projectObjectsSelectedRoute } from "../lib/managementPaths";
@@ -8,8 +9,8 @@ import Breadcrumb from "./Breadcrumb.svelte";
 
 describe("Breadcrumb", () => {
     it("renders official resolved URLs unchanged across the prop boundary", () => {
-        const encoded = projectPageRoute("demo-ja", "設計 / 50%?#");
-        const selected = `${projectObjectsSelectedRoute("project name", "table/id")}#details`;
+        const encoded = projectPageRoute("demo-ja", "設計 / 50%?#") as ResolvedPathname;
+        const selected = `${projectObjectsSelectedRoute("project name", "table/id")}#details` as ResolvedPathname;
         const { container } = render(Breadcrumb, {
             props: {
                 items: [
