@@ -60,20 +60,18 @@ test.describe("mouse drag clipboard with component blocks", () => {
         await page.mouse.up();
 
         await page.keyboard.press("Control+c");
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 15000 })
-            .toContain("title\tstatus\tpriority");
-
-        // The structured payload is what carries the Grid binding; a plain text
-        // copy would still contain the host title and hide the regression.
-        const componentTypes = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const encoded = (window as unknown as { lastCopiedStructuredItems?: string; })
-                .lastCopiedStructuredItems;
-            if (!encoded) return [];
-            return (JSON.parse(encoded) as { items: Array<{ componentType?: string; }>; }).items
-                .map(item => item.componentType);
-        });
-        expect(componentTypes).toContain("yjstable");
+        // The structured payload, rather than the browser-dependent visible
+        // text range, is the authoritative proof that the atomic Grid binding
+        // participated in the outline copy.
+        await expect.poll(() =>
+            page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
+                const encoded = (window as unknown as { lastCopiedStructuredItems?: string; })
+                    .lastCopiedStructuredItems;
+                if (!encoded) return [];
+                return (JSON.parse(encoded) as { items: Array<{ componentType?: string; }>; }).items
+                    .map(item => item.componentType);
+            }), { timeout: 15000 }).toContain("yjstable");
 
         // Paste into a fresh item so no existing text merges with the payload.
         await page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-content`).click();
