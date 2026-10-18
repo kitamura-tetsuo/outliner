@@ -109,11 +109,11 @@
     }
 
     let sourceTableHref = $derived(
-        sourceTableId || resolvedQuerySource?.tableId
-            ? projectTableRoute(projectName, sourceTableId ?? resolvedQuerySource!.tableId)
+        resolvedQuerySource?.tableId || sourceTableId
+            ? projectTableRoute(projectName, resolvedQuerySource?.tableId ?? sourceTableId!)
             : undefined,
     );
-    let displayedSourceTableName = $derived(sourceTableName ?? resolvedQuerySource?.name);
+    let displayedSourceTableName = $derived(resolvedQuerySource?.name ?? sourceTableName);
 
     async function handleAuthSuccess() {
         isAuthenticated = true;
