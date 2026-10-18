@@ -258,11 +258,11 @@ onDestroy(() => {
     data-foreign-editor="sql"
     data-sql-editor-status={status}
     data-block-dnd-owner="sql-editor"
-    tabindex="-1"
     role="group"
     aria-label={ariaLabel}
     style={`--sql-editor-min-height: ${minHeight}px; --sql-editor-max-height: ${maxHeight}px;`}
 >
+    <span class="commit-focus-target" data-sql-editor-commit-target tabindex="-1" aria-hidden="true"></span>
     {#if status !== "unavailable"}
         <div
             class="sql-editor-surface"
@@ -294,6 +294,13 @@ onDestroy(() => {
 </div>
 
 <style>
+.commit-focus-target {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
 .sql-editor {
     width: 100%;
     border: 1px solid #d1d5db;

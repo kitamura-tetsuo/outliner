@@ -38,7 +38,10 @@ export class SqlEditorHelper {
 
     /** True while the caret is inside this editor. */
     async hasFocus(): Promise<boolean> {
-        return await this.root.evaluate((el) => document.activeElement !== el && el.contains(document.activeElement));
+        return await this.root.evaluate((el) =>
+            !document.activeElement?.hasAttribute("data-sql-editor-commit-target")
+            && el.contains(document.activeElement)
+        );
     }
 
     /** The text Monaco currently shows, line breaks included. */
@@ -73,7 +76,7 @@ export class SqlEditorHelper {
         // Focus the editor's persistent wrapper rather than a page-specific
         // toolbar control. The wrapper is outside Monaco's focus host and is
         // present on every surface that embeds SqlEditor.
-        await this.root.focus();
+        await this.root.locator("[data-sql-editor-commit-target]").focus();
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })
             .toBe(false);
