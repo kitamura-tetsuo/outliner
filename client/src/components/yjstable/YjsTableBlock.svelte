@@ -29,7 +29,13 @@ import {
     getItemGridId,
     observeItemGridId,
 } from "../../services/yjstable/itemBinding";
-import { getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
+import {
+    getTableHandles,
+    getTableName,
+    getTableRegistry,
+    getTableSqlName,
+    listTables,
+} from "../../services/yjstable/tableDocs";
 import {
     createGrid,
     getGridHandles,
@@ -39,8 +45,11 @@ import {
 } from "../../services/yjstable/gridDocs";
 import { createTableFromPreset } from "../../services/yjstable/tablePresets";
 import { sqlNameError } from "../../services/yjstable/sqlNames";
+import { rewriteTableQuerySql } from "../../services/yjstable/tableSqlRewrite";
+import { projectTableRoute } from "../../lib/managementPaths";
 import { page as pageState } from "$app/state";
 import { yjsStore } from "../../stores/yjsStore.svelte";
+import YjsTableView from "./YjsTableView.svelte";
 import ProjectGridView from "./ProjectGridView.svelte";
 import { isForeignInput } from "../../lib/KeyEventHandler";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
@@ -119,6 +128,37 @@ const sourceTableId = $derived.by(() => {
     return gridId ? getGridSourceTableId(item.ydoc, gridId) : undefined;
 });
 
+const handles = $derived.by(() => {
+    void registryVersion;
+    return sourceTableId ? getTableHandles(item.ydoc, sourceTableId) : undefined;
+});
+const tableName = $derived.by(() => {
+    void registryVersion;
+    return sourceTableId ? getTableName(item.ydoc, sourceTableId) : undefined;
+});
+const tableSqlName = $derived.by(() => {
+    void registryVersion;
+    return sourceTableId ? getTableSqlName(item.ydoc, sourceTableId) : undefined;
+});
+const queryNeedsProjectResolution = $derived.by(() => {
+    void registryVersion;
+    if (!grid || !tableSqlName) return true;
+    const query = String(grid.entry.get("query") ?? "").trim();
+    if (!query) return false;
+    try {
+        const dependencies = rewriteTableQuerySql(query, new Map()).actualRelationDependencies;
+        return dependencies.length !== 1 || dependencies[0] !== tableSqlName;
+    } catch {
+        return true;
+    }
+});
+const tableSourceProjectId = $derived.by(() => {
+    void registryVersion;
+    if (!sourceTableId) return undefined;
+    const entry = existingTables.find(t => t.tableId === sourceTableId);
+    return entry?.sourceProjectId;
+});
+
 const takenSqlNames = $derived(existingTables.map((t) => t.sqlName).filter(Boolean));
 const projectId = $derived(yjsStore.currentProjectId ?? undefined);
 // The route name the user navigated with, the same one the sidebar links
@@ -127,6 +167,12 @@ const projectId = $derived(yjsStore.currentProjectId ?? undefined);
 const routeProjectName = $derived(
     pageState.params.demoProject || pageState.params.project || undefined,
 );
+const sourceTableHref = $derived(
+    routeProjectName && sourceTableId
+        ? projectTableRoute(routeProjectName, sourceTableId)
+        : undefined,
+);
+
 const registryObserver = () => {
     registryVersion++;
 };
@@ -230,18 +276,35 @@ function createQueryGrid() {
     }}
     role="presentation"
 >
-    {#if grid}
-        {#key `${grid.gridId}::${gridEntryToken}`}
-            <ProjectGridView
+    {#if grid && handles && !queryNeedsProjectResolution}
+        {#key `${grid.gridId}::${handles.doc.guid}::${gridEntryToken}`}
+            <YjsTableView
                 {grid}
+                {handles}
                 projectDoc={item.ydoc}
                 placementId={item.key}
                 pageId={store.currentPage?.id || store.currentPage?.key || ""}
                 pageTitle={store.currentPage?.text?.toString?.() ?? ""}
                 {projectId}
-                projectName={routeProjectName}
+                {tableName}
+                sqlName={tableSqlName}
+                sourceProjectId={tableSourceProjectId}
+                {sourceTableHref}
                 {isReadOnly}
-                bootstrapSourceTableId={sourceTableId ?? bootstrapSourceTableId}
+            />
+        {/key}
+    {:else if grid}
+        {#key `${grid.gridId}::${gridEntryToken}`}
+            <ProjectGridView
+                {grid}
+                projectDoc={item.ydoc}
+                {projectId}
+                projectName={routeProjectName}
+                placementId={item.key}
+                pageId={store.currentPage?.id || store.currentPage?.key || ""}
+                pageTitle={store.currentPage?.text?.toString?.() ?? ""}
+                {isReadOnly}
+                bootstrapSourceTableId={queryNeedsProjectResolution ? bootstrapSourceTableId : sourceTableId}
             />
         {/key}
     {:else if gridId}
