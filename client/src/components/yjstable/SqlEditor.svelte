@@ -258,6 +258,7 @@ onDestroy(() => {
     data-foreign-editor="sql"
     data-sql-editor-status={status}
     data-block-dnd-owner="sql-editor"
+    tabindex="-1"
     role="group"
     aria-label={ariaLabel}
     style={`--sql-editor-min-height: ${minHeight}px; --sql-editor-max-height: ${maxHeight}px;`}

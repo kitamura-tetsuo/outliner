@@ -38,7 +38,7 @@ export class SqlEditorHelper {
 
     /** True while the caret is inside this editor. */
     async hasFocus(): Promise<boolean> {
-        return await this.root.evaluate((el) => el.contains(document.activeElement));
+        return await this.root.evaluate((el) => document.activeElement !== el && el.contains(document.activeElement));
     }
 
     /** The text Monaco currently shows, line breaks included. */
@@ -69,14 +69,11 @@ export class SqlEditorHelper {
     }
 
     /** Moves focus out of the editor, which is what commits its value. */
-    async commit(page: Page): Promise<void> {
-        // Focus a persistent, user-facing control outside Monaco. A body click
-        // can land on an overlay, while a short-lived off-screen element can
-        // be removed before Chromium dispatches Monaco's focusout handling.
-        await page.getByTestId("search-toggle-button").focus();
-        if (await this.hasFocus()) {
-            await page.getByTestId("main-toolbar").getByRole("button").first().focus();
-        }
+    async commit(_page: Page): Promise<void> {
+        // Focus the editor's persistent wrapper rather than a page-specific
+        // toolbar control. The wrapper is outside Monaco's focus host and is
+        // present on every surface that embeds SqlEditor.
+        await this.root.focus();
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })
             .toBe(false);
