@@ -229,6 +229,7 @@ You can upload attachments by dragging and dropping an image or file directly on
 
 Outliner includes advanced capabilities like aliases and schedule rules.
 
+- **ENUM Ordering:** A Project-owned ENUM type gives text values a declaration order: sorting by the column follows the label order in CREATE TYPE, not alphabetical order. The TYPE lives in the Project catalog.
 - **Mermaid Diagrams:** A Diagram is a project-owned Mermaid source. It keeps its own identity in the project's diagrams registry, and any page can transclude it. Type `/New Mermaid diagram` on an empty item to create one, or `/Insert transclusion` to reuse an existing Diagram.
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
@@ -303,7 +304,7 @@ A table, a grid, a kanban, a calendar and a schedule are five independent things
 
 - **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid or kanban exists over it. Below the data, the page lists the grids and kanbans that select from this table and the schedules that reference it, as links.
 - **Grid** (`/-/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
-- **Kanban** (`/-/kanbans/<project>/<kanban>`) owns one SELECT and its presentation settings, such as grouping, title roles, and lane preferences. Several kanbans may present the same table, and each keeps its own settings; they all read and write the same table data. A kanban page links back to its source table rather than owning its schema.
+- **Kanban** (`/-/kanbans/<project>/<kanban>`) owns one SELECT and its presentation settings, such as grouping, title roles, and lane preferences. Several kanbans may present the same table, and each keeps its own settings; they all read and write the same table data. Kanban placements reference one project board; removing this occurrence does not delete its source Table or records. A kanban page links back to its source table rather than owning its schema.
 - **Calendar** (`/-/calendars/<project>/<calendar>`) owns a query and role assignments for its result columns (e.g., title, start date), but no data of its own. It dynamically visualizes the underlying table data based on its view settings. A calendar page links back to the tables its query reads.
 - **Schedule** (`/-/schedules/<project>`, one rule at `/-/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
 
