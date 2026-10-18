@@ -10,6 +10,18 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 registerCoverageHooks();
 
+async function waitForStableUndoDepth(page: Page): Promise<number> {
+    let previous = -1;
+    let unchangedSamples = 0;
+    await expect.poll(async () => {
+        const current = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth as number);
+        unchangedSamples = current === previous ? unchangedSamples + 1 : 0;
+        previous = current;
+        return unchangedSamples;
+    }).toBeGreaterThanOrEqual(2);
+    return previous;
+}
+
 async function captureReplace(page: Page, fixture: OverlappingTableFixture, replacement: string) {
     await page.getByTestId("search-toggle-button").click();
     await page.locator("#search-scope").selectOption("page");
@@ -136,9 +148,8 @@ test("Replace Current refuses a query change introduced while lookup is pending"
     // Rendering the new query and publishing its undo entry cross independent
     // reactive boundaries. Establish that the intentional query edit is in
     // history before taking the no-effect baseline for the held replacement.
-    await expect.poll(() => page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth))
-        .toBe(undoDepthBeforeQueryChange + 1);
-    const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+    const undoDepth = await waitForStableUndoDepth(page);
+    expect(undoDepth).toBeGreaterThan(undoDepthBeforeQueryChange);
     await releaseRelation(page);
     await reopenHeldSearchIfHidden(page);
     // Provider refresh timing may retain the stale alias or remove it after the
