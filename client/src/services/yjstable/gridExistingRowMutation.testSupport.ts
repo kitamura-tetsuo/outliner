@@ -30,7 +30,7 @@ export function createTestTable(
 export async function createMutationHarness(
     doc: Y.Doc,
     query: string,
-    options: { gatedResolution?: boolean; failWriteNumber?: number; } = {},
+    options: { gatedResolution?: boolean; failWriteNumber?: number; resolutionError?: Error; } = {},
 ) {
     const session = createProjectSelectSession({
         projectDoc: doc,
@@ -43,7 +43,7 @@ export async function createMutationHarness(
     let provenance: ProjectQueryProvenance | undefined;
     let metadata: GridMetadataResolution | undefined;
     let allowed = true;
-    const relationEngine = options.gatedResolution || options.failWriteNumber !== undefined
+    const relationEngine = options.gatedResolution || options.failWriteNumber !== undefined || options.resolutionError
         ? createTableEngineSession({ projectDoc: doc, connect: localConnector })
         : undefined;
     let writeNumber = 0;
@@ -84,6 +84,7 @@ export async function createMutationHarness(
                 async resolveRelation(sqlName) {
                     resolutionStarted?.();
                     await resolutionGate;
+                    if (options.resolutionError) throw options.resolutionError;
                     const provider = await relationEngine.resolveRelation(sqlName);
                     if (!provider || options.failWriteNumber === undefined) return provider;
                     const wrapped = Object.create(provider) as typeof provider;

@@ -45,6 +45,9 @@ export async function seedOverlappingTableFixture(
     const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Grid provenance anchor"]);
     await createBlankGrid(page, "Table A", "table_a");
     await configureGrid(page, 0, SCHEMA, QUERY_A, "Title");
+    // This fixture exercises selection and typed replacement on `done`; the
+    // shared configure helper hides it for width/clipboard fixtures.
+    await page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-hidden-done").check();
     await addSourceRecord(page);
 
     let state = await readGridProjectState(page);

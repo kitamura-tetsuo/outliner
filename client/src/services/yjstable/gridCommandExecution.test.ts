@@ -115,6 +115,56 @@ describe("source-aware Grid command execution", { timeout: 30_000 }, () => {
         }
     });
 
+    it("preserves an unexpected relation-resolution failure as a provider error", async () => {
+        const doc = new Y.Doc({ guid: "grid-command-resolution-error" });
+        const table = createTestTable(doc, "items", "CREATE TABLE items (id TEXT PRIMARY KEY, value TEXT)", "one", {
+            value: "before",
+        });
+        const providerError = new Error("relation lookup exploded");
+        const harness = await createMutationHarness(doc, "SELECT id, value FROM items", {
+            resolutionError: providerError,
+        });
+        const target = { row: harness.evidence().rows[0]!, rowIndex: 0, recordId: "one" };
+        try {
+            table.handles.undo.clear();
+            const outcome = await executeGridWrites(
+                { boundary: harness.boundary, rowTargets: new Map([["one", target]]) },
+                [{ target: { rowTarget: target, columnId: "value" }, value: "after" }],
+            );
+
+            expect(outcome).toEqual({ status: "error", applied: [], error: providerError });
+            expect(table.handles.data.get("one")?.get("value")).toBe("before");
+            expect(table.handles.undo.undoStack).toHaveLength(0);
+        } finally {
+            harness.dispose();
+        }
+    });
+
+    it("revalidates permission after asynchronous relation resolution", async () => {
+        const doc = new Y.Doc({ guid: "grid-command-permission-revoked" });
+        const table = createTestTable(doc, "items", "CREATE TABLE items (id TEXT PRIMARY KEY, value TEXT)", "one", {
+            value: "before",
+        });
+        const harness = await createMutationHarness(doc, "SELECT id, value FROM items", { gatedResolution: true });
+        const target = { row: harness.evidence().rows[0]!, rowIndex: 0, recordId: "one" };
+        try {
+            table.handles.undo.clear();
+            const pending = executeGridWrites(
+                { boundary: harness.boundary, rowTargets: new Map([["one", target]]) },
+                [{ target: { rowTarget: target, columnId: "value" }, value: "after" }],
+            );
+            await harness.resolutionPending;
+            harness.setAllowed(false);
+            harness.releaseResolution();
+
+            expect(await pending).toMatchObject({ status: "refused", applied: [] });
+            expect(table.handles.data.get("one")?.get("value")).toBe("before");
+            expect(table.handles.undo.undoStack).toHaveLength(0);
+        } finally {
+            harness.dispose();
+        }
+    });
+
     it("deletes only the captured logical row occurrences", async () => {
         const doc = new Y.Doc({ guid: "grid-command-delete" });
         const a = createTestTable(doc, "a", "CREATE TABLE a (id TEXT PRIMARY KEY, value TEXT)", "same", {

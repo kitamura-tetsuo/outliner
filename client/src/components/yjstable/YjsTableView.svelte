@@ -129,6 +129,12 @@ let guardedAuthority = $state.raw<{
     provenance: ProjectQueryProvenance;
     metadata: GridMetadataResolution;
 } | undefined>(undefined);
+const mutationIncarnation = $derived.by(() => {
+    const evidence = guardedAuthority?.evidence;
+    return evidence
+        ? `${evidence.queryId}:${evidence.queryRevision}:${evidence.executionGeneration}:${evidence.catalogGeneration}:${evidence.catalogRevision ?? ""}`
+        : "unavailable";
+});
 // Authority is revoked only by material changes from the authoritative Yjs
 // configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
@@ -295,8 +301,8 @@ const mutationBoundary = createGridExistingRowMutationBoundary({
     evidence: () => guardedAuthority?.evidence,
     provenance: () => guardedAuthority?.provenance,
     metadata: () => guardedAuthority?.metadata,
-    canWrite: () => true,
-    allows: () => true,
+    canWrite: () => !isReadOnly,
+    allows: () => !isReadOnly,
     relationSession: session,
 });
 // This component is remounted for a changed Project/Grid identity.
@@ -424,6 +430,7 @@ function stateVectorRevision(doc: Y.Doc): string {
     data-testid="yjs-table-view"
     data-grid-id={grid.gridId}
     data-source-table-id={handles.tableId}
+    data-mutation-incarnation={mutationIncarnation}
     data-ui-editor-open={showUiDef}
     onfocusin={(e) => {
         if (isForeignInput(e.target)) {
@@ -547,6 +554,8 @@ function stateVectorRevision(doc: Y.Doc): string {
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                     {mutationBoundary}
+                    {mutationIncarnation}
+                    mutationPhysicalColumns={guardedAuthority?.metadata.physicalColumns}
                     prepareMutationAuthority={refreshGuardedMutationAuthority}
                     onGuardedEffects={refreshAfterGuardedEffects}
                     {isReadOnly}

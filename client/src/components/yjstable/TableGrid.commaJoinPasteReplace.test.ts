@@ -142,9 +142,9 @@ describe("TableGrid comma-join paste/replace/add-row (issue #5547)", () => {
 
             // Single Replace and Replace All apply nothing and skip read-only cells.
             const [first] = matches;
-            const single = replaceGridMatch(first!, "Value", "Hacked", {});
+            const single = await replaceGridMatch(first!, "Value", "Hacked", {});
             expect(single?.applied).toBe(false);
-            const all = replaceGridMatches("comma-paste-page", "Value", "Hacked", {});
+            const all = await replaceGridMatches("comma-paste-page", "Value", "Hacked", {});
             expect(all.appliedCells).toBe(0);
             expect(all.skippedReadOnly).toBeGreaterThan(0);
             expect(snapshotOf(handlesA)).toEqual(before);

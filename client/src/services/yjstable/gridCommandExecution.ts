@@ -10,12 +10,14 @@ import type {
     GridCommandRowTarget,
     GridWritableCellTarget,
 } from "./gridSelectionCommands";
+import { RelationWriteError } from "./relationProvider";
 import type { TableRecordValue } from "./tableDocs";
 
 /** A command result distinguishes a refusal before effects from a provider failure after effects. */
 export type GridExecutionOutcome =
     | { status: "applied"; applied: GridMutationResult[]; }
     | { status: "refused"; applied: []; reason: string; }
+    | { status: "error"; applied: []; error: unknown; }
     | { status: "partial"; applied: GridMutationResult[]; failedIntent: GridMutationIntent; error: unknown; };
 
 export interface GridGuardedCommandContext extends Pick<GridCommandContext, "rowTargets"> {
@@ -63,7 +65,10 @@ export async function executeGridWrites(
     try {
         intents = captureUpdates(ctx, writes);
     } catch (error) {
-        return { status: "refused", applied: [], reason: error instanceof Error ? error.message : String(error) };
+        if (error instanceof RelationWriteError) {
+            return { status: "refused", applied: [], reason: error.message };
+        }
+        return { status: "error", applied: [], error };
     }
     try {
         const result = await ctx.boundary.commitMany(intents);
@@ -77,7 +82,10 @@ export async function executeGridWrites(
         }
         return { status: "applied", applied: result.applied };
     } catch (error) {
-        return { status: "refused", applied: [], reason: error instanceof Error ? error.message : String(error) };
+        if (error instanceof RelationWriteError) {
+            return { status: "refused", applied: [], reason: error.message };
+        }
+        return { status: "error", applied: [], error };
     }
 }
 
