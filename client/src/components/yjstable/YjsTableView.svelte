@@ -588,9 +588,7 @@ function stateVectorRevision(doc: Y.Doc): string {
 
     {#if showChart}
         <section class="panel">
-            {#key clientRevision}
-                <TableChartPanel bind:this={chartPanel} initial={result} />
-            {/key}
+            <TableChartPanel bind:this={chartPanel} initial={result} />
         </section>
     {/if}
 </div>
