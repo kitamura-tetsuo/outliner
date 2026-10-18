@@ -21,7 +21,11 @@
     // and the Table's for its own lifetime, so this page only resolves handles.
     import { type GridHandles, getGridHandles } from "../../services/yjstable/gridDocs";
     import { isPublicProject, projectRoute } from "../../lib/publicProject";
-    import { projectGridsRoute, projectObjectsSelectedRoute } from "../../lib/managementPaths";
+    import {
+        projectGridsRoute,
+        projectObjectsSelectedRoute,
+        projectTableRoute,
+    } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
 
@@ -42,6 +46,7 @@
     let gridName: string | undefined = $state(undefined);
     let gridHandles: GridHandles | undefined = $state(undefined);
     let projectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
+    let resolvedQuerySource: { tableId: string; name: string; sqlName: string; } | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
 
@@ -56,6 +61,10 @@
     // `Select related`.
     function openDuplicate() {
         goto(projectObjectsSelectedRoute(projectName, routeGridId));
+    }
+
+    function acceptResolvedQuerySource(source: { tableId: string; name: string; sqlName: string; }) {
+        resolvedQuerySource = source;
     }
 
     async function handleAuthSuccess() {
@@ -73,6 +82,7 @@
         isLoading = true;
         error = undefined;
         notFound = false;
+        resolvedQuerySource = undefined;
 
         try {
             // Releases the previous reference before taking another, so a
@@ -150,6 +160,13 @@
         <h1 class="text-2xl font-bold">
             {gridName || "Grid"}
         </h1>
+        {#if resolvedQuerySource}
+            <a
+                class="text-sm text-blue-600 hover:underline"
+                href={projectTableRoute(projectName, resolvedQuerySource.tableId)}
+                data-testid="grid-source-table-link"
+            >Source table: {resolvedQuerySource.name}</a>
+        {/if}
         {#if isAuthenticated && !isLoading && gridHandles && projectDoc}
             <button
                 class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -204,6 +221,7 @@
                     {projectDoc}
                     projectId={yjsStore.currentProjectId ?? undefined}
                     projectName={projectName}
+                    onSourceResolved={acceptResolvedQuerySource}
                 />
             {/key}
         </div>

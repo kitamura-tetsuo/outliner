@@ -107,7 +107,8 @@ describe("standalone grid route", () => {
         });
         expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-href"))
             .toBe("/demo/-/tables/demo-table-sales");
-        expect(screen.queryByTestId("grid-source-table-link")).toBeNull();
+        expect(screen.getByTestId("grid-source-table-link").getAttribute("href"))
+            .toBe("/demo/-/tables/demo-table-sales");
     });
 
     it("keeps two Grids over one Table independent", async () => {

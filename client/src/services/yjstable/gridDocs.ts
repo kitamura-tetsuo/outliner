@@ -63,6 +63,8 @@ export interface GridRegistryEntry {
     name: string;
     /** Optional legacy creation Table; never query or mutation authority. */
     sourceTableId?: string;
+    /** Saved SELECT text used to discover current Table dependencies. */
+    query: string;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
     /** Whether deleting a row requires confirmation (default false). */
@@ -97,6 +99,7 @@ export function listGrids(projectDoc: Y.Doc): GridRegistryEntry[] {
             sourceTableId: typeof entry.get("sourceTableId") === "string"
                 ? String(entry.get("sourceTableId"))
                 : undefined,
+            query: String(entry.get("query") ?? ""),
             showAddRowButton: entry.get("showAddRowButton") !== false,
             confirmRowDelete: entry.get("confirmRowDelete") === true,
         });
@@ -431,8 +434,12 @@ export function findGridsBySourceTable(projectDoc: Y.Doc, sourceTableId: string)
 /** Current-format Grids whose SQL reads the registered Table. */
 export function findGridsByTableDependency(projectDoc: Y.Doc, tableId: string): GridRegistryEntry[] {
     const table = listTables(projectDoc).find(candidate => candidate.tableId === tableId);
-    if (!table) return [];
     return listGrids(projectDoc).filter(grid => {
+        // Keep retained definitions discoverable from the Table inspector.
+        // This is only a reference-list association: runtime query and write
+        // authority still comes exclusively from completed SELECT evidence.
+        if (grid.sourceTableId === tableId) return true;
+        if (!table) return false;
         try {
             return rewriteTableQuerySql(grid.query, new Map()).actualRelationDependencies.includes(table.sqlName);
         } catch {
