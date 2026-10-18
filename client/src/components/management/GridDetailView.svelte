@@ -47,6 +47,7 @@
     let sourceTableId: string | undefined = $state(undefined);
     let sourceTableName: string | undefined = $state(undefined);
     let sourceTableSqlName: string | undefined = $state(undefined);
+    let resolvedQuerySource: { tableId: string; name: string; sqlName: string; } | undefined = $state(undefined);
     // Set when the Grid exists but its source Table does not: an explicit
     // missing-source state, never a silent empty grid.
     let missingSource = $state(false);
@@ -82,9 +83,9 @@
     }
 
     function acceptResolvedQuerySource(source: { tableId: string; name: string; sqlName: string; }) {
-        sourceTableId = source.tableId;
-        sourceTableName = source.name;
-        sourceTableSqlName = source.sqlName;
+        // Query evidence describes the Table currently supplying this result;
+        // it must not be written back into the legacy ownership fields.
+        resolvedQuerySource = source;
     }
 
     const tableRegistryObserver = () => refreshSourceTable();
@@ -108,8 +109,11 @@
     }
 
     let sourceTableHref = $derived(
-        sourceTableId ? projectTableRoute(projectName, sourceTableId) : undefined,
+        sourceTableId || resolvedQuerySource?.tableId
+            ? projectTableRoute(projectName, sourceTableId ?? resolvedQuerySource!.tableId)
+            : undefined,
     );
+    let displayedSourceTableName = $derived(sourceTableName ?? resolvedQuerySource?.name);
 
     async function handleAuthSuccess() {
         isAuthenticated = true;
@@ -127,6 +131,7 @@
         error = undefined;
         notFound = false;
         missingSource = false;
+        resolvedQuerySource = undefined;
         clearResolvedSource();
         stopObservingTableRegistry();
 
@@ -207,13 +212,13 @@
         <h1 class="text-2xl font-bold">
             {gridName || "Grid"}
         </h1>
-        {#if sourceTableHref && sourceTableName}
+        {#if sourceTableHref && displayedSourceTableName}
             <a
                 class="text-sm text-blue-600 hover:underline"
                 href={sourceTableHref}
                 data-testid="grid-source-table-link"
             >
-                Source table: {sourceTableName}
+                Source table: {displayedSourceTableName}
             </a>
         {/if}
         {#if isAuthenticated && !isLoading && gridHandles && projectDoc}
