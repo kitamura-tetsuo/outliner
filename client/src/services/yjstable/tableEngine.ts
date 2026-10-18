@@ -46,22 +46,6 @@ const logger = getLogger("tableEngine");
 
 const INITIAL_SYNC_TIMEOUT_MS = 10000;
 
-type GridRelationTestControl = {
-    beforeResolve: (sqlName: string) => Promise<void>;
-};
-
-declare global {
-    // Test-environment-only production-path instrumentation. Production builds
-    // eliminate both the writer and reader through the literal mode guard.
-    var __GRID_RELATION_TEST_CONTROL__: GridRelationTestControl | undefined;
-}
-
-async function waitForRelationTestControl(sqlName: string): Promise<void> {
-    if (import.meta.env.MODE !== "production") {
-        await globalThis.__GRID_RELATION_TEST_CONTROL__?.beforeResolve(sqlName);
-    }
-}
-
 /** Entry key suffix of the project's single items projection. */
 const ITEMS_ENTRY_ID = `@${ITEMS_RELATION_NAME}`;
 
@@ -367,7 +351,6 @@ async function resolveRelationInternal(
     sqlName: string,
     connect: TableDocConnector,
 ): Promise<{ entry: Entry; provider: RelationProvider; } | undefined> {
-    await waitForRelationTestControl(sqlName);
     if (sqlName === ITEMS_RELATION_NAME) {
         const key = entryKey(pgSchema, ITEMS_ENTRY_ID);
         const entry = reusableEntry(key, projectDoc) ?? createItemsEntry(projectDoc, pgSchema);

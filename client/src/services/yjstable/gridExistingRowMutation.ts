@@ -15,6 +15,18 @@ import { getTableSqlName } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
 import { castValueForColumn } from "./valueCasting";
 
+declare global {
+    // Test-environment-only instrumentation at the guarded effect boundary.
+    // The literal mode guard makes the reader removable from production builds.
+    var __GRID_RELATION_TEST_CONTROL__: { beforeResolve: (sqlName: string) => Promise<void>; } | undefined;
+}
+
+async function waitForRelationTestControl(sqlName: string): Promise<void> {
+    if (import.meta.env.MODE !== "production") {
+        await globalThis.__GRID_RELATION_TEST_CONTROL__?.beforeResolve(sqlName);
+    }
+}
+
 export type GridExistingRowOperation = "UPDATE" | "DELETE";
 
 export interface GridMutationResult {
@@ -158,6 +170,7 @@ export function createGridExistingRowMutationBoundary(
             if (!captured.has(intent as object)) refuse("The mutation intent was not created by this boundary");
             const operation = intent as CapturedIntent;
             assertCurrent(options, operation);
+            await waitForRelationTestControl(operation.source.sqlName);
             const provider = await engine.resolveRelation(operation.source.sqlName);
             try {
                 assertCurrent(options, operation);
@@ -213,6 +226,7 @@ export function createGridExistingRowMutationBoundary(
                 // live-target check before allowing the first write, so a
                 // rejected target cannot leave a paste or bulk edit partial.
                 for (const operation of operations) {
+                    await waitForRelationTestControl(operation.source.sqlName);
                     const provider = await engine.resolveRelation(operation.source.sqlName);
                     if (!provider) refuse(`The source relation "${operation.source.sqlName}" is unavailable`);
                     assertCurrent(options, operation);

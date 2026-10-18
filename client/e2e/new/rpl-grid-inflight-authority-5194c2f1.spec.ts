@@ -58,6 +58,12 @@ async function releaseRelation(page: Page, failure?: string) {
     }, failure);
 }
 
+async function reopenHeldSearchIfHidden(page: Page) {
+    if (!await page.getByTestId("replace-button").isVisible().catch(() => false)) {
+        await page.getByTestId("search-toggle-button").click();
+    }
+}
+
 async function unchanged(page: Page, fixture: OverlappingTableFixture, undoDepth: number) {
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
     expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth);
@@ -128,6 +134,7 @@ test("Replace Current refuses a query change introduced while lookup is pending"
     await editor.fillAndCommit(page, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
     await releaseRelation(page);
+    await reopenHeldSearchIfHidden(page);
     await expect(page.getByTestId("replace-status")).toContainText("changed or could not be revalidated");
     await unchanged(page, fixture, undoDepth);
 });
