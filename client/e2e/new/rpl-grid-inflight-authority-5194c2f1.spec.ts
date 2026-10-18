@@ -129,9 +129,15 @@ test("Replace Current refuses a query change introduced while lookup is pending"
     await pointGridAToTableB(page, fixture);
     await captureReplace(page, fixture, "must not apply");
     await startReplace(page);
+    const undoDepthBeforeQueryChange = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
     const editor = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
     await editor.fillAndCommit(page, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
+    // Rendering the new query and publishing its undo entry cross independent
+    // reactive boundaries. Establish that the intentional query edit is in
+    // history before taking the no-effect baseline for the held replacement.
+    await expect.poll(() => page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth))
+        .toBe(undoDepthBeforeQueryChange + 1);
     const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
     await releaseRelation(page);
     await reopenHeldSearchIfHidden(page);
