@@ -40,6 +40,7 @@ import { readDiagram } from "../services/diagram/diagramQueries";
 import { DIAGRAM_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
+import { getGridHandles, getGridQuery } from "../services/yjstable/gridDocs";
 import { getItemTableId } from "../services/yjstable/itemBinding";
 import { getItemKanbanId } from "../services/yjstable/kanbanBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
@@ -67,6 +68,20 @@ const logger = getLogger("KeyEventHandler");
 const CHART_IMAGE_LIMIT = 2_000_000;
 
 const CHART_IMAGE_DROPPED_NOTICE = "--- Chart image too large to copy ---";
+
+function currentGridTableId(projectDoc: unknown, gridId: string | undefined): string | undefined {
+    if (!gridId) return undefined;
+    const doc = projectDoc as Parameters<typeof getGridHandles>[0];
+    const grid = getGridHandles(doc, gridId);
+    if (!grid) return undefined;
+    try {
+        const dependencies = rewriteTableQuerySql(getGridQuery(grid), new Map()).actualRelationDependencies;
+        if (dependencies.length !== 1) return undefined;
+        return listTables(doc).find(table => table.sqlName === dependencies[0])?.tableId;
+    } catch {
+        return undefined;
+    }
+}
 
 function reportPasteSpecialVariant(variant: PasteSpecialVariant): void {
     if (typeof window === "undefined") return;
@@ -226,9 +241,15 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const sliceEnd = interval?.endOffset ?? text.length;
         // Component blocks are atomic: a partial overlap copies the whole block.
         if (isComponent) hasComponent = true;
-        if (tableId && !gridExports.has(tableId)) {
-            const exported = renderedGridExport(tableId);
-            if (exported) gridExports.set(tableId, exported);
+        const nodeValue = (item as { tree?: { getNodeValueFromKey?: (key: string) => unknown; }; })
+            .tree?.getNodeValueFromKey?.(item.key ?? "") as { get?: (k: string) => unknown; } | undefined;
+        const rawGridId = nodeValue?.get?.("yjsGridId");
+        const gridId = typeof rawGridId === "string" ? rawGridId : undefined;
+        const currentTableId = tableId ?? currentGridTableId(project.ydoc, gridId);
+        const exportId = gridId ?? currentTableId;
+        if (currentTableId && exportId && !gridExports.has(exportId)) {
+            const exported = renderedGridExport(currentTableId);
+            if (exported) gridExports.set(exportId, exported);
         }
         const collected: Array<{ item: typeof item; depth: number; text?: string; collapsed?: boolean; }> = [{
             item,
@@ -320,20 +341,22 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     }
 
     const tableSnapshots: Record<string, GridTableSnapshot> = {};
-    const initialTableIds = new Set(
-        entries.map(entry => getItemTableId(entry.item)).filter((id): id is string => id !== undefined),
-    );
+    const gridTableIds: Record<string, string> = {};
+    const initialTableIds = new Set<string>();
     // Which Grid slice each host wants exported: preserve the copied item's
     // own Grid so a paste reconstructs its query and column UI, not those of
     // an arbitrary sibling Grid over the same Table.
     const preferGridByTableId = new Map<string, string>();
     for (const entry of entries) {
-        const tableId = getItemTableId(entry.item);
-        if (!tableId || preferGridByTableId.has(tableId)) continue;
         const nodeValue = (entry.item as { tree?: { getNodeValueFromKey?: (key: string) => unknown; }; })
             .tree?.getNodeValueFromKey?.(entry.item.key ?? "") as { get?: (k: string) => unknown; } | undefined;
-        const gridId = nodeValue?.get?.("yjsGridId");
-        if (typeof gridId === "string" && gridId.length > 0) preferGridByTableId.set(tableId, gridId);
+        const rawGridId = nodeValue?.get?.("yjsGridId");
+        const gridId = typeof rawGridId === "string" && rawGridId.length > 0 ? rawGridId : undefined;
+        const tableId = getItemTableId(entry.item) ?? currentGridTableId(project.ydoc, gridId);
+        if (!tableId) continue;
+        initialTableIds.add(tableId);
+        if (gridId) gridTableIds[gridId] = tableId;
+        if (gridId && !preferGridByTableId.has(tableId)) preferGridByTableId.set(tableId, gridId);
     }
     const tableIds = computeTableClosure(project.ydoc, initialTableIds);
     for (const tableId of tableIds) {
@@ -387,12 +410,13 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
                 return catalog.status === "ready" ? catalog.snapshot : undefined;
             })()
             : undefined,
+        Object.keys(gridTableIds).length > 0 ? gridTableIds : undefined,
     );
     const payload = deserializeClipboardItems(encoded);
     if (!payload) return diagramTransfer ? refusedCapture("unsupported-payload") : undefined;
 
-    const exportOf = (item: { componentType?: string; yjsTableId?: string; }) =>
-        item.componentType === "yjstable" && item.yjsTableId ? gridExports.get(item.yjsTableId) : undefined;
+    const exportOf = (item: { componentType?: string; yjsTableId?: string; yjsGridId?: string; }) =>
+        item.componentType === "yjstable" ? gridExports.get(item.yjsGridId ?? item.yjsTableId ?? "") : undefined;
 
     // Outward flavors, one line per contributing item. A textless visual node
     // (#5015) writes what a view has actually rendered of it and nothing else:

@@ -23,9 +23,18 @@ interface Props {
     isReadOnly?: boolean;
     /** Ephemeral creation-time hint; current SELECT evidence replaces it. */
     bootstrapSourceTableId?: string;
+    onSourceResolved?: (source: { tableId: string; name: string; sqlName: string; }) => void;
 }
 
-let { grid, projectDoc, projectId, projectName, isReadOnly = false, bootstrapSourceTableId }: Props = $props();
+let {
+    grid,
+    projectDoc,
+    projectId,
+    projectName,
+    isReadOnly = false,
+    bootstrapSourceTableId,
+    onSourceResolved,
+}: Props = $props();
 // The parent keys this component by Grid identity. Preserve the mounted
 // handles because Svelte may update a disappearing parent's derived prop to
 // undefined before this component's teardown runs.
@@ -76,6 +85,7 @@ function resolveBootstrapSource() {
         sqlName: entry.sqlName,
         href: projectName ? resolve(projectTablePath(projectName, entry.tableId)) : undefined,
     };
+    onSourceResolved?.({ tableId: entry.tableId, name: entry.name || entry.sqlName, sqlName: entry.sqlName });
 }
 
 function resolveQueryDependencySource(nextQuery: string) {
@@ -96,6 +106,7 @@ function resolveQueryDependencySource(nextQuery: string) {
         sqlName: entry.sqlName,
         href: projectName ? resolve(projectTablePath(projectName, entry.tableId)) : undefined,
     };
+    onSourceResolved?.({ tableId: entry.tableId, name: entry.name || entry.sqlName, sqlName: entry.sqlName });
 }
 
 const observer = () => refresh();
@@ -143,6 +154,7 @@ function resolveActualSource(next: ProjectSelectState) {
         sqlName: source.sqlName,
         href: projectName ? resolve(projectTablePath(projectName, source.id)) : undefined,
     };
+    onSourceResolved?.({ tableId: entry.tableId, name: entry.name || source.sqlName, sqlName: source.sqlName });
     if (fallbackHasFocus) {
         pendingActualSource = resolved;
         return;

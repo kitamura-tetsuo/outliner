@@ -31,12 +31,16 @@ describe("ProjectGridView actual source", () => {
             query: "SELECT id, value FROM b",
         });
 
-        render(ProjectGridView, { props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc } });
+        const onSourceResolved = vi.fn();
+        render(ProjectGridView, {
+            props: { grid: getGridHandles(projectDoc, gridId)!, projectDoc, onSourceResolved },
+        });
 
         await waitFor(
             () => expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-id")).toBe(bId),
             { timeout: 10_000 },
         );
+        expect(onSourceResolved).toHaveBeenLastCalledWith({ tableId: bId, name: "B", sqlName: "b" });
     });
 
     it("keeps mounted handles stable while a disappearing parent clears its derived Grid prop", async () => {

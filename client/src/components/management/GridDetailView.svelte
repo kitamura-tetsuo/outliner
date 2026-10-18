@@ -81,6 +81,12 @@
         tableHandles = resolvedTable;
     }
 
+    function acceptResolvedQuerySource(source: { tableId: string; name: string; sqlName: string; }) {
+        sourceTableId = source.tableId;
+        sourceTableName = source.name;
+        sourceTableSqlName = source.sqlName;
+    }
+
     const tableRegistryObserver = () => refreshSourceTable();
 
     function stopObservingTableRegistry() {
@@ -259,7 +265,13 @@
     {:else if missingSource && gridHandles && projectDoc}
         <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
             {#key `${gridHandles.gridId}:${projectDoc.guid}`}
-                <ProjectGridView grid={gridHandles} {projectDoc} projectId={yjsStore.currentProjectId ?? undefined} projectName={projectName} />
+                <ProjectGridView
+                    grid={gridHandles}
+                    {projectDoc}
+                    projectId={yjsStore.currentProjectId ?? undefined}
+                    projectName={projectName}
+                    onSourceResolved={acceptResolvedQuerySource}
+                />
             {/key}
         </div>
     {:else if gridHandles && tableHandles && projectDoc}
