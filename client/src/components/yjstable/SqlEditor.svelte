@@ -262,7 +262,13 @@ onDestroy(() => {
     aria-label={ariaLabel}
     style={`--sql-editor-min-height: ${minHeight}px; --sql-editor-max-height: ${maxHeight}px;`}
 >
-    <span class="commit-focus-target" data-sql-editor-commit-target tabindex="-1" aria-hidden="true"></span>
+    <button
+        class="commit-focus-target"
+        data-sql-editor-commit-target
+        type="button"
+        tabindex="-1"
+        aria-hidden="true"
+    ></button>
     {#if status !== "unavailable"}
         <div
             class="sql-editor-surface"
@@ -298,6 +304,8 @@ onDestroy(() => {
     position: absolute;
     width: 1px;
     height: 1px;
+    padding: 0;
+    border: 0;
     overflow: hidden;
 }
 
