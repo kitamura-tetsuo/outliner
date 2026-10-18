@@ -73,6 +73,10 @@ test("a UNION card refuses lanes excluded by its actual supplier schema", async 
     const openLane = page.locator("section.lane").filter({ has: page.getByRole("heading", { name: /open/ }) });
     const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
     const handle = bCard.getByRole("button", { name: "Move card" });
+    // The card is rendered before its query provenance and write controller
+    // necessarily finish loading. Wait for that production readiness boundary
+    // instead of starting a native drag while the handle is still disabled.
+    await expect(handle).toHaveAttribute("draggable", "true");
     // This refusal does not refresh the card DOM, so Playwright's native
     // drag sequence can exercise the complete browser gesture reliably.
     await handle.dragTo(openLane);
