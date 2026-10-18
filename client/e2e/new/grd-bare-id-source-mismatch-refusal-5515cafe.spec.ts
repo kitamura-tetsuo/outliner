@@ -21,13 +21,14 @@ test(
         // Reload after fixture configuration so the command starts from a
         // clean history while retaining the persisted cross-Table query.
         await page.reload();
-        await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toHaveCount(0);
+        const embedded = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+        await expect(embedded.getByTestId("grid-readonly-reason")).toHaveCount(0);
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
         await snapshotProject(page);
         // Address the editable cell by its durable record identity. A row
         // text filter stops matching while CellComponent replaces the value
         // button with an input, which would make the editor locator disappear.
-        const cell = fixture.gridA.getByTestId("yjs-table-grid")
+        const cell = embedded.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
         await cell.locator("button.cell-value").click();
