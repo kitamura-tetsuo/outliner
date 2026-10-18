@@ -145,7 +145,12 @@ async function dropCard(event: DragEvent, destination: string | null) {
     dragged = undefined;
     if (!result.ok) event.dataTransfer!.dropEffect = "none";
 }
-function endDrag() { if (!committingDrop) operations?.cancel(); dragged = undefined; }
+function endDrag() {
+    // A completed drop clears `dragged` itself. Do not cancel afterward: a
+    // fast refused commit has already published its actionable message.
+    if (dragged && !committingDrop) operations?.cancel();
+    dragged = undefined;
+}
 function ownInput(event: Event) { event.stopPropagation(); }
 
 onMount(() => {
