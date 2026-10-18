@@ -295,7 +295,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
-    it("permanently cancels a held write after observing a field A-to-B-to-A cycle", async () => {
+    it("permanently cancels a held write after an unobserved field A-to-B-to-A cycle", async () => {
         const c = await fixture();
         globalUndoRouter.clear();
         let release!: () => void;
@@ -318,6 +318,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
 
         setRecordValue(c.table, "one", "title", "Peer B");
         setRecordValue(c.table, "one", "title", "Beta");
+        expect(c.projection.lanes.find(lane => lane.key === "todo")!.cards[0].row.title).toBe("Beta");
         const historyDepth = c.table.undo.undoStack.length;
         release();
 
