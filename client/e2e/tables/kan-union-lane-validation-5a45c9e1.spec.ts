@@ -12,6 +12,21 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
+async function setChoiceCell(
+    page: Parameters<typeof setCellValue>[0],
+    viewIndex: number,
+    recordId: string,
+    column: string,
+    value: string,
+): Promise<void> {
+    const select = page.getByTestId("yjs-table-view").nth(viewIndex)
+        .getByTestId("yjs-table-grid")
+        .locator(`td[data-record-id="${recordId}"][data-col="${column}"] select.cell-select`);
+    await expect(select).toBeVisible({ timeout: 30000 });
+    await select.selectOption(value);
+    await expect(select).toHaveValue(value);
+}
+
 test("a UNION card refuses lanes excluded by its actual supplier schema", async ({ page }, info) => {
     test.setTimeout(180000);
     const seeded = await TestHelpers.seedProjectAndNavigate(page, info, ["Kanban UNION fixture"]);
@@ -28,7 +43,7 @@ test("a UNION card refuses lanes excluded by its actual supplier schema", async 
     const a = state.tables.find(table => table.sqlName === "a_tasks")!;
     const aId = Object.keys(a.data)[0]!;
     await setCellValue(page, 0, aId, "title", "A card");
-    await setCellValue(page, 0, aId, "status", "open");
+    await setChoiceCell(page, 0, aId, "status", "open");
 
     await createBlankGrid(page, "B", "b_tasks");
     await configureGrid(
@@ -43,7 +58,7 @@ test("a UNION card refuses lanes excluded by its actual supplier schema", async 
     const b = state.tables.find(table => table.sqlName === "b_tasks")!;
     const bId = Object.keys(b.data)[0]!;
     await setCellValue(page, 1, bId, "title", "B card");
-    await setCellValue(page, 1, bId, "status", "todo");
+    await setChoiceCell(page, 1, bId, "status", "todo");
 
     await openKanbanList(page, seeded.projectName);
     await createKanbanThroughUi(page, "Union lanes", a.id);
