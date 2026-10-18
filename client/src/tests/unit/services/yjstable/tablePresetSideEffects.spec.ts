@@ -17,7 +17,9 @@ import {
 
 function projectWithKanban(): {
     doc: Y.Doc;
+    existingTableId: string;
     kanbanId: string;
+    kanbanDefinitionBefore: Record<string, unknown>;
     kanbansBefore: ReturnType<typeof listKanbans>;
 } {
     const doc = new Y.Doc({ guid: "preset-side-effects" });
@@ -26,7 +28,13 @@ function projectWithKanban(): {
         name: "Existing board",
         query: "SELECT id FROM existing",
     });
-    return { doc, kanbanId, kanbansBefore: listKanbans(doc) };
+    return {
+        doc,
+        existingTableId,
+        kanbanId,
+        kanbanDefinitionBefore: getKanbanRegistry(doc).get(kanbanId)!.toJSON(),
+        kanbansBefore: listKanbans(doc),
+    };
 }
 
 function expectNoInsertPreference(entry: Y.Map<unknown>): void {
@@ -36,14 +44,16 @@ function expectNoInsertPreference(entry: Y.Map<unknown>): void {
 
 function expectOnlyExistingKanban(
     doc: Y.Doc,
+    existingTableId: string,
     kanbanId: string,
+    kanbanDefinitionBefore: Record<string, unknown>,
     kanbansBefore: ReturnType<typeof listKanbans>,
-    newTableId: string,
 ): void {
     expect(listKanbans(doc)).toEqual(kanbansBefore);
     expect(getKanbanRegistry(doc).size).toBe(1);
     expect([...getKanbanRegistry(doc).keys()]).toEqual([kanbanId]);
-    expect(listKanbans(doc).some(kanban => kanban.sourceTableId === newTableId)).toBe(false);
+    expect(getKanbanRegistry(doc).get(kanbanId)?.toJSON()).toEqual(kanbanDefinitionBefore);
+    expect(getTableRegistry(doc).has(existingTableId)).toBe(true);
 }
 
 describe("preset creation side-effect boundaries", () => {
@@ -70,25 +80,25 @@ describe("preset creation side-effect boundaries", () => {
     });
 
     it.each(TABLE_PRESETS)("creates standalone $key without Kanban or INSERT preference", preset => {
-        const { doc, kanbanId, kanbansBefore } = projectWithKanban();
+        const { doc, existingTableId, kanbanId, kanbanDefinitionBefore, kanbansBefore } = projectWithKanban();
 
         const tableId = createTableOnlyFromPreset(doc, preset, `${preset.name} only`, `${preset.key}_only`);
         const tableEntry = getTableRegistry(doc).get(tableId)!;
 
-        expectOnlyExistingKanban(doc, kanbanId, kanbansBefore, tableId);
+        expectOnlyExistingKanban(doc, existingTableId, kanbanId, kanbanDefinitionBefore, kanbansBefore);
         expectNoInsertPreference(tableEntry);
         expect(getGridRegistry(doc).size).toBe(0);
     });
 
     it.each(TABLE_PRESETS)("composes $key without Kanban or inferred INSERT preference", preset => {
-        const { doc, kanbanId, kanbansBefore } = projectWithKanban();
+        const { doc, existingTableId, kanbanId, kanbanDefinitionBefore, kanbansBefore } = projectWithKanban();
         const sqlName = `${preset.key}_composed`;
 
         const { tableId, gridId } = createTableFromPreset(doc, preset, `${preset.name} composed`, sqlName);
         const tableEntry = getTableRegistry(doc).get(tableId)!;
         const gridEntry = getGridRegistry(doc).get(gridId)!;
 
-        expectOnlyExistingKanban(doc, kanbanId, kanbansBefore, tableId);
+        expectOnlyExistingKanban(doc, existingTableId, kanbanId, kanbanDefinitionBefore, kanbansBefore);
         expectNoInsertPreference(tableEntry);
         expectNoInsertPreference(gridEntry);
         expect(gridEntry.get("sourceTableId")).toBe(tableId);

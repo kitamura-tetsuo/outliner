@@ -9,10 +9,15 @@ import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { type CatalogRuntimeState } from "./catalogRuntime";
 import { TableSqlError, toTableSqlError } from "./pgliteService";
-import type { RelationEvidence, RelationProvider, RelationRegistryPort } from "./relationProvider";
+import type { RelationEvidence, RelationProvider } from "./relationProvider";
 import { projectSchemaName } from "./sqlNames";
 import { getTableRegistry } from "./tableDocs";
-import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
+import {
+    createTableEngineSession,
+    type RelationRegistryPort,
+    type TableDocConnector,
+    type TableEngineSession,
+} from "./tableEngine";
 import { rewriteTableQuerySql } from "./tableSqlRewrite";
 import { executeGridQuery, REQUERY_DEBOUNCE_MS } from "./tableSyncAdapter";
 
