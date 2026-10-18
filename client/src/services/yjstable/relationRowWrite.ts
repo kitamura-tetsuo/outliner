@@ -29,13 +29,13 @@ export async function applyUnionedRowEdit(
     sourceId: string,
     column: string,
     value: RelationValue,
-    beforeWrite?: () => void,
+    beforeWrite?: (provider: RelationProvider) => void,
 ): Promise<void> {
     const provider = await resolver.resolveRelation(sourceKind);
     if (!provider) {
         throw new RelationWriteError(`Unknown relation "${sourceKind}" for a unioned row edit`);
     }
-    beforeWrite?.();
+    beforeWrite?.(provider);
     await provider.applyWrite({ op: "UPDATE", rowId: sourceId, column, value });
 }
 

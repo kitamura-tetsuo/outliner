@@ -4,8 +4,10 @@ import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter"
 import TableChartPanel from "./TableChartPanel.svelte";
 
 vi.mock("echarts", () => ({
-    init: vi.fn(() => ({
-        setOption: vi.fn(),
+    init: vi.fn((element: HTMLElement) => ({
+        // ECharts owns and may rewrite accessibility attributes on its mount.
+        // The component's accessible wrapper must remain authoritative.
+        setOption: vi.fn(() => element.setAttribute("aria-label", "")),
         clear: vi.fn(),
         dispose: vi.fn(),
         getDataURL: vi.fn((opts) => `data:image/png;base64,mockchart${opts.backgroundColor ? "-bg" : ""}`),

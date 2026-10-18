@@ -21,7 +21,6 @@ export interface KanbanFixture {
 export interface KanbanState {
     id: string;
     name: string;
-    sourceTableId: string;
     query: string;
     groupField?: string;
     titleField?: string;
@@ -58,7 +57,7 @@ export async function openKanbanList(page: Page, projectName: string): Promise<v
 export async function createKanbanThroughUi(page: Page, name: string, tableId: string): Promise<string> {
     const form = page.getByTestId("kanban-create-form");
     await form.getByLabel("Name").fill(name);
-    await form.getByLabel("Source table").selectOption(tableId);
+    await form.getByLabel("Initial SQL source (optional)").selectOption(tableId);
     await form.getByRole("button", { name: "Create Kanban" }).click();
     await expect(page.getByTestId("kanban-board")).toBeVisible({ timeout: 30000 });
     const id = await page.getByTestId("kanban-board").getAttribute("data-kanban-id");
@@ -98,7 +97,6 @@ export async function readKanbans(page: Page): Promise<KanbanState[]> {
             result.push({
                 id,
                 name: String(entry.get("name") ?? ""),
-                sourceTableId: String(entry.get("sourceTableId") ?? ""),
                 query: String(entry.get("query") ?? ""),
                 groupField: entry.get("groupField"),
                 titleField: entry.get("titleField"),

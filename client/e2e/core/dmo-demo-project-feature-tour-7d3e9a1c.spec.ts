@@ -82,6 +82,12 @@ test.describe("Demo project feature tour", () => {
             has: page.getByTestId("yjs-table-name").getByText("Sales", { exact: true }),
         }).first();
         await expect(salesTable).toBeVisible({ timeout: 30000 });
+        // The chart consumes the same asynchronously materialized query result
+        // as the Grid. Wait for that production result boundary before opening
+        // the optional chart panel rather than racing initial synchronization.
+        await expect(salesTable.getByTestId("yjs-table-grid").locator("th", { hasText: "revenue" })).toBeVisible({
+            timeout: 30000,
+        });
 
         await salesTable.getByTestId("yjs-table-toggle-chart").first().click();
 
