@@ -131,6 +131,11 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
         await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
     }
     await page.getByTestId("replace-button").click();
+    // Completing the guarded refusal can remount the Grid and hide the shared
+    // panel. Reopen the same held session before observing its refusal result.
+    if (!await page.getByTestId("replace-status").isVisible().catch(() => false)) {
+        await page.getByTestId("search-toggle-button").click();
+    }
     await expect(page.getByTestId("replace-status")).toContainText("changed or could not be revalidated");
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
     expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(historyAfterRefresh);

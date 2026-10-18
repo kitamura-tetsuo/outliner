@@ -64,8 +64,8 @@ async function reopenHeldSearchIfHidden(page: Page) {
     }
 }
 
-async function unchanged(page: Page, fixture: OverlappingTableFixture, undoDepth: number) {
-    await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
+async function unchanged(page: Page, fixture: OverlappingTableFixture, undoDepth: number, expectedHits = 2) {
+    await expect(page.getByTestId("search-results-hits")).toHaveText(`Hits: ${expectedHits}`);
     expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth);
     const state = await snapshotProject(page);
     expect(state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title)
@@ -135,7 +135,9 @@ test("Replace Current refuses a query change introduced while lookup is pending"
     const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
     await releaseRelation(page);
     await reopenHeldSearchIfHidden(page);
-    await unchanged(page, fixture, undoDepth);
+    // The refreshed A query legitimately leaves only the unchanged B placement
+    // in the held page-scope results. The refused replacement must not remove it.
+    await unchanged(page, fixture, undoDepth, 1);
 });
 
 test("Replace Current refuses a source record replacement while lookup is pending", async ({ page }, testInfo) => {

@@ -4,9 +4,9 @@ title-ja: テキスト項目と書き込み可能なグリッドセルの統合�
 status: implemented
 description: Replace and Replace All work across outline text and writable Grid query-result cells through one Find/Replace UI and session. Grid success and held-match updates wait for guarded physical-source writes to settle, while stale/refused cells remain visible and unchanged. Computed/read-only Grid cells stay searchable but are never a mutation target; Replace All deduplicates a Grid placed more than once on a page, and a substitution with no deterministic typed value for a non-text column is left unmutated with feedback surfaced in the panel.
 tests:
+- client/e2e/new/rpl-grid-inflight-authority-5194c2f1.spec.ts
 - client/e2e/new/rpl-grid-source-authority-5194c2f1.spec.ts
 - client/e2e/new/rpl-grid-stale-source-5194c2f1.spec.ts
-- client/e2e/new/rpl-grid-inflight-authority-5194c2f1.spec.ts
 - client/e2e/new/rpl-unified-text-grid-replace-5194c2f1.spec.ts
 - client/e2e/new/tbl-unioned-row-identity-editability-1cdf0ceb.spec.ts
 - client/src/lib/search/unifiedSearch.test.ts
