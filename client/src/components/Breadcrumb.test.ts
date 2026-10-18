@@ -14,8 +14,8 @@ describe("Breadcrumb", () => {
             props: {
                 items: [
                     { label: "Home", href: resolve("/") },
-                    { label: "Encoded", href: encoded },
-                    { label: "Selected", href: selected },
+                    { label: "Encoded", href: encoded as never },
+                    { label: "Selected", href: selected as never },
                     { label: "Current" },
                 ],
             },

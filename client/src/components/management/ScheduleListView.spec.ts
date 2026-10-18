@@ -12,13 +12,20 @@ vi.mock("../../auth/UserManager", () => ({
     },
 }));
 
+vi.mock(
+    "$app/paths",
+    () => ({
+        resolve: (p: string, args?: Record<string, string>) =>
+            args ? "/test-base/" + args.project + "/-/tables/" + args.tableId : "/test-base" + (p === "/" ? "" : p),
+    }),
+);
 vi.mock("../../lib/routeProject", async () => {
     const { store } = await import("../../stores/store.svelte");
     return {
         openRouteProject: vi.fn(async () => {
             await Promise.resolve();
             store.project = routeState.project;
-            return { projectId: routeState.project?.id ?? "test-project", release: vi.fn() };
+            return { projectId: routeState.project?.ydoc.guid ?? "test-project", release: vi.fn() };
         }),
     };
 });

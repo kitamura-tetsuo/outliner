@@ -25,7 +25,9 @@ describe("Grid metadata query identity and disposal", { timeout: 30_000 }, () =>
         let connectionDisposals = 0;
         const connect: TableDocConnector = async () => ({
             waitForInitialSync: async () => ({ synced: true }),
-            dispose: () => connectionDisposals++,
+            dispose: () => {
+                connectionDisposals++;
+            },
         });
         const select = createProjectSelectSession({
             projectDoc: doc,

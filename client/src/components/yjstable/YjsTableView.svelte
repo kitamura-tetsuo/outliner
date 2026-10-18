@@ -288,6 +288,7 @@ function refreshAfterGuardedEffects(): Promise<void> {
     return guardedEffectsRefresh;
 }
 
+// svelte-ignore state_referenced_locally
 const mutationBoundary = createGridExistingRowMutationBoundary({
     projectDoc,
     projectId,
