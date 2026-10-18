@@ -72,12 +72,10 @@ test("a UNION card refuses lanes excluded by its actual supplier schema", async 
     const bCard = page.locator("article.card").filter({ hasText: "B card" });
     const openLane = page.locator("section.lane").filter({ has: page.getByRole("heading", { name: /open/ }) });
     const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
-    const transfer = await page.evaluateHandle(() => new DataTransfer());
     const handle = bCard.getByRole("button", { name: "Move card" });
-    await handle.dispatchEvent("dragstart", { dataTransfer: transfer });
-    await openLane.dispatchEvent("dragover", { dataTransfer: transfer });
-    await openLane.dispatchEvent("drop", { dataTransfer: transfer });
-    await handle.dispatchEvent("dragend", { dataTransfer: transfer }).catch(() => {});
+    // This refusal does not refresh the card DOM, so Playwright's native
+    // drag sequence can exercise the complete browser gesture reliably.
+    await handle.dragTo(openLane);
 
     await expect(page.getByTestId("kanban-operation-message")).toContainText("invalid for this field");
     state = await readGridProjectState(page);
