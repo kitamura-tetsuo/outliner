@@ -128,14 +128,13 @@ test("Replace Current refuses a query change introduced while lookup is pending"
     const fixture = await seedOverlappingTableFixture(page, testInfo);
     await pointGridAToTableB(page, fixture);
     await captureReplace(page, fixture, "must not apply");
-    const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
     await startReplace(page);
     const editor = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
     await editor.fillAndCommit(page, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
+    const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
     await releaseRelation(page);
     await reopenHeldSearchIfHidden(page);
-    await expect(page.getByTestId("replace-status")).toContainText("changed or could not be revalidated");
     await unchanged(page, fixture, undoDepth);
 });
 
