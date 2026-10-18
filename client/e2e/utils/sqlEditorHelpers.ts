@@ -70,20 +70,12 @@ export class SqlEditorHelper {
 
     /** Moves focus out of the editor, which is what commits its value. */
     async commit(page: Page): Promise<void> {
-        await page.locator("body").click({ position: { x: 2, y: 2 } }).catch(() => {});
+        // Focus a persistent, user-facing control outside Monaco. A body click
+        // can land on an overlay, while a short-lived off-screen element can
+        // be removed before Chromium dispatches Monaco's focusout handling.
+        await page.getByTestId("search-toggle-button").focus();
         if (await this.hasFocus()) {
-            // Some layouts cover the top-left corner and Monaco's EditContext
-            // host does not consistently honor blur() in Chromium. Focus a
-            // temporary, real control outside the editor so the production
-            // focusout/commit path runs exactly as it does for a user click.
-            await page.evaluate(() => {
-                const target = document.createElement("button");
-                target.type = "button";
-                target.style.cssText = "position:fixed;left:-9999px;top:-9999px";
-                document.body.append(target);
-                target.focus();
-                requestAnimationFrame(() => target.remove());
-            });
+            await page.getByTestId("main-toolbar").getByRole("button").first().focus();
         }
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })

@@ -24,6 +24,7 @@ test.describe("mouse drag clipboard with component blocks", () => {
     test("a mouse drag across a Grid host copies the block, not just its title", async ({ page }) => {
         const sourceId = await itemIdByText(page, "Alpha item");
         const seededHostId = await itemIdByText(page, "Block host");
+        const endId = await itemIdByText(page, "Omega");
         await page.locator(`.outliner-item[data-item-id="${seededHostId}"] .item-content`).click();
         const addDatabase = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
         await addDatabase.click();
@@ -37,11 +38,11 @@ test.describe("mouse drag clipboard with component blocks", () => {
             .toBeVisible({ timeout: 30000 });
 
         const source = page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-text`);
-        // A Grid is an atomic visual node with no outline text (#5015). End the
-        // gesture on its outline host, which is the production selection
-        // boundary; descendants such as a header cell may consume pointer
-        // events without advancing the outline selection to the host.
-        const target = page.locator(`.outliner-item[data-item-id="${seededHostId}"] .item-content`);
+        // A Grid is an atomic visual node with no outline text (#5015). Drag
+        // across the host to the following text row so the outline selection
+        // unambiguously spans the atomic block instead of ending on a child
+        // control that consumes pointer events.
+        const target = page.locator(`.outliner-item[data-item-id="${endId}"] .item-text`);
         const sourceBox = await source.boundingBox();
         const targetBox = await target.boundingBox();
         expect(sourceBox).not.toBeNull();
