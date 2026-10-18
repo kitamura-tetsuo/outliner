@@ -6,8 +6,9 @@ interface Props {
     placementId?: string;
     pageId?: string;
     pageTitle?: string;
+    sourceTableHref?: string;
 }
-let { grid, handles, placementId, pageId, pageTitle }: Props = $props();
+let { grid, handles, placementId, pageId, pageTitle, sourceTableHref }: Props = $props();
 </script>
 
 <div
@@ -17,4 +18,5 @@ let { grid, handles, placementId, pageId, pageTitle }: Props = $props();
     data-placement-id={placementId}
     data-page-id={pageId}
     data-page-title={pageTitle}
+    data-source-table-href={sourceTableHref}
 ></div>

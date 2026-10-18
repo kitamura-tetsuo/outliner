@@ -31,6 +31,8 @@ import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { findGridPlacements } from "../objectManager/objectPlacements";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
+import { listTables } from "./tableDocs";
+import { rewriteTableQuerySql } from "./tableSqlRewrite";
 
 // The Grid writers/readers are framework-neutral and shared with the server
 // (shared/src/services/gridDefinition.ts), so server-side regressions run the
@@ -424,6 +426,19 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
 /** Grids referencing a given source Table id. */
 export function findGridsBySourceTable(projectDoc: Y.Doc, sourceTableId: string): GridRegistryEntry[] {
     return listGrids(projectDoc).filter(g => g.sourceTableId === sourceTableId);
+}
+
+/** Current-format Grids whose SQL reads the registered Table. */
+export function findGridsByTableDependency(projectDoc: Y.Doc, tableId: string): GridRegistryEntry[] {
+    const table = listTables(projectDoc).find(candidate => candidate.tableId === tableId);
+    if (!table) return [];
+    return listGrids(projectDoc).filter(grid => {
+        try {
+            return rewriteTableQuerySql(grid.query, new Map()).actualRelationDependencies.includes(table.sqlName);
+        } catch {
+            return false;
+        }
+    });
 }
 
 // Test-only bridge so width E2E specs commit through the supported production

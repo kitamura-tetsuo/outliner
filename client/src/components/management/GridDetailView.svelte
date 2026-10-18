@@ -7,7 +7,7 @@
     // Two Grids over the same Table are two independent pages; both write into
     // the same Table data, because Table data is Table-owned.
     import Loader from "../Loader.svelte";
-    import { onMount } from "svelte";
+    import { onMount, untrack } from "svelte";
     import { goto } from "$app/navigation";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../AuthComponent.svelte";
@@ -16,17 +16,14 @@
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { resolve } from "$app/paths";
     import Breadcrumb from "../Breadcrumb.svelte";
-    import YjsTableView from "../yjstable/YjsTableView.svelte";
     import ProjectGridView from "../yjstable/ProjectGridView.svelte";
-    import { getTableHandles, getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
     // The mounted YjsTableView retains/releases the Grid's shared undo manager
     // and the Table's for its own lifetime, so this page only resolves handles.
-    import { type GridHandles, getGridHandles, getGridSourceTableId } from "../../services/yjstable/gridDocs";
+    import { type GridHandles, getGridHandles } from "../../services/yjstable/gridDocs";
     import { isPublicProject, projectRoute } from "../../lib/publicProject";
-    import { projectGridsRoute, projectObjectsSelectedRoute, projectTableRoute } from "../../lib/managementPaths";
+    import { projectGridsRoute, projectObjectsSelectedRoute } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
-    import { rewriteTableQuerySql } from "../../services/yjstable/tableSqlRewrite";
 
     const logger = getLogger("GridStandalonePage");
 
@@ -44,57 +41,9 @@
     let isLoading = $state(true);
     let gridName: string | undefined = $state(undefined);
     let gridHandles: GridHandles | undefined = $state(undefined);
-    let tableHandles: ReturnType<typeof getTableHandles> | undefined = $state(undefined);
-    let sourceTableId: string | undefined = $state(undefined);
-    let sourceTableName: string | undefined = $state(undefined);
-    let sourceTableSqlName: string | undefined = $state(undefined);
-    let resolvedQuerySource: { tableId: string; name: string; sqlName: string; } | undefined = $state(undefined);
-    // Set when the Grid exists but its source Table does not: an explicit
-    // missing-source state, never a silent empty grid.
-    let missingSource = $state(false);
     let projectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
-    let observedTableRegistry: ReturnType<typeof getTableRegistry> | undefined;
-
-    function clearResolvedSource() {
-        tableHandles = undefined;
-        sourceTableName = undefined;
-        sourceTableSqlName = undefined;
-    }
-
-    function refreshSourceTable() {
-        if (!projectDoc || !gridHandles) return;
-        const resolvedSourceId = getGridSourceTableId(projectDoc, routeGridId);
-        sourceTableId = resolvedSourceId;
-        const entry = resolvedSourceId
-            ? listTables(projectDoc).find(t => t.tableId === resolvedSourceId)
-            : undefined;
-        const resolvedTable = resolvedSourceId ? getTableHandles(projectDoc, resolvedSourceId) : undefined;
-        clearResolvedSource();
-        if (!entry || !resolvedTable) {
-            missingSource = true;
-            return;
-        }
-        missingSource = false;
-        sourceTableId = entry.tableId;
-        sourceTableName = entry.name;
-        sourceTableSqlName = entry.sqlName || undefined;
-        tableHandles = resolvedTable;
-    }
-
-    function acceptResolvedQuerySource(source: { tableId: string; name: string; sqlName: string; }) {
-        // Query evidence describes the Table currently supplying this result;
-        // it must not be written back into the legacy ownership fields.
-        resolvedQuerySource = source;
-    }
-
-    const tableRegistryObserver = () => refreshSourceTable();
-
-    function stopObservingTableRegistry() {
-        observedTableRegistry?.unobserveDeep(tableRegistryObserver);
-        observedTableRegistry = undefined;
-    }
 
     // Public projects stay readable for anonymous visitors, matching the
     // standalone Table and Calendar routes.
@@ -108,26 +57,6 @@
     function openDuplicate() {
         goto(projectObjectsSelectedRoute(projectName, routeGridId));
     }
-
-    let queryNeedsProjectResolution = $derived.by(() => {
-        if (!gridHandles || !sourceTableSqlName) return true;
-        const query = String(gridHandles.entry.get("query") ?? "").trim();
-        if (!query) return false;
-        try {
-            const dependencies = rewriteTableQuerySql(query, new Map()).actualRelationDependencies;
-            return dependencies.length !== 1 || dependencies[0] !== sourceTableSqlName;
-        } catch {
-            return true;
-        }
-    });
-    let sourceTableHref = $derived(
-        resolvedQuerySource?.tableId || (!queryNeedsProjectResolution && sourceTableId)
-            ? projectTableRoute(projectName, resolvedQuerySource?.tableId ?? sourceTableId!)
-            : undefined,
-    );
-    let displayedSourceTableName = $derived(
-        resolvedQuerySource?.name ?? (queryNeedsProjectResolution ? undefined : sourceTableName),
-    );
 
     async function handleAuthSuccess() {
         isAuthenticated = true;
@@ -144,10 +73,6 @@
         isLoading = true;
         error = undefined;
         notFound = false;
-        missingSource = false;
-        resolvedQuerySource = undefined;
-        clearResolvedSource();
-        stopObservingTableRegistry();
 
         try {
             // Releases the previous reference before taking another, so a
@@ -176,10 +101,6 @@
             gridName = String(handles.entry.get("name") ?? "") || "Grid";
             projectDoc = store.project.ydoc;
 
-            observedTableRegistry = getTableRegistry(store.project.ydoc);
-            observedTableRegistry.observeDeep(tableRegistryObserver);
-            refreshSourceTable();
-            if (missingSource) logger.warn(`Grid "${routeGridId}" has no resolvable source table`);
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
             logger.error({ error: err }, "Failed to load grid page:");
@@ -190,8 +111,12 @@
     }
 
     $effect(() => {
-        if (canAccess && projectName && routeGridId) {
-            loadGrid();
+        const shouldLoad = canAccess && Boolean(projectName) && Boolean(routeGridId);
+        if (shouldLoad) {
+            // loadGrid updates its own loading/source state. Keep those writes
+            // out of this dependency set so accepting query evidence cannot
+            // recursively reopen and tear down the same Grid.
+            untrack(() => void loadGrid());
         } else {
             isLoading = false;
         }
@@ -202,7 +127,6 @@
 
         return () => {
             isDestroyed = true;
-            stopObservingTableRegistry();
             projectHandle?.release();
             projectHandle = undefined;
         };
@@ -226,15 +150,6 @@
         <h1 class="text-2xl font-bold">
             {gridName || "Grid"}
         </h1>
-        {#if sourceTableHref && displayedSourceTableName}
-            <a
-                class="text-sm text-blue-600 hover:underline"
-                href={sourceTableHref}
-                data-testid="grid-source-table-link"
-            >
-                Source table: {displayedSourceTableName}
-            </a>
-        {/if}
         {#if isAuthenticated && !isLoading && gridHandles && projectDoc}
             <button
                 class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -281,7 +196,7 @@
             <h3 class="text-sm font-medium text-blue-800">Login required</h3>
             <p class="mt-2 text-sm text-blue-700">Please log in to view this grid.</p>
         </div>
-    {:else if (missingSource || queryNeedsProjectResolution) && gridHandles && projectDoc}
+    {:else if gridHandles && projectDoc}
         <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
             {#key `${gridHandles.gridId}:${projectDoc.guid}`}
                 <ProjectGridView
@@ -289,21 +204,6 @@
                     {projectDoc}
                     projectId={yjsStore.currentProjectId ?? undefined}
                     projectName={projectName}
-                    onSourceResolved={acceptResolvedQuerySource}
-                />
-            {/key}
-        </div>
-    {:else if gridHandles && tableHandles && projectDoc}
-        <div class="flex-grow min-h-0 overflow-y-auto border border-gray-200 rounded-md bg-white p-3">
-            {#key `${gridHandles.gridId}:${tableHandles.doc.guid}`}
-                <YjsTableView
-                    grid={gridHandles}
-                    handles={tableHandles}
-                    projectDoc={projectDoc}
-                    projectId={yjsStore.currentProjectId ?? undefined}
-                    tableName={sourceTableName}
-                    sqlName={sourceTableSqlName}
-                    sourceTableHref={sourceTableHref}
                 />
             {/key}
         </div>

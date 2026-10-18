@@ -93,16 +93,21 @@ describe("standalone grid route", () => {
             .toBe("demo-table-sales");
     });
 
-    it("links back to the source Table rather than owning its schema", async () => {
-        createGrid(projectDoc, "demo-table-sales", { gridId: "grid-a", name: "Open sales" });
+    it("passes the query dependency link to the unified Grid runtime", async () => {
+        createGrid(projectDoc, "demo-table-sales", {
+            gridId: "grid-a",
+            name: "Open sales",
+            query: "SELECT * FROM sales",
+        });
 
         render(GridStandalonePage);
 
         await waitFor(() => {
-            expect(screen.getByTestId("grid-source-table-link")).toBeTruthy();
+            expect(screen.getByTestId("grid-view-stub")).toBeTruthy();
         });
-        expect(screen.getByTestId("grid-source-table-link").getAttribute("href"))
+        expect(screen.getByTestId("grid-view-stub").getAttribute("data-source-table-href"))
             .toBe("/demo/-/tables/demo-table-sales");
+        expect(screen.queryByTestId("grid-source-table-link")).toBeNull();
     });
 
     it("keeps two Grids over one Table independent", async () => {

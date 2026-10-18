@@ -9,7 +9,7 @@
 
 import * as Y from "yjs";
 import { onDestroy, onMount } from "svelte";
-import { findGridsBySourceTable, getGridRegistry } from "../../services/yjstable/gridDocs";
+import { findGridsByTableDependency, getGridRegistry } from "../../services/yjstable/gridDocs";
 import { projectGridRoute } from "../../lib/managementPaths";
 import type { ResolvedPathname } from "$app/types";
 
@@ -27,7 +27,7 @@ let grids = $state<{ gridId: string; name: string; query: string; }[]>([]);
 
 function refresh() {
     const registry = getGridRegistry(projectDoc);
-    grids = findGridsBySourceTable(projectDoc, tableId).map(entry => ({
+    grids = findGridsByTableDependency(projectDoc, tableId).map(entry => ({
         gridId: entry.gridId,
         name: entry.name || "Untitled grid",
         query: String(registry.get(entry.gridId)?.get("query") ?? ""),
