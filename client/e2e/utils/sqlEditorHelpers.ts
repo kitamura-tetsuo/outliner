@@ -73,10 +73,10 @@ export class SqlEditorHelper {
 
     /** Moves focus out of the editor, which is what commits its value. */
     async commit(_page: Page): Promise<void> {
-        // Focus the editor's persistent wrapper rather than a page-specific
-        // toolbar control. The wrapper is outside Monaco's focus host and is
-        // present on every surface that embeds SqlEditor.
-        await this.root.locator("[data-sql-editor-commit-target]").focus();
+        // Click the editor's persistent local target rather than relying on a
+        // page-specific toolbar. The pointer transition exercises the same
+        // focusout path as a user click and prevents Monaco restoring focus.
+        await this.root.locator("[data-sql-editor-commit-target]").click({ force: true });
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })
             .toBe(false);
