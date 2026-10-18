@@ -63,6 +63,12 @@ async function commitQueryWithoutClosingSearch(
     await expect.poll(() => editor.hasFocus(), { timeout: 10000 }).toBe(false);
 }
 
+async function placementIdForGrid(grid: import("@playwright/test").Locator): Promise<string> {
+    const placementId = await grid.evaluate(element => element.closest("[data-item-id]")?.getAttribute("data-item-id"));
+    if (!placementId) throw new Error("Grid placement identity is unavailable");
+    return placementId;
+}
+
 test("Replace Current refuses a held match after its physical source record is removed", async ({ page }, testInfo) => {
     test.setTimeout(180000);
     const fixture = await seedOverlappingTableFixture(page, testInfo);
@@ -104,7 +110,12 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
     await page.getByTestId("replace-input").fill("Fresh authority only");
     await page.getByTestId("search-button").click();
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2", { timeout: 30000 });
-    await page.getByTestId("search-result-button").first().click();
+    const placementId = await placementIdForGrid(fixture.gridA);
+    const placementResult = page.locator(
+        `[data-testid="search-result-button"][data-placement-id="${placementId}"]`,
+    );
+    await expect(placementResult).toHaveCount(1);
+    await placementResult.click();
     const heldIncarnation = await fixture.gridA.getAttribute("data-mutation-incarnation");
     expect(heldIncarnation).not.toBeNull();
 
@@ -149,7 +160,8 @@ test("Replace Current refuses a held match after an A-to-B-to-A query incarnatio
 
     // A separately initiated Find captures the live incarnation and may write.
     await page.getByTestId("search-button").click();
-    await page.getByTestId("search-result-button").first().click();
+    await expect(placementResult).toHaveCount(1);
+    await placementResult.click();
     await page.getByTestId("replace-button").click();
     await expect.poll(async () => {
         state = await snapshotProject(page);
