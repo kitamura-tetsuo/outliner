@@ -1,6 +1,10 @@
 import type * as Y from "yjs";
 import { getKanban, getKanbanRegistry, type KanbanHandles, type KanbanLaneValue } from "./kanbanDocs";
-import { analyzeProjectQueryProvenance, type ProjectQueryProvenance } from "./projectQueryProvenance";
+import {
+    analyzeProjectQueryProvenance,
+    type ProjectQueryProvenance,
+    unambiguousPhysicalColumn,
+} from "./projectQueryProvenance";
 import {
     createProjectSelectSession,
     type ProjectSelectEvidence,
@@ -83,8 +87,7 @@ export class KanbanQueryRunner {
         const kind = card.sourceIdentity?.kind;
         const analysis = this.projection.provenance?.analysis;
         if (!kind || analysis?.status !== "proven") return undefined;
-        const physical = analysis.branches.find(branch => branch.source.sqlName === kind)?.columns
-            .find(column => column.outputColumn === output)?.physicalColumn;
+        const physical = unambiguousPhysicalColumn(analysis, kind, output);
         return physical ? this.resolvedSchemas.get(kind)?.columns.find(column => column.name === physical) : undefined;
     }
     subscribeProjection(fn: (p: KanbanProjection) => void) {

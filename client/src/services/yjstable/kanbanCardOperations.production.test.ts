@@ -361,6 +361,31 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
+    it("refuses duplicate source occurrences with conflicting physical column routes", async () => {
+        const schema = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, status TEXT)";
+        const c = await fixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title AS shown, 'first' AS lane FROM tasks "
+                + "UNION ALL SELECT 'tasks', id, description, 'second' FROM tasks",
+        );
+        setSchemaText(c.table, schema);
+        setRecordValue(c.table, "one", "description", "Beta");
+        updateKanban(c.projectDoc, c.kanbanId, { groupField: "lane", titleField: "shown" });
+        await c.refresh();
+        globalUndoRouter.clear();
+
+        const secondOccurrence = c.projection.lanes.find(lane => lane.key === "second")!.cards.find(card =>
+            card.sourceIdentity?.id === "one"
+        )!;
+        const operation = c.controller();
+        expect(operation.begin(secondOccurrence, "shown")).toBe(false);
+        await expect(operation.commit("changed")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta", description: "Beta" });
+        globalUndoRouter.undo();
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta", description: "Beta" });
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
     it("keeps SQL NULL, empty text, and the literal NULL label as distinct production lanes", async () => {
         const c = await fixture();
         setSchemaText(

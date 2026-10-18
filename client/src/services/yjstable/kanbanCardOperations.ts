@@ -2,6 +2,7 @@ import { cellComponentTypeFor } from "../../components/yjstable/cellComponents";
 import { isValueValidForCell } from "./gridSelectionCommands";
 import type { KanbanLaneValue, KanbanSettings } from "./kanbanDocs";
 import type { KanbanCard, KanbanProjection } from "./kanbanQueryRunner";
+import { unambiguousPhysicalColumn } from "./projectQueryProvenance";
 import type { RelationResolver } from "./relationRowWrite";
 import { applyUnionedRowEdit } from "./relationRowWrite";
 import type { ParsedTableSchema } from "./schemaIntrospection";
@@ -175,8 +176,7 @@ function columnRoute(p: KanbanProjection, kind: string, output: string) {
             : undefined;
     }
     if (p.provenance.analysis.status !== "proven") return undefined;
-    const branch = p.provenance.analysis.branches.find(b => b.source.sqlName === kind);
-    return branch?.columns.find(c => c.outputColumn === output)?.physicalColumn;
+    return unambiguousPhysicalColumn(p.provenance.analysis, kind, output);
 }
 function sourceRevision(p: KanbanProjection, kind: string) {
     return p.provenance?.analysis?.branches.find(branch => branch.source.sqlName === kind)?.source.schemaRevision;
