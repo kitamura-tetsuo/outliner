@@ -17,6 +17,7 @@ let chartDiv: HTMLDivElement;
 let chart: echarts.ECharts | undefined;
 let hasData = $state(false);
 let ariaLabel = $state("");
+let pendingResult: TableQueryResult | undefined;
 
 export function getImage(): string | undefined {
     if (!chart || !hasData) return undefined;
@@ -28,6 +29,7 @@ export function getImage(): string | undefined {
 }
 
 export function update(result: TableQueryResult) {
+    pendingResult = result;
     if (!chart) return;
     hasData = result.rows.length > 0;
     if (!hasData) {
@@ -81,7 +83,7 @@ export function update(result: TableQueryResult) {
 
 onMount(() => {
     chart = echarts.init(chartDiv);
-    if (initial) update(initial);
+    if (pendingResult ?? initial) update(pendingResult ?? initial!);
 });
 
 onDestroy(() => {
