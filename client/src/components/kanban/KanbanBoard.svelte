@@ -155,7 +155,7 @@ onMount(() => {
         runner = new KanbanQueryRunner({ projectDoc, projectId, kanbanId: kanban.kanbanId, kanban });
         operations = new KanbanCardOperationController({
             resolver: session,
-            schema: () => runner?.sourceSchema,
+            schema: sourceKind => runner?.schemaForSource(sourceKind),
             settings: () => getKanban(projectDoc, kanban.kanbanId),
             projection: () => projection,
             canWrite: () => !isReadOnly && Boolean(projectDoc),

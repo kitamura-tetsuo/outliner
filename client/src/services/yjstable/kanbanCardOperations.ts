@@ -17,6 +17,7 @@ export interface KanbanCardOperationResult {
 interface CardIdentity {
     sourceKind: string;
     sourceId: string;
+    supplierId?: string;
 }
 interface PendingOperation {
     token: number;
@@ -31,7 +32,7 @@ interface PendingOperation {
 class StaleCardOperationError extends Error {}
 export interface KanbanCardOperationOptions {
     resolver: RelationResolver;
-    schema?: () => ParsedTableSchema | undefined;
+    schema?: (sourceKind: string) => ParsedTableSchema | undefined;
     settings: () => KanbanSettings | undefined;
     projection: () => KanbanProjection;
     canWrite: () => boolean;
@@ -112,6 +113,12 @@ export class KanbanCardOperationController {
                         throw new StaleCardOperationError("The result column route changed during this interaction.");
                     }
                     if (
+                        op.identity.supplierId !== undefined
+                        && provider.evidence?.id !== op.identity.supplierId
+                    ) {
+                        throw new StaleCardOperationError("The actual source changed during this interaction.");
+                    }
+                    if (
                         op.writeRevision !== undefined
                         && provider.existingRowWriteRevision
                         && provider.existingRowWriteRevision(op.identity.sourceId, route) !== op.writeRevision
@@ -152,7 +159,9 @@ export class KanbanCardOperationController {
         if (sourceRevision(p, op.identity.sourceKind) !== op.schemaRevision) {
             return "The source schema changed during this interaction.";
         }
-        const schema = this.options.schema?.(), column = schema?.columns.find(c => c.name === route);
+        const schema = this.options.schema?.(op.identity.sourceKind),
+            column = schema?.columns.find(c => c.name === route);
+        if (this.options.schema && !column) return "Current source field metadata is unavailable.";
         if (column) {
             const v = {
                 valueKindOf: () => cellComponentTypeFor(undefined, column),
@@ -204,7 +213,9 @@ function sourceRevision(p: KanbanProjection, kind: string) {
 function identityOf(c: KanbanCard, p: KanbanProjection): CardIdentity | undefined {
     if (!c.sourceIdentity?.id) return undefined;
     const sourceKind = c.sourceIdentity.kind ?? p.provenance?.sourceSqlName;
-    return sourceKind ? { sourceKind, sourceId: c.sourceIdentity.id } : undefined;
+    return sourceKind
+        ? { sourceKind, sourceId: c.sourceIdentity.id, supplierId: c.sourceIdentity.supplierId }
+        : undefined;
 }
 function findCard(p: KanbanProjection, id: CardIdentity) {
     for (const l of p.lanes) {
@@ -212,6 +223,7 @@ function findCard(p: KanbanProjection, id: CardIdentity) {
             if (
                 c.sourceIdentity?.id === id.sourceId
                 && (c.sourceIdentity.kind === id.sourceKind || c.sourceIdentity.kind === undefined)
+                && (id.supplierId === undefined || c.sourceIdentity.supplierId === id.supplierId)
             ) return c;
         }
     }

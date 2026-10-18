@@ -20,7 +20,7 @@ import type { TableQueryResult } from "./tableSyncAdapter";
 export type KanbanResultStatus = "loading" | "incomplete" | "success" | "invalid" | "unavailable" | "error";
 export interface KanbanCard {
     occurrenceKey: string;
-    sourceIdentity?: { kind?: string; id: string; };
+    sourceIdentity?: { kind?: string; id: string; supplierId?: string; };
     row: Record<string, unknown>;
     /** Result-column revisions captured from the actual supplier at execution. */
     writeRevisions?: Record<string, string>;
@@ -91,6 +91,9 @@ export class KanbanQueryRunner {
         if (!kind || analysis?.status !== "proven") return undefined;
         const physical = unambiguousPhysicalColumn(analysis, kind, output);
         return physical ? this.resolvedSchemas.get(kind)?.columns.find(column => column.name === physical) : undefined;
+    }
+    schemaForSource(kind: string) {
+        return this.resolvedSchemas.get(kind);
     }
     subscribeProjection(fn: (p: KanbanProjection) => void) {
         this.listeners.add(fn);
@@ -203,6 +206,9 @@ export class KanbanQueryRunner {
                 const kind = card.sourceIdentity?.kind;
                 const id = card.sourceIdentity?.id;
                 const provider = kind ? providers.get(kind) : undefined;
+                if (card.sourceIdentity && provider?.evidence) {
+                    card.sourceIdentity.supplierId = provider.evidence.id;
+                }
                 if (!kind || !id || !provider?.existingRowWriteRevision) continue;
                 const revisions: Record<string, string> = {};
                 for (const output of columns) {

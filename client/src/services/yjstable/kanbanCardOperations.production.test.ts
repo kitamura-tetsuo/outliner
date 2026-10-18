@@ -7,7 +7,7 @@ import { type KanbanProjection, KanbanQueryRunner } from "./kanbanQueryRunner";
 import { resetPgliteForTests } from "./pgliteService";
 import { type RelationProvider, type RelationWrite, RelationWriteError } from "./relationProvider";
 import type { RelationResolver } from "./relationRowWrite";
-import { addRecord, createTable, getTableHandles, setRecordValue, setSchemaText } from "./tableDocs";
+import { addRecord, createTable, getTableHandles, removeTable, setRecordValue, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
 
 const SCHEMA =
@@ -51,7 +51,7 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
     const controller = (resolver: RelationResolver = session) =>
         new KanbanCardOperationController({
             resolver,
-            schema: () => runner.sourceSchema,
+            schema: sourceKind => runner.schemaForSource(sourceKind),
             settings: () => getKanban(projectDoc, kanbanId),
             projection: () => projection,
             canWrite: () => true,
@@ -59,6 +59,7 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
         });
     return {
         projectDoc,
+        tableId,
         table,
         other,
         kanbanId,
@@ -88,6 +89,71 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         await expect(operation.commit("Edited union")).resolves.toMatchObject({ ok: true });
         expect(c.other.data.get("one")?.get("title")).toBe("Edited union");
         expect(c.table.data.get("one")?.get("title")).toBe("Beta");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("validates UNION lane moves against the selected supplier schema", async () => {
+        const c = await fixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title, status FROM tasks UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+        );
+        setSchemaText(
+            c.table,
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT CHECK (status IN ('open', 'done')))",
+        );
+        setSchemaText(
+            c.other,
+            "CREATE TABLE other_tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT CHECK (status IN ('todo', 'blocked')))",
+        );
+        setRecordValue(c.table, "one", "status", "open");
+        addRecord(c.other, { title: "Blocked", status: "blocked" }, "blocked");
+        await c.refresh();
+
+        const bCard = c.projection.lanes.find(lane => lane.key === "todo")!.cards
+            .find(card => card.sourceIdentity?.kind === "other_tasks")!;
+        const operation = c.controller();
+        const historyDepth = c.other.undo.undoStack.length;
+        expect(operation.begin(bCard, "status", "open")).toBe(true);
+        await expect(operation.commit("open")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.get("status")).toBe("open");
+        expect(c.other.data.get("one")?.get("status")).toBe("todo");
+        expect(c.other.undo.undoStack).toHaveLength(historyDepth);
+
+        const allowed = c.controller();
+        expect(allowed.begin(bCard, "status", "blocked")).toBe(true);
+        await expect(allowed.commit("blocked")).resolves.toMatchObject({ ok: true });
+        expect(c.other.data.get("one")?.get("status")).toBe("blocked");
+        c.runner.dispose();
+        c.session.dispose();
+    });
+
+    it("permanently invalidates an edit when its supplier is replaced under the same SQL name", async () => {
+        const c = await fixture();
+        globalUndoRouter.clear();
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        const oldSupplierId = card.sourceIdentity?.supplierId;
+        const stale = c.controller();
+        expect(stale.begin(card, "title")).toBe(true);
+
+        expect(removeTable(c.projectDoc, c.tableId)).toBe(true);
+        const replacementId = createTable(c.projectDoc, "Replacement", "tasks");
+        const replacement = getTableHandles(c.projectDoc, replacementId)!;
+        setSchemaText(replacement, SCHEMA);
+        addRecord(replacement, { title: "Beta", status: "todo" }, "one");
+        await c.refresh();
+        const replacementCard = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        expect(replacementCard.sourceIdentity?.supplierId).toBe(replacementId);
+        expect(replacementCard.sourceIdentity?.supplierId).not.toBe(oldSupplierId);
+        const historyDepth = replacement.undo.undoStack.length;
+
+        await expect(stale.commit("Stale draft")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(replacement.data.get("one")?.get("title")).toBe("Beta");
+        expect(replacement.undo.undoStack).toHaveLength(historyDepth);
+
+        const current = c.controller();
+        expect(current.begin(replacementCard, "title")).toBe(true);
+        await expect(current.commit("Current draft")).resolves.toMatchObject({ ok: true });
+        expect(replacement.data.get("one")?.get("title")).toBe("Current draft");
         c.runner.dispose();
         c.session.dispose();
     });
@@ -353,6 +419,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         const realProvider = await c.session.resolveRelation("tasks");
         const readonly: RelationProvider = {
             sqlName: realProvider!.sqlName,
+            evidence: realProvider!.evidence,
             capabilities: { update: false },
             materialize: () => realProvider!.materialize(),
             applyWrite: async () => {
@@ -390,6 +457,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
                 if (!provider) return undefined;
                 return {
                     sqlName: provider.sqlName,
+                    evidence: provider.evidence,
                     capabilities: provider.capabilities,
                     materialize: () => provider.materialize(),
                     existingRowWriteRevision: (rowId, column) =>

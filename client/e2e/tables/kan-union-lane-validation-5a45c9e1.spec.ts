@@ -1,0 +1,72 @@
+/** @feature KAN-5a45c9e1 */
+import { expect, test } from "@playwright/test";
+import {
+    addSourceRecord,
+    configureGrid,
+    createBlankGrid,
+    readGridProjectState,
+    setCellValue,
+} from "../utils/crossProjectGridHelpers";
+import { configureKanbanThroughUi, createKanbanThroughUi, openKanbanList } from "../utils/kanbanTestHelpers";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
+
+test("a UNION card refuses lanes excluded by its actual supplier schema", async ({ page }, info) => {
+    test.setTimeout(180000);
+    const seeded = await TestHelpers.seedProjectAndNavigate(page, info, ["Kanban UNION fixture"]);
+    await createBlankGrid(page, "A", "a_tasks");
+    await configureGrid(
+        page,
+        0,
+        "CREATE TABLE a_tasks (id TEXT PRIMARY KEY, title TEXT, status TEXT CHECK (status IN ('open', 'done')))",
+        "SELECT id, title, status FROM a_tasks",
+        "A title",
+    );
+    await addSourceRecord(page, 0, 1);
+    let state = await readGridProjectState(page);
+    const a = state.tables.find(table => table.sqlName === "a_tasks")!;
+    const aId = Object.keys(a.data)[0]!;
+    await setCellValue(page, 0, aId, "title", "A card");
+    await setCellValue(page, 0, aId, "status", "open");
+
+    await createBlankGrid(page, "B", "b_tasks");
+    await configureGrid(
+        page,
+        1,
+        "CREATE TABLE b_tasks (id TEXT PRIMARY KEY, title TEXT, status TEXT CHECK (status IN ('todo', 'blocked')))",
+        "SELECT id, title, status FROM b_tasks",
+        "B title",
+    );
+    await addSourceRecord(page, 1, 1);
+    state = await readGridProjectState(page);
+    const b = state.tables.find(table => table.sqlName === "b_tasks")!;
+    const bId = Object.keys(b.data)[0]!;
+    await setCellValue(page, 1, bId, "title", "B card");
+    await setCellValue(page, 1, bId, "status", "todo");
+
+    await openKanbanList(page, seeded.projectName);
+    await createKanbanThroughUi(page, "Union lanes", a.id);
+    await configureKanbanThroughUi(page, {
+        query: "SELECT 'a_tasks' AS source_kind, id AS source_id, title, status FROM a_tasks "
+            + "UNION ALL SELECT 'b_tasks', id, title, status FROM b_tasks",
+        group: "status",
+        title: "title",
+    });
+
+    const bCard = page.locator("article.card").filter({ hasText: "B card" });
+    const openLane = page.locator("section.lane").filter({ has: page.getByRole("heading", { name: /open/ }) });
+    const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    const handle = bCard.getByRole("button", { name: "Move card" });
+    await handle.dispatchEvent("dragstart", { dataTransfer: transfer });
+    await openLane.dispatchEvent("dragover", { dataTransfer: transfer });
+    await openLane.dispatchEvent("drop", { dataTransfer: transfer });
+    await handle.dispatchEvent("dragend", { dataTransfer: transfer }).catch(() => {});
+
+    await expect(page.getByTestId("kanban-operation-message")).toContainText("invalid for this field");
+    state = await readGridProjectState(page);
+    expect(state.tables.find(table => table.id === a.id)?.data[aId]?.status).toBe("open");
+    expect(state.tables.find(table => table.id === b.id)?.data[bId]?.status).toBe("todo");
+    expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth);
+});
