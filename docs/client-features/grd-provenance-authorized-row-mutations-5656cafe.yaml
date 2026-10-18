@@ -1,0 +1,18 @@
+id: GRD-5656cafe
+title: Provenance-authorized Grid row mutations
+title-ja: プロベナンス認証済み Grid 行変更
+description: Existing Project SELECT rows can be updated or deleted only through a live provider whose source identity, physical schema, row, field, capability, Project admission, and invoking-surface permission still match the captured query evidence.
+category: tables
+status: implemented
+acceptance:
+- Plain single-supplier results mutate the proven physical source rather than a primary or preferred Table
+- Stale query, catalog, schema, provider, row, field, permission, and surface evidence refuses before any source or history mutation
+- Successful UPDATE and supported DELETE operations use the owning RelationProvider and preserve that document's Undo and Redo behavior
+- UNION results require verified source_kind and source_id branch identity and use each branch's positional physical-field mapping
+tests:
+- client/src/services/yjstable/gridExistingRowMutation.evidenceIntegrity.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.inFlight.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.lifecycle.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.liveChecks.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.test.ts
+- client/src/services/yjstable/gridExistingRowMutation.unionAuthority.test.ts

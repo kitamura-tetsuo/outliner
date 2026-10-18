@@ -34,6 +34,14 @@ export interface ProjectSelectEvidence {
     sources: RelationEvidence[];
     columns: ProjectSelectColumn[];
     rows: Record<string, unknown>[];
+    /** Immutable row-address values captured from the completed execution. */
+    rowIdentities: readonly ProjectSelectRowIdentity[];
+}
+
+export interface ProjectSelectRowIdentity {
+    id?: unknown;
+    sourceKind?: unknown;
+    sourceId?: unknown;
 }
 
 export type ProjectSelectState =
@@ -231,6 +239,11 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 sources,
                 columns: result.columns.map((name, index) => ({ name, typeId: result.columnTypes?.[index] })),
                 rows: result.rows,
+                rowIdentities: Object.freeze(
+                    result.rows.map(row =>
+                        Object.freeze({ id: row.id, sourceKind: row.source_kind, sourceId: row.source_id })
+                    ),
+                ),
             };
             this.currentEvidence = evidence;
             this.publish({ status: "success", evidence });

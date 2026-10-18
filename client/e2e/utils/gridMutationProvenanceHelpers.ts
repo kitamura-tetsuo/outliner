@@ -45,6 +45,9 @@ export async function seedOverlappingTableFixture(
     const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Grid provenance anchor"]);
     await createBlankGrid(page, "Table A", "table_a");
     await configureGrid(page, 0, SCHEMA, QUERY_A, "Title");
+    // This fixture exercises selection and typed replacement on `done`; the
+    // shared configure helper hides it for width/clipboard fixtures.
+    await page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-hidden-done").check();
     await addSourceRecord(page);
 
     let state = await readGridProjectState(page);
@@ -83,15 +86,22 @@ export async function pointGridAToTableB(page: Page, fixture: OverlappingTableFi
         `SELECT id, title, done FROM ${fixture.tableB.sqlName}`,
     );
     const grid = fixture.gridA.getByTestId("yjs-table-grid");
-    // A refused result deliberately withholds a writable recordId from its
-    // cells. Locate the displayed B row by its distinguishable value instead
-    // of assuming that read-only DOM carries write-addressing metadata.
+    // The Grid remains bound to A for presentation, while guarded command
+    // authority follows the verified physical supplier B.
     await expect(grid.locator("tbody tr").filter({ hasText: "Value from B" })).toBeVisible({
         timeout: 30000,
     });
-    await expect(grid.getByTestId("grid-readonly-reason")).toContainText("not the Grid's source Table");
+    await expect(grid.getByTestId("grid-readonly-reason")).toHaveCount(0);
 }
 
 export async function snapshotProject(page: Page): Promise<GridProjectState> {
+    await expect.poll(
+        () =>
+            page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
+                return Boolean((window as any).__YJS_STORE__?.yjsClient?.getProject()?.ydoc);
+            }),
+        { timeout: 30000 },
+    ).toBe(true);
     return await readGridProjectState(page);
 }

@@ -57,6 +57,10 @@ import {
     createGridInsertController,
     type GridInsertOutcome,
 } from "../../services/yjstable/gridInsertController";
+import { createProjectSelectSession, type ProjectSelectEvidence } from "../../services/yjstable/projectSelectSession";
+import { analyzeProjectQueryProvenance, type ProjectQueryProvenance } from "../../services/yjstable/projectQueryProvenance";
+import { createGridMetadataResolver, type GridMetadataResolution } from "../../services/yjstable/gridMetadataResolver";
+import { createGridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
 
 const logger = getLogger("YjsTableView");
 
@@ -120,6 +124,17 @@ let adapter = $state<TableSyncAdapter | undefined>(undefined);
 let isInitialSyncDone = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>(undefined);
 let insertOutcome = $state<GridInsertOutcome | undefined>(undefined);
+let guardedAuthority = $state.raw<{
+    evidence: ProjectSelectEvidence;
+    provenance: ProjectQueryProvenance;
+    metadata: GridMetadataResolution;
+} | undefined>(undefined);
+const mutationIncarnation = $derived.by(() => {
+    const evidence = guardedAuthority?.evidence;
+    return evidence
+        ? `${evidence.queryId}:${evidence.queryRevision}:${evidence.executionGeneration}:${evidence.catalogGeneration}:${evidence.catalogRevision ?? ""}`
+        : "unavailable";
+});
 // Authority is revoked only by material changes from the authoritative Yjs
 // configuration sources, not by equivalent adapter/state replays.
 let clientRevision = $state(0);
@@ -178,6 +193,8 @@ const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
         if (nextQuery !== observedQuery) {
             queryExecution = undefined;
             insertController.setQuery(nextQuery);
+            guardedSelect.setQuery(nextQuery);
+            void refreshGuardedMutationAuthority();
             revalidateMutationAuthority();
         }
         observedQuery = nextQuery;
@@ -192,6 +209,7 @@ const schemaTextObserver = () => {
     // replay; an actual intervening schema value still revokes authority.
     if (nextSchemaSql !== observedSchemaSql) {
         queryExecution = undefined;
+        void refreshGuardedMutationAuthority();
         revalidateMutationAuthority();
     }
     observedSchemaSql = nextSchemaSql;
@@ -206,6 +224,20 @@ const bareIdAuthority = $derived.by(() => {
     const execution = queryExecution;
     if (!schema || !sqlName || !execution || !isCurrentExecutionForQuery(execution, gridQuery)) {
         return undefined;
+    }
+    if (
+        guardedAuthority?.provenance.status === "proven" && guardedAuthority.provenance.bareIdSource
+        && guardedAuthority.metadata.status === "resolved"
+        && guardedAuthority.evidence.query === execution.query
+    ) {
+        return {
+            status: "compatible" as const,
+            editableColumns: new Set(guardedAuthority.metadata.physicalColumns.flatMap(column =>
+                column.field && column.physicalColumn !== "id" && column.outputColumn === column.physicalColumn
+                    ? [column.outputColumn]
+                    : []
+            )),
+        };
     }
     return resolveBareIdMutationAuthority(execution.query, sqlName, schema, result.columns);
 });
@@ -228,6 +260,52 @@ const clipboardSource: TableClipboardSource = {
 // handles/projectDoc are static within the component lifecycle due to `{#key}`
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
+// This component is remounted when the Project identity changes.
+// svelte-ignore state_referenced_locally
+const guardedSelect = createProjectSelectSession({
+    projectDoc,
+    projectId,
+    query: observedQuery,
+    // Match GridQueryRunner's persisted grammar version so legacy Grids with
+    // ordinary unaliased output columns receive the same execution evidence.
+    requireExplicitAliases: grid.entry.get("sqlAliasPolicyVersion") === 1,
+});
+// svelte-ignore state_referenced_locally
+const guardedMetadataResolver = createGridMetadataResolver({ projectDoc, projectId });
+async function refreshGuardedMutationAuthority(): Promise<void> {
+    const evidence = await guardedSelect.runNow();
+    if (!evidence) return;
+    const provenance = analyzeProjectQueryProvenance(evidence);
+    const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
+    if (!guardedSelect.isEvidenceCurrent(evidence)) return;
+    guardedAuthority = { evidence, provenance, metadata };
+}
+
+let guardedEffectsRefresh = Promise.resolve();
+function refreshAfterGuardedEffects(): Promise<void> {
+    const refresh = async () => {
+        await runner?.runQueryNow();
+        await refreshGuardedMutationAuthority();
+    };
+    // A second command may start as soon as its source write is observable,
+    // before the preceding UI refresh finishes. Preserve effect order so an
+    // older query result cannot overwrite the newer command's result.
+    guardedEffectsRefresh = guardedEffectsRefresh.then(refresh, refresh);
+    return guardedEffectsRefresh;
+}
+
+// svelte-ignore state_referenced_locally
+const mutationBoundary = createGridExistingRowMutationBoundary({
+    projectDoc,
+    projectId,
+    session: guardedSelect,
+    evidence: () => guardedAuthority?.evidence,
+    provenance: () => guardedAuthority?.provenance,
+    metadata: () => guardedAuthority?.metadata,
+    canWrite: () => !isReadOnly,
+    allows: () => !isReadOnly,
+    relationSession: session,
+});
 // This component is remounted for a changed Project/Grid identity.
 // svelte-ignore state_referenced_locally
 const insertController = createGridInsertController({
@@ -320,11 +398,15 @@ onMount(() => {
             },
         });
         runner.start();
+        await refreshGuardedMutationAuthority();
         adapterReady = true;
     })();
 });
 
 onDestroy(() => {
+    mutationBoundary.dispose();
+    guardedMetadataResolver.dispose();
+    guardedSelect.dispose();
     mountedGrid.entry.unobserveDeep(gridMirrorObserver);
     mountedHandles.schemaText.unobserve(schemaTextObserver);
     unsubscribeAdapter?.();
@@ -349,6 +431,7 @@ function stateVectorRevision(doc: Y.Doc): string {
     data-testid="yjs-table-view"
     data-grid-id={grid.gridId}
     data-source-table-id={handles.tableId}
+    data-mutation-incarnation={mutationIncarnation}
     data-ui-editor-open={showUiDef}
     onfocusin={(e) => {
         if (isForeignInput(e.target)) {
@@ -471,6 +554,11 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {confirmRowDelete}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
+                    {mutationBoundary}
+                    {mutationIncarnation}
+                    mutationPhysicalColumns={guardedAuthority?.metadata.physicalColumns}
+                    prepareMutationAuthority={refreshGuardedMutationAuthority}
+                    onGuardedEffects={refreshAfterGuardedEffects}
                     {isReadOnly}
                     onAddRow={async () => {
                         insertOutcome = await insertController.submit();

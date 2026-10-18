@@ -104,10 +104,27 @@ export interface RelationProvider {
     materialize(): Promise<boolean>;
     /** Notify query consumers after this materialized relation changes. */
     subscribeInvalidation?(listener: () => void): () => void;
+    /**
+     * Synchronously prove that an existing-row write still names a live row
+     * and physical field.  This is deliberately separate from provenance:
+     * callers must first prove which provider owns the result row, then ask
+     * that live provider whether the concrete target still exists.
+     */
+    assertExistingRowWriteAllowed?(write: Extract<RelationWrite, { op: "UPDATE" | "DELETE"; }>): void;
     /** Apply a write back to the Yjs structure that owns the row. */
     applyWrite(write: RelationWrite): Promise<void>;
+    /**
+     * Apply an already validated same-source batch in one source-local
+     * transaction. The applied count remains truthful if a later write fails.
+     */
+    applyWriteBatch?(writes: readonly RelationWrite[]): Promise<RelationWriteBatchResult>;
     /** Detach observers. Dropping the Postgres relation is the engine's job. */
     dispose(): void;
+}
+
+export interface RelationWriteBatchResult {
+    applied: number;
+    error?: unknown;
 }
 
 export interface RelationEvidence {

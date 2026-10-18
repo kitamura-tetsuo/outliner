@@ -28,15 +28,29 @@ import { GridSelection, type GridCellAddress } from "../../services/yjstable/gri
 import { isPrintableKey, moveActiveCell, type GridNavDirection } from "../../services/yjstable/gridKeyboardNav";
 import {
     applyValueToSelection,
+    classifySelectionKind,
     convertReplacementText,
     type GridCommandContext,
     type GridCommandRowTarget,
     isWritableRow,
+    isValueValidForCell,
     planGridDeleteCommand,
+    planSelectionClearWrites,
     removeRowTargets,
     summarizeSelection,
     writeWritableCell,
 } from "../../services/yjstable/gridSelectionCommands";
+import type { GridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
+import type { GridPhysicalColumnMetadata } from "../../services/yjstable/gridMetadataResolver";
+import {
+    captureGridRowDeletion,
+    executeCapturedGridRowDeletion,
+    executeGridPastePlan,
+    executeGridRowDeletion,
+    executeGridWrites,
+    type GridExecutionOutcome,
+    type GridCapturedRowDeletion,
+} from "../../services/yjstable/gridCommandExecution";
 import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
@@ -46,6 +60,7 @@ import {
     type GridCellReplaceOutcome,
     type GridCellReplacement,
     type GridCellSearchMatch,
+    gridValueText,
     registerGridSearchProvider,
 } from "../../lib/search/unifiedSearch";
 
@@ -99,6 +114,15 @@ interface Props {
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
     session: RelationResolver;
+    /** Guarded source-aware boundary used by saved Project Grid commands. */
+    mutationBoundary?: GridExistingRowMutationBoundary;
+    /** Identity of the completed SELECT authority backing the displayed rows. */
+    mutationIncarnation?: string;
+    /** Physical SELECT provenance used only to identify duplicate source cells across placements. */
+    mutationPhysicalColumns?: readonly GridPhysicalColumnMetadata[];
+    /** Refreshes completed SELECT/provenance metadata before a guarded command captures targets. */
+    prepareMutationAuthority?: () => Promise<void>;
+    onGuardedEffects?: () => Promise<void> | void;
     /** Whether deleting a row requires confirmation (default false). */
     confirmRowDelete?: boolean;
     /**
@@ -139,14 +163,24 @@ let {
     onAddRow,
     loading = false,
     session,
+    mutationBoundary,
+    mutationIncarnation = "local-grid",
+    mutationPhysicalColumns = [],
+    prepareMutationAuthority,
+    onGuardedEffects,
     confirmRowDelete = false,
     isReadOnly = false,
     onColumnWidthPreview,
 }: Props = $props();
 
-let rowToDelete: string | null = $state(null);
+interface PendingRowDeletion {
+    targets: GridCommandRowTarget[];
+    captured?: GridCapturedRowDeletion;
+}
+
+let rowToDelete: PendingRowDeletion | undefined = $state.raw(undefined);
 /** Pending selection-aware row removal (FTR-5191), awaiting the same confirmation as a single row delete. */
-let bulkRowsToDelete: GridCommandRowTarget[] | undefined = $state(undefined);
+let bulkRowsToDelete: PendingRowDeletion | undefined = $state.raw(undefined);
 let isConfirmDialogOpen: boolean = $state(false);
 const selection = new GridSelection();
 let selectionRevision = $state(0);
@@ -352,7 +386,9 @@ const fixedTableWidth = $derived(
 const rowTargetEntries = $derived(
     result.rows.flatMap((row, rowIndex): Array<[string, GridCommandRowTarget]> => {
         const rowId = selectionRowId(row, rowIndex);
-        return rowId === undefined ? [] : [[rowId, { row, recordId: recordIdOf(row), source: sourceOf(row) }]];
+        return rowId === undefined
+            ? []
+            : [[rowId, { row, rowIndex, recordId: recordIdOf(row), source: sourceOf(row) }]];
     }),
 );
 
@@ -370,6 +406,7 @@ const commandContext = $derived<GridCommandContext>({
     isNullableOf: (columnId) => columnByName.get(columnId)?.isNullable ?? true,
     canMutateBareId: () => !grid || (editability.editable && editability.rowIdentity === "id"),
     writeBareCell: (recordId, columnId, value) => commitBareRecordValue(recordId, columnId, value),
+    guardedSourceWrites: mutationBoundary !== undefined,
 });
 
 const selectionSummary = $derived.by(() => {
@@ -444,16 +481,35 @@ function rowKey(row: Record<string, unknown>, rowIndex: number): string {
     return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
 }
 
-/** Search/navigation identity for read-only projections that have no writable record identity. */
-function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
-    const durableId = selectionRowId(row, rowIndex);
+/** Logical identity for readable result occurrences; it never grants write authority. */
+function readableRowId(row: Record<string, unknown>, rowIndex: number): string {
+    const durableId = durableSelectionRowId(row, rowIndex);
     if (durableId !== undefined) return durableId;
     const value = JSON.stringify(row);
     const duplicateIndex = result.rows.slice(0, rowIndex).filter(candidate => JSON.stringify(candidate) === value).length;
     return `result:${value}:${duplicateIndex}`;
 }
 
-/** Rows without a durable query identity are intentionally not selectable. */
+function searchRowId(row: Record<string, unknown>, rowIndex: number): string {
+    return readableRowId(row, rowIndex);
+}
+
+function searchCellKey(row: Record<string, unknown>, rowIndex: number, columnId: string): string {
+    const rowId = searchRowId(row, rowIndex);
+    const target = commandContext.rowTargets.get(rowId);
+    const candidates = mutationPhysicalColumns.filter(column => column.outputColumn === columnId);
+    const physical = target?.source
+        ? candidates.find(column => column.source.sqlName === target.source?.sourceKind)
+        : candidates.length === 1
+        ? candidates[0]
+        : undefined;
+    const sourceRowId = target?.source?.sourceId ?? target?.recordId;
+    return physical && sourceRowId
+        ? `${physical.source.kind}:${physical.source.id}:${sourceRowId}:${physical.physicalColumn}`
+        : `${grid?.gridId ?? "local"}:${rowId}:${columnId}`;
+}
+
+/** Durable identity used only when a write path needs an actual record address. */
 function selectableRowId(row: Record<string, unknown>): string | undefined {
     return durableRowIdBase(row);
 }
@@ -480,13 +536,17 @@ function durableRowIdBase(row: Record<string, unknown>): string | undefined {
  * uses for Svelte DOM keys, keeping the first occurrence exactly as before
  * so unique-identity results behave identically.
  */
-function selectionRowId(row: Record<string, unknown>, rowIndex: number): string | undefined {
+function durableSelectionRowId(row: Record<string, unknown>, rowIndex: number): string | undefined {
     const base = durableRowIdBase(row);
     if (base === undefined) return undefined;
     const repeatsBefore = result.rows.slice(0, rowIndex).filter(candidate =>
         durableRowIdBase(candidate) === base
     ).length;
     return repeatsBefore === 0 ? base : `${base}#${repeatsBefore + 1}`;
+}
+
+function selectionRowId(row: Record<string, unknown>, rowIndex: number): string {
+    return readableRowId(row, rowIndex);
 }
 
 onMount(() => {
@@ -497,10 +557,12 @@ onMount(() => {
             pageTitle: pageTitle ?? "",
             placementId,
             gridId: grid.gridId,
+            incarnation: mutationIncarnation,
             columns: displayColumns,
             rows: result.rows,
             selection: selection.snapshot(),
             rowId: searchRowId,
+            cellKey: searchCellKey,
         }),
         navigate: (match) => {
             findMatch = match;
@@ -520,13 +582,26 @@ onMount(() => {
         },
         isCellReplaceable: (rowId, columnId) => {
             const rowTarget = commandContext.rowTargets.get(rowId);
-            return rowTarget !== undefined && isWritableRow(rowTarget) && commandContext.editableColumns.has(columnId);
+            return !isReadOnly && rowTarget !== undefined && isWritableRow(rowTarget)
+                && commandContext.editableColumns.has(columnId);
         },
-        replaceCells: (entries: readonly GridCellReplacement[]): GridCellReplaceOutcome[] => {
+        replaceCells: async (entries: readonly GridCellReplacement[]): Promise<GridCellReplaceOutcome[]> => {
             const outcomes: GridCellReplaceOutcome[] = [];
             const idWrites: Array<{ rowTarget: GridCommandRowTarget; columnId: string; value: TableRecordValue; }> = [];
             const sourceWrites: typeof idWrites = [];
             for (const entry of entries) {
+                if (isReadOnly) {
+                    outcomes.push({ ...entry, applied: false, reason: "read-only" });
+                    continue;
+                }
+                const liveRow = result.rows.find((row, index) => searchRowId(row, index) === entry.rowId);
+                if (
+                    entry.incarnation !== mutationIncarnation || !liveRow
+                    || gridValueText(liveRow[entry.columnId]) !== entry.expectedText
+                ) {
+                    outcomes.push({ ...entry, applied: false, reason: "refused" });
+                    continue;
+                }
                 const rowTarget = commandContext.rowTargets.get(entry.rowId);
                 if (!rowTarget || !isWritableRow(rowTarget) || !commandContext.editableColumns.has(entry.columnId)) {
                     outcomes.push({ ...entry, applied: false, reason: "read-only" });
@@ -538,7 +613,39 @@ onMount(() => {
                     continue;
                 }
                 (rowTarget.recordId !== undefined ? idWrites : sourceWrites).push({ rowTarget, columnId: entry.columnId, value });
-                outcomes.push({ ...entry, applied: true });
+            }
+            const writes = [...idWrites, ...sourceWrites];
+            if (mutationBoundary && writes.length > 0) {
+                // Capture against the exact execution that produced the hit.
+                // executeGridWrites then revalidates that capture after every
+                // asynchronous provider lookup; refreshing first would instead
+                // grant a stale click fresh authority.
+                const executed = await executeGridWrites(
+                    { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                    writes.map(write => ({ target: { rowTarget: write.rowTarget, columnId: write.columnId }, value: write.value })),
+                );
+                if (executed.applied.length > 0) await onGuardedEffects?.();
+                const appliedCount = executed.applied.length;
+                let writableIndex = 0;
+                return entries.map(entry => {
+                    if (outcomes.some(result => result.rowId === entry.rowId && result.columnId === entry.columnId)) {
+                        return outcomes.find(result => result.rowId === entry.rowId && result.columnId === entry.columnId)!;
+                    }
+                    const index = writableIndex++;
+                    return index < appliedCount
+                        ? { ...entry, applied: true }
+                        : {
+                            ...entry,
+                            applied: false,
+                            reason: "refused",
+                            // A guarded stale-authority refusal is an expected
+                            // no-effect outcome, not an unexpected provider
+                            // failure for SearchPanel to surface as an error.
+                            error: executed.status === "partial" || executed.status === "error"
+                                ? executed.error
+                                : undefined,
+                        };
+                });
             }
             if (idWrites.length > 0) {
                 handles.doc.transact(() => {
@@ -549,6 +656,11 @@ onMount(() => {
             }
             for (const write of sourceWrites) {
                 writeWritableCell(commandContext, { rowTarget: write.rowTarget, columnId: write.columnId }, write.value);
+            }
+            for (const entry of entries) {
+                if (!outcomes.some(result => result.rowId === entry.rowId && result.columnId === entry.columnId)) {
+                    outcomes.push({ ...entry, applied: true });
+                }
             }
             return outcomes;
         },
@@ -797,7 +909,32 @@ $effect.pre(() => {
 /** Bulk-safe value kinds: committing one of these while several writable cells are selected applies the value to all of them (FTR-5191). */
 const BULK_COMMIT_KINDS = new Set(["checkbox", "select"]);
 
-function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
+function reportGuardedOutcome(action: string, outcome: GridExecutionOutcome): void {
+    if (outcome.applied.length > 0) void onGuardedEffects?.();
+    if (outcome.status === "applied") {
+        cellEditStatus = undefined;
+        return;
+    }
+    if (outcome.status === "refused") {
+        cellEditStatus = `${action} refused: ${outcome.reason}`;
+        return;
+    }
+    if (outcome.status === "error") {
+        cellEditStatus = `${action} failed: ${outcome.error instanceof Error ? outcome.error.message : String(outcome.error)}`;
+        return;
+    }
+    const applied = outcome.applied.map(result =>
+        `${result.source.sqlName}:${result.rowId}${result.physicalColumn ? `.${result.physicalColumn}` : ""}`
+    ).join(", ");
+    const failed = `result row ${outcome.failedIntent.rowIndex + 1}${
+        outcome.failedIntent.outputColumn ? `.${outcome.failedIntent.outputColumn}` : ""
+    }`;
+    cellEditStatus = `${action} partially applied to ${outcome.applied.length} target${
+        outcome.applied.length === 1 ? "" : "s"
+    } (${applied || "none"}); provider write failed for ${failed}.`;
+}
+
+async function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
     if (!editability.editable || !editability.editableColumns.has(column)) return;
     const rowIndex = result.rows.indexOf(row);
     const rowId = rowIndex < 0 ? selectableRowId(row) : selectionRowId(row, rowIndex);
@@ -808,10 +945,37 @@ function commitCell(row: Record<string, unknown>, column: string, value: TableRe
         if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column))) {
             const summary = summarizeSelection(selection, commandContext);
             if (summary.writableTargets.length > 1) {
+                if (mutationBoundary) {
+                    await prepareMutationAuthority?.();
+                    if (summary.writableTargets.some(target => !isValueValidForCell(commandContext, target.columnId, value))) {
+                        cellEditStatus = "The selected cells cannot all accept that value.";
+                        return;
+                    }
+                    const outcome = await executeGridWrites(
+                        { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                        summary.writableTargets.map(target => ({ target, value })),
+                    );
+                    reportGuardedOutcome("Edit", outcome);
+                    return;
+                }
                 // The captured origin is checked before the synchronous batch can write any target.
                 applyValueToSelection(selection, commandContext, value);
                 return;
             }
+        }
+        if (mutationBoundary && cell) {
+            const rowTarget = commandContext.rowTargets.get(cell.rowId);
+            if (!rowTarget) {
+                cellEditStatus = "Edit refused: the current logical row occurrence is unavailable.";
+                return;
+            }
+            await prepareMutationAuthority?.();
+            const outcome = await executeGridWrites(
+                { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                [{ target: { rowTarget, columnId: column }, value }],
+            );
+            reportGuardedOutcome("Edit", outcome);
+            return;
         }
         const recordId = recordIdOf(row);
         if (recordId !== undefined) {
@@ -966,10 +1130,21 @@ function pasteStatusMessage(plan: GridPastePlan): string | undefined {
  */
 async function pasteClipboardIntoSelection(): Promise<void> {
     if (typeof navigator === "undefined" || !navigator.clipboard?.readText) return;
+    const capturedSelectionRevision = selectionRevision;
+    const capturedResult = result;
     let text: string;
     try {
         text = await navigator.clipboard.readText();
     } catch {
+        return;
+    }
+    if (selectionRevision !== capturedSelectionRevision || result !== capturedResult) {
+        pasteStatus = "Paste cancelled because the selection or query result changed.";
+        return;
+    }
+    await prepareMutationAuthority?.();
+    if (selectionRevision !== capturedSelectionRevision || result !== capturedResult) {
+        pasteStatus = "Paste cancelled because the selection or query result changed.";
         return;
     }
     // An empty clipboard is a legitimate one-blank-cell source (a copied
@@ -978,7 +1153,14 @@ async function pasteClipboardIntoSelection(): Promise<void> {
     // so this must not bail out early just because the string is falsy.
     const plan = planGridPaste(selection, commandContext, rowIdsOf(result.rows), text);
     if (plan.kind === "apply") {
-        commitGridPaste(commandContext, plan.writes);
+        if (mutationBoundary) {
+            const outcome = await executeGridPastePlan({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, plan);
+            if (outcome.status !== "applied") {
+                reportGuardedOutcome("Paste", outcome);
+                pasteStatus = cellEditStatus;
+                return;
+            }
+        } else commitGridPaste(commandContext, plan.writes);
         pasteStatus = undefined;
         return;
     }
@@ -1131,14 +1313,34 @@ async function addRow() {
     addRecord(handles, newRecordDefaults());
 }
 
-function deleteRow(recordId: string) {
+async function deleteRow(row: Record<string, unknown>, rowIndex: number) {
     if (!editability.editable || editability.rowIdentity !== "id") return;
-    if (confirmRowDelete) {
-        rowToDelete = recordId;
-        isConfirmDialogOpen = true;
-    } else {
-        removeRowTargets(commandContext, [{ row: {}, recordId }]);
+    const logicalRowId = selectionRowId(row, rowIndex);
+    const target = logicalRowId ? commandContext.rowTargets.get(logicalRowId) : undefined;
+    if (!target) {
+        cellEditStatus = "Delete refused: the current logical row occurrence is unavailable.";
+        return;
     }
+    if (confirmRowDelete) {
+        if (mutationBoundary) await prepareMutationAuthority?.();
+        const captured = mutationBoundary
+            ? captureGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, [target])
+            : undefined;
+        if (captured?.status === "refused") {
+            cellEditStatus = `Delete refused: ${captured.reason}`;
+            return;
+        }
+        rowToDelete = { targets: [target], captured };
+        isConfirmDialogOpen = true;
+        return;
+    }
+    if (mutationBoundary) {
+        await prepareMutationAuthority?.();
+        reportGuardedOutcome(
+            "Delete",
+            await executeGridRowDeletion({ boundary: mutationBoundary, rowTargets: commandContext.rowTargets }, [target]),
+        );
+    } else removeRowTargets(commandContext, [target]);
 }
 
 /**
@@ -1150,32 +1352,79 @@ function deleteRow(recordId: string) {
  * contents instead: it must never fall back to a destructive whole-result
  * row removal.
  */
-function runDeleteCommand(): void {
+async function runDeleteCommand(): Promise<void> {
+    const capturedSelectionRevision = selectionRevision;
+    const capturedKind = classifySelectionKind(selection.regions);
+    await prepareMutationAuthority?.();
+    if (selectionRevision !== capturedSelectionRevision || classifySelectionKind(selection.regions) !== capturedKind) {
+        cellEditStatus = "Delete refused: the selection changed while write authority was being prepared.";
+        return;
+    }
+    if (mutationBoundary && capturedKind !== "rows") {
+        const writes = planSelectionClearWrites(selection, commandContext);
+        const outcome = await executeGridWrites(
+            { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+            writes,
+        );
+        reportGuardedOutcome("Delete", outcome);
+        return;
+    }
     const plan = planGridDeleteCommand(selection, commandContext);
     if (plan.kind === "clear-cells") return;
     if (plan.targets.length === 0) return;
     if (confirmRowDelete) {
-        bulkRowsToDelete = plan.targets;
+        const captured = mutationBoundary
+            ? captureGridRowDeletion(
+                { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                plan.targets,
+            )
+            : undefined;
+        if (captured?.status === "refused") {
+            cellEditStatus = `Delete refused: ${captured.reason}`;
+            return;
+        }
+        bulkRowsToDelete = { targets: plan.targets, captured };
         isConfirmDialogOpen = true;
         return;
     }
-    removeRowTargets(commandContext, plan.targets);
+    if (mutationBoundary) {
+        reportGuardedOutcome(
+            "Delete",
+            await executeGridRowDeletion(
+                { boundary: mutationBoundary, rowTargets: commandContext.rowTargets },
+                plan.targets,
+            ),
+        );
+    } else removeRowTargets(commandContext, plan.targets);
 }
 
-function handleConfirmDelete() {
+async function handleConfirmDelete() {
     if (bulkRowsToDelete) {
-        removeRowTargets(commandContext, bulkRowsToDelete);
+        if (mutationBoundary) {
+            const outcome = bulkRowsToDelete.captured?.status === "captured"
+                ? await executeCapturedGridRowDeletion(mutationBoundary, bulkRowsToDelete.captured.intents)
+                : { status: "refused" as const, applied: [] as [], reason: "Delete authority was not captured." };
+            reportGuardedOutcome("Delete", outcome);
+        } else removeRowTargets(commandContext, bulkRowsToDelete.targets);
         bulkRowsToDelete = undefined;
         return;
     }
     if (rowToDelete) {
-        removeRowTargets(commandContext, [{ row: {}, recordId: rowToDelete }]);
-        rowToDelete = null;
+        if (mutationBoundary) {
+            const outcome = rowToDelete.captured?.status === "captured"
+                ? await executeCapturedGridRowDeletion(mutationBoundary, rowToDelete.captured.intents)
+                : { status: "refused" as const, applied: [] as [], reason: "Delete authority was not captured." };
+            reportGuardedOutcome(
+                "Delete",
+                outcome,
+            );
+        } else removeRowTargets(commandContext, rowToDelete.targets);
+        rowToDelete = undefined;
     }
 }
 
 function handleCancelDelete() {
-    rowToDelete = null;
+    rowToDelete = undefined;
     bulkRowsToDelete = undefined;
 }
 </script>
@@ -1495,7 +1744,7 @@ function handleCancelDelete() {
                                         type="button"
                                         class="delete-row"
                                         aria-label={`Delete row ${recordId}`}
-                                        onclick={() => deleteRow(recordId)}
+                                        onclick={() => deleteRow(row, rowIndex)}
                                         title="Delete row"
                                     >🗑️</button>
                                 {/if}
@@ -1564,9 +1813,9 @@ function handleCancelDelete() {
         bind:isOpen={isConfirmDialogOpen}
         title="Delete row"
         message={bulkRowsToDelete
-            ? `Are you sure you want to delete ${bulkRowsToDelete.length} selected row${bulkRowsToDelete.length === 1 ? "" : "s"}?`
+            ? `Are you sure you want to delete ${bulkRowsToDelete.targets.length} selected row${bulkRowsToDelete.targets.length === 1 ? "" : "s"}?`
             : rowToDelete
-            ? `Are you sure you want to delete row ${rowToDelete}?`
+            ? `Are you sure you want to delete row ${rowToDelete.targets[0]?.recordId ?? rowToDelete.targets[0]?.source?.sourceId ?? ""}?`
             : "Are you sure you want to delete this row?"}
         confirmText="Delete"
         cancelText="Cancel"
