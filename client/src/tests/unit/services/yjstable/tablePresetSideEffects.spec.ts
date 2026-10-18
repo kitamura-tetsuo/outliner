@@ -38,12 +38,12 @@ function expectOnlyExistingKanban(
     doc: Y.Doc,
     kanbanId: string,
     kanbansBefore: ReturnType<typeof listKanbans>,
-    newTableId: string,
+    _newTableId: string,
 ): void {
     expect(listKanbans(doc)).toEqual(kanbansBefore);
     expect(getKanbanRegistry(doc).size).toBe(1);
     expect([...getKanbanRegistry(doc).keys()]).toEqual([kanbanId]);
-    expect(listKanbans(doc).some(kanban => kanban.sourceTableId === newTableId)).toBe(false);
+    // sourceTableId removed from KanbanSettings
 }
 
 describe("preset creation side-effect boundaries", () => {

@@ -30,6 +30,7 @@ export interface KanbanLane {
     cards: KanbanCard[];
 }
 export interface KanbanExecutionProvenance {
+    sourceTableId?: string;
     kanbanId: string;
     query: string;
     evidence?: ProjectSelectEvidence;

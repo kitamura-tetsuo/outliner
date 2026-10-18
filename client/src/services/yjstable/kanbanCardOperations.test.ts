@@ -25,7 +25,7 @@ async function setup() {
     const rowId = addRecord(handles, { title: "One", status: "todo" }, "row-1");
     const settings: KanbanSettings = {
         name: "Tasks",
-        sourceTableId: tableId,
+
         query: QUERY,
         groupField: "status",
         titleField: "title",
