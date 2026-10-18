@@ -72,9 +72,18 @@ export class SqlEditorHelper {
     async commit(page: Page): Promise<void> {
         await page.locator("body").click({ position: { x: 2, y: 2 } }).catch(() => {});
         if (await this.hasFocus()) {
-            // Some layouts cover the top-left corner. What the editor reacts to
-            // is losing focus, not which element received the click.
-            await this.root.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+            // Some layouts cover the top-left corner and Monaco's EditContext
+            // host does not consistently honor blur() in Chromium. Focus a
+            // temporary, real control outside the editor so the production
+            // focusout/commit path runs exactly as it does for a user click.
+            await page.evaluate(() => {
+                const target = document.createElement("button");
+                target.type = "button";
+                target.style.cssText = "position:fixed;left:-9999px;top:-9999px";
+                document.body.append(target);
+                target.focus();
+                requestAnimationFrame(() => target.remove());
+            });
         }
         await expect
             .poll(async () => await this.hasFocus(), { timeout: 10000 })

@@ -40,7 +40,7 @@ test.describe("mouse drag clipboard with component blocks", () => {
         // A Grid is an atomic visual node with no outline text (#5015). End the
         // gesture in its rendered view, rather than depending on the absent
         // `.item-text` or the empty text-row strip above the component.
-        const target = page.getByTestId("yjs-table-view").first();
+        const target = page.getByTestId("yjs-table-grid").first().locator("thead th").first();
         const sourceBox = await source.boundingBox();
         const targetBox = await target.boundingBox();
         expect(sourceBox).not.toBeNull();
