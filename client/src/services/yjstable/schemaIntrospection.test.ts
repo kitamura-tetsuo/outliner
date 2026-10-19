@@ -42,6 +42,30 @@ describe("assertSingleCreateTable", () => {
 });
 
 describe("parseCreateTable (PGlite introspection)", () => {
+    it.each([
+        ["id TEXT, title TEXT", []],
+        ["title TEXT, id TEXT PRIMARY KEY", ["id"]],
+        ["id TEXT, title TEXT PRIMARY KEY", ["title"]],
+        ["code TEXT, id TEXT, title TEXT, PRIMARY KEY (title, code)", ["code", "title"]],
+        ["title TEXT, id TEXT, PRIMARY KEY (id, title)", ["id", "title"]],
+    ])("reports the actual primary-key members independently of column order: %s", async (fields, key) => {
+        const parsed = await parseCreateTable(`CREATE TABLE t (${fields})`);
+        expect(parsed.columns.filter(column => column.isPrimaryKey).map(column => column.name).sort()).toEqual(key);
+        expect(parsed.hasAdditionalUniqueConstraint).toBe(false);
+    });
+
+    it.each([
+        ["title TEXT", false, false],
+        ["title TEXT UNIQUE", false, true],
+        ["title TEXT, code TEXT, UNIQUE (title, code)", false, true],
+        ["title TEXT, derived TEXT GENERATED ALWAYS AS (upper(title)) STORED", true, false],
+    ])("exposes INSERT restrictions without rejecting the valid schema: %s", async (fields, generated, unique) => {
+        const parsed = await parseCreateTable(`CREATE TABLE t (id TEXT PRIMARY KEY, ${fields})`);
+        expect(parsed.columns[0]?.isPrimaryKey).toBe(true);
+        expect(parsed.hasGeneratedColumns).toBe(generated);
+        expect(parsed.hasAdditionalUniqueConstraint).toBe(unique);
+    });
+
     it("returns columns with types, nullability and primary key", async () => {
         const parsed = await parseCreateTable(
             "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, done BOOLEAN, points INTEGER)",

@@ -11,13 +11,15 @@ import { orderColumns } from "../../services/yjstable/columnOrder";
 import {
     getGridConfirmRowDelete,
     getGridQuery,
+    getGridInsertTargetTableId,
+    setGridInsertTargetTableId,
     getGridRegistry,
     getGridShowAddRowButton,
     type GridHandles,
     readGridComponents,
 } from "../../services/yjstable/gridDocs";
 import { createGridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
-import { createGridInsertController, type GridInsertOutcome } from "../../services/yjstable/gridInsertController";
+import { createGridInsertController, type GridInsertOutcome, type GridInsertState } from "../../services/yjstable/gridInsertController";
 import { createGridMetadataResolver, type GridMetadataResolution } from "../../services/yjstable/gridMetadataResolver";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
 import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
@@ -75,6 +77,11 @@ let showAddRowButton = $state(true);
 let confirmRowDelete = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>();
 let insertOutcome = $state<GridInsertOutcome | undefined>();
+let insertState = $state.raw<GridInsertState>({ loading: true, pending: false, candidates: [] });
+let showInsertPreference = $state(false);
+let insertPreferenceDraft = $state("");
+let preferenceSaving = $state(false);
+let preferenceError = $state<string | undefined>();
 let displayMetadata = $state.raw<GridMetadataResolution | undefined>();
 let guardedAuthority = $state.raw<
     | { evidence: ProjectSelectEvidence; provenance: ProjectQueryProvenance; metadata: GridMetadataResolution; }
@@ -183,6 +190,7 @@ const insertController = createGridInsertController({
     canWrite: () => getGridRegistry(projectDoc).get(mountedGrid.gridId) === mountedGrid.entry
         && !isReadOnly && (canWrite?.() ?? true),
     onBeforeEffects: () => globalUndoRouter.stopCapturing(),
+    onPreferenceChange: tableId => setGridInsertTargetTableId(mountedGrid, tableId),
 });
 
 function refreshGridMirror() {
@@ -267,11 +275,13 @@ function getGridRenderTrace() {
 let unsubscribe: (() => void) | undefined;
 let cleanupWebMCP: (() => void) | undefined;
 let unregisterTrace: (() => void) | undefined;
+let unsubscribeInsert: (() => void) | undefined;
 onMount(() => {
     refreshGridMirror();
     mountedGrid.entry.observeDeep(gridMirrorObserver);
     registerTableClipboardSource(mountedGrid.gridId, clipboardSource);
     unsubscribe = guardedSelect.subscribe(next => void publish(next));
+    unsubscribeInsert = insertController.subscribe(next => insertState = next);
     cleanupWebMCP = registerWebMCPGridTools(
         () => ({ gridId: mountedGrid.gridId, sourceTableId: sourceId ?? "", query: gridQuery }),
         () => ({
@@ -289,6 +299,7 @@ onDestroy(() => {
     destroyed = true;
     publication++;
     unsubscribe?.();
+    unsubscribeInsert?.();
     mountedGrid.entry.unobserveDeep(gridMirrorObserver);
     unregisterTableClipboardSource(mountedGrid.gridId, clipboardSource);
     mutationBoundary.dispose();
@@ -387,6 +398,49 @@ onDestroy(() => {
         </section>
     {/if}
 
+    <section aria-label="Row insertion">
+        <button type="button" data-testid="grid-insert-preference-open" disabled={isReadOnly}
+            onclick={() => {
+                insertPreferenceDraft = getGridInsertTargetTableId(mountedGrid) ?? "";
+                preferenceError = undefined;
+                showInsertPreference = true;
+            }}>INSERT destination</button>
+        <span data-testid="grid-insert-resolution">{insertState.loading ? "Checking INSERT destination…"
+            : insertState.resolution?.target ? `${insertState.resolution.mode}: ${insertState.resolution.target.sqlName}`
+            : insertState.resolution?.mode === "selection-required" ? "Choose an INSERT destination before adding a row"
+            : insertState.resolution?.reason ?? "No available INSERT destination"}</span>
+        {#if insertState.resolution?.preferenceDiagnostic}
+            <p role="status" data-testid="grid-insert-preference-diagnostic">{insertState.resolution.preferenceDiagnostic.message}</p>
+        {/if}
+        {#if showInsertPreference}
+            <div role="group" aria-label="Choose INSERT destination">
+                <label>Destination
+                    <select data-testid="grid-insert-preference-select" bind:value={insertPreferenceDraft} disabled={preferenceSaving || isReadOnly}>
+                        <option value="">Automatic (no manual preference)</option>
+                        {#if insertPreferenceDraft && !insertState.candidates.some(candidate => candidate.id === insertPreferenceDraft)}
+                            <option value={insertPreferenceDraft}>Unavailable: {insertPreferenceDraft}</option>
+                        {/if}
+                        {#each insertState.candidates as candidate (candidate.id)}
+                            <option value={candidate.id}>{candidate.name || "Untitled Table"} · {candidate.sqlName} · {candidate.id}</option>
+                        {/each}
+                    </select>
+                </label>
+                <button type="button" data-testid="grid-insert-preference-apply" disabled={preferenceSaving || isReadOnly}
+                    onclick={async () => {
+                        preferenceSaving = true;
+                        try {
+                            preferenceError = await insertController.savePreference(insertPreferenceDraft || undefined);
+                            if (!preferenceError) showInsertPreference = false;
+                        } catch (error) { preferenceError = error instanceof Error ? error.message : "Could not save destination"; }
+                        finally { preferenceSaving = false; }
+                    }}>Apply</button>
+                <button type="button" disabled={preferenceSaving} onclick={() => showInsertPreference = false}>Cancel</button>
+                <p>The preference affects new rows. Query results and existing row edits keep their own source rules.</p>
+                {#if preferenceError}<p role="alert" data-testid="grid-insert-preference-error">{preferenceError}</p>{/if}
+            </div>
+        {/if}
+    </section>
+
     {#if queryError}
         <p class="error" data-testid="yjs-table-query-error">{queryError}</p>
     {/if}
@@ -417,6 +471,7 @@ onDestroy(() => {
                     resultColumnMetadata={displayMetadata?.columns}
                     onGuardedEffects={refreshAfterGuardedEffects}
                     {isReadOnly}
+                    addRowDisabled={insertState.pending || insertState.loading}
                     onAddRow={async () => {
                         insertOutcome = await insertController.submit();
                     }}
@@ -430,7 +485,7 @@ onDestroy(() => {
                         data-testid="yjs-grid-insert-status"
                         role="status"
                     >{insertOutcome.status === "inserted"
-                        ? `Added row to ${insertOutcome.targetSqlName}`
+                        ? `Added row to ${insertOutcome.targetSqlName}${insertOutcome.visibility === "outside" ? "; outside the displayed result" : insertOutcome.visibility === "pending" ? "; query visibility not yet established" : ""}`
                         : insertOutcome.message}</p>
                 {/if}
         </section>

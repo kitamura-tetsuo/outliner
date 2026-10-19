@@ -30,6 +30,8 @@ export interface GridDefinitionTarget {
 export interface GridDefinitionSeed {
     name?: string;
     query?: string;
+    /** Explicit saved preference, e.g. when restoring this Grid after deletion. */
+    insertTargetTableId?: string;
     columnOrder?: string[];
     /** Optional seed per column (label/type/hidden/widthPx). */
     components?: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }>;
@@ -70,6 +72,9 @@ export function createGridEntry(
     options: GridDefinitionSeed = {},
 ): void {
     if (options.query?.trim()) validateExplicitSelectAliases(options.query);
+    if (options.insertTargetTableId !== undefined && !options.insertTargetTableId.trim()) {
+        throw new Error("Expected a stable Table ID");
+    }
     // Every supplied width is validated before the operation has any effect:
     // an invalid seed rejects the whole creation rather than coercing,
     // truncating, or partially seeding the Grid.
@@ -88,6 +93,7 @@ export function createGridEntry(
         // distinguish these definitions from old broken references.
         if (sourceTableId) entry.set("sourceTableId", sourceTableId);
         entry.set("name", options.name ?? "Grid");
+        if (options.insertTargetTableId !== undefined) entry.set("insertTargetTableId", options.insertTargetTableId);
         if (options.query !== undefined) {
             entry.set("query", options.query);
             if (options.query.trim()) entry.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
@@ -133,6 +139,25 @@ export function renameGrid(projectDoc: Y.Doc, gridId: string, name: string): voi
 
 export function getGridQuery(target: Pick<GridDefinitionTarget, "entry">): string {
     return String(target.entry.get("query") ?? "");
+}
+
+/** An explicit INSERT preference; inference must never call the writer. */
+export function getGridInsertTargetTableId(target: Pick<GridDefinitionTarget, "entry">): string | undefined {
+    const value = target.entry.get("insertTargetTableId");
+    return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+export function setGridInsertTargetTableId(target: GridDefinitionTarget, tableId: string | undefined): void {
+    if (tableId !== undefined && !tableId.trim()) throw new Error("Expected a stable Table ID");
+    if (
+        tableId === undefined
+            ? !target.entry.has("insertTargetTableId")
+            : target.entry.get("insertTargetTableId") === tableId
+    ) return;
+    target.projectDoc.transact(() => {
+        if (tableId === undefined) target.entry.delete("insertTargetTableId");
+        else target.entry.set("insertTargetTableId", tableId);
+    });
 }
 
 /** Replace the SELECT query text. */

@@ -33,6 +33,7 @@ const forbiddenGlobals = [
     "__selectionList",
     "__GRID_WIDTH_WRITER__",
     "__GRID_RELATION_TEST_CONTROL__",
+    "__GRID_INSERT_TEST_CONTROL__",
     "__GRAPH_CHART__",
     "__pollingMonitor",
     "__outlinerGridRenderTraces",

@@ -51,6 +51,8 @@ export interface DemoItem {
     // For "yjstable" components: id of the demo table (see demoTables below)
     // this item embeds.
     yjsTableId?: string;
+    /** A placement of an explicitly authored query Grid. */
+    yjsGridId?: string;
     // For "calendar" components: id of the demo calendar (see demoCalendars
     // below) this item embeds. A calendar has no subdoc of its own, so unlike
     // a table there is no separate room to seed — registerDemoCalendars
@@ -141,6 +143,7 @@ export interface DemoTableTemplate {
         gridId: string;
         name: string;
         query: string;
+        insertTargetTableId?: string;
         components?: Record<string, string | { type: string; label?: string; hidden?: boolean; }>;
     }[];
 }
@@ -239,6 +242,21 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                 { id: "demo-sales-2", values: { month: "Feb", revenue: 180 } },
                 { id: "demo-sales-3", values: { month: "Mar", revenue: 150 } },
                 { id: "demo-sales-4", values: { month: "Apr", revenue: 210 } },
+            ],
+            extraGrids: [
+                {
+                    gridId: "demo-insert-selection-grid",
+                    name: localeContent("en").gridNames?.["demo-insert-selection-grid"] ?? "INSERT destination",
+                    query:
+                        "SELECT id AS id, month AS month FROM sales UNION ALL SELECT id AS id, month AS month FROM sales_targets",
+                },
+                {
+                    gridId: "demo-insert-configured-grid",
+                    name: localeContent("en").gridNames?.["demo-insert-configured-grid"] ?? "INSERT destination",
+                    query:
+                        "SELECT id AS id, month AS month FROM sales UNION ALL SELECT id AS id, month AS month FROM sales_targets",
+                    insertTargetTableId: DEMO_SALES_TARGETS_TABLE_ID,
+                },
             ],
         },
         {
@@ -945,6 +963,9 @@ export function registerDemoTables(
             const extraEntry = new Y.Map<unknown>();
             extraEntry.set("name", extra.name);
             extraEntry.set("query", extra.query);
+            if (extra.insertTargetTableId !== undefined) {
+                extraEntry.set("insertTargetTableId", extra.insertTargetTableId);
+            }
             extraEntry.set("sqlAliasPolicyVersion", 1);
             const extraComponents = new Y.Map<Y.Map<unknown>>();
             for (const [column, def] of Object.entries(extra.components ?? {})) {
@@ -1091,6 +1112,7 @@ function addDemoItems(
             node.yjsGridId = demoGridIdFor(def.yjsTableId);
         }
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;
+        if (def.yjsGridId !== undefined) node.yjsGridId = def.yjsGridId;
         if (def.diagramId !== undefined) node.diagramId = def.diagramId;
         if (def.kanbanId !== undefined) node.kanbanId = def.kanbanId;
         if (def.columnSpan !== undefined) node.columnSpan = def.columnSpan;
@@ -1156,6 +1178,7 @@ export interface DemoLocaleContent {
     pages?: DemoPageTemplate[];
     // tableId -> display name.
     tableNames?: Record<string, string>;
+    gridNames?: Record<string, string>;
     // `${tableId}.${column}` -> column label.
     columnLabels?: Record<string, string>;
     // `${tableId}.${recordId}.${column}` -> cell value. Sparse: only the
@@ -1208,10 +1231,11 @@ export function demoTablesFor(locale: DemoLocale): DemoTableTemplate[] {
     const tables = buildDemoTables(demoRoutineTemplatesFor(locale));
     if (locale === "en") return tables;
 
-    const { tableNames = {}, columnLabels = {}, recordText = {} } = localeContent(locale);
+    const { tableNames = {}, gridNames = {}, columnLabels = {}, recordText = {} } = localeContent(locale);
     return tables.map(table => ({
         ...table,
         name: tableNames[table.tableId] ?? table.name,
+        extraGrids: table.extraGrids?.map(grid => ({ ...grid, name: gridNames[grid.gridId] ?? grid.name })),
         components: Object.fromEntries(
             Object.entries(table.components).map(([column, def]) => {
                 const label = columnLabels[`${table.tableId}.${column}`];

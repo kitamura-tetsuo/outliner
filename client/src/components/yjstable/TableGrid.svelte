@@ -110,6 +110,7 @@ interface Props {
     rowCreationMode?: "query" | "table";
     /** Project-query INSERT action. Raw Table browsers intentionally omit it. */
     onAddRow?: () => Promise<void> | void;
+    addRowDisabled?: boolean;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
@@ -161,6 +162,7 @@ let {
     showAddRowButton = true,
     rowCreationMode = "query",
     onAddRow,
+    addRowDisabled = false,
     loading = false,
     session,
     mutationBoundary,
@@ -1840,7 +1842,7 @@ function handleCancelDelete() {
     {#if (rowCreationMode === "table"
         ? !!schema && (!editability.readOnlyReason || editability.readOnlyReason === "Query result has no id column")
         : onAddRow !== undefined || (schema && editability.editable && editability.rowIdentity === "id")) && showAddRowButton !== false}
-        <button type="button" class="add-row" data-testid="yjs-table-add-row" onclick={addRow}>
+        <button type="button" class="add-row" data-testid="yjs-table-add-row" disabled={addRowDisabled} onclick={addRow}>
             + Add row
         </button>
     {/if}

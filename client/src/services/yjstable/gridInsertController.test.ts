@@ -15,8 +15,8 @@ function table(doc: Y.Doc, sqlName: string, schema: string) {
     return { id, handles };
 }
 
-function controller(doc: Y.Doc, query: string, sourceTableId: string) {
-    const gridId = createGrid(doc, sourceTableId, { query });
+function controller(doc: Y.Doc, query: string) {
+    const gridId = createGrid(doc, undefined, { query });
     const grid = getGridHandles(doc, gridId)!;
     return {
         grid,
@@ -36,10 +36,16 @@ describe("Grid INSERT controller", { timeout: 30_000 }, () => {
             "b",
             "CREATE TABLE b (id TEXT PRIMARY KEY, title TEXT DEFAULT 'Draft' NOT NULL, done BOOLEAN NOT NULL, status TEXT CHECK (status IN ('Open', 'Done')))",
         );
-        const run = controller(doc, "SELECT title AS label FROM b WHERE false", a.id);
+        const run = controller(doc, "SELECT title AS label FROM b WHERE false");
         try {
             const [first, duplicate] = await Promise.all([run.value.submit(), run.value.submit()]);
-            expect(first).toEqual({ status: "inserted", targetId: b.id, targetSqlName: "b" });
+            expect(first).toEqual({
+                status: "inserted",
+                targetId: b.id,
+                targetSqlName: "b",
+                rowId: expect.any(String),
+                visibility: "outside",
+            });
             expect(duplicate).toEqual(first);
             expect(a.handles.data.size).toBe(0);
             expect(b.handles.data.size).toBe(1);
@@ -63,12 +69,18 @@ describe("Grid INSERT controller", { timeout: 30_000 }, () => {
         const a = table(doc, "a", "CREATE TABLE a (id TEXT PRIMARY KEY, value INTEGER)");
         const b = table(doc, "b", "CREATE TABLE b (id TEXT PRIMARY KEY, value INTEGER DEFAULT 7)");
         const query = "SELECT * FROM a WHERE false UNION ALL SELECT * FROM b WHERE false";
-        const run = controller(doc, query, a.id);
+        const run = controller(doc, query);
         try {
             expect(await run.value.submit()).toMatchObject({ status: "refused", mode: "selection-required" });
             expect(a.handles.data.size + b.handles.data.size).toBe(0);
             run.grid.entry.set("insertTargetTableId", b.id);
-            expect(await run.value.submit()).toEqual({ status: "inserted", targetId: b.id, targetSqlName: "b" });
+            expect(await run.value.submit()).toEqual({
+                status: "inserted",
+                targetId: b.id,
+                targetSqlName: "b",
+                rowId: expect.any(String),
+                visibility: "outside",
+            });
             expect([...b.handles.data.values()][0]!.get("value")).toBe(7);
             run.grid.entry.set("insertTargetTableId", "missing");
             expect(await run.value.submit()).toMatchObject({ status: "refused" });
@@ -81,7 +93,7 @@ describe("Grid INSERT controller", { timeout: 30_000 }, () => {
     it("does not replay an insertion after persisted Project and Table state reload", async () => {
         const doc = new Y.Doc({ guid: "grid-insert-remount" });
         const a = table(doc, "a", "CREATE TABLE a (id TEXT PRIMARY KEY, title TEXT NOT NULL)");
-        const run = controller(doc, "SELECT * FROM a LIMIT 0", a.id);
+        const run = controller(doc, "SELECT * FROM a LIMIT 0");
         expect((await run.value.submit()).status).toBe("inserted");
         run.value.dispose();
         const projectUpdate = Y.encodeStateAsUpdate(doc);

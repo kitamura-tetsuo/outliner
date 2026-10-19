@@ -30,6 +30,10 @@ import {
 
 export function demoContentEn(): DemoLocaleContent {
     return {
+        gridNames: {
+            "demo-insert-selection-grid": "Sales and targets · choose insertion destination",
+            "demo-insert-configured-grid": "Sales and targets · insert into targets",
+        },
         pages: [
             {
                 key: "welcome",
@@ -309,6 +313,16 @@ export function demoContentEn(): DemoLocaleContent {
                         componentType: "yjstable",
                         yjsTableId: DEMO_SALES_TABLE_ID,
                     },
+                    {
+                        text:
+                            "Add row above automatically uses Sales without saving a preference. The next UNION needs an explicit INSERT destination: open INSERT destination, choose Sales or Sales vs Target, then Apply. Cancel abandons a draft. Choose Automatic to clear the preference. This setting affects insertion only; it grants no existing-row edit identity.",
+                    },
+                    { componentType: "yjstable", yjsGridId: "demo-insert-selection-grid" },
+                    {
+                        text:
+                            "This separate UNION already has an explicit Sales vs Target preference. Add row writes one record there. Undo/Redo restores the preference independently of other presentation settings.",
+                    },
+                    { componentType: "yjstable", yjsGridId: "demo-insert-configured-grid" },
                     {
                         text:
                             "Kanban placements reference one project board; removing this occurrence does not delete its source Table or records.",

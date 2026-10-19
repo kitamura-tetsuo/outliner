@@ -20,12 +20,14 @@
 import type { Project } from "$shared/app-schema";
 import {
     createGridEntry,
+    getGridInsertTargetTableId,
     getGridRegistry,
     type GridDefinitionSeed,
     type GridDefinitionTarget,
     isValidGridColumnWidth,
     setGridColumnWidth as setGridColumnWidthLeaf,
     setGridComponentField as setGridComponentFieldLeaf,
+    setGridInsertTargetTableId as setGridInsertTargetTableIdLeaf,
 } from "$shared/services/gridDefinition";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
@@ -42,6 +44,7 @@ export {
     getGridColumnOrder,
     getGridColumnWidth,
     getGridConfirmRowDelete,
+    getGridInsertTargetTableId,
     getGridQuery,
     getGridRegistry,
     getGridShowAddRowButton,
@@ -235,6 +238,22 @@ function isolateWidthHistory(target: GridDefinitionTarget): void {
     gridUndoManagers.get(target.entry)?.undo.stopCapturing();
 }
 
+/** One confirmed preference operation, isolated from adjacent local edits. */
+export function setGridInsertTargetTableId(target: GridDefinitionTarget, tableId: string | undefined): void {
+    if (tableId !== undefined && !tableId.trim()) throw new Error("Expected a stable Table ID");
+    if (
+        tableId === undefined
+            ? !target.entry.has("insertTargetTableId")
+            : target.entry.get("insertTargetTableId") === tableId
+    ) return;
+    isolateWidthHistory(target);
+    try {
+        setGridInsertTargetTableIdLeaf(target, tableId);
+    } finally {
+        isolateWidthHistory(target);
+    }
+}
+
 /**
  * Set (or, with `undefined`, reset) one column's saved width override
  * through the shared framework-neutral leaf writer.
@@ -298,6 +317,7 @@ interface GridEntrySnapshot {
     name: string;
     sourceTableId: string;
     query: string;
+    insertTargetTableId?: string;
     columnOrder: string[];
     components: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }>;
     showAddRowButton?: boolean;
@@ -338,6 +358,7 @@ function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
         name: String(entry.get("name") ?? "Grid"),
         sourceTableId: String(entry.get("sourceTableId") ?? ""),
         query: String(entry.get("query") ?? ""),
+        insertTargetTableId: getGridInsertTargetTableId({ entry }),
         columnOrder,
         components,
         showAddRowButton: entry.get("showAddRowButton") !== false,
@@ -416,6 +437,7 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
                 gridId,
                 name: snapshot.name,
                 query: snapshot.query,
+                insertTargetTableId: snapshot.insertTargetTableId,
                 columnOrder: snapshot.columnOrder,
                 components: snapshot.components,
             });

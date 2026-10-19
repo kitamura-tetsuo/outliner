@@ -27,6 +27,8 @@ export interface TableColumnSchema {
     kind: ColumnKind;
     isNullable: boolean;
     isPrimaryKey: boolean;
+    /** PostgreSQL's bound for CHAR/VARCHAR fields, when declared. */
+    characterMaximumLength?: number;
     /** PostgreSQL's normalized DEFAULT expression, when the field has one. */
     defaultExpression?: string;
     /** True when PostgreSQL applies at least one CHECK constraint to this field. */
@@ -46,6 +48,12 @@ export interface ParsedTableSchema {
     columns: TableColumnSchema[];
     /** The validated CREATE TABLE statement (trimmed). */
     createSql: string;
+    /** CHECK expressions not completely represented by the extracted choices. */
+    hasUnsupportedInsertCheck?: boolean;
+    /** The Yjs-first INSERT writer cannot publish generated field values. */
+    hasGeneratedColumns?: boolean;
+    /** Additional UNIQUE constraints need a validity proof this action does not provide. */
+    hasAdditionalUniqueConstraint?: boolean;
 }
 
 export interface SchemaDiff {
@@ -197,8 +205,10 @@ export async function introspectTable(
         typtype: string;
         enum_labels: string[];
         column_default: string | null;
+        character_maximum_length: number | null;
+        is_generated: string;
     }>(
-        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, t.typtype, "
+        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, c.is_generated, t.typtype, "
             + "ARRAY(SELECT e.enumlabel FROM pg_enum e WHERE e.enumtypid=t.oid ORDER BY e.enumsortorder) AS enum_labels "
             + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.udt_schema "
             + "JOIN pg_type t ON t.typnamespace=n.oid AND t.typname=c.udt_name "
@@ -217,6 +227,11 @@ export async function introspectTable(
         [schema, tableName],
     );
     const pkColumns = new Set(pk.rows.map((r) => r.column_name));
+    const uniqueConstraints = await db.query<{ constraint_name: string; }>(
+        "SELECT constraint_name FROM information_schema.table_constraints "
+            + "WHERE table_schema = $1 AND table_name = $2 AND constraint_type = 'UNIQUE'",
+        [schema, tableName],
+    );
 
     const checks = await db.query<{ def: string; columns: string[]; }>(
         "SELECT pg_get_constraintdef(c.oid) AS def, "
@@ -229,21 +244,36 @@ export async function introspectTable(
     );
     const optionsByColumn = new Map<string, string[]>();
     const checkedColumns = new Set<string>();
+    let hasUnsupportedInsertCheck = false;
     for (const row of checks.rows) {
         for (const column of row.columns) checkedColumns.add(column);
         const parsed = extractCheckInOptions(row.def);
+        // Only a complete scalar text IN expression is supported. An IN
+        // nested inside AND/OR, another CHECK, or a constant CHECK is not
+        // proved by the choices extracted for the cell editor.
+        const literal = "'(?:[^']|'')*'::text";
+        const completeIn = new RegExp(
+            `^CHECK \\(\\((?:"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_]*) = ANY \\(ARRAY\\[${literal}(?:, ${literal})*\\]\\)\\)\\)$`,
+        );
+        if (!parsed || !completeIn.test(row.def) || optionsByColumn.has(parsed.column)) {
+            hasUnsupportedInsertCheck = true;
+        }
         if (parsed) optionsByColumn.set(parsed.column, parsed.options);
     }
 
     return {
         tableName,
         createSql,
+        hasUnsupportedInsertCheck,
+        hasGeneratedColumns: columns.rows.some(column => column.is_generated !== "NEVER"),
+        hasAdditionalUniqueConstraint: uniqueConstraints.rows.length > 0,
         columns: columns.rows.map((row) => ({
             name: row.column_name,
             dataType: row.data_type,
             kind: row.typtype === "e" ? "enum" : columnKindFromDataType(row.data_type),
             isNullable: row.is_nullable !== "NO",
             isPrimaryKey: pkColumns.has(row.column_name),
+            ...(row.character_maximum_length !== null ? { characterMaximumLength: row.character_maximum_length } : {}),
             defaultExpression: row.column_default ?? undefined,
             hasCheckConstraint: checkedColumns.has(row.column_name),
             checkOptions: optionsByColumn.get(row.column_name),
