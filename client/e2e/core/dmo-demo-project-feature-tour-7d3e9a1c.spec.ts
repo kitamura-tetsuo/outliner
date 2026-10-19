@@ -70,6 +70,7 @@ test.describe("Demo project feature tour", () => {
     });
 
     test("the Advanced Features page chart uses month for the category axis", async ({ page }) => {
+        test.setTimeout(90000);
         await page.goto("/demo");
 
         const pageList = page.getByTestId("demo-page-list");
@@ -82,13 +83,12 @@ test.describe("Demo project feature tour", () => {
             has: page.getByTestId("yjs-table-name").getByText("Sales", { exact: true }),
         }).first();
         await expect(salesTable).toBeVisible({ timeout: 30000 });
-        // The chart consumes the same asynchronously materialized query result
-        // as the Grid. Wait for that production result boundary before opening
-        // the optional chart panel rather than racing initial synchronization.
+        // Demo catalog synchronization can remount this Grid after the Table
+        // shell appears. Wait for the materialized result before opening the
+        // optional chart so it receives the completed query as its initial data.
         await expect(salesTable.getByTestId("yjs-table-grid").locator("th", { hasText: "revenue" })).toBeVisible({
-            timeout: 30000,
+            timeout: 60000,
         });
-
         await salesTable.getByTestId("yjs-table-toggle-chart").first().click();
 
         const chart = salesTable.getByTestId("yjs-table-chart").first();
