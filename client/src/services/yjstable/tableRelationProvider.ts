@@ -78,6 +78,10 @@ export class TableRelationProvider implements RelationProvider {
             kind: "table",
             id: this.handles.tableId,
             sqlName: this.sqlName,
+            // Query provenance is captured before materialization can finish,
+            // so it must remain stable across that first application. Pending
+            // writes use existingRowWriteRevision below for the stronger,
+            // monotonic effective-schema evidence.
             schemaRevision: this.handles.schemaText.toString(),
             columns: this.adapter.appliedSchema?.columns.map(column => column.name) ?? [],
         };
@@ -121,10 +125,10 @@ export class TableRelationProvider implements RelationProvider {
     existingRowWriteRevision(rowId: string, column: string): string {
         const row = this.mutationTracker.rows.get(rowId) ?? 0;
         const field = this.mutationTracker.fields.get(`${rowId}\0${column}`) ?? 0;
-        return `${this.mutationTracker.schema}:${row}:${field}`;
+        return `${this.mutationTracker.schema}:${this.adapter.effectiveFieldSchemaRevision(column)}:${row}:${field}`;
     }
 
-    private applyWriteNow(write: RelationWrite): void {
+    private applyWriteNow(write: RelationWrite): void | { insertedRowId: string; } {
         assertWriteAllowed(this.capabilities, write, this.sqlName || "table");
         switch (write.op) {
             case "UPDATE": {
@@ -156,8 +160,7 @@ export class TableRelationProvider implements RelationProvider {
                 return;
             }
             case "INSERT": {
-                addRecord(this.handles, write.values as Record<string, TableRecordValue>);
-                return;
+                return { insertedRowId: addRecord(this.handles, write.values as Record<string, TableRecordValue>) };
             }
             case "DELETE": {
                 deleteRecord(this.handles, write.rowId);
@@ -166,13 +169,15 @@ export class TableRelationProvider implements RelationProvider {
         }
     }
 
-    async applyWrite(write: RelationWrite): Promise<void> {
+    async applyWrite(write: RelationWrite): Promise<void | { insertedRowId: string; }> {
         let settle!: () => void;
         const applied = new Promise<void>(resolve => settle = resolve);
         const unsubscribe = this.adapter.subscribe({ onDataApplied: settle });
         try {
-            this.applyWriteNow(write);
+            const receipt = this.applyWriteNow(write);
             await applied;
+            // The receipt comes from addRecord, never from the flush signal.
+            return receipt;
         } finally {
             unsubscribe();
         }

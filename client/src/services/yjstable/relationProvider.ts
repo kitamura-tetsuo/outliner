@@ -122,7 +122,7 @@ export interface RelationProvider {
      */
     existingRowWriteRevision?(rowId: string, column: string): string;
     /** Apply a write back to the Yjs structure that owns the row. */
-    applyWrite(write: RelationWrite): Promise<void>;
+    applyWrite(write: RelationWrite): Promise<void | { insertedRowId: string; }>;
     /**
      * Apply an already validated same-source batch in one source-local
      * transaction. The applied count remains truthful if a later write fails.

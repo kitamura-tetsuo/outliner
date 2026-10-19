@@ -38,6 +38,10 @@ import {
 
 export function demoContentJa(): DemoLocaleContent {
     return {
+        gridNames: {
+            "demo-insert-selection-grid": "売上と目標 · 追加先を選択",
+            "demo-insert-configured-grid": "売上と目標 · 目標へ追加",
+        },
         tableNames: {
             [DEMO_SALES_TABLE_ID]: "売上",
             [DEMO_SALES_TARGETS_TABLE_ID]: "売上と目標",
@@ -346,6 +350,16 @@ export function demoContentJa(): DemoLocaleContent {
                         componentType: "yjstable",
                         yjsTableId: DEMO_SALES_TABLE_ID,
                     },
+                    {
+                        text:
+                            "上の Add row は設定を保存せず、自動で売上に追加します。次の UNION は追加先の選択が必要です。INSERT destination を開き、売上または売上と目標を選んで Apply を押してください。Cancel は下書きを破棄し、Automatic は設定を解除します。この設定は新規行の追加だけに適用され、既存行の編集権限は変わりません。",
+                    },
+                    { componentType: "yjstable", yjsGridId: "demo-insert-selection-grid" },
+                    {
+                        text:
+                            "こちらの独立した UNION は売上と目標を追加先に設定済みです。Add row でそこだけに1行追加します。元に戻す・やり直す操作は、他の表示設定を保ったまま追加先設定を復元します。",
+                    },
+                    { componentType: "yjstable", yjsGridId: "demo-insert-configured-grid" },
                     {
                         text:
                             "Kanban 配置はプロジェクトのボードを参照し、この配置を削除しても元のテーブルやレコードは削除しません。",

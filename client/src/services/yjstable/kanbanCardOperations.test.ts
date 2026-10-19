@@ -4,6 +4,8 @@ import { KanbanCardOperationController } from "./kanbanCardOperations";
 import type { KanbanSettings } from "./kanbanDocs";
 import type { KanbanProjection } from "./kanbanQueryRunner";
 import { resetPgliteForTests } from "./pgliteService";
+import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
+import type { ProjectSelectEvidence } from "./projectSelectSession";
 import { projectSchemaName } from "./sqlNames";
 import { addRecord, createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { TableRelationProvider } from "./tableRelationProvider";
@@ -31,6 +33,18 @@ async function setup() {
         detailFields: [],
         laneOrder: [],
     };
+    const evidence: ProjectSelectEvidence = {
+        queryId: "q",
+        queryRevision: 1,
+        query: QUERY,
+        executionGeneration: 1,
+        catalogGeneration: 1,
+        sources: [provider.evidence],
+        columns: ["id", "title", "status"].map(name => ({ name })),
+        rows: [{ id: rowId, title: "One", status: "todo" }],
+        rowIdentities: [{ id: rowId }],
+    };
+    const analysis = analyzeProjectQueryProvenance(evidence);
     let projection: KanbanProjection = {
         status: "success",
         current: true,
@@ -41,7 +55,7 @@ async function setup() {
                 key: "todo",
                 cards: [{
                     occurrenceKey: "q:0",
-                    sourceIdentity: { id: rowId },
+                    sourceIdentity: { kind: "tasks", id: rowId, supplierId: tableId },
                     row: { id: rowId, title: "One", status: "todo" },
                 }],
             },
@@ -51,6 +65,8 @@ async function setup() {
             kanbanId: "board",
             sourceSqlName: "tasks",
             query: QUERY,
+            evidence,
+            analysis,
             schemaSql: SCHEMA,
             execution: {
                 queryId: "q",

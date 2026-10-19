@@ -45,6 +45,18 @@ function pageTexts(locale: DemoLocale): string[] {
 }
 
 describe("Demo locale content", () => {
+    it("places both INSERT examples with localized instructions and stable Grid identities", () => {
+        for (const locale of CONTENT_LOCALES) {
+            const page = demoPagesFor(locale).find(page => page.key === "advanced features")!;
+            const ids = page.items?.filter(item => item.yjsGridId).map(item => item.yjsGridId);
+            expect(ids).to.include.members(["demo-insert-selection-grid", "demo-insert-configured-grid"]);
+            expect(page.items?.some(item => item.text?.includes("INSERT destination"))).to.equal(true);
+            const doc = new Y.Doc();
+            registerDemoTables(doc, locale === "en" ? "demo" : "demo-ja", locale);
+            const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get("demo-insert-selection-grid")!;
+            expect(String(grid.get("name"))).to.contain(locale === "en" ? "choose insertion" : "追加先");
+        }
+    });
     describe("page keys", () => {
         it("uses English keys identical to the titles earlier versions derived ids from", () => {
             // `templatePageId` used to be `title.trim().toLowerCase()`. Keeping the

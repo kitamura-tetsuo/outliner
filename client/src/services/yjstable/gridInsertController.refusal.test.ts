@@ -16,8 +16,8 @@ function table(doc: Y.Doc, sqlName: string) {
     return { id, handles };
 }
 
-function insertController(doc: Y.Doc, query: string, sourceTableId: string, connector = connect, projectId?: string) {
-    const gridId = createGrid(doc, sourceTableId, { query });
+function insertController(doc: Y.Doc, query: string, connector = connect, projectId?: string) {
+    const gridId = createGrid(doc, undefined, { query });
     const grid = getGridHandles(doc, gridId)!;
     return {
         grid,
@@ -45,7 +45,7 @@ describe("Grid INSERT refusal boundaries", { timeout: 30_000 }, () => {
         const b = table(doc, "b");
         const c = table(doc, "c");
         const query = "SELECT a.* FROM a WHERE EXISTS (SELECT 1 FROM b) UNION ALL SELECT c.* FROM c WHERE false";
-        const run = insertController(doc, query, a.id);
+        const run = insertController(doc, query);
         run.grid.entry.set("insertTargetTableId", b.id);
         const before = tableEffects(a, b, c);
         try {
@@ -59,7 +59,7 @@ describe("Grid INSERT refusal boundaries", { timeout: 30_000 }, () => {
     it("rejects the real outline_items provider that requires a destination", async () => {
         const doc = new Y.Doc({ guid: "grid-insert-system-refusal" });
         const source = table(doc, "source");
-        const run = insertController(doc, "SELECT * FROM outline_items", source.id);
+        const run = insertController(doc, "SELECT * FROM outline_items");
         const before = tableEffects(source);
         try {
             expect(await run.controller.submit()).toEqual({
@@ -93,7 +93,7 @@ describe("Grid INSERT refusal boundaries", { timeout: 30_000 }, () => {
                 dispose() {},
             });
             const query = "SELECT * FROM a WHERE false";
-            const run = insertController(doc, query, a.id, delayed, "delayed-project");
+            const run = insertController(doc, query, delayed, "delayed-project");
             try {
                 const pending = run.controller.submit();
                 await started;
@@ -134,7 +134,7 @@ describe("Grid INSERT refusal boundaries", { timeout: 30_000 }, () => {
             },
             dispose() {},
         });
-        const run = insertController(doc, "SELECT * FROM a WHERE false", a.id, delayed, "permission-project");
+        const run = insertController(doc, "SELECT * FROM a WHERE false", delayed, "permission-project");
         const insertCapability = TABLE_RELATION_CAPABILITIES.insert;
         try {
             const pending = run.controller.submit();
