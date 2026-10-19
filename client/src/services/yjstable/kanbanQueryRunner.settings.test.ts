@@ -1,5 +1,6 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createKanban, getKanban, getKanbanHandles, updateKanban } from "./kanbanDocs";
 import { type KanbanProjection, KanbanQueryRunner } from "./kanbanQueryRunner";
 import { resetPgliteForTests } from "./pgliteService";
@@ -12,8 +13,11 @@ const localConnector: TableDocConnector = async () => ({
 });
 
 async function waitFor(published: KanbanProjection[], predicate: (value: KanbanProjection) => boolean) {
-    await expect.poll(() => published.some(predicate), { timeout: 5000 }).toBe(true);
-    return published.findLast(predicate)!;
+    await expect.poll(() => {
+        const latest = published.at(-1);
+        return latest !== undefined && predicate(latest);
+    }, { timeout: 5000 }).toBe(true);
+    return published.at(-1)!;
 }
 
 async function setup(query: string, groupField = "") {
@@ -58,12 +62,12 @@ describe("Kanban setting-only projection", { timeout: 30000 }, () => {
         expect(success.lanes.map(lane => lane.key)).toEqual(["open", "done"]);
         expect(success.lanes.flatMap(lane => lane.cards).map(card => card.row.title)).toEqual(["Alpha", "Beta"]);
 
-        context.handles.undo.undo();
+        globalUndoRouter.undo();
         await waitFor(
             context.published,
             value => value.status === "invalid" && value.message?.includes("missing") === true,
         );
-        context.handles.undo.redo();
+        globalUndoRouter.redo();
         success = await waitFor(context.published, value => value.status === "success" && value.current);
         expect(success.lanes.flatMap(lane => lane.cards).map(card => card.row.title)).toEqual(["Alpha", "Beta"]);
         dispose(context);
