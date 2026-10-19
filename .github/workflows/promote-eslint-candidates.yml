@@ -28,6 +28,9 @@ on:
 jobs:
   detect-promotion-candidates:
     name: Detect and Promote ESLint Rules
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
 
