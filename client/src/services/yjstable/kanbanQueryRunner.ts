@@ -63,6 +63,9 @@ export class KanbanQueryRunner {
     private resolvedSourceSchema: ParsedTableSchema | undefined;
     private resolvedSchemas = new Map<string, ParsedTableSchema>();
     private pendingProjection: Promise<void> = Promise.resolve();
+    /** Last successful SELECT owned by the session, independent of view diagnostics. */
+    private selectEvidence: ProjectSelectEvidence | undefined;
+    private definitionGeneration = 0;
     private session: ProjectSelectSession;
     private unsub?: () => void;
     private registryObserver: (e: Y.YMapEvent<Y.Map<unknown>>) => void;
@@ -78,6 +81,7 @@ export class KanbanQueryRunner {
         });
         this.registryObserver = e => {
             if (e.changes.keys.has(options.kanbanId) && !getKanban(options.projectDoc, options.kanbanId)) {
+                this.definitionGeneration++;
                 this.publish(this.fail("unavailable", "Kanban definition is missing"));
             }
         };
@@ -124,16 +128,21 @@ export class KanbanQueryRunner {
         return this.session.isEvidenceCurrent(e);
     }
     private definitionObserver = () => {
+        const definitionGeneration = ++this.definitionGeneration;
         const s = getKanban(this.options.projectDoc, this.options.kanbanId);
         if (!s) return this.publish(this.fail("unavailable", "Kanban definition is missing"));
-        const evidence = this.projection.evidence;
-        const queryUnchanged = evidence?.query === s.query;
         this.markStale();
         this.session.setQuery(s.query);
         if (!s.query.trim() || !s.groupField) {
             this.publish(this.fail("incomplete", "Kanban query and grouping column are required"));
-        } else if (queryUnchanged && evidence && this.session.isEvidenceCurrent(evidence)) {
-            this.pendingProjection = this.project(evidence);
+        } else if (this.selectEvidence && this.session.isEvidenceCurrent(this.selectEvidence)) {
+            this.pendingProjection = this.project(this.selectEvidence, definitionGeneration);
+        } else {
+            // setQuery synchronously changes the session state when the SQL
+            // changed. For a setting-only repair, replay its settled
+            // diagnostic so a runner-local "incomplete" projection cannot
+            // conceal an unavailable or failed SELECT indefinitely.
+            this.consume(this.session.state);
         }
     };
     private consume(state: ProjectSelectState) {
@@ -147,9 +156,13 @@ export class KanbanQueryRunner {
         if (state.status === "error") {
             return this.publish({ status: "error", message: state.message, lanes: [], columns: [], current: false });
         }
-        if (state.status === "success") this.pendingProjection = this.project(state.evidence);
+        if (state.status === "success") {
+            this.selectEvidence = state.evidence;
+            this.pendingProjection = this.project(state.evidence, this.definitionGeneration);
+        }
     }
-    private async project(e: ProjectSelectEvidence) {
+    private async project(e: ProjectSelectEvidence, definitionGeneration = this.definitionGeneration) {
+        if (definitionGeneration !== this.definitionGeneration) return;
         const s = getKanban(this.options.projectDoc, this.options.kanbanId);
         if (!s) return this.publish(this.fail("unavailable", "Kanban definition is missing"));
         if (!s.query.trim() || !s.groupField) {
@@ -200,7 +213,7 @@ export class KanbanQueryRunner {
             const schema = provider?.schema;
             if (schema) schemas.set(source.sqlName, schema);
         }));
-        if (!this.session.isEvidenceCurrent(e)) return;
+        if (!this.session.isEvidenceCurrent(e) || definitionGeneration !== this.definitionGeneration) return;
         for (const cards of by.values()) {
             for (const card of cards) {
                 const kind = card.sourceIdentity?.kind;
@@ -233,6 +246,7 @@ export class KanbanQueryRunner {
         const eligible = [...declared, ...seen.filter(key => !declared.includes(key))];
         const preferred = s.laneOrder.filter(k => eligible.includes(k));
         const order = [...preferred, ...eligible.filter(k => !preferred.includes(k))];
+        if (definitionGeneration !== this.definitionGeneration) return;
         this.publish({
             status: "success",
             lanes: order.map(key => ({ key, cards: by.get(key) ?? [] })),
