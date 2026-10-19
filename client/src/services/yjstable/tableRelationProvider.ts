@@ -78,7 +78,11 @@ export class TableRelationProvider implements RelationProvider {
             kind: "table",
             id: this.handles.tableId,
             sqlName: this.sqlName,
-            schemaRevision: `${this.handles.schemaText.toString()}\0${this.adapter.effectiveSchemaRevision}`,
+            // Query provenance is captured before materialization can finish,
+            // so it must remain stable across that first application. Pending
+            // writes use existingRowWriteRevision below for the stronger,
+            // monotonic effective-schema evidence.
+            schemaRevision: this.handles.schemaText.toString(),
             columns: this.adapter.appliedSchema?.columns.map(column => column.name) ?? [],
         };
     }
