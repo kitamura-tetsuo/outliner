@@ -3,7 +3,8 @@ import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createGrid, getGridHandles } from "./gridDocs";
 import { createGridInsertController } from "./gridInsertController";
-import { resetPgliteForTests } from "./pgliteService";
+import { resetPgliteForTests, runSelect } from "./pgliteService";
+import { projectSchemaName } from "./sqlNames";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
 
@@ -32,6 +33,33 @@ afterEach(async () => await resetTableEngineForTests());
 afterAll(async () => await resetPgliteForTests());
 
 describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
+    it.each([
+        "status TEXT DEFAULT 'Open' CHECK (status IN ('Open','Done')), CHECK (status <> 'Open')",
+        "status TEXT DEFAULT 'Open' CHECK (status IN ('Open','Done') AND status <> 'Open')",
+        "status TEXT DEFAULT 'Open' CHECK (status IN ('Open','Done')), CHECK (false)",
+        "status TEXT DEFAULT 'Open' CHECK (status IN ('Open','Done')), CHECK (status IN ('Done','Closed'))",
+    ])("rejects an unproved combined CHECK before physical effects: %s", async columns => {
+        const doc = new Y.Doc({ guid: `grid-check-${columns}` });
+        const run = fixture(doc, `CREATE TABLE target (id TEXT PRIMARY KEY, ${columns})`, doc.guid);
+        const engine = createTableEngineSession({ projectDoc: doc, projectId: doc.guid, connect });
+        const acquired = await engine.acquire(run.table.tableId);
+        const recordErrors: unknown[][] = [];
+        const unsubscribe = acquired!.adapter.subscribe({ onRecordErrors: errors => recordErrors.push(errors) });
+        const beforeHistory = run.table.undo.undoStack.length;
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "refused", mode: "invalid-record" });
+            expect(run.table.data.toJSON()).toEqual({});
+            expect(run.table.undo.undoStack.length).toBe(beforeHistory);
+            expect(recordErrors.every(errors => errors.length === 0)).toBe(true);
+            const result = await runSelect(`SELECT * FROM "${projectSchemaName(doc.guid)}".target`);
+            expect(result.rows).toEqual([]);
+        } finally {
+            unsubscribe();
+            run.controller.dispose();
+            engine.dispose();
+        }
+    });
+
     it.each(["TEXT", "VARCHAR(36)", "UUID"])("uses physical defaults with a supported %s identity", async idType => {
         const doc = new Y.Doc({ guid: `grid-insert-physical-defaults-${idType}` });
         createSqlCatalogObject(

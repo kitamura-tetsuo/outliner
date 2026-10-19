@@ -57,3 +57,21 @@ test(
         expect(await state()).toEqual(baseline);
     },
 );
+
+test("empty non-identity projection reports outside after exactly one physical insertion", async ({ page }, info) => {
+    test.setTimeout(180000);
+    const { grid, ids, state } = await prepareInsertPreference(page, info);
+    await setInsertQuery(page, grid, "SELECT title AS label FROM insert_b WHERE false");
+    await expect(grid.getByTestId("grid-insert-resolution")).toContainText("automatic: insert_b");
+    const before = await state();
+    await grid.getByTestId("yjs-table-add-row").click();
+    await expect(grid.getByTestId("yjs-grid-insert-status")).toContainText(
+        "Added row to insert_b; outside the displayed result",
+    );
+    await expect(grid.locator("tbody tr[data-record-id]")).toHaveCount(0);
+    const after = await state();
+    expect(Object.keys(after.tables[ids.insert_b])).toHaveLength(1);
+    expect(after.tables[ids.insert_a]).toEqual(before.tables[ids.insert_a]);
+    expect(after.tables[ids.insert_c]).toEqual(before.tables[ids.insert_c]);
+    expect(after.undoDepth).toBe(before.undoDepth + 1);
+});

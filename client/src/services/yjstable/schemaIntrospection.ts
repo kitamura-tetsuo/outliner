@@ -48,6 +48,8 @@ export interface ParsedTableSchema {
     columns: TableColumnSchema[];
     /** The validated CREATE TABLE statement (trimmed). */
     createSql: string;
+    /** CHECK expressions not completely represented by the extracted choices. */
+    hasUnsupportedInsertCheck?: boolean;
 }
 
 export interface SchemaDiff {
@@ -232,15 +234,27 @@ export async function introspectTable(
     );
     const optionsByColumn = new Map<string, string[]>();
     const checkedColumns = new Set<string>();
+    let hasUnsupportedInsertCheck = false;
     for (const row of checks.rows) {
         for (const column of row.columns) checkedColumns.add(column);
         const parsed = extractCheckInOptions(row.def);
+        // Only a complete scalar text IN expression is supported. An IN
+        // nested inside AND/OR, another CHECK, or a constant CHECK is not
+        // proved by the choices extracted for the cell editor.
+        const literal = "'(?:[^']|'')*'::text";
+        const completeIn = new RegExp(
+            `^CHECK \\(\\((?:"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_]*) = ANY \\(ARRAY\\[${literal}(?:, ${literal})*\\]\\)\\)\\)$`,
+        );
+        if (!parsed || !completeIn.test(row.def) || optionsByColumn.has(parsed.column)) {
+            hasUnsupportedInsertCheck = true;
+        }
         if (parsed) optionsByColumn.set(parsed.column, parsed.options);
     }
 
     return {
         tableName,
         createSql,
+        hasUnsupportedInsertCheck,
         columns: columns.rows.map((row) => ({
             name: row.column_name,
             dataType: row.data_type,

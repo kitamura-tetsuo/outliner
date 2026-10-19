@@ -191,6 +191,10 @@ export async function createNewProject(projectName: string, existingProjectId?: 
         throw new Error("Project creation was cancelled because the session changed");
     }
     projectId = savedDescriptor?.projectId ?? projectId;
+    // Refresh the admitted directory after creation. In local mode the login
+    // snapshot predates this Project, so retained write/history authorization
+    // would otherwise reject its first insertion until another directory load.
+    if (isOnPrem) await projectStore.refresh();
     const canonicalTitle = savedDescriptor?.title ?? projectName;
     const project = Project.createInstance(canonicalTitle);
     logger.info(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);

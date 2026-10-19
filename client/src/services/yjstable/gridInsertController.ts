@@ -224,6 +224,11 @@ export function createGridInsertController(options: {
             return refused("stale", "The source or catalog changed after submission");
         }
         const provenance = analyzeProjectQueryProvenance(evidence);
+        const sourceDocs = new Map(
+            evidence.sources.filter(source => source.kind === "table").map(source =>
+                [source.id, getTableHandles(options.projectDoc, source.id)?.doc] as const
+            ),
+        );
         let provider: RelationProvider | undefined;
         const resolution = await resolveInsertTarget({
             projectDoc: options.projectDoc,
@@ -255,13 +260,32 @@ export function createGridInsertController(options: {
         if (schemaRevision !== provenance.suppliers.find(source => source.id === target.id)?.schemaRevision) {
             return refused("stale", "The resolved Table schema changed while preparing the insertion");
         }
-        const values = buildInsertValues(schema.columns);
+        const values = schema.hasUnsupportedInsertCheck ? undefined : buildInsertValues(schema.columns);
         if (!values) return refused("invalid-record", "The Table has no supported default insertion plan");
+        // Row refreshes replace SELECT executions without changing INSERT
+        // authority. Re-prove against the current result after acquisition.
+        const finalEvidence = currentEvidence() ?? await select.runNow();
+        if (
+            !finalEvidence || finalEvidence.query !== evidence.query
+            || finalEvidence.queryRevision !== evidence.queryRevision
+            || finalEvidence.catalogGeneration !== evidence.catalogGeneration
+            || finalEvidence.catalogRevision !== evidence.catalogRevision
+            || JSON.stringify(finalEvidence.sources) !== JSON.stringify(evidence.sources)
+        ) return refused("stale", "The source or catalog changed before insertion");
         // This is the final authority check before the first and only write.
         if (
-            stale() || !select.isEvidenceCurrent(evidence)
+            stale() || !select.isEvidenceCurrent(finalEvidence)
             || queryRevision !== capturedQueryRevision || preferenceRevision !== capturedPreferenceRevision
             || catalogRevision !== capturedCatalogRevision
+            || evidence.sources.some(source => {
+                if (source.kind !== "table") return false;
+                const current = getTableHandles(options.projectDoc, source.id);
+                const captured = capturedSchemas.get(source.id);
+                return !current || current.doc !== sourceDocs.get(source.id)
+                    || current.schemaText !== captured?.text
+                    || current.schemaText.toString() !== captured.value
+                    || schemaWatches.get(current.schemaText)?.revision !== captured.revision;
+            })
             || readPreference(options.gridEntry) !== preference
             || getTableSqlName(options.projectDoc, target.id) !== target.sqlName
             || capturedSchemas.get(target.id)?.value !== schemaRevision
@@ -291,7 +315,8 @@ export function createGridInsertController(options: {
                             ? row.id === receipt.insertedRowId
                             : row.sourceKind === target.sqlName && row.sourceId === receipt.insertedRowId
                     );
-                    if (identified) visibility = represented ? "represented" : "outside";
+                    if (current.rows.length === 0) visibility = "outside";
+                    else if (identified) visibility = represented ? "represented" : "outside";
                 }
             } catch { /* Source success remains authoritative. */ }
             return {

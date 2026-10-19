@@ -44,7 +44,7 @@ describe("Grid INSERT controller", { timeout: 30_000 }, () => {
                 targetId: b.id,
                 targetSqlName: "b",
                 rowId: expect.any(String),
-                visibility: "pending",
+                visibility: "outside",
             });
             expect(duplicate).toEqual(first);
             expect(a.handles.data.size).toBe(0);
@@ -79,7 +79,7 @@ describe("Grid INSERT controller", { timeout: 30_000 }, () => {
                 targetId: b.id,
                 targetSqlName: "b",
                 rowId: expect.any(String),
-                visibility: "pending",
+                visibility: "outside",
             });
             expect([...b.handles.data.values()][0]!.get("value")).toBe(7);
             run.grid.entry.set("insertTargetTableId", "missing");
