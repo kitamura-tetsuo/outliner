@@ -107,8 +107,8 @@ describe("SQL-only Kanban over outline_items", { timeout: 30000 }, () => {
         ]);
 
         const restoredTree = Project.fromDoc(restarted).tree;
-        new Items(restarted, restoredTree, page.key).at(0).due = undefined;
-        new Items(restarted, restoredTree, page.key).at(1).start = undefined;
+        new Items(restarted, restoredTree, page.key).at(0)!.due = undefined;
+        new Items(restarted, restoredTree, page.key).at(1)!.start = undefined;
         const empty = await waitForProjection(
             restored.projections,
             value => value.status === "success" && value.current && value.result?.rows.length === 0,
