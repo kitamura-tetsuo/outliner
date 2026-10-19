@@ -13,7 +13,7 @@ function fixture(doc: Y.Doc, schema: string, projectId?: string) {
     const tableId = createTable(doc, "Target", "target");
     const table = getTableHandles(doc, tableId)!;
     setSchemaText(table, schema);
-    const gridId = createGrid(doc, tableId, { query: "SELECT * FROM target WHERE false" });
+    const gridId = createGrid(doc, undefined, { query: "SELECT * FROM target WHERE false" });
     const grid = getGridHandles(doc, gridId)!;
     return {
         grid,
@@ -32,8 +32,8 @@ afterEach(async () => await resetTableEngineForTests());
 afterAll(async () => await resetPgliteForTests());
 
 describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
-    it("uses CHECK and catalog ENUM defaults before their first labels", async () => {
-        const doc = new Y.Doc({ guid: "grid-insert-physical-defaults" });
+    it.each(["TEXT", "VARCHAR(36)", "UUID"])("uses physical defaults with a supported %s identity", async idType => {
+        const doc = new Y.Doc({ guid: `grid-insert-physical-defaults-${idType}` });
         createSqlCatalogObject(
             doc as unknown as Parameters<typeof createSqlCatalogObject>[0],
             "enum",
@@ -41,7 +41,7 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         );
         const run = fixture(
             doc,
-            "CREATE TABLE target (id TEXT PRIMARY KEY, status TEXT DEFAULT 'Done' NOT NULL CHECK (status IN ('Open', 'Done')), state workflow_state DEFAULT 'Done' NOT NULL)",
+            `CREATE TABLE target (id ${idType} PRIMARY KEY, status TEXT DEFAULT 'Done' NOT NULL CHECK (status IN ('Open', 'Done')), state workflow_state DEFAULT 'Done' NOT NULL)`,
             doc.guid,
         );
         run.controller.dispose();
@@ -56,7 +56,13 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         });
         try {
             const outcome = await controller.submit();
-            expect(outcome).toEqual({ status: "inserted", targetId: run.table.tableId, targetSqlName: "target" });
+            expect(outcome).toEqual({
+                status: "inserted",
+                targetId: run.table.tableId,
+                targetSqlName: "target",
+                rowId: expect.any(String),
+                visibility: "outside",
+            });
             expect(run.table.data.size).toBe(1);
             expect([...run.table.data.values()][0]!.toJSON()).toMatchObject({ status: "Done", state: "Done" });
         } finally {
@@ -66,6 +72,14 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
     });
 
     it.each([
+        ["numeric generated identity", "CREATE TABLE target (id INTEGER PRIMARY KEY, title TEXT)"],
+        ["short generated identity", "CREATE TABLE target (id VARCHAR(12) PRIMARY KEY, title TEXT)"],
+        ["overlong default", "CREATE TABLE target (id TEXT PRIMARY KEY, title VARCHAR(3) DEFAULT 'long')"],
+        [
+            "NULL default on required field",
+            "CREATE TABLE target (id TEXT PRIMARY KEY, title VARCHAR(12) NOT NULL DEFAULT NULL)",
+        ],
+        ["invalid numeric default", "CREATE TABLE target (id TEXT PRIMARY KEY, amount INTEGER NOT NULL DEFAULT NULL)"],
         ["required UUID", "CREATE TABLE target (id TEXT PRIMARY KEY, token UUID NOT NULL)"],
         [
             "checked required text",

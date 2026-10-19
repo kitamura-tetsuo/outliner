@@ -26,6 +26,7 @@ import {
     isValidGridColumnWidth,
     setGridColumnWidth as setGridColumnWidthLeaf,
     setGridComponentField as setGridComponentFieldLeaf,
+    setGridInsertTargetTableId as setGridInsertTargetTableIdLeaf,
 } from "$shared/services/gridDefinition";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
@@ -42,6 +43,7 @@ export {
     getGridColumnOrder,
     getGridColumnWidth,
     getGridConfirmRowDelete,
+    getGridInsertTargetTableId,
     getGridQuery,
     getGridRegistry,
     getGridShowAddRowButton,
@@ -233,6 +235,22 @@ function willChangeWidth(
 /** Close this Grid's UndoManager capture window when one is registered. */
 function isolateWidthHistory(target: GridDefinitionTarget): void {
     gridUndoManagers.get(target.entry)?.undo.stopCapturing();
+}
+
+/** One confirmed preference operation, isolated from adjacent local edits. */
+export function setGridInsertTargetTableId(target: GridDefinitionTarget, tableId: string | undefined): void {
+    if (tableId !== undefined && !tableId.trim()) throw new Error("Expected a stable Table ID");
+    if (
+        tableId === undefined
+            ? !target.entry.has("insertTargetTableId")
+            : target.entry.get("insertTargetTableId") === tableId
+    ) return;
+    isolateWidthHistory(target);
+    try {
+        setGridInsertTargetTableIdLeaf(target, tableId);
+    } finally {
+        isolateWidthHistory(target);
+    }
 }
 
 /**

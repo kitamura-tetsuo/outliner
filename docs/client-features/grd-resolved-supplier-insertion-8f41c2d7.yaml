@@ -1,14 +1,25 @@
 id: FTR-8f41c2d7
 title: Grid insertion through a resolved supplier
 title-ja: 解決済みサプライヤーを通じたグリッド行追加
-description: Grid Add row resolves the current Project query's physical INSERT supplier and writes through that supplier's provider. It uses the live target Table schema and refuses ambiguous, unsupported, invalid, or stale intentions without guessing from the Grid's legacy source Table.
+description: Grid Add row resolves the current Project query's physical INSERT supplier and writes through that supplier's provider. The ordinary INSERT destination control confirms or clears an optional shared Table preference. Automatic inference never saves a preference. Physical defaults, current permission and captured intent are checked before publication; source success and query visibility are reported separately.
 category: client
 status: implemented
 acceptance:
 - A single insert-capable Table supplier receives exactly one record using its current defaults and constraints, even when the result is empty or filters the record out.
+- A stale saved preference remains diagnostic while a unique current supplier can still receive automatic insertion. Invalid newly submitted choices are refused.
+- A successful insertion reports the actual physical target and distinguishes an identified row outside the query result from visibility that cannot yet be proven.
 - Multi-supplier queries require a valid explicit supplier preference, while filter-only dependencies and system relations are never invented as destinations.
+- Opening or cancelling a preference draft has no setting, record or history effects. Confirmed changes affect only the exact Grid preference field, with local Undo/Redo, peer synchronization and reload persistence.
 - Query, preference, Table identity, schema, and capability changes revoke a pending intent before its first write; duplicate pending activation is coalesced.
 tests:
+- client/e2e/new/grd-insert-pending-authority-5612cafe.spec.ts
+- client/e2e/new/grd-insert-preference-controls-5612cafe.spec.ts
+- client/e2e/new/grd-insert-proof-visibility-5612cafe.spec.ts
+- client/e2e/new/grd-insert-shared-history-5612cafe.spec.ts
+- client/e2e/new/grd-insert-target-lifecycle-5612cafe.spec.ts
 - client/src/services/yjstable/gridInsertController.refusal.test.ts
 - client/src/services/yjstable/gridInsertController.test.ts
 - client/src/services/yjstable/gridInsertController.validation.test.ts
+- client/src/services/yjstable/gridInsertPreference.test.ts
+- client/src/services/yjstable/schemaIntrospection.test.ts
+- client/src/services/yjstable/tableRelationProvider.test.ts

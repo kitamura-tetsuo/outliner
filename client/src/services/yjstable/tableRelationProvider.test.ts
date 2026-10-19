@@ -44,7 +44,9 @@ describe("TableRelationProvider", { timeout: 30000 }, () => {
             await provider.applyWrite({ op: "UPDATE", rowId: recordId, column: "title", value: "edited" });
             expect(handles.data.get(recordId)?.get("title")).toBe("edited");
 
-            await provider.applyWrite({ op: "INSERT", values: { title: "second", points: 2 } });
+            const receipt = await provider.applyWrite({ op: "INSERT", values: { title: "second", points: 2 } });
+            expect(receipt).toEqual({ insertedRowId: expect.any(String) });
+            expect(receipt && handles.data.get(receipt.insertedRowId)?.get("title")).toBe("second");
             expect(handles.data.size).toBe(2);
 
             await provider.applyWrite({ op: "DELETE", rowId: recordId });

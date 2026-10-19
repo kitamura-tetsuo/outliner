@@ -27,6 +27,8 @@ export interface TableColumnSchema {
     kind: ColumnKind;
     isNullable: boolean;
     isPrimaryKey: boolean;
+    /** PostgreSQL's bound for CHAR/VARCHAR fields, when declared. */
+    characterMaximumLength?: number;
     /** PostgreSQL's normalized DEFAULT expression, when the field has one. */
     defaultExpression?: string;
     /** True when PostgreSQL applies at least one CHECK constraint to this field. */
@@ -197,8 +199,9 @@ export async function introspectTable(
         typtype: string;
         enum_labels: string[];
         column_default: string | null;
+        character_maximum_length: number | null;
     }>(
-        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, t.typtype, "
+        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, t.typtype, "
             + "ARRAY(SELECT e.enumlabel FROM pg_enum e WHERE e.enumtypid=t.oid ORDER BY e.enumsortorder) AS enum_labels "
             + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.udt_schema "
             + "JOIN pg_type t ON t.typnamespace=n.oid AND t.typname=c.udt_name "
@@ -244,6 +247,7 @@ export async function introspectTable(
             kind: row.typtype === "e" ? "enum" : columnKindFromDataType(row.data_type),
             isNullable: row.is_nullable !== "NO",
             isPrimaryKey: pkColumns.has(row.column_name),
+            ...(row.character_maximum_length !== null ? { characterMaximumLength: row.character_maximum_length } : {}),
             defaultExpression: row.column_default ?? undefined,
             hasCheckConstraint: checkedColumns.has(row.column_name),
             checkOptions: optionsByColumn.get(row.column_name),

@@ -124,7 +124,7 @@ export class TableRelationProvider implements RelationProvider {
         return `${this.mutationTracker.schema}:${row}:${field}`;
     }
 
-    private applyWriteNow(write: RelationWrite): void {
+    private applyWriteNow(write: RelationWrite): void | { insertedRowId: string; } {
         assertWriteAllowed(this.capabilities, write, this.sqlName || "table");
         switch (write.op) {
             case "UPDATE": {
@@ -156,8 +156,7 @@ export class TableRelationProvider implements RelationProvider {
                 return;
             }
             case "INSERT": {
-                addRecord(this.handles, write.values as Record<string, TableRecordValue>);
-                return;
+                return { insertedRowId: addRecord(this.handles, write.values as Record<string, TableRecordValue>) };
             }
             case "DELETE": {
                 deleteRecord(this.handles, write.rowId);
@@ -166,13 +165,15 @@ export class TableRelationProvider implements RelationProvider {
         }
     }
 
-    async applyWrite(write: RelationWrite): Promise<void> {
+    async applyWrite(write: RelationWrite): Promise<void | { insertedRowId: string; }> {
         let settle!: () => void;
         const applied = new Promise<void>(resolve => settle = resolve);
         const unsubscribe = this.adapter.subscribe({ onDataApplied: settle });
         try {
-            this.applyWriteNow(write);
+            const receipt = this.applyWriteNow(write);
             await applied;
+            // The receipt comes from addRecord, never from the flush signal.
+            return receipt;
         } finally {
             unsubscribe();
         }

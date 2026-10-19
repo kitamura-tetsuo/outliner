@@ -476,6 +476,21 @@ describe("Demo seed content", () => {
         }
     });
 
+    it("seeds automatic, selection-required and explicitly configured new-format INSERT examples", () => {
+        const projectDoc = new Y.Doc();
+        registerDemoTables(projectDoc);
+        const grids = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
+        const automatic = grids.get(`${DEMO_SALES_TABLE_ID}-grid`)!;
+        const selection = grids.get("demo-insert-selection-grid")!;
+        const configured = grids.get("demo-insert-configured-grid")!;
+        for (const grid of [automatic, selection, configured]) expect(grid.has("sourceTableId")).to.equal(false);
+        expect(automatic.has("insertTargetTableId")).to.equal(false);
+        expect(selection.has("insertTargetTableId")).to.equal(false);
+        expect(selection.get("query")).to.contain("UNION ALL");
+        expect(configured.get("query")).to.equal(selection.get("query"));
+        expect(configured.get("insertTargetTableId")).to.equal("demo-table-sales-targets");
+    });
+
     // Issue #5012: a Table may carry several Grids, and none of them is "the
     // table". The occurrences table seeds a second one so the Table page's
     // reference list is visibly a list rather than a single implied Grid.
