@@ -20,6 +20,7 @@
 import type { Project } from "$shared/app-schema";
 import {
     createGridEntry,
+    getGridInsertTargetTableId,
     getGridRegistry,
     type GridDefinitionSeed,
     type GridDefinitionTarget,
@@ -316,6 +317,7 @@ interface GridEntrySnapshot {
     name: string;
     sourceTableId: string;
     query: string;
+    insertTargetTableId?: string;
     columnOrder: string[];
     components: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }>;
     showAddRowButton?: boolean;
@@ -356,6 +358,7 @@ function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
         name: String(entry.get("name") ?? "Grid"),
         sourceTableId: String(entry.get("sourceTableId") ?? ""),
         query: String(entry.get("query") ?? ""),
+        insertTargetTableId: getGridInsertTargetTableId({ entry }),
         columnOrder,
         components,
         showAddRowButton: entry.get("showAddRowButton") !== false,
@@ -434,6 +437,7 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
                 gridId,
                 name: snapshot.name,
                 query: snapshot.query,
+                insertTargetTableId: snapshot.insertTargetTableId,
                 columnOrder: snapshot.columnOrder,
                 components: snapshot.components,
             });

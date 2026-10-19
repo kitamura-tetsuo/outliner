@@ -42,6 +42,18 @@ describe("assertSingleCreateTable", () => {
 });
 
 describe("parseCreateTable (PGlite introspection)", () => {
+    it.each([
+        ["title TEXT", false, false],
+        ["title TEXT UNIQUE", false, true],
+        ["title TEXT, code TEXT, UNIQUE (title, code)", false, true],
+        ["title TEXT, derived TEXT GENERATED ALWAYS AS (upper(title)) STORED", true, false],
+    ])("exposes INSERT restrictions without rejecting the valid schema: %s", async (fields, generated, unique) => {
+        const parsed = await parseCreateTable(`CREATE TABLE t (id TEXT PRIMARY KEY, ${fields})`);
+        expect(parsed.columns[0]?.isPrimaryKey).toBe(true);
+        expect(parsed.hasGeneratedColumns).toBe(generated);
+        expect(parsed.hasAdditionalUniqueConstraint).toBe(unique);
+    });
+
     it("returns columns with types, nullability and primary key", async () => {
         const parsed = await parseCreateTable(
             "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, done BOOLEAN, points INTEGER)",

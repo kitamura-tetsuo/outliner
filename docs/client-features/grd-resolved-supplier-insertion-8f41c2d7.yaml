@@ -8,15 +8,21 @@ acceptance:
 - A single insert-capable Table supplier receives exactly one record using its current defaults and constraints, even when the result is empty or filters the record out.
 - A stale saved preference remains diagnostic while a unique current supplier can still receive automatic insertion. Invalid newly submitted choices are refused.
 - A successful insertion reports the actual physical target and distinguishes an identified row outside the query result from visibility that cannot yet be proven.
+- Generated-column destinations and destinations with additional UNIQUE constraints are unsupported by Grid Add row and are refused before record or history effects. Their schemas remain available for creation and SELECT; ordinary supported id primary keys remain insertable.
 - Multi-supplier queries require a valid explicit supplier preference, while filter-only dependencies and system relations are never invented as destinations.
+- Object Manager deletion and one ordinary Undo restore the exact saved INSERT preference with the Grid and its placements. An absent preference remains absent through Undo/Redo.
 - Opening or cancelling a preference draft has no setting, record or history effects. Confirmed changes affect only the exact Grid preference field, with local Undo/Redo, peer synchronization and reload persistence.
 - Query, preference, Table identity, schema, and capability changes revoke a pending intent before its first write; duplicate pending activation is coalesced.
 tests:
+- client/e2e/new/grd-insert-delete-history-5612dafe.spec.ts
 - client/e2e/new/grd-insert-pending-authority-5612cafe.spec.ts
+- client/e2e/new/grd-insert-physical-plan-5612dafe.spec.ts
 - client/e2e/new/grd-insert-preference-controls-5612cafe.spec.ts
 - client/e2e/new/grd-insert-proof-visibility-5612cafe.spec.ts
 - client/e2e/new/grd-insert-shared-history-5612cafe.spec.ts
 - client/e2e/new/grd-insert-target-lifecycle-5612cafe.spec.ts
+- client/src/services/objectManager/gridInsertPreferenceHistory.test.ts
+- client/src/services/yjstable/gridInsertController.physicalPlan.test.ts
 - client/src/services/yjstable/gridInsertController.refusal.test.ts
 - client/src/services/yjstable/gridInsertController.test.ts
 - client/src/services/yjstable/gridInsertController.validation.test.ts

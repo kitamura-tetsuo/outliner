@@ -50,6 +50,10 @@ export interface ParsedTableSchema {
     createSql: string;
     /** CHECK expressions not completely represented by the extracted choices. */
     hasUnsupportedInsertCheck?: boolean;
+    /** The Yjs-first INSERT writer cannot publish generated field values. */
+    hasGeneratedColumns?: boolean;
+    /** Additional UNIQUE constraints need a validity proof this action does not provide. */
+    hasAdditionalUniqueConstraint?: boolean;
 }
 
 export interface SchemaDiff {
@@ -202,8 +206,9 @@ export async function introspectTable(
         enum_labels: string[];
         column_default: string | null;
         character_maximum_length: number | null;
+        is_generated: string;
     }>(
-        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, t.typtype, "
+        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, c.is_generated, t.typtype, "
             + "ARRAY(SELECT e.enumlabel FROM pg_enum e WHERE e.enumtypid=t.oid ORDER BY e.enumsortorder) AS enum_labels "
             + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.udt_schema "
             + "JOIN pg_type t ON t.typnamespace=n.oid AND t.typname=c.udt_name "
@@ -222,6 +227,11 @@ export async function introspectTable(
         [schema, tableName],
     );
     const pkColumns = new Set(pk.rows.map((r) => r.column_name));
+    const uniqueConstraints = await db.query<{ constraint_name: string; }>(
+        "SELECT constraint_name FROM information_schema.table_constraints "
+            + "WHERE table_schema = $1 AND table_name = $2 AND constraint_type = 'UNIQUE'",
+        [schema, tableName],
+    );
 
     const checks = await db.query<{ def: string; columns: string[]; }>(
         "SELECT pg_get_constraintdef(c.oid) AS def, "
@@ -255,6 +265,8 @@ export async function introspectTable(
         tableName,
         createSql,
         hasUnsupportedInsertCheck,
+        hasGeneratedColumns: columns.rows.some(column => column.is_generated !== "NEVER"),
+        hasAdditionalUniqueConstraint: uniqueConstraints.rows.length > 0,
         columns: columns.rows.map((row) => ({
             name: row.column_name,
             dataType: row.data_type,

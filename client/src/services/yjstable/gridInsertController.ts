@@ -260,7 +260,13 @@ export function createGridInsertController(options: {
         if (schemaRevision !== provenance.suppliers.find(source => source.id === target.id)?.schemaRevision) {
             return refused("stale", "The resolved Table schema changed while preparing the insertion");
         }
-        const values = schema.hasUnsupportedInsertCheck ? undefined : buildInsertValues(schema.columns);
+        // This writer publishes Yjs first. Refuse physical plans it cannot
+        // establish as valid before that publication, rather than interpreting
+        // a completed adapter flush as proof that PostgreSQL accepted the row.
+        const values = schema.hasUnsupportedInsertCheck || schema.hasGeneratedColumns
+                || schema.hasAdditionalUniqueConstraint
+            ? undefined
+            : buildInsertValues(schema.columns);
         if (!values) return refused("invalid-record", "The Table has no supported default insertion plan");
         // Row refreshes replace SELECT executions without changing INSERT
         // authority. Re-prove against the current result after acquisition.
