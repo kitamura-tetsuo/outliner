@@ -92,12 +92,20 @@ describe("Kanban setting-only projection", { timeout: 30000 }, () => {
         dispose(context);
     });
 
-    it("does not turn stale evidence into success after its real dependency is removed", async () => {
+    it("restores the settled unavailable diagnostic when an incomplete role is repaired", async () => {
         const context = await setup("SELECT id, title, status, detail FROM tasks ORDER BY id", "status");
         await waitFor(context.published, value => value.status === "success" && value.current);
 
         removeTable(context.projectDoc, context.tableId);
-        updateKanban(context.projectDoc, context.kanbanId, { titleField: "title" });
+        await waitFor(context.published, value => value.status === "unavailable");
+        updateKanban(context.projectDoc, context.kanbanId, { groupField: "" });
+        await waitFor(context.published, value => value.status === "incomplete");
+        updateKanban(context.projectDoc, context.kanbanId, { groupField: "status" });
+        await waitFor(context.published, value => value.status === "unavailable");
+
+        globalUndoRouter.undo();
+        await waitFor(context.published, value => value.status === "incomplete");
+        globalUndoRouter.redo();
         await waitFor(context.published, value => value.status === "unavailable");
         expect(context.published.at(-1)).toMatchObject({ status: "unavailable", current: false });
         dispose(context);

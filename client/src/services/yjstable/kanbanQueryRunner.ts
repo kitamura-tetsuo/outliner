@@ -137,6 +137,12 @@ export class KanbanQueryRunner {
             this.publish(this.fail("incomplete", "Kanban query and grouping column are required"));
         } else if (this.selectEvidence && this.session.isEvidenceCurrent(this.selectEvidence)) {
             this.pendingProjection = this.project(this.selectEvidence, definitionGeneration);
+        } else {
+            // setQuery synchronously changes the session state when the SQL
+            // changed. For a setting-only repair, replay its settled
+            // diagnostic so a runner-local "incomplete" projection cannot
+            // conceal an unavailable or failed SELECT indefinitely.
+            this.consume(this.session.state);
         }
     };
     private consume(state: ProjectSelectState) {
