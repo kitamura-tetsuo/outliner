@@ -18,7 +18,7 @@ async function waitForStableUndoDepth(page: Page): Promise<number> {
         unchangedSamples = current === previous ? unchangedSamples + 1 : 0;
         previous = current;
         return unchangedSamples;
-    }).toBeGreaterThanOrEqual(2);
+    }).toBeGreaterThanOrEqual(5);
     return previous;
 }
 
