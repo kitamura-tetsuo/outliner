@@ -87,14 +87,22 @@ async function catalogFixture(query = "SELECT id, title, status FROM tasks ORDER
         "enum",
         "CREATE TYPE priority_state AS ENUM ('low', 'high')",
     );
+    const otherCatalogId = createSqlCatalogObject(
+        catalogDoc,
+        "enum",
+        "CREATE TYPE other_state AS ENUM ('todo', 'done')",
+    );
     const tableId = createTable(projectDoc, "Tasks", "tasks");
     const table = getTableHandles(projectDoc, tableId)!;
-    setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, status task_state)");
-    addRecord(table, { title: "Beta", status: "todo" }, "one");
-    addRecord(table, { title: "Completed", status: "done" }, "two");
+    setSchemaText(
+        table,
+        "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, status task_state, priority priority_state)",
+    );
+    addRecord(table, { title: "Beta", status: "todo", priority: "low" }, "one");
+    addRecord(table, { title: "Completed", status: "done", priority: "high" }, "two");
     const otherId = createTable(projectDoc, "Other", "other_tasks");
     const other = getTableHandles(projectDoc, otherId)!;
-    setSchemaText(other, "CREATE TABLE other_tasks (id TEXT PRIMARY KEY, title TEXT, status task_state)");
+    setSchemaText(other, "CREATE TABLE other_tasks (id TEXT PRIMARY KEY, title TEXT, status other_state)");
     addRecord(other, { title: "Union", status: "todo" }, "other-one");
     const kanbanId = createKanban(projectDoc, tableId, { query, groupField: "status", titleField: "title" });
     const session = createTableEngineSession({ projectDoc, projectId: projectDoc.guid, connect: localConnector });
@@ -133,6 +141,7 @@ async function catalogFixture(query = "SELECT id, title, status FROM tasks ORDER
         catalogDoc,
         statusCatalogId,
         unrelatedCatalogId,
+        otherCatalogId,
         table,
         other,
         session,
@@ -140,6 +149,7 @@ async function catalogFixture(query = "SELECT id, title, status FROM tasks ORDER
         controller,
         refresh,
         acquired: acquired!,
+        acquiredOther: acquiredOther!,
         get projection() {
             return projection;
         },
@@ -512,8 +522,10 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         await c.acquired.adapter.catalogReady();
         await expect.poll(async () => {
             await c.refresh();
-            return c.projection.status === "success" && c.projection.current;
-        }, { timeout: 60_000 }).toBe(true);
+            return c.acquired.adapter.appliedSchema?.columns.find(column => column.name === "priority")?.enumLabels;
+        }, { timeout: 60_000 }).toEqual(["low", "medium", "high"]);
+        expect(c.acquired.adapter.appliedSchema?.columns.find(column => column.name === "status")?.enumLabels)
+            .toEqual(["todo", "done", "blocked"]);
         releaseUnrelated();
         await expect(unrelatedPending).resolves.toMatchObject({ ok: true });
         expect(c.table.data.get("one")?.toJSON()).toMatchObject({
@@ -527,7 +539,7 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
     it("refuses a held UNION field edit after a catalog schema A-to-B-to-A cycle", async () => {
         const c = await catalogFixture(
             "SELECT 'tasks' AS source_kind, id AS source_id, title, status FROM tasks "
-                + "UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+                + "UNION ALL SELECT 'other_tasks', id, title, NULL FROM other_tasks ORDER BY title",
         );
         let release!: () => void;
         let observed!: () => void;
@@ -542,10 +554,10 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
             },
         };
         const card = c.projection.lanes.flatMap(lane => lane.cards)
-            .find(candidate => candidate.sourceIdentity?.kind === "other_tasks")!;
+            .find(candidate => candidate.sourceIdentity?.kind === "tasks" && candidate.sourceIdentity.id === "one")!;
         const stale = c.controller(resolver);
-        expect(stale.begin(card, "title")).toBe(true);
-        const pending = stale.commit("Stale union edit");
+        expect(stale.begin(card, "status")).toBe(true);
+        const pending = stale.commit("done");
         await reached;
 
         replaceSqlCatalogSource(
@@ -567,11 +579,55 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
             { timeout: 60_000 },
         ).toEqual(["todo", "done"]);
         await c.refresh();
-        const historyDepth = c.other.undo.undoStack.length;
+        const historyDepth = c.table.undo.undoStack.length;
         release();
 
         await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
-        expect(c.other.data.get("other-one")?.get("title")).toBe("Union");
+        expect(c.table.data.get("one")?.get("status")).toBe("todo");
+        expect(c.table.undo.undoStack).toHaveLength(historyDepth);
+        c.runner.dispose();
+        c.session.dispose();
+    }, 90_000);
+
+    it("uses fresh supplier-specific UNION ENUM metadata and rejects an invalid value", async () => {
+        const c = await catalogFixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title, NULL AS status FROM tasks "
+                + "UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+        );
+        replaceSqlCatalogSource(
+            c.catalogDoc,
+            c.otherCatalogId,
+            "CREATE TYPE other_state AS ENUM ('todo', 'done', 'blocked')",
+        );
+        await expect.poll(
+            () => c.acquiredOther.adapter.appliedSchema?.columns[2]?.enumLabels,
+            { timeout: 60_000 },
+        ).toEqual(["todo", "done", "blocked"]);
+        await expect.poll(async () => {
+            await c.refresh();
+            return c.projection.status === "success" && c.projection.current;
+        }, { timeout: 60_000 }).toBe(true);
+
+        const otherCard = c.projection.lanes.flatMap(lane => lane.cards)
+            .find(candidate => candidate.sourceIdentity?.kind === "other_tasks")!;
+        const fresh = c.controller();
+        expect(fresh.begin(otherCard, "status")).toBe(true);
+        await expect(fresh.commit("blocked")).resolves.toMatchObject({ ok: true, state: "success" });
+        expect(c.other.data.get("other-one")?.get("status")).toBe("blocked");
+        expect(c.table.data.get("one")?.get("status")).toBe("todo");
+
+        await expect.poll(async () => {
+            await c.refresh();
+            return c.projection.lanes.find(lane => lane.key === "blocked")?.cards
+                .some(candidate => candidate.sourceIdentity?.kind === "other_tasks");
+        }, { timeout: 60_000 }).toBe(true);
+        const currentOtherCard = c.projection.lanes.find(lane => lane.key === "blocked")!.cards
+            .find(candidate => candidate.sourceIdentity?.kind === "other_tasks")!;
+        const historyDepth = c.other.undo.undoStack.length;
+        const invalid = c.controller();
+        expect(invalid.begin(currentOtherCard, "status")).toBe(true);
+        await expect(invalid.commit("missing")).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.other.data.get("other-one")?.get("status")).toBe("blocked");
         expect(c.other.undo.undoStack).toHaveLength(historyDepth);
         c.runner.dispose();
         c.session.dispose();

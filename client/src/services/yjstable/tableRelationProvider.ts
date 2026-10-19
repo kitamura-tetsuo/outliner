@@ -125,7 +125,7 @@ export class TableRelationProvider implements RelationProvider {
     existingRowWriteRevision(rowId: string, column: string): string {
         const row = this.mutationTracker.rows.get(rowId) ?? 0;
         const field = this.mutationTracker.fields.get(`${rowId}\0${column}`) ?? 0;
-        return `${this.mutationTracker.schema}:${this.adapter.effectiveSchemaRevision}:${row}:${field}`;
+        return `${this.mutationTracker.schema}:${this.adapter.effectiveFieldSchemaRevision(column)}:${row}:${field}`;
     }
 
     private applyWriteNow(write: RelationWrite): void {
