@@ -1,6 +1,6 @@
 <script lang="ts">
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
-let { text } = $props<{ text: string }>();
+let { text }: { text: string } = $props();
 </script>
 <!-- eslint-disable svelte/no-at-html-tags -->
 <!-- XSS-safe: ScrapboxFormatter.formatToHtml() escapes HTML before applying formatting -->
