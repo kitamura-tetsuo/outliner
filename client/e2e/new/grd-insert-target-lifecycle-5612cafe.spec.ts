@@ -83,6 +83,7 @@ test("peer edit of a SELECT source preserves pending insertion authority", async
         const row = new data.constructor();
         row.set("id", "existing-a");
         row.set("title", "Before peer edit");
+        row.set("a_only", false);
         data.set("existing-a", row);
     }, ids.insert_a);
     await expect(grid.locator("tbody")).toContainText("Before peer edit");
