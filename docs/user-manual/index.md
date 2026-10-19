@@ -28,7 +28,7 @@ An overview of the basic interface and navigation.
 
 You can create and browse pages using the left sidebar or the Search input in the top navigation bar, alongside quick actions like Add Database, Undo, Redo, and Databases (which opens a right sidebar to browse and manage database tables).
 
-To browse your pages, click the sidebar toggle button in the top-left corner and expand the **Pages** section. This section lists all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
+To browse your pages, click the sidebar toggle button in the top-left corner. The main sidebar is organized into several sections: **Projects**, **Pages**, **Tables** (listing existing database tables), **Object Manager** (for managing Grids, Tables, and Schedules), **Scheduled SQL**, and **Settings** (as well as links to Docs and GitHub). Expand the **Pages** section to see all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
 To create a new page, you can either:
 
@@ -161,7 +161,7 @@ Easily find content and execute actions within Outliner.
 
 - **Search pages:** Use the **Search pages** input in the top navigation bar to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find (Search and Replace):** Click the **Search** button on the page to open Find on this page. It searches outline text and every visible Grid result cell in one session. The search panel includes advanced options such as **Regex**, **Case Sensitive**, and **Whole Word**, as well as an option to **Include page titles**. Use the **Scope** dropdown to search across the entire **Project text**, the current **Page**, or choose **Selection** to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
-- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
+- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include **Grid**, **Calendar**, **Layout**, **New Mermaid diagram**, **Insert transclusion**, or **Alias**.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
