@@ -43,6 +43,18 @@ describe("assertSingleCreateTable", () => {
 
 describe("parseCreateTable (PGlite introspection)", () => {
     it.each([
+        ["id TEXT, title TEXT", []],
+        ["title TEXT, id TEXT PRIMARY KEY", ["id"]],
+        ["id TEXT, title TEXT PRIMARY KEY", ["title"]],
+        ["code TEXT, id TEXT, title TEXT, PRIMARY KEY (title, code)", ["code", "title"]],
+        ["title TEXT, id TEXT, PRIMARY KEY (id, title)", ["id", "title"]],
+    ])("reports the actual primary-key members independently of column order: %s", async (fields, key) => {
+        const parsed = await parseCreateTable(`CREATE TABLE t (${fields})`);
+        expect(parsed.columns.filter(column => column.isPrimaryKey).map(column => column.name).sort()).toEqual(key);
+        expect(parsed.hasAdditionalUniqueConstraint).toBe(false);
+    });
+
+    it.each([
         ["title TEXT", false, false],
         ["title TEXT UNIQUE", false, true],
         ["title TEXT, code TEXT, UNIQUE (title, code)", false, true],

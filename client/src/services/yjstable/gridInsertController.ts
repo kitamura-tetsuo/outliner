@@ -424,6 +424,10 @@ function readPreference(entry: Y.Map<unknown>): string | undefined {
 }
 
 function buildInsertValues(columns: readonly TableColumnSchema[]): Record<string, RelationValue> | undefined {
+    // A generated UUID establishes primary-key uniqueness only when the
+    // physical id participates in that key (including composite keys).
+    const primaryKey = columns.filter(column => column.isPrimaryKey);
+    if (primaryKey.length > 0 && !primaryKey.some(column => column.name === "id")) return undefined;
     // addRecord owns identity and always generates a UUID string. Do not
     // publish one into an integer, too-short, or checked physical id column.
     const id = columns.find(column => column.name === "id");

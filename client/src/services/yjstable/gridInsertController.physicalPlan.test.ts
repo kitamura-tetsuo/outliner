@@ -37,6 +37,8 @@ async function fixture(schema: string, filtered = false) {
         gridEntry: grid.entry,
         query,
         connect,
+        // Same ordinary history boundary supplied by YjsTableView.
+        onBeforeEffects: () => globalUndoRouter.stopCapturing(),
     });
     let errors: unknown[] = [];
     const unsubscribe = acquired.adapter.subscribe({ onRecordErrors: next => errors = [...next] });
@@ -77,6 +79,11 @@ describe("Grid INSERT physical plan admission", { timeout: 60_000 }, () => {
             "CREATE TABLE target (id TEXT PRIMARY KEY, title TEXT DEFAULT 'draft', derived TEXT GENERATED ALWAYS AS (upper(title)) STORED)",
         ],
         ["additional UNIQUE", "CREATE TABLE target (id TEXT PRIMARY KEY, title TEXT UNIQUE NOT NULL DEFAULT 'draft')"],
+        ["non-id primary key", "CREATE TABLE target (id TEXT, title TEXT PRIMARY KEY DEFAULT 'draft')"],
+        [
+            "composite non-id primary key",
+            "CREATE TABLE target (id TEXT, title TEXT DEFAULT 'draft', code TEXT DEFAULT 'x', PRIMARY KEY (title, code))",
+        ],
         [
             "composite UNIQUE",
             "CREATE TABLE target (id TEXT PRIMARY KEY, title TEXT DEFAULT 'draft', code TEXT DEFAULT 'x', UNIQUE (title, code))",
@@ -87,14 +94,14 @@ describe("Grid INSERT physical plan admission", { timeout: 60_000 }, () => {
             if (kind !== "generated column") {
                 const receipt = await run.provider.applyWrite({
                     op: "INSERT",
-                    values: { title: "draft", ...(kind === "composite UNIQUE" ? { code: "x" } : {}) },
+                    values: { title: "draft", ...(kind.startsWith("composite") ? { code: "x" } : {}) },
                 });
                 expect(receipt).toEqual({ insertedRowId: expect.any(String) });
                 expect(run.target.data.size).toBe(1);
                 expect(await run.sqlRows()).toEqual([{
                     id: receipt!.insertedRowId,
                     title: "draft",
-                    ...(kind === "composite UNIQUE" ? { code: "x" } : {}),
+                    ...(kind.startsWith("composite") ? { code: "x" } : {}),
                 }]);
             }
             const before = await run.snapshot();
@@ -118,12 +125,39 @@ describe("Grid INSERT physical plan admission", { timeout: 60_000 }, () => {
         }
     });
 
-    it.each(["TEXT", "UUID"])("retains valid filtered insertion and history for %s primary keys", async idType => {
-        const run = await fixture(
-            `CREATE TABLE target (id ${idType} PRIMARY KEY, title TEXT NOT NULL DEFAULT 'draft')`,
-            true,
-        );
+    it.each([
+        {
+            label: "TEXT id primary key",
+            schema: "CREATE TABLE target (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT 'draft')",
+            seed: false,
+        },
+        {
+            label: "UUID id primary key",
+            schema: "CREATE TABLE target (id UUID PRIMARY KEY, title TEXT NOT NULL DEFAULT 'draft')",
+            seed: false,
+        },
+        {
+            label: "no primary key",
+            schema: "CREATE TABLE target (id TEXT, title TEXT NOT NULL DEFAULT 'draft')",
+            seed: false,
+        },
+        {
+            label: "composite primary key containing id",
+            schema: "CREATE TABLE target (id TEXT, title TEXT DEFAULT 'draft', PRIMARY KEY (id, title))",
+            seed: true,
+        },
+    ])("retains valid filtered insertion and history for $label", async ({ schema, seed }) => {
+        const run = await fixture(schema, true);
         try {
+            if (seed) {
+                const receipt = await run.provider.applyWrite({ op: "INSERT", values: { title: "draft" } });
+                expect(receipt).toEqual({ insertedRowId: expect.any(String) });
+                expect(run.target.data.toJSON()).toEqual({
+                    [receipt!.insertedRowId]: { id: receipt!.insertedRowId, title: "draft" },
+                });
+                expect(await run.sqlRows()).toEqual([{ id: receipt!.insertedRowId, title: "draft" }]);
+                expect((await run.snapshot()).errors).toEqual([]);
+            }
             const before = await run.snapshot();
             let mutations = 0;
             run.target.data.observeDeep(() => mutations++);
@@ -137,8 +171,13 @@ describe("Grid INSERT physical plan admission", { timeout: 60_000 }, () => {
             });
             if (outcome.status !== "inserted") throw new Error("Expected source insertion");
             expect(mutations).toBe(1);
-            expect(run.target.data.toJSON()).toEqual({ [outcome.rowId!]: { id: outcome.rowId, title: "draft" } });
-            const expected = [{ id: outcome.rowId, title: "draft" }];
+            expect(run.target.data.toJSON()).toEqual({
+                ...before.records,
+                [outcome.rowId!]: { id: outcome.rowId, title: "draft" },
+            });
+            const expected = [...before.sql, { id: outcome.rowId, title: "draft" }].sort((a, b) =>
+                String(a.id).localeCompare(String(b.id))
+            );
             expect(await run.sqlRows()).toEqual(expected);
             const after = await run.snapshot();
             expect(after.errors).toEqual([]);
@@ -146,10 +185,13 @@ describe("Grid INSERT physical plan admission", { timeout: 60_000 }, () => {
             expect(after.grid).toEqual(before.grid);
             expect(after.other).toEqual(before.other);
             await globalUndoRouter.undo();
-            expect(run.target.data.toJSON()).toEqual({});
-            await expect.poll(run.sqlRows).toEqual([]);
+            expect(run.target.data.toJSON()).toEqual(before.records);
+            await expect.poll(run.sqlRows).toEqual(before.sql);
             await globalUndoRouter.redo();
-            expect(run.target.data.size).toBe(1);
+            expect(run.target.data.toJSON()).toEqual({
+                ...before.records,
+                [outcome.rowId!]: { id: outcome.rowId, title: "draft" },
+            });
             await expect.poll(run.sqlRows).toEqual(expected);
             expect((await run.snapshot()).errors).toEqual([]);
         } finally {

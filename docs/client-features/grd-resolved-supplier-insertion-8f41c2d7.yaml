@@ -5,6 +5,7 @@ description: Grid Add row resolves the current Project query's physical INSERT s
 category: client
 status: implemented
 acceptance:
+- A nonempty primary key must include the physical id column. Keys excluding id are refused before publication; composite keys containing id remain supported after the existing generated-id and field validation. Absence of a primary key alone does not prevent insertion.
 - A single insert-capable Table supplier receives exactly one record using its current defaults and constraints, even when the result is empty or filters the record out.
 - A stale saved preference remains diagnostic while a unique current supplier can still receive automatic insertion. Invalid newly submitted choices are refused.
 - A successful insertion reports the actual physical target and distinguishes an identified row outside the query result from visibility that cannot yet be proven.
