@@ -78,7 +78,7 @@ export class TableRelationProvider implements RelationProvider {
             kind: "table",
             id: this.handles.tableId,
             sqlName: this.sqlName,
-            schemaRevision: this.handles.schemaText.toString(),
+            schemaRevision: `${this.handles.schemaText.toString()}\0${this.adapter.effectiveSchemaRevision}`,
             columns: this.adapter.appliedSchema?.columns.map(column => column.name) ?? [],
         };
     }
@@ -121,7 +121,7 @@ export class TableRelationProvider implements RelationProvider {
     existingRowWriteRevision(rowId: string, column: string): string {
         const row = this.mutationTracker.rows.get(rowId) ?? 0;
         const field = this.mutationTracker.fields.get(`${rowId}\0${column}`) ?? 0;
-        return `${this.mutationTracker.schema}:${row}:${field}`;
+        return `${this.mutationTracker.schema}:${this.adapter.effectiveSchemaRevision}:${row}:${field}`;
     }
 
     private applyWriteNow(write: RelationWrite): void {

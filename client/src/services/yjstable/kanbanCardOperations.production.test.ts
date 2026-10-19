@@ -1,3 +1,4 @@
+import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
@@ -67,6 +68,78 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
         runner,
         controller,
         refresh,
+        get projection() {
+            return projection;
+        },
+    };
+}
+
+async function catalogFixture(query = "SELECT id, title, status FROM tasks ORDER BY title") {
+    const projectDoc = new Y.Doc({ guid: `kanban-catalog-write-${crypto.randomUUID()}` });
+    const catalogDoc = projectDoc as unknown as Parameters<typeof createSqlCatalogObject>[0];
+    const statusCatalogId = createSqlCatalogObject(
+        catalogDoc,
+        "enum",
+        "CREATE TYPE task_state AS ENUM ('todo', 'done')",
+    );
+    const unrelatedCatalogId = createSqlCatalogObject(
+        catalogDoc,
+        "enum",
+        "CREATE TYPE priority_state AS ENUM ('low', 'high')",
+    );
+    const tableId = createTable(projectDoc, "Tasks", "tasks");
+    const table = getTableHandles(projectDoc, tableId)!;
+    setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, status task_state)");
+    addRecord(table, { title: "Beta", status: "todo" }, "one");
+    addRecord(table, { title: "Completed", status: "done" }, "two");
+    const otherId = createTable(projectDoc, "Other", "other_tasks");
+    const other = getTableHandles(projectDoc, otherId)!;
+    setSchemaText(other, "CREATE TABLE other_tasks (id TEXT PRIMARY KEY, title TEXT, status task_state)");
+    addRecord(other, { title: "Union", status: "todo" }, "other-one");
+    const kanbanId = createKanban(projectDoc, tableId, { query, groupField: "status", titleField: "title" });
+    const session = createTableEngineSession({ projectDoc, projectId: projectDoc.guid, connect: localConnector });
+    const acquired = await session.acquire(tableId);
+    const acquiredOther = await session.acquire(otherId);
+    await acquired!.adapter.catalogReady();
+    await acquiredOther!.adapter.catalogReady();
+    const runner = new KanbanQueryRunner({
+        projectDoc,
+        kanbanId,
+        kanban: getKanbanHandles(projectDoc, kanbanId)!,
+        connect: localConnector,
+    });
+    let projection: KanbanProjection = { status: "loading", current: false, lanes: [], columns: [] };
+    runner.subscribeProjection(value => projection = value);
+    runner.start();
+    await expect.poll(async () => {
+        await runner.runQueryNow();
+        return projection.status;
+    }, { timeout: 60_000 }).toBe("success");
+    const refresh = async () => {
+        await acquired!.adapter.catalogReady();
+        await runner.runQueryNow();
+        return projection;
+    };
+    const controller = (resolver: RelationResolver = session) =>
+        new KanbanCardOperationController({
+            resolver,
+            schema: sourceKind => runner.schemaForSource(sourceKind),
+            settings: () => getKanban(projectDoc, kanbanId),
+            projection: () => projection,
+            canWrite: () => true,
+            beginHistoryAction: () => globalUndoRouter.stopCapturing(),
+        });
+    return {
+        catalogDoc,
+        statusCatalogId,
+        unrelatedCatalogId,
+        table,
+        other,
+        session,
+        runner,
+        controller,
+        refresh,
+        acquired: acquired!,
         get projection() {
             return projection;
         },
@@ -365,6 +438,145 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         c.session.dispose();
     });
 
+    it("refuses held catalog-stale moves but accepts fresh and unrelated-catalog moves", async () => {
+        const c = await catalogFixture();
+        globalUndoRouter.clear();
+        let release!: () => void;
+        let observed!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        const reached = new Promise<void>(resolve => observed = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observed();
+                await held;
+                return provider;
+            },
+        };
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards[0];
+        const stale = c.controller(resolver);
+        expect(stale.begin(card, "status", "done")).toBe(true);
+        const pending = stale.commit("done");
+        await reached;
+
+        replaceSqlCatalogSource(
+            c.catalogDoc,
+            c.statusCatalogId,
+            "CREATE TYPE task_state AS ENUM ('todo', 'done', 'blocked')",
+        );
+        await expect.poll(
+            () => c.acquired.adapter.appliedSchema?.columns[2]?.enumLabels,
+            { timeout: 60_000 },
+        ).toEqual(["todo", "done", "blocked"]);
+        await c.refresh();
+        const historyDepth = c.table.undo.undoStack.length;
+        release();
+
+        await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.get("status")).toBe("todo");
+        expect(c.table.undo.undoStack).toHaveLength(historyDepth);
+
+        const currentCard = c.projection.lanes.find(lane => lane.key === "todo")!.cards
+            .find(candidate => candidate.sourceIdentity?.id === "one")!;
+        const fresh = c.controller();
+        expect(fresh.begin(currentCard, "status", "done")).toBe(true);
+        await expect(fresh.commit("done")).resolves.toMatchObject({ ok: true });
+        await expect.poll(async () => {
+            await c.refresh();
+            return c.projection.lanes.find(lane => lane.key === "done")?.cards
+                .some(candidate => candidate.sourceIdentity?.id === "one");
+        }, { timeout: 60_000 }).toBe(true);
+
+        const doneCard = c.projection.lanes.find(lane => lane.key === "done")!.cards
+            .find(candidate => candidate.sourceIdentity?.id === "one")!;
+        let releaseUnrelated!: () => void;
+        let observedUnrelated!: () => void;
+        const heldUnrelated = new Promise<void>(resolve => releaseUnrelated = resolve);
+        const reachedUnrelated = new Promise<void>(resolve => observedUnrelated = resolve);
+        const unrelated = c.controller({
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observedUnrelated();
+                await heldUnrelated;
+                return provider;
+            },
+        });
+        expect(unrelated.begin(doneCard, "title")).toBe(true);
+        const unrelatedPending = unrelated.commit("After unrelated catalog change");
+        await reachedUnrelated;
+        replaceSqlCatalogSource(
+            c.catalogDoc,
+            c.unrelatedCatalogId,
+            "CREATE TYPE priority_state AS ENUM ('low', 'medium', 'high')",
+        );
+        await c.acquired.adapter.catalogReady();
+        await expect.poll(async () => {
+            await c.refresh();
+            return c.projection.status === "success" && c.projection.current;
+        }, { timeout: 60_000 }).toBe(true);
+        releaseUnrelated();
+        await expect(unrelatedPending).resolves.toMatchObject({ ok: true });
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({
+            title: "After unrelated catalog change",
+            status: "done",
+        });
+        c.runner.dispose();
+        c.session.dispose();
+    }, 90_000);
+
+    it("refuses a held UNION field edit after a catalog schema A-to-B-to-A cycle", async () => {
+        const c = await catalogFixture(
+            "SELECT 'tasks' AS source_kind, id AS source_id, title, status FROM tasks "
+                + "UNION ALL SELECT 'other_tasks', id, title, status FROM other_tasks ORDER BY title",
+        );
+        let release!: () => void;
+        let observed!: () => void;
+        const held = new Promise<void>(resolve => release = resolve);
+        const reached = new Promise<void>(resolve => observed = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                observed();
+                await held;
+                return provider;
+            },
+        };
+        const card = c.projection.lanes.flatMap(lane => lane.cards)
+            .find(candidate => candidate.sourceIdentity?.kind === "other_tasks")!;
+        const stale = c.controller(resolver);
+        expect(stale.begin(card, "title")).toBe(true);
+        const pending = stale.commit("Stale union edit");
+        await reached;
+
+        replaceSqlCatalogSource(
+            c.catalogDoc,
+            c.statusCatalogId,
+            "CREATE TYPE task_state AS ENUM ('todo', 'done', 'blocked')",
+        );
+        await expect.poll(
+            () => c.acquired.adapter.appliedSchema?.columns[2]?.enumLabels,
+            { timeout: 60_000 },
+        ).toEqual(["todo", "done", "blocked"]);
+        replaceSqlCatalogSource(
+            c.catalogDoc,
+            c.statusCatalogId,
+            "CREATE TYPE task_state AS ENUM ('todo', 'done')",
+        );
+        await expect.poll(
+            () => c.acquired.adapter.appliedSchema?.columns[2]?.enumLabels,
+            { timeout: 60_000 },
+        ).toEqual(["todo", "done"]);
+        await c.refresh();
+        const historyDepth = c.other.undo.undoStack.length;
+        release();
+
+        await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.other.data.get("other-one")?.get("title")).toBe("Union");
+        expect(c.other.undo.undoStack).toHaveLength(historyDepth);
+        c.runner.dispose();
+        c.session.dispose();
+    }, 90_000);
+
     it("allows a held write after an unrelated peer field changes", async () => {
         const c = await fixture();
         let release!: () => void;
@@ -390,6 +602,10 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         release();
 
         await expect(pending).resolves.toMatchObject({ ok: true });
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Current draft", status: "done" });
+        globalUndoRouter.undo();
+        expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Beta", status: "done" });
+        globalUndoRouter.redo();
         expect(c.table.data.get("one")?.toJSON()).toMatchObject({ title: "Current draft", status: "done" });
         c.runner.dispose();
         c.session.dispose();

@@ -126,6 +126,8 @@ export class TableSyncAdapter {
     private catalogGeneration = 0;
     private rebuildEpoch = 0;
     private writeAuthorityGeneration = 0;
+    private effectiveSchemaGeneration = 0;
+    private effectiveSchemaIdentity: string | undefined;
     // Last emitted state, replayed to late subscribers so a view mounted after
     // the adapter started still renders the current result.
     private lastSchemaError: string | undefined;
@@ -186,6 +188,11 @@ export class TableSyncAdapter {
 
     get writeAuthorityToken(): number {
         return this.writeAuthorityGeneration;
+    }
+
+    /** Monotonic identity of the physical schema PostgreSQL actually applies. */
+    get effectiveSchemaRevision(): number {
+        return this.effectiveSchemaGeneration;
     }
 
     /** Wait for the project catalog generation that a saved query will use. */
@@ -470,6 +477,15 @@ export class TableSyncAdapter {
             this.emitSchema(undefined, rebuildError instanceof Error ? rebuildError.message : String(rebuildError));
             this.emitRecordErrors();
             return;
+        }
+        // Introspection includes catalog-derived ENUM labels. Comparing the
+        // applied columns avoids invalidating writes for unrelated catalog
+        // objects, while incrementing (rather than hashing) prevents A→B→A
+        // catalog cycles from reviving evidence captured under the first A.
+        const effectiveSchemaIdentity = JSON.stringify(parsed.columns);
+        if (effectiveSchemaIdentity !== this.effectiveSchemaIdentity) {
+            this.effectiveSchemaIdentity = effectiveSchemaIdentity;
+            this.effectiveSchemaGeneration++;
         }
         this.registry?.recordSqlName?.(this.handles.tableId, parsed.tableName);
         this.emitSchema(parsed);
