@@ -5,7 +5,7 @@ import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { KanbanCardOperationController } from "./kanbanCardOperations";
 import { createKanban, getKanban, getKanbanHandles, updateKanban } from "./kanbanDocs";
 import { type KanbanProjection, KanbanQueryRunner } from "./kanbanQueryRunner";
-import { resetPgliteForTests } from "./pgliteService";
+import { enqueueWrite, resetPgliteForTests } from "./pgliteService";
 import { type RelationProvider, type RelationWrite, RelationWriteError } from "./relationProvider";
 import type { RelationResolver } from "./relationRowWrite";
 import { addRecord, createTable, getTableHandles, removeTable, setRecordValue, setSchemaText } from "./tableDocs";
@@ -573,6 +573,81 @@ describe("Kanban card operations from saved SELECT execution", { timeout: 30000 
         await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
         expect(c.other.data.get("other-one")?.get("title")).toBe("Union");
         expect(c.other.undo.undoStack).toHaveLength(historyDepth);
+        c.runner.dispose();
+        c.session.dispose();
+    }, 90_000);
+
+    it("retains stale-schema evidence when the installed B rebuild is superseded by A", async () => {
+        const c = await catalogFixture();
+        globalUndoRouter.clear();
+        let releaseWrite!: () => void;
+        let reachedWrite!: () => void;
+        const heldWrite = new Promise<void>(resolve => releaseWrite = resolve);
+        const writeReached = new Promise<void>(resolve => reachedWrite = resolve);
+        const resolver: RelationResolver = {
+            resolveRelation: async name => {
+                const provider = await c.session.resolveRelation(name);
+                reachedWrite();
+                await heldWrite;
+                return provider;
+            },
+        };
+        const card = c.projection.lanes.find(lane => lane.key === "todo")!.cards
+            .find(candidate => candidate.sourceIdentity?.id === "one")!;
+        const stale = c.controller(resolver);
+        expect(stale.begin(card, "status", "done")).toBe(true);
+        const pending = stale.commit("done");
+        await writeReached;
+
+        let releaseQueue!: () => void;
+        let queueBlocker: Promise<unknown> | undefined;
+        const queueGate = new Promise<void>(resolve => releaseQueue = resolve);
+        let sawInstalledB!: () => void;
+        const installedB = new Promise<void>(resolve => sawInstalledB = resolve);
+        const unsubscribe = c.session.subscribeCatalog(state => {
+            if (
+                state.status !== "ready"
+                || !state.snapshot.objects.some(object => object.source.includes("'blocked'"))
+                || queueBlocker
+            ) return;
+            // The adapter enqueues B introspection from its earlier catalog
+            // listener. This blocker is therefore behind introspection but in
+            // front of B's relation rebuild, forcing the supersession window.
+            queueBlocker = enqueueWrite(async () => await queueGate);
+            sawInstalledB();
+        });
+        replaceSqlCatalogSource(
+            c.catalogDoc,
+            c.statusCatalogId,
+            "CREATE TYPE task_state AS ENUM ('todo', 'done', 'blocked')",
+        );
+        await installedB;
+        await expect.poll(
+            () => c.acquired.adapter.appliedSchema?.columns[2]?.enumLabels,
+            { timeout: 60_000 },
+        ).toEqual(["todo", "done", "blocked"]);
+
+        // Supersede B while its adapter rebuild is held. No B query result is
+        // allowed to publish before the catalog returns to A.
+        replaceSqlCatalogSource(
+            c.catalogDoc,
+            c.statusCatalogId,
+            "CREATE TYPE task_state AS ENUM ('todo', 'done')",
+        );
+        releaseQueue();
+        await queueBlocker;
+        await expect.poll(async () => {
+            await c.session.catalogReady();
+            await c.runner.runQueryNow();
+            return c.acquired.adapter.appliedSchema?.columns[2]?.enumLabels;
+        }, { timeout: 60_000 }).toEqual(["todo", "done"]);
+        const historyDepth = c.table.undo.undoStack.length;
+        releaseWrite();
+
+        await expect(pending).resolves.toMatchObject({ ok: false, state: "refused" });
+        expect(c.table.data.get("one")?.get("status")).toBe("todo");
+        expect(c.table.undo.undoStack).toHaveLength(historyDepth);
+        unsubscribe();
         c.runner.dispose();
         c.session.dispose();
     }, 90_000);

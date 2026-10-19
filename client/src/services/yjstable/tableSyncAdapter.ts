@@ -432,6 +432,15 @@ export class TableSyncAdapter {
         // relation it used to own, so the old name stops resolving.
         const previousTableName = this.schema?.tableName;
         this.schema = parsed;
+        // Record effective metadata as soon as a successfully installed
+        // catalog has been introspected. The queued relation rebuild may be
+        // superseded before it publishes, but that must not erase the fact
+        // that an older gesture's schema authority was crossed.
+        const effectiveSchemaIdentity = JSON.stringify(parsed.columns);
+        if (effectiveSchemaIdentity !== this.effectiveSchemaIdentity) {
+            this.effectiveSchemaIdentity = effectiveSchemaIdentity;
+            this.effectiveSchemaGeneration++;
+        }
         this.recordErrors = new Map();
         const recordIds: string[] = [];
         this.handles.data.forEach((_record, recordId) => {
@@ -477,15 +486,6 @@ export class TableSyncAdapter {
             this.emitSchema(undefined, rebuildError instanceof Error ? rebuildError.message : String(rebuildError));
             this.emitRecordErrors();
             return;
-        }
-        // Introspection includes catalog-derived ENUM labels. Comparing the
-        // applied columns avoids invalidating writes for unrelated catalog
-        // objects, while incrementing (rather than hashing) prevents A→B→A
-        // catalog cycles from reviving evidence captured under the first A.
-        const effectiveSchemaIdentity = JSON.stringify(parsed.columns);
-        if (effectiveSchemaIdentity !== this.effectiveSchemaIdentity) {
-            this.effectiveSchemaIdentity = effectiveSchemaIdentity;
-            this.effectiveSchemaGeneration++;
         }
         this.registry?.recordSqlName?.(this.handles.tableId, parsed.tableName);
         this.emitSchema(parsed);
