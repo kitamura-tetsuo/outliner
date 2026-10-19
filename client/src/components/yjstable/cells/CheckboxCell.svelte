@@ -3,11 +3,23 @@ interface Props {
     value: unknown;
     editable: boolean;
     ariaLabel?: string;
+    onEditStart?: () => void;
+    onEditEnd?: () => void;
     onCommit: (value: string | number | boolean | null) => void;
     onRequestFocus?: () => void;
 }
 
-let { value, editable, ariaLabel, onCommit, onRequestFocus: _ }: Props = $props();
+let { value, editable, ariaLabel, onCommit, onEditStart, onEditEnd, onRequestFocus: _ }: Props = $props();
+let interactionActive = false;
+function beginEdit(): void {
+    if (!editable || interactionActive) return;
+    interactionActive = true;
+    onEditStart?.();
+}
+function endEdit(): void {
+    interactionActive = false;
+    onEditEnd?.();
+}
 </script>
 
 <input
@@ -15,7 +27,14 @@ let { value, editable, ariaLabel, onCommit, onRequestFocus: _ }: Props = $props(
     class="cell-checkbox"
     checked={value === true || value === "true"}
     disabled={!editable}
-    onchange={(e) => onCommit((e.target as HTMLInputElement).checked)}
+    onfocus={beginEdit}
+    onpointerdown={beginEdit}
+    onkeydown={beginEdit}
+    onblur={endEdit}
+    onchange={(e) => {
+        try { onCommit((e.target as HTMLInputElement).checked); }
+        finally { endEdit(); }
+    }}
 />
 
 <style>

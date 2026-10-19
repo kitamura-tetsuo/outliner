@@ -25,7 +25,6 @@ async function setup() {
     const rowId = addRecord(handles, { title: "One", status: "todo" }, "row-1");
     const settings: KanbanSettings = {
         name: "Tasks",
-
         query: QUERY,
         groupField: "status",
         titleField: "title",
@@ -50,7 +49,6 @@ async function setup() {
         ],
         provenance: {
             kanbanId: "board",
-            sourceTableId: tableId,
             sourceSqlName: "tasks",
             query: QUERY,
             schemaSql: SCHEMA,

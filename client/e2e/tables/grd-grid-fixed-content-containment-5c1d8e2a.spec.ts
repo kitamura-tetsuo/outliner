@@ -64,7 +64,11 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
         await setCellValue(page, 0, firstRowId!, "note", "sentinel-one");
         await setCellValue(page, 0, otherId, "note", "sentinel-two");
         const statusSelect = grid.locator(`td[data-record-id="${firstRowId}"][data-col="status"] select.cell-select`);
+        await statusSelect.focus();
+        await expect(statusSelect).toBeFocused();
         await statusSelect.selectOption(LONG_OPTION);
+        await expect.poll(async () => (await readGridProjectState(page)).tables[0].data[firstRowId!]["status"])
+            .toBe(LONG_OPTION);
         await expect(statusSelect).toHaveValue(LONG_OPTION, { timeout: 15000 });
         const dateInput = grid.locator(`td[data-record-id="${firstRowId}"][data-col="due_date"] input.cell-date`);
         await dateInput.fill(DATE_VALUE);

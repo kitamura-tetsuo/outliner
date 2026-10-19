@@ -11,9 +11,7 @@ test.describe("Mobile OS Selection Sync", () => {
     test("syncs OS selection changes to outliner store", async ({ page }) => {
         // Prepare page
 
-        await TestHelpers.seedProjectAndNavigate(page, [
-            { text: "Hello World" },
-        ]);
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), ["Hello World"]);
 
         await page.waitForSelector("text=Loading Page...", { state: "hidden", timeout: 10000 });
         await page.waitForSelector(".item-text", { state: "visible" });

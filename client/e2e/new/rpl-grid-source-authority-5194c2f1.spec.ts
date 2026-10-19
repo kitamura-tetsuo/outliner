@@ -98,9 +98,7 @@ test(
         const selectedCell = fixture.gridA.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await selectedCell.click();
-        const otherGrid = page.getByTestId("yjs-table-view").filter({
-            has: page.getByTestId("yjs-table-sql-name").filter({ hasText: new RegExp(`^${fixture.tableB.sqlName}$`) }),
-        }).getByTestId("yjs-table-grid");
+        const otherGrid = fixture.gridB.getByTestId("yjs-table-grid");
         await otherGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`).click();
 
         const undoBefore = await page.evaluate(() => {
@@ -142,9 +140,7 @@ test(
         test.setTimeout(180000);
         const fixture = await seedOverlappingTableFixture(page, testInfo);
         await pointGridAToTableB(page, fixture);
-        const sourceGrid = page.getByTestId("yjs-table-view").filter({
-            has: page.getByTestId("yjs-table-sql-name").filter({ hasText: new RegExp(`^${fixture.tableB.sqlName}$`) }),
-        }).getByTestId("yjs-table-grid");
+        const sourceGrid = fixture.gridB.getByTestId("yjs-table-grid");
         const doneCell = sourceGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="done"]`);
         await doneCell.locator('input[type="checkbox"]').check();
         await expect.poll(async () => {

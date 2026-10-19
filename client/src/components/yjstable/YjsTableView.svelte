@@ -1,299 +1,165 @@
 <script lang="ts">
-import type { ResolvedPathname } from "$app/types";
-// Orchestrates one Grid: owns the sync-adapter/query-runner lifecycle, keeps
-// plain $state mirrors of the Yjs structures (AGENTS.md §11 mirror pattern),
-// and lets the user switch/parallel-display the Grid Definition editor, grid
-// and chart.
-//
-// Grid-owned state only. Schedules and CREATE TABLE editing belong outside a
-// Grid (issue #5514). The source Table remains identified here, with a separate
-// navigation action to its Table-owned schema and raw-data surface.
-//
-// This component is always mounted under {#key} on both the Grid entry and
-// the source Table's Y.Doc guid (see YjsTableBlock), so switching either one
-// remounts everything — no rebinding logic in here.
-
+// One Grid lifetime, independent of the Y.Docs of its SQL suppliers.
+import { resolve } from "$app/paths";
 import { onDestroy, onMount, tick } from "svelte";
 import * as Y from "yjs";
-import { getLogger } from "../../lib/logger";
 import { isForeignInput } from "../../lib/KeyEventHandler";
-import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
-import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import { createTableEngineSession } from "../../services/yjstable/tableEngine";
-import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
+import { projectTablePath } from "../../lib/managementPaths";
+import { registerWebMCPGridTools } from "../../mcp/WebMCP";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
+import { orderColumns } from "../../services/yjstable/columnOrder";
 import {
-    destroyGridUndoManager,
-    getGridQuery,
-    getGridShowAddRowButton,
     getGridConfirmRowDelete,
+    getGridQuery,
+    getGridRegistry,
+    getGridShowAddRowButton,
     type GridHandles,
     readGridComponents,
-    retainGridUndoManager,
 } from "../../services/yjstable/gridDocs";
-import { GridQueryRunner } from "../../services/yjstable/gridQueryRunner";
-import { orderColumns } from "../../services/yjstable/columnOrder";
+import { createGridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
+import { createGridInsertController, type GridInsertOutcome } from "../../services/yjstable/gridInsertController";
+import { createGridMetadataResolver, type GridMetadataResolution } from "../../services/yjstable/gridMetadataResolver";
+import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
+import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
+import {
+    analyzeProjectQueryProvenance,
+    type ProjectQueryProvenance,
+} from "../../services/yjstable/projectQueryProvenance";
+import {
+    createProjectSelectSession,
+    type ProjectSelectEvidence,
+    type ProjectSelectState,
+} from "../../services/yjstable/projectSelectSession";
+import type { ParsedTableSchema, TableColumnSchema } from "../../services/yjstable/schemaIntrospection";
+import { listTables } from "../../services/yjstable/tableDocs";
+import { createTableEngineSession } from "../../services/yjstable/tableEngine";
+import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
+import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import {
     registerTableClipboardSource,
     type TableClipboardSource,
     unregisterTableClipboardSource,
 } from "../../stores/tableClipboardRegistry";
-import type {
-    RecordSyncError,
-    TableQueryResult,
-    TableSyncAdapter,
-} from "../../services/yjstable/tableSyncAdapter";
 import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
-import { registerWebMCPGridTools } from "../../mcp/WebMCP";
-import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
-import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
-import {
-    isCurrentExecutionForQuery,
-    type TableQueryExecution,
-} from "../../services/yjstable/tableQueryRunner";
-import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
-import {
-    createGridInsertController,
-    type GridInsertOutcome,
-} from "../../services/yjstable/gridInsertController";
-import { createProjectSelectSession, type ProjectSelectEvidence } from "../../services/yjstable/projectSelectSession";
-import { analyzeProjectQueryProvenance, type ProjectQueryProvenance } from "../../services/yjstable/projectQueryProvenance";
-import { createGridMetadataResolver, type GridMetadataResolution } from "../../services/yjstable/gridMetadataResolver";
-import { createGridExistingRowMutationBoundary } from "../../services/yjstable/gridExistingRowMutation";
-
-const logger = getLogger("YjsTableView");
 
 interface Props {
-    /** The Grid this view renders (query + column UI settings). */
     grid: GridHandles;
+    projectDoc: Y.Doc;
+    projectId?: string;
+    projectName?: string;
     placementId?: string;
     pageId?: string;
     pageTitle?: string;
-    /** Handles for the Grid's source Table (schema + data). */
-    handles: TableHandles;
-    /** Project doc holding both registries. */
-    projectDoc: Y.Doc;
-    /** Project id used to connect the subdoc to its room; undefined = local only. */
-    projectId?: string;
-    tableName?: string;
-    /** Identifier queries use for this table, shown next to the display name. */
-    sqlName?: string;
-    /** Provenance info from whence this table was copied */
-    sourceProjectId?: string;
-    /** Link to the source Table's own page. Undefined without a project route. */
-    sourceTableHref?: ResolvedPathname;
-    /**
-     * Host surface restriction (outline read-only state). Forwarded to the
-     * UI Definition editor's width controls and the Grid's header resize
-     * handles; it is not project authorization
-     * and never gates cell writes, which keep their SQL-derived eligibility.
-     */
     isReadOnly?: boolean;
+    canWrite?: () => boolean;
 }
-
-let { grid, placementId, pageId, pageTitle, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref, isReadOnly = false }: Props = $props();
-
-// This view is keyed by Grid-entry and Table-document identity. Preserve the
-// exact resources acquired by this mounted instance because Svelte may update
-// a disappearing parent's props before invoking this component's teardown.
+let { grid, projectDoc, projectId, projectName, placementId, pageId, pageTitle, isReadOnly = false, canWrite }: Props =
+    $props();
+// The parent keys by Grid/Project identity; suppliers do not remount this view.
 // svelte-ignore state_referenced_locally
 const mountedGrid = grid;
-// svelte-ignore state_referenced_locally
-const mountedHandles = handles;
-
-// --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
-let schema = $state<ParsedTableSchema | undefined>(undefined);
-let result = $state<TableQueryResult>({ columns: [], rows: [] });
-let queryError = $state<string | undefined>(undefined);
-let schemaError = $state<string | undefined>(undefined);
-let recordErrors = $state<RecordSyncError[]>([]);
+let gridName = $state("");
+let result = $state.raw<TableQueryResult>({ columns: [], rows: [] });
+let queryError = $state<string | undefined>();
 let gridQuery = $state("");
 let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
 let hiddenColumns = $state<Record<string, boolean>>({});
 let columnWidths = $state<Record<string, number>>({});
-// This placement's transient header-resize preview (issue #5459). Local to
-// this view: other placements and clients keep showing the committed width.
-let widthPreview = $state<{ column: string; width: number; } | undefined>(undefined);
+let widthPreview = $state<{ column: string; width: number; } | undefined>();
 let showAddRowButton = $state(true);
 let confirmRowDelete = $state(false);
-let adapterReady = $state(false);
-let adapter = $state<TableSyncAdapter | undefined>(undefined);
-let isInitialSyncDone = $state(false);
-let queryExecution = $state<TableQueryExecution | undefined>(undefined);
-let insertOutcome = $state<GridInsertOutcome | undefined>(undefined);
-let guardedAuthority = $state.raw<{
-    evidence: ProjectSelectEvidence;
-    provenance: ProjectQueryProvenance;
-    metadata: GridMetadataResolution;
-} | undefined>(undefined);
-const mutationIncarnation = $derived.by(() => {
-    const evidence = guardedAuthority?.evidence;
-    return evidence
-        ? `${evidence.queryId}:${evidence.queryRevision}:${evidence.executionGeneration}:${evidence.catalogGeneration}:${evidence.catalogRevision ?? ""}`
-        : "unavailable";
-});
-// Authority is revoked only by material changes from the authoritative Yjs
-// configuration sources, not by equivalent adapter/state replays.
+let queryExecution = $state<TableQueryExecution | undefined>();
+let insertOutcome = $state<GridInsertOutcome | undefined>();
+let displayMetadata = $state.raw<GridMetadataResolution | undefined>();
+let guardedAuthority = $state.raw<
+    | { evidence: ProjectSelectEvidence; provenance: ProjectQueryProvenance; metadata: GridMetadataResolution; }
+    | undefined
+>();
+let selectState = $state.raw<ProjectSelectState>({ status: "loading" });
 let clientRevision = $state(0);
-// grid/handles are static for this keyed component lifecycle.
-// svelte-ignore state_referenced_locally
-let observedQuery = getGridQuery(grid);
-// svelte-ignore state_referenced_locally
-let observedSchemaSql = handles.schemaText.toString();
-
-function revalidateMutationAuthority() {
-    // GridQueryRunner has already invalidated any older generation by the
-    // time this microtask runs. Execute the replacement immediately instead
-    // of leaving a visible result read-only while repeated sync notifications
-    // keep resetting the ordinary debounce timer.
-    queueMicrotask(() => void runner?.runQueryNow());
-}
-
-// View switching: panels can be toggled independently (parallel display).
+let publication = 0;
+let destroyed = false;
 let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
+let chartPanel = $state<TableChartPanel | undefined>();
+const mutationIncarnation = $derived(
+    guardedAuthority
+        ? `${guardedAuthority.metadata.evidenceFingerprint}:${clientRevision}`
+        : `unavailable:${clientRevision}`,
+);
+const dependencies = $derived(selectState.status === "success" ? selectState.evidence.sources : undefined);
+const sqlName = $derived(dependencies?.length === 1 ? dependencies[0].sqlName : undefined);
+const sourceId = $derived(
+    dependencies?.length === 1 && dependencies[0].kind === "table" ? dependencies[0].id : undefined,
+);
 
-let chartPanel = $state<TableChartPanel | undefined>(undefined);
-
-// The adapter is owned by the engine, not by this component: several views of
-// the same table share one materialization, and sibling tables pulled in by a
-// cross-table query stay alive for as long as this session holds them.
-let runner = $state<GridQueryRunner | undefined>(undefined);
-
-function refreshGridMirror() {
-    gridQuery = getGridQuery(grid);
-    const order = grid.entry.get("columnOrder");
-    columnOrder = Array.isArray(order)
-        ? (order as string[])
-        : order instanceof Y.Array
-        ? (order.toArray() as string[])
-        : [];
-    const settings = readGridComponents(grid);
-    componentTypes = settings.types;
-    columnLabels = settings.labels;
-    hiddenColumns = settings.hidden;
-    // Saved fixed widths travel through the same mirror: every placement of
-    // this Grid re-renders from the committed definition, while a separate
-    // Grid over the same Table mirrors only its own entry (issue #5457).
-    columnWidths = settings.widths;
-    showAddRowButton = getGridShowAddRowButton(grid);
-    confirmRowDelete = getGridConfirmRowDelete(grid);
+// Result metadata describes presentation only; the mutation boundary separately
+// proves each physical source/field and checks provider permissions.
+function resultField(name: string, typeId?: number): TableColumnSchema {
+    const kind = typeId === 16 ? "boolean" : [20, 21, 23].includes(typeId ?? 0)
+        ? "integer"
+        : [700, 701, 1700].includes(typeId ?? 0)
+        ? "number"
+        : typeId === 1082
+        ? "date"
+        : "text";
+    return { name, kind, dataType: kind, isNullable: true, isPrimaryKey: false };
 }
-
-const gridMirrorObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
-    if (events.some(event => event.target === grid.entry && event.changes.keys.has("query"))) {
-        const nextQuery = getGridQuery(grid);
-        // A same-value Yjs rewrite is not a configuration change. Distinct
-        // A -> B -> A transactions still advance twice and cannot revive an
-        // action captured against the first A.
-        if (nextQuery !== observedQuery) {
-            queryExecution = undefined;
-            insertController.setQuery(nextQuery);
-            guardedSelect.setQuery(nextQuery);
-            void refreshGuardedMutationAuthority();
-            revalidateMutationAuthority();
+const schema = $derived<ParsedTableSchema | undefined>(
+    displayMetadata
+        ? {
+            tableName: "",
+            createSql: "",
+            columns: displayMetadata.columns.map(column => {
+                const fields = displayMetadata!.physicalColumns.filter(field => field.outputColumn === column.name);
+                return fields.length === 1 && fields[0].field
+                    ? { ...fields[0].field, name: column.name }
+                    : resultField(column.name, column.typeId);
+            }),
         }
-        observedQuery = nextQuery;
-    }
-    refreshGridMirror();
-};
-
-const schemaTextObserver = () => {
-    const nextSchemaSql = handles.schemaText.toString();
-    // Schema application normalizes by replacing the Y.Text even when its
-    // final SQL is unchanged. Do not invalidate a completed result for that
-    // replay; an actual intervening schema value still revokes authority.
-    if (nextSchemaSql !== observedSchemaSql) {
-        queryExecution = undefined;
-        void refreshGuardedMutationAuthority();
-        revalidateMutationAuthority();
-    }
-    observedSchemaSql = nextSchemaSql;
-};
-
-const bareIdAuthority = $derived.by(() => {
-    // `queryExecution.query` is the runner-trimmed text, while `gridQuery` is
-    // the untrimmed persisted SELECT: compare trimmed so leading/trailing
-    // whitespace the runner discards before execution does not revoke
-    // authority (issue #5525). The Grid-query observer above still revokes on
-    // any raw text change, so a stale execution never survives a rewrite.
-    const execution = queryExecution;
-    if (!schema || !sqlName || !execution || !isCurrentExecutionForQuery(execution, gridQuery)) {
-        return undefined;
-    }
-    if (
-        guardedAuthority?.provenance.status === "proven" && guardedAuthority.provenance.bareIdSource
-        && guardedAuthority.metadata.status === "resolved"
-        && guardedAuthority.evidence.query === execution.query
-    ) {
-        return {
+        : undefined,
+);
+const bareIdAuthority = $derived(
+    guardedAuthority?.provenance.status === "proven" && guardedAuthority.metadata.status === "resolved"
+        && (guardedAuthority.provenance.bareIdSource
+            || (result.columns.includes("source_kind") && result.columns.includes("source_id")))
+        ? {
             status: "compatible" as const,
-            editableColumns: new Set(guardedAuthority.metadata.physicalColumns.flatMap(column =>
-                column.field && column.physicalColumn !== "id" && column.outputColumn === column.physicalColumn
-                    ? [column.outputColumn]
-                    : []
-            )),
-        };
-    }
-    return resolveBareIdMutationAuthority(execution.query, sqlName, schema, result.columns);
-});
+            editableColumns: new Set(
+                guardedAuthority.metadata.physicalColumns.filter(column =>
+                    column.field && column.physicalColumn !== "id"
+                    && !["id", "source_kind", "source_id"].includes(column.outputColumn)
+                ).map(column => column.outputColumn),
+            ),
+        }
+        : {
+            status: "unavailable" as const,
+            editableColumns: new Set<string>(),
+            reason: guardedAuthority?.metadata.reason ?? (guardedAuthority
+                ? "Read-only view: result rows do not identify one physical source"
+                : "Current query source evidence is unavailable"),
+        },
+);
 
-// What this view hands to the system clipboard when a copy crosses its host
-// item. The getters run at copy time, so they read whatever is on screen then.
-const clipboardSource: TableClipboardSource = {
-    getGrid: () => {
-        if (result.columns.length === 0) return undefined;
-        return {
-            columns: orderColumns(result.columns, columnOrder),
-            hiddenColumns,
-            labels: columnLabels,
-            rows: result.rows,
-        };
-    },
-    getChartImage: () => (showChart ? chartPanel?.getImage() : undefined),
-};
-
-// handles/projectDoc are static within the component lifecycle due to `{#key}`
+// These producer sessions own their provider holds. No supplier is chosen as a
+// renderer, schema authority, or fallback write destination.
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
-// This component is remounted when the Project identity changes.
 // svelte-ignore state_referenced_locally
 const guardedSelect = createProjectSelectSession({
     projectDoc,
     projectId,
-    query: observedQuery,
-    // Match GridQueryRunner's persisted grammar version so legacy Grids with
-    // ordinary unaliased output columns receive the same execution evidence.
-    requireExplicitAliases: grid.entry.get("sqlAliasPolicyVersion") === 1,
+    query: getGridQuery(mountedGrid),
+    requireExplicitAliases: mountedGrid.entry.get("sqlAliasPolicyVersion") === 1,
 });
 // svelte-ignore state_referenced_locally
 const guardedMetadataResolver = createGridMetadataResolver({ projectDoc, projectId });
-async function refreshGuardedMutationAuthority(): Promise<void> {
-    const evidence = await guardedSelect.runNow();
-    if (!evidence) return;
-    const provenance = analyzeProjectQueryProvenance(evidence);
-    const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
-    if (!guardedSelect.isEvidenceCurrent(evidence)) return;
-    guardedAuthority = { evidence, provenance, metadata };
-}
-
-let guardedEffectsRefresh = Promise.resolve();
-function refreshAfterGuardedEffects(): Promise<void> {
-    const refresh = async () => {
-        await runner?.runQueryNow();
-        await refreshGuardedMutationAuthority();
-    };
-    // A second command may start as soon as its source write is observable,
-    // before the preceding UI refresh finishes. Preserve effect order so an
-    // older query result cannot overwrite the newer command's result.
-    guardedEffectsRefresh = guardedEffectsRefresh.then(refresh, refresh);
-    return guardedEffectsRefresh;
-}
-
 // svelte-ignore state_referenced_locally
 const mutationBoundary = createGridExistingRowMutationBoundary({
     projectDoc,
@@ -302,34 +168,94 @@ const mutationBoundary = createGridExistingRowMutationBoundary({
     evidence: () => guardedAuthority?.evidence,
     provenance: () => guardedAuthority?.provenance,
     metadata: () => guardedAuthority?.metadata,
-    canWrite: () => !isReadOnly,
-    allows: () => !isReadOnly,
+    canWrite: () => getGridRegistry(projectDoc).get(mountedGrid.gridId) === mountedGrid.entry
+        && !isReadOnly && (canWrite?.() ?? true),
+    allows: () => !isReadOnly && (canWrite?.() ?? true),
     relationSession: session,
+    onBeforeEffects: () => globalUndoRouter.stopCapturing(),
 });
-// This component is remounted for a changed Project/Grid identity.
 // svelte-ignore state_referenced_locally
 const insertController = createGridInsertController({
     projectDoc,
     projectId,
     gridEntry: mountedGrid.entry,
-    query: observedQuery,
+    query: getGridQuery(mountedGrid),
+    canWrite: () => getGridRegistry(projectDoc).get(mountedGrid.gridId) === mountedGrid.entry
+        && !isReadOnly && (canWrite?.() ?? true),
+    onBeforeEffects: () => globalUndoRouter.stopCapturing(),
 });
-let unsubscribeAdapter: (() => void) | undefined;
-let unsubscribeRunner: (() => void) | undefined;
-let cleanupWebMCP: (() => void) | undefined;
-let unregisterGridRenderTraceSource: (() => void) | undefined;
 
-// Shared by the WebMCP tool and the always-on E2E diagnostics registry
-// (gridRenderTraceRegistry) so there is exactly one place that assembles a
-// trace snapshot from this view's current mirrors.
+function refreshGridMirror() {
+    gridName = String(mountedGrid.entry.get("name") ?? "Grid");
+    gridQuery = getGridQuery(mountedGrid);
+    const order = mountedGrid.entry.get("columnOrder");
+    columnOrder = Array.isArray(order) ? order : order instanceof Y.Array ? order.toArray() : [];
+    const settings = readGridComponents(mountedGrid);
+    componentTypes = settings.types;
+    columnLabels = settings.labels;
+    hiddenColumns = settings.hidden;
+    columnWidths = settings.widths;
+    showAddRowButton = getGridShowAddRowButton(mountedGrid);
+    confirmRowDelete = getGridConfirmRowDelete(mountedGrid);
+    guardedSelect.setQuery(gridQuery);
+    insertController.setQuery(gridQuery);
+}
+const gridMirrorObserver = () => refreshGridMirror();
+async function publish(next: ProjectSelectState) {
+    const request = ++publication;
+    selectState = next.status === "success" ? { status: "loading" } : next;
+    guardedAuthority = undefined;
+    queryExecution = undefined;
+    clientRevision++;
+    queryError = next.status === "error" || next.status === "unavailable" ? next.message : undefined;
+    if (next.status !== "success") return;
+    const evidence = next.evidence;
+    const provenance = analyzeProjectQueryProvenance(evidence);
+    const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
+    if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)) return;
+    // Publish one coherent incarnation. Retained rows during loading never
+    // acquire current authority until their own metadata has completed.
+    result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
+    displayMetadata = metadata;
+    selectState = next;
+    guardedAuthority = { evidence, provenance, metadata };
+    queryExecution = {
+        queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
+        generation: evidence.executionGeneration,
+        query: evidence.query.trim(),
+        status: "completed",
+        startedAt: new Date().toISOString(),
+        durationMs: 0,
+        rowCount: evidence.rows.length,
+        columnCount: evidence.columns.length,
+    };
+    chartPanel?.update(result);
+}
+async function refreshAfterGuardedEffects() {
+    await guardedSelect.runNow();
+}
+const clipboardSource: TableClipboardSource = {
+    getGrid: () =>
+        result.columns.length
+            ? {
+                columns: orderColumns(result.columns, columnOrder),
+                hiddenColumns,
+                labels: columnLabels,
+                rows: result.rows,
+            }
+            : undefined,
+    getChartImage: () => showChart ? chartPanel?.getImage() : undefined,
+};
 function getGridRenderTrace() {
     return buildGridRenderTrace({
-        gridId: grid.gridId,
-        sourceTableId: handles.tableId,
+        gridId: mountedGrid.gridId,
+        sourceTableId: sourceId ?? "",
         projectId,
         projectDocumentId: projectDoc.guid,
-        tableDocumentId: handles.doc.guid,
-        configRevision: stateVectorRevision(projectDoc),
+        tableDocumentId: "",
+        configRevision: Array.from(Y.encodeStateVector(projectDoc), byte => byte.toString(16).padStart(2, "0")).join(
+            "",
+        ),
         clientRevision,
         query: gridQuery,
         result,
@@ -338,99 +264,48 @@ function getGridRenderTrace() {
         hiddenColumns,
     });
 }
-
+let unsubscribe: (() => void) | undefined;
+let cleanupWebMCP: (() => void) | undefined;
+let unregisterTrace: (() => void) | undefined;
 onMount(() => {
     refreshGridMirror();
-    // Claim a reference on the Grid's shared undo manager so a sibling view
-    // bound to the same Grid keeps its manager when this one unmounts.
-    retainGridUndoManager(mountedGrid.entry);
     mountedGrid.entry.observeDeep(gridMirrorObserver);
-    mountedHandles.schemaText.observe(schemaTextObserver);
-    registerTableClipboardSource(mountedHandles.tableId, clipboardSource);
-
+    registerTableClipboardSource(mountedGrid.gridId, clipboardSource);
+    unsubscribe = guardedSelect.subscribe(next => void publish(next));
     cleanupWebMCP = registerWebMCPGridTools(
+        () => ({ gridId: mountedGrid.gridId, sourceTableId: sourceId ?? "", query: gridQuery }),
         () => ({
             gridId: mountedGrid.gridId,
-            sourceTableId: mountedHandles.tableId,
-            query: gridQuery
-        }),
-        () => ({
-            gridId: mountedGrid.gridId,
-            sourceTableId: mountedHandles.tableId,
+            sourceTableId: sourceId ?? "",
             rows: result.rows,
             columns: result.columns,
-            rowCount: result.rows.length
+            rowCount: result.rows.length,
         }),
-        getGridRenderTrace
+        getGridRenderTrace,
     );
-    unregisterGridRenderTraceSource = registerGridRenderTraceSource(mountedGrid.gridId, getGridRenderTrace);
-
-    void (async () => {
-        const acquired = await session.acquire(mountedHandles.tableId);
-        if (!acquired) {
-            logger.warn({ tableId: mountedHandles.tableId }, "[YjsTableView] table is not registered in this project");
-            return;
-        }
-        isInitialSyncDone = acquired.remoteSynced;
-        adapter = acquired.adapter;
-        unsubscribeAdapter = acquired.adapter.subscribe({
-            onSchemaChanged: (parsed, error) => {
-                schema = parsed;
-                schemaError = error;
-            },
-            onRecordErrors: (errors) => {
-                recordErrors = errors;
-            },
-        });
-        runner = new GridQueryRunner({ grid: mountedGrid, sourceAdapter: acquired.adapter });
-        unsubscribeRunner = runner.subscribe({
-            onResult: (r, execution) => {
-                result = r;
-                queryExecution = execution;
-                clientRevision++;
-                chartPanel?.update(r);
-            },
-            onError: (message) => {
-                queryError = message;
-            },
-            onInvalidated: () => {
-                queryExecution = undefined;
-            },
-        });
-        runner.start();
-        await refreshGuardedMutationAuthority();
-        adapterReady = true;
-    })();
+    unregisterTrace = registerGridRenderTraceSource(mountedGrid.gridId, getGridRenderTrace);
 });
-
 onDestroy(() => {
+    destroyed = true;
+    publication++;
+    unsubscribe?.();
+    mountedGrid.entry.unobserveDeep(gridMirrorObserver);
+    unregisterTableClipboardSource(mountedGrid.gridId, clipboardSource);
     mutationBoundary.dispose();
     guardedMetadataResolver.dispose();
     guardedSelect.dispose();
-    mountedGrid.entry.unobserveDeep(gridMirrorObserver);
-    mountedHandles.schemaText.unobserve(schemaTextObserver);
-    unsubscribeAdapter?.();
-    unsubscribeRunner?.();
-    runner?.dispose();
-    unregisterTableClipboardSource(mountedHandles.tableId, clipboardSource);
     session.dispose();
     insertController.dispose();
-    destroyTableUndoManager(mountedHandles.doc);
-    destroyGridUndoManager(mountedGrid.entry);
-    if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
-    unregisterGridRenderTraceSource?.();
+    cleanupWebMCP?.();
+    unregisterTrace?.();
 });
-
-function stateVectorRevision(doc: Y.Doc): string {
-    return Array.from(Y.encodeStateVector(doc), byte => byte.toString(16).padStart(2, "0")).join("");
-}
 </script>
 
 <div
     class="yjs-table-view"
     data-testid="yjs-table-view"
     data-grid-id={grid.gridId}
-    data-source-table-id={handles.tableId}
+    data-source-table-id={sourceId}
     data-mutation-incarnation={mutationIncarnation}
     data-ui-editor-open={showUiDef}
     onfocusin={(e) => {
@@ -440,28 +315,23 @@ function stateVectorRevision(doc: Y.Doc): string {
     }}
 >
     <div class="view-toolbar">
-        <!-- Keep the name plain text so drag-selection cannot navigate. The
-             adjacent action provides keyboard-accessible Table navigation. -->
-        {#if tableName}
-            <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
-        {/if}
-        {#if sqlName}
-            <!-- The identifier queries use. Shown next to the label so the two
-                 names are never confused for one another. -->
-            <code class="table-sql-name" data-testid="yjs-table-sql-name" title="Name to use in SQL queries">{sqlName}</code>
-        {/if}
-        {#if sourceProjectId}
-            <span class="table-provenance" data-testid="yjs-table-provenance">copied from project</span>
-        {/if}
-        {#if sourceTableHref && tableName}
-            <a
-                class="source-table-link"
-                href={sourceTableHref}
-                data-testid="yjs-grid-source-table-link"
-                aria-label={`Open Table ${tableName}`}
-                onkeydown={(event) => event.stopPropagation()}
-            >Open Table</a>
-        {/if}
+        <span class="table-name" data-testid="yjs-table-name">{gridName}</span>
+        {#if sqlName}<code class="table-sql-name" data-testid="yjs-table-sql-name">{sqlName}</code>{/if}
+        <div data-testid="grid-query-dependencies">
+            {#if dependencies === undefined}
+                <span>SQL dependencies unavailable</span>
+            {:else if dependencies.length === 0}
+                <span>No project Table dependencies</span>
+            {:else}
+                {#each dependencies as source (`${source.kind}:${source.id}`)}
+                    {#if source.kind === "table" && projectName}
+                        <a class="source-table-link" data-testid="yjs-grid-source-table-link" href={resolve(projectTablePath(projectName, source.id))}>
+                            {listTables(projectDoc).find(table => table.tableId === source.id)?.name || source.sqlName}
+                        </a>
+                    {:else}<span>{source.sqlName} ({source.kind})</span>{/if}
+                {/each}
+            {/if}
+        </div>
         <div class="view-toggles" role="group" aria-label="Table views">
             <button
                 type="button"
@@ -517,34 +387,17 @@ function stateVectorRevision(doc: Y.Doc): string {
         </section>
     {/if}
 
-    {#if schemaError || queryError}
-        <p class="error" data-testid="yjs-table-query-error">{schemaError ?? queryError}</p>
-    {/if}
-
-    {#if recordErrors.length > 0}
-        <div class="record-errors" data-testid="yjs-table-record-errors">
-            <p class="error-title">Some records could not be synchronized:</p>
-            <ul>
-                {#each recordErrors as error (`${error.recordId}:${error.column ?? ""}`)}
-                    <li>
-                        Record <code>{error.recordId}</code>
-                        {#if error.column}(column <code>{error.column}</code>){/if}: {error.message}
-                    </li>
-                {/each}
-            </ul>
-        </div>
+    {#if queryError}
+        <p class="error" data-testid="yjs-table-query-error">{queryError}</p>
     {/if}
 
     {#if showGrid}
         <section class="panel">
-            {#if adapterReady && adapter}
                 <TableGrid
                     {grid}
                     {placementId}
                     {pageId}
                     {pageTitle}
-                    {handles}
-                    {adapter}
                     {schema}
                     query={gridQuery}
                     {result}
@@ -556,12 +409,12 @@ function stateVectorRevision(doc: Y.Doc): string {
                     {columnWidths}
                     {showAddRowButton}
                     {confirmRowDelete}
-                    loading={schema === undefined && !isInitialSyncDone}
+                    loading={displayMetadata === undefined && selectState.status === "loading"}
                     {session}
                     {mutationBoundary}
                     {mutationIncarnation}
-                    mutationPhysicalColumns={guardedAuthority?.metadata.physicalColumns}
-                    prepareMutationAuthority={refreshGuardedMutationAuthority}
+                    mutationPhysicalColumns={displayMetadata?.physicalColumns}
+                    resultColumnMetadata={displayMetadata?.columns}
                     onGuardedEffects={refreshAfterGuardedEffects}
                     {isReadOnly}
                     onAddRow={async () => {
@@ -580,15 +433,14 @@ function stateVectorRevision(doc: Y.Doc): string {
                         ? `Added row to ${insertOutcome.targetSqlName}`
                         : insertOutcome.message}</p>
                 {/if}
-            {:else}
-                <p class="loading">Loading table...</p>
-            {/if}
         </section>
     {/if}
 
     {#if showChart}
         <section class="panel">
-            <TableChartPanel bind:this={chartPanel} initial={result} />
+            {#key result}
+                <TableChartPanel bind:this={chartPanel} initial={result} />
+            {/key}
         </section>
     {/if}
 </div>
@@ -628,10 +480,6 @@ function stateVectorRevision(doc: Y.Doc): string {
     padding: 1px 5px;
 }
 
-.table-provenance {
-    font-size: 0.75rem;
-    color: #6b7280;
-}
 
 .view-toggles {
     display: flex;
@@ -666,27 +514,7 @@ function stateVectorRevision(doc: Y.Doc): string {
     margin: 0;
 }
 
-.record-errors {
-    border: 1px solid #fca5a5;
-    background: #fef2f2;
-    border-radius: 4px;
-    padding: 8px;
-    font-size: 0.8rem;
-}
 
-.error-title {
-    font-weight: 600;
-    color: #dc2626;
-    margin: 0 0 4px;
-}
 
-.record-errors ul {
-    margin: 0;
-    padding-left: 18px;
-}
 
-.loading {
-    color: #6b7280;
-    font-size: 0.85rem;
-}
 </style>

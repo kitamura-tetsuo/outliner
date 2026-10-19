@@ -79,6 +79,8 @@ export interface GridExistingRowMutationOptions {
     metadata: () => GridMetadataResolution | undefined;
     /** Project admission is checked at capture and again at the effect boundary. */
     canWrite: () => boolean;
+    /** Consumer history boundary, called only after validation immediately before effects. */
+    onBeforeEffects?: () => void;
     /** The invoking surface may independently restrict an otherwise capable provider. */
     allows: (operation: GridExistingRowOperation, source: ProvenanceRelation, physicalColumn?: string) => boolean;
     /** Optional externally owned relation session, useful when resolution must be coordinated by a caller. */
@@ -196,6 +198,7 @@ export function createGridExistingRowMutationBoundary(
                 assertCurrent(options, operation);
                 assertProviderIdentity(provider, operation.source, options.projectDoc);
                 provider.assertExistingRowWriteAllowed(write);
+                options.onBeforeEffects?.();
                 await provider.applyWrite(write);
                 captured.delete(operation);
                 return {
@@ -250,6 +253,7 @@ export function createGridExistingRowMutationBoundary(
                     resolved.push({ operation, provider, write });
                 }
 
+                if (resolved.length > 0) options.onBeforeEffects?.();
                 const applied: GridMutationResult[] = [];
                 const oneProvider = resolved[0]?.provider;
                 if (

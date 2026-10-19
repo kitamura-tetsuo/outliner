@@ -22,6 +22,7 @@ export interface OverlappingTableFixture {
     tableA: GridTableState;
     tableB: GridTableState;
     gridA: Locator;
+    gridB: Locator;
 }
 
 function gridForSqlName(page: Page, sqlName: string): Locator {
@@ -65,7 +66,9 @@ export async function seedOverlappingTableFixture(
     const tableB = state.tables.find(table => table.id !== originalA.id)!;
     expect(Object.keys(tableB.data)).toEqual([recordId]);
 
-    const gridB = gridForSqlName(page, tableB.sqlName);
+    const gridBId = await gridForSqlName(page, tableB.sqlName).getAttribute("data-grid-id");
+    expect(gridBId).toBeTruthy();
+    const gridB = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridBId}"]`);
     const bIndex = await page.getByTestId("yjs-table-view").all().then(async views => {
         for (let index = 0; index < views.length; index++) {
             if (await views[index].getAttribute("data-grid-id") === await gridB.getAttribute("data-grid-id")) {
@@ -76,18 +79,26 @@ export async function seedOverlappingTableFixture(
     });
     await setCellValue(page, bIndex, recordId, "title", "Value from B");
 
-    return { projectName, recordId, tableA, tableB, gridA: gridForSqlName(page, tableA.sqlName) };
+    const gridAId = await gridForSqlName(page, tableA.sqlName).getAttribute("data-grid-id");
+    expect(gridAId).toBeTruthy();
+    const gridA = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridAId}"]`);
+    return { projectName, recordId, tableA, tableB, gridA, gridB };
 }
 
 export async function pointGridAToTableB(page: Page, fixture: OverlappingTableFixture): Promise<void> {
+    const gridId = await fixture.gridA.getAttribute("data-grid-id");
+    expect(gridId).toBeTruthy();
+    fixture.gridA = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+    const query = `SELECT id, title, done FROM ${fixture.tableB.sqlName}`;
     const queryEditor = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
-    await queryEditor.fillAndCommit(
-        page,
-        `SELECT id, title, done FROM ${fixture.tableB.sqlName}`,
-    );
+    await queryEditor.fillAndCommit(page, query);
+    await expect.poll(() =>
+        page.evaluate(id => {
+            const project = (globalThis as any).__YJS_STORE__?.yjsClient?.getProject();
+            return project?.ydoc.getMap("yjsGrids").get(id)?.get("query");
+        }, gridId)
+    ).toBe(query);
     const grid = fixture.gridA.getByTestId("yjs-table-grid");
-    // The Grid remains bound to A for presentation, while guarded command
-    // authority follows the verified physical supplier B.
     await expect(grid.locator("tbody tr").filter({ hasText: "Value from B" })).toBeVisible({
         timeout: 30000,
     });

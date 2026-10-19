@@ -8,6 +8,7 @@ import {
     readKanbans,
 } from "../utils/kanbanTestHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { confirmSqlOnlyTableDeletion, readIndependentViews } from "../utils/sqlOnlyTableDeletionHelpers";
 registerCoverageHooks();
 
 test(
@@ -87,8 +88,12 @@ test(
         await expect(page.getByTestId("kanban-empty")).toBeVisible({ timeout: 30000 });
 
         await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/tables/${fixture.tableId}`);
-        await page.getByRole("button", { name: "Delete table", exact: true }).click();
-        await page.getByRole("dialog").getByRole("button", { name: "Delete table and keep references" }).click();
+        const deleteTable = page.getByRole("button", { name: "Delete table", exact: true });
+        await expect(deleteTable).toBeVisible();
+        const beforeDeletion = await readIndependentViews(page);
+        await deleteTable.click();
+        await confirmSqlOnlyTableDeletion(page);
+        expect(await readIndependentViews(page)).toEqual(beforeDeletion);
         await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/kanbans/${id}`);
         await expect(page.getByTestId("kanban-unavailable")).toContainText(
             "Kanban query source is missing",

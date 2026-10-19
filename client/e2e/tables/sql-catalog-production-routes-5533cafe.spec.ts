@@ -43,8 +43,16 @@ test(
             // Two real embedded Grid mounts share a Table; closing one preserves the other.
             await navigateCatalog(page, fixture.projectUrl);
             await expect(page.getByTestId("yjs-table-grid")).toHaveCount(1);
-            await page.evaluate(id => (globalThis as any).__catalogBrowserTest.addSecondView(id), fixture.tableId);
+            const secondGridId = await page.evaluate(
+                id => (globalThis as any).__catalogBrowserTest.addSecondView(id),
+                fixture.embeddedGridId,
+            );
             await expect(page.getByTestId("yjs-table-grid")).toHaveCount(2);
+            for (const id of [fixture.embeddedGridId, secondGridId]) {
+                const view = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${id}"]`);
+                await expect(view.locator('td[data-col="state"] select')).toHaveCount(4);
+                await expect.poll(() => gridValues(view)).toEqual(INITIAL_ORDER);
+            }
             await expect(page.locator('td[data-col="state"] select')).toHaveCount(8);
             await page.evaluate(() => (globalThis as any).__catalogBrowserTest.closeSecondView());
             await expect(page.getByTestId("yjs-table-grid")).toHaveCount(1);

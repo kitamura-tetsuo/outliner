@@ -120,8 +120,13 @@ function exportGridSlice(projectDoc: Y.Doc, tableId: string, preferGridId?: stri
     // sibling — so a paste reconstructs what the user was actually looking at.
     // Otherwise the first Grid over the Table is used as a sensible default.
     const grids = findGridsBySourceTable(projectDoc, tableId);
-    if (grids.length === 0) return { query: "", components: {}, columnOrder: [] };
-    const chosen = (preferGridId && grids.find(g => g.gridId === preferGridId)?.gridId) ?? grids[0].gridId;
+    // New-format hosts deliberately do not persist sourceTableId. The caller
+    // has already proven the Table supplier and explicitly names the Grid that
+    // was copied, so preserve that Grid's query/presentation even though it is
+    // absent from the legacy Table-indexed lookup.
+    const preferred = preferGridId ? getGridHandles(projectDoc, preferGridId) : undefined;
+    if (!preferred && grids.length === 0) return { query: "", components: {}, columnOrder: [] };
+    const chosen = preferred ? preferGridId! : grids[0].gridId;
     const handles = getGridHandles(projectDoc, chosen);
     if (!handles) return { query: "", components: {}, columnOrder: [] };
 

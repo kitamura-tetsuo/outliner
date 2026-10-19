@@ -7,6 +7,7 @@ registerCoverageHooks();
 import { expect, type Page, test } from "@playwright/test";
 import { createBlankGrid } from "../utils/crossProjectGridHelpers";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
+import { confirmSqlOnlyTableDeletion, readIndependentViews } from "../utils/sqlOnlyTableDeletionHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { selectVisualNode } from "../utils/visualNodeSelectionHelpers";
 
@@ -59,8 +60,10 @@ test(
         await expect(peer).toHaveURL(/\/objects$/);
         await expect(objectRow(peer, "table")).toHaveCount(1, { timeout: 30000 });
         await objectRow(peer, "table").locator('[data-testid^="object-open-"]').click();
+        const beforeDeletion = await readIndependentViews(peer);
         await peer.getByRole("button", { name: "Delete table" }).click();
-        await peer.getByRole("button", { name: "Delete table and keep references" }).click();
+        await confirmSqlOnlyTableDeletion(peer, 1);
+        expect(await readIndependentViews(peer)).toEqual(beforeDeletion);
         await expect(objectRow(page, "table")).toHaveCount(0, { timeout: 30000 });
 
         await page.getByTestId("object-placement-confirm").click();

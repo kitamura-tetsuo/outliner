@@ -208,12 +208,14 @@ export class UndoRouter {
             // when a new operation clears its redo stack. Drop the matching
             // entries so the router never points at a stack item that is gone.
             const keep = (entry: UndoRouterEntry) =>
-                entry !== um && !("type" in entry && entry.type === "group" && entry.managers.includes(um));
+                entry !== um && !("type" in entry
+                    && ((entry.type === "group" && entry.managers.includes(um))
+                        || (entry.type === "composite" && entry.mainManager === um)));
             if (event.undoStackCleared) {
-                this.undoStack = this.undoStack.filter(keep);
+                this.pruneStack(this.undoStack, keep);
             }
             if (event.redoStackCleared) {
-                this.redoStack = this.redoStack.filter(keep);
+                this.pruneStack(this.redoStack, keep);
             }
         };
 
@@ -239,9 +241,26 @@ export class UndoRouter {
         this.clearedHandlers.delete(um);
 
         const keep = (entry: UndoRouterEntry) =>
-            entry !== um && !("type" in entry && entry.type === "group" && entry.managers.includes(um));
-        this.undoStack = this.undoStack.filter(keep);
-        this.redoStack = this.redoStack.filter(keep);
+            entry !== um && !("type" in entry
+                && ((entry.type === "group" && entry.managers.includes(um))
+                    || (entry.type === "composite" && entry.mainManager === um)));
+        this.pruneStack(this.undoStack, keep);
+        this.pruneStack(this.redoStack, keep);
+    }
+
+    /** Owner cleanup can run synchronously inside replay; preserve its live stack references. */
+    private pruneStack(stack: UndoRouterEntry[], keep: (entry: UndoRouterEntry) => boolean): void {
+        for (let index = stack.length - 1; index >= 0; index--) {
+            if (!keep(stack[index])) stack.splice(index, 1);
+        }
+    }
+
+    private recordReplay(stack: UndoRouterEntry[], entry: UndoRouterEntry): void {
+        const managers = "type" in entry
+            ? entry.type === "group" ? entry.managers : entry.type === "composite" ? [entry.mainManager] : []
+            : [entry];
+        // The replay may itself end an owning scope. Do not revive that scope's history.
+        if (managers.every(manager => this.registered.has(manager))) stack.push(entry);
     }
 
     /**
@@ -594,10 +613,10 @@ export class UndoRouter {
                     const managers = isUndo ? entry.managers.toReversed() : entry.managers;
                     let applied = false;
                     for (const um of managers) {
-                        if (apply(um)) applied = true;
+                        if (this.registered.has(um) && apply(um)) applied = true;
                     }
                     if (applied) {
-                        to.push(entry);
+                        this.recordReplay(to, entry);
                         return;
                     }
                     continue;
@@ -608,7 +627,7 @@ export class UndoRouter {
                         if (isUndo) entry.undo();
                         else entry.redo();
                     });
-                    to.push(entry);
+                    this.recordReplay(to, entry);
                     return;
                 }
 
@@ -659,13 +678,13 @@ export class UndoRouter {
                             });
                             restoreClonedScheduleRules(entry.projectDoc, entry.savedRules);
                         }
-                        to.push(entry);
+                        this.recordReplay(to, entry);
                         return;
                     }
                 } else {
                     const um = entry as Y.UndoManager;
                     if (apply(um)) {
-                        to.push(um);
+                        this.recordReplay(to, um);
                         return;
                     }
                 }

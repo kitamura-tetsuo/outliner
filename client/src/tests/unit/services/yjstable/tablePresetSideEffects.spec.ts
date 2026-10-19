@@ -38,12 +38,11 @@ function expectOnlyExistingKanban(
     doc: Y.Doc,
     kanbanId: string,
     kanbansBefore: ReturnType<typeof listKanbans>,
-    _newTableId: string,
 ): void {
     expect(listKanbans(doc)).toEqual(kanbansBefore);
     expect(getKanbanRegistry(doc).size).toBe(1);
     expect([...getKanbanRegistry(doc).keys()]).toEqual([kanbanId]);
-    // sourceTableId removed from KanbanSettings
+    expect(getKanbanRegistry(doc).get(kanbanId)?.has("sourceTableId")).toBe(false);
 }
 
 describe("preset creation side-effect boundaries", () => {
@@ -75,7 +74,7 @@ describe("preset creation side-effect boundaries", () => {
         const tableId = createTableOnlyFromPreset(doc, preset, `${preset.name} only`, `${preset.key}_only`);
         const tableEntry = getTableRegistry(doc).get(tableId)!;
 
-        expectOnlyExistingKanban(doc, kanbanId, kanbansBefore, tableId);
+        expectOnlyExistingKanban(doc, kanbanId, kanbansBefore);
         expectNoInsertPreference(tableEntry);
         expect(getGridRegistry(doc).size).toBe(0);
     });
@@ -88,10 +87,10 @@ describe("preset creation side-effect boundaries", () => {
         const tableEntry = getTableRegistry(doc).get(tableId)!;
         const gridEntry = getGridRegistry(doc).get(gridId)!;
 
-        expectOnlyExistingKanban(doc, kanbanId, kanbansBefore, tableId);
+        expectOnlyExistingKanban(doc, kanbanId, kanbansBefore);
         expectNoInsertPreference(tableEntry);
         expectNoInsertPreference(gridEntry);
-        expect(gridEntry.get("sourceTableId")).toBe(tableId);
+        expect(gridEntry.has("sourceTableId")).toBe(false);
         expect(gridEntry.get("query")).toBe(preset.query(sqlName));
         expect(gridEntry.get("components")).toBeInstanceOf(Y.Map);
     });

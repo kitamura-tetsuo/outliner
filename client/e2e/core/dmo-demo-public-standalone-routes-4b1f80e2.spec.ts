@@ -53,7 +53,7 @@ test.describe("Public demo standalone routes", () => {
 
         const gridView = page.getByTestId("yjs-table-view").first();
         await expect(gridView).toBeVisible({ timeout: 30000 });
-        await expect(page.getByTestId("grid-source-table-link")).toHaveAttribute(
+        await expect(gridView.getByTestId("yjs-grid-source-table-link").filter({ hasText: "Sales" })).toHaveAttribute(
             "href",
             "/demo/-/tables/demo-table-sales",
         );

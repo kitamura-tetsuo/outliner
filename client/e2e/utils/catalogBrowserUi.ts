@@ -1,4 +1,4 @@
-import { expect, type Page, type TestInfo } from "@playwright/test";
+import { expect, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { CatalogBrowserServer, type CatalogSnapshot } from "./catalogBrowserServer";
 import { SeedClient } from "./seedClient";
 import { SqlEditorHelper } from "./sqlEditorHelpers";
@@ -37,7 +37,7 @@ export async function navigateCatalog(page: Page, url: string) {
     await page.evaluate(next => (globalThis as any).__catalogBrowserTest.goto(next), url);
     await expect(page).toHaveURL(url);
 }
-export async function gridValues(page: Page) {
+export async function gridValues(page: Page | Locator) {
     return page.locator('[data-testid="yjs-table-grid"] td[data-col="state"] select').evaluateAll(elements =>
         elements.map(element => {
             const select = element as HTMLSelectElement;
@@ -54,6 +54,8 @@ export async function createTypedTable(page: Page) {
     await page.getByTestId("yjs-table-preset-select").selectOption("blank");
     await page.getByTestId("yjs-table-create").click();
     await expect(page.getByTestId("yjs-table-grid")).toBeVisible();
+    const embeddedGridId = await page.getByTestId("yjs-table-view").getAttribute("data-grid-id");
+    if (!embeddedGridId) throw new Error("Created Grid must expose its actual identity");
     await page.getByTestId("yjs-grid-source-table-link").click();
     await expect(page.getByTestId("table-entity-view")).toBeVisible();
     await installCatalogControls(page);
@@ -105,7 +107,7 @@ export async function createTypedTable(page: Page) {
         ).toBe(value);
         await expect(select).toBeEnabled();
     }
-    return tableId;
+    return { tableId, embeddedGridId };
 }
 export async function authorCatalogFixture(page: Page, server: CatalogBrowserServer, info: TestInfo) {
     const title = `Catalog browser ${info.workerIndex} ${Date.now()}`;
@@ -148,8 +150,8 @@ export async function authorCatalogFixture(page: Page, server: CatalogBrowserSer
     await expect(page.getByTestId("sql-catalog-name")).toHaveText("priority_level");
     await expect(page.getByTestId("sql-catalog-mutation-info")).toHaveText("Saved.");
     await navigateCatalog(page, `${base}/${encodeURIComponent(pageName)}?isTest=true`);
-    const tableId = await createTypedTable(page);
-    const views = await page.evaluate(id => (globalThis as any).__catalogBrowserTest.createViews(id), tableId);
+    const { tableId, embeddedGridId } = await createTypedTable(page);
+    const views = await page.evaluate(() => (globalThis as any).__catalogBrowserTest.createViews());
     const table = await page.evaluate(id => (globalThis as any).__catalogBrowserTest.snapshot(id), tableId);
     await expect.poll(() => server.request("snapshot", { projectId, tableId })).toMatchObject({
         table,
@@ -161,6 +163,7 @@ export async function authorCatalogFixture(page: Page, server: CatalogBrowserSer
     return {
         ...identity,
         tableId,
+        embeddedGridId,
         ...views,
         base,
         projectUrl: `${base}/${encodeURIComponent(pageName)}?isTest=true`,

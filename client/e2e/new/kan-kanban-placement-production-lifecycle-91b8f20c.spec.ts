@@ -7,6 +7,7 @@ registerCoverageHooks();
 import { expect, type Page, test } from "@playwright/test";
 import { createBlankGrid, readGridProjectState } from "../utils/crossProjectGridHelpers";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
+import { confirmSqlOnlyTableDeletion, readIndependentViews } from "../utils/sqlOnlyTableDeletionHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 const objectRow = (page: Page, type: string) =>
@@ -112,22 +113,18 @@ test.describe("FTR-91b8f20c: Kanban production placement lifecycle", () => {
         await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
     });
 
-    for (const policy of ["keep references", "remove direct references"] as const) {
-        test(`preserves SQL-dependent Kanbans under the Table ${policy} policy`, async ({ page }) => {
-            await createBoardOnPage(page);
-            const table = objectRow(page, "table");
-            await table.locator('[data-testid^="object-open-"]').click();
-            await page.getByRole("button", { name: "Delete table" }).click();
-            const dialog = page.getByRole("dialog", { name: /Delete table/ });
-            await expect(dialog).not.toContainText("Kanbans sourced from this table");
-            await expect(dialog).toContainText("Indirect SQL dependencies (1)");
-            await dialog.getByRole("button", { name: `Delete table and ${policy}` }).click();
-            await expect(dialog).toHaveCount(0);
-
-            await openObjects(page);
-            await expect(objectRow(page, "table")).toHaveCount(0);
-            await expect(objectRow(page, "kanban")).toHaveCount(1);
-            await expect(objectRow(page, "kanban").locator('[data-testid^="object-placement-"]')).toHaveCount(1);
-        });
-    }
+    test("preserves SQL-dependent Grid and Kanban definitions and placements after Table deletion", async ({ page }) => {
+        await createBoardOnPage(page);
+        const before = await readIndependentViews(page);
+        const table = objectRow(page, "table");
+        await table.locator('[data-testid^="object-open-"]').click();
+        await page.getByRole("button", { name: "Delete table" }).click();
+        await confirmSqlOnlyTableDeletion(page);
+        expect(await readIndependentViews(page)).toEqual(before);
+        await openObjects(page);
+        await expect(objectRow(page, "table")).toHaveCount(0);
+        await expect(objectRow(page, "grid")).toHaveCount(1);
+        await expect(objectRow(page, "kanban")).toHaveCount(1);
+        await expect(objectRow(page, "kanban").locator('[data-testid^="object-placement-"]')).toHaveCount(1);
+    });
 });

@@ -59,13 +59,15 @@ afterAll(async () => {
 
 describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, () => {
     it("A -> B -> A revokes padded authority until a fresh execution completes", async () => {
-        const { projectDoc, tableA, handlesA, handlesB } = seedOverlappingTables("proj-query-revision-revocation");
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: BASE_A });
+        const { projectDoc, handlesA, handlesB } = seedOverlappingTables(
+            "proj-query-revision-revocation",
+        );
+        const gridId = createGrid(projectDoc, undefined, { name: "Grid", query: BASE_A });
         const grid = getGridHandles(projectDoc, gridId)!;
         const paddedA = `${BASE_A} `;
 
         const { getByTestId, queryByTestId, unmount } = render(YjsTableView, {
-            props: { grid, handles: handlesA, projectDoc, tableName: "Table A", sqlName: "tasks_a" },
+            props: { grid, projectDoc },
         });
         const view = () => getByTestId("yjs-table-view");
         const titleCell = () => view().querySelector('tr[data-record-id="r1"] td[data-col="title"]');
@@ -117,9 +119,11 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             // Both transitions revoked the old execution: returning to matching
             // text alone does not revive the outstanding mutation.
             expect(getGridQuery(grid)).toBe(paddedA);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
             expect(view().querySelector("input.cell-input")).toBeNull();
-            expect(queryByTestId("grid-readonly-reason")?.textContent).toMatch(/provenance has not been validated/);
+            expect(queryByTestId("grid-readonly-reason")?.textContent).toBe(
+                "Current query source evidence is unavailable",
+            );
             expect(anyTitleButton()?.getAttribute("aria-disabled")).toBe("true");
             // The outstanding edit cannot commit while authority is revoked.
             await fireEvent.click(anyTitleButton()!);
@@ -150,7 +154,7 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             expect(titleOf(handlesA)).toBe("Fresh edit");
             expect(titleOf(handlesB)).toBe("Value from B");
             expect(getGridQuery(grid)).toBe(paddedA);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
 
             // A relevant schema change revokes authority until a fresh execution validates it.
             setSchemaText(handlesA, SCHEMA_A.replace("title TEXT", "title TEXT, note TEXT"));

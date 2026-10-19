@@ -212,9 +212,6 @@
 
         return () => {
             isDestroyed = true;
-            if (tableHandles?.doc) {
-                destroyTableUndoManager(tableHandles.doc);
-            }
             projectHandle?.release();
             projectHandle = undefined;
         };

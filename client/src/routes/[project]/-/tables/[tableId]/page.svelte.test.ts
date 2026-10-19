@@ -24,7 +24,6 @@ vi.mock("../../../../../auth/UserManager", () => ({
     },
 }));
 
-const salesDoc = new Y.Doc();
 let projectDoc = new Y.Doc();
 
 // Stands in for the shared project opener: publishing on `store.project` is
@@ -50,19 +49,6 @@ vi.mock("../../../../../lib/demoInit", () => ({
     DemoInitAborted: class DemoInitAborted extends Error {},
 }));
 
-vi.mock("../../../../../services/yjstable/tableDocs", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../../../../../services/yjstable/tableDocs")>();
-    return {
-        ...actual,
-        listTables: () => [
-            { tableId: "demo-table-sales", name: "Sales", sqlName: "sales" },
-            { tableId: "demo-table-tasks", name: "Tasks", sqlName: "tasks" },
-        ],
-        getTableHandles: (_doc: Y.Doc, tableId: string) => ({ doc: salesDoc, tableId }),
-        destroyTableUndoManager: vi.fn(),
-    };
-});
-
 // TableEntityView mounts the PGlite engine; the page's own composition — never
 // resolving a Grid, and listing references instead — is what is under test.
 vi.mock("../../../../../components/yjstable/TableEntityView.svelte", async () => {
@@ -72,6 +58,7 @@ vi.mock("../../../../../components/yjstable/TableEntityView.svelte", async () =>
 
 import { createScheduleRule } from "../../../../../services/schedule/scheduleRuleService";
 import { createGrid, GRID_REGISTRY_KEY, listGrids } from "../../../../../services/yjstable/gridDocs";
+import { createTable } from "../../../../../services/yjstable/tableDocs";
 import { store } from "../../../../../stores/store.svelte";
 import { setPage } from "../../../../../tests/mocks/appState.svelte";
 import TableStandalonePage from "./+page.svelte";
@@ -81,16 +68,28 @@ function currentProject(): NonNullable<typeof store.project> {
     return store.project as NonNullable<typeof store.project>;
 }
 
+function referenceGrid(sqlName: string, options: { gridId: string; name: string; query?: string; }) {
+    return createGrid(projectDoc, undefined, { ...options, query: options.query ?? `SELECT * FROM ${sqlName}` });
+}
+
 describe("standalone table route", () => {
     beforeEach(() => {
         setPage({ params: { project: "demo", tableId: "demo-table-sales" } });
         // A fresh doc per test: the Grid registry assertions below are about
         // what this page did, so leftovers from a sibling test would lie.
         projectDoc = new Y.Doc();
+        for (const sqlName of ["sales", "tasks"]) {
+            createTable(projectDoc, sqlName === "sales" ? "Sales" : "Tasks", sqlName, {
+                tableId: `demo-table-${sqlName}`,
+            }, handles => {
+                handles.schemaText.insert(0, `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY, revenue INTEGER)`);
+            });
+        }
     });
 
     afterEach(() => {
         cleanup();
+        projectDoc.destroy();
     });
 
     describe("access gate", () => {
@@ -149,7 +148,7 @@ describe("standalone table route", () => {
         });
 
         it("leaves an existing Grid registry untouched", async () => {
-            createGrid(projectDoc, "demo-table-sales", { gridId: "grid-a", name: "Open sales" });
+            referenceGrid("sales", { gridId: "grid-a", name: "Open sales" });
             const before = Y.encodeStateAsUpdate(projectDoc);
 
             render(TableStandalonePage);
@@ -172,14 +171,14 @@ describe("standalone table route", () => {
     });
 
     describe("grid reference list", () => {
-        it("lists every Grid whose sourceTableId is this table, linking to its own page", async () => {
-            createGrid(projectDoc, "demo-table-sales", {
+        it("lists SQL-dependent Grids with valid links to their own pages", async () => {
+            referenceGrid("sales", {
                 gridId: "grid-a",
                 name: "Open sales",
                 query: "SELECT * FROM sales WHERE revenue > 100",
             });
-            createGrid(projectDoc, "demo-table-sales", { gridId: "grid-b", name: "Sales by month" });
-            createGrid(projectDoc, "other-table", { gridId: "grid-other", name: "Unrelated" });
+            referenceGrid("sales", { gridId: "grid-b", name: "Sales by month" });
+            referenceGrid("tasks", { gridId: "grid-other", name: "Unrelated" });
 
             render(TableStandalonePage);
 
@@ -195,8 +194,8 @@ describe("standalone table route", () => {
         // so the reference panels have to remount rather than keep the
         // observers and ids they bound on their first mount.
         it("refreshes the reference lists when navigating to another table", async () => {
-            createGrid(projectDoc, "demo-table-sales", { gridId: "grid-sales", name: "Sales grid" });
-            createGrid(projectDoc, "demo-table-tasks", { gridId: "grid-tasks", name: "Tasks grid" });
+            referenceGrid("sales", { gridId: "grid-sales", name: "Sales grid" });
+            referenceGrid("tasks", { gridId: "grid-tasks", name: "Tasks grid" });
 
             render(TableStandalonePage);
             await waitFor(() => {
@@ -227,8 +226,8 @@ describe("standalone table route", () => {
         });
 
         it("does not mount any Grid result: the page is an inspector, not a dashboard", async () => {
-            createGrid(projectDoc, "demo-table-sales", { gridId: "grid-a", name: "Open sales" });
-            createGrid(projectDoc, "demo-table-sales", { gridId: "grid-b", name: "Sales by month" });
+            referenceGrid("sales", { gridId: "grid-a", name: "Open sales" });
+            referenceGrid("sales", { gridId: "grid-b", name: "Sales by month" });
 
             render(TableStandalonePage);
 
