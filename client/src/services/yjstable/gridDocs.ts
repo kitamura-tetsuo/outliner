@@ -1,7 +1,7 @@
 // Yjs data model for the Grid feature.
 //
-// A Grid is a project-level presentation/query definition that references one
-// primary Table (its `sourceTableId`, i.e. the write target). Multiple Grids
+// A Grid is a project-level presentation/query definition. Older definitions
+// may retain `sourceTableId` as creation/migration metadata. Multiple Grids
 // may reference the same Table so several filtered/labeled views can share the
 // same underlying schema/data without cloning it.
 //
@@ -30,7 +30,10 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { findGridPlacements } from "../objectManager/objectPlacements";
+import { canReplayProjectHistory } from "../undo/projectHistoryAuthorization";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
+import { listTables } from "./tableDocs";
+import { rewriteTableQuerySql } from "./tableSqlRewrite";
 
 // The Grid writers/readers are framework-neutral and shared with the server
 // (shared/src/services/gridDefinition.ts), so server-side regressions run the
@@ -59,8 +62,8 @@ export interface GridRegistryEntry {
     gridId: string;
     /** Free-form label (never appears in SQL). */
     name: string;
-    /** The primary/writable Table this Grid targets. */
-    sourceTableId: string;
+    /** Optional legacy creation Table; never query or mutation authority. */
+    sourceTableId?: string;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
     /** Whether deleting a row requires confirmation (default false). */
@@ -82,6 +85,7 @@ export interface GridHandles extends GridDefinitionTarget {
 interface GridUndoEntry {
     undo: Y.UndoManager;
     refs: number;
+    cleanup: () => void;
 }
 const gridUndoManagers = new WeakMap<Y.Map<unknown>, GridUndoEntry>();
 
@@ -92,7 +96,9 @@ export function listGrids(projectDoc: Y.Doc): GridRegistryEntry[] {
         entries.push({
             gridId,
             name: String(entry.get("name") ?? ""),
-            sourceTableId: String(entry.get("sourceTableId") ?? ""),
+            sourceTableId: typeof entry.get("sourceTableId") === "string"
+                ? String(entry.get("sourceTableId"))
+                : undefined,
             showAddRowButton: entry.get("showAddRowButton") !== false,
             confirmRowDelete: entry.get("confirmRowDelete") === true,
         });
@@ -121,7 +127,7 @@ export interface CreateGridOptions extends GridDefinitionSeed {
  */
 export function createGrid(
     projectDoc: Y.Doc,
-    sourceTableId: string,
+    sourceTableId: string | undefined,
     options: CreateGridOptions = {},
 ): string {
     const gridId = options.gridId ?? uuidv4();
@@ -155,9 +161,28 @@ export function getGridHandles(projectDoc: Y.Doc, gridId: string): GridHandles |
         const undo = new Y.UndoManager([entry, components], {
             trackedOrigins: new Set([null]),
         });
-        managed = { undo, refs: 0 };
+        const ownerEnded = () => {
+            const current = gridUndoManagers.get(entry);
+            if (current) current.refs = 0;
+            destroyGridUndoManager(entry);
+        };
+        const deleted = () => {
+            if (getGridRegistry(projectDoc).get(gridId) !== entry) ownerEnded();
+        };
+        projectDoc.on("destroy", ownerEnded);
+        getGridRegistry(projectDoc).observe(deleted);
+        managed = {
+            undo,
+            refs: 0,
+            cleanup: () => {
+                projectDoc.off("destroy", ownerEnded);
+                getGridRegistry(projectDoc).unobserve(deleted);
+            },
+        };
         gridUndoManagers.set(entry, managed);
-        globalUndoRouter.register(undo);
+        globalUndoRouter.register(undo, {
+            authorize: () => canReplayProjectHistory(projectDoc) && getGridRegistry(projectDoc).get(gridId) === entry,
+        });
     }
 
     return { gridId, entry, components, undo: managed.undo, projectDoc };
@@ -183,6 +208,7 @@ export function destroyGridUndoManager(entry: Y.Map<unknown>): void {
     if (!managed) return;
     if (managed.refs > 0) managed.refs--;
     if (managed.refs > 0) return;
+    managed.cleanup();
     globalUndoRouter.unregister(managed.undo);
     managed.undo.destroy();
     gridUndoManagers.delete(entry);
@@ -422,6 +448,21 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
 /** Grids referencing a given source Table id. */
 export function findGridsBySourceTable(projectDoc: Y.Doc, sourceTableId: string): GridRegistryEntry[] {
     return listGrids(projectDoc).filter(g => g.sourceTableId === sourceTableId);
+}
+
+/** Current-format Grids whose SQL reads the registered Table. */
+export function findGridsByTableDependency(projectDoc: Y.Doc, tableId: string): GridRegistryEntry[] {
+    const table = listTables(projectDoc).find(candidate => candidate.tableId === tableId);
+    const registry = getGridRegistry(projectDoc);
+    return listGrids(projectDoc).filter(grid => {
+        if (!table) return false;
+        const query = String(registry.get(grid.gridId)?.get("query") ?? "");
+        try {
+            return rewriteTableQuerySql(query, new Map()).actualRelationDependencies.includes(table.sqlName);
+        } catch {
+            return false;
+        }
+    });
 }
 
 // Test-only bridge so width E2E specs commit through the supported production

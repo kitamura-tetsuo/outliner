@@ -49,15 +49,11 @@ export interface KanbanDefinitionSeed {
 }
 
 /** Supplied settings for `updateKanbanEntry`: only present keys are touched. */
-export type KanbanUpdates = KanbanDefinitionSeed & {
-    /** Re-point the definition at another Table. Validated by the caller. */
-    sourceTableId?: string;
-};
+export type KanbanUpdates = KanbanDefinitionSeed;
 
 /** Plain-JS copy of a Kanban definition, detached from the Y.Doc. */
 export interface KanbanSettings {
     name: string;
-    sourceTableId: string;
     query: string;
     groupField?: string;
     titleField?: string;
@@ -79,12 +75,6 @@ function assertKanbanQuery(query: unknown): asserts query is string {
 
 function assertKanbanRoleField(field: string, value: unknown): asserts value is string {
     if (typeof value !== "string") throw new Error(`Kanban ${field} must be a string`);
-}
-
-function assertKanbanSourceTableId(sourceTableId: unknown): asserts sourceTableId is string {
-    if (typeof sourceTableId !== "string" || sourceTableId.length === 0) {
-        throw new Error("Kanban sourceTableId must be a non-empty string");
-    }
 }
 
 /** Structural validation for the ordered visible detail-column names. */
@@ -124,7 +114,6 @@ export function assertValidKanbanLaneOrder(value: unknown): asserts value is Kan
 /** Validate every supplied seed/update field before a mutation publishes any part of it. */
 export function validateKanbanFields(fields: KanbanUpdates): void {
     if (fields.name !== undefined) assertKanbanName(fields.name);
-    if (fields.sourceTableId !== undefined) assertKanbanSourceTableId(fields.sourceTableId);
     if (fields.query !== undefined) assertKanbanQuery(fields.query);
     if (fields.groupField !== undefined) assertKanbanRoleField("groupField", fields.groupField);
     if (fields.titleField !== undefined) assertKanbanRoleField("titleField", fields.titleField);
@@ -140,20 +129,18 @@ export function validateKanbanFields(fields: KanbanUpdates): void {
 export function createKanbanEntry(
     projectDoc: Y.Doc,
     kanbanId: string,
-    sourceTableId: string,
+    _sourceTableId: string | undefined,
     options: KanbanDefinitionSeed = {},
 ): void {
     if (typeof kanbanId !== "string" || kanbanId.length === 0) {
         throw new Error("Kanban id must be a non-empty string");
     }
-    assertKanbanSourceTableId(sourceTableId);
     validateKanbanFields(options);
     if (getKanbanRegistry(projectDoc).has(kanbanId)) {
         throw new Error(`Kanban with id ${kanbanId} already exists`);
     }
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
-        entry.set("sourceTableId", sourceTableId);
         entry.set("name", options.name ?? "Kanban");
         if (options.query !== undefined) entry.set("query", options.query);
         if (options.groupField) entry.set("groupField", options.groupField);
@@ -192,7 +179,6 @@ export function readKanbanSettings(entry: Y.Map<unknown>): KanbanSettings {
     const titleField = readRoleField(entry, "titleField");
     return {
         name: String(entry.get("name") ?? "Kanban"),
-        sourceTableId: String(entry.get("sourceTableId") ?? ""),
         query: String(entry.get("query") ?? ""),
         ...(groupField !== undefined ? { groupField } : {}),
         ...(titleField !== undefined ? { titleField } : {}),
@@ -223,7 +209,6 @@ export function willKanbanUpdateChange(entry: Y.Map<unknown>, updates: KanbanUpd
     validateKanbanFields(updates);
     const current = readKanbanSettings(entry);
     if (updates.name !== undefined && updates.name !== current.name) return true;
-    if (updates.sourceTableId !== undefined && updates.sourceTableId !== current.sourceTableId) return true;
     if (updates.query !== undefined && updates.query !== current.query) return true;
     if (updates.groupField !== undefined && (updates.groupField || undefined) !== current.groupField) return true;
     if (updates.titleField !== undefined && (updates.titleField || undefined) !== current.titleField) return true;
@@ -252,9 +237,6 @@ export function applyKanbanUpdates(target: KanbanDefinitionTarget, updates: Kanb
     const current = readKanbanSettings(target.entry);
     target.projectDoc.transact(() => {
         if (updates.name !== undefined && updates.name !== current.name) target.entry.set("name", updates.name);
-        if (updates.sourceTableId !== undefined && updates.sourceTableId !== current.sourceTableId) {
-            target.entry.set("sourceTableId", updates.sourceTableId);
-        }
         if (updates.query !== undefined && updates.query !== current.query) target.entry.set("query", updates.query);
         if (updates.groupField !== undefined) {
             setOrClearRole(target.entry, "groupField", updates.groupField, current.groupField);

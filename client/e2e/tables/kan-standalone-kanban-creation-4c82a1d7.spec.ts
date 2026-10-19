@@ -32,7 +32,6 @@ test(
         expect(await readKanbans(page)).toEqual([{
             id,
             name: "Work board",
-            sourceTableId: fixture.tableId,
             query: TASK_QUERY,
             groupField: "status",
             titleField: "title",

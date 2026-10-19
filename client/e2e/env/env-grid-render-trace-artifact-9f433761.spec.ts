@@ -1,6 +1,13 @@
 /** @feature ENV-9f433761 */
 import fs from "fs/promises";
-import { attachGridRenderTraces, collectGridRenderTraces, expect, test } from "../fixtures/grid-render-trace";
+import {
+    attachGridRenderTraces,
+    collectGridRenderTraces,
+    expect,
+    readClipboardAndRecord,
+    recordGridClipboardDiagnostic,
+    test,
+} from "../fixtures/grid-render-trace";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 
 registerCoverageHooks();
@@ -50,5 +57,39 @@ test.describe("Grid render trace E2E failure artifact", () => {
         await expect(page.getByTestId("demo-page-toolbar")).toBeVisible({ timeout: 60000 });
 
         expect(await collectGridRenderTraces(page)).toEqual([]);
+    });
+
+    test("retains the last invalid pre-copy and clipboard observations when assertions fail", async ({ page }) => {
+        await page.goto("/demo/Welcome");
+        await page.evaluate(() =>
+            (globalThis as any).__gridClipboardDiagnostic = {
+                selection: "unavailable",
+                focus: "unavailable",
+                clipboardText: "unavailable",
+            }
+        );
+        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+        await page.evaluate(() => navigator.clipboard.writeText("Paste below"));
+
+        const invalidPreCopy = { selection: { startItemId: "wrong-item" }, focus: false };
+        await recordGridClipboardDiagnostic(page, invalidPreCopy);
+        let originalFailure: Error | undefined;
+        try {
+            expect(invalidPreCopy.focus).toBe(true);
+        } catch (error) {
+            originalFailure = error as Error;
+        }
+        expect(originalFailure?.message).toContain("toBe(true)");
+
+        try {
+            expect(await readClipboardAndRecord(page)).toContain("expected Grid header");
+        } catch (error) {
+            originalFailure = error as Error;
+        }
+        expect(originalFailure?.message).toContain("expected Grid header");
+        expect(await page.evaluate(() => (globalThis as any).__gridClipboardDiagnostic)).toEqual({
+            ...invalidPreCopy,
+            clipboardText: "Paste below",
+        });
     });
 });

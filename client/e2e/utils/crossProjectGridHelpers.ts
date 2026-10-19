@@ -232,7 +232,8 @@ export async function configureGrid(
     query: string,
     titleLabel: string,
 ): Promise<void> {
-    const view = page.getByTestId("yjs-table-view").nth(viewIndex);
+    const gridId = await page.getByTestId("yjs-table-view").nth(viewIndex).getAttribute("data-grid-id");
+    const view = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
 
     const returnUrl = page.url();
     const schemaHost = await openGridSourceSchema(page, view);
@@ -240,11 +241,20 @@ export async function configureGrid(
     await schemaEditor.waitForReady();
     await schemaEditor.setValue(page, schema);
     await schemaHost.getByTestId("yjs-table-schema-apply").click();
+    const tableId = await page.getByTestId("table-entity-view").getAttribute("data-table-id");
+    const savedSchema = () =>
+        page.evaluate(id => {
+            const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
+            return project.ydoc.getMap("yjsTables").get(id)?.get("doc").getText("schema").toString();
+        }, tableId);
     const warning = schemaHost.getByTestId("yjs-table-schema-warning");
-    if (await warning.isVisible().catch(() => false)) {
-        await schemaHost.getByTestId("yjs-table-schema-confirm").click();
-    }
-    await expect.poll(async () => await schemaEditor.value(), { timeout: 30000 }).toBe(schema);
+    // Schema analysis is asynchronous. Do not leave the Table route before
+    // its real apply/confirmation boundary has settled.
+    await expect.poll(async () => await savedSchema() === schema.trim() || await warning.isVisible(), {
+        timeout: 30000,
+    }).toBe(true);
+    if (await warning.isVisible()) await schemaHost.getByTestId("yjs-table-schema-confirm").click();
+    await expect.poll(savedSchema, { timeout: 30000 }).toBe(schema.trim());
     await page.goto(returnUrl);
     await expect(view).toBeVisible({ timeout: 30000 });
 
@@ -253,6 +263,13 @@ export async function configureGrid(
     }
     const queryEditor = new SqlEditorHelper(view.getByTestId("yjs-table-query-input"));
     await queryEditor.fillAndCommit(page, query);
+    await expect.poll(() =>
+        page.evaluate(id => {
+            const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
+            return project.ydoc.getMap("yjsGrids").get(id)?.get("query");
+        }, gridId)
+    ).toBe(query);
+
     const titleInput = view.getByTestId("yjs-table-label-title");
     await expect(titleInput).toBeVisible({ timeout: 30000 });
     await titleInput.fill(titleLabel);
@@ -375,8 +392,21 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
         // Report the first Grid over each Table as that Table's `ui` so the
         // cross-project assertions keep reading one presentation per Table.
         const gridUiBySourceTable = new Map<string, Record<string, unknown>>();
+        const tableIdBySqlName = new Map<string, string>();
+        project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
+            tableIdBySqlName.set(String(entry.get("sqlName") ?? "").toLowerCase(), id);
+        });
+        const gridSourceTableId = (grid: any): string => {
+            const legacySource = String(grid?.get("sourceTableId") ?? "");
+            if (legacySource) return legacySource;
+            const query = String(grid?.get("query") ?? "");
+            const match = /\bfrom\s+(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|([\w-]+))/i.exec(query);
+            const sqlName = (match?.[1] ?? match?.[2] ?? match?.[3] ?? match?.[4] ?? "").toLowerCase();
+            return tableIdBySqlName.get(sqlName) ?? "";
+        };
+        const gridsById = new Map<string, any>();
         project.ydoc.getMap("yjsGrids").forEach((grid: any) => {
-            const sourceTableId = String(grid.get("sourceTableId") ?? "");
+            const sourceTableId = gridSourceTableId(grid);
             if (!sourceTableId || gridUiBySourceTable.has(sourceTableId)) return;
             const componentsMap = grid.get("components");
             gridUiBySourceTable.set(sourceTableId, {
@@ -385,6 +415,7 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
                 columnOrder: grid.get("columnOrder") ?? [],
             });
         });
+        project.ydoc.getMap("yjsGrids").forEach((grid: any, id: string) => gridsById.set(id, grid));
         const tables: GridTableState[] = [];
         project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
             const doc = entry.get("doc");
@@ -403,7 +434,10 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
         const walk = (items: any) => {
             for (let i = 0; i < items.length; i++) {
                 const item = items.at(i);
-                if (item?.componentType === "yjstable" && item.yjsTableId) hostTableIds.push(item.yjsTableId);
+                if (item?.componentType === "yjstable") {
+                    const tableId = item.yjsTableId || gridSourceTableId(gridsById.get(item.yjsGridId));
+                    if (tableId) hostTableIds.push(tableId);
+                }
                 if (item?.items) walk(item.items);
             }
         };

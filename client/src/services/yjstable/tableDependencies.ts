@@ -13,7 +13,7 @@ import { findKanbanPlacements } from "../objectManager/objectPlacements";
 import { findSchedulesReferencingTable } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { destroyGridUndoManager, findGridsBySourceTable, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
-import { findKanbansBySourceTable, getKanban, getKanbanRegistry, listKanbans } from "./kanbanDocs";
+import { getKanban, getKanbanRegistry, listKanbans } from "./kanbanDocs";
 import { parseIdentifiers } from "./queryAnalysis";
 import { destroyTableUndoManager, getTableRegistry, listTables } from "./tableDocs";
 import { tableDocGuid } from "./tableDocs";
@@ -69,7 +69,7 @@ export function getTableDependencies(project: Project, tableId: string): TableDe
         scheduleReferences: scheduleReferences.map(({ ruleId, ruleName, kind }) => ({ ruleId, ruleName, kind })),
         indirectSqlReferences: [],
         dependentGridIds: findGridsBySourceTable(project.ydoc, tableId).map(g => g.gridId),
-        dependentKanbanIds: findKanbansBySourceTable(project.ydoc, tableId).map(k => k.kanbanId),
+        dependentKanbanIds: [],
     };
 
     const targetSqlName = listTables(project.ydoc).find(t => t.tableId === tableId)?.sqlName;

@@ -906,12 +906,10 @@ export function registerDemoTables(
         entry.set("sqlName", template.sqlName);
         entry.set("doc", new Y.Doc({ guid: `demo--${slug}--table--${template.tableId}`, autoLoad: true }));
 
-        // One Grid per demo Table, seeded alongside it. Outline items bind to
-        // this Grid; the legacy source link identifies its browser, while Add
-        // row resolves the effective supplier from this current query.
+        // One primary-independent Grid per demo Table, seeded alongside it.
+        // The SELECT resolves the Table by its current registered SQL name.
         const gridId = demoGridIdFor(template.tableId);
         const gridEntry = new Y.Map<unknown>();
-        gridEntry.set("sourceTableId", template.tableId);
         gridEntry.set("name", template.name);
         gridEntry.set("query", template.query);
         gridEntry.set("sqlAliasPolicyVersion", 1);
@@ -933,7 +931,7 @@ export function registerDemoTables(
         // Kanban surface, editable card controls, and lane moves over the same real Table records and SQL engine.
         if (template.sqlName === "tasks") {
             const kanban = new Y.Map<unknown>();
-            kanban.set("sourceTableId", template.tableId);
+            // The demo board deliberately persists no primary binding: its SQL dependency is authoritative.
             kanban.set("name", "Tasks by status");
             kanban.set("query", "SELECT id, title, status, priority, due_date FROM tasks ORDER BY priority, id");
             kanban.set("groupField", "status");
@@ -945,7 +943,6 @@ export function registerDemoTables(
 
         for (const extra of template.extraGrids ?? []) {
             const extraEntry = new Y.Map<unknown>();
-            extraEntry.set("sourceTableId", template.tableId);
             extraEntry.set("name", extra.name);
             extraEntry.set("query", extra.query);
             extraEntry.set("sqlAliasPolicyVersion", 1);

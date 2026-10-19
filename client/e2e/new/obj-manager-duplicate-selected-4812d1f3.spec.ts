@@ -95,21 +95,21 @@ test.describe("DUP-6799a6e2: individual Grid Duplicate opens Object Manager pres
             await expect(rowByNameAndType(page, "Board Calendar", "calendar")).toHaveCount(2);
 
             // The copied Grid's source-table reference was rewritten to the copied Table.
-            const { copiedGridSourceId, copiedTableIds } = await page.evaluate(() => {
+            const { copiedGridQuery, copiedTableSqlNames } = await page.evaluate(() => {
                 // eslint-disable-next-line no-restricted-globals
                 const client = (window as any).__YJS_STORE__?.yjsClient;
                 const project = client?.getProject();
-                const grids: { name: string; sourceTableId: string; }[] = [];
+                const grids: { name: string; query: string; }[] = [];
                 project?.ydoc.getMap("yjsGrids").forEach((entry: any) => {
-                    grids.push({ name: entry.get("name"), sourceTableId: entry.get("sourceTableId") });
+                    grids.push({ name: entry.get("name"), query: entry.get("query") });
                 });
                 const tables: string[] = [];
-                project?.ydoc.getMap("yjsTables").forEach((_val: any, key: string) => tables.push(key));
+                project?.ydoc.getMap("yjsTables").forEach((entry: any) => tables.push(entry.get("sqlName")));
                 const copy = grids.find(g => g.name === "Board copy");
-                return { copiedGridSourceId: copy?.sourceTableId, copiedTableIds: tables };
+                return { copiedGridQuery: copy?.query, copiedTableSqlNames: tables };
             });
-            expect(copiedGridSourceId).toBeTruthy();
-            expect(copiedTableIds).toContain(copiedGridSourceId);
+            expect(copiedGridQuery).toBeTruthy();
+            expect(copiedTableSqlNames.some(sqlName => copiedGridQuery!.includes(sqlName))).toBe(true);
         },
     );
 });

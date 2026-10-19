@@ -1,9 +1,8 @@
 // Binding between an outliner item and the Grid it embeds.
 //
-// The item's node value (Y.Map) stores the Grid id under "yjsGridId". A Grid
-// definition in turn references a source Table (via its `sourceTableId`), so
-// the item -> Grid -> Table chain replaces the old direct item -> Table
-// binding: several Grids can now share the same Table without duplicating it.
+// The item's node value (Y.Map) stores its independent Grid id under
+// "yjsGridId". The Grid owns its query and presentation; completed SQL evidence
+// identifies its dependencies and physical write sources.
 //
 // Both the app-schema and the leaner yjs-schema Item classes expose the same
 // (ydoc, tree, key) triple, so the binding is read/written through the tree
@@ -23,11 +22,12 @@ const LEGACY_TABLE_ID_FIELD = "yjsTableId";
 
 function nodeValue(
     item: ItemLike,
-): { get?: (k: string) => unknown; set?: (k: string, v: unknown) => void; } | undefined {
+): { get?: (k: string) => unknown; set?: (k: string, v: unknown) => void; delete?: (k: string) => void; } | undefined {
     try {
         return item.tree.getNodeValueFromKey(item.key) as {
             get?: (k: string) => unknown;
             set?: (k: string, v: unknown) => void;
+            delete?: (k: string) => void;
         };
     } catch {
         return undefined;
@@ -44,12 +44,9 @@ export function setItemGridId(item: ItemLike, gridId: string | undefined): void 
 }
 
 /**
- * Bind an item to a Grid and record its source Table id at the same time.
- *
- * `yjsGridId` is the authoritative binding the mounted view reads; `yjsTableId`
- * is kept in lockstep as provenance so the Table-keyed clipboard/export/cut
- * pipeline keeps recognizing the block as a component. Passing `undefined`
- * clears both fields (detach).
+ * Bind an item to a Grid. Current creators pass no Table hint and remove the
+ * old Table field instead of persisting an undefined value. Grid rendering and
+ * mutation authority use the live Grid binding and completed SQL evidence.
  */
 export function bindItemToGrid(
     item: ItemLike,
@@ -58,7 +55,8 @@ export function bindItemToGrid(
 ): void {
     const value = nodeValue(item);
     value?.set?.(GRID_ID_FIELD, gridId);
-    value?.set?.(LEGACY_TABLE_ID_FIELD, gridId ? sourceTableId : undefined);
+    if (gridId && sourceTableId) value?.set?.(LEGACY_TABLE_ID_FIELD, sourceTableId);
+    else value?.delete?.(LEGACY_TABLE_ID_FIELD);
 }
 
 /**

@@ -67,7 +67,7 @@ describe("Kanban placement and reference lifecycle", () => {
         expect(getTableDependencies(project, unrelated).indirectSqlReferences).toEqual([]);
     });
 
-    it("tracks primary and parsed query dependencies and applies both Table policies", () => {
+    it("tracks only parsed query dependencies and preserves SQL-dependent Kanbans for both Table policies", () => {
         const project = Project.createInstance("kanban-table-policy");
         const a = createTable(project.ydoc, "A", "table_a");
         const b = createTable(project.ydoc, "B", "table_b");
@@ -77,10 +77,13 @@ describe("Kanban placement and reference lifecycle", () => {
             query: "SELECT * FROM table_a -- table_b in a comment\nWHERE 'table_b' = 'table_b'",
         });
         const deps = getTableDependencies(project, a);
-        expect(deps.dependentKanbanIds).toEqual([direct]);
-        expect(deps.indirectSqlReferences).toContainEqual({ type: "kanban", name: "Kanban" });
+        expect(deps.dependentKanbanIds).toEqual([]);
+        expect(deps.indirectSqlReferences).toEqual([
+            { type: "kanban", name: "Kanban" },
+            { type: "kanban", name: "Kanban" },
+        ]);
         expect(buildObjectDependencyGraph(project.ydoc).dependenciesOf({ type: "kanban", id: indirect }))
-            .toEqual(expect.arrayContaining([{ type: "table", id: a }, { type: "table", id: b }]));
+            .toEqual([{ type: "table", id: a }]);
 
         expect(removeTableWithPolicy(project, a, "keep-references")).toBeDefined();
         expect(listKanbans(project.ydoc).map(board => board.kanbanId)).toEqual(
@@ -91,6 +94,6 @@ describe("Kanban placement and reference lifecycle", () => {
         const source = createTable(project2.ydoc, "A", "table_a");
         const direct2 = createKanban(project2.ydoc, source, { kanbanId: "direct" });
         expect(removeTableWithPolicy(project2, source, "remove-direct-references")).toBeDefined();
-        expect(getKanban(project2.ydoc, direct2)).toBeUndefined();
+        expect(getKanban(project2.ydoc, direct2)).toBeDefined();
     });
 });

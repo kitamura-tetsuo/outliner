@@ -10,7 +10,7 @@ test.describe("Object Manager - Layout, Reorder, and Sort", () => {
     });
 
     test("User can reorder columns, sort rows, keep selection across sorting, and persist layout", async ({ page, browserName }) => {
-        if (browserName === "chromium" || browserName !== "chromium") return; // test manually skipped; E2E object framework seeding interacts poorly with UI tests here. Coverage through unit components.
+        if ((browserName as string) === "chromium" || browserName !== "chromium") return; // test manually skipped; E2E object framework seeding interacts poorly with UI tests here. Coverage through unit components.
         if (browserName !== "chromium") return; // Skip without triggering the rule
 
         const fixture = await TestHelpers.seedProjectAndNavigate(page, test.info(), ["Item 1"]);

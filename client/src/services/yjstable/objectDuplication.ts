@@ -290,7 +290,9 @@ export async function materializeDuplicationPlan(
             const sourceGrid = listGrids(source).find(grid => grid.gridId === object.id);
             const handles = getGridHandles(source, object.id);
             if (!sourceGrid || !handles) throw new Error(`Grid "${object.id}" no longer exists`);
-            const copiedTableId = idMap.get(key({ type: "table", id: sourceGrid.sourceTableId }));
+            const copiedTableId = sourceGrid.sourceTableId
+                ? idMap.get(key({ type: "table", id: sourceGrid.sourceTableId }))
+                : undefined;
             const targetTableId = copiedTableId ?? (sameProject ? sourceGrid.sourceTableId : "");
             if (!targetTableId && sourceGrid.sourceTableId) removedReferenceCount++;
             // Null-prototype so an exact result-column name such as

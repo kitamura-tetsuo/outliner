@@ -1,8 +1,10 @@
 import type * as Y from "yjs";
+import { ITEMS_RELATION_COLUMNS, ITEMS_RELATION_NAME } from "./itemsRelation";
 import type { ProjectQueryProvenance, ProvenanceRelation } from "./projectQueryProvenance";
 import { isProjectQueryProvenanceCurrent } from "./projectQueryProvenance";
 import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelectSession";
 import type { TableColumnSchema } from "./schemaIntrospection";
+import { columnKindFromDataType } from "./schemaIntrospection";
 import { getTableSqlName } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
 
@@ -90,7 +92,14 @@ export function createGridMetadataResolver(options: {
             const schemas = new Map<string, Map<string, TableColumnSchema>>();
             let missing = false;
             for (const source of provenance.suppliers) {
-                if (source.kind !== "table") continue;
+                if (source.kind === "system") {
+                    if (source.sqlName !== ITEMS_RELATION_NAME) {
+                        missing = true;
+                        continue;
+                    }
+                    schemas.set(sourceKey(source), outlineItemsFields());
+                    continue;
+                }
                 if (getTableSqlName(options.projectDoc, source.id) !== source.sqlName) {
                     missing = true;
                     continue;
@@ -143,6 +152,38 @@ export function createGridMetadataResolver(options: {
             release();
         },
     };
+}
+
+const OUTLINE_ITEMS_DATA_TYPES: Record<(typeof ITEMS_RELATION_COLUMNS)[number], string> = {
+    id: "text",
+    page_id: "text",
+    parent_id: "text",
+    text: "text",
+    due: "timestamp with time zone",
+    done: "boolean",
+    tags: "text",
+    all_day: "boolean",
+    start_on: "date",
+    start_at: "timestamp with time zone",
+    duration: "interval",
+    rrule: "text",
+    recurrence_dtstart: "text",
+    recurrence_timezone: "text",
+    recurrence_parent_id: "text",
+    recurrence_occurrence_id: "text",
+};
+
+function outlineItemsFields(): Map<string, TableColumnSchema> {
+    return new Map(ITEMS_RELATION_COLUMNS.map(name => {
+        const dataType = OUTLINE_ITEMS_DATA_TYPES[name];
+        return [name, {
+            name,
+            dataType,
+            kind: columnKindFromDataType(dataType),
+            isNullable: name !== "id",
+            isPrimaryKey: name === "id",
+        }];
+    }));
 }
 
 function current(

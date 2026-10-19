@@ -215,9 +215,7 @@ describe("Demo ENUM declaration-order example", function() {
             const grids = project.ydoc.getMap("yjsGrids");
             const gridEntry = grids.get(expectedGridId) as Y.Map<unknown> | undefined;
             expect(gridEntry, `${slug}: ENUM Grid is registered`).to.not.equal(undefined);
-            expect(gridEntry!.get("sourceTableId"), `${slug}: Grid reads the ENUM table`).to.equal(
-                DEMO_ENUM_PRIORITIES_TABLE_ID,
-            );
+            expect(gridEntry!.has("sourceTableId"), `${slug}: Grid has no primary Table owner`).to.equal(false);
             expect(gridEntry!.get("query"), `${slug}: Grid keeps the ordinary ORDER BY`).to.equal(
                 "SELECT id, title, priority FROM enum_priorities ORDER BY priority, id",
             );
@@ -298,8 +296,9 @@ describe("Demo ENUM declaration-order example", function() {
                 "demo-tasks-kanban",
             ]);
             const board = kanbans.get("demo-tasks-kanban") as Y.Map<unknown>;
-            expect(board.get("sourceTableId"), `${slug}: board reads Tasks`).to.equal(
-                DEMO_TASKS_TABLE_ID,
+            expect(board.has("sourceTableId"), `${slug}: board has no primary binding`).to.equal(false);
+            expect(board.get("query"), `${slug}: board reads Tasks through SQL`).to.equal(
+                "SELECT id, title, status, priority, due_date FROM tasks ORDER BY priority, id",
             );
             expect(board.get("name"), `${slug}: board name`).to.equal("Tasks by status");
             expect(board.get("groupField"), `${slug}: board groups by status`).to.equal("status");

@@ -10,7 +10,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 test(
-    "a mismatched saved Grid refuses ordinary edits on embedded and standalone surfaces",
+    "a saved Grid writes its verified actual source on embedded and standalone surfaces",
     async ({ page }, testInfo) => {
         test.setTimeout(240000);
         const fixture = await seedOverlappingTableFixture(page, testInfo);
@@ -18,44 +18,53 @@ test(
 
         const gridId = await fixture.gridA.getAttribute("data-grid-id");
         expect(gridId).toBeTruthy();
-        // Reload after fixture configuration so a refused edit starts from a
-        // clean undo history while retaining the persisted mismatched query.
-        await page.reload();
-        await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toContainText(
-            "not the Grid's source Table",
-            { timeout: 30000 },
-        );
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
-        const before = await snapshotProject(page);
-        const cell = fixture.gridA.getByTestId("yjs-table-grid")
-            .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
+        const embedded = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+        await expect(embedded.getByTestId("grid-readonly-reason")).toHaveCount(0);
+        await snapshotProject(page);
+        // Address the editable cell by its durable record identity. A row
+        // text filter stops matching while CellComponent replaces the value
+        // button with an input, which would make the editor locator disappear.
+        const cell = embedded.getByTestId("yjs-table-grid")
+            .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
-        await expect(cell.locator("button.cell-value")).toHaveAttribute("aria-disabled", "true");
-        await cell.click();
-        await page.keyboard.press("Enter");
-        await expect(cell.locator("input.cell-input")).toHaveCount(0);
-        expect(await snapshotProject(page)).toEqual(before);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
+        await cell.locator("button.cell-value").click();
+        const embeddedEditor = cell.locator("input.cell-input");
+        await expect(embeddedEditor).toBeVisible({ timeout: 30000 });
+        await embeddedEditor.fill("Embedded B edit");
+        await embeddedEditor.press("Enter");
+        await expect(cell.locator("button.cell-value")).toHaveText("Embedded B edit");
+        await expect.poll(async () => {
+            const after = await snapshotProject(page);
+            return {
+                a: after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title,
+                b: after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title,
+            };
+        }).toEqual({ a: "Value from A", b: "Embedded B edit" });
 
-        // Read-only results remain selectable/copyable even though they have no
-        // mutation authority.
+        // Actual-source results retain the ordinary selection/copy workflow.
         await page.keyboard.press("Control+c");
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Value from B");
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Embedded B edit");
 
-        await page.goto(`/${encodeURIComponent(fixture.projectName)}/-/grids/${gridId}`);
-        await page.reload();
+        const show = page.getByRole("button", { name: "Show sidebar" });
+        if (await show.isVisible()) await show.click();
+        await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+        await page.getByTestId(`object-row-${gridId}`).locator('[data-testid^="object-open-"]').click();
         const standalone = page.getByTestId("yjs-table-view");
-        await expect(standalone.getByTestId("grid-readonly-reason")).toContainText("not the Grid's source Table", {
-            timeout: 30000,
-        });
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
-        const standaloneBefore = await snapshotProject(page);
+        await expect(standalone.getByTestId("grid-readonly-reason")).toHaveCount(0);
         const standaloneCell = standalone.getByTestId("yjs-table-grid")
-            .locator("tbody tr").filter({ hasText: "Value from B" }).locator('td[data-col="title"]');
-        await standaloneCell.click();
-        await page.keyboard.press("Enter");
-        await expect(standaloneCell.locator("input.cell-input")).toHaveCount(0);
-        expect(await snapshotProject(page)).toEqual(standaloneBefore);
-        await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
+            .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
+        await standaloneCell.locator("button.cell-value").click();
+        const standaloneEditor = standaloneCell.locator("input.cell-input");
+        await expect(standaloneEditor).toBeVisible({ timeout: 30000 });
+        await standaloneEditor.fill("Standalone B edit");
+        await standaloneEditor.press("Enter");
+        await expect(standaloneCell.locator("button.cell-value")).toHaveText("Standalone B edit");
+        await expect.poll(async () => {
+            const after = await snapshotProject(page);
+            return {
+                a: after.tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]?.title,
+                b: after.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId]?.title,
+            };
+        }).toEqual({ a: "Value from A", b: "Standalone B edit" });
     },
 );

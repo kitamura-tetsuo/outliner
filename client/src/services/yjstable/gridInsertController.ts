@@ -29,6 +29,9 @@ export function createGridInsertController(options: {
     gridEntry: Y.Map<unknown>;
     query: string;
     connect?: TableDocConnector;
+    canWrite?: () => boolean;
+    /** Consumer history boundary, after final validation and before the INSERT effect. */
+    onBeforeEffects?: () => void;
 }): GridInsertController {
     const select = createProjectSelectSession({
         projectDoc: options.projectDoc,
@@ -111,6 +114,7 @@ export function createGridInsertController(options: {
             || !provider.capabilities.insert || provider.capabilities.insert.requiresDestination
         ) return refused("stale", "The query, destination, schema, or permission changed before insertion");
         try {
+            options.onBeforeEffects?.();
             await provider.applyWrite({ op: "INSERT", values });
             return { status: "inserted", targetId: target.id, targetSqlName: target.sqlName };
         } catch (error) {
@@ -124,7 +128,7 @@ export function createGridInsertController(options: {
     }
 
     function stale(): boolean {
-        return disposed || query !== String(options.gridEntry.get("query") ?? "");
+        return disposed || options.canWrite?.() === false || query !== String(options.gridEntry.get("query") ?? "");
     }
 
     return {

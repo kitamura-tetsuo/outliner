@@ -65,6 +65,38 @@ describe("item clipboard", () => {
         expect(clipboardPlainText(decoded!)).toBe("note\n\n");
     });
 
+    it("preserves a new-format Grid host without durable Table ownership", () => {
+        const host = item("", { componentType: "yjstable", yjsGridId: "grid-1" });
+
+        const sameProject = deserializeClipboardItems(serializeClipboardItems(
+            "project-a",
+            [{ item: host, depth: 0 }],
+        ));
+        expect(sameProject?.items).toEqual([
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid-1" },
+        ]);
+
+        const crossProject = deserializeClipboardItems(serializeClipboardItems(
+            "project-a",
+            [{ item: host, depth: 0 }],
+            { "table-1": tableSnapshot() },
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { "grid-1": "table-1" },
+        ));
+        expect(crossProject?.items).toEqual([
+            {
+                text: "",
+                depth: 0,
+                componentType: "yjstable",
+                yjsTableId: "table-1",
+                yjsGridId: "grid-1",
+            },
+        ]);
+    });
+
     it("round-trips a deduplicated version 2 Grid structure snapshot", () => {
         const snapshot = tableSnapshot();
         const encoded = serializeClipboardItems(

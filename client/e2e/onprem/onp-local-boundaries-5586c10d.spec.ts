@@ -66,6 +66,34 @@ test.describe("production on-premises local boundaries", () => {
         await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
     });
 
+    test("settles an in-flight response before backend restart", async ({ page }) => {
+        await login(page, stack);
+        stack.clearTransportEvents();
+        const release = stack.delayNextSessionBody();
+        void page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+        const headers = await stack.waitForTransportEvent("http-headers", "/api/local-auth/session");
+        await stack.waitForDelayedSessionBody();
+
+        await stack.restart();
+        const cancellation = await stack.waitForTransportEvent("http-lifecycle-cancel", "/api/local-auth/session");
+        expect(cancellation.id).toBe(headers.id);
+        expect(stack.transportSnapshot().some(event => event.id === headers.id && event.kind === "http-upstream-error"))
+            .toBe(false);
+        release();
+        await page.goto(stack.origin);
+        await expect(page.getByRole("button", { name: "Login", exact: true })).toBeVisible();
+        await login(page, stack);
+        await expect(page.getByTestId("login-status-indicator")).toContainText("Local User");
+    });
+
+    test("returns 503 when a fresh request cannot reach the backend", async ({ request }) => {
+        await stack.shutdownBackend();
+        const response = await request.get(`${stack.origin}/api/deployment`);
+        expect(response.status()).toBe(503);
+        expect(await response.text()).toBe("Backend unavailable");
+        await stack.restart();
+    });
+
     for (const demo of ["demo", "demo-ja"]) {
         test(`blocks ${demo} without reseeding or opening a document`, async ({ page }) => {
             const forbidden: string[] = [];

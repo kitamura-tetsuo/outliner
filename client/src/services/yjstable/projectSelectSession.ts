@@ -14,7 +14,7 @@ import { projectSchemaName } from "./sqlNames";
 import { getTableRegistry } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
 import { rewriteTableQuerySql } from "./tableSqlRewrite";
-import { executeGridQuery, REQUERY_DEBOUNCE_MS } from "./tableSyncAdapter";
+import { executeGridQuery, type RelationRegistryPort, REQUERY_DEBOUNCE_MS } from "./tableSyncAdapter";
 
 const logger = getLogger("projectSelectSession");
 
@@ -66,6 +66,7 @@ export interface ProjectSelectSession {
     subscribe(listener: (state: ProjectSelectState) => void): () => void;
     setQuery(query: string): void;
     runNow(): Promise<ProjectSelectEvidence | undefined>;
+    resolveRelation(sqlName: string): Promise<RelationProvider | undefined>;
     dispose(): void;
 }
 
@@ -75,12 +76,14 @@ export function createProjectSelectSession(options: {
     query: string;
     requireExplicitAliases?: boolean;
     connect?: TableDocConnector;
+    registry?: RelationRegistryPort;
 }): ProjectSelectSession {
     const engine = createTableEngineSession(options);
     return new ProjectSelectSessionImpl(
         options.projectDoc,
         projectSchemaName(options.projectId),
         engine,
+        options.registry,
         options.query,
         options.requireExplicitAliases ?? true,
     );
@@ -105,6 +108,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         private readonly projectDoc: Y.Doc,
         private readonly pgSchema: string,
         private readonly engine: TableEngineSession,
+        private readonly registry: RelationRegistryPort | undefined,
         query: string,
         private readonly requireExplicitAliases: boolean,
     ) {
@@ -168,6 +172,10 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
             this.timer = undefined;
             void this.runNow();
         }, REQUERY_DEBOUNCE_MS);
+    }
+
+    resolveRelation(sqlName: string): Promise<RelationProvider | undefined> {
+        return this.registry?.resolveRelation?.(sqlName) ?? this.engine.resolveRelation(sqlName);
     }
 
     async runNow(): Promise<ProjectSelectEvidence | undefined> {
@@ -276,7 +284,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
             this.observeDependency(name, existing);
             return existing;
         }
-        const provider = await this.engine.resolveRelation(name);
+        const provider = await this.resolveRelation(name);
         if (!provider) return undefined;
         this.dependencyProviders.set(name, provider);
         this.observeDependency(name, provider);

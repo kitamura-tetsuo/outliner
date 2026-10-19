@@ -15,6 +15,7 @@ let { initial }: Props = $props();
 
 let chartDiv: HTMLDivElement;
 let chart: echarts.ECharts | undefined;
+let latestResult: TableQueryResult | undefined;
 let hasData = $state(false);
 let ariaLabel = $state("");
 
@@ -28,10 +29,11 @@ export function getImage(): string | undefined {
 }
 
 export function update(result: TableQueryResult) {
-    if (!chart) return;
+    latestResult = result;
     hasData = result.rows.length > 0;
     if (!hasData) {
-        chart.clear();
+        ariaLabel = "";
+        chart?.clear();
         return;
     }
     const firstRow = result.rows[0];
@@ -57,7 +59,7 @@ export function update(result: TableQueryResult) {
 
     ariaLabel = `Bar chart of ${numericColumns.join(", ")} by ${labelColumn || "index"}: ${result.rows.map((r, i) => `${labelColumn ? r[labelColumn] : i} (${numericColumns.map((c) => r[c]).join(", ")})`).join(", ")}`;
 
-    chart.setOption({
+    chart?.setOption({
         aria: {
             enabled: true,
             decal: {
@@ -81,7 +83,8 @@ export function update(result: TableQueryResult) {
 
 onMount(() => {
     chart = echarts.init(chartDiv);
-    if (initial) update(initial);
+    const result = latestResult ?? initial;
+    if (result) update(result);
 });
 
 onDestroy(() => {
@@ -93,10 +96,10 @@ onDestroy(() => {
 <div
     class="table-chart-panel"
     data-testid="yjs-table-chart"
-    bind:this={chartDiv}
     role="img"
     aria-label={ariaLabel}
 >
+    <div class="chart-canvas" bind:this={chartDiv}></div>
     {#if !hasData}
         <p class="no-data">No data</p>
     {/if}
@@ -107,6 +110,11 @@ onDestroy(() => {
     width: 100%;
     height: 300px;
     position: relative;
+}
+
+.chart-canvas {
+    width: 100%;
+    height: 100%;
 }
 
 .no-data {

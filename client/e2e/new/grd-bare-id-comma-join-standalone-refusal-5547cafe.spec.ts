@@ -16,16 +16,21 @@ test(
 
         // Commit the comma-joined SELECT through the real Query (SELECT)
         // editor. The cross join combines both Tables even though its first
-        // source is the Grid's own Table (issue #5547).
+        // source is the Grid's initial SQL supplier (issue #5547).
         const commaQuery =
             `SELECT a.id, a.title, a.done FROM ${fixture.tableA.sqlName} AS a, ${fixture.tableB.sqlName} AS b`;
         const queryEditor = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
         await queryEditor.waitForReady();
         await queryEditor.fillAndCommit(page, commaQuery);
-        await expect.poll(async () => {
-            const persisted = await snapshotProject(page);
-            return persisted.tables.find(table => table.id === fixture.tableA.id)?.ui.query;
-        }, { timeout: 30000 }).toBe(commaQuery);
+        const savedQuery = () =>
+            page.evaluate(
+                id =>
+                    (globalThis as any).__YJS_STORE__.yjsClient.getProject().ydoc.getMap("yjsGrids").get(id)?.get(
+                        "query",
+                    ),
+                gridId,
+            );
+        await expect.poll(savedQuery).toBe(commaQuery);
 
         // Reload so a refused edit starts from a clean undo history while
         // retaining the persisted comma-joined query.
@@ -35,7 +40,7 @@ test(
             timeout: 30000,
         });
         await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toContainText(
-            /multiple sources|several tables/,
+            /A supplier branch must read exactly one plain relation/,
             { timeout: 30000 },
         );
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
@@ -57,9 +62,8 @@ test(
         await page.keyboard.press("Delete");
         expect(await snapshotProject(page)).toEqual(before);
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
-        // Neither the saved query nor the source binding moved.
-        expect((await snapshotProject(page)).tables.find(table => table.id === fixture.tableA.id)?.ui.query)
-            .toBe(commaQuery);
+        // The saved Grid SQL remains unchanged.
+        expect(await savedQuery()).toBe(commaQuery);
 
         // The actual standalone surface renders the same saved Grid through
         // GridDetailView: it must refuse the same way with its own handoff.
@@ -70,7 +74,7 @@ test(
             timeout: 30000,
         });
         await expect(standalone.getByTestId("grid-readonly-reason")).toContainText(
-            /multiple sources|several tables/,
+            /A supplier branch must read exactly one plain relation/,
             { timeout: 30000 },
         );
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
@@ -85,8 +89,6 @@ test(
         await page.keyboard.press("Delete");
         expect(await snapshotProject(page)).toEqual(standaloneBefore);
         await expect(page.getByTestId("toolbar-undo")).toBeDisabled();
-        expect(
-            (await snapshotProject(page)).tables.find(table => table.id === fixture.tableA.id)?.ui.query,
-        ).toBe(commaQuery);
+        expect(await savedQuery()).toBe(commaQuery);
     },
 );

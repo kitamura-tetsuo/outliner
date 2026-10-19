@@ -1,6 +1,6 @@
 /** @feature KAN-5a45c9e1 */
 import { expect, test } from "@playwright/test";
-import { readGridProjectState } from "../utils/crossProjectGridHelpers";
+import { readGridProjectState, setCellValue } from "../utils/crossProjectGridHelpers";
 import {
     configureKanbanThroughUi,
     createKanbanThroughUi,
@@ -90,3 +90,29 @@ test(
         await expect(page.locator("article.card").filter({ hasText: "Alpha edited" })).toBeVisible({ timeout: 30000 });
     },
 );
+
+test("refuses a same-source UNION occurrence whose result column has conflicting physical routes", async ({
+    page,
+}, info) => {
+    test.setTimeout(180000);
+    const fixture = await createSourceThroughUi(page, info);
+    await setCellValue(page, 0, fixture.recordIds[0], "detail", "Alpha");
+    await openKanbanList(page, fixture.projectName);
+    await createKanbanThroughUi(page, "Ambiguous routes", fixture.tableId);
+    await configureKanbanThroughUi(page, {
+        query: "SELECT 'tasks' AS source_kind, id AS source_id, title AS shown, 'first' AS lane FROM tasks "
+            + "UNION ALL SELECT 'tasks', id, detail, 'second' FROM tasks",
+        group: "lane",
+        title: "shown",
+    });
+
+    const secondLane = page.locator("section.lane").filter({ has: page.getByRole("heading", { name: /second/ }) });
+    const occurrence = secondLane.locator("article.card").filter({ hasText: "Alpha" });
+    await occurrence.getByRole("button", { name: "Edit shown" }).click();
+
+    await expect(page.getByTestId("kanban-operation-message")).toContainText("not currently writable");
+    await expect(occurrence.getByRole("textbox", { name: "Edit shown" })).toHaveCount(0);
+    const state = await readGridProjectState(page);
+    expect(recordValue(state, fixture.tableId, fixture.recordIds[0], "title")).toBe("Alpha");
+    expect(recordValue(state, fixture.tableId, fixture.recordIds[0], "detail")).toBe("Alpha");
+});

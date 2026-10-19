@@ -22,6 +22,7 @@ export interface OverlappingTableFixture {
     tableA: GridTableState;
     tableB: GridTableState;
     gridA: Locator;
+    gridB: Locator;
 }
 
 function gridForSqlName(page: Page, sqlName: string): Locator {
@@ -45,6 +46,9 @@ export async function seedOverlappingTableFixture(
     const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Grid provenance anchor"]);
     await createBlankGrid(page, "Table A", "table_a");
     await configureGrid(page, 0, SCHEMA, QUERY_A, "Title");
+    // This fixture exercises selection and typed replacement on `done`; the
+    // shared configure helper hides it for width/clipboard fixtures.
+    await page.getByTestId("yjs-table-view").first().getByTestId("yjs-table-hidden-done").check();
     await addSourceRecord(page);
 
     let state = await readGridProjectState(page);
@@ -62,7 +66,9 @@ export async function seedOverlappingTableFixture(
     const tableB = state.tables.find(table => table.id !== originalA.id)!;
     expect(Object.keys(tableB.data)).toEqual([recordId]);
 
-    const gridB = gridForSqlName(page, tableB.sqlName);
+    const gridBId = await gridForSqlName(page, tableB.sqlName).getAttribute("data-grid-id");
+    expect(gridBId).toBeTruthy();
+    const gridB = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridBId}"]`);
     const bIndex = await page.getByTestId("yjs-table-view").all().then(async views => {
         for (let index = 0; index < views.length; index++) {
             if (await views[index].getAttribute("data-grid-id") === await gridB.getAttribute("data-grid-id")) {
@@ -73,25 +79,40 @@ export async function seedOverlappingTableFixture(
     });
     await setCellValue(page, bIndex, recordId, "title", "Value from B");
 
-    return { projectName, recordId, tableA, tableB, gridA: gridForSqlName(page, tableA.sqlName) };
+    const gridAId = await gridForSqlName(page, tableA.sqlName).getAttribute("data-grid-id");
+    expect(gridAId).toBeTruthy();
+    const gridA = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridAId}"]`);
+    return { projectName, recordId, tableA, tableB, gridA, gridB };
 }
 
 export async function pointGridAToTableB(page: Page, fixture: OverlappingTableFixture): Promise<void> {
+    const gridId = await fixture.gridA.getAttribute("data-grid-id");
+    expect(gridId).toBeTruthy();
+    fixture.gridA = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
+    const query = `SELECT id, title, done FROM ${fixture.tableB.sqlName}`;
     const queryEditor = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
-    await queryEditor.fillAndCommit(
-        page,
-        `SELECT id, title, done FROM ${fixture.tableB.sqlName}`,
-    );
+    await queryEditor.fillAndCommit(page, query);
+    await expect.poll(() =>
+        page.evaluate(id => {
+            const project = (globalThis as any).__YJS_STORE__?.yjsClient?.getProject();
+            return project?.ydoc.getMap("yjsGrids").get(id)?.get("query");
+        }, gridId)
+    ).toBe(query);
     const grid = fixture.gridA.getByTestId("yjs-table-grid");
-    // A refused result deliberately withholds a writable recordId from its
-    // cells. Locate the displayed B row by its distinguishable value instead
-    // of assuming that read-only DOM carries write-addressing metadata.
     await expect(grid.locator("tbody tr").filter({ hasText: "Value from B" })).toBeVisible({
         timeout: 30000,
     });
-    await expect(grid.getByTestId("grid-readonly-reason")).toContainText("not the Grid's source Table");
+    await expect(grid.getByTestId("grid-readonly-reason")).toHaveCount(0);
 }
 
 export async function snapshotProject(page: Page): Promise<GridProjectState> {
+    await expect.poll(
+        () =>
+            page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
+                return Boolean((window as any).__YJS_STORE__?.yjsClient?.getProject()?.ydoc);
+            }),
+        { timeout: 30000 },
+    ).toBe(true);
     return await readGridProjectState(page);
 }

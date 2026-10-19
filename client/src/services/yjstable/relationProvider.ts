@@ -88,6 +88,8 @@ export class RelationWriteError extends Error {
     }
 }
 
+import type { ParsedTableSchema } from "./schemaIntrospection";
+
 export interface RelationProvider {
     /**
      * The SQL name under which the relation is currently materialized, or ""
@@ -95,6 +97,8 @@ export interface RelationProvider {
      */
     readonly sqlName: string;
     readonly capabilities: RelationCapabilities;
+    /** Current physical schema metadata when this provider is a Table. */
+    readonly schema?: ParsedTableSchema;
     /** Stable source description for result provenance; it grants no write authority. */
     readonly evidence?: RelationEvidence;
     /**
@@ -111,10 +115,26 @@ export interface RelationProvider {
      * that live provider whether the concrete target still exists.
      */
     assertExistingRowWriteAllowed?(write: Extract<RelationWrite, { op: "UPDATE" | "DELETE"; }>): void;
+    /**
+     * Monotonic source-local evidence for a particular existing-row field.
+     * Unlike the current value or schema text, this changes even when a peer
+     * changes a field/schema away and back before a query refresh observes it.
+     */
+    existingRowWriteRevision?(rowId: string, column: string): string;
     /** Apply a write back to the Yjs structure that owns the row. */
     applyWrite(write: RelationWrite): Promise<void>;
+    /**
+     * Apply an already validated same-source batch in one source-local
+     * transaction. The applied count remains truthful if a later write fails.
+     */
+    applyWriteBatch?(writes: readonly RelationWrite[]): Promise<RelationWriteBatchResult>;
     /** Detach observers. Dropping the Postgres relation is the engine's job. */
     dispose(): void;
+}
+
+export interface RelationWriteBatchResult {
+    applied: number;
+    error?: unknown;
 }
 
 export interface RelationEvidence {

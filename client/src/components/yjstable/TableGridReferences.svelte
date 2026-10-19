@@ -1,7 +1,7 @@
 <script lang="ts">
 // "Grids using this Table" — a reference list, not a dashboard.
 //
-// Every Grid whose `sourceTableId` is this Table is listed with enough to
+// Every Grid whose SQL depends on this Table is listed with enough to
 // identify it and a link to its own page. Nothing is mounted eagerly: a Grid's
 // result belongs on /grids/<project>/<gridId>, and rendering them all here
 // would re-create the very Table->Grid conflation issue #5012 removes. An
@@ -9,7 +9,8 @@
 
 import * as Y from "yjs";
 import { onDestroy, onMount } from "svelte";
-import { findGridsBySourceTable, getGridRegistry } from "../../services/yjstable/gridDocs";
+import { findGridsByTableDependency, getGridRegistry } from "../../services/yjstable/gridDocs";
+import { getTableRegistry } from "../../services/yjstable/tableDocs";
 import { projectGridRoute } from "../../lib/managementPaths";
 import type { ResolvedPathname } from "$app/types";
 
@@ -27,7 +28,7 @@ let grids = $state<{ gridId: string; name: string; query: string; }[]>([]);
 
 function refresh() {
     const registry = getGridRegistry(projectDoc);
-    grids = findGridsBySourceTable(projectDoc, tableId).map(entry => ({
+    grids = findGridsByTableDependency(projectDoc, tableId).map(entry => ({
         gridId: entry.gridId,
         name: entry.name || "Untitled grid",
         query: String(registry.get(entry.gridId)?.get("query") ?? ""),
@@ -38,11 +39,13 @@ const registryObserver = () => refresh();
 
 onMount(() => {
     getGridRegistry(projectDoc).observeDeep(registryObserver);
+    getTableRegistry(projectDoc).observeDeep(registryObserver);
     refresh();
 });
 
 onDestroy(() => {
     getGridRegistry(projectDoc).unobserveDeep(registryObserver);
+    getTableRegistry(projectDoc).unobserveDeep(registryObserver);
 });
 
 function gridHref(gridId: string): ResolvedPathname {

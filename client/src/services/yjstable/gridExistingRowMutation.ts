@@ -3,11 +3,29 @@ import type { GridMetadataResolution, GridPhysicalColumnMetadata } from "./gridM
 import type { ProjectQueryProvenance, ProvenanceRelation } from "./projectQueryProvenance";
 import { isProjectQueryProvenanceCurrent } from "./projectQueryProvenance";
 import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelectSession";
-import { assertWriteAllowed, type RelationProvider, type RelationValue, RelationWriteError } from "./relationProvider";
+import {
+    assertWriteAllowed,
+    type RelationProvider,
+    type RelationValue,
+    type RelationWrite,
+    RelationWriteError,
+} from "./relationProvider";
 import type { TableColumnSchema } from "./schemaIntrospection";
 import { getTableSqlName } from "./tableDocs";
 import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
 import { castValueForColumn } from "./valueCasting";
+
+declare global {
+    // Test-environment-only instrumentation at the guarded effect boundary.
+    // The literal mode guard makes the reader removable from production builds.
+    var __GRID_RELATION_TEST_CONTROL__: { beforeResolve: (sqlName: string) => Promise<void>; } | undefined;
+}
+
+async function waitForRelationTestControl(sqlName: string): Promise<void> {
+    if (import.meta.env.MODE !== "production") {
+        await globalThis.__GRID_RELATION_TEST_CONTROL__?.beforeResolve(sqlName);
+    }
+}
 
 export type GridExistingRowOperation = "UPDATE" | "DELETE";
 
@@ -24,11 +42,31 @@ export interface GridMutationIntent {
     readonly value?: RelationValue;
 }
 
+export interface GridExpectedRowOccurrence {
+    readonly recordId?: string;
+    readonly source?: { readonly sourceKind: string; readonly sourceId: string; };
+}
+
 export interface GridExistingRowMutationBoundary {
-    captureUpdate(rowIndex: number, outputColumn: string, value: RelationValue): GridMutationIntent;
-    captureDelete(rowIndex: number): GridMutationIntent;
+    captureUpdate(
+        rowIndex: number,
+        outputColumn: string,
+        value: RelationValue,
+        expected?: GridExpectedRowOccurrence,
+    ): GridMutationIntent;
+    captureDelete(rowIndex: number, expected?: GridExpectedRowOccurrence): GridMutationIntent;
     commit(intent: GridMutationIntent): Promise<GridMutationResult>;
+    /**
+     * Revalidates and resolves a complete command before its first effect,
+     * then awaits every provider write in command order.
+     */
+    commitMany(intents: readonly GridMutationIntent[]): Promise<GridMutationBatchResult>;
     dispose(): void;
+}
+
+export interface GridMutationBatchResult {
+    applied: GridMutationResult[];
+    failed?: { intent: GridMutationIntent; error: unknown; };
 }
 
 export interface GridExistingRowMutationOptions {
@@ -41,6 +79,8 @@ export interface GridExistingRowMutationOptions {
     metadata: () => GridMetadataResolution | undefined;
     /** Project admission is checked at capture and again at the effect boundary. */
     canWrite: () => boolean;
+    /** Consumer history boundary, called only after validation immediately before effects. */
+    onBeforeEffects?: () => void;
     /** The invoking surface may independently restrict an otherwise capable provider. */
     allows: (operation: GridExistingRowOperation, source: ProvenanceRelation, physicalColumn?: string) => boolean;
     /** Optional externally owned relation session, useful when resolution must be coordinated by a caller. */
@@ -75,6 +115,7 @@ export function createGridExistingRowMutationBoundary(
         rowIndex: number,
         outputColumn?: string,
         value?: RelationValue,
+        expected?: GridExpectedRowOccurrence,
     ): CapturedIntent {
         if (disposed) refuse("The mutation boundary is disposed");
         const evidence = options.evidence();
@@ -91,6 +132,7 @@ export function createGridExistingRowMutationBoundary(
             refuse("Physical metadata does not belong to the current Grid execution");
         }
         if (!options.canWrite()) refuse("Project write access is unavailable");
+        rowIndex = resolveCurrentRowIndex(evidence, rowIndex, expected);
         const row = evidence.rows[rowIndex];
         if (!row) refuse("The selected result row no longer exists");
         const identity = evidence.rowIdentities[rowIndex];
@@ -123,12 +165,14 @@ export function createGridExistingRowMutationBoundary(
     }
 
     return {
-        captureUpdate: (rowIndex, outputColumn, value) => capture("UPDATE", rowIndex, outputColumn, value),
-        captureDelete: rowIndex => capture("DELETE", rowIndex),
+        captureUpdate: (rowIndex, outputColumn, value, expected) =>
+            capture("UPDATE", rowIndex, outputColumn, value, expected),
+        captureDelete: (rowIndex, expected) => capture("DELETE", rowIndex, undefined, undefined, expected),
         async commit(intent) {
             if (!captured.has(intent as object)) refuse("The mutation intent was not created by this boundary");
             const operation = intent as CapturedIntent;
             assertCurrent(options, operation);
+            await waitForRelationTestControl(operation.source.sqlName);
             const provider = await engine.resolveRelation(operation.source.sqlName);
             try {
                 assertCurrent(options, operation);
@@ -154,6 +198,7 @@ export function createGridExistingRowMutationBoundary(
                 assertCurrent(options, operation);
                 assertProviderIdentity(provider, operation.source, options.projectDoc);
                 provider.assertExistingRowWriteAllowed(write);
+                options.onBeforeEffects?.();
                 await provider.applyWrite(write);
                 captured.delete(operation);
                 return {
@@ -165,11 +210,132 @@ export function createGridExistingRowMutationBoundary(
                 if (provider) engine.releaseRelation(provider);
             }
         },
+        async commitMany(intents) {
+            const operations = intents.map(intent => {
+                if (!captured.has(intent as object)) refuse("The mutation intent was not created by this boundary");
+                const operation = intent as CapturedIntent;
+                assertCurrent(options, operation);
+                return operation;
+            });
+            const resolved: Array<
+                {
+                    operation: CapturedIntent;
+                    provider: RelationProvider;
+                    write: Extract<RelationWrite, { op: "UPDATE" | "DELETE"; }>;
+                }
+            > = [];
+            try {
+                // Provider lookup may be asynchronous. Finish every lookup and
+                // live-target check before allowing the first write, so a
+                // rejected target cannot leave a paste or bulk edit partial.
+                for (const operation of operations) {
+                    await waitForRelationTestControl(operation.source.sqlName);
+                    const provider = await engine.resolveRelation(operation.source.sqlName);
+                    if (!provider) refuse(`The source relation "${operation.source.sqlName}" is unavailable`);
+                    assertCurrent(options, operation);
+                    assertProviderIdentity(provider, operation.source, options.projectDoc);
+                    const write = operation.operation === "UPDATE"
+                        ? {
+                            op: "UPDATE" as const,
+                            rowId: operation.rowId,
+                            column: operation.physical!.physicalColumn,
+                            value: operation.value!,
+                        }
+                        : { op: "DELETE" as const, rowId: operation.rowId };
+                    assertWriteAllowed(provider.capabilities, write, provider.sqlName);
+                    if (operation.operation === "DELETE" && provider.capabilities.delete?.requiresDisposition) {
+                        refuse(`DELETE from "${provider.sqlName}" requires a user disposition`);
+                    }
+                    if (!provider.assertExistingRowWriteAllowed) {
+                        refuse(`Relation "${provider.sqlName}" cannot prove its live write target`);
+                    }
+                    provider.assertExistingRowWriteAllowed(write);
+                    resolved.push({ operation, provider, write });
+                }
+
+                if (resolved.length > 0) options.onBeforeEffects?.();
+                const applied: GridMutationResult[] = [];
+                const oneProvider = resolved[0]?.provider;
+                if (
+                    resolved.length > 1
+                    && oneProvider?.applyWriteBatch
+                    && resolved.every(entry => entry.provider === oneProvider)
+                ) {
+                    for (const entry of resolved) {
+                        assertProviderIdentity(oneProvider, entry.operation.source, options.projectDoc);
+                        oneProvider.assertExistingRowWriteAllowed!(entry.write);
+                    }
+                    const batch = await oneProvider.applyWriteBatch(resolved.map(entry => entry.write));
+                    for (const entry of resolved.slice(0, batch.applied)) {
+                        captured.delete(entry.operation);
+                        applied.push(resultOf(entry.operation));
+                    }
+                    if (batch.error !== undefined) {
+                        const failed = resolved[batch.applied];
+                        if (failed) return { applied, failed: { intent: failed.operation, error: batch.error } };
+                    }
+                    return { applied };
+                }
+                for (const entry of resolved) {
+                    try {
+                        // The complete batch was revalidated above immediately
+                        // before this effect phase. Its own first write may
+                        // invalidate SELECT materialization; that is not an
+                        // intervening external authority change and must not
+                        // cancel the remaining captured targets.
+                        assertProviderIdentity(entry.provider, entry.operation.source, options.projectDoc);
+                        entry.provider.assertExistingRowWriteAllowed!(entry.write);
+                        await entry.provider.applyWrite(entry.write);
+                        captured.delete(entry.operation);
+                        applied.push(resultOf(entry.operation));
+                    } catch (error) {
+                        return { applied, failed: { intent: entry.operation, error } };
+                    }
+                }
+                return { applied };
+            } finally {
+                for (const { provider } of resolved) engine.releaseRelation(provider);
+            }
+        },
         dispose() {
             disposed = true;
             ownedEngine?.dispose();
         },
     };
+}
+
+function resultOf(operation: CapturedIntent): GridMutationResult {
+    return {
+        source: operation.source,
+        rowId: operation.rowId,
+        physicalColumn: operation.physical?.physicalColumn,
+    };
+}
+
+function resolveCurrentRowIndex(
+    evidence: ProjectSelectEvidence,
+    fallbackIndex: number,
+    expected: GridExpectedRowOccurrence | undefined,
+): number {
+    if (!expected) return fallbackIndex;
+    const matches: number[] = [];
+    for (let index = 0; index < evidence.rows.length; index++) {
+        const identity = evidence.rowIdentities[index];
+        if (!identity) continue;
+        const matchesBare = expected.recordId !== undefined && identity.id === expected.recordId;
+        const matchesSource = expected.source !== undefined
+            && identity.sourceKind === expected.source.sourceKind
+            && identity.sourceId === expected.source.sourceId;
+        if (matchesBare || matchesSource) matches.push(index);
+    }
+    if (matches.length !== 1) {
+        refuse(
+            matches.length === 0
+                ? "The selected logical row occurrence is no longer present"
+                : "The selected logical row occurrence is no longer unique",
+        );
+    }
+    return matches[0]!;
 }
 
 function resolveTarget(
@@ -245,7 +411,9 @@ function assertProviderIdentity(provider: RelationProvider, source: ProvenanceRe
 }
 
 function validateValue(value: unknown, field: TableColumnSchema): void {
-    if ((value === null || value === undefined || value === "") && !field.isNullable) {
+    // Empty text is the schema-valid cleared value for a NOT NULL text field.
+    // Only SQL NULL (or a missing value) violates nullability here.
+    if ((value === null || value === undefined) && !field.isNullable) {
         refuse(`Column "${field.name}" does not accept an empty value`);
     }
     try {

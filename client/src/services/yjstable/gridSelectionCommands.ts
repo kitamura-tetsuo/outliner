@@ -17,6 +17,7 @@
 // simply excluded from every command's target list.
 
 import type { GridSelection, GridSelectionRegion } from "./gridSelection";
+import { RelationWriteError } from "./relationProvider";
 import { applyUnionedRowDelete, applyUnionedRowEdit, type RelationResolver } from "./relationRowWrite";
 import { deleteRecord, setRecordValue, type TableHandles, type TableRecordValue } from "./tableDocs";
 import { isValidDateString } from "./valueCasting";
@@ -50,6 +51,8 @@ export function classifySelectionKind(regions: readonly GridSelectionRegion[]): 
 /** How a selected row is written back: a plain Table record, or a unioned/relation row addressed by source. */
 export interface GridCommandRowTarget {
     row: Record<string, unknown>;
+    /** Exact occurrence in the completed result; ids may repeat across joins. */
+    rowIndex?: number;
     recordId?: string;
     source?: { sourceKind: string; sourceId: string; };
 }
@@ -63,7 +66,7 @@ export function isWritableRow(target: GridCommandRowTarget): boolean {
 export type GridCellValueKind = "text" | "number" | "checkbox" | "select" | "date";
 
 export interface GridCommandContext {
-    handles: TableHandles;
+    handles?: TableHandles;
     session: RelationResolver;
     /** One entry per row currently in the query result, keyed by the same logical row id `GridSelection` uses. */
     rowTargets: ReadonlyMap<string, GridCommandRowTarget>;
@@ -71,13 +74,15 @@ export interface GridCommandContext {
     columnOrder: readonly string[];
     /** Columns writable by the current query — already excludes identity/read-only columns (see `analyzeQueryEditability`). */
     editableColumns: ReadonlySet<string>;
-    valueKindOf: (columnId: string) => GridCellValueKind;
-    checkOptionsOf: (columnId: string) => readonly string[] | undefined;
+    valueKindOf: (columnId: string, rowTarget?: GridCommandRowTarget) => GridCellValueKind;
+    checkOptionsOf: (columnId: string, rowTarget?: GridCommandRowTarget) => readonly string[] | undefined;
     /** Whether the column's schema allows `NULL`. A `NOT NULL` column can still be *cleared* (see `clearSelectionToNull`), just never to `NULL`. */
-    isNullableOf: (columnId: string) => boolean;
+    isNullableOf: (columnId: string, rowTarget?: GridCommandRowTarget) => boolean;
     /** Revalidated at the final write boundary for delayed bare-id actions. */
     canMutateBareId?: () => boolean;
     writeBareCell?: (recordId: string, columnId: string, value: TableRecordValue) => void;
+    /** Source rows are executed through the guarded boundary, including capability checks. */
+    guardedSourceWrites?: boolean;
 }
 
 export interface GridWritableCellTarget {
@@ -91,6 +96,12 @@ export interface GridSelectionSummary {
     totalCells: number;
     /** The subset of selected cells this command layer may actually mutate. */
     writableTargets: GridWritableCellTarget[];
+}
+
+/** Raw Table effects require the actual Table owner, never a Grid supplier guess. */
+export function requireTableHandles(ctx: Pick<GridCommandContext, "handles">): TableHandles {
+    if (!ctx.handles) throw new RelationWriteError("Raw Table mutation requires Table-owned handles");
+    return ctx.handles;
 }
 
 /** Resolves a selection down to concrete cell targets, without mutating anything. */
@@ -125,16 +136,17 @@ export function isValueValidForCell(
     ctx: Pick<GridCommandContext, "valueKindOf" | "checkOptionsOf" | "isNullableOf">,
     columnId: string,
     value: TableRecordValue,
+    rowTarget?: GridCommandRowTarget,
 ): boolean {
-    if (value === null) return ctx.isNullableOf(columnId);
-    switch (ctx.valueKindOf(columnId)) {
+    if (value === null) return ctx.isNullableOf(columnId, rowTarget);
+    switch (ctx.valueKindOf(columnId, rowTarget)) {
         case "checkbox":
             return typeof value === "boolean";
         case "number":
             return typeof value === "number" && Number.isFinite(value);
         case "select": {
             if (typeof value !== "string") return false;
-            const options = ctx.checkOptionsOf(columnId);
+            const options = ctx.checkOptionsOf(columnId, rowTarget);
             return !options || options.length === 0 || options.includes(value);
         }
         case "date":
@@ -172,10 +184,11 @@ export function convertReplacementText(
     ctx: Pick<GridCommandContext, "valueKindOf" | "checkOptionsOf" | "isNullableOf">,
     columnId: string,
     text: string,
+    rowTarget?: GridCommandRowTarget,
 ): TableRecordValue | undefined {
-    const kind = ctx.valueKindOf(columnId);
+    const kind = ctx.valueKindOf(columnId, rowTarget);
     if (text === "" && kind !== "text") {
-        return ctx.isNullableOf(columnId) ? null : undefined;
+        return ctx.isNullableOf(columnId, rowTarget) ? null : undefined;
     }
     let value: TableRecordValue;
     switch (kind) {
@@ -197,7 +210,7 @@ export function convertReplacementText(
             value = text;
             break;
     }
-    return isValueValidForCell(ctx, columnId, value) ? value : undefined;
+    return isValueValidForCell(ctx, columnId, value, rowTarget) ? value : undefined;
 }
 
 /** Writes one resolved target cell through its row's addressing (`recordId` or `source`). Shared with `gridClipboard.ts`'s paste commit, which validates a whole target rectangle up front the same way a bulk command validates a whole selection. */
@@ -208,9 +221,9 @@ export function writeWritableCell(
 ): void {
     const { rowTarget, columnId } = target;
     if (rowTarget.recordId !== undefined) {
-        if (ctx.canMutateBareId?.() === false || !ctx.handles.data.has(rowTarget.recordId)) return;
+        if (ctx.canMutateBareId?.() === false || !requireTableHandles(ctx).data.has(rowTarget.recordId)) return;
         if (ctx.writeBareCell) ctx.writeBareCell(rowTarget.recordId, columnId, value);
-        else setRecordValue(ctx.handles, rowTarget.recordId, columnId, value);
+        else setRecordValue(requireTableHandles(ctx), rowTarget.recordId, columnId, value);
         return;
     }
     if (rowTarget.source) {
@@ -234,7 +247,7 @@ export function applyValueToSelection(
     const { writableTargets } = summarizeSelection(selection, ctx);
     if (writableTargets.length === 0) return { applied: false, reason: "no-writable-cells" };
     for (const target of writableTargets) {
-        if (!isValueValidForCell(ctx, target.columnId, value)) {
+        if (!isValueValidForCell(ctx, target.columnId, value, target.rowTarget)) {
             return { applied: false, reason: "invalid-value" };
         }
     }
@@ -242,7 +255,7 @@ export function applyValueToSelection(
     const sourceTargets = writableTargets.filter(target => target.rowTarget.source !== undefined);
     if (idTargets.length > 0) {
         if (ctx.canMutateBareId?.() === false) return { applied: false, reason: "authority-unavailable" };
-        ctx.handles.doc.transact(() => {
+        requireTableHandles(ctx).doc.transact(() => {
             for (const target of idTargets) writeWritableCell(ctx, target, value);
         });
     }
@@ -259,9 +272,20 @@ export function applyValueToSelection(
 function clearedValueFor(
     ctx: Pick<GridCommandContext, "valueKindOf" | "isNullableOf">,
     columnId: string,
+    rowTarget?: GridCommandRowTarget,
 ): TableRecordValue | undefined {
-    if (ctx.isNullableOf(columnId)) return null;
-    return ctx.valueKindOf(columnId) === "text" ? "" : undefined;
+    if (ctx.isNullableOf(columnId, rowTarget)) return null;
+    return ctx.valueKindOf(columnId, rowTarget) === "text" ? "" : undefined;
+}
+
+export function planSelectionClearWrites(
+    selection: GridSelection,
+    ctx: GridCommandContext,
+): Array<{ target: GridWritableCellTarget; value: TableRecordValue; }> {
+    return summarizeSelection(selection, ctx).writableTargets.flatMap(target => {
+        const value = clearedValueFor(ctx, target.columnId, target.rowTarget);
+        return value === undefined ? [] : [{ target, value }];
+    });
 }
 
 /**
@@ -273,17 +297,13 @@ function clearedValueFor(
  * other selected cell from clearing too.
  */
 export function clearSelectionToNull(selection: GridSelection, ctx: GridCommandContext): GridCommandOutcome {
-    const { writableTargets } = summarizeSelection(selection, ctx);
-    const clearable = writableTargets.flatMap(target => {
-        const value = clearedValueFor(ctx, target.columnId);
-        return value === undefined ? [] : [{ target, value }];
-    });
+    const clearable = planSelectionClearWrites(selection, ctx);
     if (clearable.length === 0) return { applied: false, reason: "no-writable-cells" };
     const idEntries = clearable.filter(entry => entry.target.rowTarget.recordId !== undefined);
     const sourceEntries = clearable.filter(entry => entry.target.rowTarget.source !== undefined);
     if (idEntries.length > 0) {
         if (ctx.canMutateBareId?.() === false) return { applied: false, reason: "authority-unavailable" };
-        ctx.handles.doc.transact(() => {
+        requireTableHandles(ctx).doc.transact(() => {
             for (const entry of idEntries) writeWritableCell(ctx, entry.target, entry.value);
         });
     }
@@ -315,8 +335,8 @@ export function removeRowTargets(
     const recordIds = targets.flatMap(target => target.recordId !== undefined ? [target.recordId] : []);
     if (recordIds.length > 0) {
         if (ctx.canMutateBareId?.() === false) return;
-        ctx.handles.doc.transact(() => {
-            for (const recordId of recordIds) deleteRecord(ctx.handles, recordId);
+        requireTableHandles(ctx).doc.transact(() => {
+            for (const recordId of recordIds) deleteRecord(requireTableHandles(ctx), recordId);
         });
     }
     for (const target of targets) {
@@ -346,7 +366,9 @@ export function planGridDeleteCommand(selection: GridSelection, ctx: GridCommand
         // keyboard-driven command has no prompt for, so such a row is simply
         // not a target -- mirroring the single-row delete button, which was
         // never shown for source-addressed rows either.
-        const targets = collectSelectedRowTargets(selection, ctx).filter(target => target.recordId !== undefined);
+        const targets = collectSelectedRowTargets(selection, ctx).filter(target =>
+            target.recordId !== undefined || (ctx.guardedSourceWrites === true && target.source !== undefined)
+        );
         return { kind: "remove-rows", targets };
     }
     return { kind: "clear-cells", outcome: clearSelectionToNull(selection, ctx) };
