@@ -126,6 +126,8 @@ export class TableSyncAdapter {
     private catalogGeneration = 0;
     private rebuildEpoch = 0;
     private writeAuthorityGeneration = 0;
+    private readonly effectiveFieldSchemaGenerations = new Map<string, number>();
+    private readonly effectiveFieldSchemaIdentities = new Map<string, string>();
     // Last emitted state, replayed to late subscribers so a view mounted after
     // the adapter started still renders the current result.
     private lastSchemaError: string | undefined;
@@ -186,6 +188,11 @@ export class TableSyncAdapter {
 
     get writeAuthorityToken(): number {
         return this.writeAuthorityGeneration;
+    }
+
+    /** Monotonic identity of one physical field's applied metadata. */
+    effectiveFieldSchemaRevision(column: string): number {
+        return this.effectiveFieldSchemaGenerations.get(column) ?? 0;
     }
 
     /** Wait for the project catalog generation that a saved query will use. */
@@ -425,6 +432,22 @@ export class TableSyncAdapter {
         // relation it used to own, so the old name stops resolving.
         const previousTableName = this.schema?.tableName;
         this.schema = parsed;
+        // Record effective metadata as soon as a successfully installed
+        // catalog has been introspected. The queued relation rebuild may be
+        // superseded before it publishes, but that must not erase the fact
+        // that an older gesture's schema authority was crossed.
+        const nextFieldIdentities = new Map(parsed.columns.map(column => [column.name, JSON.stringify(column)]));
+        for (const field of new Set([...this.effectiveFieldSchemaIdentities.keys(), ...nextFieldIdentities.keys()])) {
+            const identity = nextFieldIdentities.get(field);
+            if (identity !== this.effectiveFieldSchemaIdentities.get(field)) {
+                this.effectiveFieldSchemaGenerations.set(
+                    field,
+                    (this.effectiveFieldSchemaGenerations.get(field) ?? 0) + 1,
+                );
+            }
+            if (identity === undefined) this.effectiveFieldSchemaIdentities.delete(field);
+            else this.effectiveFieldSchemaIdentities.set(field, identity);
+        }
         this.recordErrors = new Map();
         const recordIds: string[] = [];
         this.handles.data.forEach((_record, recordId) => {

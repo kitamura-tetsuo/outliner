@@ -78,6 +78,10 @@ export class TableRelationProvider implements RelationProvider {
             kind: "table",
             id: this.handles.tableId,
             sqlName: this.sqlName,
+            // Query provenance is captured before materialization can finish,
+            // so it must remain stable across that first application. Pending
+            // writes use existingRowWriteRevision below for the stronger,
+            // monotonic effective-schema evidence.
             schemaRevision: this.handles.schemaText.toString(),
             columns: this.adapter.appliedSchema?.columns.map(column => column.name) ?? [],
         };
@@ -121,7 +125,7 @@ export class TableRelationProvider implements RelationProvider {
     existingRowWriteRevision(rowId: string, column: string): string {
         const row = this.mutationTracker.rows.get(rowId) ?? 0;
         const field = this.mutationTracker.fields.get(`${rowId}\0${column}`) ?? 0;
-        return `${this.mutationTracker.schema}:${row}:${field}`;
+        return `${this.mutationTracker.schema}:${this.adapter.effectiveFieldSchemaRevision(column)}:${row}:${field}`;
     }
 
     private applyWriteNow(write: RelationWrite): void {
