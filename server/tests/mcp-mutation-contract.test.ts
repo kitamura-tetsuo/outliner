@@ -451,7 +451,11 @@ describe("MCP mutation safety contract", () => {
         for (let i = 0; i < 50 && !auditLine; i++) {
             if (fs.existsSync(mcpLogPath)) {
                 const lines = fs.readFileSync(mcpLogPath, "utf-8").split("\n").filter(Boolean);
-                auditLine = lines.map(line => JSON.parse(line)).find(entry => entry.event === "mcp_audit");
+                // Earlier requests can finish flushing after the truncation.
+                // Observe this mutation's audit, not whichever request writes first.
+                auditLine = lines.map(line => JSON.parse(line)).find(entry =>
+                    entry.event === "mcp_audit" && entry.operationId === "audit-op-1"
+                );
             }
             if (!auditLine) await new Promise(r => setTimeout(r, 100));
         }
