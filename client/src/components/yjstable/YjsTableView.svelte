@@ -226,6 +226,29 @@ async function publish(next: ProjectSelectState) {
     const evidence = next.evidence;
     const preference = getGridInsertTargetTableId(mountedGrid);
     const provenance = analyzeProjectQueryProvenance(evidence);
+
+    // A completed SELECT is sufficient to render the read-only Grid and Chart.
+    // Do not hold that visible result behind the independently asynchronous
+    // metadata and INSERT-authority checks below: those checks can need more
+    // relation leases, and a busy provider used to leave a valid demo result
+    // displaying "Loading table..." until after the feature-tour assertion
+    // timed out. Existing-row and INSERT controls remain guarded because
+    // `guardedAuthority` is deliberately left unset until every check settles.
+    if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)
+        || getGridRegistry(projectDoc).get(mountedGrid.gridId) !== mountedGrid.entry
+        || preference !== getGridInsertTargetTableId(mountedGrid)) return;
+    result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
+    selectState = next;
+    queryExecution = {
+        queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
+        generation: evidence.executionGeneration,
+        query: evidence.query.trim(),
+        status: "completed",
+        rowCount: evidence.rows.length,
+        columnCount: evidence.columns.length,
+    };
+    chartPanel?.update(result);
+
     const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
     const resolution = await resolveInsertTarget({
         projectDoc, evidence, provenance, insertTargetTableId: preference, session: guardedSelect,
@@ -241,23 +264,11 @@ async function publish(next: ProjectSelectState) {
     if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)
         || getGridRegistry(projectDoc).get(mountedGrid.gridId) !== mountedGrid.entry
         || preference !== getGridInsertTargetTableId(mountedGrid)) return;
-    // Publish one coherent incarnation. Retained rows during loading never
-    // acquire current authority until their own metadata has completed.
-    result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
+    // Publish write/presentation authority only as one coherent incarnation.
+    // The already-visible result stays read-only until this point.
     displayMetadata = metadata;
-    selectState = next;
     sourceDiagnostics = describeViewSources(evidence, provenance, resolution);
     guardedAuthority = { evidence, provenance, metadata };
-    queryExecution = {
-        queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
-        generation: evidence.executionGeneration,
-        query: evidence.query.trim(),
-        status: "completed",
-
-        rowCount: evidence.rows.length,
-        columnCount: evidence.columns.length,
-    };
-    chartPanel?.update(result);
 }
 async function refreshAfterGuardedEffects() {
     await guardedSelect.runNow();
