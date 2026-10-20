@@ -25,6 +25,7 @@ import { createGridInsertController, type GridInsertOutcome, type GridInsertStat
 import { createGridMetadataResolver, type GridMetadataResolution } from "../../services/yjstable/gridMetadataResolver";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
 import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
+import { publishGridResultBeforeAuthority } from "../../services/yjstable/gridResultPublication";
 import {
     analyzeProjectQueryProvenance,
     type ProjectQueryProvenance,
@@ -226,38 +227,45 @@ async function publish(next: ProjectSelectState) {
     const evidence = next.evidence;
     const preference = getGridInsertTargetTableId(mountedGrid);
     const provenance = analyzeProjectQueryProvenance(evidence);
-    const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
-    const resolution = await resolveInsertTarget({
-        projectDoc, evidence, provenance, insertTargetTableId: preference, session: guardedSelect,
-        resolveRelation: async name => {
-            const provider = await session.resolveRelation(name);
-            // Resolution inspects detached metadata only; the SELECT session
-            // separately retains the actual dependency provider holds.
-            if (!provider) return undefined;
-            session.releaseRelation(provider);
-            return provider;
+    const isCurrent = () => !destroyed && request === publication && guardedSelect.isEvidenceCurrent(evidence)
+        && getGridRegistry(projectDoc).get(mountedGrid.gridId) === mountedGrid.entry
+        && preference === getGridInsertTargetTableId(mountedGrid);
+    await publishGridResultBeforeAuthority({
+        isCurrent,
+        publishResult: () => {
+            result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
+            selectState = next;
+            queryExecution = {
+                queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
+                generation: evidence.executionGeneration,
+                query: evidence.query.trim(),
+                status: "completed",
+                rowCount: evidence.rows.length,
+                columnCount: evidence.columns.length,
+            };
+            chartPanel?.update(result);
+        },
+        resolveAuthority: async () => {
+            const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
+            const resolution = await resolveInsertTarget({
+                projectDoc, evidence, provenance, insertTargetTableId: preference, session: guardedSelect,
+                resolveRelation: async name => {
+                    const provider = await session.resolveRelation(name);
+                    // Resolution inspects detached metadata only; the SELECT session
+                    // separately retains the actual dependency provider holds.
+                    if (!provider) return undefined;
+                    session.releaseRelation(provider);
+                    return provider;
+                },
+            });
+            return { metadata, resolution };
+        },
+        publishAuthority: ({ metadata, resolution }) => {
+            displayMetadata = metadata;
+            sourceDiagnostics = describeViewSources(evidence, provenance, resolution);
+            guardedAuthority = { evidence, provenance, metadata };
         },
     });
-    if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)
-        || getGridRegistry(projectDoc).get(mountedGrid.gridId) !== mountedGrid.entry
-        || preference !== getGridInsertTargetTableId(mountedGrid)) return;
-    // Publish one coherent incarnation. Retained rows during loading never
-    // acquire current authority until their own metadata has completed.
-    result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
-    displayMetadata = metadata;
-    selectState = next;
-    sourceDiagnostics = describeViewSources(evidence, provenance, resolution);
-    guardedAuthority = { evidence, provenance, metadata };
-    queryExecution = {
-        queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
-        generation: evidence.executionGeneration,
-        query: evidence.query.trim(),
-        status: "completed",
-
-        rowCount: evidence.rows.length,
-        columnCount: evidence.columns.length,
-    };
-    chartPanel?.update(result);
 }
 async function refreshAfterGuardedEffects() {
     await guardedSelect.runNow();

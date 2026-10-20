@@ -32,8 +32,8 @@ it(
         handles.doc.transact(() => handles.data.get("same")!.set("value", "current needle"), "peer");
         await waitFor(() => expect(cell()?.textContent).toContain("current needle"));
         await expect(replaceGridMatch(old, "needle", "stale", options)).resolves.toMatchObject({ applied: false });
+        await waitFor(() => expect(find("needle")[0]?.replaceable).toBe(true));
         const fresh = find("needle")[0];
-        expect(fresh.replaceable).toBe(true);
         await expect(replaceGridMatch(fresh, "needle", "updated", options)).resolves.toMatchObject({ applied: true });
         await waitFor(() => expect(handles.data.get("same")?.get("value")).toBe("current updated"));
         await waitFor(() => expect(cell()?.textContent).toContain("current updated"));

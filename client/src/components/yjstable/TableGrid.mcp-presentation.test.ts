@@ -35,6 +35,14 @@ async function mount() {
     await waitFor(() => expect(view.container.querySelectorAll("tbody tr[data-record-id]")).toHaveLength(2), {
         timeout: 30000,
     });
+    await waitFor(() =>
+        expect(
+            view.container.querySelector('[data-testid="yjs-table-view"]')?.getAttribute("data-mutation-incarnation"),
+        )
+            .not.toContain(
+                "unavailable",
+            )
+    );
     return view;
 }
 function cell(container: HTMLElement, id: string, column: string) {

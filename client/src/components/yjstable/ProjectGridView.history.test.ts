@@ -27,6 +27,11 @@ it("retains Grid query and A cell history through a live supplier switch", { tim
     const view = render(ProjectGridView, { props: { grid, projectDoc } });
     const cell = () => view.container.querySelector('td[data-col="value"]')!;
     await waitFor(() => expect(cell()?.querySelector("button")?.textContent?.trim()).toBe("a"), { timeout: 30000 });
+    await waitFor(() =>
+        expect(view.getByTestId("yjs-table-view").getAttribute("data-mutation-incarnation")).not.toContain(
+            "unavailable",
+        )
+    );
     sources.forEach(source => source.undo.clear());
     grid.undo.clear();
     globalUndoRouter.clear();
@@ -37,6 +42,11 @@ it("retains Grid query and A cell history through a live supplier switch", { tim
     expect(sources[0].undo.undoStack).toHaveLength(1);
     setGridQuery(grid, "SELECT id AS id, value AS value FROM b");
     await waitFor(() => expect(cell()?.querySelector("button")?.textContent?.trim()).toBe("b"), { timeout: 30000 });
+    await waitFor(() =>
+        expect(view.getByTestId("yjs-table-view").getAttribute("data-mutation-incarnation")).not.toContain(
+            "unavailable",
+        )
+    );
     await waitFor(() =>
         expect(view.getByTestId("yjs-table-view")).toHaveAttribute(
             "data-source-table-ids",

@@ -83,11 +83,12 @@ test.describe("Demo project feature tour", () => {
             has: page.getByTestId("yjs-table-name").getByText("Sales", { exact: true }),
         }).first();
         await expect(salesTable).toBeVisible({ timeout: 30000 });
-        // Demo catalog synchronization can remount this Grid after the Table
-        // shell appears. Wait for the materialized result before opening the
-        // optional chart so it receives the completed query as its initial data.
+        // A completed SELECT must become visible without waiting for the
+        // independent edit/INSERT-authority checks. Keep this at the original
+        // strict readiness bound so extending a timeout cannot mask that
+        // production lifecycle regression.
         await expect(salesTable.getByTestId("yjs-table-grid").locator("th", { hasText: "revenue" })).toBeVisible({
-            timeout: 60000,
+            timeout: 30000,
         });
         await salesTable.getByTestId("yjs-table-toggle-chart").first().click();
 
