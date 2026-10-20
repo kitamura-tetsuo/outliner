@@ -1,6 +1,5 @@
 import { Item, Project } from "$shared/app-schema";
 import type * as Y from "yjs";
-import { getGridSourceTableId } from "./gridDocs";
 import { bindItemToGrid, getItemGridId } from "./itemBinding";
 
 export const GRID_PLACEMENT_MIME = "application/x-outliner-grid-placement";
@@ -73,7 +72,7 @@ export function appendGridPlacement(doc: Y.Doc, pageId: string, gridId: string, 
     if (!page) throw new Error("The destination Page no longer exists.");
     const placement = page.items.addNode(author);
     placement.componentType = "yjstable";
-    bindItemToGrid(placement, gridId, getGridSourceTableId(doc, gridId));
+    bindItemToGrid(placement, gridId);
     return placement;
 }
 

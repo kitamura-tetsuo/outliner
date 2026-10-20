@@ -1105,10 +1105,8 @@ function addDemoItems(
         if (def.text !== undefined) node.text = def.text;
         if (def.componentType) node.componentType = def.componentType;
         if (def.yjsTableId !== undefined) {
-            // Grid owns the SELECT/UI now; the Table id stays as provenance so
-            // the Table-keyed clipboard/export pipeline still recognises the
-            // block as a component. See gridDocs.ts / itemBinding.ts.
-            node.yjsTableId = def.yjsTableId;
+            // Template Table IDs select an explicitly seeded Grid; the durable
+            // placement stores only that Grid binding.
             node.yjsGridId = demoGridIdFor(def.yjsTableId);
         }
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;

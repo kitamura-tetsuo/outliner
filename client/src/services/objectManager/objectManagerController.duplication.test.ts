@@ -1,7 +1,7 @@
 // Object Manager's `Duplicate selected` (issue #5153): building the preview
 // shown before Apply, and applying the duplication as one undo-router step.
 import { Project } from "$shared/app-schema";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as Y from "yjs";
 import { store } from "../../stores/store.svelte";
 import { createCalendar } from "../calendar/calendarService";
@@ -65,7 +65,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
     describe("buildDuplicationSetPreview", () => {
         it("reflects the exact selection, never expanding it through the dependency graph", () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
             const grid = objects.find(o => o.id === gridId)!;
 
@@ -84,7 +84,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
     describe("duplicateSelectedObjects", () => {
         it("duplicates a mixed-type selection as one operation", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const calendarId = createCalendar(project, { name: "Team", query: "" });
             const objects = getObjects(project);
             const selected = objects.filter(o => [tableId, gridId, calendarId].includes(o.id));
@@ -102,7 +102,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("undoes the whole operation, across every object type, as a single step", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const ruleId = createScheduleRule(project, {
                 targetTableId: tableId,
                 sql: "SELECT 1",
@@ -117,6 +117,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
             expect(listTables(project.ydoc)).toHaveLength(2);
 
             globalUndoRouter.undo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
 
             expect(listTables(project.ydoc)).toHaveLength(1);
             expect(listGrids(project.ydoc)).toHaveLength(1);
@@ -128,15 +129,17 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("redo recreates every duplicated object with the same identity", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
             const selected = objects.filter(o => [tableId, gridId].includes(o.id));
 
             const result = await duplicateSelectedObjects(project.ydoc, project.ydoc, selected, {});
             globalUndoRouter.undo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
             expect(listTables(project.ydoc)).toHaveLength(1);
 
             globalUndoRouter.redo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
 
             expect(listTables(project.ydoc)).toHaveLength(2);
             expect(listGrids(project.ydoc)).toHaveLength(2);
@@ -147,7 +150,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("folds an afterMaterialize side effect into the same undo/redo step", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const page = project.addPage("Dashboard", "test");
             const objects = getObjects(project);
             const selected = objects.filter(o => o.id === gridId);
@@ -172,10 +175,12 @@ describe("ObjectManagerController — Duplicate selected", () => {
             expect([...page.items].some(item => item.componentType === "yjstable")).toBe(true);
 
             globalUndoRouter.undo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
             expect(getGridHandles(project.ydoc, copiedGridId)).toBeUndefined();
             expect([...page.items].some(item => item.componentType === "yjstable")).toBe(false);
 
             globalUndoRouter.redo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
             // `redo()` is a synchronous router call, but this entry's own redo
             // re-runs `materializeDuplicationPlan` (async) and only then calls
             // the placement side effect — let both microtasks settle.
@@ -184,13 +189,14 @@ describe("ObjectManagerController — Duplicate selected", () => {
             expect(getGridHandles(project.ydoc, recopiedGridId)).toBeDefined();
             expect([...page.items].some(item => item.componentType === "yjstable")).toBe(true);
             globalUndoRouter.undo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
             expect(getGridHandles(project.ydoc, recopiedGridId)).toBeUndefined();
             expect([...page.items].some(item => item.componentType === "yjstable")).toBe(false);
         });
 
         it("survives a second undo after redo — the redo does not leave an orphaned, untracked auto-capture", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const page = project.addPage("Dashboard", "test");
             const objects = getObjects(project);
             const selected = objects.filter(o => o.id === gridId);
@@ -211,7 +217,9 @@ describe("ObjectManagerController — Duplicate selected", () => {
             const copiedGridId = result!.createdObjects.find(o => o.type === "grid")!.id;
 
             globalUndoRouter.undo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
             globalUndoRouter.redo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
             await new Promise(resolve => setTimeout(resolve, 0));
             expect(globalUndoRouter.undoDepth).toBe(depthBefore + 1);
 
@@ -220,6 +228,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
             // second entry and this second undo would pop only the placement,
             // leaving the copied Grid behind (issue #5153 review comment).
             globalUndoRouter.undo();
+            await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
             expect(getGridHandles(project.ydoc, copiedGridId)).toBeUndefined();
             expect([...page.items].some(item => item.componentType === "yjstable")).toBe(false);
             expect(globalUndoRouter.undoDepth).toBe(depthBefore);
@@ -227,7 +236,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("rolls back the duplicated objects when afterMaterialize throws", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
             const selected = objects.filter(o => o.id === gridId);
 

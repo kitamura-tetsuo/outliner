@@ -23,6 +23,7 @@ import {
     applyRename,
     computePreselection,
     countHiddenSelected,
+    captureDeletionAdmission,
     deleteObject,
     deleteObjects,
     generateBulkPreview,
@@ -60,6 +61,9 @@ let editNameInput = $state("");
 let editError = $state<string | null>(null);
 let editInputEl = $state<HTMLInputElement | undefined>(undefined);
 let deleteTarget = $state<NamedObject | null>(null);
+let deletionProjectDoc: unknown;
+let deletionAdmission: (() => boolean) | undefined;
+let deletionImpacts: string;
 let confirmOpen = $state(false);
 let bulkDeleteTargets = $state<NamedObject[]>([]);
 let duplicateTargets = $state<NamedObject[]>([]);
@@ -355,7 +359,9 @@ function applyBulkRename() {
 function applySelectRelated(scope: RelatedSelectionScope) {
     relatedMenuOpen = false;
     if (selectedObjectIds.size === 0) return;
-    for (const id of selectRelatedObjects(project, objects, selectedObjectIds, scope)) {
+    const related = selectRelatedObjects(project, objects, selectedObjectIds, scope);
+    if (related.incomplete?.length) editError = `Partial related selection: unknown SQL reads for ${related.incomplete.join(", ")}.`;
+    for (const id of related) {
         selectedObjectIds.add(id);
     }
 }
@@ -376,6 +382,9 @@ function requestDelete(object: NamedObject) {
     if (!hasWriteAccess) return;
     bulkDeleteTargets = [];
     deleteTarget = object;
+    deletionProjectDoc = project?.ydoc;
+    deletionAdmission = project ? captureDeletionAdmission(project, [object]) : undefined;
+    deletionImpacts = JSON.stringify(project ? getDeleteImpact(project, object) : null);
     confirmOpen = true;
 }
 
@@ -386,8 +395,10 @@ function deleteMessage(): string {
     if (deleteTarget.type === "Table" && impact?.tableDependencies) {
         const deps = impact.tableDependencies;
         if (deps.directGridReferences.length > 0 || deps.dependentGridIds.length > 0) {
-            parts.push(`${deps.dependentGridIds.length} dependent Grid(s) and their outline placements will be removed.`);
+            parts.push(`${deps.dependentGridIds.length} Grid(s) read this Table. Views and placements survive; their SQL may break.`);
         }
+        if (deps.unknownReferences.length) parts.push(`Read dependencies are uncertain for ${deps.unknownReferences.length} object(s); additional views may be affected.`);
+        if (deps.dependentKanbanIds.length) parts.push(`${deps.dependentKanbanIds.length} Kanban(s) read this Table and survive with their placements.`);
         if (deps.scheduledTargets.length > 0) {
             parts.push(`${deps.scheduledTargets.length} Schedule(s) targeting this Table will be deleted.`);
         }
@@ -408,7 +419,10 @@ function deleteMessage(): string {
 
 function executeDelete() {
     if (!deleteTarget || !project) return;
-    deleteObject(project, deleteTarget, { projectAccess: hasWriteAccess, surfaceWritable: hasWriteAccess });
+    if (project.ydoc !== deletionProjectDoc || !deletionAdmission?.()) { editError = "The object changed. Reopen the deletion confirmation."; return; }
+    const currentImpact = JSON.stringify(getDeleteImpact(project, deleteTarget));
+    if (currentImpact !== deletionImpacts) { deletionImpacts = currentImpact; editError = "References changed. Review the impact and confirm again."; confirmOpen = true; return; }
+    if (!deleteObject(project, deleteTarget, { projectAccess: hasWriteAccess, surfaceWritable: hasWriteAccess })) return;
     selectedObjectIds.delete(deleteTarget.id);
     deleteTarget = null;
 }
@@ -417,7 +431,12 @@ function requestBulkDelete() {
     if (!hasWriteAccess) return;
     // Snapshot identities and object metadata at confirmation-open time.
     bulkDeleteTargets = objects.filter(object => selectedObjectIds.has(object.id));
-    if (bulkDeleteTargets.length > 0) confirmOpen = true;
+    if (bulkDeleteTargets.length > 0 && project) {
+        deletionProjectDoc = project.ydoc;
+        deletionAdmission = captureDeletionAdmission(project, bulkDeleteTargets);
+        deletionImpacts = JSON.stringify(bulkDeleteTargets.map(object => getDeleteImpact(project, object)));
+        confirmOpen = true;
+    }
 }
 
 function bulkDeleteMessage(): string {
@@ -430,11 +449,16 @@ function bulkDeleteMessage(): string {
         placements += getDeleteImpact(project, object).placements.length;
     }
     const breakdown = [...counts].map(([type, count]) => `${count} ${type}`).join(", ");
+    const unknownCount = bulkDeleteTargets.reduce((count, object) => count + (getDeleteImpact(project, object).tableDependencies?.unknownReferences.length ?? 0), 0);
+    const impactMessage = `${unknownCount ? ` Read dependencies are uncertain for ${unknownCount} object(s); additional views may be affected.` : ""} Grid/Kanban definitions and placements survive Table deletion; their SQL may break.`;
     const hidden = bulkDeleteTargets.filter(target => !filteredObjects.some(object => object.id === target.id)).length;
-    return `${bulkDeleteTargets.length} objects will be deleted (${breakdown}). ${hidden ? `${hidden} are hidden by the current filter. ` : ""}${placements ? `${placements} Page placement(s) will be removed. ` : ""}This is one undoable operation.`;
+    return `${bulkDeleteTargets.length} objects will be deleted (${breakdown}). ${hidden ? `${hidden} are hidden by the current filter. ` : ""}${placements ? `${placements} Page placement(s) will be removed. ` : ""}This is one undoable operation.${impactMessage}`;
 }
 
 function executeBulkDelete() {
+    if (!project || project.ydoc !== deletionProjectDoc || !deletionAdmission?.()) { editError = "The objects changed. Reopen the deletion confirmation."; return; }
+    const currentImpacts = JSON.stringify(bulkDeleteTargets.map(object => getDeleteImpact(project, object)));
+    if (currentImpacts !== deletionImpacts) { deletionImpacts = currentImpacts; editError = "References changed. Review the impact and confirm again."; confirmOpen = true; return; }
     if (
         !project
         || !deleteObjects(project, bulkDeleteTargets, {
@@ -484,6 +508,7 @@ function focusNode(node: HTMLElement) {
         {/if}
     </header>
 
+    {#if editError && !editingObjectId}<p role="status" data-testid="object-manager-action-message">{editError}</p>{/if}
     <div class="controls-bar">
         <div class="search-filter">
             <input

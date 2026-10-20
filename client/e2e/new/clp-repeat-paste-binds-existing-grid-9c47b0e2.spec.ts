@@ -48,6 +48,7 @@ test.describe("pasting the same Grid into a project twice", () => {
 
         const afterSecondPaste = await readGridProjectState(page);
         expect(afterSecondPaste.tables).toHaveLength(1);
-        expect(afterSecondPaste.hostTableIds).toEqual([clonedTableId, clonedTableId]);
+        expect(afterSecondPaste.hostGridIds).toEqual([afterFirstPaste.grids[0].id, afterFirstPaste.grids[0].id]);
+        expect(afterSecondPaste.placements.every(placement => !placement.hasPrimaryMetadata)).toBe(true);
     });
 });

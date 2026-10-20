@@ -67,14 +67,17 @@ test.describe("cross-project Grid paste clones table structure and data", () => 
             expect(destinationTable.id).not.toBe(sourceTable.id);
             expect(destinationTable.guid).not.toBe(sourceTable.guid);
             expect(destinationTable.guid).toContain(destinationState.guid);
-            expect(new Set(destinationState.hostTableIds)).toEqual(new Set([warmupTableId, destinationTable.id]));
+            expect(new Set(destinationState.hostGridIds)).toEqual(new Set(destinationState.grids.map(grid => grid.id)));
 
             // Structure matches copy-time source. The clone always
             // materializes an explicit columnOrder, so normalize that field.
             expect(destinationTable.name).toBe(sourceTable.name);
             expect(destinationTable.sqlName).toBe(sourceTable.sqlName);
             expect(destinationTable.schema.replace(/\s+/g, " ")).toBe(sourceTable.schema.replace(/\s+/g, " "));
-            expect(destinationTable.ui).toEqual({ columnOrder: [], ...sourceTable.ui });
+            const sourceGrid = sourceState.grids[0];
+            const destinationGrid = destinationState.grids.find(grid => grid.name === sourceGrid.name)!;
+            expect(destinationGrid).toEqual({ ...sourceGrid, id: destinationGrid.id });
+            expect(destinationState.placements.every(placement => !placement.hasPrimaryMetadata)).toBe(true);
 
             expect(destinationTable.dataSize).toBe(1);
 
@@ -146,7 +149,7 @@ test.describe("cross-project Grid paste clones table structure and data", () => 
             }
             expect((await readGridProjectState(page)).tables.find(table => table.id === preExistingTable.id))
                 .toEqual(preExistingTable);
-            expect(clonedTable.ui.query).toContain(clonedTable.sqlName);
+            expect(afterFirstPaste.grids.find(grid => grid.id === cloneGridId)?.query).toContain(clonedTable.sqlName);
             expect(clonedTable.name).toBe(sourceTable.name);
             expect(clonedTable.dataSize).toBe(0);
         },

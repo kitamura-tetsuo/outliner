@@ -27,7 +27,7 @@ test(
         // The persisted SELECT keeps the trailing space verbatim.
         await expect.poll(async () => {
             const persisted = await snapshotProject(page);
-            return persisted.tables.find(table => table.id === fixture.tableA.id)?.ui.query;
+            return persisted.grids.find(grid => grid.id === gridId)?.query;
         }, { timeout: 30000 }).toBe(padded);
 
         // Once the current execution completes, the Grid stays editable instead
@@ -51,7 +51,7 @@ test(
             .toBe("Padded query edit");
         expect(state.tables.find(table => table.id === fixture.tableB.id)?.data[fixture.recordId].title)
             .toBe("Value from B");
-        expect(state.tables.find(table => table.id === fixture.tableA.id)?.ui.query).toBe(padded);
+        expect(state.grids.find(grid => grid.id === gridId)?.query).toBe(padded);
 
         // Reload through ordinary persistence: the edit, the trailing space, and
         // editability all survive.
@@ -61,7 +61,7 @@ test(
         await expect(reloadedCell.locator("button.cell-value")).toHaveText("Padded query edit", { timeout: 30000 });
         await expect(fixture.gridA.getByTestId("grid-readonly-reason")).toHaveCount(0, { timeout: 30000 });
         const reloaded = await snapshotProject(page);
-        expect(reloaded.tables.find(table => table.id === fixture.tableA.id)?.ui.query).toBe(padded);
+        expect(reloaded.grids.find(grid => grid.id === gridId)?.query).toBe(padded);
 
         // Valid editing is still possible after the reload.
         await reloadedCell.locator("button.cell-value").click();

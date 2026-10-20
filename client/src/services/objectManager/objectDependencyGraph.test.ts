@@ -23,11 +23,13 @@ function ids(objects: GraphObject[]): string[] {
 }
 
 describe("buildObjectDependencyGraph", () => {
-    it("records a Grid's explicit and query-derived Table dependencies, with the reverse edge on the Table", () => {
+    it("records a Grid's SQL-derived Table dependencies, with the reverse edge on the Table", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
         const owners = table(doc, "Owners", "owners");
-        const gridId = createGrid(doc, tasks, { query: "SELECT id FROM tasks JOIN owners ON owners.id = tasks.id" });
+        const gridId = createGrid(doc, undefined, {
+            query: "SELECT id FROM tasks JOIN owners ON owners.id = tasks.id",
+        });
 
         const graph = buildObjectDependencyGraph(doc);
         const gridObject: GraphObject = { type: "grid", id: gridId };
@@ -84,7 +86,7 @@ describe("buildObjectDependencyGraph", () => {
         const doc = new Y.Doc();
         const project = Project.fromDoc(doc);
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const ruleId = createScheduleRule(project, {
             targetTableId: tasks,
             sql: "INSERT INTO tasks (id) SELECT 1 RETURNING *",
@@ -121,7 +123,7 @@ describe("traverseObjectGraph", () => {
     it("follows only forward edges for 'dependencies'", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
         const result = traverseObjectGraph(graph, [{ type: "grid", id: gridId }], "dependencies");
@@ -131,7 +133,7 @@ describe("traverseObjectGraph", () => {
     it("follows only reverse edges for 'dependents'", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
         const result = traverseObjectGraph(graph, [{ type: "table", id: tasks }], "dependents");
@@ -142,7 +144,7 @@ describe("traverseObjectGraph", () => {
         const doc = new Y.Doc();
         const project = Project.fromDoc(doc);
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const calendarId = createCalendar(project, { name: "Team Calendar", query: "SELECT id FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
@@ -157,8 +159,8 @@ describe("traverseObjectGraph", () => {
     it("unions multiple roots and selects each shared dependency only once", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const first = createGrid(doc, tasks, { name: "First" });
-        const second = createGrid(doc, tasks, { name: "Second" });
+        const first = createGrid(doc, undefined, { name: "First", query: "SELECT * FROM tasks" });
+        const second = createGrid(doc, undefined, { name: "Second", query: "SELECT * FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
         const result = traverseObjectGraph(
@@ -178,7 +180,7 @@ describe("traverseObjectGraph", () => {
         const doc = new Y.Doc();
         const project = Project.fromDoc(doc);
         const tasks = table(doc, "Tasks", "tasks");
-        createGrid(doc, tasks, { name: "Board" });
+        createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         createScheduleRule(project, {
             targetTableId: tasks,
             sql: "INSERT INTO tasks (id) SELECT id FROM tasks RETURNING *",

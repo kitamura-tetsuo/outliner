@@ -25,6 +25,7 @@ export function pasteSpecialChoices(
     const sameProject = payload.sourceProjectId === destinationProjectId;
     const hasPortableStructure = payload.version !== 1
         && (Object.keys(payload.tables ?? {}).length > 0
+            || Object.keys(payload.grids ?? {}).length > 0
             || ("calendars" in payload && Object.keys(payload.calendars ?? {}).length > 0));
     const structureReason = hasPortableStructure
         ? undefined

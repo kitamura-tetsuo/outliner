@@ -9,6 +9,7 @@
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { projectCalendarRoute, projectGridRoute, projectScheduleRoute, projectTableRoute } from "../../lib/managementPaths";
     import {
+        captureDuplicationAdmission,
         duplicateObjects,
         previewObjectDuplication,
         rollbackObjectDuplication,
@@ -75,6 +76,7 @@
         // of this call.
         const capturedSourceDoc = sourceDoc;
         try {
+            const assertCurrent = captureDuplicationAdmission(capturedSourceDoc, preview.objects);
             let destinationDoc = capturedSourceDoc;
             let destinationClient: Awaited<ReturnType<typeof getYjsClientByProjectTitle>> | undefined;
             if (destinationTitle !== sourceProject) {
@@ -82,6 +84,7 @@
                 if (!destinationClient) throw new Error(`Project "${destinationTitle}" could not be opened.`);
                 destinationDoc = destinationClient.project.ydoc;
             }
+            assertCurrent();
             const result = await duplicateObjects(capturedSourceDoc, destinationDoc, object, scope, {
                 copyTableData,
                 synchronizeTableSubdocs: true,
@@ -197,6 +200,10 @@
             <div class="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
                 {preview.objects.length} {preview.objects.length === 1 ? "object" : "objects"} will be duplicated.
             </div>
+            {#if preview.unknownObjects.length > 0}<p role="status">SQL read dependencies are uncertain for {preview.unknownObjects.length} object(s). Automatic dependency scope cannot be copied.</p>{/if}
+            {#if destinationProject.trim() !== sourceProject && preview.preferenceOmissions.length > 0}
+                <div role="status" data-testid="duplicate-preference-omissions">{#each preview.preferenceOmissions as omission (omission.gridId)}<p>Grid {omission.gridId}: the unmappable INSERT preference {omission.tableId} will be cleared.</p>{/each}</div>
+            {/if}
             {#if preview.omittedReferenceCount > 0}
                 <div class="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800" role="alert">
                     {preview.omittedReferenceCount}

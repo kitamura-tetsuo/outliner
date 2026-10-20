@@ -19,7 +19,9 @@ acceptance:
 - Object Manager lists Calendar in addition to Grid/Table/Schedule, and type filtering/search covers all four kinds.
 - Rename, bulk replace and delete are disabled for read-only viewers; demo projects stay writable.
 - 'Select related (Dependencies/Dependents/All connected) expands the current selection over the shared dependency graph: additive, multi-root (union of every root''s traversal), each object selected once, cycle-safe, and filter-independent (a related object hidden by search/type is still selected); each scope executes immediately when chosen.'
+- Related selection uses parsed SQL read identities, includes EXISTS, ignores saved INSERT preferences, and visibly reports partial knowledge. Table deletion rechecks live impact and never cascades to views.
 tests:
+- client/e2e/new/obj-sql-related-transfer-8ac92ce2.spec.ts
 - client/e2e/new/obj-manager-bulk-replace-2a4bec9c.spec.ts
 - client/e2e/new/obj-manager-calendar-duplicate-3235bc3d.spec.ts
 - client/e2e/new/obj-manager-delete-undo-c5a8b7ae.spec.ts

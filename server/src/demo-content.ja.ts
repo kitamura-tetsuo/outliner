@@ -247,6 +247,7 @@ export function demoContentJa(): DemoLocaleContent {
                 key: "selection and clipboard",
                 title: "選択とクリップボード",
                 lines: [
+                    "Gridのコピーは同じGridを参照する新しい配置を作成します。切り取りは貼り付けまで配置を保持します。Tableを削除してもGrid・Kanbanとその配置は残り、SQLやINSERT設定の問題を表示します。",
                     "マウス、または Shift+矢印キーでテキストを選択します。",
                     "選択は複数の項目にまたがれます。項目の末尾を越えてそのまま伸ばしてください。",
                     "ドラッグの向きは問いません。下から上へ選んでも、上から下へ選んだときとまったく同じ範囲が選択されます。",

@@ -13,19 +13,28 @@ import { createScheduleRule } from "../schedule/scheduleRuleService";
 import {
     createGrid,
     getGridColumnOrder,
+    getGridConfirmRowDelete,
     getGridHandles,
+    getGridInsertTargetTableId,
     getGridRegistry,
     getGridShowAddRowButton,
     isValidGridColumnWidth,
-    listGrids,
 } from "./gridDocs";
+import { queryReadDependencies } from "./queryReadDependencies";
 import { deriveSqlName } from "./sqlNames";
 import {
     assertStructuralEnumCompatibility,
     captureStructuralSqlSnapshot,
     structuralSqlSnapshotRequiresGuard,
 } from "./structuralEnumGuard";
-import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
+import {
+    createTable,
+    getTableHandles,
+    getTableRegistry,
+    listTables,
+    removeTable,
+    type TableRecordValue,
+} from "./tableDocs";
 import type { TableDocConnection } from "./tableEngine";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
@@ -46,12 +55,15 @@ const DIRECTION_BY_SCOPE: Record<Exclude<DuplicationScope, "item-only">, "depend
 export interface DuplicationPreview {
     objects: DuplicableObject[];
     omittedReferenceCount: number;
+    unknownObjects: DuplicableObject[];
+    preferenceOmissions: { gridId: string; tableId: string; }[];
 }
 
 interface MaterializedDuplication {
     idMap: ReadonlyMap<string, string>;
     removedReferenceCount: number;
     createdObjects: DuplicableObject[];
+    diagnostics: string[];
 }
 
 export interface DuplicationResult extends MaterializedDuplication {
@@ -113,7 +125,12 @@ function toPreview(
             if (!visitedKeys.has(key(dependency))) omittedReferenceCount++;
         }
     }
-    return { objects, omittedReferenceCount };
+    return {
+        objects,
+        omittedReferenceCount,
+        unknownObjects: objects.filter(object => graph.analysisOf(object)?.status === "unknown"),
+        preferenceOmissions: [],
+    };
 }
 
 /**
@@ -133,7 +150,10 @@ export function previewObjectDuplication(
     const objects = scope === "item-only"
         ? [primary]
         : traverseObjectGraph(graph, [primary], DIRECTION_BY_SCOPE[scope]);
-    return toPreview(objects, graph);
+    const preview = toPreview(objects, graph);
+    preview.preferenceOmissions = preferenceOmissions(source, objects);
+    if ("incomplete" in objects) preview.unknownObjects = objects.incomplete as DuplicableObject[];
+    return preview;
 }
 
 /**
@@ -155,7 +175,57 @@ export function previewObjectSetDuplication(source: Y.Doc, selected: DuplicableO
         seen.add(objectKey);
         return true;
     });
-    return toPreview(objects, graph);
+    return { ...toPreview(objects, graph), preferenceOmissions: preferenceOmissions(source, objects) };
+}
+
+function preferenceOmissions(source: Y.Doc, objects: DuplicableObject[]): { gridId: string; tableId: string; }[] {
+    const selectedTables = new Set(objects.filter(object => object.type === "table").map(object => object.id));
+    return objects.flatMap(object => {
+        if (object.type !== "grid") return [];
+        const entry = getGridRegistry(source).get(object.id);
+        const tableId = entry ? getGridInsertTargetTableId({ entry }) : undefined;
+        return tableId && !selectedTables.has(tableId) ? [{ gridId: object.id, tableId }] : [];
+    });
+}
+
+/** Capture only the source facts used by a delayed duplication, excluding row
+ * and presentation edits, which remain live and belong to their own writers. */
+export function captureDuplicationAdmission(source: Y.Doc, objects: DuplicableObject[]): () => void {
+    const tables = getTableRegistry(source);
+    const grids = getGridRegistry(source);
+    const facts = objects.map(object => {
+        const registry = object.type === "table" ? tables : object.type === "grid"
+            ? grids
+            : source.getMap(
+                object.type === "schedule" ? "schedules" : object.type === "calendar" ? "calendars" : "yjsKanbans",
+            );
+        const entry = registry.get(object.id) as Y.Map<unknown> | undefined;
+        if (!entry) throw new Error(`${object.type} "${object.id}" no longer exists`);
+        const query = entry.get(object.type === "schedule" ? "sql" : "query");
+        const preference = entry.get("insertTargetTableId");
+        const reads = object.type === "grid" ? queryReadDependencies(source, String(query ?? "")) : undefined;
+        const dependencies = (reads?.tableIds ?? []).map(id => ({
+            id,
+            entry: tables.get(id),
+            sqlName: tables.get(id)?.get("sqlName"),
+        }));
+        const doc = entry.get("doc");
+        const sqlName = entry.get("sqlName");
+        return () =>
+            registry.get(object.id) === entry && entry.get("doc") === doc && entry.get("sqlName") === sqlName
+            && entry.get(object.type === "schedule" ? "sql" : "query") === query
+            && entry.get("insertTargetTableId") === preference
+            && dependencies.every(dependency =>
+                tables.get(dependency.id) === dependency.entry
+                && dependency.entry?.get("sqlName") === dependency.sqlName
+            )
+            && (!reads || JSON.stringify(queryReadDependencies(source, String(query ?? ""))) === JSON.stringify(reads));
+    });
+    return () => {
+        if (!facts.every(current => current())) {
+            throw new Error("The source view, query or Table identity changed while duplication was pending.");
+        }
+    };
 }
 
 /**
@@ -186,6 +256,10 @@ export async function materializeDuplicationPlan(
     // Capture dependency authority before the first await. The guard compiles
     // actual schemas/queries and rechecks these snapshots immediately before
     // any registry, subdoc, placement or history-visible effect.
+    if (objects.some(object => object.type === "kanban")) {
+        throw new Error("Kanban structural duplication is unsupported.");
+    }
+    const assertCurrent = captureDuplicationAdmission(source, objects);
     let sqlSnapshot = captureStructuralSqlSnapshot(source);
     const tableObjects = objects.filter(object => object.type === "table");
     const connections: TableDocConnection[] = [];
@@ -231,19 +305,39 @@ export async function materializeDuplicationPlan(
     if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
         sqlSnapshot = captureStructuralSqlSnapshot(source);
     }
-    if (structuralSqlSnapshotRequiresGuard(sqlSnapshot, relevantSqlIds)) {
-        await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
-    }
     const idMap = new Map<string, string>(existingIdMap);
-    for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
+    try {
+        if (structuralSqlSnapshotRequiresGuard(sqlSnapshot, relevantSqlIds)) {
+            await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
+        }
+        assertCurrent();
+        for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 
+        for (const object of objects) {
+            const registry = destination.getMap(
+                object.type === "table"
+                    ? "yjsTables"
+                    : object.type === "grid"
+                    ? "yjsGrids"
+                    : object.type === "calendar"
+                    ? "calendars"
+                    : "schedules",
+            );
+            if (registry.has(idMap.get(key(object))!)) throw new Error("A destination identity is already occupied.");
+        }
+    } catch (error) {
+        await Promise.allSettled(connections.map(connection => connection.dispose()));
+        throw error;
+    }
     const sameProject = source === destination;
     const createdTables: string[] = [];
     const createdGrids: string[] = [];
     const createdSchedules: string[] = [];
     const createdCalendars: string[] = [];
     const tableNames = new Set(listTables(destination).map(table => table.name));
-    const gridNames = new Set(listGrids(destination).map(grid => grid.name));
+    const gridNames = new Set(
+        [...getGridRegistry(destination).values()].map(entry => String(entry.get("name") ?? "Grid")),
+    );
     const sqlNames = new Set(listTables(destination).map(table => table.sqlName));
     const scheduleNames = new Set<string>();
     schedulesMapOf(destination).forEach(rule => {
@@ -255,6 +349,7 @@ export async function materializeDuplicationPlan(
     const destinationProject = Project.fromDoc(destination);
     const calendarNames = new Set(listCalendars(destinationProject).map(entry => entry.settings.name));
     let removedReferenceCount = 0;
+    const diagnostics: string[] = [];
 
     try {
         // Tables precede Grids, but both kinds already have destination IDs.
@@ -287,14 +382,9 @@ export async function materializeDuplicationPlan(
         }
 
         for (const object of objects.filter(object => object.type === "grid")) {
-            const sourceGrid = listGrids(source).find(grid => grid.gridId === object.id);
+            const sourceGrid = getGridRegistry(source).get(object.id);
             const handles = getGridHandles(source, object.id);
             if (!sourceGrid || !handles) throw new Error(`Grid "${object.id}" no longer exists`);
-            const copiedTableId = sourceGrid.sourceTableId
-                ? idMap.get(key({ type: "table", id: sourceGrid.sourceTableId }))
-                : undefined;
-            const targetTableId = copiedTableId ?? (sameProject ? sourceGrid.sourceTableId : "");
-            if (!targetTableId && sourceGrid.sourceTableId) removedReferenceCount++;
             // Null-prototype so an exact result-column name such as
             // "__proto__" is an ordinary own key, not a prototype assignment.
             const components: Record<string, { type?: string; label?: string; hidden?: boolean; widthPx?: number; }> =
@@ -314,17 +404,35 @@ export async function materializeDuplicationPlan(
             const destinationId = idMap.get(key(object))!;
             const sourceQuery = String(handles.entry.get("query") ?? "");
             const queryRewrite = rewriteTableQuerySql(sourceQuery, sqlNameMap);
-            const omittedQueryReferences = queryRewrite.relationDependencies
-                .filter(sqlName => !sqlNameMap.has(sqlName));
-            const targetQuery = !sameProject && omittedQueryReferences.length > 0 ? "" : queryRewrite.sql;
+            const reads = queryReadDependencies(source, sourceQuery);
+            const omittedQueryReferences = reads.relationNames
+                .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
+            const targetQuery = !sameProject && (omittedQueryReferences.length > 0 || reads.status === "unknown")
+                ? ""
+                : queryRewrite.sql;
             if (!sameProject) removedReferenceCount += omittedQueryReferences.length;
-            createGrid(destination, targetTableId, {
+            const preference = getGridInsertTargetTableId(handles);
+            const mappedPreference = preference
+                ? idMap.get(key({ type: "table", id: preference })) ?? (sameProject ? preference : undefined)
+                : undefined;
+            if (preference && !mappedPreference) {
+                removedReferenceCount++;
+                diagnostics.push(`Grid ${object.id}: cleared unmappable INSERT preference ${preference}`);
+            }
+            if (!sameProject && targetQuery === "" && sourceQuery) {
+                diagnostics.push(
+                    `Grid ${object.id}: query unavailable because read dependencies were omitted or unknown`,
+                );
+            }
+            createGrid(destination, undefined, {
                 gridId: destinationId,
-                name: allocateCopyName(sourceGrid.name, gridNames, sameProject),
+                name: allocateCopyName(String(sourceGrid.get("name") ?? "Grid"), gridNames, sameProject),
                 query: targetQuery,
                 columnOrder: getGridColumnOrder(handles),
                 components,
                 showAddRowButton: getGridShowAddRowButton(handles),
+                confirmRowDelete: getGridConfirmRowDelete(handles),
+                insertTargetTableId: mappedPreference,
             });
             createdGrids.push(destinationId);
         }
@@ -348,7 +456,7 @@ export async function materializeDuplicationPlan(
             const sourceSql = String(ruleMap.get("sql") ?? "");
             const sqlRewrite = rewriteTableQuerySql(sourceSql, sqlNameMap);
             const omittedSqlReferences = sqlRewrite.relationDependencies
-                .filter(sqlName => !sqlNameMap.has(sqlName));
+                .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
             const targetSql = !sameProject && omittedSqlReferences.length > 0 ? "" : sqlRewrite.sql;
             if (!sameProject) removedReferenceCount += omittedSqlReferences.length;
 
@@ -387,8 +495,9 @@ export async function materializeDuplicationPlan(
             if (!sourceSettings) throw new Error(`Calendar "${object.id}" no longer exists`);
             const destinationId = idMap.get(key(object))!;
             const queryRewrite = rewriteTableQuerySql(sourceSettings.query, sqlNameMap);
-            const omittedQueryReferences = queryRewrite.relationDependencies
-                .filter(sqlName => !sqlNameMap.has(sqlName));
+            const reads = queryReadDependencies(source, sourceSettings.query);
+            const omittedQueryReferences = reads.relationNames
+                .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
             const targetQuery = !sameProject && omittedQueryReferences.length > 0 ? "" : queryRewrite.sql;
             if (!sameProject) removedReferenceCount += omittedQueryReferences.length;
             createCalendar(destinationProject, {
@@ -442,6 +551,7 @@ export async function materializeDuplicationPlan(
     return {
         idMap,
         removedReferenceCount,
+        diagnostics,
         createdObjects: [
             ...createdTables.map(id => ({ type: "table" as const, id })),
             ...createdGrids.map(id => ({ type: "grid" as const, id })),
@@ -460,6 +570,9 @@ export async function duplicateObjects(
     options: DuplicationOptions = {},
 ): Promise<DuplicationResult> {
     const preview = previewObjectDuplication(source, primary, scope);
+    if (scope !== "item-only" && preview.unknownObjects.length) {
+        throw new Error("Cannot determine a complete dependency scope: SQL read analysis is unknown.");
+    }
     const materialized = await materializeDuplicationPlan(source, destination, preview.objects, options);
     return { ...materialized, primaryId: materialized.idMap.get(key(primary))! };
 }

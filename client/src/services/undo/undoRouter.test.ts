@@ -524,7 +524,6 @@ describe("UndoRouter", () => {
                     name: "Typed",
                     sqlName: "typed",
                     schemaSql: "CREATE TABLE typed (id TEXT, state task_state)",
-                    ui: { query: "SELECT * FROM typed", components: {}, columnOrder: [] },
                     catalog: captured.snapshot,
                 },
             };
@@ -581,7 +580,6 @@ describe("UndoRouter", () => {
                     name: "Typed",
                     sqlName: "typed",
                     schemaSql: "CREATE TABLE typed (id TEXT, state task_state)",
-                    ui: { query: "SELECT * FROM typed", components: {}, columnOrder: [] },
                     catalog: captured.snapshot,
                 },
             };

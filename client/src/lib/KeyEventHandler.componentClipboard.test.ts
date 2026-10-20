@@ -1,7 +1,7 @@
 import { createSqlCatalogObject, readSqlCatalog } from "$shared/services/sqlCatalog";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { Project } from "../schema/app-schema";
+import { Item, Project } from "../schema/app-schema";
 import { GRID_EXPORT_ROW_LIMIT } from "../services/clipboard/gridClipboardExport";
 import {
     deserializeClipboardItems,
@@ -13,7 +13,8 @@ import {
     pasteSpecialChoices,
     type PasteSpecialRequest,
 } from "../services/clipboard/pasteSpecial";
-import { createGrid } from "../services/yjstable/gridDocs";
+import { registerEditorSurface } from "../services/editorSurface";
+import { createGrid, getGridRegistry } from "../services/yjstable/gridDocs";
 import { createTable, listTables } from "../services/yjstable/tableDocs";
 import {
     getTableClipboardSource,
@@ -58,6 +59,12 @@ interface TestSelection {
     end?: TestEndpoint;
 }
 
+let stopSurface: (() => void) | undefined;
+beforeEach(() => {
+    stopSurface = registerEditorSurface(() => true);
+});
+afterEach(() => stopSurface?.());
+
 const state: {
     selection: TestSelection | undefined;
     visible: Array<{ model: { id: string; original: unknown; }; depth: number; }>;
@@ -96,7 +103,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => ({
 vi.mock("../stores/store.svelte", () => ({
     store: {
         get project() {
-            return { ydoc: state.doc, calendars: state.doc.getMap("calendars") };
+            return Project.fromDoc(state.doc);
         },
         activeViewModel: { getVisibleItems: () => state.visible },
     },
@@ -109,21 +116,32 @@ vi.mock("../stores/store.svelte", () => ({
  * A Grid or Calendar node owns no outline text (#5015), so the stub reports
  * none for one - exactly as the schema's own `text` getter does.
  */
+function fixtureGridId(tableId: string) {
+    return `grid:${tableId}`;
+}
 function makeItem(id: string, text: string, tableId?: string, calendarId?: string) {
-    const value = new Map<string, unknown>();
+    const project = Project.fromDoc(state.doc);
+    let page = [...project.items].find(item => item.text === "Fixture Page");
+    if (!page) page = project.addPage("Fixture Page", "fixture");
+    if (project.tree.computedMap?.has(id)) project.tree.deleteNodeAndDescendants(id);
+    const value = new Y.Map<unknown>();
+    value.set("id", id);
+    value.set("text", new Y.Text(tableId || calendarId ? "" : text));
     if (tableId) {
+        if (!getGridRegistry(state.doc).has(fixtureGridId(tableId))) {
+            createGrid(state.doc, undefined, {
+                gridId: fixtureGridId(tableId),
+                query: `SELECT * FROM ${listTables(state.doc).find(table => table.tableId === tableId)!.sqlName}`,
+            });
+        }
         value.set("componentType", "yjstable");
-        value.set("yjsTableId", tableId);
+        value.set("yjsGridId", fixtureGridId(tableId));
     } else if (calendarId) {
         value.set("componentType", "calendar");
         value.set("calendarId", calendarId);
     }
-    return {
-        id,
-        text: tableId || calendarId ? "" : text,
-        key: id,
-        tree: { getNodeValueFromKey: () => value },
-    };
+    project.tree.createNode(page.key, id, value as never);
+    return new Item(state.doc, project.tree, id);
 }
 
 function copyEvent(): { event: ClipboardEvent; data: Map<string, string>; } {
@@ -148,12 +166,11 @@ function copiedItems(data: Map<string, string>) {
 }
 
 function createPortableTable(doc: Y.Doc, name = "Sales", sqlName = "sales"): string {
-    return createTable(doc, name, sqlName, undefined, handles => {
+    const tableId = createTable(doc, name, sqlName, undefined, handles => {
         handles.schemaText.insert(0, `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`);
-        handles.uiDef.set("query", `SELECT id FROM ${sqlName}`);
-        handles.uiDef.set("components", new Y.Map());
-        handles.uiDef.set("columnOrder", []);
     });
+    createGrid(doc, undefined, { gridId: fixtureGridId(tableId), query: `SELECT id FROM ${sqlName}` });
+    return tableId;
 }
 
 function snapshot(sourceTableId: string, sqlName = "sales"): GridTableSnapshot {
@@ -162,7 +179,17 @@ function snapshot(sourceTableId: string, sqlName = "sales"): GridTableSnapshot {
         name: "Sales",
         sqlName,
         schemaSql: `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`,
-        ui: { query: `SELECT id FROM ${sqlName}`, components: {}, columnOrder: [] },
+    };
+}
+
+function gridSnapshot(tableId: string, sqlName = "sales") {
+    return {
+        gridId: fixtureGridId(tableId),
+        name: "Sales",
+        query: `SELECT id FROM ${sqlName}`,
+        tableIds: [tableId],
+        components: {},
+        columnOrder: [],
     };
 }
 
@@ -218,7 +245,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
 
         expect(copiedItems(data)).toEqual([
             { text: "text", depth: 0 },
-            { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: fixtureGridId(tableId) },
             { text: "Trailing", depth: 0 },
         ]);
         // Outward, an unrendered block contributes no line at all: its Table
@@ -240,7 +267,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         KeyEventHandler.handleCopy(event);
         expect(copiedItems(data)).toEqual([
             { text: "text", depth: 0 },
-            { text: "", depth: 0, componentType: "yjstable", yjsGridId: gridId, yjsTableId: tableId },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: gridId },
             { text: "Trailing", depth: 0 },
         ]);
     });
@@ -261,7 +288,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         KeyEventHandler.handleCopy(event);
 
         expect(copiedItems(data)).toEqual([
-            { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: fixtureGridId(tableId) },
         ]);
         // The block owns no outline text, so the plain flavor stays empty (#5015).
         expect(data.get("text/plain") ?? "").toBe("");
@@ -303,7 +330,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         expect(() => KeyEventHandler.handleCopy(event)).not.toThrow();
         expect(copiedItems(data)).toEqual([
             { text: "Nested explanation", depth: 1 },
-            { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: fixtureGridId(tableId) },
         ]);
     });
 
@@ -318,7 +345,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
             text: "",
             depth: 0,
             componentType: "yjstable",
-            yjsTableId: tableId,
+            yjsGridId: fixtureGridId(tableId),
         });
         // ...and the outward flavor invents no caption for it (#5024).
         expect(data.get("text/plain")).not.toContain("Sales");
@@ -374,14 +401,14 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         KeyEventHandler.handleCopy(event);
 
         expect(copiedItems(data)).toEqual([
-            { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: fixtureGridId(tableId) },
         ]);
         // Nothing textual is left to copy, and the block gets no caption to
         // stand in for it (#5024) - the binding alone is the copy.
         expect(data.get("text/plain")).toBe("");
     });
 
-    it("cuts a selection of a lone block even though it writes no plain text", () => {
+    it("stages a lone block Cut without eager source removal even with no plain text", () => {
         const cutSelectedText = vi.fn();
         state.cursors = [{ isActive: true, insertText: vi.fn(), cutSelectedText }];
         state.selection = {
@@ -395,11 +422,11 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
 
         KeyEventHandler.handleCut(event);
 
-        // What was cut is on the clipboard as a binding, so the block has to
-        // leave the outline: an empty plain-text flavor is not an empty cut.
+        // Cut keeps the source placement until admitted Paste moves it.
         expect(copiedItems(data)?.[0].componentType).toBe("yjstable");
         expect(data.get("text/plain")).toBe("");
-        expect(cutSelectedText).toHaveBeenCalled();
+        expect(cutSelectedText).not.toHaveBeenCalled();
+        expect((state.visible[1].model.original as Item).yjsGridId).toBe(fixtureGridId(tableId));
     });
 
     it("copies a Grid the drag ends on: a text-less block has no interior to stop short of", () => {
@@ -418,7 +445,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         expect(copiedItems(data)).toEqual([
             { text: "text", depth: 0 },
             { text: "Trailing text", depth: 0 },
-            { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: fixtureGridId(tableId) },
         ]);
     });
 
@@ -458,7 +485,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         ]);
     });
 
-    it("exports each unique Grid once and keeps successful snapshots when another export fails", () => {
+    it("refuses the entire automatic capture if a selected dependency cannot be exported", () => {
         const invalidTableId = createTable(state.doc, "Invalid", "invalid");
         state.visible = [
             { model: { id: "a", original: makeItem("a", "First", tableId) }, depth: 0 },
@@ -477,18 +504,11 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
 
         KeyEventHandler.handleCopy(event);
 
-        const payload = deserializeClipboardItems(data.get(OUTLINER_ITEMS_MIME) ?? "");
-        expect(payload?.version).toBe(2);
-        expect(payload?.version === 2 ? Object.keys(payload.tables) : []).toEqual([tableId]);
-        expect(payload?.items[2]).toEqual({
-            text: "",
-            depth: 0,
-            componentType: "yjstable",
-            yjsTableId: invalidTableId,
-        });
+        expect(data.has(OUTLINER_ITEMS_MIME)).toBe(false);
+        expect(data.has("text/plain")).toBe(false);
     });
 
-    it("keeps Calendar-only and all-failed Grid exports on version 1", () => {
+    it("refuses a mixed Calendar/Grid capture when Grid dependency structure is unavailable", () => {
         const invalidTableId = createTable(state.doc, "Invalid", "invalid");
         state.visible = [
             { model: { id: "a", original: makeItem("a", "Calendar", undefined, "calendar-1") }, depth: 0 },
@@ -505,7 +525,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
 
         KeyEventHandler.handleCopy(event);
 
-        expect(deserializeClipboardItems(data.get(OUTLINER_ITEMS_MIME) ?? "")?.version).toBe(1);
+        expect(data.has(OUTLINER_ITEMS_MIME)).toBe(false);
     });
 
     it("carries a Layout's hidden children with their spans (#4997)", () => {
@@ -520,11 +540,11 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         layout.componentType = "layout";
         const first = layout.items.addNode("tester");
         first.componentType = "yjstable";
-        first.yjsTableId = tableId;
+        first.yjsGridId = fixtureGridId(tableId);
         first.columnSpan = 4;
         const second = layout.items.addNode("tester");
         second.componentType = "yjstable";
-        second.yjsTableId = tableId;
+        second.yjsGridId = fixtureGridId(tableId);
         second.columnSpan = 8;
         const outro = page.items.addNode("tester");
         outro.updateText("Outro");
@@ -548,8 +568,8 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         expect(copiedItems(data)).toEqual([
             { text: "Intro", depth: 0 },
             { text: "", depth: 0, componentType: "layout" },
-            { text: "", depth: 1, componentType: "yjstable", yjsTableId: tableId, columnSpan: 4 },
-            { text: "", depth: 1, componentType: "yjstable", yjsTableId: tableId, columnSpan: 8 },
+            { text: "", depth: 1, componentType: "yjstable", yjsGridId: fixtureGridId(tableId), columnSpan: 4 },
+            { text: "", depth: 1, componentType: "yjstable", yjsGridId: fixtureGridId(tableId), columnSpan: 8 },
             { text: "Outro", depth: 0 },
         ]);
     });
@@ -587,7 +607,7 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
     });
 
     it("copies a rendered Grid as TSV and a real HTML table, applying the view's columns", () => {
-        registerTableClipboardSource(tableId, { getGrid: gridConfig, getChartImage: () => undefined });
+        registerTableClipboardSource(fixtureGridId(tableId), { getGrid: gridConfig, getChartImage: () => undefined });
         selectWholeGridHost();
         const { event, data } = copyEvent();
 
@@ -604,7 +624,7 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
     });
 
     it("keeps the private payload binding the Grid without giving it outline text", () => {
-        registerTableClipboardSource(tableId, { getGrid: gridConfig, getChartImage: () => undefined });
+        registerTableClipboardSource(fixtureGridId(tableId), { getGrid: gridConfig, getChartImage: () => undefined });
         selectWholeGridHost();
         const { event, data } = copyEvent();
 
@@ -612,7 +632,7 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
 
         expect(copiedItems(data)).toEqual([
             { text: "Intro text", depth: 0 },
-            { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: fixtureGridId(tableId) },
         ]);
     });
 
@@ -630,7 +650,7 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
     });
 
     it("adds the chart image to the HTML flavor when the chart view is open", () => {
-        registerTableClipboardSource(tableId, {
+        registerTableClipboardSource(fixtureGridId(tableId), {
             getGrid: gridConfig,
             getChartImage: () => "data:image/png;base64,AAAA",
         });
@@ -645,7 +665,7 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
     });
 
     it("offers the chart as an image/png flavor of the system clipboard write", async () => {
-        registerTableClipboardSource(tableId, {
+        registerTableClipboardSource(fixtureGridId(tableId), {
             getGrid: gridConfig,
             getChartImage: () => "data:image/png;base64,AAAA",
         });
@@ -675,7 +695,7 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
 
     it("drops an oversized chart image and marks the export truncated", () => {
         const oversized = "data:image/png;base64," + "A".repeat(2_000_001);
-        registerTableClipboardSource(tableId, { getGrid: gridConfig, getChartImage: () => oversized });
+        registerTableClipboardSource(fixtureGridId(tableId), { getGrid: gridConfig, getChartImage: () => oversized });
         selectWholeGridHost();
         const { event, data } = copyEvent();
 
@@ -689,7 +709,7 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
 
     it("caps the exported rows and says so in the copied content", () => {
         const rows = Array.from({ length: GRID_EXPORT_ROW_LIMIT + 5 }, (_, index) => ({ month: `m${index}` }));
-        registerTableClipboardSource(tableId, {
+        registerTableClipboardSource(fixtureGridId(tableId), {
             getGrid: () => ({ columns: ["month"], hiddenColumns: {}, labels: {}, rows }),
             getChartImage: () => undefined,
         });
@@ -708,11 +728,11 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
     it("unregisters only its own source, so a replacing view keeps the registration", () => {
         const first = { getGrid: gridConfig, getChartImage: () => undefined };
         const second = { getGrid: gridConfig, getChartImage: () => undefined };
-        registerTableClipboardSource(tableId, first);
-        registerTableClipboardSource(tableId, second);
-        unregisterTableClipboardSource(tableId, first);
+        registerTableClipboardSource(fixtureGridId(tableId), first);
+        registerTableClipboardSource(fixtureGridId(tableId), second);
+        unregisterTableClipboardSource(fixtureGridId(tableId), first);
 
-        expect(getTableClipboardSource(tableId)).toBe(second);
+        expect(getTableClipboardSource(fixtureGridId(tableId))).toBe(second);
     });
 });
 
@@ -726,18 +746,19 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         state.cursors = [];
     });
 
-    it("reuses same-project version 2 bindings even when their snapshot is missing", async () => {
+    it("reuses a surviving same-project Grid without a portable snapshot", async () => {
+        createGrid(state.doc, undefined, { gridId: "grid:source-table", query: "SELECT 1" });
         const encoded = JSON.stringify({
             version: 2,
             sourceProjectId: state.doc.guid,
-            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }],
             tables: {},
         });
 
         const detail = await pasteAndCapture(encoded, "Grid");
 
         expect(detail?.structuredItems).toEqual([
-            { text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" },
+            { text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" },
         ]);
         expect(listTables(state.doc)).toEqual([]);
     });
@@ -792,7 +813,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         const encoded = JSON.stringify({
             version: 2,
             sourceProjectId: state.doc.guid,
-            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }],
             tables: {},
         });
         const requested = vi.fn((event: Event) => {
@@ -815,11 +836,12 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             version: 2,
             sourceProjectId: "foreign-project",
             items: [
-                { text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" },
-                { text: "", depth: 0, componentType: "yjstable", yjsTableId: "missing-table" },
+                { text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" },
+                { text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:missing-table" },
                 { text: "", depth: 0, componentType: "calendar", calendarId: "calendar-1" },
             ],
             tables: { "source-table": copied, "unused-table": unused },
+            grids: { "grid:source-table": gridSnapshot("source-table") },
         });
 
         const detail = await pasteAndCapture(encoded, "Grid\nMissing\nCalendar");
@@ -834,7 +856,6 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
                 text: "",
                 depth: 0,
                 componentType: "yjstable",
-                yjsTableId: tables[0].tableId,
                 yjsGridId: expect.any(String),
             },
             { text: "", depth: 0 },
@@ -874,7 +895,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         const version1 = JSON.stringify({
             version: 1,
             sourceProjectId: "foreign-project",
-            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }],
         });
         const version1Detail = await pasteAndCapture(version1, "Grid\nPlain");
         expect(version1Detail?.structuredItems).toBeUndefined();
@@ -883,7 +904,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         const version2 = JSON.stringify({
             version: 2,
             sourceProjectId: "foreign-project",
-            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }],
             tables: { "source-table": invalid },
         });
         const version2Detail = await pasteAndCapture(version2, "Grid\nPlain");
@@ -898,8 +919,9 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         const encoded = JSON.stringify({
             version: 2,
             sourceProjectId: "foreign-project",
-            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }],
             tables: { "source-table": snapshot("source-table") },
+            grids: { "grid:source-table": gridSnapshot("source-table") },
         });
         const metadata = JSON.stringify({ multicursorText: ["Grid"], pasteMode: "spread" });
 
@@ -915,8 +937,9 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         const encoded = JSON.stringify({
             version: 2,
             sourceProjectId: "foreign-project",
-            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }],
             tables: { "source-table": snapshot("source-table") },
+            grids: { "grid:source-table": gridSnapshot("source-table") },
         });
         let dispatched = false;
         const listener = () => {
@@ -941,8 +964,9 @@ describe("Paste Special component variant availability", () => {
     const payload = {
         version: 2 as const,
         sourceProjectId: "source-project",
-        items: [{ text: "", depth: 0, componentType: "yjstable" as const, yjsTableId: "source-table" }],
+        items: [{ text: "", depth: 0, componentType: "yjstable" as const, yjsGridId: "grid:source-table" }],
         tables: { "source-table": snapshot("source-table") },
+        grids: { "grid:source-table": gridSnapshot("source-table") },
     };
 
     it("offers all variants in the source project", () => {

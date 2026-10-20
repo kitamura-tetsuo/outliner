@@ -45,7 +45,10 @@ acceptance:
 - Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.
 - 'The Grid export never truncates silently: a result past the row cap, or a chart image past the size cap, carries a notice in the copied content.'
 - The private in-app payload still names the Grid, so pasting back into Outliner behaves exactly as before.
+- Portable definitions are keyed by Grid identity independently of Table snapshots. Same-Project Copy shares a Grid, staged Cut preserves placement/Grid IDs, and cross-Project Cut retains the source Grid even when unplaced while refusing destination Grid or placement ID collisions.
 tests:
+- client/e2e/new/clp-cross-project-cut-identity-4584c0de.spec.ts
+- client/src/services/clipboard/crossProjectGridMove.test.ts
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-chart-image-clipboard-4584c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts

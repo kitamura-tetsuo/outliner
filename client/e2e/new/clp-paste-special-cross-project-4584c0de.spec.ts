@@ -32,7 +32,7 @@ async function readOutlineSnapshot(page: Page): Promise<
         text: string;
         depth: number;
         componentType: string | null;
-        yjsTableId: string | null;
+        yjsGridId: string | null;
     }>
 > {
     return page.evaluate(() => {
@@ -44,7 +44,7 @@ async function readOutlineSnapshot(page: Page): Promise<
             text: string;
             depth: number;
             componentType: string | null;
-            yjsTableId: string | null;
+            yjsGridId: string | null;
         }> = [];
         const walk = (items: any, depth: number) => {
             for (let index = 0; index < items.length; index++) {
@@ -55,7 +55,7 @@ async function readOutlineSnapshot(page: Page): Promise<
                     text: String(item.text ?? ""),
                     depth,
                     componentType: (item.componentType as string | undefined) ?? null,
-                    yjsTableId: (item.yjsTableId as string | undefined) ?? null,
+                    yjsGridId: (item.yjsGridId as string | undefined) ?? null,
                 });
                 if (item.items) walk(item.items, depth + 1);
             }

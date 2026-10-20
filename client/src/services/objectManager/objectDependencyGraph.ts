@@ -2,7 +2,7 @@
 // by both recursive object duplication (`yjstable/objectDuplication.ts`) and
 // Object Manager's dependency-aware "Select related" action. Edges are
 // discovered only from explicit object relationships — a Grid/Schedule's
-// `sourceTableId`/`targetTableId` plus the relations its SQL text actually
+// Schedule `targetTableId` plus the relations its SQL text actually
 // reads or writes (`rewriteTableQuerySql`'s FROM/JOIN/DML-target scan, never
 // bare identifier matching) — and now a Calendar's `query` the same way.
 // Outline Page placements are never edges here.
@@ -11,8 +11,9 @@ import { Project } from "$shared/app-schema";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import * as Y from "yjs";
 import { listCalendars } from "../calendar/calendarService";
-import { getGridHandles, listGrids } from "../yjstable/gridDocs";
+import { getGridRegistry, listGrids } from "../yjstable/gridDocs";
 import { getKanban, listKanbans } from "../yjstable/kanbanDocs";
+import { type QueryReadDependencies, queryReadDependencies } from "../yjstable/queryReadDependencies";
 import { listTables } from "../yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../yjstable/tableSqlRewrite";
 
@@ -31,6 +32,8 @@ export function objectGraphKey(object: GraphObject): string {
 }
 
 export interface ObjectDependencyGraph {
+    analysisOf(object: GraphObject): QueryReadDependencies | undefined;
+    unknownObjects: GraphObject[];
     /** Objects `object` explicitly references (currently always Tables). */
     dependenciesOf(object: GraphObject): GraphObject[];
     /** Objects that explicitly reference `object`. */
@@ -51,6 +54,15 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
     const tableEntries = listTables(doc);
     const tableIds = new Set(tableEntries.map(table => table.tableId));
     const tableBySqlName = new Map(tableEntries.map(table => [table.sqlName, table.tableId]));
+
+    const analysis = new Map<string, QueryReadDependencies>();
+    const unknownObjects: GraphObject[] = [];
+    function readIds(object: GraphObject, query: string): string[] {
+        const evidence = queryReadDependencies(doc, query);
+        analysis.set(objectGraphKey(object), evidence);
+        if (evidence.status === "unknown") unknownObjects.push(object);
+        return evidence.tableIds;
+    }
 
     const forward = new Map<string, GraphObject[]>();
     const reverse = new Map<string, GraphObject[]>();
@@ -88,10 +100,8 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
     for (const grid of listGrids(doc)) {
         const gridObject: GraphObject = { type: "grid", id: grid.gridId };
         const references = new Set<string>();
-        if (grid.sourceTableId) references.add(grid.sourceTableId);
-        const handles = getGridHandles(doc, grid.gridId);
-        const query = String(handles?.entry.get("query") ?? "");
-        for (const tableId of relationTableIds(query)) references.add(tableId);
+        const query = String(getGridRegistry(doc).get(grid.gridId)?.get("query") ?? "");
+        for (const tableId of readIds(gridObject, query)) references.add(tableId);
         for (const tableId of references) {
             if (tableIds.has(tableId)) addEdge(gridObject, { type: "table", id: tableId });
         }
@@ -101,7 +111,7 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
         const object: GraphObject = { type: "kanban", id: kanban.kanbanId };
         const settings = getKanban(doc, kanban.kanbanId);
         const references = new Set<string>();
-        for (const tableId of relationTableIds(settings?.query ?? "")) references.add(tableId);
+        for (const tableId of readIds(object, settings?.query ?? "")) references.add(tableId);
         for (const tableId of references) {
             if (tableIds.has(tableId)) addEdge(object, { type: "table", id: tableId });
         }
@@ -122,12 +132,14 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
     // dependency is whatever Tables its query reads.
     for (const calendar of listCalendars(project)) {
         const calendarObject: GraphObject = { type: "calendar", id: calendar.id };
-        for (const tableId of relationTableIds(calendar.settings.query)) {
+        for (const tableId of readIds(calendarObject, calendar.settings.query)) {
             if (tableIds.has(tableId)) addEdge(calendarObject, { type: "table", id: tableId });
         }
     }
 
     return {
+        analysisOf: object => analysis.get(objectGraphKey(object)),
+        unknownObjects,
         dependenciesOf: object => forward.get(objectGraphKey(object)) ?? [],
         dependentsOf: object => reverse.get(objectGraphKey(object)) ?? [],
     };
@@ -143,7 +155,7 @@ export function traverseObjectGraph(
     graph: ObjectDependencyGraph,
     roots: GraphObject[],
     direction: GraphDirection,
-): GraphObject[] {
+): GraphObject[] & { incomplete: GraphObject[]; } {
     const visited = new Map<string, GraphObject>();
     const queue: GraphObject[] = [...roots];
     while (queue.length > 0) {
@@ -159,5 +171,11 @@ export function traverseObjectGraph(
             : [...graph.dependenciesOf(current), ...graph.dependentsOf(current)];
         for (const object of next) queue.push(object);
     }
-    return [...visited.values()];
+    const objects = [...visited.values()];
+    const incomplete = graph.unknownObjects.filter(object =>
+        direction !== "dependencies" || visited.has(objectGraphKey(object))
+    );
+    return Object.defineProperty(objects, "incomplete", { value: incomplete }) as GraphObject[] & {
+        incomplete: GraphObject[];
+    };
 }

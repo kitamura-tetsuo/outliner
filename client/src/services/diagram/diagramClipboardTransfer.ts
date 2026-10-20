@@ -21,6 +21,8 @@
 import type { Project } from "$shared/app-schema";
 import { v4 as uuid } from "uuid";
 import type * as Y from "yjs";
+import { queryReadDependencies } from "../yjstable/queryReadDependencies";
+import { getTableRegistry } from "../yjstable/tableDocs";
 
 export type PendingCutState = "pending" | "consumed" | "invalid";
 
@@ -32,6 +34,7 @@ interface PendingCut {
     rootKeys: string[];
     fingerprint: string;
     state: PendingCutState;
+    crossProjectAllowed: boolean;
     stopObserving: () => void;
 }
 
@@ -72,13 +75,36 @@ function placementOf(project: Project, key: string): string {
     const parentKey = project.tree.getNodeParentFromKey(key);
     const history = nodeMap(project, key)?.get("_parentHistory") as Y.Map<unknown> | undefined;
     const edge = parentKey ? history?.get(parentKey) as { counter?: number; order?: string; } | undefined : undefined;
-    return `${key}<${parentKey ?? ""}#${edge?.counter ?? ""}@${edge?.order ?? ""}`;
+    return `${key}:${JSON.stringify(nodeMap(project, key)?._item?.id)}<${parentKey ?? ""}#${edge?.counter ?? ""}@${
+        edge?.order ?? ""
+    }`;
 }
 
 function targetOf(project: Project, key: string): string {
     try {
         const value = project.tree.getNodeValueFromKey(key) as Y.Map<unknown> | undefined;
-        return `${String(value?.get?.("componentType") ?? "")}:${String(value?.get?.("diagramId") ?? "")}`;
+        const gridId = value?.get("yjsGridId");
+        const grid = typeof gridId === "string"
+            ? project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId)
+            : undefined;
+        const query = String(grid?.get("query") ?? "");
+        const reads = grid ? queryReadDependencies(project.ydoc, query) : undefined;
+        const tables = getTableRegistry(project.ydoc);
+        const dependencies = reads?.tableIds.map(id => ({
+            id,
+            incarnation: tables.get(id)?._item?.id,
+            sqlName: tables.get(id)?.get("sqlName"),
+        }));
+        return JSON.stringify({
+            type: value?.get("componentType"),
+            diagramId: value?.get("diagramId"),
+            gridId,
+            gridIncarnation: grid?._item?.id,
+            query: grid ? query : undefined,
+            preference: grid?.get("insertTargetTableId"),
+            reads,
+            dependencies,
+        });
     } catch {
         return "?";
     }
@@ -122,7 +148,11 @@ function invalidate(transfer: PendingCut): void {
  * Stage a pending Cut of `rootKeys` (whole subtrees, in document order).
  * Replaces — and so invalidates — whatever transfer this editor held before.
  */
-export function stagePendingCut(project: Project, rootKeys: readonly string[]): string | undefined {
+export function stagePendingCut(
+    project: Project,
+    rootKeys: readonly string[],
+    crossProjectAllowed = false,
+): string | undefined {
     invalidatePendingCut();
     const fingerprint = fingerprintSelection(project, rootKeys);
     if (fingerprint === undefined || rootKeys.length === 0) return undefined;
@@ -135,6 +165,7 @@ export function stagePendingCut(project: Project, rootKeys: readonly string[]): 
         rootKeys: [...rootKeys],
         fingerprint,
         state: "pending",
+        crossProjectAllowed,
         stopObserving: () => {},
     };
     const onChange = () => {
@@ -143,9 +174,15 @@ export function stagePendingCut(project: Project, rootKeys: readonly string[]): 
     };
     const onDestroy = () => invalidate(transfer);
     treeMap.observeDeep(onChange);
+    const gridMap = project.ydoc.getMap("yjsGrids");
+    const tableMap = getTableRegistry(project.ydoc);
+    gridMap.observeDeep(onChange);
+    tableMap.observeDeep(onChange);
     project.ydoc.on("destroy", onDestroy);
     transfer.stopObserving = () => {
         treeMap.unobserveDeep(onChange);
+        gridMap.unobserveDeep(onChange);
+        tableMap.unobserveDeep(onChange);
         project.ydoc.off("destroy", onDestroy);
     };
     transfers.set(transfer.id, transfer);
@@ -192,4 +229,17 @@ export function invalidatePendingCut(): void {
 /** State of a transfer, for diagnostics and tests. */
 export function pendingCutState(transferId: string): PendingCutState | undefined {
     return transfers.get(transferId)?.state;
+}
+
+/** Only a staged Grid move may survive a Project switch in this tab. */
+export function invalidatePendingCutForProjectSwitch(): void {
+    if (current && !current.crossProjectAllowed) invalidate(current);
+}
+
+export function lookupCrossProjectGridCut(transferId: string, sourceProjectId: string): PendingCutLookup {
+    const transfer = transfers.get(transferId);
+    if (!transfer || !transfer.crossProjectAllowed || transfer.doc.guid !== sourceProjectId) {
+        return { ok: false, reason: "unknown-transfer" };
+    }
+    return lookupPendingCut(transferId, transfer.project);
 }

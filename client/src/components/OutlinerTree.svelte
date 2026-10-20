@@ -1295,11 +1295,9 @@
     function applyClipboardMetadata(item: Item, metadata?: ClipboardItem) {
         if (!metadata) return;
         item.componentType = metadata.componentType;
-        // The Grid id is the authoritative binding on new payloads; the
-        // legacy yjsTableId field is still written so anything that inspects
-        // provenance (e.g. cut/detach or older tooling) can find the Table.
+        // A placement identifies its independent Grid; it has no primary Table.
         setItemGridId(item, metadata.componentType === "yjstable" ? metadata.yjsGridId : undefined);
-        setItemTableId(item, metadata.componentType === "yjstable" ? metadata.yjsTableId : undefined);
+        setItemTableId(item, undefined);
         setItemCalendarId(item, metadata.componentType === "calendar" ? metadata.calendarId : undefined);
         // Layout width travels with the child (#4997); order is the pasted
         // item order, so nothing else about placement needs restoring.

@@ -1,11 +1,9 @@
 import type { Project } from "$shared/app-schema";
-import { readSqlCatalog } from "$shared/services/sqlCatalog";
 import type * as Y from "yjs";
-import { getLogger } from "../../lib/logger";
 import { listCalendars, removeCalendarWithPlacements, renameCalendar } from "../calendar/calendarService";
 import { deleteScheduleRuleWithUndo, listSchedules, renameSchedule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import type { AsyncUndoEntry, ManualUndoEntry } from "../undo/undoRouter.svelte";
+import type { AsyncUndoEntry } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
 import { listKanbans, removeKanbanWithPlacements, updateKanban } from "../yjstable/kanbanDocs";
 import {
@@ -21,7 +19,7 @@ import {
     removeTableWithPolicyUndoable,
     type TableDependencies,
 } from "../yjstable/tableDependencies";
-import { listTables, renameTable } from "../yjstable/tableDocs";
+import { getTableRegistry, listTables, renameTable } from "../yjstable/tableDocs";
 import {
     buildObjectDependencyGraph,
     type GraphDirection,
@@ -30,8 +28,6 @@ import {
 } from "./objectDependencyGraph";
 import type { PlacementAuthorization } from "./objectPlacement";
 import { collectAllPlacements, type ObjectPlacement } from "./objectPlacements";
-
-const logger = getLogger("objectManagerController");
 
 export type ObjectType = "Table" | "Grid" | "Schedule" | "Calendar" | "Kanban";
 
@@ -132,7 +128,7 @@ export function selectRelatedObjects(
     objects: NamedObject[],
     selectedObjectIds: ReadonlySet<string>,
     scope: RelatedSelectionScope,
-): string[] {
+): string[] & { incomplete?: string[]; } {
     if (!project?.ydoc || selectedObjectIds.size === 0) return [];
     const byId = new Map(objects.map(o => [o.id, o]));
     const roots = [...selectedObjectIds]
@@ -142,7 +138,10 @@ export function selectRelatedObjects(
     if (roots.length === 0) return [];
 
     const graph = buildObjectDependencyGraph(project.ydoc);
-    return traverseObjectGraph(graph, roots, scope).map(object => object.id);
+    const result = traverseObjectGraph(graph, roots, scope);
+    return Object.defineProperty(result.map(object => object.id), "incomplete", {
+        value: result.incomplete.map(object => `${object.type}:${object.id}`),
+    });
 }
 
 export interface Preselection {
@@ -246,6 +245,23 @@ export interface DeleteImpact {
     tableDependencies?: TableDependencies;
 }
 
+/** Capture registry incarnations before a delayed confirmation. */
+export function captureDeletionAdmission(project: Project, objects: NamedObject[]): () => boolean {
+    const registries = {
+        Table: getTableRegistry(project.ydoc),
+        Grid: project.ydoc.getMap("yjsGrids"),
+        Kanban: project.ydoc.getMap("yjsKanbans"),
+        Calendar: project.calendars,
+        Schedule: project.schedules,
+    };
+    const entries = objects.map(object => ({
+        registry: registries[object.type],
+        id: object.id,
+        entry: registries[object.type].get(object.id),
+    }));
+    return () => entries.every(({ registry, id, entry }) => entry !== undefined && registry.get(id) === entry);
+}
+
 /** What deleting `object` will affect, for the confirmation dialog. */
 export function getDeleteImpact(project: Project | null | undefined, object: NamedObject): DeleteImpact {
     if (!project) return { placements: [] };
@@ -313,6 +329,7 @@ export interface DuplicationSetPreview {
     countsByType: Partial<Record<ObjectType, number>>;
     /** References from a selected object to an object outside the selection (see `previewObjectSetDuplication`). */
     omittedReferenceCount: number;
+    preferenceOmissions: { gridId: string; tableId: string; }[];
 }
 
 /**
@@ -333,7 +350,12 @@ export function buildDuplicationSetPreview(
         .filter((object): object is NamedObject => object !== undefined);
     const countsByType: Partial<Record<ObjectType, number>> = {};
     for (const object of objects) countsByType[object.type] = (countsByType[object.type] ?? 0) + 1;
-    return { objects, countsByType, omittedReferenceCount: preview.omittedReferenceCount };
+    return {
+        objects,
+        countsByType,
+        omittedReferenceCount: preview.omittedReferenceCount,
+        preferenceOmissions: preview.preferenceOmissions,
+    };
 }
 
 /** A caller-supplied side effect folded into `duplicateSelectedObjects`'s single undo step — see `afterMaterialize`. */
@@ -373,8 +395,6 @@ export async function duplicateSelectedObjects(
     if (selected.length === 0) return null;
     let result: DuplicationSetResult | undefined;
     let sideEffect: DuplicationSideEffect | void;
-    const catalog = readSqlCatalog(sourceDoc.guid, sourceDoc);
-    const guardedReplay = catalog.status !== "ready" || catalog.snapshot.objects.length > 0;
     const undo = () => {
         sideEffect?.undo();
         if (result) rollbackObjectDuplication(destinationDoc, result);
@@ -393,31 +413,24 @@ export async function duplicateSelectedObjects(
             sideEffect?.redo();
         });
     };
-    const entry: ManualUndoEntry | AsyncUndoEntry = guardedReplay
-        ? {
-            type: "async",
-            label: `Duplicate ${selected.length} objects`,
-            projectId: destinationDoc.guid,
-            affectedObjectIds: selected.map(object => object.id),
-            beforeSource: [],
-            afterSource: [],
-            isActive: () => !sourceDoc.isDestroyed && !destinationDoc.isDestroyed,
-            replay: async direction => {
-                try {
-                    if (direction === "undo") undo();
-                    else await redo();
-                    return { status: "applied" };
-                } catch (error) {
-                    return { status: "refused", reason: error instanceof Error ? error.message : String(error) };
-                }
-            },
-        }
-        : {
-            type: "manual",
-            label: `Duplicate ${selected.length} objects`,
-            undo,
-            redo: () => void redo().catch(error => logger.error({ error }, "Redo of Duplicate selected failed")),
-        };
+    const entry: AsyncUndoEntry = {
+        type: "async",
+        label: `Duplicate ${selected.length} objects`,
+        projectId: destinationDoc.guid,
+        affectedObjectIds: selected.map(object => object.id),
+        beforeSource: [],
+        afterSource: [],
+        isActive: () => !sourceDoc.isDestroyed && !destinationDoc.isDestroyed,
+        replay: async direction => {
+            try {
+                if (direction === "undo") undo();
+                else await redo();
+                return { status: "applied" };
+            } catch (error) {
+                return { status: "refused", reason: error instanceof Error ? error.message : String(error) };
+            }
+        },
+    };
     await globalUndoRouter.captureManualAsync(
         async () => {
             result = await duplicateObjectSet(sourceDoc, destinationDoc, toDuplicableObjects(selected), options);

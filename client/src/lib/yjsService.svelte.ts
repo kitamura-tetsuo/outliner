@@ -488,6 +488,15 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
     const isTest = isTestEnvironment();
 
     if (!userId && isTest) userId = "test-user-id";
+    // Re-entering a loaded Project must keep its admitted document alive:
+    // pending transfers and cross-Project history retain that exact context.
+    if (containerId) {
+        const loaded = registry.get(keyFor(userId, containerId))?.[0];
+        if (loaded && !loaded.isDestroyed) {
+            yjsStore.yjsClient = loaded;
+            return loaded;
+        }
+    }
     const resolvedId = containerId || uuid();
     const title = typeof window !== "undefined"
         ? ((window.__CURRENT_PROJECT_TITLE__ as string | undefined) ?? "Test Project")

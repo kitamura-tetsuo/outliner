@@ -11,6 +11,7 @@ import {
     type GridTableSnapshot,
     type ItemClipboardPayload,
     looksLikeDiagramPayload,
+    looksLikeUnsupportedKanbanPayload,
     OUTLINER_ITEMS_MIME,
     payloadHasDiagram,
     serializeClipboardItems,
@@ -41,9 +42,9 @@ import { DIAGRAM_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getGridHandles, getGridQuery } from "../services/yjstable/gridDocs";
-import { getItemTableId } from "../services/yjstable/itemBinding";
+import { getItemGridId } from "../services/yjstable/itemBinding";
 import { getItemKanbanId } from "../services/yjstable/kanbanBinding";
-import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
+import { computeSnapshotClosure, exportGridSlice, exportTableStructure } from "../services/yjstable/tableClone";
 import { listTables } from "../services/yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../services/yjstable/tableSqlRewrite";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
@@ -68,20 +69,6 @@ const logger = getLogger("KeyEventHandler");
 const CHART_IMAGE_LIMIT = 2_000_000;
 
 const CHART_IMAGE_DROPPED_NOTICE = "--- Chart image too large to copy ---";
-
-function currentGridTableId(projectDoc: unknown, gridId: string | undefined): string | undefined {
-    if (!gridId) return undefined;
-    const doc = projectDoc as Parameters<typeof getGridHandles>[0];
-    const grid = getGridHandles(doc, gridId);
-    if (!grid) return undefined;
-    try {
-        const dependencies = rewriteTableQuerySql(getGridQuery(grid), new Map()).actualRelationDependencies;
-        if (dependencies.length !== 1) return undefined;
-        return listTables(doc).find(table => table.sqlName === dependencies[0])?.tableId;
-    } catch {
-        return undefined;
-    }
-}
 
 function reportPasteSpecialVariant(variant: PasteSpecialVariant): void {
     if (typeof window === "undefined") return;
@@ -226,11 +213,10 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
             .tree?.getNodeValueFromKey?.(item.key ?? "") as { get?: (k: string) => unknown; } | undefined;
         const rawGridId = nodeValue?.get?.("yjsGridId");
         const gridId = typeof rawGridId === "string" ? rawGridId : undefined;
-        const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
         const kanbanId = getItemKanbanId(item);
         const isLayout = isLayoutItem(item);
-        const isComponent = Boolean(gridId || tableId || calendarId || kanbanId) || isLayout || isDiagramNode(item);
+        const isComponent = Boolean(gridId || calendarId || kanbanId) || isLayout || isDiagramNode(item);
         const text = String(item.text ?? "");
         // What the endpoints select of this item: an interval for a Text node, the whole
         // block for a component - both read from the one traversal (#5025).
@@ -245,12 +231,9 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const sliceEnd = interval?.endOffset ?? text.length;
         // Component blocks are atomic: a partial overlap copies the whole block.
         if (isComponent) hasComponent = true;
-        const currentTableId = tableId ?? currentGridTableId(project.ydoc, gridId);
-        const exportId = gridId ?? currentTableId;
-        if (exportId && !gridExports.has(exportId)) {
-            const exported = (gridId ? renderedGridExport(gridId) : undefined)
-                ?? (currentTableId ? renderedGridExport(currentTableId) : undefined);
-            if (exported) gridExports.set(exportId, exported);
+        if (gridId && !gridExports.has(gridId)) {
+            const exported = renderedGridExport(gridId);
+            if (exported) gridExports.set(gridId, exported);
         }
         const collected: Array<{ item: typeof item; depth: number; text?: string; collapsed?: boolean; }> = [{
             item,
@@ -308,24 +291,43 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         return refusedCapture("unsupported-selection");
     }
 
+    const tableSnapshots: Record<string, GridTableSnapshot> = {};
+    const gridSnapshots: Record<string, import("../services/clipboard/itemClipboard").GridSnapshot> = {};
+    const initialTableIds = new Set<string>();
+    try {
+        for (const { item } of entries) {
+            const gridId = getItemGridId(item);
+            if (!gridId || gridSnapshots[gridId]) continue;
+            const snapshot = exportGridSlice(project.ydoc, gridId);
+            gridSnapshots[gridId] = snapshot;
+            for (const id of snapshot.tableIds) initialTableIds.add(id);
+        }
+        for (const tableId of initialTableIds) tableSnapshots[tableId] = exportTableStructure(project.ydoc, tableId);
+    } catch {
+        return refusedCapture("snapshot-unavailable");
+    }
+
     // Whole Diagram transclusions travel as a Diagram transfer (#5314): a Copy
     // snapshots each referenced Diagram now, a Cut stages its live nodes.
     const diagramIds = entries.filter(entry => isDiagramNode(entry.item)).map(entry => getItemDiagramId(entry.item));
     let diagramTransfer: { diagrams?: Record<string, DiagramSnapshot>; transferId?: string; } | undefined;
     let diagramCut: StructuredClipboard["diagramCut"];
     const diagramSources = new Map<string, string>();
-    if (diagramIds.length > 0) {
+    if (diagramIds.length > 0 || (operation === "cut" && Object.keys(gridSnapshots).length > 0)) {
         if (diagramIds.some(id => id === undefined)) return refusedCapture("snapshot-unavailable");
         const auth = currentDiagramAuthorization(project);
         if (operation === "cut") {
-            if (!coversWholeRange) return refusedCapture("unsupported-selection");
+            if (
+                (diagramIds.length > 0 && !coversWholeRange)
+                || entries.some(entry => entry.text !== undefined && entry.text !== String(entry.item.text ?? ""))
+            ) return refusedCapture("unsupported-selection");
             const roots = structuralSelectionRoots(
                 project,
                 entries.map(entry => entry.item.key),
                 generalStore.currentPage?.key,
             );
             if (!roots) return refusedCapture("unsupported-selection");
-            const staged = stageDiagramCut(project, roots, auth);
+            const staged = stageDiagramCut(project, roots, auth, diagramIds.length === 0);
             if (!staged.ok) return refusedCapture(staged.reason);
             diagramTransfer = { transferId: staged.transferId };
             diagramCut = { transferId: staged.transferId };
@@ -338,34 +340,6 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
             if (!snapshots.ok) return refusedCapture(snapshots.reason);
             diagramTransfer = { diagrams: snapshots.diagrams };
             for (const [id, snapshot] of Object.entries(snapshots.diagrams)) diagramSources.set(id, snapshot.source);
-        }
-    }
-
-    const tableSnapshots: Record<string, GridTableSnapshot> = {};
-    const gridTableIds: Record<string, string> = {};
-    const initialTableIds = new Set<string>();
-    // Which Grid slice each host wants exported: preserve the copied item's
-    // own Grid so a paste reconstructs its query and column UI, not those of
-    // an arbitrary sibling Grid over the same Table.
-    const preferGridByTableId = new Map<string, string>();
-    for (const entry of entries) {
-        const nodeValue = (entry.item as { tree?: { getNodeValueFromKey?: (key: string) => unknown; }; })
-            .tree?.getNodeValueFromKey?.(entry.item.key ?? "") as { get?: (k: string) => unknown; } | undefined;
-        const rawGridId = nodeValue?.get?.("yjsGridId");
-        const gridId = typeof rawGridId === "string" && rawGridId.length > 0 ? rawGridId : undefined;
-        const tableId = getItemTableId(entry.item) ?? currentGridTableId(project.ydoc, gridId);
-        if (!tableId) continue;
-        initialTableIds.add(tableId);
-        if (gridId) gridTableIds[gridId] = tableId;
-        if (gridId && !preferGridByTableId.has(tableId)) preferGridByTableId.set(tableId, gridId);
-    }
-    const tableIds = computeTableClosure(project.ydoc, initialTableIds);
-    for (const tableId of tableIds) {
-        try {
-            tableSnapshots[tableId] = exportTableStructure(project.ydoc, tableId, preferGridByTableId.get(tableId));
-        } catch {
-            // Each Grid is portable independently; failed exports retain their
-            // source binding for same-project paste and degrade to text abroad.
         }
     }
 
@@ -405,19 +379,19 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
         diagramTransfer,
-        Object.keys(calendarSnapshots).length > 0
+        (Object.keys(calendarSnapshots).length > 0 || Object.keys(gridSnapshots).length > 0)
             ? (() => {
                 const catalog = readSqlCatalog(project.ydoc.guid, project.ydoc);
                 return catalog.status === "ready" ? catalog.snapshot : undefined;
             })()
             : undefined,
-        Object.keys(gridTableIds).length > 0 ? gridTableIds : undefined,
+        Object.keys(gridSnapshots).length > 0 ? gridSnapshots : undefined,
     );
     const payload = deserializeClipboardItems(encoded);
     if (!payload) return diagramTransfer ? refusedCapture("unsupported-payload") : undefined;
 
-    const exportOf = (item: { componentType?: string; yjsTableId?: string; yjsGridId?: string; }) =>
-        item.componentType === "yjstable" ? gridExports.get(item.yjsGridId ?? item.yjsTableId ?? "") : undefined;
+    const exportOf = (item: { componentType?: string; yjsGridId?: string; }) =>
+        item.componentType === "yjstable" ? gridExports.get(item.yjsGridId ?? "") : undefined;
 
     // Outward flavors, one line per contributing item. A textless visual node
     // (#5015) writes what a view has actually rendered of it and nothing else:
@@ -2739,6 +2713,23 @@ export class KeyEventHandler {
         // Prevent browser default paste action to avoid native insertion before await completes
         event.preventDefault();
 
+        const destinationProject = generalStore.project;
+        const destinationPage = generalStore.currentPage;
+        const activeId = store.getActiveItem();
+        const anchor = activeId ? generalStore.activeViewModel?.getViewModel?.(activeId)?.original : undefined;
+        const anchorValue = anchor?.tree.getNodeValueFromKey(anchor.key);
+        const destinationCurrent = () => {
+            if (
+                generalStore.project?.ydoc !== destinationProject?.ydoc
+                || generalStore.currentPage?.key !== destinationPage?.key
+            ) return false;
+            if (store.getActiveItem() !== activeId) return false;
+            try {
+                return !anchor || anchor.tree.getNodeValueFromKey(anchor.key) === anchorValue;
+            } catch {
+                return false;
+            }
+        };
         try {
             // Get plaintext
             let text = event.clipboardData?.getData("text/plain") || "";
@@ -2790,11 +2781,16 @@ export class KeyEventHandler {
                 }
             }
 
+            if (!destinationCurrent()) return;
             const cached = KeyEventHandler.lastStructuredClipboard;
             // The same-tab fallback is keyed on the copied plain text, so it
             // only ever answers a paste that carries that same text.
             const encoded = encodedItems || encodedHtmlItems
                 || (text && cached?.plainText === text ? cached.encoded : "");
+            if (looksLikeUnsupportedKanbanPayload(encoded)) {
+                reportDiagramClipboardResult({ ok: false, operation: "paste", reason: "unsupported-payload" });
+                return;
+            }
             const structured = encoded ? deserializeClipboardItems(encoded) : undefined;
 
             // Whole Diagram transclusions are a structural transfer (#5314). In
@@ -2804,7 +2800,7 @@ export class KeyEventHandler {
             const carriesDiagram = structured ? payloadHasDiagram(structured) : looksLikeDiagramPayload(encoded);
             const inDiagramSource = store.getLocalCursorInstances().some(isOnDiagramOccurrence);
             if (carriesDiagram && !(isSpecial && inDiagramSource)) {
-                KeyEventHandler.pasteDiagramStructure(inDiagramSource ? undefined : structured, inDiagramSource);
+                await KeyEventHandler.pasteDiagramStructure(inDiagramSource ? undefined : structured, inDiagramSource);
                 return;
             }
 
@@ -2816,6 +2812,18 @@ export class KeyEventHandler {
             if (!text && !encoded) return;
 
             const destinationProjectId = generalStore.project?.ydoc?.guid;
+            const sharedGridIds = structured && structured.sourceProjectId === destinationProjectId
+                ? [...new Set(structured.items.flatMap(item => item.yjsGridId ? [item.yjsGridId] : []))]
+                : [];
+            let assertSharedSource = () => {};
+            if (sharedGridIds.length && generalStore.project) {
+                const { captureDuplicationAdmission } = await import("../services/yjstable/objectDuplication");
+                if (!destinationCurrent() || !generalStore.project) return;
+                assertSharedSource = captureDuplicationAdmission(
+                    generalStore.project.ydoc,
+                    sharedGridIds.map(id => ({ type: "grid" as const, id })),
+                );
+            }
             let specialVariant: PasteSpecialVariant | undefined;
             if (
                 isSpecial && structured && destinationProjectId
@@ -2824,7 +2832,8 @@ export class KeyEventHandler {
                 specialVariant = await requestPasteSpecialChoice(
                     pasteSpecialChoices(structured, destinationProjectId),
                 );
-                if (specialVariant === undefined) return;
+                if (specialVariant === undefined || !destinationCurrent()) return;
+                assertSharedSource();
             }
             if (specialVariant === "values-only") {
                 // Keep the event's outward text flavor: rendered Grids already
@@ -2835,7 +2844,10 @@ export class KeyEventHandler {
                     && specialVariant !== "values-only"
                 ? structured.items
                 : undefined;
-            if (sameProjectItems) text = clipboardPlainText(structured!);
+            if (sameProjectItems) {
+                assertSharedSource();
+                text = clipboardPlainText(structured!);
+            }
 
             // Get VS Code specific metadata
             let vscodeMetadata: unknown = null;
@@ -3156,7 +3168,9 @@ export class KeyEventHandler {
             ) {
                 const referencedTableIds = new Set(
                     structured.items.flatMap(item =>
-                        item.componentType === "yjstable" && item.yjsTableId !== undefined ? [item.yjsTableId] : []
+                        item.componentType === "yjstable" && item.yjsGridId !== undefined
+                            ? (structured.grids?.[item.yjsGridId]?.tableIds ?? [])
+                            : []
                     ),
                 );
                 const snapshots = structured.tables ?? {};
@@ -3169,8 +3183,9 @@ export class KeyEventHandler {
                 );
                 const hasCalendars = "calendars" in structured
                     && Object.keys(structured.calendars ?? {}).length > 0;
-                if (Object.keys(referencedSnapshots).length > 0 || hasCalendars) {
-                    if (Object.keys(referencedSnapshots).length > 0) {
+                const grids = structured.grids ?? {};
+                if (Object.keys(referencedSnapshots).length > 0 || Object.keys(grids).length > 0 || hasCalendars) {
+                    if (Object.keys(referencedSnapshots).length > 0 || Object.keys(grids).length > 0) {
                         const { cloneGridTablesAcrossProjects } = await import(
                             "../services/clipboard/crossProjectGridPaste"
                         );
@@ -3179,6 +3194,8 @@ export class KeyEventHandler {
                             destinationProject: generalStore.project!,
                             sourceProjectId: structured.sourceProjectId,
                             snapshots: referencedSnapshots,
+                            grids,
+                            catalog: "catalog" in structured ? structured.catalog : undefined,
                             requestedSourceTableIds: [...referencedTableIds],
                             operation: structured.operation,
                             copyData: specialVariant !== "copy-without-data",
@@ -3187,9 +3204,10 @@ export class KeyEventHandler {
                                     || specialVariant === "copy-without-data"
                                 ? specialVariant
                                 : undefined,
-                            isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
+                            isDestinationCurrent: () =>
+                                destinationCurrent() && generalStore.project?.ydoc === destinationDoc,
                         });
-                        if (cloneResult === undefined) return;
+                        if (cloneResult === undefined || !destinationCurrent()) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
                         pastedGridIdMap = cloneResult.gridIdMap;
                         reusedTableIdMap = cloneResult.reusedTableIdMap;
@@ -3271,17 +3289,12 @@ export class KeyEventHandler {
                         let anyKept = false;
                         const mappedItems = structured.items.map(item => {
                             if (item.componentType === "yjstable") {
-                                const destinationTableId = item.yjsTableId === undefined
+                                const destinationGridId = item.yjsGridId === undefined
                                     ? undefined
-                                    : tableIdMap[item.yjsTableId];
-                                const destinationGridId = item.yjsTableId === undefined
-                                    ? undefined
-                                    : gridIdMap[item.yjsTableId];
-                                if (destinationTableId === undefined) {
-                                    return { text: item.text, depth: item.depth };
-                                }
+                                    : gridIdMap[item.yjsGridId];
+                                if (destinationGridId === undefined) return { text: item.text, depth: item.depth };
                                 anyKept = true;
-                                return { ...item, yjsTableId: destinationTableId, yjsGridId: destinationGridId };
+                                return { ...item, yjsGridId: destinationGridId };
                             }
                             if (item.componentType === "calendar") {
                                 const destinationCalendarId = item.calendarId === undefined
@@ -3332,7 +3345,8 @@ export class KeyEventHandler {
                     // that came with them and the item insertion into a single undoable unit so undo
                     // removes everything and redo restores all of it.
                     if (
-                        pastedTableIdMap && Object.keys(pastedTableIdMap).length > 0 && destinationDoc
+                        (Object.keys(pastedTableIdMap ?? {}).length > 0 || Object.keys(pastedGridIdMap).length > 0)
+                        && destinationDoc
                         && generalStore.undoManager
                     ) {
                         const { globalUndoRouter } = await import("../services/undo/undoRouter.svelte");
@@ -3344,7 +3358,7 @@ export class KeyEventHandler {
                         globalUndoRouter.captureCrossProjectPaste(
                             generalStore.undoManager,
                             destinationDoc,
-                            Object.values(pastedTableIdMap),
+                            Object.values(pastedTableIdMap ?? {}),
                             pastedRuleIds,
                             pastedSnapshots
                                 ? () => {
@@ -3354,9 +3368,11 @@ export class KeyEventHandler {
                                             destinationDoc,
                                             pastedSnapshots,
                                             sourceDoc,
+                                            structured && "grids" in structured ? structured.grids : undefined,
                                         );
                                 }
                                 : undefined,
+                            Object.values(pastedGridIdMap),
                         );
                     }
                     if (
@@ -3395,7 +3411,10 @@ export class KeyEventHandler {
      * before the first write, and the outcome — success or refusal — is
      * reported. A payload that could not be decoded is refused whole.
      */
-    private static pasteDiagramStructure(payload: ItemClipboardPayload | undefined, inDiagramSource: boolean): void {
+    private static async pasteDiagramStructure(
+        payload: ItemClipboardPayload | undefined,
+        inDiagramSource: boolean,
+    ): Promise<void> {
         if (inDiagramSource) {
             reportDiagramClipboardResult({ ok: false, operation: "paste", reason: "source-editing-target" });
             return;
@@ -3411,13 +3430,21 @@ export class KeyEventHandler {
         const anchor = anchorId && nodeExists(project, anchorId)
             ? new OutlineItem(project.ydoc, project.tree, anchorId)
             : undefined;
-        const result = pasteDiagramPayload(payload, {
+        const context = {
             project,
             pageItem,
             anchor,
             author: cursor?.userId ?? "local",
             auth: currentDiagramAuthorization(project),
-        });
+        };
+        const result = payload.operation === "cut" && payload.sourceProjectId !== project.ydoc.guid
+                && !payload.items.some(item => item.componentType === "diagram")
+            ? await (await import("../services/clipboard/crossProjectGridPaste")).moveGridPlacementsAcrossProjects(
+                payload,
+                context,
+                () => generalStore.project?.ydoc === project.ydoc && generalStore.currentPage?.key === pageItem.key,
+            )
+            : pasteDiagramPayload(payload, context);
         reportDiagramClipboardResult(result);
         if (result.ok) store.clearSelections();
     }

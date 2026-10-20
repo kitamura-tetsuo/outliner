@@ -56,6 +56,7 @@ export function portableStructuralEnumsStillCompatible(
     destinationDoc: Y.Doc,
     snapshots: Readonly<Record<string, import("../clipboard/itemClipboard").GridTableSnapshot>>,
     currentSourceDoc?: Y.Doc,
+    grids: Readonly<Record<string, import("../clipboard/itemClipboard").GridSnapshot>> = {},
 ): boolean {
     const first = Object.values(snapshots)[0];
     if (!first?.catalog) return true;
@@ -63,7 +64,10 @@ export function portableStructuralEnumsStillCompatible(
         const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
         if (current.status !== "ready" || current.snapshot.revision !== first.catalog.revision) return false;
     }
-    const sql = Object.values(snapshots).flatMap(snapshot => [snapshot.schemaSql, snapshot.ui.query]).join("\n")
+    const sql = [
+        ...Object.values(snapshots).map(snapshot => snapshot.schemaSql),
+        ...Object.values(grids).map(grid => grid.query),
+    ].join("\n")
         .toLowerCase();
     const required = first.catalog.objects.map(object => enumDeclaration(object.source)).filter(value =>
         value !== undefined

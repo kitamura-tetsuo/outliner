@@ -95,7 +95,9 @@ test.describe("cross-project Grid clone independence", () => {
         const destinationTable = destinationStateAfter.tables.find(t => t.id === clonedTableId)!;
         expect(destinationTable).toBeTruthy();
         expect(destinationTable.schema).not.toContain("notes");
-        expect(destinationTable.ui.query).toBe(EDITED_DESTINATION_QUERY);
+        expect(destinationStateAfter.grids.find(grid => grid.query === EDITED_DESTINATION_QUERY)?.query).toBe(
+            EDITED_DESTINATION_QUERY,
+        );
         const clonedViewAfter = page.getByTestId("yjs-table-view").filter({
             has: page.locator("th", { hasText: "Contact title" }),
         });
@@ -144,6 +146,6 @@ test.describe("cross-project Grid clone independence", () => {
         expect(secondClone.guid).not.toBe(firstCloneGuid);
         // The two paste-created hosts point at two distinct destination
         // tables, in addition to the warm-up table's own host.
-        expect(new Set(afterSecondPaste.hostTableIds).size).toBe(3);
+        expect(new Set(afterSecondPaste.hostGridIds).size).toBe(3);
     });
 });

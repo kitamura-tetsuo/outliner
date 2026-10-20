@@ -21,10 +21,9 @@ export async function readIndependentViews(page: Page) {
 
 export async function confirmSqlOnlyTableDeletion(page: Page, dependencyCount = 2) {
     const dialog = page.getByRole("dialog", { name: /Delete table/ });
-    await expect(dialog).toContainText(`Indirect SQL dependencies (${dependencyCount})`);
-    await expect(dialog).toContainText('query: "Tasks"');
-    if (dependencyCount > 1) await expect(dialog).toContainText("kanban:");
-    await expect(dialog.getByRole("button", { name: /Delete table and/ })).toHaveCount(0);
-    await dialog.getByRole("button", { name: "Delete table", exact: true }).click();
+    await expect(dialog).toContainText("Grids reading this table (1)");
+    if (dependencyCount > 1) await expect(dialog).toContainText("Kanbans reading this table (1)");
+    await expect(dialog).toContainText("survive");
+    await dialog.getByRole("button", { name: "Delete table and keep references", exact: true }).click();
     await expect(dialog).toHaveCount(0);
 }

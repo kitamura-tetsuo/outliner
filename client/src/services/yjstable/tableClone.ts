@@ -2,11 +2,25 @@ import { isValidGridColumnWidth } from "$shared/services/gridDefinition";
 import { readSqlCatalog } from "$shared/services/sqlCatalog";
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
-import { type GridTableSnapshot, type GridUiComponentDto, isGridTableSnapshot } from "../clipboard/itemClipboard";
-import { createGrid, findGridsBySourceTable, getGridHandles, getGridShowAddRowButton } from "./gridDocs";
+import {
+    type GridSnapshot,
+    type GridTableSnapshot,
+    type GridUiComponentDto,
+    isGridSnapshotMap,
+    isGridTableSnapshot,
+} from "../clipboard/itemClipboard";
+import {
+    createGrid,
+    getGridConfirmRowDelete,
+    getGridHandles,
+    getGridInsertTargetTableId,
+    getGridRegistry,
+    getGridShowAddRowButton,
+} from "./gridDocs";
 import { ITEMS_RELATION_CREATE_SQL } from "./itemsRelation";
 import { enqueueWrite } from "./pgliteService";
 import { assertSelectQuery } from "./queryAnalysis";
+import { queryReadDependencies } from "./queryReadDependencies";
 import { deriveSqlName } from "./sqlNames";
 import { assertPortableStructuralEnumCompatibility } from "./structuralEnumGuard";
 import {
@@ -72,6 +86,7 @@ export interface TableCloneResult {
 }
 
 export type TableCloneOutcome =
+    | { type: "view-omission"; gridId: string; reason: string; }
     | {
         type: "cloned";
         sourceTableId: string;
@@ -113,23 +128,9 @@ function assertOnlyKeys(actual: Iterable<string>, expected: ReadonlySet<string>,
     }
 }
 
-function exportGridSlice(projectDoc: Y.Doc, tableId: string, preferGridId?: string): GridTableSnapshot["ui"] {
-    // Clipboard payloads are Table-keyed, so one Grid slice per Table travels.
-    // When the copied host names a specific Grid (`preferGridId`), that Grid's
-    // query/labels/visibility/order are the ones exported — not an arbitrary
-    // sibling — so a paste reconstructs what the user was actually looking at.
-    // Otherwise the first Grid over the Table is used as a sensible default.
-    const grids = findGridsBySourceTable(projectDoc, tableId);
-    // New-format hosts deliberately do not persist sourceTableId. The caller
-    // has already proven the Table supplier and explicitly names the Grid that
-    // was copied, so preserve that Grid's query/presentation even though it is
-    // absent from the legacy Table-indexed lookup.
-    const preferred = preferGridId ? getGridHandles(projectDoc, preferGridId) : undefined;
-    if (!preferred && grids.length === 0) return { query: "", components: {}, columnOrder: [] };
-    const chosen = preferred ? preferGridId! : grids[0].gridId;
-    const handles = getGridHandles(projectDoc, chosen);
-    if (!handles) return { query: "", components: {}, columnOrder: [] };
-
+export function exportGridSlice(projectDoc: Y.Doc, gridId: string): GridSnapshot {
+    const handles = getGridHandles(projectDoc, gridId);
+    if (!handles) throw new TableCloneError(`Grid "${gridId}" no longer exists`);
     const query = String(handles.entry.get("query") ?? "");
     // Null-prototype so an exact result-column name such as "__proto__" is
     // an ordinary own key rather than a prototype assignment.
@@ -157,27 +158,27 @@ function exportGridSlice(projectDoc: Y.Doc, tableId: string, preferGridId?: stri
         ? (columnOrderValue.toArray() as string[])
         : [];
     const showAddRowButton = getGridShowAddRowButton(handles);
-    const ui = { query, components, columnOrder, showAddRowButton };
-    const candidate = {
-        sourceTableId: "validation",
-        name: "",
-        sqlName: "validation",
-        schemaSql: "CREATE TABLE validation (id TEXT)",
-        ui,
+    const evidence = queryReadDependencies(projectDoc, query);
+    if (evidence.status !== "complete") {
+        throw new TableCloneError(`Grid "${gridId}": unknown read dependencies: ${evidence.diagnostics.join("; ")}`);
+    }
+    return {
+        gridId,
+        name: String(handles.entry.get("name") ?? "Grid"),
+        query,
+        components,
+        columnOrder,
+        showAddRowButton,
+        confirmRowDelete: getGridConfirmRowDelete(handles),
+        insertTargetTableId: getGridInsertTargetTableId(handles),
+        tableIds: evidence.tableIds,
     };
-    if (!isGridTableSnapshot(candidate)) throw new TableCloneError("Grid UI Definition is malformed");
-    return ui;
 }
 
-/**
- * Export only display metadata, Schema Definition, and one associated Grid's
- * UI DTO. Pass `preferGridId` to export the slice of the Grid the copied host
- * actually references rather than the first Grid over the Table.
- */
+/** Export Table schema and catalog evidence independently of view definitions. */
 export function exportTableStructure(
     projectDoc: Y.Doc,
     tableId: string,
-    preferGridId?: string,
 ): GridTableSnapshot {
     const handles = getTableHandles(projectDoc, tableId);
     const name = getTableName(projectDoc, tableId);
@@ -190,7 +191,6 @@ export function exportTableStructure(
         name,
         sqlName,
         schemaSql: handles.schemaText.toString(),
-        ui: exportGridSlice(projectDoc, tableId, preferGridId),
     };
     const catalog = readSqlCatalog(projectDoc.guid, projectDoc);
     if (catalog.status !== "ready") throw new TableCloneError("SQL catalog dependency evidence is unavailable");
@@ -201,21 +201,15 @@ export function exportTableStructure(
     return snapshot;
 }
 
-/**
- * Export several table structures once each, preserving first-seen order.
- * `preferGridByTableId` lets the caller pin which Grid slice each Table should
- * carry, so a copied host that names a specific Grid keeps that Grid's query
- * and UI in the payload instead of an arbitrary sibling's.
- */
+/** Export the explicit Table identity set once each, preserving first-seen order. */
 export function exportTableStructures(
     projectDoc: Y.Doc,
     tableIds: Iterable<string>,
-    preferGridByTableId?: ReadonlyMap<string, string>,
 ): Record<string, GridTableSnapshot> {
     const snapshots: Record<string, GridTableSnapshot> = {};
     for (const tableId of tableIds) {
         if (snapshots[tableId] === undefined) {
-            snapshots[tableId] = exportTableStructure(projectDoc, tableId, preferGridByTableId?.get(tableId));
+            snapshots[tableId] = exportTableStructure(projectDoc, tableId);
         }
     }
     return snapshots;
@@ -228,37 +222,9 @@ export function exportTableStructures(
  * subdocs; Grids themselves travel implicitly as one slice per Table.
  */
 export function computeTableClosure(projectDoc: Y.Doc, initialTableIds: Iterable<string>): Set<string> {
-    const visited = new Set<string>(initialTableIds);
-    const queue = Array.from(visited);
-    const registry = listTables(projectDoc);
-    const sqlNameToTableId = new Map(registry.map(entry => [entry.sqlName, entry.tableId]));
-
-    while (queue.length > 0) {
-        const tableId = queue.shift()!;
-        const grids = findGridsBySourceTable(projectDoc, tableId);
-        for (const g of grids) {
-            const handles = getGridHandles(projectDoc, g.gridId);
-            if (!handles) continue;
-            const query = String(handles.entry.get("query") ?? "");
-            if (!query) continue;
-
-            let queryRewrite;
-            try {
-                queryRewrite = rewriteTableQuerySql(query, new Map());
-            } catch {
-                continue; // Ignore Grids with invalid queries
-            }
-
-            for (const dependency of queryRewrite.relationDependencies) {
-                const depTableId = sqlNameToTableId.get(dependency);
-                if (depTableId && !visited.has(depTableId)) {
-                    visited.add(depTableId);
-                    queue.push(depTableId);
-                }
-            }
-        }
-    }
-    return visited;
+    // Tables own only schema/data. View read dependencies are selected by
+    // Grid identity before exporting their independent definitions.
+    return new Set(initialTableIds);
 }
 
 /** Resolve a dependency closure using only portable clipboard snapshots. */
@@ -266,31 +232,9 @@ export function computeSnapshotClosure(
     snapshots: Readonly<Record<string, GridTableSnapshot>>,
     initialTableIds: Iterable<string>,
 ): Set<string> {
-    const visited = new Set<string>(initialTableIds);
-    const queue = Array.from(visited);
-    const sqlNameToTableId = new Map(
-        Object.entries(snapshots).map(([tableId, snapshot]) => [snapshot.sqlName, tableId]),
-    );
-
-    while (queue.length > 0) {
-        const tableId = queue.shift()!;
-        const snapshot = snapshots[tableId];
-        if (!snapshot) continue;
-        try {
-            const rewrite = rewriteTableQuerySql(snapshot.ui.query, new Map());
-            for (const dependency of rewrite.relationDependencies) {
-                const dependencyId = sqlNameToTableId.get(dependency);
-                if (dependencyId && !visited.has(dependencyId)) {
-                    visited.add(dependencyId);
-                    queue.push(dependencyId);
-                }
-            }
-        } catch {
-            // Import validation reports malformed queries; closure collection
-            // still keeps the selected host so its failure reaches the user.
-        }
-    }
-    return visited;
+    const selected = new Set(initialTableIds);
+    for (const id of selected) if (!snapshots[id]) throw new TableCloneError(`Dependency Table "${id}" is unavailable`);
+    return selected;
 }
 
 function materializeSchema(handles: { schemaText: Y.Text; }, snapshot: GridTableSnapshot): void {
@@ -388,11 +332,17 @@ export async function importTableStructures(
     sourceProjectId?: string,
     requestedSourceTableIds?: ReadonlySet<string>,
     allowProvenanceReuse = true,
+    grids: Readonly<Record<string, GridSnapshot>> = {},
+    catalog?: import("$shared/services/sqlCatalog").SqlCatalogSnapshot,
+    admit: () => void = () => {},
 ): Promise<TableCloneResult> {
+    admit();
+    if (!isGridSnapshotMap(grids)) throw new TableCloneError("Grid definitions are malformed");
     let portableGuard: (() => Promise<void>) | undefined;
     const capturedCatalogs = Object.values(snapshots).map(snapshot => snapshot.catalog).filter(catalog =>
         catalog !== undefined
     );
+    if (catalog) capturedCatalogs.push(catalog);
     if (capturedCatalogs.length > 0) {
         const catalog = capturedCatalogs[0];
         if (capturedCatalogs.some(candidate => candidate.revision !== catalog.revision)) {
@@ -409,13 +359,13 @@ export async function importTableStructures(
                     )
                     : [],
             })),
-            inspections: Object.values(snapshots).filter(snapshot => snapshot.ui.query.trim()).map(snapshot => ({
-                id: snapshot.sourceTableId,
+            inspections: Object.values(grids).filter(snapshot => snapshot.query.trim()).map(snapshot => ({
+                id: snapshot.gridId,
                 kind: "grid" as const,
-                sql: snapshot.ui.query,
+                sql: snapshot.query,
             })),
         };
-        const relevantIds = new Set(Object.keys(snapshots));
+        const relevantIds = new Set([...Object.keys(snapshots), ...Object.keys(grids)]);
         portableGuard = () =>
             assertPortableStructuralEnumCompatibility(destinationProjectDoc, portableSnapshot, relevantIds);
         await portableGuard();
@@ -506,22 +456,32 @@ export async function importTableStructures(
                 destinationSqlName,
             ).sql;
             plan.snapshot.schemaSql = plan.schemaSql;
-            const queryRewrite = rewriteTableQuerySql(snapshot.ui.query, destinationNames);
-            plan.querySql = queryRewrite.sql;
-            plan.reservedRelations = new Set(queryRewrite.reservedRelationDependencies);
-            for (const dependency of queryRewrite.relationDependencies) {
-                const dependencyId = sourceIdBySqlName.get(dependency);
-                if (!dependencyId) {
-                    plan.error = `Query depends on source relation "${dependency}" that is absent from the clipboard`;
-                } else plan.dependencyIds.add(dependencyId);
-            }
         } catch (err) {
             plan.error = cloneErrorMessage(err);
         }
     }
 
+    for (const grid of Object.values(grids)) {
+        for (const id of grid.tableIds) {
+            const plan = plans.get(id);
+            if (plan) {
+                for (const dependencyId of grid.tableIds) {
+                    if (plans.has(dependencyId)) plan.dependencyIds.add(dependencyId);
+                }
+            }
+        }
+    }
     const tableIdMap: Record<string, string> = {};
     const gridIdMap: Record<string, string> = {};
+    const assertAdmission = () => {
+        try {
+            admit();
+        } catch (error) {
+            for (const id of Object.values(gridIdMap)) getGridRegistry(destinationProjectDoc).delete(id);
+            for (const id of Object.values(tableIdMap)) removeTable(destinationProjectDoc, id);
+            throw error;
+        }
+    };
     for (const group of connectedGroups(plans)) {
         const groupPlans = group.map(sourceTableId => plans.get(sourceTableId)!);
         const planningFailure = groupPlans.find(plan => plan.error)?.error;
@@ -540,6 +500,8 @@ export async function importTableStructures(
             continue;
         }
 
+        await portableGuard?.();
+        assertAdmission();
         const currentSqlNames = new Set(listTables(destinationProjectDoc).map(table => table.sqlName));
         const occupiedName = groupPlans.find(plan => currentSqlNames.has(plan.destinationSqlName))?.destinationSqlName;
         if (occupiedName !== undefined) {
@@ -554,7 +516,6 @@ export async function importTableStructures(
             // Compiler/scratch planning is asynchronous. Re-admit against the
             // live destination immediately before the first registry/subdoc
             // effect so a catalog edit during planning cannot change meaning.
-            await portableGuard?.();
             for (const sourceTableId of group) {
                 const plan = plans.get(sourceTableId)!;
                 const destinationTableId = createTable(
@@ -564,16 +525,6 @@ export async function importTableStructures(
                     sourceProjectId ? { sourceProjectId, sourceTableId } : undefined,
                     handles => materializeSchema(handles, plan.snapshot),
                 );
-                const newGridId = createGrid(destinationProjectDoc, destinationTableId, {
-                    name: plan.snapshot.name,
-                    query: plan.querySql,
-                    columnOrder: [...plan.snapshot.ui.columnOrder],
-                    components: Object.fromEntries(
-                        Object.entries(plan.snapshot.ui.components).map(([column, cfg]) => [column, { ...cfg }]),
-                    ),
-                    showAddRowButton: plan.snapshot.ui.showAddRowButton,
-                });
-                gridIdMap[sourceTableId] = newGridId;
                 created.push(destinationTableId);
                 tableIdMap[sourceTableId] = destinationTableId;
             }
@@ -621,8 +572,6 @@ export async function importTableStructures(
         const snapshot = snapshots[sourceTableId];
         const destinationTableId = reusedTableIdMap[sourceTableId];
         if (snapshot && destinationTableId !== undefined) {
-            const existingGrid = findGridsBySourceTable(destinationProjectDoc, destinationTableId)[0];
-            if (existingGrid) reusedGridIdMap[sourceTableId] = existingGrid.gridId;
             outcomes.push({ type: "reused", sourceTableId, destinationTableId, tableName: snapshot.name });
         }
     }
@@ -634,6 +583,70 @@ export async function importTableStructures(
             tableNames: sourceTableIds.map(sourceTableId => snapshots[sourceTableId]?.name ?? sourceTableId),
             reason,
         });
+    }
+    assertAdmission();
+    const sameProject = sourceProjectId === destinationProjectDoc.guid;
+    const allTableIds = { ...reusedTableIdMap, ...tableIdMap };
+    const nameMap = new Map<string, string>();
+    for (const [id, target] of Object.entries(allTableIds)) {
+        const sourceName = snapshots[id]?.sqlName;
+        const destinationName = getTableSqlName(destinationProjectDoc, target);
+        if (sourceName && destinationName) nameMap.set(sourceName, destinationName);
+    }
+    const gridRegistry = getGridRegistry(destinationProjectDoc);
+    try {
+        for (const [sourceGridId, grid] of Object.entries(grids)) {
+            if (grid.tableIds.some(id => failures[id])) continue;
+            let reused: string | undefined;
+            if (allowProvenanceReuse && sourceProjectId) {
+                gridRegistry.forEach((entry, id) => {
+                    if (
+                        entry.get("copiedFromProjectId") === sourceProjectId
+                        && entry.get("copiedFromGridId") === sourceGridId
+                    ) reused ??= id;
+                });
+            }
+            if (reused) {
+                reusedGridIdMap[sourceGridId] = reused;
+                continue;
+            }
+            const omitted = grid.tableIds.filter(id => !allTableIds[id] && !sameProject);
+            const preference = grid.insertTargetTableId;
+            const mappedPreference = preference
+                ? allTableIds[preference] ?? (sameProject ? preference : undefined)
+                : undefined;
+            const query = omitted.length ? "" : rewriteTableQuerySql(grid.query, nameMap).sql;
+            if (omitted.length) {
+                outcomes.push({
+                    type: "view-omission",
+                    gridId: sourceGridId,
+                    reason: `Query unavailable: omitted Tables ${omitted.join(", ")}`,
+                });
+            }
+            if (preference && !mappedPreference) {
+                outcomes.push({
+                    type: "view-omission",
+                    gridId: sourceGridId,
+                    reason: `Cleared unmappable INSERT preference ${preference}`,
+                });
+            }
+            const id = createGrid(destinationProjectDoc, undefined, {
+                ...grid,
+                gridId: undefined,
+                query,
+                insertTargetTableId: mappedPreference,
+            });
+            gridIdMap[sourceGridId] = id;
+            const entry = gridRegistry.get(id)!;
+            if (sourceProjectId) {
+                entry.set("copiedFromProjectId", sourceProjectId);
+                entry.set("copiedFromGridId", sourceGridId);
+            }
+        }
+    } catch (error) {
+        for (const id of Object.values(gridIdMap)) getGridRegistry(destinationProjectDoc).delete(id);
+        for (const id of Object.values(tableIdMap)) removeTable(destinationProjectDoc, id);
+        throw error;
     }
     return {
         tableIdMap,

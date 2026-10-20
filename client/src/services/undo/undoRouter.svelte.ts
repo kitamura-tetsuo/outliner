@@ -37,14 +37,30 @@ import {
     restoreClonedScheduleRules,
     rollbackClonedScheduleRules,
 } from "../schedule/scheduleRuleClone";
+import { getGridRegistry } from "../yjstable/gridDocs";
 import { getTableRegistry } from "../yjstable/tableDocs";
 import { tableDocGuid } from "../yjstable/tableDocs";
+
+function historyMap(value: Record<string, unknown>): Y.Map<unknown> {
+    const map = new Y.Map<unknown>();
+    for (const [key, child] of Object.entries(value)) {
+        map.set(
+            key,
+            child && typeof child === "object" && !Array.isArray(child)
+                ? historyMap(child as Record<string, unknown>)
+                : child,
+        );
+    }
+    return map;
+}
 
 export interface CompositeUndoEntry {
     type: "composite";
     mainManager: Y.UndoManager;
     projectDoc: Y.Doc;
     createdTableIds: string[];
+    createdGridIds?: string[];
+    savedGrids?: Record<string, Record<string, unknown>>;
     savedRegistryEntries: Record<
         string,
         { name: string; sqlName: string; sourceProjectId?: string; sourceTableId?: string; }
@@ -351,6 +367,7 @@ export class UndoRouter {
         createdTableIds: string[],
         createdRuleIds: string[] = [],
         authorizeRedo?: () => boolean,
+        createdGridIds: string[] = [],
     ): void {
         if (this.undoStack.length === 0) return;
         const top = this.undoStack[this.undoStack.length - 1];
@@ -385,6 +402,11 @@ export class UndoRouter {
                 mainManager,
                 projectDoc,
                 createdTableIds,
+                createdGridIds,
+                savedGrids: Object.fromEntries(createdGridIds.flatMap(id => {
+                    const entry = getGridRegistry(projectDoc).get(id);
+                    return entry ? [[id, entry.toJSON() as Record<string, unknown>]] : [];
+                })),
                 savedRegistryEntries,
                 savedSubdocStates,
                 createdRuleIds,
@@ -646,10 +668,22 @@ export class UndoRouter {
                         this._lastAsyncOutcome = { status: "refused", reason: "Structural ENUM compatibility changed" };
                         return;
                     }
+                    if (
+                        !isUndo
+                        && ((entry.createdGridIds ?? []).some(id => getGridRegistry(entry.projectDoc).has(id))
+                            || entry.createdTableIds.some(id => getTableRegistry(entry.projectDoc).has(id)))
+                    ) {
+                        from.push(entry);
+                        this._lastAsyncOutcome = {
+                            status: "refused",
+                            reason: "A destination identity is already occupied",
+                        };
+                        return;
+                    }
                     if (apply(entry.mainManager)) {
                         if (isUndo) {
                             rollbackClonedScheduleRules(entry.projectDoc, entry.createdRuleIds);
-                            rollbackCrossProjectPaste(entry.projectDoc, entry.createdTableIds);
+                            rollbackCrossProjectPaste(entry.projectDoc, entry.createdTableIds, entry.createdGridIds);
                         } else {
                             const registry = getTableRegistry(entry.projectDoc);
                             entry.projectDoc.transact(() => {
@@ -674,6 +708,11 @@ export class UndoRouter {
                                         mapEntry.set("doc", subdoc);
                                         registry.set(tableId, mapEntry);
                                     }
+                                }
+                            });
+                            entry.projectDoc.transact(() => {
+                                for (const [id, saved] of Object.entries(entry.savedGrids ?? {})) {
+                                    getGridRegistry(entry.projectDoc).set(id, historyMap(saved));
                                 }
                             });
                             restoreClonedScheduleRules(entry.projectDoc, entry.savedRules);

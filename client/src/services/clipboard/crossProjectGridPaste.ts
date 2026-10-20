@@ -1,7 +1,8 @@
-import type { Project } from "$shared/app-schema";
-import type * as Y from "yjs";
+import { Item, Project } from "$shared/app-schema";
+import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { cloneScheduleRules, rollbackClonedScheduleRules } from "../schedule/scheduleRuleClone";
+import { getGridRegistry } from "../yjstable/gridDocs";
 import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
 import { destroyTableUndoManager, getTableHandles, getTableSqlName, removeTable } from "../yjstable/tableDocs";
 import {
@@ -10,12 +11,13 @@ import {
     GRID_PASTE_WRITE_CHECK_EVENT,
     type GridPasteProgress,
 } from "./gridPasteEvents";
-import type { GridTableSnapshot } from "./itemClipboard";
+import type { GridSnapshot, GridTableSnapshot, ItemClipboardPayloadV4 } from "./itemClipboard";
 
 const logger = getLogger("crossProjectGridPaste");
 
 /** A source room that stays silent this long is treated as unreachable. */
 const SOURCE_SYNC_TIMEOUT_MS = 10000;
+class StaleGridTransferError extends Error {}
 
 function reportProgress(detail: GridPasteProgress): void {
     if (typeof window === "undefined") return;
@@ -40,6 +42,8 @@ export interface CrossProjectGridPasteOptions {
     sourceProjectId: string;
     /** Portable structure carried by the clipboard, keyed by source table id. */
     snapshots: Record<string, GridTableSnapshot>;
+    grids?: Record<string, GridSnapshot>;
+    catalog?: import("$shared/services/sqlCatalog").SqlCatalogSnapshot;
     /** Tables whose hosts the user selected; all other snapshots are closure additions. */
     requestedSourceTableIds: string[];
     operation?: "cut";
@@ -51,6 +55,8 @@ export interface CrossProjectGridPasteOptions {
     requestedVariant?: "copy-with-data" | "copy-without-data";
     /** False once the user has navigated away from the destination page. */
     isDestinationCurrent: () => boolean;
+    /** Private preparation for a staged move has no user-visible completion yet. */
+    silent?: boolean;
 }
 
 export type GridPasteOutcome =
@@ -96,6 +102,9 @@ export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): st
     }
     for (const outcome of outcomes) {
         switch (outcome.type) {
+            case "view-omission":
+                lines.push(`Grid ${outcome.gridId}: ${outcome.reason}.`);
+                break;
             case "renamed":
                 lines.push(`${outcome.tableName} was renamed from ${outcome.from} to ${outcome.to} in this project.`);
                 break;
@@ -172,11 +181,14 @@ export async function cloneGridTablesAcrossProjects(
         outcomes: GridPasteOutcome[];
     } | undefined
 > {
+    const progress = options.silent ? (_detail: GridPasteProgress) => {} : reportProgress;
     const {
         destinationDoc,
         destinationProject,
         sourceProjectId,
         snapshots,
+        grids,
+        catalog,
         requestedSourceTableIds,
         operation,
         copyData = true,
@@ -185,8 +197,12 @@ export async function cloneGridTablesAcrossProjects(
         isDestinationCurrent,
     } = options;
 
+    if (!isDestinationCurrent()) {
+        progress({ state: "cancelled" });
+        return undefined;
+    }
     if (!destinationAcceptsWrites()) {
-        reportProgress({ state: "failed", reason: "The destination project is read-only." });
+        progress({ state: "failed", reason: "The destination project is read-only." });
         return undefined;
     }
 
@@ -199,30 +215,40 @@ export async function cloneGridTablesAcrossProjects(
 
     let tableIdMap: Record<string, string> = {};
     let createdRuleIds: string[] = [];
+    let createdGridIds: string[] = [];
     const rollback = () => {
         rollbackClonedScheduleRules(destinationDoc, createdRuleIds);
         createdRuleIds = [];
-        rollbackCrossProjectPaste(destinationDoc, Object.values(tableIdMap));
+        rollbackCrossProjectPaste(destinationDoc, Object.values(tableIdMap), createdGridIds);
+        createdGridIds = [];
         tableIdMap = {};
     };
 
     try {
-        reportProgress({ state: "copying", tableCount: Object.keys(snapshots).length });
+        progress({ state: "copying", tableCount: Object.keys(snapshots).length });
         const cloneResult = await importTableStructures(
             destinationDoc,
             snapshots,
             sourceProjectId,
             new Set(requestedSourceTableIds),
             allowProvenanceReuse,
+            grids,
+            catalog,
+            () => {
+                if (cancelled() || !destinationAcceptsWrites()) {
+                    throw new Error("The destination changed or no longer accepts writes.");
+                }
+            },
         );
         tableIdMap = cloneResult.tableIdMap;
         const gridIdMap = cloneResult.gridIdMap;
+        createdGridIds = Object.values(gridIdMap);
         const reusedTableIdMap = cloneResult.reusedTableIdMap;
         const reusedGridIdMap = cloneResult.reusedGridIdMap;
         const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
         if (cancelled()) {
             rollback();
-            reportProgress({ state: "cancelled" });
+            progress({ state: "cancelled" });
             return undefined;
         }
 
@@ -253,7 +279,7 @@ export async function cloneGridTablesAcrossProjects(
         createdRuleIds = sourceCopy.createdRuleIds;
         if (cancelled()) {
             rollback();
-            reportProgress({ state: "cancelled" });
+            progress({ state: "cancelled" });
             return undefined;
         }
 
@@ -297,7 +323,7 @@ export async function cloneGridTablesAcrossProjects(
         } else if (requestedVariant === "copy-without-data") {
             report.unshift("Pasted as an independent copy without data.");
         }
-        reportProgress(
+        progress(
             sourceCopy.unavailableReason === undefined
                 ? { state: "complete-with-data", report }
                 : { state: "complete-without-data", reason: sourceCopy.unavailableReason, report },
@@ -311,6 +337,14 @@ export async function cloneGridTablesAcrossProjects(
             skippedSourceTableIds: skippedSourceTableIds ?? [],
             outcomes,
         };
+    } catch (error) {
+        rollback();
+        if (cancelled()) {
+            progress({ state: "cancelled" });
+            return undefined;
+        }
+        progress({ state: "failed", reason: error instanceof Error ? error.message : String(error) });
+        throw error;
     } finally {
         if (typeof window !== "undefined") {
             window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
@@ -402,6 +436,15 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
                         unavailableReason = `Source Grid ${sourceTableId} could not be reached.`;
                         continue;
                     }
+                    if (cancelled()) return { ...noScheduleRules(), rowCounts };
+                    if (
+                        getTableHandles(acquired.client.project.ydoc, sourceTableId)?.doc !== sourceHandles.doc
+                        || getTableHandles(destinationDoc, destinationTableId)?.doc !== destinationHandles.doc
+                    ) {
+                        throw new StaleGridTransferError(
+                            "The source or destination Table identity changed during synchronization.",
+                        );
+                    }
                     copyTableData(sourceHandles, destinationHandles);
                     rowCounts[sourceTableId] = destinationHandles.data.size;
                 } finally {
@@ -427,6 +470,7 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
             rowCounts,
         };
     } catch (error) {
+        if (error instanceof StaleGridTransferError) throw error;
         logger.warn({ error, sourceProjectId }, "[cloneGridTablesAcrossProjects] source rows could not be read");
         return {
             unavailableReason: error instanceof Error ? error.message : "The source project is not available.",
@@ -439,8 +483,445 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
 }
 
 /** Remove the tables created by a paste that was cancelled or undone. */
-export function rollbackCrossProjectPaste(destinationDoc: Y.Doc, createdTableIds: string[]): void {
+export function rollbackCrossProjectPaste(
+    destinationDoc: Y.Doc,
+    createdTableIds: string[],
+    createdGridIds: string[] = [],
+): void {
+    for (const gridId of createdGridIds) getGridRegistry(destinationDoc).delete(gridId);
     for (const destinationTableId of createdTableIds) {
         removeTable(destinationDoc, destinationTableId);
+    }
+}
+
+/** Cross-Project Cut composes the existing staged tree move, Table preparation
+ * and async history. Preparation touches only a private document; the admitted
+ * commit preserves keys/IDs and leaves source definitions and records alone. */
+export async function moveGridPlacementsAcrossProjects(
+    payload: ItemClipboardPayloadV4,
+    context: import("../diagram/diagramClipboard").DiagramPasteContext,
+    isDestinationCurrent: () => boolean,
+    copyData = true,
+): Promise<import("../diagram/diagramClipboard").DiagramClipboardResult> {
+    const { currentDiagramAuthorization, resolveDestination, orderAt, subtreeKeys } = await import(
+        "../diagram/diagramClipboard"
+    );
+    const { canMutateDiagrams } = await import("../diagram/diagramAuthorization");
+    const { consumePendingCut, lookupCrossProjectGridCut, nodeExists, fingerprintSelection } = await import(
+        "../diagram/diagramClipboardTransfer"
+    );
+    const { canAcceptChild } = await import("../layout/layoutModel");
+    const { getTableRegistry, listTables } = await import("../yjstable/tableDocs");
+    const { exportGridSlice, exportTableStructures } = await import("../yjstable/tableClone");
+    const { captureDuplicationAdmission } = await import("../yjstable/objectDuplication");
+    const { globalUndoRouter } = await import("../undo/undoRouter.svelte");
+    const { readSqlCatalog } = await import("$shared/services/sqlCatalog");
+    const { portableStructuralEnumsStillCompatible } = await import("../yjstable/structuralEnumGuard");
+    const refused = (reason: import("../diagram/diagramClipboard").DiagramClipboardFailureReason) => ({
+        ok: false as const,
+        operation: "paste" as const,
+        reason,
+    });
+    const transferId = payload.transferId;
+    if (!transferId || payload.operation !== "cut") return refused("unsupported-payload");
+    const transfer = lookupCrossProjectGridCut(transferId, payload.sourceProjectId);
+    if (!transfer.ok) return refused(transfer.reason);
+    const source = transfer.project;
+    const destination = context.project;
+    const location = resolveDestination(context);
+    if (source.ydoc === destination.ydoc || !location) return refused("invalid-destination");
+    const roots = transfer.rootKeys;
+    const keys = roots.flatMap(key => subtreeKeys(source, key));
+    const values = new Map(keys.map(key => [key, source.tree.getNodeValueFromKey(key) as Y.Map<unknown>]));
+    const nodeIds = new Map(keys.map(key => [key, values.get(key)!.get("id")]));
+    if (
+        [...values.values()].some(value => ["kanban", "diagram"].includes(String(value.get("componentType"))))
+    ) return refused("unsupported-selection");
+    const calendarIds = [
+        ...new Set(
+            [...values.values()].flatMap(value =>
+                typeof value.get("calendarId") === "string" ? [String(value.get("calendarId"))] : []
+            ),
+        ),
+    ];
+    const calendarSources = new Map(calendarIds.map(id => [id, source.calendars.get(id)]));
+    const calendarEvidence = JSON.stringify(
+        [...calendarSources].map(([id, entry]) => [id, entry?._item?.id, entry?.get("query")]),
+    );
+    const calendarsCurrent = () =>
+        calendarEvidence === JSON.stringify(calendarIds.map(id => {
+            const entry = source.calendars.get(id);
+            return [id, entry?._item?.id, entry?.get("query")];
+        }));
+    if ([...calendarSources.values()].some(entry => !entry)) return refused("snapshot-unavailable");
+    const gridIds = [
+        ...new Set(
+            [...values.values()].flatMap(value =>
+                typeof value.get("yjsGridId") === "string" ? [String(value.get("yjsGridId"))] : []
+            ),
+        ),
+    ];
+    if (gridIds.length === 0) return refused("unsupported-selection");
+    const sourceGrids = getGridRegistry(source.ydoc);
+    const destinationGrids = getGridRegistry(destination.ydoc);
+    const sourceEntries = new Map(gridIds.map(id => [id, sourceGrids.get(id)]));
+    const destinationPage = destination.tree.getNodeValueFromKey(context.pageItem.key);
+    const destinationParent = destination.tree.getNodeValueFromKey(location.parentKey);
+    const destinationAnchor = location.afterKey ? destination.tree.getNodeValueFromKey(location.afterKey) : undefined;
+    const sourceLocations = roots.map(key => {
+        const parentKey = source.tree.getNodeParentFromKey(key)!;
+        const siblings = source.tree.sortChildrenByOrder(source.tree.getNodeChildrenFromKey(parentKey), parentKey);
+        return {
+            key,
+            parentKey,
+            parent: source.tree.getNodeValueFromKey(parentKey),
+            afterKey: siblings[siblings.indexOf(key) - 1],
+        };
+    });
+    const namespaceOccupied = (project: Project, key: string, id: unknown) => {
+        if (nodeExists(project, key)) return true;
+        const raw = project.ydoc.getMap<Y.Map<unknown>>("orderedTree");
+        let occupied = false;
+        raw.forEach(node => {
+            const value = node.get("value") as Y.Map<unknown> | undefined;
+            if (value instanceof Y.Map && value.get("id") === id) occupied = true;
+        });
+        return occupied;
+    };
+    const collision = () =>
+        gridIds.some(id => destinationGrids.has(id))
+        || keys.some(key => namespaceOccupied(destination, key, nodeIds.get(key)));
+    const permissions = () =>
+        canMutateDiagrams(currentDiagramAuthorization(source))
+        && canMutateDiagrams(currentDiagramAuthorization(destination));
+    const locationCurrent = () => {
+        const next = resolveDestination(context);
+        return isDestinationCurrent() && next?.parentKey === location.parentKey && next.afterKey === location.afterKey
+            && nodeExists(destination, context.pageItem.key)
+            && destination.tree.getNodeValueFromKey(context.pageItem.key) === destinationPage
+            && nodeExists(destination, location.parentKey)
+            && destination.tree.getNodeValueFromKey(location.parentKey) === destinationParent
+            && (!location.afterKey || (nodeExists(destination, location.afterKey)
+                && destination.tree.getNodeValueFromKey(location.afterKey) === destinationAnchor));
+    };
+    const kindsAllowed = () =>
+        roots.every(key =>
+            canAcceptChild(location.parentKind, {
+                componentType: values.get(key)?.get("componentType") as string | undefined,
+            })
+        );
+    if (!permissions()) return refused("capability-denied");
+    if (!locationCurrent() || !kindsAllowed()) return refused("invalid-destination");
+    if (collision()) return refused("identity-collision");
+
+    const grids = Object.fromEntries(gridIds.map(id => [id, exportGridSlice(source.ydoc, id)]));
+    const tableIds = [...new Set(Object.values(grids).flatMap(grid => grid.tableIds))];
+    const snapshots = exportTableStructures(source.ydoc, tableIds);
+    const assertSource = captureDuplicationAdmission(source.ydoc, [
+        ...gridIds.map(id => ({ type: "grid" as const, id })),
+        ...tableIds.map(id => ({ type: "table" as const, id })),
+    ]);
+    const sourceCatalog = readSqlCatalog(source.ydoc.guid, source.ydoc);
+    if (sourceCatalog.status !== "ready") return refused("snapshot-unavailable");
+    const scratch = new Y.Doc({ guid: destination.ydoc.guid });
+    // Preparation is private: its writes must never create user history or
+    // clear an existing Redo branch, including writes in copied subdocuments.
+    const markPrivate = (doc: Y.Doc) =>
+        doc.on("beforeTransaction", transaction => {
+            if (transaction.origin === null) transaction.origin = scratch;
+        });
+    markPrivate(scratch);
+    scratch.on("subdocs", ({ added }) => added.forEach(markPrivate));
+    let disposeCalendarPreparation = () => {};
+
+    const cloneTableEntry = (
+        entry: Y.Map<unknown>,
+        snapshot: { guid: string; update: Uint8Array; },
+    ): Y.Map<unknown> => {
+        const copy = new Y.Map<unknown>();
+        entry.forEach((value, key) => {
+            if (value instanceof Y.Doc) {
+                const doc = new Y.Doc({ guid: snapshot.guid, autoLoad: true });
+                Y.applyUpdate(doc, snapshot.update);
+                copy.set(key, doc);
+            } else copy.set(key, value instanceof Y.AbstractType ? value.clone() : value);
+        });
+        return copy;
+    };
+    getTableRegistry(destination.ydoc).forEach((entry, id) => {
+        const metadata = new Y.Map<unknown>();
+        entry.forEach((value, key) => {
+            if (key !== "doc") metadata.set(key, value);
+        });
+        getTableRegistry(scratch).set(id, metadata);
+    });
+    // Absence is a valid empty catalog. getMap on an absent root would
+    // register an invalid, format-less catalog in the live destination.
+    const destinationCatalog = readSqlCatalog(destination.ydoc.guid, destination.ydoc);
+    if (destinationCatalog.status !== "ready") {
+        scratch.destroy();
+        return refused("snapshot-unavailable");
+    }
+    const catalogRoot = destination.ydoc.share.get("sqlCatalog");
+    if (catalogRoot instanceof Y.Map) {
+        catalogRoot.forEach((entry, id) =>
+            scratch.getMap("sqlCatalog").set(id, entry instanceof Y.Map ? entry.clone() : entry)
+        );
+    }
+    const destinationTables = new Map(
+        listTables(destination.ydoc).map(
+            table => [table.tableId, {
+                entry: getTableRegistry(destination.ydoc).get(table.tableId),
+                sqlName: table.sqlName,
+            }],
+        ),
+    );
+    let preparation: Awaited<ReturnType<typeof cloneGridTablesAcrossProjects>>;
+    try {
+        preparation = await cloneGridTablesAcrossProjects({
+            destinationDoc: scratch,
+            destinationProject: Project.fromDoc(scratch),
+            sourceProjectId: source.ydoc.guid,
+            snapshots,
+            grids,
+            catalog: sourceCatalog.snapshot,
+            requestedSourceTableIds: tableIds,
+            copyData,
+            allowProvenanceReuse: true,
+            silent: true,
+            isDestinationCurrent: () =>
+                locationCurrent() && permissions() && lookupCrossProjectGridCut(transferId, source.ydoc.guid).ok
+                && !collision(),
+        });
+        if (!preparation) return refused(collision() ? "identity-collision" : "stale-transfer");
+        if (preparation.outcomes.some(outcome => outcome.type === "failed-group")) {
+            return refused("snapshot-unavailable");
+        }
+        assertSource();
+        if (!calendarsCurrent()) return refused("stale-transfer");
+        if (!lookupCrossProjectGridCut(transferId, source.ydoc.guid).ok || !locationCurrent()) {
+            return refused("stale-transfer");
+        }
+        if (!permissions()) return refused("capability-denied");
+        if (collision()) return refused("identity-collision");
+        if (!portableStructuralEnumsStillCompatible(destination.ydoc, snapshots, source.ydoc, grids)) {
+            return refused("stale-transfer");
+        }
+        const copiedTables = new Map(
+            Object.values(preparation.tableIdMap).map(id => [id, getTableRegistry(scratch).get(id)!]),
+        );
+        // Destroying an integrated Y.Doc replaces its parent's subdocument
+        // reference with an empty shell. Retain bytes, not that mutable handle,
+        // so Redo restores the same schema and records after private teardown.
+        const copiedTableStates = new Map([...copiedTables].map(([id, entry]) => {
+            const doc = entry.get("doc");
+            if (!(doc instanceof Y.Doc)) throw new StaleGridTransferError("Prepared Table is unavailable");
+            return [id, { guid: doc.guid, update: Y.encodeStateAsUpdate(doc) }] as const;
+        }));
+        const copiedGrids = new Map(
+            gridIds.map(id => [id, getGridRegistry(scratch).get(preparation!.gridIdMap[id])!]),
+        );
+        const copiedRules = new Map(
+            preparation.createdRuleIds.map(id => [id, scratch.getMap<Y.Map<unknown>>("schedules").get(id)!]),
+        );
+        const { createCalendar, getCalendar, destroyCalendarUndoManager } = await import("../calendar/calendarService");
+        disposeCalendarPreparation = () => destroyCalendarUndoManager(scratch);
+        const { rewriteTableQuerySql } = await import("../yjstable/tableSqlRewrite");
+        const sqlNames = new Map<string, string>();
+        for (const [id, target] of Object.entries({ ...preparation.reusedTableIdMap, ...preparation.tableIdMap })) {
+            const name = snapshots[id]?.sqlName;
+            const targetName = listTables(scratch).find(table => table.tableId === target)?.sqlName;
+            if (name && targetName) sqlNames.set(name, targetName);
+        }
+        const calendarMap = new Map(calendarIds.map(id => {
+            const settings = getCalendar(source, id)!;
+            return [
+                id,
+                createCalendar(Project.fromDoc(scratch), {
+                    ...settings,
+                    query: rewriteTableQuerySql(settings.query, sqlNames).sql,
+                }),
+            ];
+        }));
+        const copiedCalendars = new Map(
+            [...calendarMap.values()].map(id => [id, Project.fromDoc(scratch).calendars.get(id)!]),
+        );
+        const reused = Object.values(preparation.reusedTableIdMap);
+        const namesCurrent = () => {
+            const tables = listTables(destination.ydoc);
+            return [...copiedRules.keys()].every(id => !destination.ydoc.getMap("schedules").has(id))
+                && [...copiedCalendars.keys()].every(id => !destination.calendars.has(id))
+                && [...copiedTables].every(([id, entry]) =>
+                    !getTableRegistry(destination.ydoc).has(id)
+                    && !tables.some(table => table.sqlName === entry.get("sqlName"))
+                )
+                && reused.every(id =>
+                    getTableRegistry(destination.ydoc).get(id) === destinationTables.get(id)?.entry
+                    && tables.find(table => table.tableId === id)?.sqlName === destinationTables.get(id)?.sqlName
+                );
+        };
+        if (!namesCurrent()) return refused("identity-collision");
+        // Snapshot the live nodes only now, so content edits accepted during
+        // preparation travel with them. Grid definitions remain Project-local.
+        const nodeSnapshots = scratch.getMap<Y.Map<unknown>>("moveNodes");
+        for (const key of keys) nodeSnapshots.set(key, values.get(key)!.clone());
+        const children = new Map(
+            keys.map(key => [key, source.tree.sortChildrenByOrder(source.tree.getNodeChildrenFromKey(key), key)]),
+        );
+        const insert = (project: Project, key: string, parentKey: string) => {
+            const snapshot = nodeSnapshots.get(key)!.clone();
+            const calendar = nodeSnapshots.get(key)!.get("calendarId");
+            if (project === destination && typeof calendar === "string" && calendarMap.has(calendar)) {
+                snapshot.set("calendarId", calendarMap.get(calendar)!);
+            }
+            project.tree.createNode(parentKey, key, snapshot as never);
+            project.tree.recomputeParentsAndChildren();
+            project.tree.setNodeOrderToEnd(key);
+            for (const child of children.get(key) ?? []) insert(project, child, key);
+        };
+        const install = () => {
+            for (const [id, entry] of copiedCalendars) destination.calendars.set(id, entry.clone());
+            for (const [id, entry] of copiedTables) {
+                getTableRegistry(destination.ydoc).set(id, cloneTableEntry(entry, copiedTableStates.get(id)!));
+            }
+            for (const [id, entry] of copiedGrids) destinationGrids.set(id, entry.clone());
+            for (const [id, entry] of copiedRules) {
+                destination.ydoc.getMap<Y.Map<unknown>>("schedules").set(id, entry.clone());
+            }
+            let after = location.afterKey;
+            for (const key of roots) {
+                insert(destination, key, location.parentKey);
+                orderAt(destination, key, location.parentKey, after, location.append);
+                after = key;
+            }
+            for (const key of roots) source.tree.deleteNodeAndDescendants(key);
+        };
+        const ownedState = () =>
+            JSON.stringify({
+                nodes: keys.map(key =>
+                    nodeExists(destination, key)
+                        ? (destination.tree.getNodeValueFromKey(key) as Y.Map<unknown>).toJSON()
+                        : undefined
+                ),
+                placement: fingerprintSelection(destination, roots),
+                calendars: [...copiedCalendars.keys()].map(id => ({
+                    incarnation: destination.calendars.get(id)?._item?.id,
+                    value: destination.calendars.get(id)?.toJSON(),
+                })),
+                grids: [...copiedGrids.keys()].map(id => ({
+                    incarnation: destinationGrids.get(id)?._item?.id,
+                    value: destinationGrids.get(id)?.toJSON(),
+                })),
+                tables: [...copiedTables.keys()].map(id => {
+                    const entry = getTableRegistry(destination.ydoc).get(id);
+                    const doc = entry?.get("doc");
+                    return doc instanceof Y.Doc
+                        ? {
+                            incarnation: entry?._item?.id,
+                            name: entry?.get("name"),
+                            sqlName: entry?.get("sqlName"),
+                            schema: doc.getText("schema").toString(),
+                            data: doc.getMap("data").toJSON(),
+                        }
+                        : undefined;
+                }),
+                rules: [...copiedRules.keys()].map(id =>
+                    destination.ydoc.getMap<Y.Map<unknown>>("schedules").get(id)?.toJSON()
+                ),
+            });
+        let expectedDestination = "";
+        let expectedSource = "";
+        const sourceNodeState = () =>
+            JSON.stringify({
+                placement: fingerprintSelection(source, roots),
+                nodes: keys.map(key =>
+                    nodeExists(source, key)
+                        ? (source.tree.getNodeValueFromKey(key) as Y.Map<unknown>).toJSON()
+                        : undefined
+                ),
+            });
+        const sourceDefinitionCurrent = () =>
+            gridIds.every(id => sourceGrids.get(id) === sourceEntries.get(id))
+            && calendarIds.every(id => source.calendars.get(id) === calendarSources.get(id));
+        const both = (change: () => void) => source.ydoc.transact(() => destination.ydoc.transact(change));
+        await globalUndoRouter.captureManualAsync(async () => {
+            // No await separates final admission from the first shared mutation.
+            assertSource();
+            if (!permissions() || !calendarsCurrent() || !locationCurrent() || collision() || !namesCurrent()) {
+                throw new StaleGridTransferError("Move admission changed");
+            }
+            consumePendingCut(transferId);
+            both(install);
+            expectedDestination = ownedState();
+        }, {
+            type: "async",
+            label: "Move Grid placements across Projects",
+            projectId: destination.ydoc.guid,
+            affectedObjectIds: keys,
+            beforeSource: roots,
+            afterSource: roots,
+            isActive: () => !source.ydoc.isDestroyed && !destination.ydoc.isDestroyed,
+            replay: async direction => {
+                if (!permissions() || !sourceDefinitionCurrent()) {
+                    return { status: "refused", reason: "Source view or access changed" };
+                }
+                if (direction === "undo") {
+                    if (
+                        ownedState() !== expectedDestination || keys.some(key =>
+                            namespaceOccupied(source, key, nodeSnapshots.get(key)!.get("id"))
+                        )
+                        || sourceLocations.some(place =>
+                            !nodeExists(source, place.parentKey)
+                            || source.tree.getNodeValueFromKey(place.parentKey) !== place.parent
+                            || (place.afterKey && !keys.includes(place.afterKey) && !nodeExists(source, place.afterKey))
+                        )
+                    ) return { status: "conflict", reason: "The move's objects or source location changed" };
+                    both(() => {
+                        for (const place of sourceLocations) {
+                            insert(source, place.key, place.parentKey);
+                            orderAt(source, place.key, place.parentKey, place.afterKey, false);
+                        }
+                        for (const key of roots) destination.tree.deleteNodeAndDescendants(key);
+                        for (const id of copiedCalendars.keys()) destination.calendars.delete(id);
+                        for (const id of copiedGrids.keys()) destinationGrids.delete(id);
+                        for (const id of copiedTables.keys()) removeTable(destination.ydoc, id);
+                        for (const id of copiedRules.keys()) destination.ydoc.getMap("schedules").delete(id);
+                    });
+                    expectedSource = sourceNodeState();
+                } else {
+                    try {
+                        assertSource();
+                        if (!calendarsCurrent()) return { status: "refused", reason: "Source Calendar changed" };
+                    } catch {
+                        return { status: "refused", reason: "Source query or dependency identity changed" };
+                    }
+                    if (sourceNodeState() !== expectedSource || collision() || !namesCurrent() || !locationCurrent()) {
+                        return { status: "conflict", reason: "The destination or source placement changed" };
+                    }
+                    both(install);
+                    expectedDestination = ownedState();
+                }
+                return { status: "applied" };
+            },
+        });
+        reportProgress({
+            state: "complete-with-data",
+            report: [
+                ...formatGridPasteReport(preparation.outcomes),
+                "Moved placements with their original IDs; source Grids and Tables were retained.",
+            ],
+        });
+        return {
+            ok: true,
+            operation: "paste",
+            transferId,
+            itemIds: roots.map(key => String(nodeSnapshots.get(key)!.get("id"))),
+        };
+    } catch (error) {
+        logger.warn({ error }, "Cross-Project Grid move refused");
+        return refused(collision() ? "identity-collision" : "stale-transfer");
+    } finally {
+        disposeCalendarPreparation();
+        scratch.destroy();
     }
 }

@@ -51,12 +51,11 @@ export function setItemGridId(item: ItemLike, gridId: string | undefined): void 
 export function bindItemToGrid(
     item: ItemLike,
     gridId: string | undefined,
-    sourceTableId: string | undefined,
+    _sourceTableId?: string,
 ): void {
     const value = nodeValue(item);
     value?.set?.(GRID_ID_FIELD, gridId);
-    if (gridId && sourceTableId) value?.set?.(LEGACY_TABLE_ID_FIELD, sourceTableId);
-    else value?.delete?.(LEGACY_TABLE_ID_FIELD);
+    value?.delete?.(LEGACY_TABLE_ID_FIELD);
 }
 
 /**
@@ -82,7 +81,9 @@ export const getItemTableId = getItemLegacyTableId;
  * should call {@link setItemGridId}.
  */
 export function setItemTableId(item: ItemLike, tableId: string | undefined): void {
-    nodeValue(item)?.set?.(LEGACY_TABLE_ID_FIELD, tableId);
+    const value = nodeValue(item);
+    if (tableId === undefined) value?.delete?.(LEGACY_TABLE_ID_FIELD);
+    else value?.set?.(LEGACY_TABLE_ID_FIELD, tableId);
 }
 
 /**

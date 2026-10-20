@@ -76,7 +76,8 @@ test.describe("select-all copy of a page containing a Grid, pasted across projec
         expect(clone.sqlName).toBe("orders");
         expect(clone.dataSize).toBe(0);
         // The pasted host item is bound to the clone, not to the source table.
-        expect(destinationState.hostTableIds).toEqual([clone.id]);
+        expect(destinationState.hostGridIds).toEqual([destinationState.grids[0].id]);
+        expect(destinationState.grids[0].hasPrimaryMetadata).toBe(false);
 
         // The plain lines of the copied page are pasted as well.
         const texts = await page.locator(".outliner-item[data-item-id] .item-text").allTextContents();

@@ -20,7 +20,8 @@ acceptance:
 - A repeat paste names the existing clone and explains how to make or reuse a copy.
 - An unreachable source names Grids pasted without rows.
 - SQL relation renames and failed dependency groups are reported by table name.
-- Schedule rules targeting cloned tables are named as intentionally not copied.
+- Schedule rules targeting copied Tables are reported as copied disabled or skipped, according to the existing rule-copy policy.
+- Cross-Project transfer reports unavailable queries and cleared unmappable INSERT preferences explicitly; neither same-named Tables nor invalid preferences supply dependencies.
 tests:
 - client/e2e/new/clp-paste-report-unreachable-8f2c1a7d.spec.ts
 - client/src/services/clipboard/crossProjectGridPaste.test.ts

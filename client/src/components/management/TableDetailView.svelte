@@ -9,7 +9,7 @@
     import TableEntityView from "../yjstable/TableEntityView.svelte";
     import TableGridReferences from "../yjstable/TableGridReferences.svelte";
     import TableScheduleReferences from "../schedule/TableScheduleReferences.svelte";
-    import { listTables, getTableHandles, destroyTableUndoManager } from "../../services/yjstable/tableDocs";
+    import { listTables, getTableHandles, getTableRegistry } from "../../services/yjstable/tableDocs";
     import { getTableDependencies, removeTableWithPolicy, type TableDependencies, type DeleteTablePolicy } from "../../services/yjstable/tableDependencies";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
@@ -60,6 +60,8 @@
     });
 
     let dependencies = $state<TableDependencies | undefined>(undefined);
+    let deletionEntry: unknown;
+    let deletionProject: typeof store.project;
     let deleteActionError = $state<string | undefined>(undefined);
     let isDeleting = $state(false);
 
@@ -83,6 +85,8 @@
         // The resolved id, not the route parameter: a Table URL may carry the
         // SQL name, and dependencies are keyed by Table id.
         if (!hasWriteAccess || !store.project || !resolvedTableId) return;
+        deletionProject = store.project;
+        deletionEntry = getTableRegistry(store.project.ydoc).get(resolvedTableId);
         dependencies = getTableDependencies(store.project, resolvedTableId);
         showDeleteDialog = true;
         deleteActionError = undefined;
@@ -91,21 +95,27 @@
     async function executeDelete(policy: DeleteTablePolicy) {
         if (!hasWriteAccess || !store.project || !resolvedTableId) return;
         const tableId = resolvedTableId;
+        const project = store.project;
         isDeleting = true;
         deleteActionError = undefined;
         try {
             // Unmount table view before destroying document
-            const currentHandles = tableHandles;
             tableHandles = undefined;
             // Let Svelte unmount TableEntityView before the policy destroys
             // the Table subdocument. Otherwise its teardown can race the
             // subdocument destroy and leave this confirmation dialog open.
             await tick();
-            if (currentHandles?.doc) {
-                destroyTableUndoManager(currentHandles.doc);
+            if (!hasWriteAccess || isDestroyed || store.project !== project || project !== deletionProject
+                || resolvedTableId !== tableId || getTableRegistry(project.ydoc).get(tableId) !== deletionEntry) {
+                throw new Error("The Table or Project changed while deletion was pending. Reopen the confirmation.");
             }
-
-            const result = removeTableWithPolicy(store.project, tableId, policy);
+            const currentImpact = getTableDependencies(project, tableId);
+            if (JSON.stringify(currentImpact) !== JSON.stringify(dependencies)) {
+                dependencies = currentImpact;
+                throw new Error("SQL references changed. Review the updated impact and confirm again.");
+            }
+            const result = removeTableWithPolicy(project, tableId, policy);
+            if (!result) throw new Error("The Table no longer exists.");
 
             if (result) {
                 logger.info(`Deleted table ${tableId} with policy ${policy}`);
@@ -382,15 +392,15 @@
 
                 {#if dependencies.dependentGridIds.length > 0}
                     <div class="mb-4">
-                        <h3 class="font-semibold text-gray-900 mb-1">Grids sourced from this table ({dependencies.dependentGridIds.length})</h3>
-                        <p class="text-xs text-gray-500 mb-1">Each grid selects from this table and has no other source.</p>
+                        <h3 class="font-semibold text-gray-900 mb-1">Grids reading this table ({dependencies.dependentGridIds.length})</h3>
+                        <p class="text-xs text-gray-500 mb-1">Views and their placements survive. SQL reading the deleted Table will report an error.</p>
                     </div>
                 {/if}
 
                 {#if dependencies.dependentKanbanIds.length > 0}
                     <div class="mb-4">
-                        <h3 class="font-semibold text-gray-900 mb-1">Kanbans sourced from this table ({dependencies.dependentKanbanIds.length})</h3>
-                        <p class="text-xs text-gray-500 mb-1">Removing direct references deletes these boards and their current placements.</p>
+                        <h3 class="font-semibold text-gray-900 mb-1">Kanbans reading this table ({dependencies.dependentKanbanIds.length})</h3>
+                        <p class="text-xs text-gray-500 mb-1">Boards and their placements survive under either policy; their SQL may break.</p>
                     </div>
                 {/if}
 
@@ -436,7 +446,14 @@
                     </div>
                 {/if}
 
-                {#if dependencies.dependentGridIds.length === 0 && dependencies.dependentKanbanIds.length === 0 && dependencies.directGridReferences.length === 0 && dependencies.scheduleReferences.length === 0 && dependencies.indirectSqlReferences.length === 0}
+                {#if dependencies.unknownReferences.length > 0}
+                    <div role="status" data-testid="table-delete-unknown-impact">
+                        Read dependencies are uncertain for {dependencies.unknownReferences.length} object(s). Additional views may be affected.
+                        <ul>{#each dependencies.unknownReferences as ref (`${ref.object.type}:${ref.object.id}`)}<li>{ref.object.type} {ref.object.id}: {ref.diagnostics.join("; ")}</li>{/each}</ul>
+                    </div>
+                {/if}
+
+                {#if dependencies.unknownReferences.length === 0 && dependencies.dependentGridIds.length === 0 && dependencies.dependentKanbanIds.length === 0 && dependencies.directGridReferences.length === 0 && dependencies.scheduleReferences.length === 0 && dependencies.indirectSqlReferences.length === 0}
                     <p class="text-sm text-gray-600 italic">Nothing in this project references this table.</p>
                 {/if}
 
@@ -452,6 +469,7 @@
                     <button
                         type="button"
                         class="w-full px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100 font-medium disabled:opacity-50"
+                        data-testid="table-delete-keep-references"
                         onclick={() => executeDelete("keep-references")}
                         disabled={isDeleting}
                     >
@@ -460,15 +478,17 @@
                     <button
                         type="button"
                         class="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium disabled:opacity-50"
+                        data-testid="table-delete-remove-direct-references"
                         onclick={() => executeDelete("remove-direct-references")}
                         disabled={isDeleting}
                     >
-                        Delete table and remove direct references
+                        Delete table and remove direct Schedule targets
                     </button>
                 {:else}
                     <button
                         type="button"
                         class="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium disabled:opacity-50"
+                        data-testid="table-delete-keep-references"
                         onclick={() => executeDelete("keep-references")}
                         disabled={isDeleting}
                     >

@@ -40,7 +40,10 @@ acceptance:
 - The project schedule list follows a table rename made while it is open
 - The table deletion dialog reports Grids and Schedules as dependencies rather than as contents
 - Two Grids over one Table stay independent on their standalone pages
+- Both Table deletion policies preserve independent Grid/Kanban definitions and placement IDs; broken SQL and retained invalid INSERT preferences remain diagnosable, and unknown analysis is reported as uncertainty.
 tests:
+- client/src/services/yjstable/queryReadDependencies.test.ts
+- client/e2e/new/tbl-sql-reference-survival-2e6b9f14.spec.ts
 - client/e2e/new/grd-delayed-editor-runtime-5610cafe.spec.ts
 - client/e2e/new/grd-live-source-runtime-5610cafe.spec.ts
 - client/e2e/new/grd-standalone-access-5610cafe.spec.ts
