@@ -25,6 +25,7 @@ import { createGridInsertController, type GridInsertOutcome, type GridInsertStat
 import { createGridMetadataResolver, type GridMetadataResolution } from "../../services/yjstable/gridMetadataResolver";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
 import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
+import { publishGridResultBeforeAuthority } from "../../services/yjstable/gridResultPublication";
 import {
     analyzeProjectQueryProvenance,
     type ProjectQueryProvenance,
@@ -226,49 +227,45 @@ async function publish(next: ProjectSelectState) {
     const evidence = next.evidence;
     const preference = getGridInsertTargetTableId(mountedGrid);
     const provenance = analyzeProjectQueryProvenance(evidence);
-
-    // A completed SELECT is sufficient to render the read-only Grid and Chart.
-    // Do not hold that visible result behind the independently asynchronous
-    // metadata and INSERT-authority checks below: those checks can need more
-    // relation leases, and a busy provider used to leave a valid demo result
-    // displaying "Loading table..." until after the feature-tour assertion
-    // timed out. Existing-row and INSERT controls remain guarded because
-    // `guardedAuthority` is deliberately left unset until every check settles.
-    if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)
-        || getGridRegistry(projectDoc).get(mountedGrid.gridId) !== mountedGrid.entry
-        || preference !== getGridInsertTargetTableId(mountedGrid)) return;
-    result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
-    selectState = next;
-    queryExecution = {
-        queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
-        generation: evidence.executionGeneration,
-        query: evidence.query.trim(),
-        status: "completed",
-        rowCount: evidence.rows.length,
-        columnCount: evidence.columns.length,
-    };
-    chartPanel?.update(result);
-
-    const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
-    const resolution = await resolveInsertTarget({
-        projectDoc, evidence, provenance, insertTargetTableId: preference, session: guardedSelect,
-        resolveRelation: async name => {
-            const provider = await session.resolveRelation(name);
-            // Resolution inspects detached metadata only; the SELECT session
-            // separately retains the actual dependency provider holds.
-            if (!provider) return undefined;
-            session.releaseRelation(provider);
-            return provider;
+    const isCurrent = () => !destroyed && request === publication && guardedSelect.isEvidenceCurrent(evidence)
+        && getGridRegistry(projectDoc).get(mountedGrid.gridId) === mountedGrid.entry
+        && preference === getGridInsertTargetTableId(mountedGrid);
+    await publishGridResultBeforeAuthority({
+        isCurrent,
+        publishResult: () => {
+            result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
+            selectState = next;
+            queryExecution = {
+                queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
+                generation: evidence.executionGeneration,
+                query: evidence.query.trim(),
+                status: "completed",
+                rowCount: evidence.rows.length,
+                columnCount: evidence.columns.length,
+            };
+            chartPanel?.update(result);
+        },
+        resolveAuthority: async () => {
+            const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
+            const resolution = await resolveInsertTarget({
+                projectDoc, evidence, provenance, insertTargetTableId: preference, session: guardedSelect,
+                resolveRelation: async name => {
+                    const provider = await session.resolveRelation(name);
+                    // Resolution inspects detached metadata only; the SELECT session
+                    // separately retains the actual dependency provider holds.
+                    if (!provider) return undefined;
+                    session.releaseRelation(provider);
+                    return provider;
+                },
+            });
+            return { metadata, resolution };
+        },
+        publishAuthority: ({ metadata, resolution }) => {
+            displayMetadata = metadata;
+            sourceDiagnostics = describeViewSources(evidence, provenance, resolution);
+            guardedAuthority = { evidence, provenance, metadata };
         },
     });
-    if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)
-        || getGridRegistry(projectDoc).get(mountedGrid.gridId) !== mountedGrid.entry
-        || preference !== getGridInsertTargetTableId(mountedGrid)) return;
-    // Publish write/presentation authority only as one coherent incarnation.
-    // The already-visible result stays read-only until this point.
-    displayMetadata = metadata;
-    sourceDiagnostics = describeViewSources(evidence, provenance, resolution);
-    guardedAuthority = { evidence, provenance, metadata };
 }
 async function refreshAfterGuardedEffects() {
     await guardedSelect.runNow();

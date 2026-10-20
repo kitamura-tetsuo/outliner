@@ -131,7 +131,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
         try {
             // Writable single-Table baseline through the real runner.
             await waitFor(() => expect(titleButtons()[0]?.textContent).toBe("Value in A"), { timeout: 30000 });
-            expect(view.queryByTestId("grid-readonly-reason")).toBeNull();
+            await waitFor(() => expect(view.queryByTestId("grid-readonly-reason")).toBeNull());
             const undoBefore = undoDepths(handlesA, handlesB);
 
             // The real saved-query transition: the production writer the
@@ -194,6 +194,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
                 | null;
         try {
             await waitFor(() => expect(titleButton()?.textContent).toBe("Value in A"), { timeout: 30000 });
+            await waitFor(() => expect(view.queryByTestId("grid-readonly-reason")).toBeNull());
             const undoBefore = undoDepths(handlesA, handlesB);
 
             // Begin an ordinary edit while the single-Table result is current.

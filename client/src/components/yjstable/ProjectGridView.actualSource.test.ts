@@ -59,7 +59,9 @@ it("keeps zero-Table computed results in the rich Grid and clears dependencies",
     const view = render(ProjectGridView, { props: { grid, projectDoc } });
     await waitFor(() => expect(view.getByTestId("yjs-table-grid").textContent).toContain("42"), { timeout: 30000 });
     expect(view.getByTestId("yjs-table-name")).toHaveTextContent("Numbers");
-    expect(view.container.querySelector('td[data-col="flag"] input[type="checkbox"]')).toBeTruthy();
+    await waitFor(() =>
+        expect(view.container.querySelector('td[data-col="flag"] input[type="checkbox"]')).toBeTruthy()
+    );
     expect(view.getByTestId("grid-query-dependencies")).toHaveTextContent("No project Table dependencies");
     expect(projectDoc.getMap("yjsTables").size).toBe(0);
     setGridQuery(grid, "SELECT broken AS broken FROM missing_table");
@@ -90,6 +92,11 @@ it(
             await waitFor(() => expect(view.container.querySelectorAll("tbody tr")).toHaveLength(2), {
                 timeout: 30000,
             });
+            await waitFor(() =>
+                expect(view.container.querySelectorAll<HTMLSelectElement>('td[data-col="status"] select')).toHaveLength(
+                    2,
+                )
+            );
             const choices = view.container.querySelectorAll<HTMLSelectElement>('td[data-col="status"] select');
             expect(choices).toHaveLength(2);
             for (const choice of choices) {
