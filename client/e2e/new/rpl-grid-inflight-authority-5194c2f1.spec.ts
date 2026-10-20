@@ -64,6 +64,28 @@ async function reopenHeldSearchIfHidden(page: Page) {
     }
 }
 
+/**
+ * Identify the production UndoManager that owns one Grid definition. The
+ * router's aggregate depth alone cannot attribute a newly published entry:
+ * this records both that Grid scope's Yjs stack and whether it supplied the
+ * newest routed operation.
+ */
+async function gridHistoryEvidence(page: Page, gridId: string) {
+    return await page.evaluate(id => {
+        const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
+        const gridEntry = project.ydoc.getMap("yjsGrids").get(id);
+        const router = (globalThis as any).globalUndoRouter;
+        const manager = [...router.registered]
+            .find((candidate: any) => candidate.scope.includes(gridEntry));
+        const newest = router.undoStack.at(-1);
+        return {
+            totalDepth: router.undoDepth as number,
+            gridScopeDepth: manager?.undoStack.length as number | undefined,
+            newestIsGridScope: newest === manager,
+        };
+    }, gridId);
+}
+
 async function unchanged(page: Page, fixture: OverlappingTableFixture, undoDepth: number) {
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
     expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth);
@@ -129,18 +151,26 @@ test("Replace Current refuses a query change introduced while lookup is pending"
     await pointGridAToTableB(page, fixture);
     await captureReplace(page, fixture, "must not apply");
     await startReplace(page);
-    const undoDepthBeforeQueryChange = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
+    const gridId = await fixture.gridA.getAttribute("data-grid-id");
+    expect(gridId).toBeTruthy();
+    const historyBeforeQueryChange = await gridHistoryEvidence(page, gridId!);
+    expect(historyBeforeQueryChange.gridScopeDepth).toBeDefined();
     const editor = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
     await editor.fillAndCommit(page, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
+    const historyAfterQueryChange = await gridHistoryEvidence(page, gridId!);
+    // setGridQuery performs one synchronous Yjs transaction. Attribute the
+    // observed increase to that exact Grid definition scope before any query
+    // execution, focus transition, or held replacement settlement can be
+    // accepted into the refusal baseline.
+    expect(historyAfterQueryChange).toEqual({
+        totalDepth: historyBeforeQueryChange.totalDepth + 1,
+        gridScopeDepth: historyBeforeQueryChange.gridScopeDepth! + 1,
+        newestIsGridScope: true,
+    });
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
-    // Rendering the new query and publishing its undo entry cross independent
-    // reactive boundaries. Exercise that entry before taking the refusal
-    // baseline: a merely stable global count is not proof that the query edit
-    // has reached the router, while Undo/Redo establishes both publication and
-    // the intentional edit's ordinary history semantics.
-    await expect.poll(() => page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth))
-        .toBeGreaterThan(undoDepthBeforeQueryChange);
-    const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth as number);
+    const undoDepth = historyAfterQueryChange.totalDepth;
+    // Separately preserve the intentional query edit's ordinary Undo/Redo
+    // semantics after its origin and exact history delta are established.
     await page.evaluate(async () => await (globalThis as any).globalUndoRouter.undo());
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from B", { timeout: 30000 });
     expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth - 1);
