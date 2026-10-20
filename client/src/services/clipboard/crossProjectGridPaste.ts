@@ -351,7 +351,6 @@ export async function cloneGridTablesAcrossProjects(
                     tableIdMap,
                     sqlNameMap,
                     destinationDoc,
-                    signal: controller.signal,
                     cancelled,
                     bindings,
                     admit,
@@ -490,7 +489,6 @@ interface SourceCopyOptions {
     tableIdMap: Record<string, string>;
     sqlNameMap: ReadonlyMap<string, string>;
     destinationDoc: Y.Doc;
-    signal: AbortSignal;
     cancelled: () => boolean;
     bindings: TransferBindings;
     admit: () => void;
@@ -506,7 +504,7 @@ function noScheduleRules(): Pick<SourceCopyResult, "copiedSchedules" | "skippedS
  * Returns the reason the rows could not be read, or `undefined` on success.
  */
 async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCopyResult> {
-    const { sourceProjectId, destinationProject, tableIdMap, sqlNameMap, destinationDoc, signal, cancelled } = options;
+    const { sourceProjectId, destinationProject, tableIdMap, sqlNameMap, destinationDoc, cancelled } = options;
     const { connectTableDoc } = await import("../../lib/yjs/connection");
     const sourceProject = options.sourceProject;
     try {
