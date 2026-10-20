@@ -157,7 +157,9 @@ destination-binding replay checks: Undo removes only its placement, and Redo
 requires unchanged reused bindings without requiring the source Project to
 remain loaded. Definition recreation retains the admitted Table schemas, Grid queries and
 portable catalog (including a query-only Grid's top-level catalog) for synchronous
-ENUM compatibility checks against the current destination. Catalog-independent
+ENUM compatibility checks against the current destination. Required type uses
+come from parsed SQL type references, so an ENUM name in a literal/comment is
+not a dependency. Catalog-independent
 copies replay without a loaded source. Replaying saved rows/settings never
 reconnects to recopy newer source data.
 An importer-wide admission failure also cleans up earlier

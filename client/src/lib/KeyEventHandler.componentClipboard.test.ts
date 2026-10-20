@@ -845,11 +845,12 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             manager.destroy();
         }
     });
-    for (const requiredEnum of [false, true]) {
-        it(`zero-Table fresh Grid replay retains top-level catalog evidence: ENUM=${requiredEnum}`, async () => {
+    for (const sqlKind of ["plain", "enum-cast", "enum-name-literal"] as const) {
+        it(`zero-Table fresh Grid replay retains top-level catalog evidence: ${sqlKind}`, async () => {
+            const requiredEnum = sqlKind === "enum-cast";
             const source = new Y.Doc({ guid: "query-only-source" });
-            if (requiredEnum) {
-                createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+            if (sqlKind !== "plain") {
+                createSqlCatalogObject(source, "enum", "CREATE TYPE TASK_STATE AS ENUM (E'Open', 'Closed')");
             }
             const catalog = readSqlCatalog(source.guid, source);
             if (catalog.status !== "ready") throw new Error("catalog unavailable");
@@ -866,7 +867,11 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
                 outline.set("placement", (event as CustomEvent).detail.structuredItems[0].yjsGridId);
             window.addEventListener("paste-multi-item", listener);
             try {
-                const query = requiredEnum ? "SELECT 'Open'::task_state AS value" : "SELECT 1 AS value";
+                const query = requiredEnum
+                    ? "SELECT 'Open'::task_state AS value"
+                    : sqlKind === "enum-name-literal"
+                    ? "SELECT 'task_state' AS value"
+                    : "SELECT 1 AS value";
                 await KeyEventHandler.handlePaste(pasteEvent(
                     JSON.stringify({
                         version: 3,

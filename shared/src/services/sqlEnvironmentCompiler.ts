@@ -168,7 +168,7 @@ function parseOne(sql: string): AstNode {
     return wrapper.stmt;
 }
 
-function parseEnum(source: string): { name: string; labels: string[]; } {
+export function parseEnum(source: string): { name: string; labels: string[]; } {
     const statement = parseOne(source);
     if (Object.keys(statement).length !== 1 || !isNode(statement.CreateEnumStmt)) {
         throw new Error("Catalog enum must be one CREATE TYPE ... AS ENUM declaration");
@@ -186,7 +186,7 @@ interface TypeReference {
     isArray: boolean;
 }
 
-function collectTypeNames(statement: AstNode): TypeReference[] {
+export function collectTypeNames(statement: AstNode): TypeReference[] {
     const names: TypeReference[] = [];
     const walk = (value: unknown): void => {
         if (Array.isArray(value)) {
