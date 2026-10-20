@@ -22,6 +22,29 @@ permissions:
   contents: read
 
 jobs:
+  ubuntu-firefox-setup-regression:
+    name: Ubuntu Firefox setup (${{ matrix.case }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [fresh, repeat, downgrade, install-failure]
+    env:
+      IME_ARTIFACTS: ${{ github.workspace }}/job_logs/native-ime-setup/${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Exercise the production setup package boundary
+        run: bash scripts/poc/native-ime/test-setup.sh '${{ matrix.case }}'
+      - name: Upload setup evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-ime-firefox-setup-${{ matrix.case }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: job_logs/native-ime-setup/
+          if-no-files-found: error
+          retention-days: 30
+
   ubuntu-firefox-fcitx5:
     runs-on: ubuntu-24.04
     concurrency:

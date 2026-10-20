@@ -41,7 +41,7 @@ def ubuntu(directory):
     required_controls = {"control-missing-and-foreign", "control-horizontal-displacement-without-overlap",
                          "control-overlap-without-horizontal-displacement", "control-redraw-without-selection-change",
                          "control-native-selection-preedit-mismatch", "control-native-selection-commit-mismatch"}
-    ok = (results.get("status") == "PASSED" and identity.get("verified") is True and not failed
+    ok = (results.get("status") == "PASSED" and identity.get("verified") is True and bool(assertions) and not failed
           and required <= scenarios and required_controls <= control_names)
     lines = ["## Ubuntu/X11 Firefox + Fcitx5 native IME regression", "",
              f"**Verdict: {'PASSED' if ok else 'FAILED'}**", "",
