@@ -23,7 +23,7 @@ import { McpReadError } from "./mcp-error.js";
  * column currently renders.
  *
  * `presentationRevision` is a content precondition over a detached
- * descriptor of the Grid's identity, source Table, saved query, and complete
+ * descriptor of the Grid's identity, saved query, and complete
  * presentation snapshot. It is not an edit counter: A -> B -> A restores the
  * original token. It deliberately excludes Table records/schema, other Grids,
  * Pages, placements, and other project metadata. The existing query-only
@@ -86,7 +86,6 @@ export interface GridPresentation {
 export interface GridPresentationRead {
     projectId: string;
     gridId: string;
-    sourceTableId: string | null;
     query: string;
     presentationRevision: string;
     presentation: GridPresentation;
@@ -250,11 +249,6 @@ export function readPresentationSnapshot(entry: Y.Map<unknown>): GridPresentatio
     };
 }
 
-function readSourceTableId(entry: Y.Map<unknown>): string | null {
-    const value = entry.get("sourceTableId");
-    return typeof value === "string" && value.length > 0 ? value : null;
-}
-
 /**
  * Versioned content token over the explicitly enumerated descriptor. The
  * descriptor is a fixed-position array (components sorted by code unit), so
@@ -266,7 +260,6 @@ export function gridPresentationRevision(descriptor: Omit<GridPresentationRead, 
         "grid-presentation-v1",
         descriptor.projectId,
         descriptor.gridId,
-        descriptor.sourceTableId,
         descriptor.query,
         presentation.name,
         [...presentation.columnOrder],
@@ -291,7 +284,6 @@ export function readGridPresentation(projectId: string, gridId: string, entry: Y
     const descriptor = {
         projectId,
         gridId,
-        sourceTableId: readSourceTableId(entry),
         query: optionalText(entry.get("query")) ?? "",
         presentation: readPresentationSnapshot(entry),
     };

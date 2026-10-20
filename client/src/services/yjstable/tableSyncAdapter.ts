@@ -49,11 +49,20 @@ export interface RecordSyncError {
     message: string;
 }
 
+/** Transaction-local native visibility; never a durable or public relation identity. */
+export interface NativeProjectRelationBinding {
+    sqlName: string;
+    schemaName: string;
+    relationOid: number;
+    visible: boolean;
+}
+
 export interface TableQueryResult {
     columns: string[];
     /** PostgreSQL type OID for each corresponding result column. */
     columnTypes?: number[];
     rows: Record<string, unknown>[];
+    relationBindings?: readonly NativeProjectRelationBinding[];
 }
 
 export interface TableSyncCallbacks {
@@ -641,16 +650,31 @@ export async function executeGridQuery(
         isStale?: () => boolean;
         requireExplicitAliases?: boolean;
         includeColumnTypes?: boolean;
+        /** Physical unqualified references requiring native binding evidence. */
+        relationNames?: readonly string[];
     },
 ): Promise<TableQueryResult> {
     const trimmed = selectQuery.trim();
     if (!trimmed) return { columns: [], rows: [] };
     const selectSql = assertSelectQuery(trimmed, context.requireExplicitAliases ?? true);
+    const relationNames = new Set(context.relationNames);
     for (let round = 0;; round++) {
         try {
             return await enqueueWrite(async (db) => {
                 try {
                     await db.exec(`BEGIN; SET LOCAL search_path TO ${quoteIdent(context.pgSchema)};`);
+                    // Capture before SELECT expressions can change transaction-local
+                    // settings, on the same queued connection and search path.
+                    const bindings = context.relationNames === undefined
+                        ? undefined
+                        : await db.query<NativeProjectRelationBinding>(
+                            `SELECT c.relname AS "sqlName", n.nspname AS "schemaName",
+                                c.oid AS "relationOid", pg_catalog.pg_table_is_visible(c.oid) AS "visible"
+                         FROM pg_catalog.pg_class AS c
+                         JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+                         WHERE n.nspname = $1 AND c.relname = ANY($2::text[])`,
+                            [context.pgSchema, [...relationNames]],
+                        );
                     const res = await db.query<Record<string, unknown>>(selectSql);
                     await db.exec("COMMIT");
                     return {
@@ -659,6 +683,7 @@ export async function executeGridQuery(
                             ? { columnTypes: res.fields.map((f) => f.dataTypeID) }
                             : {}),
                         rows: formatQueryDateFields(res.fields, res.rows),
+                        ...(bindings === undefined ? {} : { relationBindings: bindings.rows }),
                     };
                 } catch (err) {
                     try {
@@ -678,6 +703,7 @@ export async function executeGridQuery(
             ) throw err;
             // Resolving runs its own writes, so it must happen outside
             // the execution lock the query itself holds.
+            relationNames.add(relation);
             const provider = await context.registry.resolveRelation(relation);
             if (!provider) throw err;
             if (context.isStale?.()) throw err;

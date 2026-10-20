@@ -99,7 +99,6 @@ describe("Grid presentation update: stale revisions (#5435 AS-004)", function() 
         ["a peer order change", () => setGridColumnOrder(peer.grid("grid-tasks"), ["done", "title"])],
         ["a peer rename", () => renameGrid(peer.doc, "grid-tasks", "Renamed")],
         ["a peer query change", () => setGridQuery(peer.grid("grid-tasks"), "SELECT id, title FROM tasks")],
-        ["a peer source change", () => peer.grid("grid-tasks").entry.set("sourceTableId", "table-other")],
     ];
     for (const [what, edit] of contested) {
         it(`rejects a paused update when ${what} reaches the server before the final compare`, async () => {

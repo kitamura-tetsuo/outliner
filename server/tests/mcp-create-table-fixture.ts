@@ -127,6 +127,7 @@ export async function startMcpTestServer() {
         seams,
         checks,
         mcp,
+        relations,
         /** The unmodified production endpoint of the same server. */
         production: rpcClient(server.server),
         get domainCalls() {

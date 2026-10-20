@@ -1,7 +1,11 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { unambiguousRowSource } from "../../../../shared/src/services/projectQueryProvenance";
+import {
+    analyzeProjectQueryProvenance,
+    isProjectQueryProvenanceCurrent,
+} from "../../../../shared/src/services/projectQueryProvenance";
 import { resetPgliteForTests } from "./pgliteService";
-import { analyzeProjectQueryProvenance, isProjectQueryProvenanceCurrent } from "./projectQueryProvenance";
 import { createProjectSelectSession } from "./projectSelectSession";
 import {
     addRecord,
@@ -95,6 +99,7 @@ describe("Project query provenance", { timeout: 30_000 }, () => {
         const query = "SELECT 'b' AS source_kind, id AS source_id, title AS shown, points + 1 AS calculated FROM a "
             + "UNION ALL SELECT 'b', id, label, score FROM b";
         const { result } = await analyze(doc, query);
+        expect(unambiguousRowSource(result, { source_kind: "b", source_id: "b1" })).toBeUndefined();
         expect(result.branches.map(branch => ({
             claimedSourceKind: branch.claimedSourceKind,
             routedIdentity: branch.routedIdentity,

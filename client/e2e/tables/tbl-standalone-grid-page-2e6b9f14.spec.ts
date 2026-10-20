@@ -13,8 +13,8 @@ test.describe("Standalone grid page", () => {
         const gridView = page.getByTestId("yjs-table-view");
         await expect(gridView).toBeVisible({ timeout: 30000 });
         await expect(gridView).toHaveAttribute(
-            "data-source-table-id",
-            "demo-table-routine-occurrences",
+            "data-source-table-ids",
+            JSON.stringify(["demo-table-routine-occurrences"]),
         );
         await expect(gridView.getByTestId("grid-query-dependencies").getByRole("link")).toHaveCount(1);
         await expect(gridView.getByTestId("yjs-grid-source-table-link")).toHaveAttribute(

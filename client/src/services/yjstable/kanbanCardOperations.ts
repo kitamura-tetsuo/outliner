@@ -1,8 +1,8 @@
+import { unambiguousPhysicalColumn } from "../../../../shared/src/services/projectQueryProvenance";
 import { cellComponentTypeFor } from "../../components/yjstable/cellComponents";
 import { isValueValidForCell } from "./gridSelectionCommands";
 import type { KanbanLaneValue, KanbanSettings } from "./kanbanDocs";
 import type { KanbanCard, KanbanProjection } from "./kanbanQueryRunner";
-import { unambiguousPhysicalColumn } from "./projectQueryProvenance";
 import type { RelationResolver } from "./relationRowWrite";
 import { applyUnionedRowEdit } from "./relationRowWrite";
 import type { ParsedTableSchema } from "./schemaIntrospection";

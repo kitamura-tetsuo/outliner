@@ -86,3 +86,14 @@ render pipeline), force one locally:
    `grid-render-trace-<gridId>.json` next to the existing `error-context.md`
    (and any screenshot/video), and that the index's `gridIds`/`url` correlate
    with the failing test.
+
+Grid traces identify the Grid and optional explicit INSERT preference through `sourceDiagnostics`, with actual relation identities, supplier proof and INSERT resolution. They have no singular source Table/document field. Retained rows are stale whenever current execution evidence is missing, loading, failed, or invalidated; an unchanged SQL string alone does not establish currentness. Browser traces observe rendering, while server render stages remain explicitly inferred. Unmeasured timing is omitted.
+
+Source diagnostics distinguish producer-certified dependency completeness from
+supported write lineage. Every public nested relation uses `{ kind, id, sqlName }`;
+internal `schemaRevision` values are omitted. Prose and unverified display claims
+are bounded to 512 characters with `[truncated]`; relation/branch/column counts and
+100-entry truncation flags remain available. The mounted browser regressions
+`mcp-view-sources-unknown-5706cafe.spec.ts` and
+`mcp-view-sources-bounds-5706b0ad.spec.ts` cover unresolved successful reads and a
+schema applied through the normal editor with a 64 KiB comment.

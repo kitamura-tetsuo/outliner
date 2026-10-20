@@ -1,3 +1,4 @@
+import type { ViewSourceDiagnostics } from "../../../../shared/src/services/viewSourceDiagnostics";
 import { orderColumns } from "./columnOrder";
 import type { TableQueryExecution } from "./tableQueryRunner";
 import type { TableQueryResult } from "./tableSyncAdapter";
@@ -10,10 +11,10 @@ const MAX_QUERY_LENGTH = 2_000;
 
 export interface GridRenderTraceInput {
     gridId: string;
-    sourceTableId: string;
+    insertTargetTableId?: string;
+    sourceDiagnostics: ViewSourceDiagnostics;
     projectId?: string;
     projectDocumentId: string;
-    tableDocumentId: string;
     configRevision: string;
     clientRevision: number;
     query: string;
@@ -26,7 +27,8 @@ export interface GridRenderTraceInput {
 export interface GridRenderTrace {
     version: 1;
     gridId: string;
-    sourceTableId: string;
+    insertTargetTableId?: string;
+    sourceDiagnostics: ViewSourceDiagnostics;
     projectId?: string;
     generatedAt: string;
     stages: readonly GridRenderTraceStage[];
@@ -37,7 +39,6 @@ export type GridRenderTraceStage =
         stage: "config";
         revision: string;
         projectDocumentId: string;
-        tableDocumentId: string;
         query: string;
         columnOrder: readonly string[];
         hiddenColumns: readonly string[];
@@ -75,7 +76,8 @@ export function buildGridRenderTrace(input: GridRenderTraceInput): GridRenderTra
         .map(([column]) => column)
         .sort();
     const renderedHiddenColumns = orderedColumns.filter(column => input.hiddenColumns[column] === true);
-    const resultStale = input.execution !== undefined && input.execution.query !== input.query;
+    const resultStale = !input.sourceDiagnostics.execution.current || !input.execution
+        || input.execution.query !== input.query.trim();
     const appliedTransforms: string[] = [];
     if (!arraysEqual(orderedColumns, input.result.columns)) appliedTransforms.push("column-order");
     if (renderedHiddenColumns.length > 0) {
@@ -85,7 +87,8 @@ export function buildGridRenderTrace(input: GridRenderTraceInput): GridRenderTra
     return {
         version: 1,
         gridId: input.gridId,
-        sourceTableId: input.sourceTableId,
+        insertTargetTableId: input.insertTargetTableId,
+        sourceDiagnostics: input.sourceDiagnostics,
         projectId: input.projectId,
         generatedAt: new Date().toISOString(),
         stages: [
@@ -93,7 +96,6 @@ export function buildGridRenderTrace(input: GridRenderTraceInput): GridRenderTra
                 stage: "config",
                 revision: input.configRevision,
                 projectDocumentId: input.projectDocumentId,
-                tableDocumentId: input.tableDocumentId,
                 query: truncate(input.query, MAX_QUERY_LENGTH),
                 columnOrder: input.columnOrder.slice(0, MAX_TRACE_COLUMNS),
                 hiddenColumns: configuredHiddenColumns.slice(0, MAX_TRACE_COLUMNS),

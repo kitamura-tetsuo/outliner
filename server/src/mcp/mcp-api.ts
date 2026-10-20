@@ -350,10 +350,18 @@ export function createMcpRouter(
             query: z.string(),
             limit: z.number().int().optional(),
         }, args => service.searchItems(uid, args.projectId, args.query, args.limit));
-        tool("get_grid", "Read lightweight Grid metadata without materializing rows.", {
-            projectId: z.string(),
-            gridId: z.string(),
-        }, args => service.getGrid(uid, args.projectId, args.gridId));
+        tool(
+            "get_grid",
+            "Inspect Grid configuration and current SELECT source diagnostics.",
+            {
+                projectId: z.string(),
+                gridId: z.string(),
+            },
+            args =>
+                relationService
+                    ? relationService.inspectGrid(uid, args.projectId, args.gridId)
+                    : service.getGrid(uid, args.projectId, args.gridId),
+        );
         tool("get_calendar", "Read lightweight Calendar metadata without materializing entries.", {
             projectId: z.string(),
             calendarId: z.string(),
@@ -582,10 +590,10 @@ export function createMcpRouter(
             );
             tool(
                 "create_grid",
-                "Create a validated Grid over a Table and append its placement to a Page. Retry the same logical creation with the same operationId; use a new ID for different input. Dry runs do not consume the ID.",
+                "Create a validated Grid defined by its SELECT and append its placement to a Page. Retry the same logical creation with the same operationId; use a new ID for different input. Dry runs do not consume the ID.",
                 {
                     projectId: z.string(),
-                    tableId: z.string(),
+                    insertTargetTableId: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/).optional(),
                     pageId: z.string(),
                     query: z.string().refine(value => value.trim().length > 0),
                     name: z.string().optional(),
@@ -606,7 +614,7 @@ export function createMcpRouter(
                     "create_table",
                     "Create one standalone, empty Table from a display name and a single CREATE TABLE "
                         + "declaration (at most 16384 UTF-8 bytes). It creates no records, Grid, or placement: use "
-                        + "write_relation and create_grid with the returned sqlName/tableId for those. The SQL name "
+                        + "write_relation with the Table identity, or create_grid with a SELECT using its sqlName. The SQL name "
                         + "is resolved from the declaration and must not be used by another Table in the project. "
                         + "Retry a lost or failed response with the same operationId; use a new operationId for "
                         + "different creation input. Results are retained for replay for five minutes after the "
@@ -747,8 +755,8 @@ export function createMcpRouter(
             tool(
                 "update_grid_presentation",
                 "Update a Grid's saved presentation (display name, stored column order, per-column label/type/visibility "
-                    + "keyed by exact SQL result name, add-row button, delete confirmation) without touching its Table, "
-                    + "data, SQL query, source Table or placements. Read the current presentationRevision from get_grid "
+                    + "keyed by exact SQL result name, add-row button, delete confirmation) without changing source "
+                    + "data, SQL query or placements. Read the current presentationRevision from get_grid "
                     + "and pass it as expectedPresentationRevision. Retry a lost or failed response with the same "
                     + "operationId; use a new operationId for different input. Results are retained for replay for five "
                     + "minutes after the update settles, in this server process only: there is no guarantee across a "

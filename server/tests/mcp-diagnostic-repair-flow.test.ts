@@ -35,7 +35,6 @@ describe("MCP diagnostic-to-repair flow", () => {
         const grid = new Y.Map<unknown>();
         grid.set("name", "Task order");
         grid.set("query", "SELECT id, order FROM tasks ORDER BY order");
-        grid.set("sourceTableId", "table-1");
         project.ydoc.getMap("yjsGrids").set("grid-1", grid);
 
         const table = new Y.Doc();
@@ -50,7 +49,9 @@ describe("MCP diagnostic-to-repair flow", () => {
             ["projects/project-1", project.ydoc],
             ["projects/project-1/tables/table-1", table],
         ]);
+        for (const [room, doc] of rooms) Object.assign(doc, { name: room });
         const hocuspocus = {
+            documents: rooms,
             openDirectConnection: async (room: string) => ({ document: rooms.get(room), disconnect: async () => {} }),
         } as never;
         const canAccess = async (_uid: string, projectId: string) => projectId === "project-1";

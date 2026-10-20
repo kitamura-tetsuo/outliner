@@ -7,7 +7,7 @@ import {
     setGridInsertTargetTableId,
     setGridQuery,
 } from "./gridDocs";
-import { createGridInsertController } from "./gridInsertController";
+import { createGridInsertController, type GridInsertController, type GridInsertState } from "./gridInsertController";
 import { resetPgliteForTests } from "./pgliteService";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { resetTableEngineForTests } from "./tableEngine";
@@ -18,6 +18,27 @@ import { resetTableEngineForTests } from "./tableEngine";
 const engineTimeout = 60_000;
 afterEach(async () => await resetTableEngineForTests(), engineTimeout);
 afterAll(async () => await resetPgliteForTests(), engineTimeout);
+
+// Native initialization competes with coverage work in CI. Wait for the
+// published policy, not a timer tick or merely a terminal failure state.
+function waitForState(controller: GridInsertController, ready: (state: GridInsertState) => boolean) {
+    return new Promise<void>((resolve, reject) => {
+        let unsubscribe = () => {};
+        let settled = false;
+        const timer = setTimeout(() => {
+            unsubscribe();
+            reject(new Error(`INSERT readiness deadline: ${JSON.stringify(controller.state)}`));
+        }, engineTimeout);
+        unsubscribe = controller.subscribe(state => {
+            if (!ready(state)) return;
+            settled = true;
+            clearTimeout(timer);
+            unsubscribe();
+            resolve();
+        });
+        if (settled) unsubscribe();
+    });
+}
 
 describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
     it("isolates local history, merges disjoint peer fields and persists the exact Grid", () => {
@@ -67,7 +88,10 @@ describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
             onPreferenceChange: value => setGridInsertTargetTableId(grid, value),
         });
         try {
-            await expect.poll(() => controller.state.loading, { timeout: engineTimeout }).toBe(false);
+            await waitForState(controller, state =>
+                !state.loading && state.resolution?.mode === "selection-required"
+                && JSON.stringify(state.candidates.map(candidate => candidate.id).sort())
+                    === JSON.stringify(tables.slice(0, 2).map(table => table.id).sort()));
             expect(controller.state.candidates.map(candidate => candidate.id).sort()).toEqual(
                 tables.slice(0, 2).map(table => table.id).sort(),
             );
@@ -81,8 +105,10 @@ describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
             expect(tables.map(table => table.handles.data.size)).toEqual([0, 1, 0]);
             setGridQuery(grid, "SELECT id AS id, title AS title FROM a");
             controller.setQuery("SELECT id AS id, title AS title FROM a");
-            await expect.poll(() => controller.state.resolution?.preferenceDiagnostic?.code, { timeout: engineTimeout })
-                .toBe("not-a-supplier");
+            await waitForState(
+                controller,
+                state => !state.loading && state.resolution?.preferenceDiagnostic?.code === "not-a-supplier",
+            );
             expect(await controller.submit()).toMatchObject({
                 status: "inserted",
                 targetId: tables[0]!.id,
@@ -94,7 +120,7 @@ describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
             expect(await controller.savePreference(undefined)).toBeUndefined();
             expect(grid.entry.has("insertTargetTableId")).toBe(false);
         } finally {
-            controller.dispose();
+            await controller.dispose();
         }
     });
 });

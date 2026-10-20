@@ -9,6 +9,7 @@ import { checkContainerAccess } from "../src/access-control.js";
 import { loadConfig } from "../src/config.js";
 import { initializeFirebase } from "../src/firebase-init.js";
 import { OutlinerRelationService } from "../src/mcp/relation-service.js";
+import { signAccessToken } from "../src/oauth/tokens.js";
 import { createDocumentLoader, createDocumentStore } from "../src/persistence.js";
 import { ensureProjectDescriptorForWrite } from "../src/project-directory.js";
 import { JobScheduler } from "../src/scheduler/Scheduler.js";
@@ -105,13 +106,49 @@ async function dispatch(command: string, input: Record<string, any>) {
         const user = await getAuth().verifyIdToken(input.token);
         await ensureProjectDescriptorForWrite(user.uid, input.projectId, input.title);
         const project = Project.createInstance(input.title);
-        project.addPage(input.pageName, user.uid).items.addNode(user.uid).updateText("Catalog integration");
+        const page = project.addPage(input.pageName, user.uid);
+        page.items.addNode(user.uid).updateText("Catalog integration");
         await room(`projects/${input.projectId}`, async doc => {
             Y.applyUpdate(doc, Y.encodeStateAsUpdate(project.ydoc));
             await createDocumentStore(server.persistence!)(`projects/${input.projectId}`, doc);
         });
         project.ydoc.destroy();
-        return { uid: user.uid, port: port() };
+        return { uid: user.uid, port: port(), pageId: page.id };
+    }
+    if (command === "mcp") {
+        const user = await getAuth().verifyIdToken(input.token);
+        const access =
+            signAccessToken({ uid: user.uid, scope: "outliner.read outliner.write", clientId: "view-sources-browser" })
+                .token;
+        const response = await fetch(`http://127.0.0.1:${port()}/mcp`, {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                accept: "application/json, text/event-stream",
+                authorization: `Bearer ${access}`,
+            },
+            body: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 1,
+                method: "tools/call",
+                params: { name: input.name, arguments: input.arguments },
+            }),
+        });
+        const body = await response.text();
+        const envelope = JSON.parse(
+            body.startsWith("data:") || body.includes("\ndata:")
+                ? body.split("\n").find(line => line.startsWith("data: "))!.slice(6)
+                : body,
+        );
+        if (envelope.error) throw new Error(JSON.stringify(envelope.error));
+        const result = JSON.parse(envelope.result.content[0].text);
+        if (envelope.result.isError) throw new Error(JSON.stringify(result));
+        return result;
+    }
+    if (command === "viewState") {
+        const user = await getAuth().verifyIdToken(input.token);
+        if (!await checkContainerAccess(user.uid, input.projectId)) throw new Error("Forbidden view fixture read");
+        return await room(`projects/${input.projectId}`, doc => documentState(input.projectId, doc));
     }
     if (command === "apply") {
         const before = await service.read(input.uid, input.projectId);

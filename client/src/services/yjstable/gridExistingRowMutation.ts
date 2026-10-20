@@ -1,7 +1,11 @@
 import type * as Y from "yjs";
+import { unambiguousRowSource } from "../../../../shared/src/services/projectQueryProvenance";
+import type {
+    ProjectQueryProvenance,
+    ProvenanceRelation,
+} from "../../../../shared/src/services/projectQueryProvenance";
+import { isProjectQueryProvenanceCurrent } from "../../../../shared/src/services/projectQueryProvenance";
 import type { GridMetadataResolution, GridPhysicalColumnMetadata } from "./gridMetadataResolver";
-import type { ProjectQueryProvenance, ProvenanceRelation } from "./projectQueryProvenance";
-import { isProjectQueryProvenanceCurrent } from "./projectQueryProvenance";
 import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelectSession";
 import {
     assertWriteAllowed,
@@ -345,6 +349,7 @@ function resolveTarget(
     provenance: ProjectQueryProvenance,
     metadata: GridMetadataResolution,
 ) {
+    if (!unambiguousRowSource(provenance, row)) refuse("The result row has no unambiguous physical source identity");
     let source: ProvenanceRelation;
     let rowId: string;
     if (provenance.branches.length === 1 && provenance.bareIdSource) {

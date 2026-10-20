@@ -49,7 +49,9 @@ describe("Grid UNION mutation authority", { timeout: 30_000 }, () => {
         });
         const h = await createMutationHarness(doc, "SELECT id, title FROM a UNION ALL SELECT id, title FROM b");
         try {
-            expect(() => h.boundary.captureUpdate(0, "title", "wrong")).toThrow(/source_kind identity/);
+            expect(() => h.boundary.captureUpdate(0, "title", "wrong")).toThrow(
+                /no unambiguous physical source identity/,
+            );
             expect(a.handles.data.get("same")?.get("title")).toBe("A");
             expect(b.handles.data.get("same")?.get("title")).toBe("B");
             expect(a.handles.undo.undoStack).toHaveLength(0);

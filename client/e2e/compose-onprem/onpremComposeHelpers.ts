@@ -64,12 +64,14 @@ export async function captureIdentities(page: Page, title: string): Promise<Pers
     );
     const grids = page.getByTestId("yjs-table-view");
     const gridCount = await grids.count();
-    await expect(page.locator('[data-testid="yjs-table-view"][data-source-table-id]')).toHaveCount(gridCount);
+    await expect(page.locator('[data-testid="yjs-table-view"][data-source-table-ids]')).toHaveCount(gridCount);
     const gridIds =
         (await grids.evaluateAll(elements => elements.map(element => element.getAttribute("data-grid-id")!)))
             .sort();
     const sourceTableIds =
-        (await grids.evaluateAll(elements => elements.map(element => element.getAttribute("data-source-table-id")!)))
+        (await grids.evaluateAll(elements =>
+            elements.flatMap(element => JSON.parse(element.getAttribute("data-source-table-ids")!) as string[])
+        ))
             .sort();
     const recordIds =
         (await page.locator("tr[data-record-id]").evaluateAll(elements =>

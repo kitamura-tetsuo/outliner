@@ -151,12 +151,11 @@ describe("MCP create_table persists and composes with existing tools (#5412 AS-0
         expect(inserted.payload).to.include({ applied: true, relation: "mcp_tasks" });
         const grid = await again.mcp.call("create_grid", {
             projectId: PROJECT,
-            tableId,
             pageId,
             query: "SELECT id AS id, title AS title, done AS done FROM mcp_tasks",
             operationId: "grid-over-mcp-tasks",
         });
-        expect(grid.payload).to.include({ applied: true, sourceTableId: tableId, pageId });
+        expect(grid.payload).to.include({ applied: true, pageId });
         const trace = (await again.mcp.call("trace_grid", { projectId: PROJECT, gridId: grid.payload.gridId }))
             .payload;
         expect(JSON.stringify(trace)).to.contain("Ship create_table");
@@ -168,7 +167,7 @@ describe("MCP create_table persists and composes with existing tools (#5412 AS-0
             `projects/${PROJECT}`,
             doc => (doc.getMap<Y.Map<unknown>>("yjsGrids").get(grid.payload.gridId))?.get("sourceTableId"),
         );
-        expect(grids).to.equal(tableId);
+        expect(grids).to.equal(undefined);
         const finalTable = (await again.mcp.call("get_table", { projectId: PROJECT, tableId })).payload;
         expect(finalTable).to.include({ rawSchemaSql: SCHEMA, recordCount: 1 });
     });

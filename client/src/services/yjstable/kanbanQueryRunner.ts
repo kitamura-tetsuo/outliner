@@ -1,10 +1,10 @@
 import type * as Y from "yjs";
-import { getKanban, getKanbanRegistry, type KanbanHandles, type KanbanLaneValue } from "./kanbanDocs";
 import {
     analyzeProjectQueryProvenance,
     type ProjectQueryProvenance,
     unambiguousPhysicalColumn,
-} from "./projectQueryProvenance";
+} from "../../../../shared/src/services/projectQueryProvenance";
+import { getKanban, getKanbanRegistry, type KanbanHandles, type KanbanLaneValue } from "./kanbanDocs";
 import {
     createProjectSelectSession,
     type ProjectSelectEvidence,

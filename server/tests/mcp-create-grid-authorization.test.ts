@@ -15,10 +15,10 @@ function deferred() {
 function pauseValidation(f: ReturnType<typeof httpGridFixture>) {
     const started = deferred();
     const release = deferred();
-    const target = f.relations as unknown as { queryPlanDependencies: (...args: unknown[]) => Promise<string[]>; };
-    const original = target.queryPlanDependencies.bind(f.relations);
+    const target = f.relations as unknown as { validateGridCandidate: (...args: unknown[]) => Promise<unknown>; };
+    const original = target.validateGridCandidate.bind(f.relations);
     let calls = 0;
-    target.queryPlanDependencies = async (...args) => {
+    target.validateGridCandidate = async (...args) => {
         const result = await original(...args);
         calls++;
         started.resolve();
