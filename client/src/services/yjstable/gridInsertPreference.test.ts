@@ -12,10 +12,14 @@ import { resetPgliteForTests } from "./pgliteService";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { resetTableEngineForTests } from "./tableEngine";
 
-afterEach(async () => await resetTableEngineForTests());
-afterAll(async () => await resetPgliteForTests());
+// This fixture starts and closes a real WASM database. Keep its asynchronous
+// observations and cleanup within the same budget as the integration case,
+// including instrumented CI runs; Vitest's shorter defaults are insufficient.
+const engineTimeout = 60_000;
+afterEach(async () => await resetTableEngineForTests(), engineTimeout);
+afterAll(async () => await resetPgliteForTests(), engineTimeout);
 
-describe("explicit Grid INSERT preference", { timeout: 60000 }, () => {
+describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
     it("isolates local history, merges disjoint peer fields and persists the exact Grid", () => {
         const doc = new Y.Doc();
         const id = createGrid(doc, undefined, { query: "SELECT 1 AS value" });
@@ -63,7 +67,7 @@ describe("explicit Grid INSERT preference", { timeout: 60000 }, () => {
             onPreferenceChange: value => setGridInsertTargetTableId(grid, value),
         });
         try {
-            await expect.poll(() => controller.state.loading).toBe(false);
+            await expect.poll(() => controller.state.loading, { timeout: engineTimeout }).toBe(false);
             expect(controller.state.candidates.map(candidate => candidate.id).sort()).toEqual(
                 tables.slice(0, 2).map(table => table.id).sort(),
             );
@@ -77,7 +81,8 @@ describe("explicit Grid INSERT preference", { timeout: 60000 }, () => {
             expect(tables.map(table => table.handles.data.size)).toEqual([0, 1, 0]);
             setGridQuery(grid, "SELECT id AS id, title AS title FROM a");
             controller.setQuery("SELECT id AS id, title AS title FROM a");
-            await expect.poll(() => controller.state.resolution?.preferenceDiagnostic?.code).toBe("not-a-supplier");
+            await expect.poll(() => controller.state.resolution?.preferenceDiagnostic?.code, { timeout: engineTimeout })
+                .toBe("not-a-supplier");
             expect(await controller.submit()).toMatchObject({
                 status: "inserted",
                 targetId: tables[0]!.id,
