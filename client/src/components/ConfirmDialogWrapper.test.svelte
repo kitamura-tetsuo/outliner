@@ -1,11 +1,11 @@
 <script lang="ts">
     import ConfirmDialog from "./ConfirmDialog.svelte";
 
-    let { isOpen = $bindable(true), onConfirm, onCancel } = $props<{
+    let { isOpen = $bindable(true), onConfirm, onCancel }: {
         isOpen?: boolean;
-        onConfirm?: () => void | boolean;
+        onConfirm: () => void | boolean;
         onCancel?: () => void;
-    }>();
+    } = $props();
 </script>
 
 <ConfirmDialog bind:isOpen {onConfirm} {onCancel} />

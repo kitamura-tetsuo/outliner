@@ -10,7 +10,7 @@ let {
     onConfirm,
     onCancel,
     isDestructive = false
-} = $props<{
+}: {
     isOpen?: boolean;
     title?: string;
     message?: string;
@@ -19,7 +19,7 @@ let {
     onConfirm: () => void | boolean;
     onCancel?: () => void;
     isDestructive?: boolean;
-}>();
+} = $props();
 
 let dialogElement: HTMLDialogElement;
 let dialogId = $state("");

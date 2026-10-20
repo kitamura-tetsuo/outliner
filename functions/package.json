@@ -25,11 +25,11 @@
     }
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^2.35.0",
-    "@sentry/node": "^11.7.0",
+    "@dotenvx/dotenvx": "^2.37.0",
+    "@sentry/node": "^11.8.0",
     "cors": "^2.8.6",
-    "dotenv": "^18.0.7",
-    "file-type": "^22.1.1",
+    "dotenv": "^18.0.8",
+    "file-type": "^22.2.0",
     "firebase": "^13.0.0",
     "firebase-admin": "^14.5.0",
     "firebase-functions": "^7.4.0",

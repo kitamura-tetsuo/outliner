@@ -12,9 +12,14 @@ import { TableSqlError, toTableSqlError } from "./pgliteService";
 import type { RelationEvidence, RelationProvider } from "./relationProvider";
 import { projectSchemaName } from "./sqlNames";
 import { getTableRegistry } from "./tableDocs";
-import { createTableEngineSession, type TableDocConnector, type TableEngineSession } from "./tableEngine";
+import {
+    createTableEngineSession,
+    type RelationRegistryPort,
+    type TableDocConnector,
+    type TableEngineSession,
+} from "./tableEngine";
 import { rewriteTableQuerySql } from "./tableSqlRewrite";
-import { executeGridQuery, type RelationRegistryPort, REQUERY_DEBOUNCE_MS } from "./tableSyncAdapter";
+import { executeGridQuery, REQUERY_DEBOUNCE_MS } from "./tableSyncAdapter";
 
 const logger = getLogger("projectSelectSession");
 
