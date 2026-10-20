@@ -140,6 +140,34 @@ source. All PoC capabilities A–K must pass. `report.py` additionally requires:
 
 ## Running
 
+### Firefox package setup regression
+
+The Ubuntu workflow runs the production `scripts/poc/native-ime/setup.sh` entry point in
+four separate disposable Ubuntu 24.04 runners. The `fresh` case starts without Firefox,
+and `repeat` runs setup twice. The `downgrade` case installs the authenticated Mozilla
+package, fixture-repacks that same package with a strictly higher Debian version, and
+pins the authentic version as the candidate before running production setup again. The
+`install-failure` case holds that higher fixture package and requires the real Firefox
+transaction to fail. Fixture preferences and repacked packages exist only on those
+disposable runners and are never added by production setup.
+
+Run one case only on an isolated Ubuntu 24.04 VM or container with `sudo`; these commands
+mutate the host APT and dpkg state:
+
+```sh
+bash scripts/poc/native-ime/test-setup.sh fresh
+bash scripts/poc/native-ime/test-setup.sh repeat
+bash scripts/poc/native-ime/test-setup.sh downgrade
+bash scripts/poc/native-ime/test-setup.sh install-failure
+```
+
+Each case stores candidate policy, the actual APT simulation/transaction, pre/post
+installed versions, the package-owned `/usr/bin/firefox` executable result, and setup
+logs below `job_logs/native-ime-setup/<case>`. A successful package setup is only a
+provisioning result; it does not claim that a native IME assertion ran or passed.
+
+### Full native regression
+
 Manually dispatch **Native IME regression** on the branch to evaluate. Its jobs need
 GitHub-hosted `ubuntu-24.04` and `windows-2025` runners. Locally, on a disposable
 Ubuntu 24.04 machine with sudo, run as a non-root user (Mozc refuses to start as root):

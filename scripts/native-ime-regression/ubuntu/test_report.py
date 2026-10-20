@@ -50,6 +50,14 @@ class NativeSelectionReport(unittest.TestCase):
         self.assertIn("Focused segment", text)
         self.assertIn("'start': 0, 'end': 2", text)
 
+    def test_zero_assertions_cannot_report_success(self):
+        result = self.result(PLACEMENT + SELECTION)
+        result["assertions"] = []
+        ok, verdict, lines = self.summarize(result)
+        self.assertFalse(ok)
+        self.assertFalse(verdict["ok"])
+        self.assertIn("Assertions: 0 passed, 0 failed", "\n".join(lines))
+
 
 if __name__ == "__main__":
     unittest.main()
