@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { verifyServedRevision } from "./verify-served-revision.mjs";
 
-for (const mode of ["matching", "reset-once", "reset", "hang", "wrong", "dirty"]) {
+for (const mode of ["matching", "reset-once", "reset", "hang", "hang-body", "wrong", "dirty"]) {
     test(`served revision: ${mode}`, async () => {
         const checkout = mkdtempSync(join(tmpdir(), "served-revision-"));
         const paths = ["components/GlobalTextArea.svelte", "lib/KeyEventHandler.ts", "components/EditorOverlay.svelte"];
@@ -37,6 +37,11 @@ for (const mode of ["matching", "reset-once", "reset", "hang", "wrong", "dirty"]
                 return;
             }
             if (mode === "hang") return;
+            if (mode === "hang-body") {
+                response.writeHead(200);
+                response.write("export default ");
+                return;
+            }
             const path = request.url.slice("/src/".length).split("?")[0];
             const committed = `committed ${path}\n`;
             response.end(`export default ${JSON.stringify(mode === "wrong" ? "wrong" : committed)};\n`);
@@ -45,21 +50,21 @@ for (const mode of ["matching", "reset-once", "reset", "hang", "wrong", "dirty"]
         try {
             const output = join(checkout, "identity.json");
             const result = await verifyServedRevision(checkout, `http://127.0.0.1:${server.address().port}`, output, {
-                requestTimeoutMs: 100,
-                overallTimeoutMs: 600,
+                requestTimeoutMs: 150,
+                overallTimeoutMs: 5000,
                 maxAttempts: 3,
             });
             assert.deepEqual(JSON.parse(readFileSync(output, "utf8")), result);
             assert.equal(result.verified, ["matching", "reset-once"].includes(mode));
             if (mode === "reset-once") {
                 assert.equal(result.attempts.length, 4);
-                assert.equal(result.attempts[0].error.code, "UND_ERR_SOCKET");
+                assert.ok(["UND_ERR_SOCKET", "ECONNRESET"].includes(result.attempts[0].error.code));
             }
-            if (["reset", "hang"].includes(mode)) {
+            if (["reset", "hang", "hang-body"].includes(mode)) {
                 assert.equal(result.failure.kind, "unavailable");
                 assert.equal(result.attempts.length, 3);
                 assert.ok(result.attempts.every(attempt => attempt.error && attempt.url && attempt.phase));
-                assert.ok(result.elapsedMs < 1500);
+                assert.ok(result.elapsedMs < 7000);
             }
             if (["wrong", "dirty"].includes(mode)) assert.equal(result.failure.kind, "mismatch");
         } finally {

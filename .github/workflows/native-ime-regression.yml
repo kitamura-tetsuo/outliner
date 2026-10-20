@@ -62,6 +62,8 @@ jobs:
           git rev-parse HEAD > "$IME_ARTIFACTS/checkout-sha.txt"
           echo "$IME_RUN_URL" > "$IME_ARTIFACTS/run-url.txt"
           cat /etc/os-release > "$IME_ARTIFACTS/os-release.txt"
+      - name: Served identity verifier controls
+        run: node --test scripts/native-ime-regression/verify-served-revision.test.mjs
       - name: Verdict unit controls
         working-directory: scripts/native-ime-regression/ubuntu
         run: python3 -m unittest discover -p 'test_*.py' -v
@@ -123,6 +125,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Served identity verifier controls
+        run: node --test scripts/native-ime-regression/verify-served-revision.test.mjs
       - name: Provision WSL2 Ubuntu and native Linux Docker Engine
         shell: powershell
         run: ./scripts/poc/windows-linux-backend/provision-wsl2.ps1
