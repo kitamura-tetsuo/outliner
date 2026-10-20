@@ -1,6 +1,7 @@
 import { Project } from "$shared/app-schema";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid, getGridRegistry, removeGridWithPlacements } from "../yjstable/gridDocs";
 import { resetPgliteForTests } from "../yjstable/pgliteService";
@@ -171,6 +172,106 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
             expect(listTables(f.destination.ydoc).map(table => table.tableId)).toEqual([reused]);
         });
     }
+    for (const copyData of [true, false]) {
+        it(`maps Schedule reads through reused and fresh identities; copyData=${copyData}`, async () => {
+            const source = Project.createInstance("mixed-source");
+            const destination = Project.createInstance("mixed-destination");
+            const makeTable = (project: Project, name: string) =>
+                createTable(
+                    project.ydoc,
+                    name,
+                    name,
+                    undefined,
+                    h => h.schemaText.insert(0, `CREATE TABLE ${name} (id TEXT PRIMARY KEY, value TEXT)`),
+                );
+            const a = makeTable(source, "a");
+            const b = makeTable(source, "b");
+            addRecord(getTableHandles(source.ydoc, a)!, { id: "a-row", value: "source-a" }, "a-row");
+            addRecord(getTableHandles(source.ydoc, b)!, { id: "b-row", value: "source-b" }, "b-row");
+            const unrelated = [makeTable(destination, "a"), makeTable(destination, "b")];
+            unrelated.forEach(id =>
+                addRecord(getTableHandles(destination.ydoc, id)!, { id: "other", value: id }, "other")
+            );
+            const options = {
+                sourceProjectId: source.ydoc.guid,
+                destinationDoc: destination.ydoc,
+                destinationProject: destination,
+                isDestinationCurrent: () => true,
+            };
+            const first = await cloneGridTablesAcrossProjects({
+                ...options,
+                snapshots: exportTableStructures(source.ydoc, [a]),
+                requestedSourceTableIds: [a],
+                copyData: false,
+            });
+            const reused = first!.tableIdMap[a];
+            const reusedEntry = destination.ydoc.getMap("yjsTables").get(reused);
+            addRecord(getTableHandles(destination.ydoc, reused)!, { id: "peer", value: "keep" }, "peer");
+            const sql = "INSERT INTO b (id, value) SELECT a.id AS id, a.value AS value FROM a RETURNING *";
+            createScheduleRule(source, {
+                name: "Write B",
+                targetTableId: b,
+                sql,
+                rrule: "RRULE:FREQ=DAILY",
+                enabled: true,
+            });
+            createScheduleRule(source, {
+                name: "Write A",
+                targetTableId: a,
+                sql: "INSERT INTO a (id, value) VALUES ('scheduled', 'value') RETURNING *",
+                rrule: "RRULE:FREQ=DAILY",
+                enabled: true,
+            });
+            createScheduleRule(destination, {
+                name: "Keep",
+                targetTableId: unrelated[0],
+                sql: "INSERT INTO a (id, value) VALUES ('keep', 'keep') RETURNING *",
+                rrule: "RRULE:FREQ=DAILY",
+            });
+            const rulesBefore = destination.schedules.toJSON();
+            const sourceRules = source.schedules.toJSON();
+            const sourceRows = [a, b].map(id => getTableHandles(source.ydoc, id)!.data.toJSON());
+            const otherRows = unrelated.map(id => getTableHandles(destination.ydoc, id)!.data.toJSON());
+            const grid = createGrid(source.ydoc, undefined, {
+                query: "SELECT a.id AS id, b.value AS value FROM a JOIN b ON a.id = b.id",
+                insertTargetTableId: b,
+            });
+            transport.acquire = async () => ({ client: { project: source }, release() {} });
+            const result = await cloneGridTablesAcrossProjects({
+                ...options,
+                snapshots: exportTableStructures(source.ydoc, [a, b]),
+                grids: { [grid]: exportGridSlice(source.ydoc, grid) },
+                requestedSourceTableIds: [a, b],
+                copyData,
+            });
+            expect(result!.reusedTableIdMap).toEqual({ [a]: reused });
+            expect(Object.keys(result!.tableIdMap)).toEqual([b]);
+            expect(listTables(destination.ydoc)).toHaveLength(4);
+            expect(destination.ydoc.getMap("yjsTables").get(reused)).toBe(reusedEntry);
+            expect(getGridRegistry(destination.ydoc).get(result!.gridIdMap[grid])!.get("query"))
+                .toBe("SELECT a_2.id AS id, b_2.value AS value FROM a_2 JOIN b_2 ON a_2.id = b_2.id");
+            const copied = result!.createdRuleIds.map(id => destination.schedules.get(id)!);
+            expect(copied).toHaveLength(copyData ? 1 : 0);
+            if (copyData) {
+                expect(copied[0].get("sql"))
+                    .toBe("INSERT INTO b_2 (id, value) SELECT a_2.id AS id, a_2.value AS value FROM a_2 RETURNING *");
+                expect(copied[0].get("targetTableId")).toBe(result!.tableIdMap[b]);
+                expect(copied[0].get("enabled")).toBe(false);
+            }
+            expect(getTableHandles(destination.ydoc, reused)!.data.toJSON()).toEqual({
+                peer: { id: "peer", value: "keep" },
+            });
+            expect(getTableHandles(destination.ydoc, result!.tableIdMap[b])!.data.toJSON())
+                .toEqual(copyData ? sourceRows[1] : {});
+            expect(unrelated.map(id => getTableHandles(destination.ydoc, id)!.data.toJSON())).toEqual(otherRows);
+            expect([a, b].map(id => getTableHandles(source.ydoc, id)!.data.toJSON())).toEqual(sourceRows);
+            expect(source.schedules.toJSON()).toEqual(sourceRules);
+            for (const [id, value] of Object.entries(rulesBefore)) {
+                expect(destination.schedules.get(id)!.toJSON()).toEqual(value);
+            }
+        });
+    }
+
     it("accepts delayed data Copy and valid unavailable-source structure fallback", async () => {
         for (const available of [true, false]) {
             const f = fixture();

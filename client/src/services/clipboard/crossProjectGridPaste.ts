@@ -271,7 +271,7 @@ export async function cloneGridTablesAcrossProjects(
         // A relation may have been renamed on the way in (`deriveSqlName`), and
         // a copied schedule rule has to follow it.
         const sqlNameMap = new Map<string, string>();
-        for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
+        for (const [sourceTableId, destinationTableId] of Object.entries({ ...reusedTableIdMap, ...tableIdMap })) {
             const sourceSqlName = snapshots[sourceTableId]?.sqlName;
             const destinationSqlName = getTableSqlName(destinationDoc, destinationTableId);
             if (sourceSqlName !== undefined && destinationSqlName !== undefined) {

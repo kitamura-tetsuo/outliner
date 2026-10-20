@@ -1,5 +1,8 @@
+import { Project } from "$shared/app-schema";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { TransferBindings } from "../clipboard/transferBindings";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import {
     createGrid,
     duplicateGrid,
@@ -13,14 +16,67 @@ import {
     listGrids,
     readGridComponents,
     removeGrid,
+    removeGridWithPlacements,
     setGridColumnOrder,
     setGridComponentField,
     setGridConfirmRowDelete,
     setGridQuery,
 } from "./gridDocs";
+import { appendGridPlacement } from "./gridPlacement";
 import { createTable, getTableHandles, listTables } from "./tableDocs";
 
 describe("Grid registry", () => {
+    for (const provenance of [false, true]) {
+        it(`restores only captured copy provenance through Grid Delete/Undo/Redo; provenance=${provenance}`, () => {
+            const project = Project.createInstance("delete-copy-provenance");
+            const page = project.addPage("Views", "user");
+            const table = createTable(project.ydoc, "Records", "records");
+            const grid = createGrid(project.ydoc, undefined, {
+                query: "SELECT * FROM records",
+                insertTargetTableId: table,
+                columnOrder: ["id"],
+                components: { id: { label: "Destination", widthPx: 180 } },
+                showAddRowButton: false,
+                confirmRowDelete: true,
+            });
+            const original = getGridHandles(project.ydoc, grid)!.entry;
+            if (provenance) {
+                original.set("copiedFromProjectId", "source-project");
+                original.set("copiedFromGridId", "source-grid");
+            }
+            const placement = appendGridPlacement(project.ydoc, page.id, grid, "user");
+            const id = placement.id;
+            const before = original.toJSON();
+            const evidence = new TransferBindings(project.ydoc);
+            evidence.capture("grid", grid, true);
+            globalUndoRouter.clear();
+            expect(removeGridWithPlacements(project, grid)).toBe(true);
+            expect(getGridHandles(project.ydoc, grid)).toBeUndefined();
+            expect(placement.yjsGridId).toBeUndefined();
+            for (let cycle = 0; cycle < 2; cycle++) {
+                globalUndoRouter.undo();
+                const restored = getGridHandles(project.ydoc, grid)!.entry;
+                expect(restored).not.toBe(original);
+                expect(restored.toJSON()).toEqual(before);
+                expect(placement.id).toBe(id);
+                expect(placement.yjsGridId).toBe(grid);
+                expect(() => evidence.assertOwned()).toThrow("newer incarnation");
+                if (!provenance) {
+                    expect(restored.has("copiedFromProjectId")).toBe(false);
+                    expect(restored.has("copiedFromGridId")).toBe(false);
+                }
+                if (cycle === 0) globalUndoRouter.redo();
+            }
+            const duplicate = duplicateGrid(project.ydoc, grid)!;
+            expect(duplicate).not.toBe(grid);
+            const copied = getGridHandles(project.ydoc, duplicate)!.entry;
+            expect(copied.has("copiedFromProjectId")).toBe(false);
+            expect(copied.has("copiedFromGridId")).toBe(false);
+            expect(copied.get("query")).toBe(before.query);
+            expect(listTables(project.ydoc).map(t => t.tableId)).toEqual([table]);
+        });
+    }
+
     it("rejects an implicit output alias without changing the saved query", () => {
         const doc = new Y.Doc();
         const gridId = createGrid(doc, "table-1", { query: "SELECT value FROM table1" });

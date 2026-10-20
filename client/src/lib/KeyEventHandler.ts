@@ -3363,7 +3363,13 @@ export class KeyEventHandler {
             // Treat as multi-item paste if normal multi-line text or portable structured items.
             if (text.includes("\n") || structuredItems) {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
+                const createsDefinitions = Object.keys(pastedTableIdMap ?? {}).length > 0
+                    || Object.keys(pastedGridIdMap).length > 0;
+                const retainsTransferBindings = createsDefinitions || Object.keys(reusedGridIdMap).length > 0;
                 if (typeof window !== "undefined") {
+                    // A reuse-only transfer allocates no object whose manager would
+                    // otherwise close outline capture. Give this Paste its own entry.
+                    if (pendingPaste && retainsTransferBindings) generalStore.undoManager?.stopCapturing();
                     window.dispatchEvent(
                         new CustomEvent("paste-multi-item", {
                             detail: {
@@ -3378,11 +3384,10 @@ export class KeyEventHandler {
                         }),
                     );
 
-                    // If a cross-project paste created tables, group the new tables, the schedule rules
-                    // that came with them and the item insertion into a single undoable unit so undo
-                    // removes everything and redo restores all of it.
+                    // Reused definitions still authorize placement replay. Retain the importer
+                    // witnesses even when this attempt allocated no definitions.
                     if (
-                        (Object.keys(pastedTableIdMap ?? {}).length > 0 || Object.keys(pastedGridIdMap).length > 0)
+                        retainsTransferBindings
                         && destinationDoc
                         && generalStore.undoManager
                     ) {
@@ -3391,7 +3396,8 @@ export class KeyEventHandler {
                                 generalStore.undoManager,
                                 destinationDoc,
                                 pendingPaste.bindings.forComposite(),
-                                authorizePasteRedo,
+                                // Only definition restoration needs the source ENUM/catalog check.
+                                createsDefinitions ? authorizePasteRedo : undefined,
                             );
                         }
                     }

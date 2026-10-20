@@ -46,7 +46,12 @@ acceptance:
 - 'The Grid export never truncates silently: a result past the row cap, or a chart image past the size cap, carries a notice in the copied content.'
 - The private in-app payload still names the Grid, so pasting back into Outliner behaves exactly as before.
 - Portable definitions are keyed by Grid identity independently of Table snapshots. Same-Project Copy shares a Grid, staged Cut preserves placement/Grid IDs, and cross-Project Cut retains the source Grid even when unplaced while refusing destination Grid or placement ID collisions.
+- Reuse-only Grid Paste retains destination binding checks during Redo without requiring the source Project to remain loaded; Undo preserves reused definitions and unrelated rows.
+- Grid object Delete/Undo restores copy provenance for repeat Paste reuse while independent duplication remains fresh.
+- Copied Schedule SQL remaps fresh and reused relations by admitted Table identities without duplicating rules targeting reused Tables.
 tests:
+- client/e2e/new/clp-restored-grid-provenance-4584c0de.spec.ts
+- client/src/services/yjstable/gridDocs.test.ts
 - client/e2e/new/clp-paste-peer-undo-4584c0de.spec.ts
 - client/e2e/new/clp-paste-special-stale-source-4584c0de.spec.ts
 - client/src/services/clipboard/crossProjectGridPaste.admission.test.ts

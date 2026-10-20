@@ -17,7 +17,7 @@ import {
 import { registerEditorSurface } from "../services/editorSurface";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { createGrid, getGridRegistry, removeGridWithPlacements } from "../services/yjstable/gridDocs";
-import { createTable, listTables } from "../services/yjstable/tableDocs";
+import { addRecord, createTable, getTableHandles, listTables } from "../services/yjstable/tableDocs";
 import {
     getTableClipboardSource,
     registerTableClipboardSource,
@@ -775,6 +775,89 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         state.visible = [];
         state.cursors = [];
     });
+
+    for (const deleted of [false, true]) {
+        it(`all-reused Paste replay ${deleted ? "refuses a peer Grid deletion" : "survives unloaded source and peer row edits"}`, async () => {
+            const destination = state.doc;
+            const outline = destination.getMap<string>("clipboard-outline");
+            const manager = new Y.UndoManager(outline);
+            state.undoManager = manager;
+            globalUndoRouter.clear();
+            globalUndoRouter.register(manager);
+            const encoded = JSON.stringify({
+                version: 3,
+                sourceProjectId: "unloaded-source",
+                items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }],
+                tables: { "source-table": snapshot("source-table") },
+                grids: { "grid:source-table": gridSnapshot("source-table") },
+            });
+            let count = 0;
+            const insert = (event: Event) => {
+                const items = (event as CustomEvent).detail.structuredItems;
+                outline.set(`placement-${++count}`, items[0].yjsGridId);
+            };
+            const positions = () => [
+                globalUndoRouter.undoDepth,
+                globalUndoRouter.redoDepth,
+                manager.undoStack.length,
+                manager.redoStack.length,
+            ];
+            window.addEventListener("paste-multi-item", insert);
+            try {
+                await KeyEventHandler.handlePaste(pasteEvent(encoded, "Grid"));
+                const table = listTables(destination)[0].tableId;
+                const grid = [...getGridRegistry(destination).keys()][0];
+                const entry = getGridRegistry(destination).get(grid);
+                await KeyEventHandler.handlePaste(pasteEvent(encoded, "Grid"));
+                expect(listTables(destination).map(t => t.tableId)).toEqual([table]);
+                expect([...getGridRegistry(destination).keys()]).toEqual([grid]);
+                expect(outline.toJSON()).toEqual({ "placement-1": grid, "placement-2": grid });
+                globalUndoRouter.undo();
+                expect(outline.toJSON()).toEqual({ "placement-1": grid });
+                expect(getGridRegistry(destination).get(grid)).toBe(entry);
+                const handles = getTableHandles(destination, table)!;
+                handles.doc.transact(() => addRecord(handles, { id: "peer", value: "kept" }, "peer"), "peer");
+                if (deleted) {
+                    const peer = new Y.Doc();
+                    Y.applyUpdate(peer, Y.encodeStateAsUpdate(destination));
+                    // Delivery of a peer deletion; the browser case exercises Object Manager.
+                    getGridRegistry(peer).delete(grid);
+                    Y.applyUpdate(destination, Y.encodeStateAsUpdate(peer), "peer");
+                }
+                const before = positions();
+                globalUndoRouter.redo();
+                if (deleted) {
+                    expect(outline.toJSON()).toEqual({ "placement-1": grid });
+                    expect(getGridRegistry(destination).has(grid)).toBe(false);
+                    expect(positions()).toEqual(before);
+                    expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("refused");
+                } else {
+                    expect(outline.toJSON()).toEqual({ "placement-1": grid, "placement-2": grid });
+                    expect(getGridRegistry(destination).get(grid)).toBe(entry);
+                    expect(positions()).toEqual([2, 0, 2, 0]);
+                }
+                expect(getTableHandles(destination, table)!.data.get("peer")?.get("value")).toBe("kept");
+                if (!deleted) {
+                    globalUndoRouter.undo();
+                    globalUndoRouter.undo();
+                    const beforeRecreation = positions();
+                    expect(listTables(destination)).toEqual([]);
+                    globalUndoRouter.redo();
+                    expect(listTables(destination)).toEqual([]);
+                    expect(outline.size).toBe(0);
+                    expect(positions()).toEqual(beforeRecreation);
+                    expect(globalUndoRouter.lastAsyncOutcome).toEqual({
+                        status: "refused",
+                        reason: "Structural ENUM compatibility changed",
+                    });
+                }
+            } finally {
+                window.removeEventListener("paste-multi-item", insert);
+                globalUndoRouter.unregister(manager);
+                manager.destroy();
+            }
+        });
+    }
 
     for (const change of ["deleted-before", "deleted-during", "query-during"] as const) {
         for (const variant of ["values-only", "another-view"] as const) {

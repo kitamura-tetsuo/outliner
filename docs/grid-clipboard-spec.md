@@ -41,7 +41,10 @@ Table Undo owns Table/Schedule effects and never restores old view snapshots.
 Explicit Grid/Kanban object deletion retains its placement confirmation and
 removal behavior. Placement-only removal leaves its view definition and source
 records. Grid deletion Undo does not overwrite a placement rebound to another
-view and restores the Grid's saved presentation settings.
+view and restores the Grid's saved presentation settings and retained copy
+provenance. Later ordinary Paste reuses that restored Grid; independent Grid
+duplication does not inherit its copy provenance. Restoration creates a new
+entry incarnation and does not revive an older transfer's ownership witness.
 
 ## Operation matrix
 
@@ -87,7 +90,9 @@ For explicit cross-Project copies omitting required query dependencies, the
 copied query is unavailable/cleared and the omission is reported. An unreachable
 row source retains the existing structure-only fallback with a diagnostic; a
 reachable source with zero rows is successful empty data. Copied Schedule rules
-remain disabled. Reusing a Table does not choose an arbitrary first Grid or
+remain disabled. Their SQL follows both fresh and reused Table identity/name
+mappings, while only freshly copied targets receive copied rules. Structure-only
+transfers still copy no Schedule rules or rows. Reusing a Table does not choose an arbitrary first Grid or
 overwrite a previously reused Grid's settings.
 
 The external text/plain flavor is rendered TSV; text/html contains a real
@@ -147,7 +152,11 @@ whole Undo without advancing either history stack. Redo checks saved Table
 SQL names as well as destination IDs and reused dependencies before restoring
 anything. A collision preserves peer data and history position; removing the
 collision allows the same history entry to retry. Successful Redo refreshes
-ownership witnesses. An importer-wide admission failure also cleans up earlier
+ownership witnesses. A Paste that reuses every Table and Grid retains the same
+destination-binding replay checks: Undo removes only its placement, and Redo
+requires unchanged reused bindings without requiring the source Project to
+remain loaded. Definition recreation retains its ENUM/catalog admission.
+An importer-wide admission failure also cleans up earlier
 successful groups, while preserving peer replacements and recoverable
 per-group SQL validation behavior.
 

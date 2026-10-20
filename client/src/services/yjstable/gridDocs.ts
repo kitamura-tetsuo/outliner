@@ -404,6 +404,11 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
     if (!entry) return false;
 
     const snapshot = readGridEntrySnapshot(entry);
+    // Copy provenance belongs to deletion restoration, not independent duplication.
+    const copyProvenance = ["copiedFromProjectId", "copiedFromGridId"].flatMap(key => {
+        const value = entry.get(key);
+        return typeof value === "string" ? [[key, value] as const] : [];
+    });
     const placements = findGridPlacements(project, gridId);
 
     let ownedEntry = entry;
@@ -446,6 +451,7 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
                 confirmRowDelete: snapshot.confirmRowDelete,
             });
             ownedEntry = registry.get(gridId)!;
+            for (const [key, value] of copyProvenance) ownedEntry.set(key, value);
             for (const placement of placements) {
                 try {
                     const nodeValue = project.tree.getNodeValueFromKey(placement.itemKey) as
