@@ -1,3 +1,4 @@
+import { before } from "mocha";
 import fs from "node:fs";
 import * as Y from "yjs";
 import { mcpLogPath, refreshMcpLogStream } from "../src/utils/log-manager.js";
@@ -26,7 +27,12 @@ export function snapshot(f: Fixture) {
     return [f.project.ydoc, f.tasks, f.people].map(doc => Buffer.from(Y.encodeStateAsUpdate(doc)).toString("base64"));
 }
 export function auditReader() {
-    const stream = refreshMcpLogStream();
+    let stream: fs.WriteStream;
+    // Mocha loads every suite before running any. Own the active destination
+    // at suite startup, after other suites have finished rotating their logs.
+    before(() => {
+        stream = refreshMcpLogStream();
+    });
     return async (operationId: string) => {
         await new Promise<void>((resolve, reject) => stream.write("", error => error ? reject(error) : resolve()));
         return fs.readFileSync(mcpLogPath, "utf8").split("\n").filter(Boolean).map(line => JSON.parse(line))

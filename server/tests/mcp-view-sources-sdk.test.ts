@@ -35,7 +35,7 @@ describe("source-independent Grid through the production SDK endpoint", function
                 const [index, query] of ["SELECT 1 AS answer", "SELECT id AS id, text AS text FROM outline_items"]
                     .entries()
             ) {
-                const operationId = `sdk-view-sources-${index}`;
+                const operationId = `sdk-view-sources-${index}-${crypto.randomUUID()}`;
                 const args = { projectId: PROJECT, pageId, query, operationId };
                 const preview = await call("create_grid", { ...args, dryRun: true });
                 expect(preview).not.to.have.property("gridId");
