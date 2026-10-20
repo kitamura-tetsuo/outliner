@@ -9,66 +9,164 @@ afterEach(resetTableEngineForTests);
 afterAll(resetPgliteForTests);
 
 describe("producer-owned dependency completeness", { timeout: 60000 }, () => {
-    for (
-        const query of [
-            "SELECT oid AS oid FROM pg_class LIMIT 1",
-            "SELECT id AS id FROM a WHERE EXISTS (SELECT 1 FROM pg_class)",
-            "SELECT 1 AS answer",
-            "WITH local AS (SELECT id FROM a) SELECT id AS id FROM local",
-            "SELECT count(*) AS count FROM a JOIN b ON a.id = b.id",
-        ]
-    ) {
-        it(query, async () => {
+    const cases = [
+        {
+            name: "ordinary catalog",
+            query: "SELECT oid AS oid FROM pg_class LIMIT 1",
+            unknown: true,
+            sources: [],
+            row: "oid",
+            provenance: "unknown",
+        },
+        {
+            name: "partial catalog",
+            query: "SELECT id AS id FROM a WHERE EXISTS (SELECT 1 FROM pg_class)",
+            unknown: true,
+            sources: ["a"],
+            rows: [{ id: "same" }],
+            provenance: "unknown",
+        },
+        {
+            name: "CR comment catalog",
+            query: "SELECT oid AS oid -- comment\rFROM pg_class LIMIT 1",
+            unknown: true,
+            sources: [],
+            row: "oid",
+            provenance: "unknown",
+        },
+        {
+            name: "TABLE EXISTS catalog",
+            query: "SELECT 1 AS answer WHERE EXISTS (TABLE pg_class)",
+            unknown: true,
+            sources: [],
+            rows: [{ answer: 1 }],
+            provenance: "unknown",
+        },
+        {
+            name: "TABLE CTE catalog",
+            query: "WITH q AS (TABLE pg_class) SELECT oid AS oid FROM q LIMIT 1",
+            unknown: true,
+            sources: [],
+            row: "oid",
+            provenance: "unknown",
+        },
+        {
+            name: "own-name catalog CTE",
+            query: "WITH pg_class AS (SELECT oid AS oid FROM pg_class) SELECT oid AS oid FROM pg_class LIMIT 1",
+            unknown: true,
+            sources: [],
+            row: "oid",
+            provenance: "unknown",
+        },
+        {
+            name: "CR partial A",
+            query: "SELECT a.id AS id FROM a -- comment\rWHERE EXISTS (SELECT 1 AS present FROM pg_class)",
+            unknown: true,
+            sources: ["a"],
+            rows: [{ id: "same" }],
+            provenance: "unknown",
+        },
+        {
+            name: "TABLE partial A",
+            query: "SELECT a.id AS id FROM a WHERE EXISTS (TABLE pg_class)",
+            unknown: true,
+            sources: ["a"],
+            rows: [{ id: "same" }],
+            provenance: "unknown",
+        },
+        {
+            name: "exact constant",
+            query: "SELECT 1 AS answer",
+            unknown: false,
+            sources: [],
+            rows: [{ answer: 1 }],
+            provenance: "unsupported",
+        },
+        {
+            name: "ordinary admitted Table",
+            query: "SELECT id AS id FROM a",
+            unknown: false,
+            sources: ["a"],
+            rows: [{ id: "same" }],
+            provenance: "proven",
+        },
+        {
+            name: "known CTE",
+            query: "WITH local AS (SELECT id FROM a) SELECT id AS id FROM local",
+            unknown: false,
+            sources: ["a"],
+            rows: [{ id: "same" }],
+            provenance: "unsupported",
+        },
+        {
+            name: "known own-name CTE",
+            query: "WITH a AS (SELECT id FROM a) SELECT id AS id FROM a",
+            unknown: false,
+            sources: ["a"],
+            rows: [{ id: "same" }],
+            provenance: "unsupported",
+        },
+        {
+            name: "known JOIN aggregate",
+            query: "SELECT count(*) AS count FROM a JOIN b ON a.id = b.id",
+            unknown: false,
+            sources: ["a", "b"],
+            row: "count",
+            provenance: "unsupported",
+        },
+    ];
+    for (const fixture of cases) {
+        it(fixture.name, async () => {
             const doc = new Y.Doc();
+            const identities = new Map<string, string>();
             for (const name of ["a", "b"]) {
-                const handles = getTableHandles(doc, createTable(doc, name, name))!;
+                const id = createTable(doc, name, name);
+                identities.set(name, id);
+                const handles = getTableHandles(doc, id)!;
                 setSchemaText(handles, `CREATE TABLE ${name} (id TEXT PRIMARY KEY)`);
                 addRecord(handles, {}, "same");
             }
             const session = createProjectSelectSession({
                 projectDoc: doc,
-                query,
+                query: fixture.query,
                 connect: async () => ({ waitForInitialSync: async () => ({ synced: true }), dispose() {} }),
             });
             try {
-                // Catalog readiness may replace the initial execution. Await an
-                // actual current successful publication, independently of warmup.
+                // Catalog warmup can replace the initial execution. Require an
+                // actual completed publication, then independently check currentness.
                 const evidence = await new Promise<ProjectSelectEvidence>((resolve, reject) => {
                     let stop = () => {};
+                    let settled = false;
                     const timer = setTimeout(() => {
                         stop();
                         reject(new Error(JSON.stringify(session.state)));
                     }, 20000);
                     stop = session.subscribe(state => {
                         if (state.status === "success") {
+                            settled = true;
                             clearTimeout(timer);
                             stop();
                             resolve(state.evidence);
                         }
                     });
+                    if (settled) stop();
                 });
-                const unknown = query.includes("pg_class");
-                expect(evidence.dependencyStatus).toBe(unknown ? "unknown" : "proven");
                 expect(session.isEvidenceCurrent(evidence)).toBe(true);
+                expect(evidence.rows).toHaveLength(1);
+                if (fixture.rows) expect(evidence.rows).toEqual(fixture.rows);
+                if (fixture.row) expect(evidence.rows[0]).toHaveProperty(fixture.row);
+                expect(evidence.dependencyStatus).toBe(fixture.unknown ? "unknown" : "proven");
+                expect(evidence.sources.map(source => ({ kind: source.kind, id: source.id, sqlName: source.sqlName })))
+                    .toEqual(fixture.sources.map(name => ({ kind: "table", id: identities.get(name), sqlName: name })));
                 const proof = analyzeProjectQueryProvenance(evidence);
                 expect(proof.dependencies.status).toBe(evidence.dependencyStatus);
-                if (unknown) {
-                    expect(proof.status).toBe("unknown");
+                expect(proof.dependencies.relations.map(source => ({ id: source.id, sqlName: source.sqlName })))
+                    .toEqual(fixture.sources.map(name => ({ id: identities.get(name), sqlName: name })));
+                expect(proof.status).toBe(fixture.provenance);
+                if (fixture.provenance !== "proven") {
                     expect(proof.suppliers).toEqual([]);
                     expect(proof.branches).toEqual([]);
                     expect(proof.bareIdSource).toBeUndefined();
-                    expect(evidence.sources.map((source) => source.sqlName)).toEqual(
-                        query.includes("FROM a") ? ["a"] : [],
-                    );
-                    expect(evidence.rows.length).toBeGreaterThan(0);
-                } else if (query === "SELECT 1 AS answer") {
-                    expect(evidence.rows).toEqual([{ answer: 1 }]);
-                    expect(proof.dependencies.relations).toEqual([]);
-                } else {
-                    expect(proof.dependencies.relations.map(source => source.sqlName).sort()).toEqual(
-                        query.includes("JOIN") ? ["a", "b"] : ["a"],
-                    );
-                    expect(proof.status).toBe("unsupported");
                 }
             } finally {
                 await session.dispose();

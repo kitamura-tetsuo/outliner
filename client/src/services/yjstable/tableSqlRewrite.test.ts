@@ -234,3 +234,109 @@ describe("rewriteTableQuerySql on qualified DML targets", () => {
         ).toBe("UPDATE tasks_2 AS t SET value = t.value + 1");
     });
 });
+
+describe("truthful physical dependency boundaries", () => {
+    const cases: { name: string; sql: string; names: string[]; reserved?: string[]; }[] = [
+        ...["\n", "\r\n", "\r"].map(ending => ({
+            name: `line comment ending ${JSON.stringify(ending)}`,
+            sql: `SELECT oid AS oid -- comment${ending}FROM pg_class LIMIT 1`,
+            names: ["pg_class"],
+        })),
+        {
+            name: "CR before a later LF",
+            sql: "SELECT oid AS oid -- comment\rFROM pg_class\nLIMIT 1",
+            names: ["pg_class"],
+        },
+        { name: "EOF comment", sql: "SELECT 1 AS answer -- FROM hidden", names: [] },
+        {
+            name: "literal CR and comment text",
+            sql: "SELECT 'x\r-- FROM hidden' AS text, $$TABLE hidden$$ AS other",
+            names: [],
+        },
+        { name: "TABLE in EXISTS", sql: "SELECT 1 AS answer WHERE EXISTS (TABLE pg_class)", names: ["pg_class"] },
+        {
+            name: "TABLE in CTE",
+            sql: "WITH q AS (TABLE pg_class) SELECT oid AS oid FROM q LIMIT 1",
+            names: ["pg_class"],
+        },
+        {
+            name: "TABLE partial dependency",
+            sql: "SELECT a.id FROM a WHERE EXISTS (TABLE pg_class)",
+            names: ["a", "pg_class"],
+        },
+        { name: "TABLE statement", sql: "TABLE pg_class", names: ["pg_class"] },
+        { name: "parenthesized TABLE", sql: "(TABLE pg_class)", names: ["pg_class"] },
+        { name: "TABLE derived FROM query", sql: "SELECT oid FROM (TABLE pg_class) q", names: ["pg_class"] },
+        { name: "WITH main TABLE", sql: "WITH q AS (SELECT 1) TABLE pg_class", names: ["pg_class"] },
+        { name: "set operation TABLE", sql: "SELECT oid FROM a UNION ALL TABLE pg_class", names: ["a", "pg_class"] },
+        {
+            name: "set operation distinct",
+            sql: "TABLE a INTERSECT DISTINCT TABLE pg_class EXCEPT TABLE b",
+            names: ["a", "pg_class", "b"],
+        },
+        { name: "TABLE ONLY quoted", sql: 'TABLE ONLY "pg_class" *', names: ["pg_class"] },
+        { name: "TABLE ONLY parentheses", sql: 'SELECT 1 WHERE EXISTS (TABLE ONLY ("pg_class"))', names: ["pg_class"] },
+        { name: "TABLE of visible CTE", sql: "WITH q AS (SELECT 1) TABLE q", names: [] },
+        { name: "reserved TABLE", sql: "TABLE outline_items", names: [], reserved: ["outline_items"] },
+        { name: "output alias table", sql: "SELECT 1 AS table, 2 AS pg_class", names: [] },
+        { name: "qualified column table", sql: "SELECT a.table, a.pg_class FROM a", names: ["a"] },
+        {
+            name: "set keyword in qualified expression",
+            sql: "SELECT coalesce(a.union, 1) AS table FROM a",
+            names: ["a"],
+        },
+        {
+            name: "nonrecursive own name",
+            sql: "WITH pg_class AS (SELECT oid FROM pg_class) SELECT oid FROM pg_class",
+            names: ["pg_class"],
+        },
+        {
+            name: "later sibling",
+            sql: "WITH q AS (SELECT oid FROM pg_class), pg_class AS (SELECT 1 AS oid) SELECT oid FROM q",
+            names: ["pg_class"],
+        },
+        { name: "known Table own name", sql: "WITH a AS (SELECT id FROM a) SELECT id FROM a", names: ["a"] },
+        { name: "earlier sibling", sql: "WITH a AS (SELECT 1), q AS (SELECT * FROM a) TABLE q", names: [] },
+        {
+            name: "enclosing CTE survives inner own name",
+            sql: "WITH a AS (SELECT 1) SELECT * FROM (WITH a AS (SELECT * FROM a) TABLE a) q",
+            names: [],
+        },
+        {
+            name: "recursive self reference",
+            sql: "WITH RECURSIVE a AS (SELECT 1 UNION ALL SELECT * FROM a) TABLE a",
+            names: [],
+        },
+        { name: "recursive later sibling", sql: "WITH RECURSIVE q AS (TABLE a), a AS (SELECT 1) TABLE q", names: [] },
+        {
+            name: "column lists and materialization",
+            sql: "WITH a(id) AS NOT MATERIALIZED (SELECT id FROM a), q AS MATERIALIZED (TABLE a) TABLE q",
+            names: ["a"],
+        },
+    ];
+    for (const { name, sql, names, reserved = [] } of cases) {
+        it(name, () => {
+            const result = rewriteTableQuerySql(sql, new Map());
+            expect(result.sql).toBe(sql);
+            expect(result.actualRelationDependencies).toEqual(names);
+            expect(result.actualReservedRelationDependencies).toEqual(reserved);
+        });
+    }
+    it("remaps only the physical own-name CTE body, including its qualifiers", () => {
+        expect(rewriteTableQuerySql("WITH a AS (SELECT a.id FROM a) SELECT a.id FROM a", { a: "a_copy" }).sql)
+            .toBe("WITH a AS (SELECT a_copy.id FROM a_copy) SELECT a.id FROM a");
+    });
+    it.each(["TABLE public.a", "TABLE ONLY public.a", "TABLE ONLY (public.a)"])("refuses qualified operand %s", sql => {
+        expect(() => rewriteTableQuerySql(sql, new Map())).toThrow(/Schema-qualified/);
+    });
+    it.each([
+        "TABLE a",
+        "SELECT 1 WHERE EXISTS (TABLE a)",
+        "WITH q AS (SELECT 1) TABLE a",
+        "INSERT INTO target TABLE a",
+        "INSERT INTO target (id) TABLE a",
+        "INSERT INTO target AS t (id) OVERRIDING SYSTEM VALUE TABLE a",
+    ])("retains the mapped TABLE refusal in query and Schedule contexts: %s", sql => {
+        expect(() => rewriteTableQuerySql(sql, { a: "a_copy" })).toThrow(/TABLE query syntax.*not supported/);
+    });
+});
