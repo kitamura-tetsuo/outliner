@@ -181,4 +181,7 @@ cleans only still-owned destination allocations and creates no placement,
 history or success report. Completion, discard and failed preparation release
 only the operation's own lease, once. Temporary source reads do not bind source
 cursors into the destination editor. Unavailable acquisition retains the
-structure-only fallback, and explicit no-data Copy opens no new source room.
+structure-only fallback, including a cold Project room whose initial sync times
+out: its newly opened client is released and is not evidence of Grid deletion.
+Already-loaded shared clients retain their existing acquisition behavior.
+Explicit no-data Copy opens no new source room.

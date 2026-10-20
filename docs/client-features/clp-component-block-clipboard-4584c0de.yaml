@@ -51,7 +51,9 @@ acceptance:
 - Copied Schedule SQL remaps fresh and reused relations by admitted Table identities without duplicating rules targeting reused Tables.
 - An acquired cross-Project source stays live through final placement admission; relevant source deletion, query or incarnation changes refuse stale Copy while unrelated rows and presentation remain independent.
 - Fresh definition Redo uses retained SQL/catalog evidence and saved records after source release, including zero-Table Grids and SQL literals containing unrelated ENUM names; actual missing or incompatible required ENUMs still refuse before effects.
+- An unreachable cold source Project retains the structure-only fallback and releases its unsynchronized temporary client; missing metadata before initial sync is not evidence of Grid deletion.
 tests:
+- client/e2e/new/clp-paste-source-room-unavailable-4584c0de.spec.ts
 - client/e2e/new/clp-paste-live-source-4584c0de.spec.ts
 - client/e2e/new/clp-fresh-paste-unloaded-redo-4584c0de.spec.ts
 - client/e2e/new/clp-restored-grid-provenance-4584c0de.spec.ts

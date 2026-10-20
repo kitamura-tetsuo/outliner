@@ -298,7 +298,7 @@ export async function acquireClientByProjectId(
     try {
         // A temporary row reader must not apply source-room cursors to the destination editor.
         const client = await connectAndRegister(projectId, "", userId, false);
-        return {
+        const acquired = {
             client,
             release: () => {
                 try {
@@ -309,6 +309,14 @@ export async function acquireClientByProjectId(
                 registry.delete(key);
             },
         };
+        // Construction can return after a silent initial-sync timeout. A cold
+        // room then supplies no live registry evidence, so preserve the caller's
+        // unavailable-source fallback rather than reporting a deleted Grid.
+        if (client.wsProvider && !client.wsProvider.isSynced) {
+            acquired.release();
+            return undefined;
+        }
+        return acquired;
     } catch (error) {
         logger.warn({ error, projectId }, "[acquireClientByProjectId] Source project is unavailable");
         return undefined;
