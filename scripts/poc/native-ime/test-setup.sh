@@ -49,8 +49,10 @@ prepare_higher_fixture() {
     sudo tee /etc/apt/preferences.d/native-ime-firefox-fixture
   LC_ALL=C apt-cache policy firefox | tee "$IME_ARTIFACTS/fixture-policy.txt"
   test "$(LC_ALL=C apt-cache policy firefox | awk '/^[[:space:]]*Candidate:/ {print $2; exit}')" = "$authentic"
-  LC_ALL=C apt-get --simulate install "firefox=$authentic" | tee "$IME_ARTIFACTS/fixture-simulation.txt"
+  LC_ALL=C apt-get --simulate --allow-downgrades install "firefox=$authentic" \
+    2>&1 | tee "$IME_ARTIFACTS/fixture-simulation.txt"
   grep -Eq 'DOWNGRADED|DOWNGRADE|downgraded' "$IME_ARTIFACTS/fixture-simulation.txt"
+  test "$(dpkg-query -W -f='${Version}' firefox)" = "$fixture_version"
 }
 
 case "$case_name" in
