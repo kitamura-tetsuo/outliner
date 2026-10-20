@@ -250,7 +250,10 @@ const logger = getLogger("GraphView");
     }
 
     onMount(() => {
-        chart = echarts.init(graphDiv);
+        chart = echarts.init(graphDiv, undefined, {
+            width: graphDiv.clientWidth || 800,
+            height: graphDiv.clientHeight || 400
+        });
         if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
             window.__GRAPH_CHART__ = chart;
         }

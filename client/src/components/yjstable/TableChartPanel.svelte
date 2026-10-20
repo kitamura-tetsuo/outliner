@@ -82,7 +82,10 @@ export function update(result: TableQueryResult) {
 }
 
 onMount(() => {
-    chart = echarts.init(chartDiv);
+    chart = echarts.init(chartDiv, undefined, {
+        width: chartDiv.clientWidth || 400,
+        height: chartDiv.clientHeight || 300
+    });
     const result = latestResult ?? initial;
     if (result) update(result);
 });
