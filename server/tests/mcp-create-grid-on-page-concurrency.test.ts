@@ -29,7 +29,7 @@ describe("createGridOnPage: concurrency and all-or-nothing publication", functio
     }
 
     function request(pageId: string, query = "SELECT id AS id, title AS title FROM tasks") {
-        return { sourceTableId: "table-tasks", pageId, query, name: "Created" };
+        return { pageId, query, name: "Created" };
     }
 
     it("refuses when the source Table or destination Page disappears after validation (AS-004)", async () => {
@@ -40,7 +40,10 @@ describe("createGridOnPage: concurrency and all-or-nothing publication", functio
                 if (remove === "table") project.ydoc.getMap("yjsTables").delete("table-tasks");
                 else page.delete();
             });
-            await expectRejected(relations.createGridOnPage("uid", "project-1", request(page.id)), "not_found");
+            await expectRejected(
+                relations.createGridOnPage("uid", "project-1", request(page.id)),
+                remove === "table" ? "validation_failed" : "not_found",
+            );
             expect({ grids: gridIds(project), placements: gridPlacements(project) }).to.deep.equal(before);
         }
     });

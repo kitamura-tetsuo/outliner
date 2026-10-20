@@ -1,3 +1,4 @@
+import type { SelectProvenanceEvidence } from "../../../../shared/src/services/viewSourceEvidence";
 // Primary-independent SELECT lifecycle for Project views.
 //
 // Unlike TableQueryRunnerBase this session has no distinguished Table: it
@@ -29,7 +30,7 @@ export interface ProjectSelectColumn {
     typeId?: number;
 }
 
-export interface ProjectSelectEvidence {
+export interface ProjectSelectEvidence extends SelectProvenanceEvidence {
     queryId: string;
     queryRevision: number;
     query: string;
@@ -72,7 +73,7 @@ export interface ProjectSelectSession {
     setQuery(query: string): void;
     runNow(): Promise<ProjectSelectEvidence | undefined>;
     resolveRelation(sqlName: string): Promise<RelationProvider | undefined>;
-    dispose(): void;
+    dispose(): Promise<void>;
 }
 
 export function createProjectSelectSession(options: {
@@ -101,6 +102,8 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
     private query: string;
     private timer: ReturnType<typeof setTimeout> | undefined;
     private disposed = false;
+    private runs = new Set<Promise<ProjectSelectEvidence | undefined>>();
+    private disposal?: Promise<void>;
     private currentEvidence: ProjectSelectEvidence | undefined;
     private catalog: CatalogRuntimeState = { status: "building" };
     private dependencyProviders = new Map<string, RelationProvider>();
@@ -183,7 +186,14 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         return this.registry?.resolveRelation?.(sqlName) ?? this.engine.resolveRelation(sqlName);
     }
 
-    async runNow(): Promise<ProjectSelectEvidence | undefined> {
+    runNow(): Promise<ProjectSelectEvidence | undefined> {
+        const run = this.execute();
+        this.runs.add(run);
+        void run.then(() => this.runs.delete(run), () => this.runs.delete(run));
+        return run;
+    }
+
+    private async execute(): Promise<ProjectSelectEvidence | undefined> {
         if (this.disposed) return undefined;
         if (this.timer !== undefined) clearTimeout(this.timer);
         this.timer = undefined;
@@ -203,7 +213,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
 
             const names = referencedRelations(query);
             const usedNames = new Set(names);
-            const sources: RelationEvidence[] = [];
+            const capturedSources = new Map<string, RelationEvidence>();
             for (const name of names) {
                 const provider = await this.resolveDependency(name);
                 if (stale()) return undefined;
@@ -211,7 +221,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 // Let PostgreSQL resolve it; an actually missing source is
                 // classified from the authoritative execution error below.
                 if (!provider) continue;
-                if (provider.evidence) sources.push(provider.evidence);
+                if (provider.evidence) capturedSources.set(name, provider.evidence);
             }
 
             const result = await executeGridQuery(query, {
@@ -219,21 +229,42 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 registry: {
                     resolveRelation: name => {
                         usedNames.add(name);
-                        return this.resolveDependency(name);
+                        return this.resolveDependency(name).then(provider => {
+                            if (provider?.evidence && !capturedSources.has(name)) {
+                                capturedSources.set(name, provider.evidence);
+                            }
+                            return provider;
+                        });
                     },
                 },
                 isStale: stale,
                 requireExplicitAliases: this.requireExplicitAliases,
                 includeColumnTypes: true,
+                relationNames: names,
             });
             if (stale()) return undefined;
-            // executeGridQuery may discover a relation that static FROM
-            // extraction did not. Its resolver records that source here.
+            // A matching provider name alone is not native binding identity:
+            // pg_catalog (or an earlier schema) may shadow the Project object.
+            // Only the captured, still-current provider and visible native
+            // Project object together establish an execution dependency.
+            const sources: RelationEvidence[] = [];
             for (const name of usedNames) {
+                const source = capturedSources.get(name);
                 const provider = this.dependencyProviders.get(name);
-                if (provider?.evidence && !sources.some(source => source.sqlName === name)) {
-                    sources.push(provider.evidence);
+                const current = provider?.evidence;
+                if (!source || !current) continue;
+                if (
+                    provider?.sqlName !== name || source.sqlName !== name
+                    || current.kind !== source.kind || current.id !== source.id
+                    || current.sqlName !== name || current.schemaRevision !== source.schemaRevision
+                ) {
+                    throw new Error("SQL source changed during query execution");
                 }
+                if (
+                    result.relationBindings?.some(binding =>
+                        binding.sqlName === name && binding.schemaName === this.pgSchema && binding.visible === true
+                    )
+                ) sources.push(source);
             }
             for (const [name, unsubscribe] of this.dependencyUnsubscribes) {
                 if (usedNames.has(name)) continue;
@@ -249,6 +280,9 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 executionGeneration: generation,
                 catalogGeneration: ready.generation,
                 catalogRevision: ready.snapshot.revision,
+                dependencyStatus: result.relationBindings !== undefined && sources.length === usedNames.size
+                    ? "proven"
+                    : "unknown",
                 sources,
                 columns: result.columns.map((name, index) => ({ name, typeId: result.columnTypes?.[index] })),
                 rows: result.rows,
@@ -315,16 +349,29 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         this.dependencyProviders.clear();
     }
 
-    dispose(): void {
-        if (this.disposed) return;
+    dispose(): Promise<void> {
+        if (this.disposal) return this.disposal;
         this.disposed = true;
         this.generation++;
         if (this.timer !== undefined) clearTimeout(this.timer);
         this.unsubscribeCatalog();
         getTableRegistry(this.projectDoc).unobserveDeep(this.registryObserver);
-        this.releaseDependencies();
-        this.engine.dispose();
         this.publish({ status: "disposed" });
+        // Invalidation is synchronous; release provider holds only after native
+        // work already started by this session has settled.
+        const release = () => {
+            this.releaseDependencies();
+            this.engine.dispose();
+        };
+        if (this.runs.size === 0) {
+            // Preserve immediate release for idle sessions (including warm
+            // cache expiry scheduling); only started work needs draining.
+            release();
+            this.disposal = Promise.resolve();
+        } else {
+            this.disposal = Promise.allSettled([...this.runs]).then(release);
+        }
+        return this.disposal;
     }
 }
 

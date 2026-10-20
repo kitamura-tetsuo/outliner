@@ -46,7 +46,9 @@ function fixture() {
         ["projects/project-1", project.ydoc],
         ["projects/project-1/tables/table-1", table],
     ]);
+    for (const [room, doc] of rooms) Object.assign(doc, { name: room });
     const hocuspocus = {
+        documents: rooms,
         openDirectConnection: async (room: string) => ({ document: rooms.get(room), disconnect: async () => {} }),
     } as never;
     const canAccess = async () => true;

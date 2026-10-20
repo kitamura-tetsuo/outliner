@@ -1,7 +1,10 @@
 import type * as Y from "yjs";
+import type {
+    ProjectQueryProvenance,
+    ProvenanceRelation,
+} from "../../../../shared/src/services/projectQueryProvenance";
+import { isProjectQueryProvenanceCurrent } from "../../../../shared/src/services/projectQueryProvenance";
 import { ITEMS_RELATION_COLUMNS, ITEMS_RELATION_NAME } from "./itemsRelation";
-import type { ProjectQueryProvenance, ProvenanceRelation } from "./projectQueryProvenance";
-import { isProjectQueryProvenanceCurrent } from "./projectQueryProvenance";
 import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelectSession";
 import type { TableColumnSchema } from "./schemaIntrospection";
 import { columnKindFromDataType } from "./schemaIntrospection";

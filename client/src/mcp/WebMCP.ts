@@ -1,12 +1,15 @@
+import type { ViewSourceDiagnostics } from "../../../shared/src/services/viewSourceDiagnostics";
 export interface WebMCPGridContext {
     gridId: string;
-    sourceTableId: string;
+    insertTargetTableId?: string;
+    sourceDiagnostics: ViewSourceDiagnostics;
     query?: string;
 }
 
 export interface WebMCPGridResult {
     gridId: string;
-    sourceTableId: string;
+    insertTargetTableId?: string;
+    sourceDiagnostics: ViewSourceDiagnostics;
     rows: readonly Record<string, unknown>[];
     columns: readonly string[];
     rowCount: number;
@@ -15,6 +18,8 @@ export interface WebMCPGridResult {
 export interface WebMCPGridTrace {
     version: number;
     gridId: string;
+    insertTargetTableId?: string;
+    sourceDiagnostics: ViewSourceDiagnostics;
     stages: readonly unknown[];
 }
 

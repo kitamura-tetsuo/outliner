@@ -9,11 +9,11 @@ export class TableSqlRewriteError extends Error {
 
 export interface TableSqlRewriteResult {
     sql: string;
-    /** Non-system relations actually read by FROM/JOIN or projected as source_kind. */
+    /** Non-system relations actually read by FROM/JOIN/TABLE or projected as source_kind. */
     relationDependencies: string[];
-    /** Relations named by FROM/JOIN or DML targets, excluding source_kind display literals. */
+    /** Relations named by FROM/JOIN/TABLE or DML targets, excluding source_kind display literals. */
     actualRelationDependencies: string[];
-    /** System relations named by FROM/JOIN, excluding source_kind display literals. */
+    /** System relations named by FROM/JOIN/TABLE, excluding source_kind display literals. */
     actualReservedRelationDependencies: string[];
     /** System-defined relations that intentionally rebind to the destination project. */
     reservedRelationDependencies: string[];
@@ -74,7 +74,7 @@ const RELATION_FOLLOW_KEYWORDS = new Set([
  * (`WITH x AS (INSERT … RETURNING *)`) is a query too: treating it as a scalar
  * expression would hide its FROM clause from the relation scanner.
  */
-const QUERY_HEAD_KEYWORDS = new Set(["select", "with", "values", "insert", "update", "delete"]);
+const QUERY_HEAD_KEYWORDS = new Set(["select", "table", "with", "values", "insert", "update", "delete"]);
 
 /**
  * Words that make a following UPDATE a locking clause or a conflict action
@@ -88,6 +88,7 @@ const DML_TARGET_FOLLOW_KEYWORDS = new Set([
     "set",
     "values",
     "select",
+    "table",
     "default",
     "overriding",
     "on",
@@ -137,8 +138,9 @@ function tokenize(sql: string): Token[] {
             continue;
         }
         if (sql.startsWith("--", index)) {
-            const newline = sql.indexOf("\n", index + 2);
-            push("comment", start, newline === -1 ? sql.length : newline);
+            index += 2;
+            while (index < sql.length && sql[index] !== "\r" && sql[index] !== "\n") index++;
+            push("comment", start, index);
             continue;
         }
         if (sql.startsWith("/*", index)) {
@@ -340,19 +342,20 @@ function collectCteScopes(
     tokens: Token[],
     matchingClose: Map<number, number>,
     enclosingClose: Array<number | undefined>,
-): CteScope[] {
+): { scopes: CteScope[]; queryStarts: Set<number>; } {
     const scopes: CteScope[] = [];
+    const queryStarts = new Set<number>();
     for (let i = 0; i < tokens.length; i++) {
         if (!word(tokens[i], "with")) continue;
         let cursor = nextSignificant(tokens, i);
-        if (cursor !== undefined && word(tokens[cursor], "recursive")) cursor = nextSignificant(tokens, cursor);
+        const recursive = cursor !== undefined && word(tokens[cursor], "recursive");
+        if (recursive) cursor = nextSignificant(tokens, cursor!);
         if (cursor === undefined || identifierValue(tokens[cursor]) === undefined) continue;
 
-        const names = new Set<string>();
+        const definitions: { name: string; close: number; }[] = [];
         while (cursor !== undefined) {
             const name = identifierValue(tokens[cursor]);
             if (name === undefined) break;
-            names.add(name);
             cursor = nextSignificant(tokens, cursor);
 
             if (cursor !== undefined && tokens[cursor].kind === "symbol" && tokens[cursor].value === "(") {
@@ -372,17 +375,101 @@ function collectCteScopes(
             if (cursor === undefined || tokens[cursor].kind !== "symbol" || tokens[cursor].value !== "(") break;
             const close = matchingClose.get(cursor);
             if (close === undefined) fail("Unbalanced CTE query");
+            definitions.push({ name, close });
             cursor = nextSignificant(tokens, close);
-            if (cursor === undefined || tokens[cursor].kind !== "symbol" || tokens[cursor].value !== ",") break;
+            if (cursor === undefined || tokens[cursor].kind !== "symbol" || tokens[cursor].value !== ",") {
+                if (cursor !== undefined) queryStarts.add(cursor);
+                break;
+            }
             cursor = nextSignificant(tokens, cursor);
         }
-        if (names.size > 0) scopes.push({ start: i, end: enclosingClose[i] ?? tokens.length, names });
+        const end = enclosingClose[i] ?? tokens.length;
+        if (recursive && definitions.length > 0) {
+            scopes.push({ start: i, end, names: new Set(definitions.map(definition => definition.name)) });
+        } else {
+            // A nonrecursive name enters the namespace only after its body.
+            // Earlier siblings and enclosing CTEs remain visible inside it.
+            for (const definition of definitions) {
+                scopes.push({ start: definition.close + 1, end, names: new Set([definition.name]) });
+            }
+        }
     }
-    return scopes;
+    return { scopes, queryStarts };
 }
 
 function isCteReference(name: string, index: number, scopes: CteScope[]): boolean {
     return scopes.some(scope => scope.start <= index && index < scope.end && scope.names.has(name));
+}
+
+/** The query following an INSERT target, optional alias/columns and OVERRIDING. */
+function insertQueryStart(tokens: Token[], target: number, matchingClose: Map<number, number>): number | undefined {
+    let cursor = nextSignificant(tokens, target);
+    if (cursor !== undefined && word(tokens[cursor], "as")) {
+        const alias = nextSignificant(tokens, cursor);
+        cursor = alias === undefined ? undefined : nextSignificant(tokens, alias);
+    }
+    if (cursor !== undefined && tokens[cursor].kind === "symbol" && tokens[cursor].value === "(") {
+        const close = matchingClose.get(cursor);
+        cursor = close === undefined ? undefined : nextSignificant(tokens, close);
+    }
+    if (cursor !== undefined && word(tokens[cursor], "overriding")) {
+        const kind = nextSignificant(tokens, cursor);
+        const value = kind === undefined ? undefined : nextSignificant(tokens, kind);
+        if (
+            kind === undefined || !(word(tokens[kind], "system") || word(tokens[kind], "user"))
+            || value === undefined || !word(tokens[value], "value")
+        ) return undefined;
+        cursor = nextSignificant(tokens, value);
+    }
+    return cursor;
+}
+
+function isTableQueryHead(
+    tokens: Token[],
+    index: number,
+    enclosingOpen: Array<number | undefined>,
+    queryStarts: Set<number>,
+): boolean {
+    if (queryStarts.has(index)) return true;
+    const previous = previousSignificant(tokens, index);
+    if (previous === undefined || previous === enclosingOpen[index]) return true;
+    const operator = word(tokens[previous], "all") || word(tokens[previous], "distinct")
+        ? previousSignificant(tokens, previous)
+        : previous;
+    if (
+        operator === undefined || enclosingOpen[operator] !== enclosingOpen[index]
+        || !(word(tokens[operator], "union") || word(tokens[operator], "intersect") || word(tokens[operator], "except"))
+    ) {
+        return false;
+    }
+    const beforeOperator = previousSignificant(tokens, operator);
+    return beforeOperator === undefined || tokens[beforeOperator].kind !== "symbol"
+        || tokens[beforeOperator].value !== ".";
+}
+
+/** Inspect a TABLE operand without consuming the outer scanner's parentheses. */
+function tableOperand(tokens: Token[], head: number, matchingClose: Map<number, number>): number {
+    let cursor = nextSignificant(tokens, head);
+    if (cursor !== undefined && word(tokens[cursor], "only")) {
+        cursor = nextSignificant(tokens, cursor);
+        if (cursor !== undefined && tokens[cursor].kind === "symbol" && tokens[cursor].value === "(") {
+            const open = cursor;
+            cursor = nextSignificant(tokens, open);
+            const after = cursor === undefined ? undefined : nextSignificant(tokens, cursor);
+            if (after !== undefined && tokens[after].kind === "symbol" && tokens[after].value === ".") {
+                fail("Schema-qualified TABLE relations are not supported");
+            }
+            if (after !== matchingClose.get(open)) fail("Unsupported TABLE ONLY operand");
+        }
+    }
+    if (cursor === undefined || identifierValue(tokens[cursor]) === undefined) {
+        fail("TABLE relation is missing or unsupported");
+    }
+    const after = nextSignificant(tokens, cursor);
+    if (after !== undefined && tokens[after].kind === "symbol" && tokens[after].value === ".") {
+        fail("Schema-qualified TABLE relations are not supported");
+    }
+    return cursor;
 }
 
 function assertSingleStatement(tokens: Token[]): void {
@@ -447,7 +534,7 @@ export function rewriteCreateTableSql(
 
 /**
  * Rewrite actual relation references in a Grid query. The scanner deliberately
- * recognizes only PostgreSQL FROM/JOIN relations and direct source_kind string
+ * recognizes PostgreSQL FROM/JOIN/TABLE relations and direct source_kind string
  * projections; identifiers used as columns, aliases, or ordinary literals are
  * never changed.
  */
@@ -461,7 +548,7 @@ export function rewriteTableQuerySql(
     const tokens = tokenize(sql);
     assertSingleStatement(tokens);
     const { matchingClose, enclosingOpen, enclosingClose } = parenMetadata(tokens);
-    const cteScopes = collectCteScopes(tokens, matchingClose, enclosingClose);
+    const { scopes: cteScopes, queryStarts } = collectCteScopes(tokens, matchingClose, enclosingClose);
     const dependencies = new Set<string>();
     const actualDependencies = new Set<string>();
     const actualReservedDependencies = new Set<string>();
@@ -553,8 +640,12 @@ export function rewriteTableQuerySql(
             if (next !== undefined && tokens[next].kind === "symbol" && tokens[next].value === ".") {
                 fail(`Schema-qualified relation "${relation}" is not supported`);
             }
-            // A CTE cannot be written to, but `INSERT ... RETURNING` inside one
-            // makes the CTE's own name visible here; leave it alone.
+            const into = previousSignificant(tokens, i);
+            if (into !== undefined && word(tokens[into], "into")) {
+                const start = insertQueryStart(tokens, i, matchingClose);
+                if (start !== undefined) queryStarts.add(start);
+            }
+            // Visible CTE references denote query output rather than a Project relation.
             if (isCteReference(relation, i, cteScopes)) continue;
             recordActualDependency(relation);
             const destination = mapping.get(relation);
@@ -620,11 +711,14 @@ export function rewriteTableQuerySql(
             continue;
         }
 
-        if (keyword === "table") {
-            const next = nextSignificant(tokens, i);
-            const relation = next === undefined ? undefined : identifierValue(tokens[next]);
-            if (relation !== undefined && mapping.has(relation)) {
-                fail(`TABLE query syntax for copied relation "${relation}" is not supported`);
+        if (keyword === "table" && isTableQueryHead(tokens, i, enclosingOpen, queryStarts)) {
+            const operand = tableOperand(tokens, i, matchingClose);
+            const relation = identifierValue(tokens[operand])!;
+            if (!isCteReference(relation, operand, cteScopes)) {
+                recordActualDependency(relation);
+                if (mapping.has(relation)) {
+                    fail(`TABLE query syntax for copied relation "${relation}" is not supported`);
+                }
             }
         }
 

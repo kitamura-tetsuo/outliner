@@ -69,7 +69,6 @@ describe("Grid presentation update: labels are presentation-only (#5435 AS-001)"
         expect(read).to.deep.include({
             projectId: PROJECT,
             gridId: "grid-tasks",
-            sourceTableId: "table-tasks",
             query: "SELECT id, title, due_date, done FROM tasks",
         });
         expect(read.presentation.components).to.deep.equal({

@@ -1,5 +1,6 @@
 /** @feature ENV-9f433761 */
 import fs from "fs/promises";
+import { stripVTControlCharacters } from "node:util";
 import {
     attachGridRenderTraces,
     collectGridRenderTraces,
@@ -26,15 +27,22 @@ test.describe("Grid render trace E2E failure artifact", () => {
             await expect(page.getByTestId("yjs-table-view")).toBeVisible({ timeout: 30000 });
             await expect(page.getByTestId("yjs-table-grid")).toBeVisible({ timeout: 30000 });
 
+            await expect.poll(async () =>
+                (await collectGridRenderTraces(page)).find(trace =>
+                    trace.gridId === "demo-table-routine-occurrences-history-grid"
+                )?.sourceDiagnostics.execution.current
+            ).toBe(true);
             const traces = await collectGridRenderTraces(page);
             const trace = traces.find(t => t.gridId === "demo-table-routine-occurrences-history-grid");
             expect(trace).toBeDefined();
-            expect(trace!.sourceTableId).toBe("demo-table-routine-occurrences");
+            expect(trace!.sourceDiagnostics.dependencies.relations.map(source => source.id)).toContain(
+                "demo-table-routine-occurrences",
+            );
 
             // Answers "what result was observed, and where did it diverge" from
             // the CI validation checklist in docs/e2e-grid-render-trace-artifacts.md.
             const stages = trace!.stages.map(stage => (stage as { stage: string; }).stage);
-            expect(stages).toEqual(["config", "client-state", "render"]);
+            expect(stages).toEqual(["config", "query-execution", "client-state", "render"]);
 
             await attachGridRenderTraces(testInfo, traces, { url: page.url() });
 
@@ -79,7 +87,10 @@ test.describe("Grid render trace E2E failure artifact", () => {
         } catch (error) {
             originalFailure = error as Error;
         }
-        expect(originalFailure?.message).toContain("toBe(true)");
+        expect(originalFailure).toBeInstanceOf(Error);
+        const focusFailure = stripVTControlCharacters(originalFailure!.message);
+        expect(focusFailure).toContain("Expected: true");
+        expect(focusFailure).toContain("Received: false");
 
         try {
             expect(await readClipboardAndRecord(page)).toContain("expected Grid header");

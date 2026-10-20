@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { unavailableViewSources } from "../../../../shared/src/services/viewSourceDiagnostics";
 import { buildGridRenderTrace } from "./gridRenderTrace";
 
 describe("buildGridRenderTrace", () => {
     it("correlates query and client stages and exposes a render projection divergence", () => {
         const trace = buildGridRenderTrace({
             gridId: "grid-1",
-            sourceTableId: "table-1",
+            sourceDiagnostics: unavailableViewSources(),
             projectId: "project-1",
             projectDocumentId: "project-doc",
-            tableDocumentId: "table-doc",
+
             configRevision: "0101a0",
             clientRevision: 7,
             query: "SELECT id, title, completed FROM tasks",
@@ -62,9 +63,9 @@ describe("buildGridRenderTrace", () => {
     it("marks retained results as stale when the configured query has moved on", () => {
         const trace = buildGridRenderTrace({
             gridId: "grid-1",
-            sourceTableId: "table-1",
+            sourceDiagnostics: unavailableViewSources(),
             projectDocumentId: "project-doc",
-            tableDocumentId: "table-doc",
+
             configRevision: "02",
             clientRevision: 2,
             query: "SELECT title FROM tasks WHERE completed = false",
@@ -94,9 +95,9 @@ describe("buildGridRenderTrace", () => {
     it("bounds row samples and individual values", () => {
         const trace = buildGridRenderTrace({
             gridId: "grid-1",
-            sourceTableId: "table-1",
+            sourceDiagnostics: unavailableViewSources(),
             projectDocumentId: "project-doc",
-            tableDocumentId: "table-doc",
+
             configRevision: "01",
             clientRevision: 1,
             query: "SELECT value FROM source",
@@ -111,6 +112,8 @@ describe("buildGridRenderTrace", () => {
         const render = trace.stages.find(stage => stage.stage === "render");
         expect(render?.stage).toBe("render");
         if (render?.stage !== "render") throw new Error("render stage missing");
+        expect(render.resultStale).toBe(true);
+        expect(trace.sourceDiagnostics.dependencies.status).toBe("unknown");
         expect(render.sample).toHaveLength(5);
         expect(render.sampleTruncated).toBe(true);
         expect(String(render.sample[0].value).length).toBe(201);
@@ -121,9 +124,9 @@ describe("buildGridRenderTrace", () => {
         circular.self = circular;
         const trace = buildGridRenderTrace({
             gridId: "grid-1",
-            sourceTableId: "table-1",
+            sourceDiagnostics: unavailableViewSources(),
             projectDocumentId: "project-doc",
-            tableDocumentId: "table-doc",
+
             configRevision: "01",
             clientRevision: 1,
             query: "SELECT value, metadata FROM source",

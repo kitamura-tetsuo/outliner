@@ -37,7 +37,9 @@ for (
 
         await expect(page).toHaveURL(new RegExp(`/${demo.slug}/-/grids/${GRID_ID}$`));
         const view = page.getByTestId("yjs-table-view");
-        await expect(view).toHaveAttribute("data-source-table-id", "demo-table-tasks", { timeout: 30000 });
+        await expect(view).toHaveAttribute("data-source-table-ids", JSON.stringify(["demo-table-tasks"]), {
+            timeout: 30000,
+        });
         const rows = view.getByTestId("yjs-table-grid").locator("tbody tr");
         await expect(rows).toHaveCount(EXPECTED_IDS.length, { timeout: 30000 });
         expect(await rows.evaluateAll(elements => elements.map(row => row.getAttribute("data-record-id"))))

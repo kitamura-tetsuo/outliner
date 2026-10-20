@@ -63,10 +63,10 @@ test(
             await cell.locator("button").click();
             await cell.locator("input").fill("old ABA intent");
             await query.fillAndCommit(peer, queryB);
-            await expect(grid).toHaveAttribute("data-source-table-id", fixture.tableB.id);
+            await expect(grid).toHaveAttribute("data-source-table-ids", JSON.stringify([fixture.tableB.id]));
             await query.fillAndCommit(peer, queryA);
             await expect.poll(savedQuery).toBe(queryA);
-            await expect(grid).toHaveAttribute("data-source-table-id", fixture.tableA.id);
+            await expect(grid).toHaveAttribute("data-source-table-ids", JSON.stringify([fixture.tableA.id]));
             await expect(cell.locator("input")).toHaveCount(0);
             await expect(cell.locator("button")).toHaveText("Value from A");
             expect(

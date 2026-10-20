@@ -38,7 +38,10 @@ it("retains Grid query and A cell history through a live supplier switch", { tim
     setGridQuery(grid, "SELECT id AS id, value AS value FROM b");
     await waitFor(() => expect(cell()?.querySelector("button")?.textContent?.trim()).toBe("b"), { timeout: 30000 });
     await waitFor(() =>
-        expect(view.getByTestId("yjs-table-view")).toHaveAttribute("data-source-table-id", sources[1].tableId)
+        expect(view.getByTestId("yjs-table-view")).toHaveAttribute(
+            "data-source-table-ids",
+            JSON.stringify([sources[1].tableId]),
+        )
     );
     expect(globalUndoRouter.undoDepth).toBe(2);
     expect(grid.undo.undoStack).toHaveLength(1);

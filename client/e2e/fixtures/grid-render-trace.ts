@@ -11,7 +11,10 @@ import fs from "fs/promises";
 export interface GridRenderTraceSnapshot {
     version: number;
     gridId: string;
-    sourceTableId: string;
+    sourceDiagnostics: {
+        execution: { current: boolean; };
+        dependencies: { status: string; relations: { id: string; sqlName: string; }[]; };
+    };
     projectId?: string;
     generatedAt: string;
     stages: readonly unknown[];

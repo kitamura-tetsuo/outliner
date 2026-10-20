@@ -2,8 +2,17 @@ id: FTR-5349c0de
 title: Atomic server Grid creation with Page placement
 title-ja: ページ配置を伴うサーバー側グリッドのアトミック作成
 status: implemented
-description: The server relation service can create one Grid over an existing Table and append one Grid placement to the end of an existing top-level Page as a single all-or-nothing mutation. The candidate SELECT is validated with the same executable Grid query semantics as validate_grid_query before any write, the source Table, destination Page, and validation inputs are re-resolved at the synchronous mutation boundary (revalidating when they changed), concurrent peer edits are preserved, and a failed publication leaves neither a Grid definition nor a placement. Exposed by the create_grid MCP mutation (FTR-5350c0de).
+description: The server relation service can create one source-independent Grid defined by its SELECT and append one Grid placement to the end of an existing top-level Page as a single all-or-nothing mutation. The candidate SELECT is validated with the same executable Grid query semantics as validate_grid_query before any write, actual SQL sources, destination Page, and validation inputs are re-resolved at the synchronous mutation boundary (revalidating when they changed), concurrent peer edits are preserved, and a failed publication leaves neither a Grid definition nor a placement. Exposed by the create_grid MCP mutation (FTR-5350c0de).
 tests:
+- client/e2e/new/mcp-view-sources-roundtrip-5614cafe.spec.ts
 - server/tests/mcp-create-grid-on-page-concurrency.test.ts
 - server/tests/mcp-create-grid-on-page.test.ts
+- server/tests/mcp-grid-disclosure-auth.test.ts
+- server/tests/mcp-grid-query-replay-auth.test.ts
 - server/tests/mcp-relation-service.test.ts
+- server/tests/mcp-view-sources-catalog-stale.test.ts
+- server/tests/mcp-view-sources-http.test.ts
+- server/tests/mcp-view-sources-lineage.test.ts
+- server/tests/mcp-view-sources-native.test.ts
+- server/tests/mcp-view-sources-preferences.test.ts
+- server/tests/mcp-view-sources-sdk.test.ts

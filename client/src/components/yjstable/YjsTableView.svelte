@@ -1,5 +1,7 @@
 <script lang="ts">
 // One Grid lifetime, independent of the Y.Docs of its SQL suppliers.
+import { describeViewSources, unavailableViewSources, type ViewSourceDiagnostics } from "../../../../shared/src/services/viewSourceDiagnostics";
+import { resolveInsertTarget } from "../../services/yjstable/insertTargetResolver";
 import { resolve } from "$app/paths";
 import { onDestroy, onMount, tick } from "svelte";
 import * as Y from "yjs";
@@ -26,7 +28,7 @@ import { registerGridRenderTraceSource } from "../../services/yjstable/gridRende
 import {
     analyzeProjectQueryProvenance,
     type ProjectQueryProvenance,
-} from "../../services/yjstable/projectQueryProvenance";
+} from "../../../../shared/src/services/projectQueryProvenance";
 import {
     createProjectSelectSession,
     type ProjectSelectEvidence,
@@ -76,6 +78,8 @@ let widthPreview = $state<{ column: string; width: number; } | undefined>();
 let showAddRowButton = $state(true);
 let confirmRowDelete = $state(false);
 let queryExecution = $state<TableQueryExecution | undefined>();
+let sourceDiagnostics = $state.raw<ViewSourceDiagnostics>(unavailableViewSources("loading"));
+let explicitPreference = $state<string | undefined>();
 let insertOutcome = $state<GridInsertOutcome | undefined>();
 let insertState = $state.raw<GridInsertState>({ loading: true, pending: false, candidates: [] });
 let showInsertPreference = $state(false);
@@ -102,9 +106,7 @@ const mutationIncarnation = $derived(
 );
 const dependencies = $derived(selectState.status === "success" ? selectState.evidence.sources : undefined);
 const sqlName = $derived(dependencies?.length === 1 ? dependencies[0].sqlName : undefined);
-const sourceId = $derived(
-    dependencies?.length === 1 && dependencies[0].kind === "table" ? dependencies[0].id : undefined,
-);
+
 
 // Result metadata describes presentation only; the mutation boundary separately
 // proves each physical source/field and checks provider permissions.
@@ -194,6 +196,8 @@ const insertController = createGridInsertController({
 });
 
 function refreshGridMirror() {
+    const preferenceChanged = explicitPreference !== getGridInsertTargetTableId(mountedGrid);
+    explicitPreference = getGridInsertTargetTableId(mountedGrid);
     gridName = String(mountedGrid.entry.get("name") ?? "Grid");
     gridQuery = getGridQuery(mountedGrid);
     const order = mountedGrid.entry.get("columnOrder");
@@ -207,6 +211,7 @@ function refreshGridMirror() {
     confirmRowDelete = getGridConfirmRowDelete(mountedGrid);
     guardedSelect.setQuery(gridQuery);
     insertController.setQuery(gridQuery);
+    if (preferenceChanged) void publish(guardedSelect.state);
 }
 const gridMirrorObserver = () => refreshGridMirror();
 async function publish(next: ProjectSelectState) {
@@ -214,26 +219,41 @@ async function publish(next: ProjectSelectState) {
     selectState = next.status === "success" ? { status: "loading" } : next;
     guardedAuthority = undefined;
     queryExecution = undefined;
+    sourceDiagnostics = unavailableViewSources(next.status === "error" ? "error" : next.status === "loading" ? "loading" : "unavailable");
     clientRevision++;
     queryError = next.status === "error" || next.status === "unavailable" ? next.message : undefined;
     if (next.status !== "success") return;
     const evidence = next.evidence;
+    const preference = getGridInsertTargetTableId(mountedGrid);
     const provenance = analyzeProjectQueryProvenance(evidence);
     const metadata = await guardedMetadataResolver.resolve(evidence, provenance, guardedSelect);
-    if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)) return;
+    const resolution = await resolveInsertTarget({
+        projectDoc, evidence, provenance, insertTargetTableId: preference, session: guardedSelect,
+        resolveRelation: async name => {
+            const provider = await session.resolveRelation(name);
+            // Resolution inspects detached metadata only; the SELECT session
+            // separately retains the actual dependency provider holds.
+            if (!provider) return undefined;
+            session.releaseRelation(provider);
+            return provider;
+        },
+    });
+    if (destroyed || request !== publication || !guardedSelect.isEvidenceCurrent(evidence)
+        || getGridRegistry(projectDoc).get(mountedGrid.gridId) !== mountedGrid.entry
+        || preference !== getGridInsertTargetTableId(mountedGrid)) return;
     // Publish one coherent incarnation. Retained rows during loading never
     // acquire current authority until their own metadata has completed.
     result = { columns: evidence.columns.map(column => column.name), rows: evidence.rows };
     displayMetadata = metadata;
     selectState = next;
+    sourceDiagnostics = describeViewSources(evidence, provenance, resolution);
     guardedAuthority = { evidence, provenance, metadata };
     queryExecution = {
         queryId: `${evidence.queryId}:${evidence.executionGeneration}`,
         generation: evidence.executionGeneration,
         query: evidence.query.trim(),
         status: "completed",
-        startedAt: new Date().toISOString(),
-        durationMs: 0,
+
         rowCount: evidence.rows.length,
         columnCount: evidence.columns.length,
     };
@@ -254,13 +274,21 @@ const clipboardSource: TableClipboardSource = {
             : undefined,
     getChartImage: () => showChart ? chartPanel?.getImage() : undefined,
 };
+function currentViewSources(): ViewSourceDiagnostics {
+    if (destroyed || !guardedAuthority || !guardedSelect.isEvidenceCurrent(guardedAuthority.evidence)
+        || getGridRegistry(projectDoc).get(mountedGrid.gridId) !== mountedGrid.entry
+        || explicitPreference !== getGridInsertTargetTableId(mountedGrid)) {
+        return unavailableViewSources(sourceDiagnostics.execution.status === "completed" ? "unavailable" : sourceDiagnostics.execution.status);
+    }
+    return sourceDiagnostics;
+}
 function getGridRenderTrace() {
     return buildGridRenderTrace({
         gridId: mountedGrid.gridId,
-        sourceTableId: sourceId ?? "",
+        insertTargetTableId: explicitPreference,
+        sourceDiagnostics: currentViewSources(),
         projectId,
         projectDocumentId: projectDoc.guid,
-        tableDocumentId: "",
         configRevision: Array.from(Y.encodeStateVector(projectDoc), byte => byte.toString(16).padStart(2, "0")).join(
             "",
         ),
@@ -283,10 +311,11 @@ onMount(() => {
     unsubscribe = guardedSelect.subscribe(next => void publish(next));
     unsubscribeInsert = insertController.subscribe(next => insertState = next);
     cleanupWebMCP = registerWebMCPGridTools(
-        () => ({ gridId: mountedGrid.gridId, sourceTableId: sourceId ?? "", query: gridQuery }),
+        () => ({ gridId: mountedGrid.gridId, insertTargetTableId: explicitPreference, sourceDiagnostics: currentViewSources(), query: gridQuery }),
         () => ({
             gridId: mountedGrid.gridId,
-            sourceTableId: sourceId ?? "",
+            insertTargetTableId: explicitPreference,
+            sourceDiagnostics: currentViewSources(),
             rows: result.rows,
             columns: result.columns,
             rowCount: result.rows.length,
@@ -316,7 +345,7 @@ onDestroy(() => {
     class="yjs-table-view"
     data-testid="yjs-table-view"
     data-grid-id={grid.gridId}
-    data-source-table-id={sourceId}
+    data-source-table-ids={dependencies ? JSON.stringify(dependencies.filter(source => source.kind === "table").map(source => source.id).sort()) : undefined}
     data-mutation-incarnation={mutationIncarnation}
     data-ui-editor-open={showUiDef}
     onfocusin={(e) => {

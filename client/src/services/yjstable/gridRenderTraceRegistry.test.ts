@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { unavailableViewSources } from "../../../../shared/src/services/viewSourceDiagnostics";
 import type { GridRenderTrace } from "./gridRenderTrace";
 import { collectGridRenderTraces, registerGridRenderTraceSource } from "./gridRenderTraceRegistry";
 
@@ -6,7 +7,7 @@ function trace(gridId: string): GridRenderTrace {
     return {
         version: 1,
         gridId,
-        sourceTableId: `${gridId}-table`,
+        sourceDiagnostics: unavailableViewSources(),
         generatedAt: "2026-08-27T00:00:00.000Z",
         stages: [],
     };
@@ -57,7 +58,10 @@ describe("gridRenderTraceRegistry", () => {
     it("collects exactly one trace when two views are mounted for the same Grid id", () => {
         unregisterFns.push(registerGridRenderTraceSource("grid-1", () => trace("grid-1")));
         unregisterFns.push(
-            registerGridRenderTraceSource("grid-1", () => ({ ...trace("grid-1"), sourceTableId: "second-view" })),
+            registerGridRenderTraceSource(
+                "grid-1",
+                () => ({ ...trace("grid-1"), sourceDiagnostics: unavailableViewSources() }),
+            ),
         );
 
         expect(collectGridRenderTraces()).toHaveLength(1);
@@ -71,7 +75,7 @@ describe("gridRenderTraceRegistry", () => {
         unregisterFns.push(registerGridRenderTraceSource("grid-1", () => trace("grid-1")));
         const unregisterSecond = registerGridRenderTraceSource(
             "grid-1",
-            () => ({ ...trace("grid-1"), sourceTableId: "second-view" }),
+            () => ({ ...trace("grid-1"), sourceDiagnostics: unavailableViewSources() }),
         );
 
         unregisterSecond();
@@ -83,7 +87,7 @@ describe("gridRenderTraceRegistry", () => {
         const unregisterFirst = registerGridRenderTraceSource("grid-1", () => trace("grid-1"));
         const unregisterSecond = registerGridRenderTraceSource(
             "grid-1",
-            () => ({ ...trace("grid-1"), sourceTableId: "second-view" }),
+            () => ({ ...trace("grid-1"), sourceDiagnostics: unavailableViewSources() }),
         );
 
         unregisterFirst();

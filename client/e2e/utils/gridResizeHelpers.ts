@@ -166,7 +166,6 @@ export async function gridRevisions(
     const presentation = gridPresentationRevision({
         projectId,
         gridId,
-        sourceTableId: entry.sourceTableId || null,
         query: entry.query,
         presentation: {
             name: entry.name,

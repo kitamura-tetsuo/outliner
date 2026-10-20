@@ -37,7 +37,6 @@ export function httpGridFixture() {
     };
     const args = {
         projectId: "project-1",
-        tableId: "table-tasks",
         pageId: f.page.id,
         query: "SELECT id AS id, title AS title FROM tasks ORDER BY id",
         operationId: "create-grid-1",
