@@ -2,8 +2,12 @@ param([string]$OutputPath, [string]$Operation, [string]$Name, [string]$StateUrl 
 $ErrorActionPreference = 'Stop'
 $script:Output = $OutputPath
 $script:StateUrl = $StateUrl
-. "$PSScriptRoot/observe.ps1"
+$script:ProbeLog = Join-Path $OutputPath "worker-$Name-phases.jsonl"
+$script:ProbeClock = [Diagnostics.Stopwatch]::StartNew()
+[IO.File]::AppendAllText($script:ProbeLog, ((ConvertTo-Json -Compress @{time=[DateTime]::UtcNow.ToString('o'); phase='worker-initialization'; elapsedMs=0}) + [Environment]::NewLine))
 try {
+    . "$PSScriptRoot/observe.ps1"
+    Write-ProbePhase 'worker-ready'
     if ($Operation -eq 'snapshot') { Snapshot-Raw $Name }
     elseif ($Operation -eq 'candidate') { Candidate-Raw $Name | Out-Null }
     elseif ($Operation -eq 'packages') {

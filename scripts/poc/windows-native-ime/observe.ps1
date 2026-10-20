@@ -1,6 +1,14 @@
+function Write-ProbePhase($Phase) {
+    if ($script:ProbeLog) {
+        $entry = @{time=[DateTime]::UtcNow.ToString('o'); phase=$Phase; elapsedMs=$script:ProbeClock.ElapsedMilliseconds}
+        [IO.File]::AppendAllText($script:ProbeLog, ((ConvertTo-Json -InputObject $entry -Compress) + [Environment]::NewLine))
+    }
+}
+Write-ProbePhase 'assemblies-start'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase, System.Windows.Forms, System.Drawing
 Add-Type -Path "$PSScriptRoot/Native.cs"
 Add-Type -AssemblyName Accessibility
+Write-ProbePhase 'assemblies-ready'
 function Save-Json($Name, $Object) {
     $json = ConvertTo-Json -InputObject $Object -Depth 30
     $json | Set-Content -Encoding UTF8 "$script:Output/$Name.json"
@@ -74,7 +82,9 @@ function Screen-Capture($Name) {
     } catch { Save-Json "$Name-capture" @{available=$false; error="$($_.Exception)"} }
 }
 function Element-Record($Element) {
+    Write-ProbePhase 'element-current-start'
     $c = $Element.Current
+    Write-ProbePhase 'element-current-ready'
     $selected = $null
     $p = $null
     if ($Element.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern,[ref]$p)) {
@@ -86,18 +96,22 @@ function Element-Record($Element) {
     foreach ($key in @('left','top','width','height')) {
         if ([double]::IsInfinity($bounds[$key]) -or [double]::IsNaN($bounds[$key])) { $bounds[$key] = $null }
     }
+    Write-ProbePhase 'element-properties-ready'
     $legacy = $null
     if ($windowClass -eq 'mscandui40.candidate') {
         try {
+            Write-ProbePhase 'legacy-start'
             $accessible = [Accessibility.IAccessible][Native]::AccessibleClient($c.NativeWindowHandle)
             $items = @()
             for ($childId=1; $childId -le $accessible.accChildCount; $childId++) {
                 $state = [int]$accessible.get_accState($childId)
                 $items += @{name=$accessible.get_accName($childId); selected=(($state -band 2) -ne 0); state=$state; childId=$childId; runtimeId="hwnd=$($c.NativeWindowHandle),msaa=$childId"}
             }
+            Write-ProbePhase 'legacy-items-ready'
             $legacy = @{name=$accessible.get_accName(0); role=$accessible.get_accRole(0); state=$accessible.get_accState(0); childCount=$accessible.accChildCount; items=$items; source='Native HWND OBJID_CLIENT IAccessible'}
         } catch { $legacy = @{error="$($_.Exception.Message)"; source='Native HWND OBJID_CLIENT IAccessible'} }
     }
+    Write-ProbePhase 'element-record-ready'
     return @{name=$c.Name; automationId=$c.AutomationId; controlType=$c.ControlType.ProgrammaticName;
         windowClass=$windowClass; legacy=$legacy; supportedPatterns=@($Element.GetSupportedPatterns() | ForEach-Object { $_.ProgrammaticName });
         pid=$c.ProcessId; process=$process.ProcessName; hwnd=$c.NativeWindowHandle;
@@ -128,20 +142,26 @@ function Snapshot-Raw($Name) {
     Save-Json "uia-$Name" @{time=[DateTime]::UtcNow.ToString('o'); records=$records; errors=$errors; truncated=($queue.Count -gt 0)}
 }
 function Candidate-Raw($Name) {
+    Write-ProbePhase 'state-start'
     $before = State
+    Write-ProbePhase 'state-ready'
     # A fresh desktop-wide query every time: retained UIA elements never serve as an oracle.
     $published = New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IME_Candidate_Window')
     $classic = New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::NameProperty,'Microsoft Candidate UI')
     $condition = New-Object System.Windows.Automation.OrCondition($published,$classic)
+    Write-ProbePhase 'desktop-candidate-discovery-start'
     $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
         [System.Windows.Automation.TreeScope]::Descendants,$condition)
+    Write-ProbePhase "desktop-candidate-discovery-ready count=$($windows.Count)"
     $observations = @()
     foreach ($window in $windows) {
         $record = Element-Record $window
+        Write-ProbePhase 'candidate-descendants-start'
         $children = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants,
             [System.Windows.Automation.Condition]::TrueCondition)
+        Write-ProbePhase "candidate-descendants-ready count=$($children.Count)"
         $record.children = @($children | ForEach-Object { Element-Record $_ })
         $record.time = [DateTime]::UtcNow.ToString('o')
         $record.sessionId = $before.sessionId
@@ -152,7 +172,9 @@ function Candidate-Raw($Name) {
         $record.foreground = [Native]::ForegroundProfile()
         $observations += $record
     }
+    Write-ProbePhase 'candidate-serialization-start'
     Save-Json "candidate-$Name" @($observations)
+    Write-ProbePhase 'candidate-serialization-ready'
     return @($observations | Where-Object { -not $_.offscreen })
 }
 function Selected($Candidate) {
@@ -192,6 +214,7 @@ function Invoke-UIAProbe($Operation, $Name, [int]$TimeoutSeconds=30) {
         [void]$worker.Handle
         if (-not $worker.WaitForExit($TimeoutSeconds * 1000)) {
             $worker.Kill()
+            if (Test-Path "$script:Output/worker-$Name-phases.jsonl") { Get-Content "$script:Output/worker-$Name-phases.jsonl" | Write-Host }
             throw "UIA/OS $Operation $Name timed out after $TimeoutSeconds seconds"
         }
         $worker.Refresh()

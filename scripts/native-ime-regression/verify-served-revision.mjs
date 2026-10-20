@@ -1,60 +1,124 @@
-// Ties the application being served to the exact checkout under test.
-//
-// Usage: node verify-served-revision.mjs <application checkout> <client base URL> <output JSON>
-//
-// The served client source of the files carrying the #5501 behavior is fetched from the
-// running Vite server (`?raw`) and compared byte-for-byte with the same paths at the
-// checkout's HEAD commit. The application sources must also be free of tracked
-// modifications, so the recorded SHA describes the code that was built and served. (Test
-// startup regenerates emulator configuration files outside these source trees.)
+// Compare the evaluated commit with bytes actually served by Vite, including startup failures.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
-const [checkout, base, output] = process.argv.slice(2);
-if (!checkout || !base || !output) throw new Error("usage: <checkout> <base URL> <output JSON>");
-const git = (...args) => execFileSync("git", ["-C", checkout, ...args], { encoding: "utf8" }).trim();
 const files = [
     "client/src/components/GlobalTextArea.svelte",
     "client/src/lib/KeyEventHandler.ts",
     "client/src/components/EditorOverlay.svelte",
 ];
 const sha256 = text => createHash("sha256").update(text).digest("hex");
-const result = {
-    sha: git("rev-parse", "HEAD"),
-    tree: git("rev-parse", "HEAD^{tree}"),
-    trackedModifications: git(
-        "status",
-        "--porcelain",
-        "--untracked-files=no",
-        "--",
-        "client/src",
-        "server/src",
-        "shared/src",
-        "functions/src",
-    ),
-    servedFrom: base,
-    files: [],
-};
-for (const path of files) {
-    const committed = execFileSync("git", ["-C", checkout, "show", `HEAD:${path}`], { encoding: "utf8" });
-    const response = await fetch(`${base}/${path.replace(/^client\//, "")}?raw`);
-    const body = await response.text();
-    // Vite serves `?raw` as an ES module whose default export is the JSON-encoded source.
-    const match = /^export default (".*");?\s*$/s.exec(body);
-    const served = match ? JSON.parse(match[1]) : null;
-    result.files.push({
-        path,
-        status: response.status,
-        committedSha256: sha256(committed),
-        servedSha256: served === null ? null : sha256(served),
-        matches: served === committed,
-    });
+
+export async function verifyServedRevision(checkout, base, output, {
+    requestTimeoutMs = 10000,
+    overallTimeoutMs = 45000,
+    maxAttempts = 3,
+} = {}) {
+    const started = Date.now();
+    const result = { verified: false, servedFrom: base, files: [], attempts: [] };
+    const persist = () => writeFileSync(output, JSON.stringify(result, null, 2));
+    const git = (...args) => execFileSync("git", ["-C", checkout, ...args], { encoding: "utf8" }).trim();
+    try {
+        result.sha = git("rev-parse", "HEAD");
+        result.tree = git("rev-parse", "HEAD^{tree}");
+        result.trackedModifications = git(
+            "status",
+            "--porcelain",
+            "--untracked-files=no",
+            "--",
+            "client/src",
+            "server/src",
+            "shared/src",
+            "functions/src",
+        );
+        for (const path of files) {
+            const committed = execFileSync("git", ["-C", checkout, "show", `HEAD:${path}`], { encoding: "utf8" });
+            const url = `${base}/${path.replace(/^client\//, "")}?raw`;
+            let body;
+            let status;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                const observation = { path, url, phase: "request", attempt, elapsedMs: Date.now() - started };
+                result.attempts.push(observation);
+                persist();
+                const remaining = overallTimeoutMs - (Date.now() - started);
+                try {
+                    if (remaining <= 0) {
+                        throw Object.assign(new Error("Overall identity acquisition deadline exceeded"), {
+                            code: "OVERALL_TIMEOUT",
+                        });
+                    }
+                    const response = await fetch(url, {
+                        signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remaining)),
+                    });
+                    observation.phase = "body";
+                    observation.status = response.status;
+                    persist();
+                    body = await response.text();
+                    status = response.status;
+                    observation.phase = "received";
+                    observation.elapsedMs = Date.now() - started;
+                    persist();
+                    break;
+                } catch (error) {
+                    observation.error = {
+                        message: error.message,
+                        code: error.name === "TimeoutError"
+                            ? "TimeoutError"
+                            : error.cause?.code ?? error.code ?? error.name,
+                    };
+                    observation.elapsedMs = Date.now() - started;
+                    persist();
+                    const transient = [
+                        "ECONNRESET",
+                        "ECONNREFUSED",
+                        "UND_ERR_SOCKET",
+                        "UND_ERR_CONNECT_TIMEOUT",
+                        "TimeoutError",
+                    ]
+                        .includes(observation.error.code);
+                    if (!transient || attempt === maxAttempts || Date.now() - started >= overallTimeoutMs) throw error;
+                }
+            }
+            // ?raw is an ES module containing the JSON-encoded committed source.
+            const match = /^export default (".*");?\s*$/s.exec(body);
+            const served = match ? JSON.parse(match[1]) : undefined;
+            result.files.push({
+                path,
+                status,
+                committedSha256: sha256(committed),
+                servedSha256: served === undefined ? null : sha256(served),
+                matches: status === 200 && served === committed,
+            });
+            persist();
+        }
+        result.verified = result.trackedModifications === "" && result.files.every(file => file.matches);
+        if (!result.verified) {
+            result.failure = {
+                kind: "mismatch",
+                message: "Tracked source or served bytes differ from the evaluated commit",
+            };
+        }
+    } catch (error) {
+        result.failure = {
+            kind: "unavailable",
+            message: error.message,
+            code: error.name === "TimeoutError" ? "TimeoutError" : error.cause?.code ?? error.code ?? error.name,
+        };
+    } finally {
+        result.elapsedMs = Date.now() - started;
+        persist();
+    }
+    return result;
 }
-result.verified = result.trackedModifications === "" && result.files.every(file => file.matches);
-writeFileSync(output, JSON.stringify(result, null, 2));
-if (!result.verified) {
-    console.error(JSON.stringify(result, null, 2));
-    process.exit(1);
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+    const [checkout, base, output] = process.argv.slice(2);
+    if (!checkout || !base || !output) throw new Error("usage: <checkout> <base URL> <output JSON>");
+    const result = await verifyServedRevision(checkout, base, output);
+    if (!result.verified) {
+        console.error(JSON.stringify(result, null, 2));
+        process.exitCode = 1;
+    } else console.log(`Served application verified at ${result.sha}`);
 }
-console.log(`Served application verified at ${result.sha}`);
