@@ -31,15 +31,11 @@ const logger = getLogger("undoRouter");
  * they are and identity comparisons keep working.
  */
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
-import { rollbackCrossProjectPaste } from "../clipboard/crossProjectGridPaste";
-import {
-    captureClonedScheduleRules,
-    restoreClonedScheduleRules,
-    rollbackClonedScheduleRules,
-} from "../schedule/scheduleRuleClone";
+import type { TransferBindings } from "../clipboard/transferBindings";
+import { captureClonedScheduleRules, restoreClonedScheduleRules } from "../schedule/scheduleRuleClone";
 import { getGridRegistry } from "../yjstable/gridDocs";
 import { getTableRegistry } from "../yjstable/tableDocs";
-import { tableDocGuid } from "../yjstable/tableDocs";
+import { removeTable, tableDocGuid } from "../yjstable/tableDocs";
 
 function historyMap(value: Record<string, unknown>): Y.Map<unknown> {
     const map = new Y.Map<unknown>();
@@ -56,6 +52,7 @@ function historyMap(value: Record<string, unknown>): Y.Map<unknown> {
 
 export interface CompositeUndoEntry {
     type: "composite";
+    bindings: TransferBindings;
     mainManager: Y.UndoManager;
     projectDoc: Y.Doc;
     createdTableIds: string[];
@@ -364,11 +361,14 @@ export class UndoRouter {
     public captureCrossProjectPaste(
         mainManager: Y.UndoManager,
         projectDoc: Y.Doc,
-        createdTableIds: string[],
-        createdRuleIds: string[] = [],
+        bindings: TransferBindings,
         authorizeRedo?: () => boolean,
-        createdGridIds: string[] = [],
     ): void {
+        if (bindings.doc !== projectDoc) throw new Error("Paste evidence belongs to another Project");
+        bindings.assertCurrent();
+        const createdTableIds = bindings.ownedIds("table");
+        const createdGridIds = bindings.ownedIds("grid");
+        const createdRuleIds = bindings.ownedIds("schedule");
         if (this.undoStack.length === 0) return;
         const top = this.undoStack[this.undoStack.length - 1];
         if (top === mainManager) {
@@ -399,6 +399,7 @@ export class UndoRouter {
 
             this.undoStack[this.undoStack.length - 1] = {
                 type: "composite",
+                bindings,
                 mainManager,
                 projectDoc,
                 createdTableIds,
@@ -668,22 +669,20 @@ export class UndoRouter {
                         this._lastAsyncOutcome = { status: "refused", reason: "Structural ENUM compatibility changed" };
                         return;
                     }
-                    if (
-                        !isUndo
-                        && ((entry.createdGridIds ?? []).some(id => getGridRegistry(entry.projectDoc).has(id))
-                            || entry.createdTableIds.some(id => getTableRegistry(entry.projectDoc).has(id)))
-                    ) {
+                    try {
+                        if (isUndo) entry.bindings.assertOwned();
+                        else entry.bindings.assertReplayAvailable();
+                    } catch (error) {
                         from.push(entry);
                         this._lastAsyncOutcome = {
                             status: "refused",
-                            reason: "A destination identity is already occupied",
+                            reason: error instanceof Error ? error.message : String(error),
                         };
                         return;
                     }
                     if (apply(entry.mainManager)) {
                         if (isUndo) {
-                            rollbackClonedScheduleRules(entry.projectDoc, entry.createdRuleIds);
-                            rollbackCrossProjectPaste(entry.projectDoc, entry.createdTableIds, entry.createdGridIds);
+                            entry.bindings.cleanupOwned(id => removeTable(entry.projectDoc, id));
                         } else {
                             const registry = getTableRegistry(entry.projectDoc);
                             entry.projectDoc.transact(() => {
@@ -707,15 +706,20 @@ export class UndoRouter {
                                         }
                                         mapEntry.set("doc", subdoc);
                                         registry.set(tableId, mapEntry);
+                                        entry.bindings.capture("table", tableId, true, mapEntry);
                                     }
                                 }
                             });
                             entry.projectDoc.transact(() => {
                                 for (const [id, saved] of Object.entries(entry.savedGrids ?? {})) {
-                                    getGridRegistry(entry.projectDoc).set(id, historyMap(saved));
+                                    const restored = historyMap(saved);
+                                    getGridRegistry(entry.projectDoc).set(id, restored);
+                                    entry.bindings.capture("grid", id, true, restored);
                                 }
                             });
-                            restoreClonedScheduleRules(entry.projectDoc, entry.savedRules);
+                            restoreClonedScheduleRules(entry.projectDoc, entry.savedRules, (id, restored) => {
+                                entry.bindings.capture("schedule", id, true, restored as Y.Map<unknown>);
+                            });
                         }
                         this.recordReplay(to, entry);
                         return;

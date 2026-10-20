@@ -132,3 +132,26 @@ revalidates destination collisions. Consuming the Cut is not reversed by Undo.
 Delayed transfers validate live registry incarnations and SQL names after asynchronous preparation. A provenance-reused Table that is deleted or replaced refuses the transfer rather than falling back to a same-named relation. Mixed Diagram/Grid Copy admits its shared Grid references before allocating independent Diagram snapshots. Cross-Project Cut revalidates the staged structural transfer at the final commit boundary.
 
 Duplication history validates all created object incarnations and destination placements before Undo, and the destination Page before Redo. A refused replay preserves peer replacements and history position; successful Redo refreshes the creation witnesses for the new incarnation.
+
+Ordinary cross-Project Copy/Paste keeps transient witnesses for the destination
+Table, Grid and Schedule entries produced or reused by that attempt. Delayed
+source acquisition, source disposal and later Calendar preparation do not
+permit a deleted, replaced or rebound destination to receive a placement.
+Final admission runs immediately before placement dispatch; refusal removes
+only still-owned allocations and reports no successful paste or history entry.
+Source-unavailable structure-only fallback still requires valid bindings.
+
+Composite Paste Undo validates the complete owned set before changing either
+the outline or dependent objects. A missing/replaced incarnation refuses the
+whole Undo without advancing either history stack. Redo checks saved Table
+SQL names as well as destination IDs and reused dependencies before restoring
+anything. A collision preserves peer data and history position; removing the
+collision allows the same history entry to retry. Successful Redo refreshes
+ownership witnesses. An importer-wide admission failure also cleans up earlier
+successful groups, while preserving peer replacements and recoverable
+per-group SQL validation behavior.
+
+Values only uses the captured outward text even if its source Grid has since
+been removed. Structural choices, including Another view, still validate the
+original source binding and query across the chooser; choosing a variant does
+not recapture stale authority.

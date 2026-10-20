@@ -9,6 +9,7 @@ import {
     isGridSnapshotMap,
     isGridTableSnapshot,
 } from "../clipboard/itemClipboard";
+import { TransferBindings } from "../clipboard/transferBindings";
 import {
     createGrid,
     getGridConfirmRowDelete,
@@ -27,7 +28,6 @@ import {
     createTable,
     getTableHandles,
     getTableName,
-    getTableRegistry,
     getTableSqlName,
     listTables,
     removeTable,
@@ -59,6 +59,7 @@ export function copyTableData(source: TableHandles, destination: TableHandles): 
 }
 
 export interface TableCloneResult {
+    bindings: TransferBindings;
     /** Source table id to fresh destination table id for successful clones. */
     tableIdMap: Record<string, string>;
     /**
@@ -392,52 +393,14 @@ export async function importTableStructures(
         }
     }
 
-    // One authoritative map supplies availability, names and preferences.
-    // Scratch reuse may deliberately have no subdoc; capture that absence too.
-    type TableBinding = {
-        id: string;
-        entry: Y.Map<unknown>;
-        name: unknown;
-        doc: unknown;
-        project: unknown;
-        source: unknown;
-        owned: boolean;
-    };
-    const bindings = new Map<string, TableBinding>();
-    const registry = getTableRegistry(destinationProjectDoc);
+    const evidence = new TransferBindings(destinationProjectDoc);
+    const bindings = new Map<string, { id: string; owned: boolean; }>();
     const captureBinding = (sourceId: string, id: string, owned: boolean) => {
-        const entry = registry.get(id)!;
-        bindings.set(sourceId, {
-            id,
-            entry,
-            name: entry.get("sqlName"),
-            doc: entry.get("doc"),
-            project: entry.get("sourceProjectId"),
-            source: entry.get("sourceTableId"),
-            owned,
-        });
+        bindings.set(sourceId, { id, owned });
+        evidence.capture("table", id, owned);
     };
-    const bindingCurrent = (binding: TableBinding) =>
-        registry.get(binding.id) === binding.entry && binding.entry.get("sqlName") === binding.name
-        && binding.entry.get("doc") === binding.doc && binding.entry.get("sourceProjectId") === binding.project
-        && binding.entry.get("sourceTableId") === binding.source;
-    const ownedGrids = new Map<string, Y.Map<unknown>>();
-    const cleanup = () => {
-        for (const [id, entry] of ownedGrids) {
-            if (getGridRegistry(destinationProjectDoc).get(id) === entry) {
-                getGridRegistry(destinationProjectDoc).delete(id);
-            }
-        }
-        for (const binding of bindings.values()) {
-            if (binding.owned && bindingCurrent(binding)) removeTable(destinationProjectDoc, binding.id);
-        }
-    };
-    const validateBindings = () => {
-        if ([...bindings.values()].some(binding => !bindingCurrent(binding))) {
-            cleanup();
-            throw new TableCloneError("A selected destination Table binding changed during preparation");
-        }
-    };
+    const cleanup = () => evidence.cleanupOwned(id => removeTable(destinationProjectDoc, id));
+    const validateBindings = () => evidence.assertCurrent();
     const reusedTableIdMap: Record<string, string> = {};
     if (sourceProjectId && allowProvenanceReuse) {
         for (const [sourceTableId, _snapshot] of [...basic.entries()]) {
@@ -527,181 +490,192 @@ export async function importTableStructures(
             throw error;
         }
     };
-    for (const group of connectedGroups(plans)) {
-        const groupPlans = group.map(sourceTableId => plans.get(sourceTableId)!);
-        const planningFailure = groupPlans.find(plan => plan.error)?.error;
-        if (planningFailure) {
-            for (const sourceTableId of group) failures[sourceTableId] = planningFailure;
-            failureGroups.push(group);
-            continue;
-        }
-
-        try {
-            await validatePlansInPglite(groupPlans, catalogSourcesReferencedBy(groupPlans));
-        } catch (err) {
-            const message = `Grid table structure failed SQL validation: ${cloneErrorMessage(err)}`;
-            for (const sourceTableId of group) failures[sourceTableId] = message;
-            failureGroups.push(group);
-            continue;
-        }
-
-        await portableGuard?.();
-        assertAdmission();
-        const currentSqlNames = new Set(listTables(destinationProjectDoc).map(table => table.sqlName));
-        const occupiedName = groupPlans.find(plan => currentSqlNames.has(plan.destinationSqlName))?.destinationSqlName;
-        if (occupiedName !== undefined) {
-            const message = `Destination SQL relation "${occupiedName}" became occupied before Grid table creation`;
-            for (const sourceTableId of group) failures[sourceTableId] = message;
-            failureGroups.push(group);
-            continue;
-        }
-
-        try {
-            // Compiler/scratch planning is asynchronous. Re-admit against the
-            // live destination immediately before the first registry/subdoc
-            // effect so a catalog edit during planning cannot change meaning.
-            for (const sourceTableId of group) {
-                const plan = plans.get(sourceTableId)!;
-                const destinationTableId = createTable(
-                    destinationProjectDoc,
-                    plan.snapshot.name,
-                    plan.destinationSqlName,
-                    sourceProjectId ? { sourceProjectId, sourceTableId } : undefined,
-                    handles => materializeSchema(handles, plan.snapshot),
-                );
-                tableIdMap[sourceTableId] = destinationTableId;
-                captureBinding(sourceTableId, destinationTableId, true);
-            }
-        } catch (err) {
-            for (const sourceTableId of group) {
-                const binding = bindings.get(sourceTableId);
-                if (binding?.owned && bindingCurrent(binding)) removeTable(destinationProjectDoc, binding.id);
-                bindings.delete(sourceTableId);
-                delete tableIdMap[sourceTableId];
-                failures[sourceTableId] = `Grid table creation failed: ${cloneErrorMessage(err)}`;
-            }
-            failureGroups.push(group);
-        }
-    }
-
-    const failedSourceTableIds = Object.keys(failures).sort();
-    const outcomes: TableCloneOutcome[] = [];
-    for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
-        const snapshot = snapshots[sourceTableId];
-        const destinationSqlName = plans.get(sourceTableId)?.destinationSqlName ?? snapshot.sqlName;
-        outcomes.push({
-            type: "cloned",
-            sourceTableId,
-            destinationTableId,
-            tableName: snapshot.name,
-            sqlName: destinationSqlName,
-            selected: requestedSourceTableIds?.has(sourceTableId) ?? true,
-        });
-        if (requestedSourceTableIds && !requestedSourceTableIds.has(sourceTableId)) {
-            outcomes.push({ type: "dependency-added", sourceTableId, tableName: snapshot.name });
-        }
-        if (destinationSqlName !== snapshot.sqlName) {
-            outcomes.push({
-                type: "renamed",
-                sourceTableId,
-                tableName: snapshot.name,
-                from: snapshot.sqlName,
-                to: destinationSqlName,
-            });
-        }
-        for (const relation of plans.get(sourceTableId)?.reservedRelations ?? []) {
-            outcomes.push({ type: "rebound", sourceTableId, tableName: snapshot.name, relation });
-        }
-    }
-    const reusedGridIdMap: Record<string, string> = {};
-    for (const sourceTableId of skippedSourceTableIds) {
-        const snapshot = snapshots[sourceTableId];
-        const destinationTableId = reusedTableIdMap[sourceTableId];
-        if (snapshot && destinationTableId !== undefined) {
-            outcomes.push({ type: "reused", sourceTableId, destinationTableId, tableName: snapshot.name });
-        }
-    }
-    for (const sourceTableIds of failureGroups) {
-        const reason = failures[sourceTableIds[0]];
-        outcomes.push({
-            type: "failed-group",
-            sourceTableIds,
-            tableNames: sourceTableIds.map(sourceTableId => snapshots[sourceTableId]?.name ?? sourceTableId),
-            reason,
-        });
-    }
-    assertAdmission();
-    const sameProject = sourceProjectId === destinationProjectDoc.guid;
-    const allTableIds = Object.fromEntries([...bindings].map(([sourceId, binding]) => [sourceId, binding.id]));
-    const nameMap = new Map<string, string>();
-    for (const [id, target] of Object.entries(allTableIds)) {
-        const sourceName = snapshots[id]?.sqlName;
-        const destinationName = getTableSqlName(destinationProjectDoc, target);
-        if (sourceName && destinationName) nameMap.set(sourceName, destinationName);
-    }
-    const gridRegistry = getGridRegistry(destinationProjectDoc);
     try {
-        for (const [sourceGridId, grid] of Object.entries(grids)) {
-            if (grid.tableIds.some(id => failures[id])) continue;
-            let reused: string | undefined;
-            if (allowProvenanceReuse && sourceProjectId) {
-                gridRegistry.forEach((entry, id) => {
-                    if (
-                        entry.get("copiedFromProjectId") === sourceProjectId
-                        && entry.get("copiedFromGridId") === sourceGridId
-                    ) reused ??= id;
-                });
-            }
-            if (reused) {
-                reusedGridIdMap[sourceGridId] = reused;
+        for (const group of connectedGroups(plans)) {
+            const groupPlans = group.map(sourceTableId => plans.get(sourceTableId)!);
+            const planningFailure = groupPlans.find(plan => plan.error)?.error;
+            if (planningFailure) {
+                for (const sourceTableId of group) failures[sourceTableId] = planningFailure;
+                failureGroups.push(group);
                 continue;
             }
-            const omitted = grid.tableIds.filter(id => !allTableIds[id] && !sameProject);
-            const preference = grid.insertTargetTableId;
-            const mappedPreference = preference
-                ? allTableIds[preference] ?? (sameProject ? preference : undefined)
-                : undefined;
-            const query = omitted.length ? "" : rewriteTableQuerySql(grid.query, nameMap).sql;
-            if (omitted.length) {
-                outcomes.push({
-                    type: "view-omission",
-                    gridId: sourceGridId,
-                    reason: `Query unavailable: omitted Tables ${omitted.join(", ")}`,
-                });
+
+            try {
+                await validatePlansInPglite(groupPlans, catalogSourcesReferencedBy(groupPlans));
+            } catch (err) {
+                const message = `Grid table structure failed SQL validation: ${cloneErrorMessage(err)}`;
+                for (const sourceTableId of group) failures[sourceTableId] = message;
+                failureGroups.push(group);
+                continue;
             }
-            if (preference && !mappedPreference) {
-                outcomes.push({
-                    type: "view-omission",
-                    gridId: sourceGridId,
-                    reason: `Cleared unmappable INSERT preference ${preference}`,
-                });
+
+            await portableGuard?.();
+            assertAdmission();
+            const currentSqlNames = new Set(listTables(destinationProjectDoc).map(table => table.sqlName));
+            const occupiedName = groupPlans.find(plan => currentSqlNames.has(plan.destinationSqlName))
+                ?.destinationSqlName;
+            if (occupiedName !== undefined) {
+                const message = `Destination SQL relation "${occupiedName}" became occupied before Grid table creation`;
+                for (const sourceTableId of group) failures[sourceTableId] = message;
+                failureGroups.push(group);
+                continue;
             }
-            const id = createGrid(destinationProjectDoc, undefined, {
-                ...grid,
-                gridId: undefined,
-                query,
-                insertTargetTableId: mappedPreference,
-            });
-            gridIdMap[sourceGridId] = id;
-            const entry = gridRegistry.get(id)!;
-            ownedGrids.set(id, entry);
-            if (sourceProjectId) {
-                entry.set("copiedFromProjectId", sourceProjectId);
-                entry.set("copiedFromGridId", sourceGridId);
+
+            try {
+                // Compiler/scratch planning is asynchronous. Re-admit against the
+                // live destination immediately before the first registry/subdoc
+                // effect so a catalog edit during planning cannot change meaning.
+                for (const sourceTableId of group) {
+                    const plan = plans.get(sourceTableId)!;
+                    const destinationTableId = createTable(
+                        destinationProjectDoc,
+                        plan.snapshot.name,
+                        plan.destinationSqlName,
+                        sourceProjectId ? { sourceProjectId, sourceTableId } : undefined,
+                        handles => materializeSchema(handles, plan.snapshot),
+                    );
+                    tableIdMap[sourceTableId] = destinationTableId;
+                    captureBinding(sourceTableId, destinationTableId, true);
+                }
+            } catch (err) {
+                for (const sourceTableId of group) {
+                    const binding = bindings.get(sourceTableId);
+                    if (binding?.owned) {
+                        evidence.discardAllocation("table", binding.id, id => removeTable(destinationProjectDoc, id));
+                    }
+                    bindings.delete(sourceTableId);
+                    delete tableIdMap[sourceTableId];
+                    failures[sourceTableId] = `Grid table creation failed: ${cloneErrorMessage(err)}`;
+                }
+                failureGroups.push(group);
             }
         }
+
+        const failedSourceTableIds = Object.keys(failures).sort();
+        const outcomes: TableCloneOutcome[] = [];
+        for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
+            const snapshot = snapshots[sourceTableId];
+            const destinationSqlName = plans.get(sourceTableId)?.destinationSqlName ?? snapshot.sqlName;
+            outcomes.push({
+                type: "cloned",
+                sourceTableId,
+                destinationTableId,
+                tableName: snapshot.name,
+                sqlName: destinationSqlName,
+                selected: requestedSourceTableIds?.has(sourceTableId) ?? true,
+            });
+            if (requestedSourceTableIds && !requestedSourceTableIds.has(sourceTableId)) {
+                outcomes.push({ type: "dependency-added", sourceTableId, tableName: snapshot.name });
+            }
+            if (destinationSqlName !== snapshot.sqlName) {
+                outcomes.push({
+                    type: "renamed",
+                    sourceTableId,
+                    tableName: snapshot.name,
+                    from: snapshot.sqlName,
+                    to: destinationSqlName,
+                });
+            }
+            for (const relation of plans.get(sourceTableId)?.reservedRelations ?? []) {
+                outcomes.push({ type: "rebound", sourceTableId, tableName: snapshot.name, relation });
+            }
+        }
+        const reusedGridIdMap: Record<string, string> = {};
+        for (const sourceTableId of skippedSourceTableIds) {
+            const snapshot = snapshots[sourceTableId];
+            const destinationTableId = reusedTableIdMap[sourceTableId];
+            if (snapshot && destinationTableId !== undefined) {
+                outcomes.push({ type: "reused", sourceTableId, destinationTableId, tableName: snapshot.name });
+            }
+        }
+        for (const sourceTableIds of failureGroups) {
+            const reason = failures[sourceTableIds[0]];
+            outcomes.push({
+                type: "failed-group",
+                sourceTableIds,
+                tableNames: sourceTableIds.map(sourceTableId => snapshots[sourceTableId]?.name ?? sourceTableId),
+                reason,
+            });
+        }
+        assertAdmission();
+        const sameProject = sourceProjectId === destinationProjectDoc.guid;
+        const allTableIds = Object.fromEntries([...bindings].map(([sourceId, binding]) => [sourceId, binding.id]));
+        const nameMap = new Map<string, string>();
+        for (const [id, target] of Object.entries(allTableIds)) {
+            const sourceName = snapshots[id]?.sqlName;
+            const destinationName = getTableSqlName(destinationProjectDoc, target);
+            if (sourceName && destinationName) nameMap.set(sourceName, destinationName);
+        }
+        const gridRegistry = getGridRegistry(destinationProjectDoc);
+        try {
+            for (const [sourceGridId, grid] of Object.entries(grids)) {
+                if (grid.tableIds.some(id => failures[id])) continue;
+                let reused: string | undefined;
+                if (allowProvenanceReuse && sourceProjectId) {
+                    gridRegistry.forEach((entry, id) => {
+                        if (
+                            entry.get("copiedFromProjectId") === sourceProjectId
+                            && entry.get("copiedFromGridId") === sourceGridId
+                        ) reused ??= id;
+                    });
+                }
+                if (reused) {
+                    reusedGridIdMap[sourceGridId] = reused;
+                    evidence.capture("grid", reused, false);
+                    continue;
+                }
+                const omitted = grid.tableIds.filter(id => !allTableIds[id] && !sameProject);
+                const preference = grid.insertTargetTableId;
+                const mappedPreference = preference
+                    ? allTableIds[preference] ?? (sameProject ? preference : undefined)
+                    : undefined;
+                const query = omitted.length ? "" : rewriteTableQuerySql(grid.query, nameMap).sql;
+                if (omitted.length) {
+                    outcomes.push({
+                        type: "view-omission",
+                        gridId: sourceGridId,
+                        reason: `Query unavailable: omitted Tables ${omitted.join(", ")}`,
+                    });
+                }
+                if (preference && !mappedPreference) {
+                    outcomes.push({
+                        type: "view-omission",
+                        gridId: sourceGridId,
+                        reason: `Cleared unmappable INSERT preference ${preference}`,
+                    });
+                }
+                const id = createGrid(destinationProjectDoc, undefined, {
+                    ...grid,
+                    gridId: undefined,
+                    query,
+                    insertTargetTableId: mappedPreference,
+                });
+                gridIdMap[sourceGridId] = id;
+                const entry = gridRegistry.get(id)!;
+                if (sourceProjectId) {
+                    entry.set("copiedFromProjectId", sourceProjectId);
+                    entry.set("copiedFromGridId", sourceGridId);
+                }
+                evidence.capture("grid", id, true, entry);
+            }
+        } catch (error) {
+            cleanup();
+            throw error;
+        }
+        assertAdmission();
+        return {
+            bindings: evidence,
+            tableIdMap,
+            gridIdMap,
+            reusedTableIdMap,
+            reusedGridIdMap,
+            failures,
+            failedSourceTableIds,
+            skippedSourceTableIds,
+            outcomes,
+        };
     } catch (error) {
         cleanup();
         throw error;
     }
-    return {
-        tableIdMap,
-        gridIdMap,
-        reusedTableIdMap,
-        reusedGridIdMap,
-        failures,
-        failedSourceTableIds,
-        skippedSourceTableIds,
-        outcomes,
-    };
 }

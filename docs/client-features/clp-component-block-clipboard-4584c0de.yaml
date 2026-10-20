@@ -47,6 +47,10 @@ acceptance:
 - The private in-app payload still names the Grid, so pasting back into Outliner behaves exactly as before.
 - Portable definitions are keyed by Grid identity independently of Table snapshots. Same-Project Copy shares a Grid, staged Cut preserves placement/Grid IDs, and cross-Project Cut retains the source Grid even when unplaced while refusing destination Grid or placement ID collisions.
 tests:
+- client/e2e/new/clp-paste-peer-undo-4584c0de.spec.ts
+- client/e2e/new/clp-paste-special-stale-source-4584c0de.spec.ts
+- client/src/services/clipboard/crossProjectGridPaste.admission.test.ts
+- client/src/services/undo/undoRouter.pasteOwnership.test.ts
 - client/e2e/new/clp-mixed-grid-admission-4584c0de.spec.ts
 - client/src/services/yjstable/tableClone.admission.test.ts
 - client/e2e/new/clp-cross-project-cut-identity-4584c0de.spec.ts

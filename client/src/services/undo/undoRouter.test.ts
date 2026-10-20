@@ -7,6 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import type { GridTableSnapshot } from "../clipboard/itemClipboard";
+import { TransferBindings } from "../clipboard/transferBindings";
 import { portableStructuralEnumsStillCompatible } from "../yjstable/structuralEnumGuard";
 import type { AsyncUndoOutcome } from "./undoRouter.svelte";
 import { UndoRouter } from "./undoRouter.svelte";
@@ -456,6 +457,7 @@ describe("UndoRouter", () => {
         it("undoes and redoes a cross-project paste cleanly", () => {
             const router = new UndoRouter();
             const projectDoc = new Y.Doc();
+            const bindings = new TransferBindings(projectDoc);
             const treeMap = projectDoc.getMap<number>("orderedTree");
             const treeManager = new Y.UndoManager(treeMap);
             router.register(treeManager);
@@ -470,6 +472,7 @@ describe("UndoRouter", () => {
             mapEntry.set("sqlName", "t1_sql");
             mapEntry.set("doc", subdoc);
             registry.set(tableId, mapEntry);
+            bindings.capture("table", tableId, true, mapEntry);
 
             // 2. Paste items
             projectDoc.transact(() => {
@@ -478,7 +481,7 @@ describe("UndoRouter", () => {
             expect(router.undoDepth).toBe(1);
 
             // Capture composite
-            router.captureCrossProjectPaste(treeManager, projectDoc, [tableId]);
+            router.captureCrossProjectPaste(treeManager, projectDoc, bindings);
             expect(router.undoDepth).toBe(1);
 
             // Undo
@@ -501,6 +504,7 @@ describe("UndoRouter", () => {
         it("does not consume or restore a composite paste when replay admission refuses", () => {
             const router = new UndoRouter();
             const projectDoc = new Y.Doc();
+            const bindings = new TransferBindings(projectDoc);
             const treeMap = projectDoc.getMap<number>("orderedTree");
             const manager = new Y.UndoManager(treeMap);
             router.register(manager);
@@ -510,6 +514,7 @@ describe("UndoRouter", () => {
             entry.set("sqlName", "typed");
             entry.set("doc", new Y.Doc());
             registry.set("typed", entry);
+            bindings.capture("table", "typed", true, entry);
             treeMap.set("item", 1);
             const enumId = createSqlCatalogObject(
                 projectDoc,
@@ -530,8 +535,7 @@ describe("UndoRouter", () => {
             router.captureCrossProjectPaste(
                 manager,
                 projectDoc,
-                ["typed"],
-                [],
+                bindings,
                 () => portableStructuralEnumsStillCompatible(projectDoc, snapshots),
             );
             router.undo();
@@ -563,6 +567,7 @@ describe("UndoRouter", () => {
             const captured = readSqlCatalog(sourceDoc.guid, sourceDoc);
             if (captured.status !== "ready") throw new Error("Expected source catalog");
             const projectDoc = new Y.Doc({ guid: "redo-destination" });
+            const bindings = new TransferBindings(projectDoc);
             createSqlCatalogObject(projectDoc, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
             const treeMap = projectDoc.getMap<number>("orderedTree");
             const manager = new Y.UndoManager(treeMap);
@@ -573,6 +578,7 @@ describe("UndoRouter", () => {
             entry.set("sqlName", "typed");
             entry.set("doc", new Y.Doc());
             registry.set("typed", entry);
+            bindings.capture("table", "typed", true, entry);
             treeMap.set("item", 1);
             const snapshots: Record<string, GridTableSnapshot> = {
                 typed: {
@@ -586,8 +592,7 @@ describe("UndoRouter", () => {
             router.captureCrossProjectPaste(
                 manager,
                 projectDoc,
-                ["typed"],
-                [],
+                bindings,
                 () => portableStructuralEnumsStillCompatible(projectDoc, snapshots, sourceDoc),
             );
             router.undo();
@@ -607,6 +612,7 @@ describe("UndoRouter", () => {
         it("keeps chronological ordering when the pasted grid is edited before undo", () => {
             const router = new UndoRouter();
             const projectDoc = new Y.Doc();
+            const bindings = new TransferBindings(projectDoc);
             const treeMap = projectDoc.getMap<number>("orderedTree");
             const treeManager = new Y.UndoManager(treeMap);
             router.register(treeManager);
@@ -617,11 +623,12 @@ describe("UndoRouter", () => {
             const mapEntry = new Y.Map<unknown>();
             mapEntry.set("doc", subdoc);
             registry.set(tableId, mapEntry);
+            bindings.capture("table", tableId, true, mapEntry);
 
             projectDoc.transact(() => {
                 treeMap.set("item1", 1);
             });
-            router.captureCrossProjectPaste(treeManager, projectDoc, [tableId]);
+            router.captureCrossProjectPaste(treeManager, projectDoc, bindings);
 
             // Now edit the table
             const tableMap = subdoc.getMap<number>("data");

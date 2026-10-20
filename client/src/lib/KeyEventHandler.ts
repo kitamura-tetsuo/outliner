@@ -2,6 +2,7 @@ import { readSqlCatalog } from "$shared/services/sqlCatalog";
 import { Item as OutlineItem } from "../schema/app-schema";
 import { getItemCalendarId } from "../services/calendar/calendarBinding";
 import { type CalendarSettings, createCalendar, getCalendar } from "../services/calendar/calendarService";
+import type { PreparedGridPaste } from "../services/clipboard/crossProjectGridPaste";
 import { escapeHtml, serializeGridToHtml, serializeGridToTsv } from "../services/clipboard/gridClipboardExport";
 import { GRID_PASTE_PROGRESS_EVENT } from "../services/clipboard/gridPasteEvents";
 import {
@@ -2729,6 +2730,9 @@ export class KeyEventHandler {
                 return false;
             }
         };
+        let pendingPaste: PreparedGridPaste | undefined;
+        let pasteCommitted = false;
+        let authorizePasteRedo: (() => boolean) | undefined;
         try {
             // Get plaintext
             let text = event.clipboardData?.getData("text/plain") || "";
@@ -2818,10 +2822,19 @@ export class KeyEventHandler {
             if (sharedGridIds.length && generalStore.project) {
                 const { captureDuplicationAdmission } = await import("../services/yjstable/objectDuplication");
                 if (!destinationCurrent() || !generalStore.project) return;
-                assertSharedSource = captureDuplicationAdmission(
-                    generalStore.project.ydoc,
-                    sharedGridIds.map(id => ({ type: "grid" as const, id })),
-                );
+                try {
+                    assertSharedSource = captureDuplicationAdmission(
+                        generalStore.project.ydoc,
+                        sharedGridIds.map(id => ({ type: "grid" as const, id })),
+                    );
+                } catch (error) {
+                    if (!isSpecial) throw error;
+                    // Captured text needs no live Grid. Retain the structural
+                    // refusal for the chooser's structural variants only.
+                    assertSharedSource = () => {
+                        throw error;
+                    };
+                }
             }
             let specialVariant: PasteSpecialVariant | undefined;
             if (
@@ -2832,7 +2845,7 @@ export class KeyEventHandler {
                     pasteSpecialChoices(structured, destinationProjectId),
                 );
                 if (specialVariant === undefined || !destinationCurrent()) return;
-                assertSharedSource();
+                if (specialVariant !== "values-only") assertSharedSource();
             }
             if (specialVariant === "values-only") {
                 // Keep the event's outward text flavor: rendered Grids already
@@ -3153,7 +3166,6 @@ export class KeyEventHandler {
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
             let pastedGridIdMap: Record<string, string> = {};
             let reusedGridIdMap: Record<string, string> = {};
-            let pastedRuleIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
@@ -3187,8 +3199,29 @@ export class KeyEventHandler {
                         const { cloneGridTablesAcrossProjects } = await import(
                             "../services/clipboard/crossProjectGridPaste"
                         );
+                        if (generalStore.undoManager) {
+                            const { portableStructuralEnumsStillCompatible } = await import(
+                                "../services/yjstable/structuralEnumGuard"
+                            );
+                            const { getLoadedProjectDocById } = await import("./yjsService.svelte");
+                            const pastedSnapshots = structured.tables;
+                            authorizePasteRedo = pastedSnapshots
+                                ? () => {
+                                    const sourceDoc = getLoadedProjectDocById(structured.sourceProjectId);
+                                    return sourceDoc !== undefined
+                                        && portableStructuralEnumsStillCompatible(
+                                            destinationDoc,
+                                            pastedSnapshots,
+                                            sourceDoc,
+                                            structured.grids,
+                                        );
+                                }
+                                : undefined;
+                        }
+                        if (!destinationCurrent()) return;
                         const cloneResult = await cloneGridTablesAcrossProjects({
                             destinationDoc,
+                            deferCompletion: true,
                             destinationProject: generalStore.project!,
                             sourceProjectId: structured.sourceProjectId,
                             snapshots: referencedSnapshots,
@@ -3205,11 +3238,11 @@ export class KeyEventHandler {
                             isDestinationCurrent: () =>
                                 destinationCurrent() && generalStore.project?.ydoc === destinationDoc,
                         });
+                        pendingPaste = cloneResult;
                         if (cloneResult === undefined || !destinationCurrent()) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
                         pastedGridIdMap = cloneResult.gridIdMap;
                         reusedGridIdMap = cloneResult.reusedGridIdMap;
-                        pastedRuleIds = cloneResult.createdRuleIds;
                     } else {
                         pastedTableIdMap = {};
                     }
@@ -3240,6 +3273,8 @@ export class KeyEventHandler {
                             },
                             new Set(calendarEntries.map(([id]) => id)),
                         );
+                        if (!destinationCurrent()) return;
+                        pendingPaste?.admit();
                         const sqlNameMap = new Map<string, string>();
                         if (pastedTableIdMap) {
                             for (const [sourceTableId, destinationTableId] of Object.entries(pastedTableIdMap)) {
@@ -3268,6 +3303,7 @@ export class KeyEventHandler {
                                 generalStore.project!,
                                 { ...settings, query: rewrittenQuery },
                             );
+                            pendingPaste?.bindings.capture("calendar", newCalendarId, true);
                             pastedCalendarIdMap[sourceCalendarId] = newCalendarId;
                         }
                     }
@@ -3319,6 +3355,11 @@ export class KeyEventHandler {
             // text and leaves `structuredItems` unset, so it keeps this text.
             if (structuredItems && structured) text = clipboardPlainText(structured);
 
+            if (!destinationCurrent()) return;
+            pendingPaste?.admit();
+            if (specialVariant !== "values-only") assertSharedSource();
+
+            // No awaited preparation may follow this final admission before dispatch.
             // Treat as multi-item paste if normal multi-line text or portable structured items.
             if (text.includes("\n") || structuredItems) {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
@@ -3345,32 +3386,18 @@ export class KeyEventHandler {
                         && destinationDoc
                         && generalStore.undoManager
                     ) {
-                        const { globalUndoRouter } = await import("../services/undo/undoRouter.svelte");
-                        const { portableStructuralEnumsStillCompatible } = await import(
-                            "../services/yjstable/structuralEnumGuard"
-                        );
-                        const { getLoadedProjectDocById } = await import("./yjsService.svelte");
-                        const pastedSnapshots = structured && "tables" in structured ? structured.tables : undefined;
-                        globalUndoRouter.captureCrossProjectPaste(
-                            generalStore.undoManager,
-                            destinationDoc,
-                            Object.values(pastedTableIdMap ?? {}),
-                            pastedRuleIds,
-                            pastedSnapshots
-                                ? () => {
-                                    const sourceDoc = getLoadedProjectDocById(structured!.sourceProjectId);
-                                    return sourceDoc !== undefined
-                                        && portableStructuralEnumsStillCompatible(
-                                            destinationDoc,
-                                            pastedSnapshots,
-                                            sourceDoc,
-                                            structured && "grids" in structured ? structured.grids : undefined,
-                                        );
-                                }
-                                : undefined,
-                            Object.values(pastedGridIdMap),
-                        );
+                        if (pendingPaste) {
+                            globalUndoRouter.captureCrossProjectPaste(
+                                generalStore.undoManager,
+                                destinationDoc,
+                                pendingPaste.bindings.forComposite(),
+                                authorizePasteRedo,
+                            );
+                        }
                     }
+                    pasteCommitted = true;
+                    pendingPaste?.complete();
+
                     if (
                         specialVariant === "another-view" || specialVariant === "values-only"
                         || ((specialVariant === "copy-with-data" || specialVariant === "copy-without-data")
@@ -3386,7 +3413,11 @@ export class KeyEventHandler {
             const cursorInstances = store.getLocalCursorInstances();
             cursorInstances.forEach(cursor => cursor.insertText(text));
             if (specialVariant === "values-only") reportPasteSpecialVariant(specialVariant);
+            pasteCommitted = true;
+            pendingPaste?.complete();
         } catch (error) {
+            pendingPaste?.discard(error instanceof Error ? error.message : String(error));
+            pendingPaste = undefined;
             // Log error and notify UI if error occurs
             if (
                 typeof window !== "undefined"
@@ -3399,6 +3430,8 @@ export class KeyEventHandler {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("clipboard-read-error"));
             }
+        } finally {
+            if (!pasteCommitted) pendingPaste?.discard();
         }
     }
 

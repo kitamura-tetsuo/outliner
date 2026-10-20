@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { Item, Project } from "../schema/app-schema";
 import { GRID_EXPORT_ROW_LIMIT } from "../services/clipboard/gridClipboardExport";
+import { GRID_PASTE_CANCEL_EVENT, GRID_PASTE_WRITE_CHECK_EVENT } from "../services/clipboard/gridPasteEvents";
 import {
     deserializeClipboardItems,
     type GridTableSnapshot,
@@ -14,7 +15,8 @@ import {
     type PasteSpecialRequest,
 } from "../services/clipboard/pasteSpecial";
 import { registerEditorSurface } from "../services/editorSurface";
-import { createGrid, getGridRegistry } from "../services/yjstable/gridDocs";
+import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
+import { createGrid, getGridRegistry, removeGridWithPlacements } from "../services/yjstable/gridDocs";
 import { createTable, listTables } from "../services/yjstable/tableDocs";
 import {
     getTableClipboardSource,
@@ -40,8 +42,10 @@ vi.mock("../stores/AliasPickerStore.svelte", () => ({
 // Reaching the live source room belongs to the cross-project E2E coverage, so
 // the project registry reports the source as unavailable here instead of
 // opening a WebSocket out of JSDOM.
+const sourceTransport = vi.hoisted(() => ({ acquire: () => Promise.resolve(undefined) as Promise<unknown> }));
 vi.mock("./yjsService.svelte", () => ({
-    acquireClientByProjectId: () => Promise.resolve(undefined),
+    acquireClientByProjectId: () => sourceTransport.acquire(),
+    getLoadedProjectDocById: () => undefined,
 }));
 
 type TestEndpoint =
@@ -62,6 +66,8 @@ interface TestSelection {
 let stopSurface: (() => void) | undefined;
 beforeEach(() => {
     stopSurface = registerEditorSurface(() => true);
+    sourceTransport.acquire = () => Promise.resolve(undefined);
+    state.undoManager = undefined;
 });
 afterEach(() => stopSurface?.());
 
@@ -69,6 +75,7 @@ const state: {
     selection: TestSelection | undefined;
     visible: Array<{ model: { id: string; original: unknown; }; depth: number; }>;
     doc: Y.Doc;
+    undoManager?: Y.UndoManager;
     cursors: Array<{
         isActive: boolean;
         insertText: ReturnType<typeof vi.fn>;
@@ -104,6 +111,9 @@ vi.mock("../stores/store.svelte", () => ({
     store: {
         get project() {
             return Project.fromDoc(state.doc);
+        },
+        get undoManager() {
+            return state.undoManager;
         },
         activeViewModel: { getVisibleItems: () => state.visible },
     },
@@ -765,6 +775,132 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         state.visible = [];
         state.cursors = [];
     });
+
+    for (const change of ["deleted-before", "deleted-during", "query-during"] as const) {
+        for (const variant of ["values-only", "another-view"] as const) {
+            it(`Paste Special ${variant} after ${change} uses the appropriate captured authority`, async () => {
+                const id = createGrid(state.doc, undefined, { query: "SELECT 1 AS value" });
+                const encoded = JSON.stringify({
+                    version: 3,
+                    sourceProjectId: state.doc.guid,
+                    items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: id }],
+                    tables: {},
+                });
+                const outward = "Name\tValue\nAda\t7";
+                if (change === "deleted-before") getGridRegistry(state.doc).delete(id);
+                let requested = false;
+                const choose = (event: Event) => {
+                    requested = true;
+                    if (change === "deleted-during") getGridRegistry(state.doc).delete(id);
+                    if (change === "query-during") {
+                        getGridRegistry(state.doc).get(id)!.set("query", "SELECT 2 AS value");
+                    }
+                    (event as CustomEvent<PasteSpecialRequest>).detail.resolve(variant);
+                };
+                window.addEventListener(PASTE_SPECIAL_REQUEST_EVENT, choose);
+                KeyEventHandler.handleKeyDown(
+                    new KeyboardEvent("keydown", { key: "v", ctrlKey: true, shiftKey: true }),
+                );
+                let detail: Record<string, unknown> | undefined;
+                try {
+                    detail = await pasteAndCapture(encoded, outward);
+                } finally {
+                    window.removeEventListener(PASTE_SPECIAL_REQUEST_EVENT, choose);
+                }
+                expect(requested).toBe(true);
+                if (variant === "values-only") {
+                    expect(detail?.lines).toEqual(["Name\tValue", "Ada\t7"]);
+                    expect(detail?.structuredItems).toBeUndefined();
+                } else expect(detail).toBeUndefined();
+                expect(listTables(state.doc)).toEqual([]);
+                if (change !== "query-during") expect(getGridRegistry(state.doc).has(id)).toBe(false);
+                else expect(getGridRegistry(state.doc).get(id)?.get("query")).toBe("SELECT 2 AS value");
+            });
+        }
+    }
+
+    for (const intervention of ["delete", "replace-and-cancel", "deny-writes", "navigate"] as const) {
+        it(`handlePaste refuses post-allocation ${intervention} before dispatch and history`, async () => {
+            const destination = state.doc;
+            const outline = destination.getMap("clipboard-outline");
+            const manager = new Y.UndoManager(outline);
+            state.undoManager = manager;
+            globalUndoRouter.clear();
+            globalUndoRouter.register(manager);
+            let entered!: () => void;
+            let release!: () => void;
+            const acquired = new Promise<void>(done => entered = done);
+            const gate = new Promise<void>(done => release = done);
+            sourceTransport.acquire = async () => {
+                entered();
+                await gate;
+                return undefined;
+            };
+            const encoded = JSON.stringify({
+                version: 3,
+                sourceProjectId: "foreign-project",
+                items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }, {
+                    text: "sibling",
+                    depth: 0,
+                }],
+                tables: { "source-table": snapshot("source-table") },
+                grids: { "grid:source-table": gridSnapshot("source-table") },
+            });
+            const event = pasteEvent(encoded, "captured text");
+            let dispatched = false;
+            const listener = () => {
+                dispatched = true;
+                outline.set("paste", "effect");
+            };
+            window.addEventListener("paste-multi-item", listener);
+            const pasting = KeyEventHandler.handlePaste(event);
+            await acquired;
+            const id = [...getGridRegistry(destination).keys()][0];
+            expect(id).toBeTruthy();
+            let replacement: Y.Map<unknown> | undefined;
+            const deny = (event: Event) => event.preventDefault();
+            if (intervention === "deny-writes") window.addEventListener(GRID_PASTE_WRITE_CHECK_EVENT, deny);
+            else if (intervention === "navigate") state.doc = new Y.Doc({ guid: "navigated-project" });
+            else {
+                const peer = new Y.Doc();
+                Y.applyUpdate(peer, Y.encodeStateAsUpdate(destination));
+                expect(removeGridWithPlacements(Project.fromDoc(peer), id)).toBe(true);
+                if (intervention === "replace-and-cancel") {
+                    globalUndoRouter.undo();
+                    getGridRegistry(peer).get(id)!.set("name", "Peer replacement");
+                }
+                Y.applyUpdate(destination, Y.encodeStateAsUpdate(peer), "peer");
+                replacement = getGridRegistry(destination).get(id);
+                if (intervention === "replace-and-cancel") window.dispatchEvent(new Event(GRID_PASTE_CANCEL_EVENT));
+            }
+            const depths = [
+                globalUndoRouter.undoDepth,
+                globalUndoRouter.redoDepth,
+                manager.undoStack.length,
+                manager.redoStack.length,
+            ];
+            release();
+            try {
+                await pasting;
+            } finally {
+                window.removeEventListener("paste-multi-item", listener);
+                window.removeEventListener(GRID_PASTE_WRITE_CHECK_EVENT, deny);
+                globalUndoRouter.unregister(manager);
+                manager.destroy();
+            }
+            expect(dispatched).toBe(false);
+            expect(outline.size).toBe(0);
+            expect(listTables(destination)).toEqual([]);
+            expect(event.clipboardData?.getData(OUTLINER_ITEMS_MIME)).toBe(encoded);
+            expect(getGridRegistry(destination).get(id)).toBe(replacement);
+            expect([
+                globalUndoRouter.undoDepth,
+                globalUndoRouter.redoDepth,
+                manager.undoStack.length,
+                manager.redoStack.length,
+            ]).toEqual(depths);
+        });
+    }
 
     it("reuses a surviving same-project Grid without a portable snapshot", async () => {
         createGrid(state.doc, undefined, { gridId: "grid:source-table", query: "SELECT 1" });

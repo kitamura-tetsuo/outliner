@@ -1,5 +1,7 @@
 import { Project } from "$shared/app-schema";
+import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { afterAll, describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { createGrid, getGridRegistry } from "./gridDocs";
 import { enqueueWrite, resetPgliteForTests } from "./pgliteService";
 import { exportGridSlice, exportTableStructures, importTableStructures } from "./tableClone";
@@ -119,4 +121,65 @@ describe("Table import binding admission", () => {
             expect(getTableHandles(destination.ydoc, unrelated)!.data.has("unrelated")).toBe(true);
         });
     }
+    for (const replaceFirst of [false, true]) {
+        it(`cleans earlier allocations on a later portable guard rejection; replacement=${replaceFirst}`, async () => {
+            const source = Project.createInstance("guard-source");
+            const destination = Project.createInstance("guard-destination");
+            createSqlCatalogObject(source.ydoc, "enum", "CREATE TYPE choice AS ENUM ('a', 'b')");
+            const enumId = createSqlCatalogObject(destination.ydoc, "enum", "CREATE TYPE choice AS ENUM ('a', 'b')");
+            const ids = ["a", "b"].map(name =>
+                createTable(source.ydoc, name, name, { tableId: name }, handles => {
+                    handles.schemaText.insert(0, `CREATE TABLE ${name} (id TEXT PRIMARY KEY, value choice)`);
+                })
+            );
+            const entered = deferred();
+            const release = deferred();
+            let firstId: string | undefined;
+            const registry = getTableRegistry(destination.ydoc);
+            registry.observe(() => {
+                const first = listTables(destination.ydoc).find(table => table.sqlName === "a");
+                if (!first || firstId) return;
+                firstId = first.tableId;
+                void enqueueWrite(async () => {
+                    entered.resolve();
+                    await release.promise;
+                });
+            });
+            const importing = importTableStructures(
+                destination.ydoc,
+                exportTableStructures(source.ydoc, ids),
+                source.ydoc.guid,
+            );
+            await entered.promise;
+            const peer = new Y.Doc();
+            Y.applyUpdate(peer, Y.encodeStateAsUpdate(destination.ydoc));
+            replaceSqlCatalogSource(peer, enumId, "CREATE TYPE choice AS ENUM ('b', 'a')");
+            Y.applyUpdate(destination.ydoc, Y.encodeStateAsUpdate(peer), "peer");
+            if (replaceFirst) {
+                removeTableWithPolicy(destination, firstId!, "keep-references");
+                createTable(destination.ydoc, "Peer a", "a", { tableId: firstId }, h => {
+                    h.schemaText.insert(0, "CREATE TABLE a (id TEXT PRIMARY KEY)");
+                });
+            }
+            const replacement = replaceFirst ? registry.get(firstId!) : undefined;
+            release.resolve();
+            await expect(importing).rejects.toThrow(/ENUM.*incompatible/);
+            expect([...registry.keys()]).toEqual(replaceFirst ? [firstId] : []);
+            if (replaceFirst) expect(registry.get(firstId!)).toBe(replacement);
+            expect(getGridRegistry(destination.ydoc).size).toBe(0);
+            expect(destination.ydoc.getMap("sqlCatalog").toJSON()).toEqual(peer.getMap("sqlCatalog").toJSON());
+        });
+    }
+    it("keeps an independent valid group when another returns a recoverable SQL failure", async () => {
+        const destination = new Y.Doc();
+        const result = await importTableStructures(destination, {
+            a: { sourceTableId: "a", name: "A", sqlName: "a", schemaSql: "CREATE TABLE a (id TEXT PRIMARY KEY)" },
+            b: { sourceTableId: "b", name: "B", sqlName: "b", schemaSql: "CREATE TABLE b (id no_such_type)" },
+        }, "source");
+        expect(Object.keys(result.tableIdMap)).toEqual(["a"]);
+        expect(result.failedSourceTableIds).toEqual(["b"]);
+        expect(listTables(destination).map(table => table.sqlName)).toEqual(["a"]);
+        expect(result.outcomes.some(outcome => outcome.type === "failed-group")).toBe(true);
+        result.bindings.assertCurrent();
+    });
 });

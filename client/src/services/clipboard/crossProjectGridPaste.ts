@@ -1,7 +1,7 @@
 import { Project } from "$shared/app-schema";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
-import { cloneScheduleRules, rollbackClonedScheduleRules } from "../schedule/scheduleRuleClone";
+import { cloneScheduleRules } from "../schedule/scheduleRuleClone";
 import { getGridRegistry } from "../yjstable/gridDocs";
 import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
 import { destroyTableUndoManager, getTableHandles, getTableSqlName, removeTable } from "../yjstable/tableDocs";
@@ -12,6 +12,7 @@ import {
     type GridPasteProgress,
 } from "./gridPasteEvents";
 import type { GridSnapshot, GridTableSnapshot, ItemClipboardPayloadV4 } from "./itemClipboard";
+import type { TransferBindings } from "./transferBindings";
 
 const logger = getLogger("crossProjectGridPaste");
 
@@ -57,6 +58,8 @@ export interface CrossProjectGridPasteOptions {
     isDestinationCurrent: () => boolean;
     /** Private preparation for a staged move has no user-visible completion yet. */
     silent?: boolean;
+    /** The keyboard handler reports completion only after placements commit. */
+    deferCompletion?: boolean;
 }
 
 export type GridPasteOutcome =
@@ -163,24 +166,28 @@ export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): st
  * cancel, or navigation away. In those cases every table this call created has
  * already been removed again (spec §9.6).
  */
+export interface PreparedGridPaste {
+    bindings: TransferBindings;
+    admit(): void;
+    complete(): void;
+    discard(reason?: string): void;
+    /** Tables this paste created. Only these may be rolled back or undone. */
+    tableIdMap: Record<string, string>;
+    /** Grids this paste created alongside the tables. Pasted outline items bind here. */
+    gridIdMap: Record<string, string>;
+    /** Tables an earlier paste already created here, reused by this one. */
+    reusedTableIdMap: Record<string, string>;
+    /** Grids already present for reused Tables, so pasted items still bind to a live Grid. */
+    reusedGridIdMap: Record<string, string>;
+    /** Schedule rules this paste copied, disabled. Part of its undo unit. */
+    createdRuleIds: string[];
+    skippedSourceTableIds: string[];
+    outcomes: GridPasteOutcome[];
+}
+
 export async function cloneGridTablesAcrossProjects(
     options: CrossProjectGridPasteOptions,
-): Promise<
-    {
-        /** Tables this paste created. Only these may be rolled back or undone. */
-        tableIdMap: Record<string, string>;
-        /** Grids this paste created alongside the tables. Pasted outline items bind here. */
-        gridIdMap: Record<string, string>;
-        /** Tables an earlier paste already created here, reused by this one. */
-        reusedTableIdMap: Record<string, string>;
-        /** Grids already present for reused Tables, so pasted items still bind to a live Grid. */
-        reusedGridIdMap: Record<string, string>;
-        /** Schedule rules this paste copied, disabled. Part of its undo unit. */
-        createdRuleIds: string[];
-        skippedSourceTableIds: string[];
-        outcomes: GridPasteOutcome[];
-    } | undefined
-> {
+): Promise<PreparedGridPaste | undefined> {
     const progress = options.silent ? (_detail: GridPasteProgress) => {} : reportProgress;
     const {
         destinationDoc,
@@ -213,14 +220,22 @@ export async function cloneGridTablesAcrossProjects(
     }
     const cancelled = () => controller.signal.aborted || !isDestinationCurrent();
 
-    let tableIdMap: Record<string, string> = {};
-    let createdRuleIds: string[] = [];
-    let createdGridIds: string[] = [];
+    let tableIdMap: Record<string, string>;
+    let createdRuleIds: string[];
+    let bindings: TransferBindings | undefined;
+    let handedOff = false;
+    const releaseCancel = () => {
+        if (typeof window !== "undefined") window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
+    };
+    const admit = () => {
+        if (cancelled() || !destinationAcceptsWrites()) {
+            throw new StaleGridTransferError("The destination changed or no longer accepts writes.");
+        }
+        bindings?.assertCurrent();
+    };
     const rollback = () => {
-        rollbackClonedScheduleRules(destinationDoc, createdRuleIds);
+        bindings?.cleanupOwned(id => removeTable(destinationDoc, id));
         createdRuleIds = [];
-        rollbackCrossProjectPaste(destinationDoc, Object.values(tableIdMap), createdGridIds);
-        createdGridIds = [];
         tableIdMap = {};
     };
 
@@ -240,9 +255,10 @@ export async function cloneGridTablesAcrossProjects(
                 }
             },
         );
+        bindings = cloneResult.bindings;
+        admit();
         tableIdMap = cloneResult.tableIdMap;
         const gridIdMap = cloneResult.gridIdMap;
-        createdGridIds = Object.values(gridIdMap);
         const reusedTableIdMap = cloneResult.reusedTableIdMap;
         const reusedGridIdMap = cloneResult.reusedGridIdMap;
         const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
@@ -265,7 +281,7 @@ export async function cloneGridTablesAcrossProjects(
 
         const sourceCopy = copyData
             ? sourceProjectId === destinationDoc.guid
-                ? copyRowsFromSameProject(destinationDoc, destinationProject, tableIdMap, sqlNameMap)
+                ? copyRowsFromSameProject(destinationDoc, destinationProject, tableIdMap, sqlNameMap, bindings, admit)
                 : await copyRowsFromSource({
                     sourceProjectId,
                     destinationProject,
@@ -274,6 +290,8 @@ export async function cloneGridTablesAcrossProjects(
                     destinationDoc,
                     signal: controller.signal,
                     cancelled,
+                    bindings,
+                    admit,
                 })
             : { copiedSchedules: [], skippedSchedules: [], createdRuleIds: [], rowCounts: {} };
         createdRuleIds = sourceCopy.createdRuleIds;
@@ -283,6 +301,7 @@ export async function cloneGridTablesAcrossProjects(
             return undefined;
         }
 
+        admit();
         const outcomes: GridPasteOutcome[] = cloneResult.outcomes.map(outcome =>
             outcome.type === "cloned"
                 ? { ...outcome, rowCount: sourceCopy.rowCounts[outcome.sourceTableId] }
@@ -323,12 +342,26 @@ export async function cloneGridTablesAcrossProjects(
         } else if (requestedVariant === "copy-without-data") {
             report.unshift("Pasted as an independent copy without data.");
         }
-        progress(
-            sourceCopy.unavailableReason === undefined
-                ? { state: "complete-with-data", report }
-                : { state: "complete-without-data", reason: sourceCopy.unavailableReason, report },
-        );
+        const complete = () => {
+            releaseCancel();
+            progress(
+                sourceCopy.unavailableReason === undefined
+                    ? { state: "complete-with-data", report }
+                    : { state: "complete-without-data", reason: sourceCopy.unavailableReason, report },
+            );
+        };
+        const discard = (reason?: string) => {
+            rollback();
+            releaseCancel();
+            progress(reason ? { state: "failed", reason } : { state: "cancelled" });
+        };
+        if (!options.deferCompletion) complete();
+        else handedOff = true;
         return {
+            bindings,
+            admit,
+            complete,
+            discard,
             tableIdMap,
             gridIdMap,
             reusedTableIdMap,
@@ -346,9 +379,7 @@ export async function cloneGridTablesAcrossProjects(
         progress({ state: "failed", reason: error instanceof Error ? error.message : String(error) });
         throw error;
     } finally {
-        if (typeof window !== "undefined") {
-            window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
-        }
+        if (!handedOff) releaseCancel();
     }
 }
 
@@ -357,7 +388,10 @@ function copyRowsFromSameProject(
     project: Project,
     tableIdMap: Record<string, string>,
     sqlNameMap: ReadonlyMap<string, string>,
+    bindings: TransferBindings,
+    admit: () => void,
 ): SourceCopyResult {
+    admit();
     const rowCounts: Record<string, number> = {};
     for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
         const source = getTableHandles(projectDoc, sourceTableId);
@@ -366,7 +400,13 @@ function copyRowsFromSameProject(
         copyTableData(source, destination);
         rowCounts[sourceTableId] = destination.data.size;
     }
-    const schedules = cloneScheduleRules(project, project, tableIdMap, sqlNameMap);
+    const schedules = cloneScheduleRules(
+        project,
+        project,
+        tableIdMap,
+        sqlNameMap,
+        (id, entry) => bindings.capture("schedule", id, true, entry as Y.Map<unknown>),
+    );
     return {
         copiedSchedules: schedules.copied,
         skippedSchedules: schedules.skipped,
@@ -383,6 +423,8 @@ interface SourceCopyOptions {
     destinationDoc: Y.Doc;
     signal: AbortSignal;
     cancelled: () => boolean;
+    bindings: TransferBindings;
+    admit: () => void;
 }
 
 function noScheduleRules(): Pick<SourceCopyResult, "copiedSchedules" | "skippedSchedules" | "createdRuleIds"> {
@@ -445,6 +487,7 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
                             "The source or destination Table identity changed during synchronization.",
                         );
                     }
+                    options.admit();
                     copyTableData(sourceHandles, destinationHandles);
                     rowCounts[sourceTableId] = destinationHandles.data.size;
                 } finally {
@@ -456,11 +499,13 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
                 destroyTableUndoManager(sourceHandles.doc);
             }
         }
+        options.admit();
         const schedules = cloneScheduleRules(
             acquired.client.project,
             destinationProject,
             tableIdMap,
             sqlNameMap,
+            (id, entry) => options.bindings.capture("schedule", id, true, entry as Y.Map<unknown>),
         );
         return {
             unavailableReason,
@@ -479,18 +524,6 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
         };
     } finally {
         acquired?.release();
-    }
-}
-
-/** Remove the tables created by a paste that was cancelled or undone. */
-export function rollbackCrossProjectPaste(
-    destinationDoc: Y.Doc,
-    createdTableIds: string[],
-    createdGridIds: string[] = [],
-): void {
-    for (const gridId of createdGridIds) getGridRegistry(destinationDoc).delete(gridId);
-    for (const destinationTableId of createdTableIds) {
-        removeTable(destinationDoc, destinationTableId);
     }
 }
 
