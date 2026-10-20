@@ -146,7 +146,7 @@ describe("ObjectManagerController", () => {
             const doc = new Y.Doc();
             const project = Project.fromDoc(doc);
             const tasksId = table(doc, "Tasks", "tasks");
-            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
 
             const related = new Set(selectRelatedObjects(project, objects, new Set([gridId]), "dependencies"));
@@ -157,7 +157,7 @@ describe("ObjectManagerController", () => {
             const doc = new Y.Doc();
             const project = Project.fromDoc(doc);
             const tasksId = table(doc, "Tasks", "tasks");
-            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const ruleId = createScheduleRule(project, {
                 targetTableId: tasksId,
                 sql: "INSERT INTO tasks (id) SELECT 1 RETURNING *",
@@ -174,7 +174,7 @@ describe("ObjectManagerController", () => {
             const doc = new Y.Doc();
             const project = Project.fromDoc(doc);
             const tasksId = table(doc, "Tasks", "tasks");
-            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const calendarId = createCalendar(project, { name: "Team Calendar", query: "SELECT id FROM tasks" });
             const objects = getObjects(project);
 
@@ -186,8 +186,8 @@ describe("ObjectManagerController", () => {
             const doc = new Y.Doc();
             const project = Project.fromDoc(doc);
             const tasksId = table(doc, "Tasks", "tasks");
-            const first = createGrid(doc, tasksId, { name: "First" });
-            const second = createGrid(doc, tasksId, { name: "Second" });
+            const first = createGrid(doc, undefined, { name: "First", query: "SELECT * FROM tasks" });
+            const second = createGrid(doc, undefined, { name: "Second", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
 
             const related = selectRelatedObjects(project, objects, new Set([first, second]), "dependencies");
@@ -198,7 +198,7 @@ describe("ObjectManagerController", () => {
             const doc = new Y.Doc();
             const project = Project.fromDoc(doc);
             const tasksId = table(doc, "Tasks", "tasks");
-            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const fullObjects = getObjects(project);
             // Simulates the Table being filtered out of view — it must still be
             // discoverable because `selectRelatedObjects` reads the Yjs graph
@@ -215,7 +215,7 @@ describe("ObjectManagerController", () => {
             const project = Project.fromDoc(doc);
             const tasksId = table(doc, "Tasks", "tasks");
             const owners = table(doc, "Owners", "owners");
-            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
 
             const existingSelection = new Set([gridId, owners]);
@@ -228,7 +228,7 @@ describe("ObjectManagerController", () => {
             const doc = new Y.Doc();
             const project = Project.fromDoc(doc);
             const tasksId = table(doc, "Tasks", "tasks");
-            createGrid(doc, tasksId, { name: "Board" });
+            createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
             createScheduleRule(project, {
                 targetTableId: tasksId,
                 sql: "INSERT INTO tasks (id) SELECT id FROM tasks RETURNING *",

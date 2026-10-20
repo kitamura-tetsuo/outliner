@@ -4,6 +4,7 @@ import {
     createGrid,
     duplicateGrid,
     findGridsBySourceTable,
+    findGridsByTableDependency,
     getGridColumnOrder,
     getGridConfirmRowDelete,
     getGridHandles,
@@ -108,7 +109,9 @@ describe("Grid registry", () => {
         expect(dupId).not.toBe(originalId);
 
         const dupHandles = getGridHandles(projectDoc, dupId)!;
-        expect(getGridSourceTableId(projectDoc, dupId)).toBe(tableId);
+        expect(getGridSourceTableId(projectDoc, dupId)).toBeUndefined();
+        expect(findGridsByTableDependency(projectDoc, tableId).map(grid => grid.gridId).sort())
+            .toEqual([originalId, dupId].sort());
         expect(getGridQuery(dupHandles)).toBe("SELECT id FROM tasks");
         expect(getGridColumnOrder(dupHandles)).toEqual(["id"]);
         expect(readGridComponents(dupHandles).labels.id).toBe("Id");

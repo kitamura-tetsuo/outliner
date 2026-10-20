@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/slr-visual-node-direct-selection-5026a1b2.yaml
  */
 import { expect, type Page, test } from "@playwright/test";
+import { readGridProjectState } from "../utils/crossProjectGridHelpers";
 import {
     seedVisualNodesAfterFirstItem,
     selectVisualNode,
@@ -28,11 +29,13 @@ async function copiedByEditor(page: Page) {
                     items: Array<{
                         text: string;
                         componentType?: string;
-                        yjsTableId?: string;
+                        yjsGridId?: string;
                         calendarId?: string;
                     }>;
                 }).items
                 : [],
+            operation: encoded ? (JSON.parse(encoded) as { operation?: string; }).operation : undefined,
+            transferId: encoded ? (JSON.parse(encoded) as { transferId?: string; }).transferId : undefined,
             plainText: mirrored.lastCopiedText ?? "",
         };
     });
@@ -57,6 +60,7 @@ test.describe("SLR-5026a1b2: copying, cutting and deleting a directly selected b
 
     test("a copied Grid keeps its binding, and borrows no caption from it", async ({ page }) => {
         const gridId = await seedBoundGrid(page);
+        const before = await readGridProjectState(page);
 
         await selectVisualNode(page, gridId);
         await page.keyboard.press("Control+c");
@@ -64,10 +68,11 @@ test.describe("SLR-5026a1b2: copying, cutting and deleting a directly selected b
 
         const copied = await copiedByEditor(page);
 
-        // The structured flavor carries the block and the table it is bound to...
+        // The structured flavor carries the block and its independent Grid binding...
         expect(copied.items).toHaveLength(1);
         expect(copied.items[0].componentType).toBe("yjstable");
-        expect(copied.items[0].yjsTableId).toBeTruthy();
+        expect(copied.items[0].yjsGridId).toBe(before.placements.find(placement => placement.id === gridId)!.gridId);
+        expect(copied.items[0]).not.toHaveProperty("yjsTableId");
         // ...with no outline text of its own (#5015).
         expect(copied.items[0].text).toBe("");
         // The outward plain text is what the Grid's view actually rendered (#5024) - its
@@ -111,17 +116,22 @@ test.describe("SLR-5026a1b2: copying, cutting and deleting a directly selected b
         await expect(page.locator(`.outliner-item[data-item-id="${omegaId}"]`)).toHaveCount(1);
     });
 
-    test("Cut takes the Grid to the clipboard and removes it from the outline", async ({ page }) => {
+    test("Cut stages the Grid on the clipboard without removing its live placement", async ({ page }) => {
         const gridId = await seedBoundGrid(page);
+        const before = await readGridProjectState(page);
 
         await selectVisualNode(page, gridId);
         await page.keyboard.press("Control+x");
         await page.waitForTimeout(900);
 
         const copied = await copiedByEditor(page);
+        expect(copied.operation).toBe("cut");
+        expect(copied.transferId).toBeTruthy();
         expect(copied.items.map(item => item.componentType)).toEqual(["yjstable"]);
-        expect(copied.items[0].yjsTableId).toBeTruthy();
+        expect(copied.items[0].yjsGridId).toBe(before.placements.find(placement => placement.id === gridId)!.gridId);
+        expect(copied.items[0]).not.toHaveProperty("yjsTableId");
 
-        await expect(page.locator(`[data-visual-node-root="${gridId}"]`)).toHaveCount(0);
+        await expect(page.locator(`[data-visual-node-root="${gridId}"]`)).toHaveCount(1);
+        expect(await readGridProjectState(page)).toEqual(before);
     });
 });
