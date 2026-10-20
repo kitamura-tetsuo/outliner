@@ -3204,19 +3204,15 @@ export class KeyEventHandler {
                                 "../services/yjstable/structuralEnumGuard"
                             );
                             const { getLoadedProjectDocById } = await import("./yjsService.svelte");
-                            const pastedSnapshots = structured.tables;
-                            authorizePasteRedo = pastedSnapshots
-                                ? () => {
-                                    const sourceDoc = getLoadedProjectDocById(structured.sourceProjectId);
-                                    return sourceDoc !== undefined
-                                        && portableStructuralEnumsStillCompatible(
-                                            destinationDoc,
-                                            pastedSnapshots,
-                                            sourceDoc,
-                                            structured.grids,
-                                        );
-                                }
-                                : undefined;
+                            const capturedCatalog = "catalog" in structured ? structured.catalog : undefined;
+                            authorizePasteRedo = () =>
+                                portableStructuralEnumsStillCompatible(
+                                    destinationDoc,
+                                    referencedSnapshots,
+                                    getLoadedProjectDocById(structured.sourceProjectId),
+                                    grids,
+                                    capturedCatalog,
+                                );
                         }
                         if (!destinationCurrent()) return;
                         const cloneResult = await cloneGridTablesAcrossProjects({

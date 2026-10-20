@@ -49,7 +49,11 @@ acceptance:
 - Reuse-only Grid Paste retains destination binding checks during Redo without requiring the source Project to remain loaded; Undo preserves reused definitions and unrelated rows.
 - Grid object Delete/Undo restores copy provenance for repeat Paste reuse while independent duplication remains fresh.
 - Copied Schedule SQL remaps fresh and reused relations by admitted Table identities without duplicating rules targeting reused Tables.
+- An acquired cross-Project source stays live through final placement admission; relevant source deletion, query or incarnation changes refuse stale Copy while unrelated rows and presentation remain independent.
+- Fresh definition Redo uses retained SQL/catalog evidence and saved records after source release, including zero-Table Grids; actual missing or incompatible required ENUMs still refuse before effects.
 tests:
+- client/e2e/new/clp-paste-live-source-4584c0de.spec.ts
+- client/e2e/new/clp-fresh-paste-unloaded-redo-4584c0de.spec.ts
 - client/e2e/new/clp-restored-grid-provenance-4584c0de.spec.ts
 - client/src/services/yjstable/gridDocs.test.ts
 - client/e2e/new/clp-paste-peer-undo-4584c0de.spec.ts

@@ -15,13 +15,14 @@ import { GRID_PASTE_CANCEL_EVENT, GRID_PASTE_PROGRESS_EVENT, type GridPasteProgr
 const transport = vi.hoisted(() => ({
     acquire: undefined as undefined | (() => Promise<unknown>),
     dispose: undefined as undefined | (() => Promise<void>),
+    sync: undefined as undefined | (() => Promise<{ synced: boolean; }>),
 }));
 vi.mock("../../lib/yjsService.svelte", () => ({ acquireClientByProjectId: () => transport.acquire?.() }));
 vi.mock(
     "../../lib/yjs/connection",
     () => ({
         connectTableDoc: async () => ({
-            waitForInitialSync: async () => ({ synced: true }),
+            waitForInitialSync: () => transport.sync?.() ?? Promise.resolve({ synced: true }),
             dispose: () => transport.dispose?.(),
         }),
     }),
@@ -36,6 +37,7 @@ afterAll(resetPgliteForTests, 60000);
 afterEach(() => {
     transport.acquire = undefined;
     transport.dispose = undefined;
+    transport.sync = undefined;
     globalUndoRouter.clear();
 });
 
@@ -75,6 +77,102 @@ function peerDelete(destination: Project, id: string, restore: boolean) {
 }
 
 describe("cross-Project Copy final destination admission", { timeout: 60000 }, () => {
+    for (const mutation of ["delete", "query", "incarnation", "row"] as const) {
+        it(`keeps acquired source authority through held synchronization: ${mutation}`, async () => {
+            const f = fixture();
+            const grid = Object.keys(f.options.grids)[0];
+            const keep = createTable(
+                f.destination.ydoc,
+                "Keep",
+                "keep",
+                undefined,
+                handles => handles.schemaText.insert(0, "CREATE TABLE keep (id TEXT PRIMARY KEY)"),
+            );
+            addRecord(getTableHandles(f.destination.ydoc, keep)!, { id: "unrelated" }, "unrelated");
+            const keepGrid = createGrid(f.destination.ydoc, undefined, { query: "SELECT * FROM keep" });
+            const keepEntry = getGridRegistry(f.destination.ydoc).get(keepGrid);
+            const entered = deferred();
+            const resume = deferred();
+            const released = vi.fn();
+            transport.acquire = async () => ({ client: { project: f.source }, release: released });
+            transport.sync = async () => {
+                entered.resolve();
+                await resume.promise;
+                return { synced: true };
+            };
+            const events: GridPasteProgress[] = [];
+            const listener = (event: Event) => events.push((event as CustomEvent<GridPasteProgress>).detail);
+            window.addEventListener(GRID_PASTE_PROGRESS_EVENT, listener);
+            const pending = cloneGridTablesAcrossProjects({ ...f.options, deferCompletion: true });
+            await entered.promise;
+            expect(getGridRegistry(f.source.ydoc).has(grid)).toBe(true);
+            expect(released).not.toHaveBeenCalled();
+            if (mutation === "delete" || mutation === "incarnation") {
+                peerDelete(f.source, grid, mutation === "incarnation");
+            } else if (mutation === "query") {
+                getGridRegistry(f.source.ydoc).get(grid)!.set("query", "SELECT id FROM contacts");
+            } else {
+                getGridRegistry(f.source.ydoc).get(grid)!.set("name", "Peer presentation");
+                addRecord(getTableHandles(f.source.ydoc, f.table)!, { id: "peer" }, "peer");
+            }
+            resume.resolve();
+            try {
+                if (mutation === "row") {
+                    const result = (await pending)!;
+                    expect(released).not.toHaveBeenCalled();
+                    result.admit();
+                    expect(getTableHandles(f.destination.ydoc, result.tableIdMap[f.table])!.data.size).toBe(2);
+                    result.complete();
+                } else {
+                    await expect(pending).rejects.toThrow(/source/i);
+                    expect([...getGridRegistry(f.destination.ydoc).keys()]).toEqual([keepGrid]);
+                    expect(listTables(f.destination.ydoc).map(table => table.tableId)).toEqual([keep]);
+                    expect(events.some(event => event.state.startsWith("complete"))).toBe(false);
+                }
+                expect(getTableHandles(f.destination.ydoc, keep)!.data.toJSON()).toEqual({
+                    unrelated: { id: "unrelated" },
+                });
+                expect(getGridRegistry(f.destination.ydoc).get(keepGrid)).toBe(keepEntry);
+                expect(getTableHandles(f.source.ydoc, f.table)!.data.has("source")).toBe(true);
+                expect(released).toHaveBeenCalledTimes(1);
+            } finally {
+                window.removeEventListener(GRID_PASTE_PROGRESS_EVENT, listener);
+            }
+        });
+    }
+    it("does not refresh an already changed live query to authorize the clipboard plan", async () => {
+        const f = fixture();
+        const released = vi.fn();
+        const grid = Object.keys(f.options.grids)[0];
+        getGridRegistry(f.source.ydoc).get(grid)!.set("query", "SELECT id FROM contacts");
+        transport.acquire = async () => ({ client: { project: f.source }, release: released });
+        await expect(cloneGridTablesAcrossProjects(f.options)).rejects.toThrow(/source/i);
+        expect(listTables(f.destination.ydoc)).toEqual([]);
+        expect(getGridRegistry(f.destination.ydoc).size).toBe(0);
+        expect(released).toHaveBeenCalledTimes(1);
+    });
+    it("does not acquire a source for explicit structure-only Copy", async () => {
+        const f = fixture();
+        const acquire = vi.fn(async () => undefined);
+        transport.acquire = acquire;
+        const result = await cloneGridTablesAcrossProjects({ ...f.options, copyData: false });
+        expect(result).toBeDefined();
+        expect(getTableHandles(f.destination.ydoc, result!.tableIdMap[f.table])!.data.size).toBe(0);
+        expect(acquire).not.toHaveBeenCalled();
+    });
+    it("retains the source lease and evidence until deferred final admission", async () => {
+        const f = fixture();
+        const released = vi.fn();
+        transport.acquire = async () => ({ client: { project: f.source }, release: released });
+        const result = (await cloneGridTablesAcrossProjects({ ...f.options, deferCompletion: true }))!;
+        expect(released).not.toHaveBeenCalled();
+        peerDelete(f.source, Object.keys(f.options.grids)[0], false);
+        expect(() => result.admit()).toThrow(/source/i);
+        result.discard("stale source");
+        expect(listTables(f.destination.ydoc)).toEqual([]);
+        expect(getGridRegistry(f.destination.ydoc).size).toBe(0);
+        expect(released).toHaveBeenCalledTimes(1);
+    });
     for (const boundary of ["acquisition", "disposal"] as const) {
         it(`refuses a Grid deleted while ${boundary} is held, even with valid structure fallback`, async () => {
             const f = fixture();

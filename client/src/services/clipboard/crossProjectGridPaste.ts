@@ -2,7 +2,9 @@ import { Project } from "$shared/app-schema";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { cloneScheduleRules } from "../schedule/scheduleRuleClone";
-import { getGridRegistry } from "../yjstable/gridDocs";
+import { getGridInsertTargetTableId, getGridRegistry } from "../yjstable/gridDocs";
+import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
+import { queryReadDependencies } from "../yjstable/queryReadDependencies";
 import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
 import { destroyTableUndoManager, getTableHandles, getTableSqlName, removeTable } from "../yjstable/tableDocs";
 import {
@@ -224,6 +226,13 @@ export async function cloneGridTablesAcrossProjects(
     let createdRuleIds: string[];
     let bindings: TransferBindings | undefined;
     let handedOff = false;
+    let acquired: Awaited<ReturnType<typeof import("../../lib/yjsService.svelte").acquireClientByProjectId>>;
+    let assertSource = () => {};
+    const releaseSource = () => {
+        const lease = acquired;
+        acquired = undefined;
+        lease?.release();
+    };
     const releaseCancel = () => {
         if (typeof window !== "undefined") window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
     };
@@ -232,6 +241,7 @@ export async function cloneGridTablesAcrossProjects(
             throw new StaleGridTransferError("The destination changed or no longer accepts writes.");
         }
         bindings?.assertCurrent();
+        assertSource();
     };
     const rollback = () => {
         bindings?.cleanupOwned(id => removeTable(destinationDoc, id));
@@ -279,11 +289,64 @@ export async function cloneGridTablesAcrossProjects(
             }
         }
 
+        // Keep the authorized room receiving updates until placement admission.
+        // Unavailable acquisition still permits the documented structure fallback.
+        if (copyData && sourceProjectId !== destinationDoc.guid) {
+            const { acquireClientByProjectId } = await import("../../lib/yjsService.svelte");
+            try {
+                acquired = await acquireClientByProjectId(sourceProjectId, controller.signal);
+            } catch (error) {
+                logger.warn({ error, sourceProjectId }, "The source project could not be acquired");
+            }
+            if (acquired) {
+                const client = acquired.client;
+                const source = client.project.ydoc;
+                try {
+                    for (const [id, grid] of Object.entries(grids ?? {})) {
+                        const entry = getGridRegistry(source).get(id);
+                        const reads = entry
+                            ? queryReadDependencies(source, String(entry.get("query") ?? ""))
+                            : undefined;
+                        if (
+                            !entry || entry.get("query") !== grid.query
+                            || getGridInsertTargetTableId({ entry }) !== grid.insertTargetTableId
+                            || reads?.status !== "complete"
+                            || JSON.stringify([...reads.tableIds].sort()) !== JSON.stringify([...grid.tableIds].sort())
+                        ) {
+                            throw new Error("The source Grid no longer matches the captured transfer.");
+                        }
+                    }
+                    for (const [id, table] of Object.entries(snapshots)) {
+                        if (getTableSqlName(source, id) !== table.sqlName) {
+                            throw new Error("The source Table no longer matches the captured transfer.");
+                        }
+                    }
+                    const current = captureDuplicationAdmission(source, [
+                        ...Object.keys(grids ?? {}).map(id => ({ type: "grid" as const, id })),
+                        ...Object.keys(snapshots).map(id => ({ type: "table" as const, id })),
+                    ]);
+                    assertSource = () => {
+                        try {
+                            if (client.isDestroyed || source.isDestroyed) {
+                                throw new Error("The acquired source was closed.");
+                            }
+                            current();
+                        } catch (error) {
+                            throw new StaleGridTransferError(String(error));
+                        }
+                    };
+                } catch (error) {
+                    throw new StaleGridTransferError(String(error));
+                }
+            }
+        }
+        admit();
         const sourceCopy = copyData
             ? sourceProjectId === destinationDoc.guid
                 ? copyRowsFromSameProject(destinationDoc, destinationProject, tableIdMap, sqlNameMap, bindings, admit)
                 : await copyRowsFromSource({
                     sourceProjectId,
+                    sourceProject: acquired?.client.project,
                     destinationProject,
                     tableIdMap,
                     sqlNameMap,
@@ -344,6 +407,7 @@ export async function cloneGridTablesAcrossProjects(
         }
         const complete = () => {
             releaseCancel();
+            releaseSource();
             progress(
                 sourceCopy.unavailableReason === undefined
                     ? { state: "complete-with-data", report }
@@ -353,6 +417,7 @@ export async function cloneGridTablesAcrossProjects(
         const discard = (reason?: string) => {
             rollback();
             releaseCancel();
+            releaseSource();
             progress(reason ? { state: "failed", reason } : { state: "cancelled" });
         };
         if (!options.deferCompletion) complete();
@@ -379,7 +444,10 @@ export async function cloneGridTablesAcrossProjects(
         progress({ state: "failed", reason: error instanceof Error ? error.message : String(error) });
         throw error;
     } finally {
-        if (!handedOff) releaseCancel();
+        if (!handedOff) {
+            releaseCancel();
+            releaseSource();
+        }
     }
 }
 
@@ -417,6 +485,7 @@ function copyRowsFromSameProject(
 
 interface SourceCopyOptions {
     sourceProjectId: string;
+    sourceProject?: Project;
     destinationProject: Project;
     tableIdMap: Record<string, string>;
     sqlNameMap: ReadonlyMap<string, string>;
@@ -438,19 +507,10 @@ function noScheduleRules(): Pick<SourceCopyResult, "copiedSchedules" | "skippedS
  */
 async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCopyResult> {
     const { sourceProjectId, destinationProject, tableIdMap, sqlNameMap, destinationDoc, signal, cancelled } = options;
-    // Imported lazily: the provider stack and the project registry are only
-    // needed by this one branch of paste, and a static edge from the key
-    // handler to the Yjs service would drag both into every module that
-    // reaches the key handler.
-    const [{ acquireClientByProjectId }, { connectTableDoc }] = await Promise.all([
-        import("../../lib/yjsService.svelte"),
-        import("../../lib/yjs/connection"),
-    ]);
-
-    let acquired: Awaited<ReturnType<typeof acquireClientByProjectId>>;
+    const { connectTableDoc } = await import("../../lib/yjs/connection");
+    const sourceProject = options.sourceProject;
     try {
-        acquired = await acquireClientByProjectId(sourceProjectId, signal);
-        if (!acquired) {
+        if (!sourceProject) {
             return {
                 unavailableReason: "The source project is not available.",
                 ...noScheduleRules(),
@@ -463,7 +523,7 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
         for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
             if (cancelled()) return { ...noScheduleRules(), rowCounts };
 
-            const sourceHandles = getTableHandles(acquired.client.project.ydoc, sourceTableId);
+            const sourceHandles = getTableHandles(sourceProject.ydoc, sourceTableId);
             const destinationHandles = getTableHandles(destinationDoc, destinationTableId);
             if (!sourceHandles || !destinationHandles) {
                 unavailableReason = `Source Grid ${sourceTableId} is not available.`;
@@ -480,7 +540,7 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
                     }
                     if (cancelled()) return { ...noScheduleRules(), rowCounts };
                     if (
-                        getTableHandles(acquired.client.project.ydoc, sourceTableId)?.doc !== sourceHandles.doc
+                        getTableHandles(sourceProject.ydoc, sourceTableId)?.doc !== sourceHandles.doc
                         || getTableHandles(destinationDoc, destinationTableId)?.doc !== destinationHandles.doc
                     ) {
                         throw new StaleGridTransferError(
@@ -501,7 +561,7 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
         }
         options.admit();
         const schedules = cloneScheduleRules(
-            acquired.client.project,
+            sourceProject,
             destinationProject,
             tableIdMap,
             sqlNameMap,
@@ -516,14 +576,13 @@ async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCop
         };
     } catch (error) {
         if (error instanceof StaleGridTransferError) throw error;
+        options.admit();
         logger.warn({ error, sourceProjectId }, "[cloneGridTablesAcrossProjects] source rows could not be read");
         return {
             unavailableReason: error instanceof Error ? error.message : "The source project is not available.",
             ...noScheduleRules(),
             rowCounts: {},
         };
-    } finally {
-        acquired?.release();
     }
 }
 

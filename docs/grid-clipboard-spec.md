@@ -155,7 +155,11 @@ collision allows the same history entry to retry. Successful Redo refreshes
 ownership witnesses. A Paste that reuses every Table and Grid retains the same
 destination-binding replay checks: Undo removes only its placement, and Redo
 requires unchanged reused bindings without requiring the source Project to
-remain loaded. Definition recreation retains its ENUM/catalog admission.
+remain loaded. Definition recreation retains the admitted Table schemas, Grid queries and
+portable catalog (including a query-only Grid's top-level catalog) for synchronous
+ENUM compatibility checks against the current destination. Catalog-independent
+copies replay without a loaded source. Replaying saved rows/settings never
+reconnects to recopy newer source data.
 An importer-wide admission failure also cleans up earlier
 successful groups, while preserving peer replacements and recoverable
 per-group SQL validation behavior.
@@ -164,3 +168,15 @@ Values only uses the captured outward text even if its source Grid has since
 been removed. Structural choices, including Another view, still validate the
 original source binding and query across the chooser; choosing a variant does
 not recapture stale authority.
+
+A successfully acquired cross-Project row source remains connected through the
+prepared transfer's final placement admission. Its captured Grid incarnation,
+query, explicit INSERT preference and resolved Table identities/SQL names must
+still match the clipboard plan; a newer live query cannot authorize older
+clipboard SQL. Selected Table entries/subdocuments are also rechecked. Peer row
+and presentation edits do not invalidate this structural evidence. Refusal
+cleans only still-owned destination allocations and creates no placement,
+history or success report. Completion, discard and failed preparation release
+only the operation's own lease, once. Temporary source reads do not bind source
+cursors into the destination editor. Unavailable acquisition retains the
+structure-only fallback, and explicit no-data Copy opens no new source room.

@@ -296,7 +296,8 @@ export async function acquireClientByProjectId(
     if (signal?.aborted) return undefined;
 
     try {
-        const client = await connectAndRegister(projectId, "", userId);
+        // A temporary row reader must not apply source-room cursors to the destination editor.
+        const client = await connectAndRegister(projectId, "", userId, false);
         return {
             client,
             release: () => {
@@ -328,10 +329,15 @@ function authorizeClientHistory(client: YjsClient, principalId: string | undefin
     });
 }
 
-async function connectAndRegister(projectId: string, title: string, userId: string): Promise<YjsClient> {
+async function connectAndRegister(
+    projectId: string,
+    title: string,
+    userId: string,
+    bindPresence = true,
+): Promise<YjsClient> {
     const project = Project.createInstance(title);
     logger.info(`[connectAndRegister] Calling YjsClient.connect for projectId=${projectId}`);
-    const client = await YjsClient.connect(projectId, project);
+    const client = await YjsClient.connect(projectId, project, bindPresence);
     authorizeClientHistory(client, userId);
     logger.info(`[connectAndRegister] YjsClient.connect completed`);
     registry.set(keyFor(userId, projectId), [client, project]);

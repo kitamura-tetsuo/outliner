@@ -57,19 +57,20 @@ export function portableStructuralEnumsStillCompatible(
     snapshots: Readonly<Record<string, import("../clipboard/itemClipboard").GridTableSnapshot>>,
     currentSourceDoc?: Y.Doc,
     grids: Readonly<Record<string, import("../clipboard/itemClipboard").GridSnapshot>> = {},
+    capturedCatalog?: SqlCatalogSnapshot,
 ): boolean {
-    const first = Object.values(snapshots)[0];
-    if (!first?.catalog) return true;
-    if (currentSourceDoc) {
-        const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
-        if (current.status !== "ready" || current.snapshot.revision !== first.catalog.revision) return false;
+    // Query-only Grids can require types without carrying any Table snapshots.
+    const catalog = capturedCatalog ?? Object.values(snapshots)[0]?.catalog;
+    if (!catalog) return true;
+    if (Object.values(snapshots).some(snapshot => snapshot.catalog && snapshot.catalog.revision !== catalog.revision)) {
+        return false;
     }
     const sql = [
         ...Object.values(snapshots).map(snapshot => snapshot.schemaSql),
         ...Object.values(grids).map(grid => grid.query),
     ].join("\n")
         .toLowerCase();
-    const required = first.catalog.objects.map(object => enumDeclaration(object.source)).filter(value =>
+    const required = catalog.objects.map(object => enumDeclaration(object.source)).filter(value =>
         value !== undefined
         && new RegExp(
             `(^|[^a-z0-9_$])${value.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9_$]|$)`,
@@ -77,6 +78,10 @@ export function portableStructuralEnumsStillCompatible(
             .test(sql)
     );
     if (required.length === 0) return true;
+    if (currentSourceDoc) {
+        const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
+        if (current.status !== "ready" || current.snapshot.revision !== catalog.revision) return false;
+    }
     const destination = readSqlCatalog(destinationDoc.guid, destinationDoc);
     if (destination.status !== "ready") return false;
     const actual = destination.snapshot.objects.map(object => enumDeclaration(object.source));

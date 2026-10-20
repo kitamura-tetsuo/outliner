@@ -1,4 +1,9 @@
-import { createSqlCatalogObject, readSqlCatalog } from "$shared/services/sqlCatalog";
+import {
+    createSqlCatalogObject,
+    readSqlCatalog,
+    removeSqlCatalogObject,
+    replaceSqlCatalogSource,
+} from "$shared/services/sqlCatalog";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { Item, Project } from "../schema/app-schema";
@@ -17,6 +22,7 @@ import {
 import { registerEditorSurface } from "../services/editorSurface";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { createGrid, getGridRegistry, removeGridWithPlacements } from "../services/yjstable/gridDocs";
+import { exportGridSlice, exportTableStructures } from "../services/yjstable/tableClone";
 import { addRecord, createTable, getTableHandles, listTables } from "../services/yjstable/tableDocs";
 import {
     getTableClipboardSource,
@@ -46,6 +52,14 @@ const sourceTransport = vi.hoisted(() => ({ acquire: () => Promise.resolve(undef
 vi.mock("./yjsService.svelte", () => ({
     acquireClientByProjectId: () => sourceTransport.acquire(),
     getLoadedProjectDocById: () => undefined,
+}));
+
+// Controlled Table transport; real admission, copying and history remain authoritative.
+vi.mock("./yjs/connection", () => ({
+    connectTableDoc: async () => ({
+        waitForInitialSync: async () => ({ synced: true }),
+        dispose: async () => {},
+    }),
 }));
 
 type TestEndpoint =
@@ -776,6 +790,149 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         state.cursors = [];
     });
 
+    it("fresh data Copy replays retained exact state after the owned source lease is released", async () => {
+        const source = Project.createInstance("leased-source");
+        const table = createPortableTable(source.ydoc);
+        const handles = getTableHandles(source.ydoc, table)!;
+        addRecord(handles, { id: "saved", value: "original" }, "saved");
+        const grid = createGrid(source.ydoc, undefined, { query: "SELECT * FROM sales", insertTargetTableId: table });
+        const released = vi.fn();
+        sourceTransport.acquire = async () => ({ client: { project: source }, release: released });
+        const destination = state.doc;
+        const outline = destination.getMap("clipboard-outline");
+        const manager = new Y.UndoManager(outline);
+        state.undoManager = manager;
+        globalUndoRouter.clear();
+        globalUndoRouter.register(manager);
+        const listener = (event: Event) =>
+            outline.set("placement", (event as CustomEvent).detail.structuredItems[0].yjsGridId);
+        window.addEventListener("paste-multi-item", listener);
+        try {
+            await KeyEventHandler.handlePaste(pasteEvent(
+                JSON.stringify({
+                    version: 3,
+                    sourceProjectId: source.ydoc.guid,
+                    tables: exportTableStructures(source.ydoc, [table]),
+                    grids: { [grid]: exportGridSlice(source.ydoc, grid) },
+                    items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: grid }],
+                }),
+                "Grid",
+            ));
+            expect(released).toHaveBeenCalledTimes(1);
+            const copied = listTables(destination)[0].tableId;
+            const copiedGrid = [...getGridRegistry(destination).keys()][0];
+            const before = {
+                table: getTableHandles(destination, copied)!.data.toJSON(),
+                grid: getGridRegistry(destination).get(copiedGrid)!.toJSON(),
+            };
+            expect(before.table).toEqual({ saved: { id: "saved", value: "original" } });
+            handles.doc.transact(() => addRecord(handles, { id: "later", value: "must not recopy" }, "later"), "peer");
+            source.ydoc.transact(
+                () => getGridRegistry(source.ydoc).get(grid)!.set("query", "SELECT id FROM sales"),
+                "peer",
+            );
+            globalUndoRouter.undo();
+            expect(listTables(destination)).toEqual([]);
+            globalUndoRouter.redo();
+            expect(listTables(destination).map(t => t.tableId)).toEqual([copied]);
+            expect(outline.toJSON()).toEqual({ placement: copiedGrid });
+            expect(getTableHandles(destination, copied)!.data.toJSON()).toEqual(before.table);
+            expect(getGridRegistry(destination).get(copiedGrid)!.toJSON()).toEqual(before.grid);
+            expect(released).toHaveBeenCalledTimes(1);
+        } finally {
+            window.removeEventListener("paste-multi-item", listener);
+            globalUndoRouter.unregister(manager);
+            manager.destroy();
+        }
+    });
+    for (const requiredEnum of [false, true]) {
+        it(`zero-Table fresh Grid replay retains top-level catalog evidence: ENUM=${requiredEnum}`, async () => {
+            const source = new Y.Doc({ guid: "query-only-source" });
+            if (requiredEnum) {
+                createSqlCatalogObject(source, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
+            }
+            const catalog = readSqlCatalog(source.guid, source);
+            if (catalog.status !== "ready") throw new Error("catalog unavailable");
+            const destination = state.doc;
+            const enumId = requiredEnum
+                ? createSqlCatalogObject(destination, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')")
+                : undefined;
+            const outline = destination.getMap("clipboard-outline");
+            const manager = new Y.UndoManager(outline);
+            state.undoManager = manager;
+            globalUndoRouter.clear();
+            globalUndoRouter.register(manager);
+            const listener = (event: Event) =>
+                outline.set("placement", (event as CustomEvent).detail.structuredItems[0].yjsGridId);
+            window.addEventListener("paste-multi-item", listener);
+            try {
+                const query = requiredEnum ? "SELECT 'Open'::task_state AS value" : "SELECT 1 AS value";
+                await KeyEventHandler.handlePaste(pasteEvent(
+                    JSON.stringify({
+                        version: 3,
+                        sourceProjectId: source.guid,
+                        tables: {},
+                        catalog: catalog.snapshot,
+                        grids: {
+                            query: {
+                                gridId: "query",
+                                name: "Query",
+                                query,
+                                components: {},
+                                columnOrder: [],
+                                tableIds: [],
+                            },
+                        },
+                        items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "query" }],
+                    }),
+                    "Query",
+                ));
+                const id = [...getGridRegistry(destination).keys()][0];
+                expect(id).toBeTruthy();
+                const saved = getGridRegistry(destination).get(id)!.toJSON();
+                globalUndoRouter.undo();
+                expect(getGridRegistry(destination).size).toBe(0);
+                globalUndoRouter.redo();
+                expect(outline.toJSON()).toEqual({ placement: id });
+                expect(getGridRegistry(destination).get(id)!.toJSON()).toEqual(saved);
+                if (enumId) {
+                    globalUndoRouter.undo();
+                    replaceSqlCatalogSource(destination, enumId, "CREATE TYPE task_state AS ENUM ('Closed', 'Open')");
+                    const positions = [
+                        globalUndoRouter.undoDepth,
+                        globalUndoRouter.redoDepth,
+                        manager.undoStack.length,
+                        manager.redoStack.length,
+                    ];
+                    globalUndoRouter.redo();
+                    expect(getGridRegistry(destination).size).toBe(0);
+                    expect(outline.size).toBe(0);
+                    expect([
+                        globalUndoRouter.undoDepth,
+                        globalUndoRouter.redoDepth,
+                        manager.undoStack.length,
+                        manager.redoStack.length,
+                    ]).toEqual(positions);
+                    expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("refused");
+                    removeSqlCatalogObject(destination, enumId);
+                    globalUndoRouter.redo();
+                    expect(getGridRegistry(destination).size).toBe(0);
+                    expect(outline.size).toBe(0);
+                    expect([
+                        globalUndoRouter.undoDepth,
+                        globalUndoRouter.redoDepth,
+                        manager.undoStack.length,
+                        manager.redoStack.length,
+                    ]).toEqual(positions);
+                    expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("refused");
+                }
+            } finally {
+                window.removeEventListener("paste-multi-item", listener);
+                globalUndoRouter.unregister(manager);
+                manager.destroy();
+            }
+        });
+    }
     for (const deleted of [false, true]) {
         it(`all-reused Paste replay ${deleted ? "refuses a peer Grid deletion" : "survives unloaded source and peer row edits"}`, async () => {
             const destination = state.doc;
@@ -840,16 +997,13 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
                 if (!deleted) {
                     globalUndoRouter.undo();
                     globalUndoRouter.undo();
-                    const beforeRecreation = positions();
+                    expect(positions()).toEqual([0, 2, 0, 2]);
                     expect(listTables(destination)).toEqual([]);
                     globalUndoRouter.redo();
-                    expect(listTables(destination)).toEqual([]);
-                    expect(outline.size).toBe(0);
-                    expect(positions()).toEqual(beforeRecreation);
-                    expect(globalUndoRouter.lastAsyncOutcome).toEqual({
-                        status: "refused",
-                        reason: "Structural ENUM compatibility changed",
-                    });
+                    expect(listTables(destination).map(t => t.tableId)).toEqual([table]);
+                    expect([...getGridRegistry(destination).keys()]).toEqual([grid]);
+                    expect(outline.toJSON()).toEqual({ "placement-1": grid });
+                    expect(positions()).toEqual([1, 1, 1, 1]);
                 }
             } finally {
                 window.removeEventListener("paste-multi-item", insert);

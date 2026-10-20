@@ -607,7 +607,7 @@ export async function setupProviderForRoom(
     return { provider, awareness, waitForInitialSync, dispose };
 }
 
-export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
+export async function createProjectConnection(projectId: string, bindPresence = true): Promise<ProjectConnection> {
     logger.debug(`[createProjectConnection] Starting for projectId=${projectId}`);
     const doc = new Y.Doc({ guid: projectId });
     const room = projectRoomPath(projectId);
@@ -619,7 +619,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         room,
         doc,
         "createProjectConnection",
-        { setAwarenessUser: true, bindPresence: true, attachTokenRefreshHook: true, persistence },
+        { setAwarenessUser: bindPresence, bindPresence, attachTokenRefreshHook: true, persistence },
     );
 
     // Wait for initial project sync to complete (or time out) before connecting pages.
