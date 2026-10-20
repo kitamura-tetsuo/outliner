@@ -73,7 +73,7 @@ export interface ProjectSelectSession {
     setQuery(query: string): void;
     runNow(): Promise<ProjectSelectEvidence | undefined>;
     resolveRelation(sqlName: string): Promise<RelationProvider | undefined>;
-    dispose(): void;
+    dispose(): Promise<void>;
 }
 
 export function createProjectSelectSession(options: {
@@ -102,6 +102,8 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
     private query: string;
     private timer: ReturnType<typeof setTimeout> | undefined;
     private disposed = false;
+    private runs = new Set<Promise<ProjectSelectEvidence | undefined>>();
+    private disposal?: Promise<void>;
     private currentEvidence: ProjectSelectEvidence | undefined;
     private catalog: CatalogRuntimeState = { status: "building" };
     private dependencyProviders = new Map<string, RelationProvider>();
@@ -184,7 +186,14 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         return this.registry?.resolveRelation?.(sqlName) ?? this.engine.resolveRelation(sqlName);
     }
 
-    async runNow(): Promise<ProjectSelectEvidence | undefined> {
+    runNow(): Promise<ProjectSelectEvidence | undefined> {
+        const run = this.execute();
+        this.runs.add(run);
+        void run.then(() => this.runs.delete(run), () => this.runs.delete(run));
+        return run;
+    }
+
+    private async execute(): Promise<ProjectSelectEvidence | undefined> {
         if (this.disposed) return undefined;
         if (this.timer !== undefined) clearTimeout(this.timer);
         this.timer = undefined;
@@ -250,6 +259,17 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 executionGeneration: generation,
                 catalogGeneration: ready.generation,
                 catalogRevision: ready.snapshot.revision,
+                dependencyStatus: [...usedNames].every(name => {
+                        const provider = this.dependencyProviders.get(name);
+                        const source = provider?.evidence;
+                        return source !== undefined && provider?.sqlName === name && source.sqlName === name
+                            && sources.some(known =>
+                                known.kind === source.kind && known.id === source.id
+                                && known.sqlName === name && known.schemaRevision === source.schemaRevision
+                            );
+                    })
+                    ? "proven"
+                    : "unknown",
                 sources,
                 columns: result.columns.map((name, index) => ({ name, typeId: result.columnTypes?.[index] })),
                 rows: result.rows,
@@ -316,16 +336,29 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
         this.dependencyProviders.clear();
     }
 
-    dispose(): void {
-        if (this.disposed) return;
+    dispose(): Promise<void> {
+        if (this.disposal) return this.disposal;
         this.disposed = true;
         this.generation++;
         if (this.timer !== undefined) clearTimeout(this.timer);
         this.unsubscribeCatalog();
         getTableRegistry(this.projectDoc).unobserveDeep(this.registryObserver);
-        this.releaseDependencies();
-        this.engine.dispose();
         this.publish({ status: "disposed" });
+        // Invalidation is synchronous; release provider holds only after native
+        // work already started by this session has settled.
+        const release = () => {
+            this.releaseDependencies();
+            this.engine.dispose();
+        };
+        if (this.runs.size === 0) {
+            // Preserve immediate release for idle sessions (including warm
+            // cache expiry scheduling); only started work needs draining.
+            release();
+            this.disposal = Promise.resolve();
+        } else {
+            this.disposal = Promise.allSettled([...this.runs]).then(release);
+        }
+        return this.disposal;
     }
 }
 

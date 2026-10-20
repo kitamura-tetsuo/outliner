@@ -99,6 +99,6 @@ describe("source-independent MCP Grid contract", function() {
         expect(created.isError, JSON.stringify(created)).not.to.equal(true);
         expect(created.payload.sourceDiagnostics.dependencies.status).to.equal("unknown");
         expect(created.payload.sourceDiagnostics.insert.mode).to.equal("unavailable");
-        expect(created.payload.sourceDiagnostics.insert.reason).to.contain("Native bindings");
+        expect(created.payload.sourceDiagnostics.insert.reason).to.contain("cannot certify");
     });
 });

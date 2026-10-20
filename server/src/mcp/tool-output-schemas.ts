@@ -22,7 +22,6 @@ const sourceRelation = z.object({
     kind: z.enum(["table", "system"]),
     id: z.string(),
     sqlName: z.string(),
-    schemaRevision: z.string(),
 });
 const sourceDiagnostics = z.object({
     execution: z.object({
@@ -43,7 +42,7 @@ const sourceDiagnostics = z.object({
         branchCount: z.number().optional(),
         truncated: z.boolean(),
         status: z.enum(["proven", "unsupported", "unknown"]),
-        reason: z.string().optional(),
+        reason: z.string().max(512).optional(),
         suppliers: z.array(sourceRelation),
         branches: z.array(
             z.object({
@@ -52,7 +51,7 @@ const sourceDiagnostics = z.object({
                     z.object({ outputColumn: z.string(), physicalColumn: z.string(), source: sourceRelation }),
                 ),
                 routedIdentity: z.boolean(),
-                claimedSourceKind: z.string().optional(),
+                claimedSourceKind: z.string().max(512).optional(),
             }),
         ),
         bareIdSource: sourceRelation.optional(),
@@ -75,9 +74,9 @@ const sourceDiagnostics = z.object({
         preferenceDiagnostic: z.object({
             code: z.enum(["not-a-supplier", "unavailable"]),
             tableId: z.string(),
-            message: z.string(),
+            message: z.string().max(512),
         }).optional(),
-        reason: z.string().optional(),
+        reason: z.string().max(512).optional(),
     }),
 });
 const revision = z.string();

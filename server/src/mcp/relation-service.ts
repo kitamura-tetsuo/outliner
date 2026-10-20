@@ -29,7 +29,7 @@ import { readGridPresentation } from "./grid-presentation.js";
 import { boundGridRelations } from "./grid-query-evidence.js";
 import { gridColumnsWithVisibility, mcpGridComponents } from "./grid-visibility.js";
 import { closeLiveRoom, isLiveRoom, type LiveRoomHost, openLiveRoom } from "./live-room.js";
-import { McpEffectError } from "./mcp-error.js";
+import { type McpEffect, McpEffectError } from "./mcp-error.js";
 import {
     assertRevision,
     IdempotencyCache,
@@ -299,6 +299,38 @@ export class OutlinerRelationService {
         return this.hocuspocus as LiveRoomHost;
     }
 
+    private async authorizeGridProject(uid: string, projectId: string): Promise<void> {
+        try {
+            if (await this.canAccess(uid, projectId)) return;
+        } catch {
+            // ACL backend failures carry no caller-visible source diagnostics.
+        }
+        throw new McpReadError("forbidden", "Project is inaccessible");
+    }
+
+    /** Capture failures as well as success, including all room cleanup. */
+    private async discloseGrid<T>(
+        uid: string,
+        projectId: string,
+        operation: () => Promise<T>,
+        effect?: (result: T) => McpEffect,
+    ): Promise<T> {
+        const outcome = await operation().then(
+            value => ({ ok: true as const, value }),
+            error => ({ ok: false as const, error }),
+        );
+        try {
+            await this.authorizeGridProject(uid, projectId);
+        } catch {
+            if (outcome.ok && effect) {
+                throw new McpEffectError("forbidden", "Project is inaccessible", {}, effect(outcome.value));
+            }
+            throw new McpReadError("forbidden", "Project is inaccessible");
+        }
+        if (!outcome.ok) throw outcome.error;
+        return outcome.value;
+    }
+
     private async withGridProject<T>(
         uid: string,
         projectId: string,
@@ -306,12 +338,12 @@ export class OutlinerRelationService {
         acceptedEffect: (result: T) => boolean = () => false,
     ): Promise<T> {
         if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) throw new McpReadError("invalid_argument", "Invalid project ID");
-        if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
+        await this.authorizeGridProject(uid, projectId);
         const host = this.gridHost();
         const connection = await openLiveRoom(host, `projects/${projectId}`, uid, { effect: "none" });
         let accepted = false;
         try {
-            if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
+            await this.authorizeGridProject(uid, projectId);
             const result = await fn(connection.document as unknown as Y.Doc);
             accepted = acceptedEffect(result);
             return result;
@@ -1229,45 +1261,47 @@ export class OutlinerRelationService {
     }
 
     /** Execute a proposed Grid query through the production validator and materializer without saving it. */
-    validateGridQuery(uid: string, projectId: string, gridId: string, query: string, resultLimit = 25) {
+    async validateGridQuery(uid: string, projectId: string, gridId: string, query: string, resultLimit = 25) {
         if (!/^[A-Za-z0-9_-]{1,200}$/.test(gridId)) throw new McpReadError("invalid_argument", "Invalid Grid ID");
         if (!Number.isInteger(resultLimit) || resultLimit < 1 || resultLimit > 100) {
             throw new McpReadError("invalid_argument", "resultLimit must be an integer from 1 to 100");
         }
-        return this.withGridProject(uid, projectId, async doc => {
-            const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
-            if (!grid) throw new McpReadError("not_found", "Grid not found");
-            const sources = new Map<string, TableDoc>();
-            try {
-                const { validation, snapshot } = await this.validateGridCandidate(
-                    uid,
-                    projectId,
-                    doc,
-                    query,
-                    grid.get("components"),
-                    resultLimit,
-                    sources,
-                    typeof grid.get("insertTargetTableId") === "string"
-                        ? grid.get("insertTargetTableId") as string
-                        : undefined,
-                );
-                if (
-                    doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId) !== grid
-                    || !this.gridInputsLive(projectId, doc, sources)
-                    || (snapshot !== undefined && this.validationSnapshot(doc, sources) !== snapshot)
-                ) {
-                    return {
-                        ...validation,
-                        accepted: false,
-                        sourceDiagnostics: unavailableViewSources(),
-                        errors: [{ phase: "currentness", message: "Grid or sources changed during validation" }],
-                    };
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) throw new McpReadError("invalid_argument", "Invalid project ID");
+        return this.discloseGrid(uid, projectId, () =>
+            this.withGridProject(uid, projectId, async doc => {
+                const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
+                if (!grid) throw new McpReadError("not_found", "Grid not found");
+                const sources = new Map<string, TableDoc>();
+                try {
+                    const { validation, snapshot } = await this.validateGridCandidate(
+                        uid,
+                        projectId,
+                        doc,
+                        query,
+                        grid.get("components"),
+                        resultLimit,
+                        sources,
+                        typeof grid.get("insertTargetTableId") === "string"
+                            ? grid.get("insertTargetTableId") as string
+                            : undefined,
+                    );
+                    if (
+                        doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId) !== grid
+                        || !this.gridInputsLive(projectId, doc, sources)
+                        || (snapshot !== undefined && this.validationSnapshot(doc, sources) !== snapshot)
+                    ) {
+                        return {
+                            ...validation,
+                            accepted: false,
+                            sourceDiagnostics: unavailableViewSources(),
+                            errors: [{ phase: "currentness", message: "Grid or sources changed during validation" }],
+                        };
+                    }
+                    return validation;
+                } finally {
+                    await this.releaseGridSources(sources);
                 }
-                return validation;
-            } finally {
-                for (const source of sources.values()) await source.disconnect();
-            }
-        });
+            }));
     }
 
     /**
@@ -1400,46 +1434,31 @@ export class OutlinerRelationService {
                 executionGeneration: 1,
                 catalogGeneration: 1,
                 catalogRevision: catalog.snapshot.revision,
+                dependencyStatus: binding.status,
                 sources: allSources.filter(source => dependencies.includes(source.sqlName)),
                 columns: result.fields.map(field => ({ name: field.name, typeId: field.dataTypeID })),
             };
-            const provenance = binding.status === "proven" ? analyzeProjectQueryProvenance(evidence) : {
-                status: "unknown" as const,
-                reason: "Native bindings cannot certify the admitted Project relation subset",
-                dependencies: { status: "unknown" as const, relations: evidence.sources },
-                suppliers: [],
-                branches: [],
-                queryId: evidence.queryId,
-                queryRevision: 1,
-                executionGeneration: 1,
-                catalogGeneration: 1,
-                fingerprint: "",
-            };
-            const preference = binding.status === "proven"
-                ? await validateInsertTargetPreference({
-                    evidence,
-                    provenance,
-                    isEvidenceCurrent: () =>
-                        this.gridInputsLive(projectId, doc, sources)
-                        && this.validationSnapshot(doc, sources) === snapshot,
-                    resolveLiveInsertCandidate: async supplier => {
-                        const source = evidence.sources.find(source =>
-                            source.kind === supplier.kind && source.id === supplier.id
-                        );
-                        if (
-                            !source
-                            || (source.kind === "table"
-                                && !this.tables(doc).some(table =>
-                                    table.tableId === source.id && table.relation === source.sqlName
-                                ))
-                        ) return undefined;
-                        return { source, insert: { requiresDestination: source.kind === "system" } };
-                    },
-                }, insertTargetTableId)
-                : {
-                    valid: insertTargetTableId === undefined,
-                    resolution: { mode: "unavailable" as const, reason: provenance.reason },
-                };
+            const provenance = analyzeProjectQueryProvenance(evidence);
+            const preference = await validateInsertTargetPreference({
+                evidence,
+                provenance,
+                isEvidenceCurrent: () =>
+                    this.gridInputsLive(projectId, doc, sources)
+                    && this.validationSnapshot(doc, sources) === snapshot,
+                resolveLiveInsertCandidate: async supplier => {
+                    const source = evidence.sources.find(source =>
+                        source.kind === supplier.kind && source.id === supplier.id
+                    );
+                    if (
+                        !source
+                        || (source.kind === "table"
+                            && !this.tables(doc).some(table =>
+                                table.tableId === source.id && table.relation === source.sqlName
+                            ))
+                    ) return undefined;
+                    return { source, insert: { requiresDestination: source.kind === "system" } };
+                },
+            }, insertTargetTableId);
             const sourceDiagnostics =
                 this.gridInputsLive(projectId, doc, sources) && this.validationSnapshot(doc, sources) === snapshot
                     ? describeViewSources(evidence, provenance, preference.resolution)
@@ -1545,11 +1564,7 @@ export class OutlinerRelationService {
         if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) {
             throw new McpReadError("invalid_argument", "Invalid project ID");
         }
-        const authorize = async () => {
-            if (!await this.canAccess(uid, projectId)) {
-                throw new McpReadError("forbidden", "Project is inaccessible");
-            }
-        };
+        const authorize = () => this.authorizeGridProject(uid, projectId);
         // Unauthorized retries must not even consult (or expire) cache entries.
         await authorize();
         if (
@@ -1563,41 +1578,41 @@ export class OutlinerRelationService {
             projectId,
             request.dryRun ? undefined : request.operationId,
         );
-        const { result, replayed } = await this.idempotency.run(key, async () => {
-            try {
-                const created = await this.createGridOnPage(uid, projectId, {
-                    insertTargetTableId: request.insertTargetTableId,
-                    pageId: request.pageId,
-                    query: request.query,
-                    name: request.name,
-                }, { dryRun: request.dryRun, beforePublication: authorize });
-                const { validation: _validation, ...configuration } = created;
-                return {
-                    ...configuration,
-                    applied: !request.dryRun,
-                    revision: created.revision,
-                };
-            } catch (error) {
-                if (error instanceof McpReadError && error.code === "kind_mismatch") {
-                    throw new McpReadError("invalid_argument", "Destination item is not a top-level Page");
-                }
-                if (error instanceof McpReadError && error.code === "internal_failure") {
-                    throw new McpReadError("internal_failure", "Grid creation failed");
-                }
-                throw error;
-            }
-        });
-        // An awaiting replay is a separate disclosure boundary. Revocation here
-        // leaves the original successful cache entry intact for authorized callers.
-        try {
-            await authorize();
-        } catch {
-            throw new McpEffectError("forbidden", "Project is inaccessible", {}, {
+        const { result, replayed } = await this.discloseGrid(
+            uid,
+            projectId,
+            () =>
+                this.idempotency.run(key, async () => {
+                    try {
+                        const created = await this.createGridOnPage(uid, projectId, {
+                            insertTargetTableId: request.insertTargetTableId,
+                            pageId: request.pageId,
+                            query: request.query,
+                            name: request.name,
+                        }, { dryRun: request.dryRun, beforePublication: authorize });
+                        const { validation: _validation, ...configuration } = created;
+                        return {
+                            ...configuration,
+                            applied: !request.dryRun,
+                            revision: created.revision,
+                        };
+                    } catch (error) {
+                        if (error instanceof McpReadError && error.code === "kind_mismatch") {
+                            throw new McpReadError("invalid_argument", "Destination item is not a top-level Page");
+                        }
+                        if (error instanceof McpReadError && error.code === "internal_failure") {
+                            throw new McpReadError("internal_failure", "Grid creation failed");
+                        }
+                        throw error;
+                    }
+                }),
+            ({ result, replayed }) => ({
                 applied: result.applied,
                 replayed,
                 entity: result.gridId ? `grid:${result.gridId}` : undefined,
-            });
-        }
+                newRevision: result.revision,
+            }),
+        );
         return { ...result, replayed };
     }
 
@@ -2705,6 +2720,9 @@ export class OutlinerRelationService {
         query: string,
         precondition: MutationPrecondition & { expectedRevision: string; },
     ) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) throw new McpReadError("invalid_argument", "Invalid project ID");
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(gridId)) throw new McpReadError("invalid_argument", "Invalid Grid ID");
+        await this.authorizeGridProject(uid, projectId);
         const cacheKey = this.idempotency.key(
             "update_grid_query",
             uid,
@@ -2712,102 +2730,118 @@ export class OutlinerRelationService {
             gridId,
             precondition.dryRun ? undefined : precondition.operationId,
         );
-        const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
-            return this.withGridProject(uid, projectId, async doc => {
-                const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
-                if (!grid) throw new McpReadError("not_found", "Grid not found");
-                const catalog = readSqlCatalog(projectId, doc as never);
-                if (catalog.status !== "ready") {
-                    throw new McpReadError("validation_failed", "SQL catalog unavailable");
-                }
-                const sources = new Map<string, TableDoc>();
-                try {
-                    const { validation, snapshot } = await this.validateGridCandidate(
-                        uid,
-                        projectId,
-                        doc,
-                        query,
-                        grid.get("components"),
-                        25,
-                        sources,
-                        typeof grid.get("insertTargetTableId") === "string"
-                            ? grid.get("insertTargetTableId") as string
-                            : undefined,
-                    );
-                    if (!validation.accepted || !snapshot) {
-                        throw new McpReadError("validation_failed", "Grid query validation failed", { validation });
-                    }
-                    const dependencies = new Set<string>(validation.dependencies);
-                    const dependencyWarnings = (validation.warnings ?? []).filter(warning =>
-                        dependencies.has(warning.relation)
-                    );
-                    if (dependencyWarnings.length > 0) {
-                        throw new McpReadError(
-                            "validation_failed",
-                            "Grid query dependencies could not be safely materialized",
-                            { validation: { ...validation, warnings: dependencyWarnings } },
-                        );
-                    }
-                    await this.options.beforeGridQueryPublication?.();
-                    if (!await this.canAccess(uid, projectId)) {
-                        throw new McpReadError("forbidden", "Project is inaccessible");
-                    }
-                    const currentCatalog = readSqlCatalog(projectId, doc as never);
-                    if (doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId) !== grid) {
-                        throw new McpReadError("stale_revision", "Grid entry changed during validation");
-                    }
-                    if (!this.gridInputsLive(projectId, doc, sources)) {
-                        throw new McpReadError("stale_revision", "Grid rooms changed during validation");
-                    }
-                    const currentSnapshot = this.validationSnapshot(doc, sources);
-                    if (
-                        currentCatalog.status !== "ready"
-                        || currentCatalog.snapshot.revision !== catalog.snapshot.revision
-                        || currentSnapshot !== snapshot
-                    ) {
-                        throw new McpReadError("stale_revision", "Grid query inputs changed after validation", {
-                            expectedCatalogRevision: catalog.snapshot.revision,
-                            actualCatalogRevision: currentCatalog.status === "ready"
-                                ? currentCatalog.snapshot.revision
-                                : undefined,
-                        });
-                    }
-                    const previousQuery = String(grid.get("query") ?? "");
-                    const priorRevision = revisionOf({
-                        query: previousQuery,
-                        catalogRevision: catalog.snapshot.revision,
-                    });
-                    assertRevision(precondition.expectedRevision, priorRevision, { kind: "grid", viewId: gridId });
-                    const applied = !precondition.dryRun;
-                    if (applied) {
-                        doc.transact(() => {
-                            grid.set("query", query);
-                            if (query !== previousQuery) grid.set("sqlAliasPolicyVersion", 1);
-                        }, "mcp-view-query");
-                    }
-                    const revision = applied
-                        ? revisionOf({ query, catalogRevision: catalog.snapshot.revision })
-                        : priorRevision;
-                    return {
-                        gridId,
-                        applied,
-                        priorRevision,
-                        revision,
-                        before: { revision: priorRevision },
-                        after: { query, revision: applied ? revision : priorRevision },
-                        validation,
-                        ordering: {
-                            source: validation.inferredOrdering,
-                            columns: validation.resultColumns.map(column => column.name),
-                            sampleRows: validation.sampleRows,
-                            truncated: validation.truncated,
-                        },
-                    };
-                } finally {
-                    for (const source of sources.values()) await source.disconnect();
-                }
-            });
-        });
+        const { result, replayed } = await this.discloseGrid(
+            uid,
+            projectId,
+            () =>
+                this.idempotency.run(cacheKey, async () => {
+                    return this.withGridProject(uid, projectId, async doc => {
+                        const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
+                        if (!grid) throw new McpReadError("not_found", "Grid not found");
+                        const catalog = readSqlCatalog(projectId, doc as never);
+                        if (catalog.status !== "ready") {
+                            throw new McpReadError("validation_failed", "SQL catalog unavailable");
+                        }
+                        const sources = new Map<string, TableDoc>();
+                        let published = false;
+                        try {
+                            const { validation, snapshot } = await this.validateGridCandidate(
+                                uid,
+                                projectId,
+                                doc,
+                                query,
+                                grid.get("components"),
+                                25,
+                                sources,
+                                typeof grid.get("insertTargetTableId") === "string"
+                                    ? grid.get("insertTargetTableId") as string
+                                    : undefined,
+                            );
+                            if (!validation.accepted || !snapshot) {
+                                throw new McpReadError("validation_failed", "Grid query validation failed", {
+                                    validation,
+                                });
+                            }
+                            const dependencies = new Set<string>(validation.dependencies);
+                            const dependencyWarnings = (validation.warnings ?? []).filter(warning =>
+                                dependencies.has(warning.relation)
+                            );
+                            if (dependencyWarnings.length > 0) {
+                                throw new McpReadError(
+                                    "validation_failed",
+                                    "Grid query dependencies could not be safely materialized",
+                                    { validation: { ...validation, warnings: dependencyWarnings } },
+                                );
+                            }
+                            await this.options.beforeGridQueryPublication?.();
+                            await this.authorizeGridProject(uid, projectId);
+                            const currentCatalog = readSqlCatalog(projectId, doc as never);
+                            if (doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId) !== grid) {
+                                throw new McpReadError("stale_revision", "Grid entry changed during validation");
+                            }
+                            if (!this.gridInputsLive(projectId, doc, sources)) {
+                                throw new McpReadError("stale_revision", "Grid rooms changed during validation");
+                            }
+                            const currentSnapshot = this.validationSnapshot(doc, sources);
+                            if (
+                                currentCatalog.status !== "ready"
+                                || currentCatalog.snapshot.revision !== catalog.snapshot.revision
+                                || currentSnapshot !== snapshot
+                            ) {
+                                throw new McpReadError("stale_revision", "Grid query inputs changed after validation", {
+                                    expectedCatalogRevision: catalog.snapshot.revision,
+                                    actualCatalogRevision: currentCatalog.status === "ready"
+                                        ? currentCatalog.snapshot.revision
+                                        : undefined,
+                                });
+                            }
+                            const previousQuery = String(grid.get("query") ?? "");
+                            const priorRevision = revisionOf({
+                                query: previousQuery,
+                                catalogRevision: catalog.snapshot.revision,
+                            });
+                            assertRevision(precondition.expectedRevision, priorRevision, {
+                                kind: "grid",
+                                viewId: gridId,
+                            });
+                            const applied = !precondition.dryRun;
+                            if (applied) {
+                                doc.transact(() => {
+                                    grid.set("query", query);
+                                    if (query !== previousQuery) grid.set("sqlAliasPolicyVersion", 1);
+                                }, "mcp-view-query");
+                                published = true;
+                            }
+                            const revision = applied
+                                ? revisionOf({ query, catalogRevision: catalog.snapshot.revision })
+                                : priorRevision;
+                            return {
+                                gridId,
+                                applied,
+                                priorRevision,
+                                revision,
+                                before: { revision: priorRevision },
+                                after: { query, revision: applied ? revision : priorRevision },
+                                validation,
+                                ordering: {
+                                    source: validation.inferredOrdering,
+                                    columns: validation.resultColumns.map(column => column.name),
+                                    sampleRows: validation.sampleRows,
+                                    truncated: validation.truncated,
+                                },
+                            };
+                        } finally {
+                            await this.releaseGridSources(sources, published);
+                        }
+                    }, result => result.applied === true);
+                }),
+            ({ result, replayed }) => ({
+                applied: result.applied,
+                replayed,
+                entity: `grid:${result.gridId}`,
+                newRevision: result.revision,
+            }),
+        );
         return { ...result, replayed };
     }
 

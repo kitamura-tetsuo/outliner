@@ -7,6 +7,8 @@ tests:
 - client/e2e/new/mcp-view-sources-roundtrip-5614cafe.spec.ts
 - server/tests/mcp-create-grid-on-page-concurrency.test.ts
 - server/tests/mcp-create-grid-on-page.test.ts
+- server/tests/mcp-grid-disclosure-auth.test.ts
+- server/tests/mcp-grid-query-replay-auth.test.ts
 - server/tests/mcp-relation-service.test.ts
 - server/tests/mcp-view-sources-catalog-stale.test.ts
 - server/tests/mcp-view-sources-http.test.ts

@@ -39,6 +39,7 @@ async function setup() {
         query: QUERY,
         executionGeneration: 1,
         catalogGeneration: 1,
+        dependencyStatus: "proven",
         sources: [provider.evidence],
         columns: ["id", "title", "status"].map(name => ({ name })),
         rows: [{ id: rowId, title: "One", status: "todo" }],

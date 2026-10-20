@@ -72,7 +72,7 @@ export function createGridFixture(canAccess: (uid: string, projectId: string) =>
     } as never;
     const relations = new OutlinerRelationService(hocuspocus, canAccess);
     const reads = new OutlinerReadService(hocuspocus, canAccess, async () => []);
-    return { project, tasks, people, page, first, nested, otherPage, relations, reads, addTable };
+    return { project, tasks, people, page, first, nested, otherPage, relations, reads, addTable, hocuspocus };
 }
 
 export function gridIds(project: Project): string[] {

@@ -1,3 +1,5 @@
+import { analyzeProjectQueryProvenance } from "$shared/services/projectQueryProvenance";
+import { createProjectSelectSession } from "../../services/yjstable/projectSelectSession";
 // Loaded only by the catalog Playwright spec through a Vite module script.
 // All operations use the application's existing writers, real DB and cache.
 import { goto } from "$app/navigation";
@@ -120,6 +122,34 @@ const controls = {
     },
     tables() {
         return listTables(project().ydoc);
+    },
+    async holdViewProof(query) {
+        this.releaseViewProof();
+        const session = createProjectSelectSession({ projectDoc: project().ydoc, projectId: projectId(), query });
+        const evidence = await new Promise((resolve, reject) => {
+            let stop = () => {};
+            const timer = setTimeout(() => {
+                stop();
+                reject(new Error("No current proof"));
+            }, 20000);
+            stop = session.subscribe(state => {
+                if (state.status === "success") {
+                    clearTimeout(timer);
+                    stop();
+                    resolve(state.evidence);
+                }
+            });
+        });
+        this.heldViewProof = { session, evidence };
+        return { sources: evidence.sources, status: analyzeProjectQueryProvenance(evidence).status };
+    },
+    viewProofCurrent() {
+        const held = this.heldViewProof;
+        return held && held.session.isEvidenceCurrent(held.evidence);
+    },
+    releaseViewProof() {
+        void this.heldViewProof?.session.dispose();
+        this.heldViewProof = undefined;
     },
     snapshot(tableId) {
         const handles = getTableHandles(project().ydoc, tableId);

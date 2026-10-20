@@ -13,6 +13,8 @@ export interface SelectProvenanceEvidence {
     executionGeneration: number;
     catalogGeneration: number;
     catalogRevision?: string;
+    /** Producer certification of all physical dependencies of this execution. */
+    dependencyStatus: "proven" | "unknown";
     sources: readonly SelectRelationEvidence[];
     columns: readonly { name: string; typeId?: number; }[];
 }

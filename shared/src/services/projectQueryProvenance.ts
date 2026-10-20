@@ -34,7 +34,7 @@ export interface ProvenanceBranch {
 export interface ProjectQueryProvenance {
     status: "proven" | "unsupported" | "unknown";
     reason?: string;
-    /** A successful execution proves this set even when it is empty. */
+    /** Producer-certified dependency completeness is independent of write lineage. */
     dependencies: { status: "proven" | "unknown"; relations: readonly ProvenanceRelation[]; };
     suppliers: readonly ProvenanceRelation[];
     branches: readonly ProvenanceBranch[];
@@ -128,7 +128,7 @@ const AGGREGATES = new Set([
 export function analyzeProjectQueryProvenance(evidence: ProjectSelectEvidence): ProjectQueryProvenance {
     const dependencies = evidence.sources.map(relationIdentity);
     const base = {
-        dependencies: { status: "proven" as const, relations: dependencies },
+        dependencies: { status: evidence.dependencyStatus, relations: dependencies },
         queryId: evidence.queryId,
         queryRevision: evidence.queryRevision,
         executionGeneration: evidence.executionGeneration,
@@ -143,6 +143,10 @@ export function analyzeProjectQueryProvenance(evidence: ProjectSelectEvidence): 
         suppliers: [],
         branches: [],
     });
+
+    if (evidence.dependencyStatus !== "proven") {
+        return refuse("unknown", "The execution cannot certify all admitted Project relation dependencies");
+    }
 
     let root: Node;
     try {
@@ -398,6 +402,7 @@ function evidenceFingerprint(evidence: ProjectSelectEvidence): string {
         executionGeneration: evidence.executionGeneration,
         catalogGeneration: evidence.catalogGeneration,
         catalogRevision: evidence.catalogRevision,
+        dependencyStatus: evidence.dependencyStatus,
         columns: evidence.columns,
         sources: evidence.sources.map(source => ({
             kind: source.kind,

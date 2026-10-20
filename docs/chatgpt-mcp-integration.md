@@ -149,3 +149,22 @@ Schedule list URLs use `/{project}/-/schedules`; detail URLs use `/{project}/-/s
 5. Audit records contain fingerprints, IDs, outcomes, and revisions but redact SQL, row values, credentials, and raw user identity. A stale revision must be reread and revalidated rather than overwritten.
 
 When the correction is scoped to one Table's own SQL, `update_table_schedule_sql` collapses steps 1, 2, and 4 above into a Table-centric call: read the SQL and revision straight from `get_table.scheduleReferences`, then call `update_table_schedule_sql` with `projectId`, `tableId`, the corrected `sql`, and that same expected revision. It fails explicitly—rather than guessing—when the Table has no write-target Schedule or more than one; use `update_schedule_rule` with an explicit `ruleId` in that ambiguous case.
+
+### Current Grid evidence and disclosure
+
+A successful SELECT can have unknown dependencies: for example, an unqualified
+`pg_class` read can resolve in PostgreSQL without an admitted Project provider.
+The result remains readable, but its partial source evidence grants no row-write
+or INSERT authority. Constant queries can instead have proven empty dependencies;
+JOIN/aggregate reads can have proven dependencies while write lineage is unsupported.
+
+Public source relations contain only `kind`, `id`, and `sqlName` at every nested
+location. Exact schema revisions remain internal authority evidence. Diagnostics
+retain 100-entry limits and counts; prose and unverified source claims are limited
+to 512 characters with an explicit `[truncated]` marker.
+
+Grid creation, query validation, and query updates reauthorize disclosure after
+all asynchronous cleanup, for successful results and diagnostic failures alike.
+Query-update retries authorize before replay lookup. A known accepted mutation
+remains replayable when release fails; withheld results retain truthful effect
+metadata only in the internal audit record.

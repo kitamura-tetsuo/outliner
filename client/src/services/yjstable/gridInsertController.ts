@@ -45,7 +45,7 @@ export interface GridInsertController {
     savePreference(tableId: string | undefined): Promise<string | undefined>;
     submit(): Promise<GridInsertOutcome>;
     setQuery(query: string): void;
-    dispose(): void;
+    dispose(): Promise<void>;
 }
 
 /**
@@ -76,6 +76,8 @@ export function createGridInsertController(options: {
     let preferenceRevision = 0;
     let query = options.query;
     let disposed = false;
+    let disposal: Promise<void> | undefined;
+    const refreshes = new Set<Promise<void>>();
     let pending: Promise<GridInsertOutcome> | undefined;
     const gridId = [...getGridRegistry(options.projectDoc)].find(([, entry]) => entry === options.gridEntry)?.[0];
     let state: GridInsertState = { loading: true, pending: false, candidates: [] };
@@ -117,7 +119,14 @@ export function createGridInsertController(options: {
         state = { ...next, pending: pending !== undefined, preference: readPreference(options.gridEntry) };
         for (const listener of listeners) listener(state);
     }
-    async function refresh() {
+    function refresh(): Promise<void> {
+        const work = refreshState();
+        refreshes.add(work);
+        void work.then(() => refreshes.delete(work), () => refreshes.delete(work));
+        return work;
+    }
+    async function refreshState() {
+        if (disposed) return;
         const generation = ++publication;
         try {
             await refreshCurrent(generation);
@@ -403,7 +412,7 @@ export function createGridInsertController(options: {
             void refresh();
         },
         dispose() {
-            if (disposed) return;
+            if (disposal) return disposal;
             disposed = true;
             publication++;
             unsubscribe();
@@ -412,8 +421,11 @@ export function createGridInsertController(options: {
             for (const [text, watch] of schemaWatches) text.unobserve(watch.observer);
             schemaWatches.clear();
             options.gridEntry.unobserve(observer);
-            select.dispose();
-            engine.dispose();
+            const selectDisposal = select.dispose();
+            disposal = Promise.allSettled([...refreshes, pending, selectDisposal]).then(() => {
+                engine.dispose();
+            });
+            return disposal;
         },
     };
 }
