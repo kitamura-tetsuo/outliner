@@ -7,6 +7,7 @@ import type { AsyncUndoEntry } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
 import { listKanbans, removeKanbanWithPlacements, updateKanban } from "../yjstable/kanbanDocs";
 import {
+    assertDuplicationOwnership,
     type DuplicableObject,
     duplicateObjectSet,
     type DuplicationSetResult,
@@ -360,6 +361,8 @@ export function buildDuplicationSetPreview(
 
 /** A caller-supplied side effect folded into `duplicateSelectedObjects`'s single undo step — see `afterMaterialize`. */
 export interface DuplicationSideEffect {
+    assertUndo?: () => void;
+    assertRedo?: () => void;
     undo: () => void;
     redo: () => void;
 }
@@ -390,12 +393,15 @@ export async function duplicateSelectedObjects(
          * around the object graph's (placement after creation, before removal).
          */
         afterMaterialize?: (result: DuplicationSetResult) => DuplicationSideEffect | void;
+        assertDestination?: () => void;
     },
 ): Promise<DuplicationSetResult | null> {
     if (selected.length === 0) return null;
     let result: DuplicationSetResult | undefined;
     let sideEffect: DuplicationSideEffect | void;
     const undo = () => {
+        if (result) assertDuplicationOwnership(destinationDoc, result);
+        sideEffect?.assertUndo?.();
         sideEffect?.undo();
         if (result) rollbackObjectDuplication(destinationDoc, result);
     };
@@ -403,14 +409,25 @@ export async function duplicateSelectedObjects(
         if (!result) return;
         const created = result;
         await globalUndoRouter.runAsyncWithoutAutoCapture(async () => {
-            await materializeDuplicationPlan(
+            options.assertDestination?.();
+            sideEffect?.assertRedo?.();
+            const replayed = await materializeDuplicationPlan(
                 sourceDoc,
                 destinationDoc,
                 created.sourceObjects,
-                { copyTableData: options.copyTableData },
+                { copyTableData: options.copyTableData, synchronizeTableSubdocs: options.synchronizeTableSubdocs },
                 created.idMap,
             );
-            sideEffect?.redo();
+            try {
+                options.assertDestination?.();
+                assertDuplicationOwnership(destinationDoc, replayed);
+                sideEffect?.assertRedo?.();
+                sideEffect?.redo();
+                result = { ...replayed, sourceObjects: created.sourceObjects };
+            } catch (error) {
+                rollbackObjectDuplication(destinationDoc, replayed);
+                throw error;
+            }
         });
     };
     const entry: AsyncUndoEntry = {
@@ -435,6 +452,8 @@ export async function duplicateSelectedObjects(
         async () => {
             result = await duplicateObjectSet(sourceDoc, destinationDoc, toDuplicableObjects(selected), options);
             try {
+                options.assertDestination?.();
+                assertDuplicationOwnership(destinationDoc, result);
                 sideEffect = options.afterMaterialize?.(result);
             } catch (error) {
                 // A side effect (e.g. attaching the copied Grid to a

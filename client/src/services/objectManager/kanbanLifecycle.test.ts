@@ -67,32 +67,50 @@ describe("Kanban placement and reference lifecycle", () => {
         expect(getTableDependencies(project, unrelated).indirectSqlReferences).toEqual([]);
     });
 
+    it("keeps empty-query evidence unknown instead of inferring ownership", () => {
+        const project = Project.createInstance("kanban-unknown");
+        const source = createTable(project.ydoc, "A", "table_a");
+        const board = createKanban(project.ydoc, undefined, { query: "" });
+        const deps = getTableDependencies(project, source);
+        expect(deps.dependentKanbanIds).toEqual([]);
+        expect(deps.unknownReferences).toContainEqual(
+            expect.objectContaining({ object: { type: "kanban", id: board } }),
+        );
+        expect(buildObjectDependencyGraph(project.ydoc).analysisOf({ type: "kanban", id: board })?.status).toBe(
+            "unknown",
+        );
+    });
+
     it("tracks only parsed query dependencies and preserves SQL-dependent Kanbans for both Table policies", () => {
         const project = Project.createInstance("kanban-table-policy");
         const a = createTable(project.ydoc, "A", "table_a");
         const b = createTable(project.ydoc, "B", "table_b");
-        const direct = createKanban(project.ydoc, a, { kanbanId: "direct" });
+        const direct = createKanban(project.ydoc, a, { kanbanId: "direct", query: "SELECT * FROM table_a" });
         const indirect = createKanban(project.ydoc, b, {
             kanbanId: "indirect",
             query: "SELECT * FROM table_a -- table_b in a comment\nWHERE 'table_b' = 'table_b'",
         });
         const deps = getTableDependencies(project, a);
-        expect(deps.dependentKanbanIds).toEqual([]);
-        expect(deps.indirectSqlReferences).toEqual([
-            { type: "kanban", name: "Kanban" },
-            { type: "kanban", name: "Kanban" },
-        ]);
+        expect(deps.dependentKanbanIds).toEqual([direct, indirect]);
+        expect(deps.indirectSqlReferences).toEqual([]);
         expect(buildObjectDependencyGraph(project.ydoc).dependenciesOf({ type: "kanban", id: indirect }))
             .toEqual([{ type: "table", id: a }]);
 
+        const page = project.addPage("Boards", "author");
+        const placement = page.items.addNode("author");
+        bind(placement, indirect);
+        const originalPlacement = project.tree.getNodeValueFromKey(placement.key);
+        const originalBoard = getKanban(project.ydoc, indirect);
         expect(removeTableWithPolicy(project, a, "keep-references")).toBeDefined();
+        expect(getKanban(project.ydoc, indirect)).toEqual(originalBoard);
+        expect(project.tree.getNodeValueFromKey(placement.key)).toBe(originalPlacement);
         expect(listKanbans(project.ydoc).map(board => board.kanbanId)).toEqual(
             expect.arrayContaining([direct, indirect]),
         );
 
         const project2 = Project.createInstance("kanban-table-remove");
         const source = createTable(project2.ydoc, "A", "table_a");
-        const direct2 = createKanban(project2.ydoc, source, { kanbanId: "direct" });
+        const direct2 = createKanban(project2.ydoc, source, { kanbanId: "direct", query: "SELECT * FROM table_a" });
         expect(removeTableWithPolicy(project2, source, "remove-direct-references")).toBeDefined();
         expect(getKanban(project2.ydoc, direct2)).toBeDefined();
     });

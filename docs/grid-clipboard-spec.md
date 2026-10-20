@@ -128,3 +128,7 @@ snapshot. Cleanup owns only objects created by that transfer. Replay checks
 identities, locations and relevant owned state; a conflict preserves peer state
 and leaves history at its existing position. Successful Redo retains IDs and
 revalidates destination collisions. Consuming the Cut is not reversed by Undo.
+
+Delayed transfers validate live registry incarnations and SQL names after asynchronous preparation. A provenance-reused Table that is deleted or replaced refuses the transfer rather than falling back to a same-named relation. Mixed Diagram/Grid Copy admits its shared Grid references before allocating independent Diagram snapshots. Cross-Project Cut revalidates the staged structural transfer at the final commit boundary.
+
+Duplication history validates all created object incarnations and destination placements before Undo, and the destination Page before Redo. A refused replay preserves peer replacements and history position; successful Redo refreshes the creation witnesses for the new incarnation.

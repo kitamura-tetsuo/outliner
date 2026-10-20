@@ -37,6 +37,22 @@ describe("stored SQL read inventory", () => {
         }
     });
 
+    it("does not resolve CTE aliases to colliding physical Tables, including nested WITH", () => {
+        const doc = new Y.Doc();
+        createTable(doc, "Physical X", "x");
+        for (
+            const query of [
+                "WITH x AS (SELECT 1 AS n) SELECT * FROM x",
+                "SELECT * FROM (WITH x AS (SELECT 1 AS n) SELECT * FROM x) nested",
+            ]
+        ) {
+            const result = queryReadDependencies(doc, query);
+            expect(result.status).toBe("unknown");
+            expect(result.tableIds).toEqual([]);
+            expect(result.diagnostics.join()).toContain("scoped");
+        }
+    });
+
     it("retains known reads and reports missing relations without executing SQL", () => {
         const doc = new Y.Doc();
         const a = createTable(doc, "A", "a");

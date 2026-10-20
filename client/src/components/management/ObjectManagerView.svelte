@@ -279,6 +279,7 @@ let bulkPreviewErrors = $derived(validateBulkPreview(project, bulkPreview));
 let hiddenSelectedCount = $derived(countHiddenSelected(objects, sortedFilteredObjects, selectedObjectIds));
 
 let deleteImpact = $derived.by((): DeleteImpact | null => {
+    void objectsVersion;
     return deleteTarget && project ? getDeleteImpact(project, deleteTarget) : null;
 });
 
@@ -421,7 +422,7 @@ function executeDelete() {
     if (!deleteTarget || !project) return;
     if (project.ydoc !== deletionProjectDoc || !deletionAdmission?.()) { editError = "The object changed. Reopen the deletion confirmation."; return; }
     const currentImpact = JSON.stringify(getDeleteImpact(project, deleteTarget));
-    if (currentImpact !== deletionImpacts) { deletionImpacts = currentImpact; editError = "References changed. Review the impact and confirm again."; confirmOpen = true; return; }
+    if (currentImpact !== deletionImpacts) { deletionImpacts = currentImpact; editError = "References changed. Review the impact and confirm again."; confirmOpen = true; objectsVersion++; return false; }
     if (!deleteObject(project, deleteTarget, { projectAccess: hasWriteAccess, surfaceWritable: hasWriteAccess })) return;
     selectedObjectIds.delete(deleteTarget.id);
     deleteTarget = null;
@@ -440,6 +441,7 @@ function requestBulkDelete() {
 }
 
 function bulkDeleteMessage(): string {
+    void objectsVersion;
     // Local calculation for a synchronous confirmation message; it is not UI state.
     // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const counts = new Map<string, number>();
@@ -458,7 +460,7 @@ function bulkDeleteMessage(): string {
 function executeBulkDelete() {
     if (!project || project.ydoc !== deletionProjectDoc || !deletionAdmission?.()) { editError = "The objects changed. Reopen the deletion confirmation."; return; }
     const currentImpacts = JSON.stringify(bulkDeleteTargets.map(object => getDeleteImpact(project, object)));
-    if (currentImpacts !== deletionImpacts) { deletionImpacts = currentImpacts; editError = "References changed. Review the impact and confirm again."; confirmOpen = true; return; }
+    if (currentImpacts !== deletionImpacts) { deletionImpacts = currentImpacts; editError = "References changed. Review the impact and confirm again."; confirmOpen = true; objectsVersion++; return false; }
     if (
         !project
         || !deleteObjects(project, bulkDeleteTargets, {

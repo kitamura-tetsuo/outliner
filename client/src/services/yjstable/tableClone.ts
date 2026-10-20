@@ -27,6 +27,7 @@ import {
     createTable,
     getTableHandles,
     getTableName,
+    getTableRegistry,
     getTableSqlName,
     listTables,
     removeTable,
@@ -391,6 +392,52 @@ export async function importTableStructures(
         }
     }
 
+    // One authoritative map supplies availability, names and preferences.
+    // Scratch reuse may deliberately have no subdoc; capture that absence too.
+    type TableBinding = {
+        id: string;
+        entry: Y.Map<unknown>;
+        name: unknown;
+        doc: unknown;
+        project: unknown;
+        source: unknown;
+        owned: boolean;
+    };
+    const bindings = new Map<string, TableBinding>();
+    const registry = getTableRegistry(destinationProjectDoc);
+    const captureBinding = (sourceId: string, id: string, owned: boolean) => {
+        const entry = registry.get(id)!;
+        bindings.set(sourceId, {
+            id,
+            entry,
+            name: entry.get("sqlName"),
+            doc: entry.get("doc"),
+            project: entry.get("sourceProjectId"),
+            source: entry.get("sourceTableId"),
+            owned,
+        });
+    };
+    const bindingCurrent = (binding: TableBinding) =>
+        registry.get(binding.id) === binding.entry && binding.entry.get("sqlName") === binding.name
+        && binding.entry.get("doc") === binding.doc && binding.entry.get("sourceProjectId") === binding.project
+        && binding.entry.get("sourceTableId") === binding.source;
+    const ownedGrids = new Map<string, Y.Map<unknown>>();
+    const cleanup = () => {
+        for (const [id, entry] of ownedGrids) {
+            if (getGridRegistry(destinationProjectDoc).get(id) === entry) {
+                getGridRegistry(destinationProjectDoc).delete(id);
+            }
+        }
+        for (const binding of bindings.values()) {
+            if (binding.owned && bindingCurrent(binding)) removeTable(destinationProjectDoc, binding.id);
+        }
+    };
+    const validateBindings = () => {
+        if ([...bindings.values()].some(binding => !bindingCurrent(binding))) {
+            cleanup();
+            throw new TableCloneError("A selected destination Table binding changed during preparation");
+        }
+    };
     const reusedTableIdMap: Record<string, string> = {};
     if (sourceProjectId && allowProvenanceReuse) {
         for (const [sourceTableId, _snapshot] of [...basic.entries()]) {
@@ -404,6 +451,7 @@ export async function importTableStructures(
                 basic.delete(sourceTableId);
                 skippedSourceTableIds.push(sourceTableId);
                 reusedTableIdMap[sourceTableId] = existingTableId;
+                captureBinding(sourceTableId, existingTableId, false);
             }
         }
     }
@@ -434,9 +482,6 @@ export async function importTableStructures(
         destinationNames.set(snapshot.sqlName, destinationSqlName);
     }
 
-    const sourceIdBySqlName = new Map(
-        [...basic.entries()].map(([sourceTableId, snapshot]) => [snapshot.sqlName, sourceTableId]),
-    );
     const plans = new Map<string, PlannedTable>();
     for (const [sourceTableId, snapshot] of basic) {
         const destinationSqlName = destinationNames.get(snapshot.sqlName)!;
@@ -476,9 +521,9 @@ export async function importTableStructures(
     const assertAdmission = () => {
         try {
             admit();
+            validateBindings();
         } catch (error) {
-            for (const id of Object.values(gridIdMap)) getGridRegistry(destinationProjectDoc).delete(id);
-            for (const id of Object.values(tableIdMap)) removeTable(destinationProjectDoc, id);
+            cleanup();
             throw error;
         }
     };
@@ -511,7 +556,6 @@ export async function importTableStructures(
             continue;
         }
 
-        const created: string[] = [];
         try {
             // Compiler/scratch planning is asynchronous. Re-admit against the
             // live destination immediately before the first registry/subdoc
@@ -525,12 +569,14 @@ export async function importTableStructures(
                     sourceProjectId ? { sourceProjectId, sourceTableId } : undefined,
                     handles => materializeSchema(handles, plan.snapshot),
                 );
-                created.push(destinationTableId);
                 tableIdMap[sourceTableId] = destinationTableId;
+                captureBinding(sourceTableId, destinationTableId, true);
             }
         } catch (err) {
-            for (const destinationTableId of created) removeTable(destinationProjectDoc, destinationTableId);
             for (const sourceTableId of group) {
+                const binding = bindings.get(sourceTableId);
+                if (binding?.owned && bindingCurrent(binding)) removeTable(destinationProjectDoc, binding.id);
+                bindings.delete(sourceTableId);
                 delete tableIdMap[sourceTableId];
                 failures[sourceTableId] = `Grid table creation failed: ${cloneErrorMessage(err)}`;
             }
@@ -586,7 +632,7 @@ export async function importTableStructures(
     }
     assertAdmission();
     const sameProject = sourceProjectId === destinationProjectDoc.guid;
-    const allTableIds = { ...reusedTableIdMap, ...tableIdMap };
+    const allTableIds = Object.fromEntries([...bindings].map(([sourceId, binding]) => [sourceId, binding.id]));
     const nameMap = new Map<string, string>();
     for (const [id, target] of Object.entries(allTableIds)) {
         const sourceName = snapshots[id]?.sqlName;
@@ -638,14 +684,14 @@ export async function importTableStructures(
             });
             gridIdMap[sourceGridId] = id;
             const entry = gridRegistry.get(id)!;
+            ownedGrids.set(id, entry);
             if (sourceProjectId) {
                 entry.set("copiedFromProjectId", sourceProjectId);
                 entry.set("copiedFromGridId", sourceGridId);
             }
         }
     } catch (error) {
-        for (const id of Object.values(gridIdMap)) getGridRegistry(destinationProjectDoc).delete(id);
-        for (const id of Object.values(tableIdMap)) removeTable(destinationProjectDoc, id);
+        cleanup();
         throw error;
     }
     return {

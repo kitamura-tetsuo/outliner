@@ -4,6 +4,7 @@ import * as Y from "yjs";
 import { createCalendar } from "../calendar/calendarService";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid } from "../yjstable/gridDocs";
+import { getTableDependencies } from "../yjstable/tableDependencies";
 import { createTable } from "../yjstable/tableDocs";
 import {
     buildObjectDependencyGraph,
@@ -23,6 +24,17 @@ function ids(objects: GraphObject[]): string[] {
 }
 
 describe("buildObjectDependencyGraph", () => {
+    it("reports colliding CTE scope as uncertainty in graph and Table usage", () => {
+        const project = Project.createInstance("cte-usage");
+        const x = table(project.ydoc, "Physical X", "x");
+        const grid = createGrid(project.ydoc, undefined, { query: "WITH x AS (SELECT 1) SELECT * FROM x" });
+        const graph = buildObjectDependencyGraph(project.ydoc);
+        expect(graph.analysisOf({ type: "grid", id: grid })?.status).toBe("unknown");
+        expect(graph.dependenciesOf({ type: "grid", id: grid })).toEqual([]);
+        expect(getTableDependencies(project, x).unknownReferences.length).toBe(1);
+        expect(getTableDependencies(project, x).dependentGridIds).toEqual([]);
+    });
+
     it("records a Grid's SQL-derived Table dependencies, with the reverse edge on the Table", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");

@@ -16,7 +16,7 @@ let {
     message?: string;
     confirmText?: string;
     cancelText?: string;
-    onConfirm: () => void;
+    onConfirm: () => void | boolean;
     onCancel?: () => void;
     isDestructive?: boolean;
 }>();
@@ -44,8 +44,7 @@ $effect(() => {
 });
 
 function handleConfirm() {
-    onConfirm();
-    isOpen = false;
+    if (onConfirm() !== false) isOpen = false;
 }
 
 function handleCancel(_e?: Event) {

@@ -49,7 +49,7 @@ describe("dependency-aware Grid/Table duplication", () => {
 
     it("warns when a Grid's SQL Table reference is omitted", async () => {
         const doc = new Y.Doc();
-        const tableId = table(doc, "Tasks", "tasks");
+        table(doc, "Tasks", "tasks");
         const gridId = createGrid(doc, undefined, { query: "SELECT * FROM tasks" });
         expect(previewObjectDuplication(doc, { type: "grid", id: gridId }, "item-only").omittedReferenceCount)
             .toBe(1);
@@ -76,7 +76,7 @@ describe("dependency-aware Grid/Table duplication", () => {
 
     it("counts and clears omitted query relations in a cross-project copy", async () => {
         const source = new Y.Doc();
-        const tasks = table(source, "Tasks", "tasks");
+        table(source, "Tasks", "tasks");
         table(source, "Owners", "owners");
         const gridId = createGrid(source, undefined, { query: "SELECT * FROM tasks JOIN owners USING (id)" });
         expect(previewObjectDuplication(source, { type: "grid", id: gridId }, "item-only").omittedReferenceCount)
@@ -90,7 +90,7 @@ describe("dependency-aware Grid/Table duplication", () => {
 
     it("preserves a Y.Array-backed Grid column order", async () => {
         const source = new Y.Doc();
-        const tableId = table(source, "Tasks", "tasks");
+        table(source, "Tasks", "tasks");
         const gridId = createGrid(source, undefined, { columnOrder: ["title", "id"] });
         const handles = getGridHandles(source, gridId)!;
         handles.entry.set("columnOrder", Y.Array.from(["id", "title"]));
@@ -101,7 +101,7 @@ describe("dependency-aware Grid/Table duplication", () => {
 
     it("keeps an omitted reference in-project and clears it cross-project", async () => {
         const source = new Y.Doc();
-        const tableId = table(source, "Tasks", "tasks");
+        table(source, "Tasks", "tasks");
         const gridId = createGrid(source, undefined, { query: "SELECT * FROM tasks" });
         const local = await duplicateObjects(source, source, { type: "grid", id: gridId }, "item-only");
         expect(getGridHandles(source, local.primaryId)?.entry.get("query")).toBe("SELECT * FROM tasks");
@@ -119,7 +119,7 @@ describe("dependency-aware Grid/Table duplication", () => {
         const first = createGrid(source, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         createGrid(source, undefined, { name: "Board copy", query: "SELECT * FROM tasks" });
         const result = await duplicateObjects(source, source, { type: "grid", id: first }, "connected");
-        const copiedTableId = result.idMap.get(`table:${tableId}`)!;
+        result.idMap.get(`table:${tableId}`)!;
         const copiedGridIds = [...result.idMap].filter(([id]) => id.startsWith("grid:")).map(([, id]) => id);
         expect(copiedGridIds.map(id => getGridHandles(source, id)?.entry.get("query"))).toEqual([
             "SELECT * FROM tasks_2",

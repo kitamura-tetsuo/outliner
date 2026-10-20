@@ -16,6 +16,8 @@ import {
 } from "../../tests/fixtures/diagramClipboardFixture";
 import { deserializeClipboardItems, serializeClipboardItems } from "../clipboard/itemClipboard";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
+import { createGrid, getGridRegistry, removeGridWithPlacements } from "../yjstable/gridDocs";
+import { appendGridPlacement } from "../yjstable/gridPlacement";
 import { pasteDiagramPayload } from "./diagramClipboard";
 import { getDiagram, listDiagrams, setDiagramSource } from "./diagramService";
 
@@ -25,6 +27,31 @@ describe("Diagram structural Copy/Paste (#5314)", () => {
         fx = createFixture();
     });
     afterEach(() => fx.dispose());
+
+    it("admits live Grids in mixed copies before allocating any Diagram", () => {
+        const d = addDiagram(fx.project, "snapshot");
+        const diagram = addOccurrence(fx.page, d);
+        const grid = createGrid(fx.project.ydoc, undefined, { query: "SELECT 1" });
+        const placement = appendGridPlacement(fx.project.ydoc, fx.page.id, grid, "tester");
+        const payload = copyPayload(fx, [diagram, placement]);
+        const positive = pasteDiagramPayload(payload, pasteContext(fx, undefined));
+        expect(positive.ok).toBe(true);
+        if (!positive.ok) throw new Error("expected mixed paste");
+        expect(positive.diagramIdMap![d]).not.toBe(d);
+        expect(getGridRegistry(fx.project.ydoc).size).toBe(1);
+        expect([...fx.page.items].filter(item => item.componentType === "yjstable")).toHaveLength(2);
+        expect(removeGridWithPlacements(fx.project, grid)).toBe(true);
+        const baseline = fx.project.ydoc.toJSON();
+        const history = [globalUndoRouter.undoDepth, globalUndoRouter.redoDepth];
+        const beforePayload = JSON.stringify(payload);
+        expect(pasteDiagramPayload(payload, pasteContext(fx, undefined))).toMatchObject({
+            ok: false,
+            reason: "stale-transfer",
+        });
+        expect(fx.project.ydoc.toJSON()).toEqual(baseline);
+        expect([globalUndoRouter.undoDepth, globalUndoRouter.redoDepth]).toEqual(history);
+        expect(JSON.stringify(payload)).toBe(beforePayload);
+    });
 
     it("pastes an independent Diagram with a fresh identity and equal source (REQ-002, REQ-004)", () => {
         const source = "graph TD\n  A-->B  \n\t%% ünïcødé 🚀\n";

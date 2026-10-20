@@ -33,7 +33,6 @@ test.describe("pasting the same Grid into a project twice", () => {
 
         const afterFirstPaste = await readGridProjectState(page);
         expect(afterFirstPaste.tables).toHaveLength(1);
-        const clonedTableId = afterFirstPaste.tables[0].id;
 
         await clickItemAndWaitForCursor(
             page,

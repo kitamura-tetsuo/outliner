@@ -3,7 +3,7 @@
 
     let { isOpen = $bindable(true), onConfirm, onCancel } = $props<{
         isOpen?: boolean;
-        onConfirm?: () => void;
+        onConfirm?: () => void | boolean;
         onCancel?: () => void;
     }>();
 </script>

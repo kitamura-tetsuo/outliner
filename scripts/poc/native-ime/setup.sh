@@ -17,9 +17,26 @@ fingerprint=$(gpg --homedir "$ROOT/work/native-ime/gnupg" --show-keys --with-col
 test "$fingerprint" = 35BAA0B33E9EB396F59CA838C0BA5CE6DC6315A3
 sudo install -m 644 "$ROOT/work/native-ime/mozilla.asc" /usr/share/keyrings/native-ime-mozilla.asc
 echo 'deb [signed-by=/usr/share/keyrings/native-ime-mozilla.asc] https://packages.mozilla.org/apt mozilla main' | sudo tee /etc/apt/sources.list.d/native-ime-mozilla.list
-printf 'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000\n' | sudo tee /etc/apt/preferences.d/native-ime-mozilla
+printf 'Package: firefox\nPin: origin packages.mozilla.org\nPin-Priority: 1001\n' | sudo tee /etc/apt/preferences.d/native-ime-mozilla
 sudo apt-get update
-sudo apt-get install -y firefox
+# Retain the installed/candidate inventory even when the transition fails.
+{ dpkg-query -W firefox || true; command -v firefox || true; firefox --version || true; } > "$ARTIFACTS/firefox-before.txt" 2>&1
+apt-cache policy firefox | tee "$ARTIFACTS/firefox-policy-before.txt"
+candidate=$(apt-cache policy firefox | awk '/Candidate:/ {print $2; exit}')
+test -n "$candidate" && test "$candidate" != '(none)'
+# Pinning alone is not proof of the selected package's origin. Verify the
+# candidate stanza before granting the narrowly scoped downgrade permission.
+apt-cache madison firefox | tee "$ARTIFACTS/firefox-candidates.txt"
+awk -F'|' -v candidate="$candidate" '
+  { version=$2; gsub(/^[ \t]+|[ \t]+$/, "", version) }
+  version == candidate && $3 ~ /https:\/\/packages\.mozilla\.org\/apt/ { found=1 }
+  END { exit !found }
+' "$ARTIFACTS/firefox-candidates.txt"
+sudo apt-get install -y --allow-downgrades "firefox=$candidate"
+test "$(dpkg-query -W -f='${Version}' firefox)" = "$candidate"
+command -v firefox | tee "$ARTIFACTS/firefox-executable.txt"
+readlink -f "$(command -v firefox)" >> "$ARTIFACTS/firefox-executable.txt"
+firefox --version | tee "$ARTIFACTS/firefox-version.txt"
 python3 -m venv --system-site-packages "$ROOT/work/native-ime/venv"
 "$ROOT/work/native-ime/venv/bin/pip" install 'selenium==4.29.0' 'Pillow==11.1.0'
 curl -fsSL https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-linux64.tar.gz \

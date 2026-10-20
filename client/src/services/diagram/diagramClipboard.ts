@@ -27,6 +27,7 @@ import { invokingSurfaceWritable } from "../editorSurface";
 import { getProjectCapabilities } from "../project/projectCapabilities";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { setItemGridId, setItemTableId } from "../yjstable/itemBinding";
+import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
 import { canMutateDiagrams, canReadDiagrams, type DiagramAuthorization } from "./diagramAuthorization";
 import { setItemDiagramId } from "./diagramBinding";
 import { consumePendingCut, lookupPendingCut, nodeExists, stagePendingCut } from "./diagramClipboardTransfer";
@@ -344,6 +345,21 @@ function pasteCopy(payload: ItemClipboardPayloadV4, context: DiagramPasteContext
     }
     const forest = payloadForest(payload.items);
     if (!forestIsValid(forest, destination.parentKind)) return fail("paste", "invalid-destination");
+
+    // Mixed copies share live Grid definitions; Diagram snapshots do not
+    // authorize a dangling Grid reference. Admit before any allocation.
+    try {
+        const ids = [
+            ...new Set(
+                payload.items.filter(item => item.componentType === "yjstable")
+                    .map(item => item.yjsGridId),
+            ),
+        ];
+        if (ids.some(id => !id)) return fail("paste", "stale-transfer");
+        captureDuplicationAdmission(project.ydoc, ids.map(id => ({ type: "grid" as const, id: id! })))();
+    } catch {
+        return fail("paste", "stale-transfer");
+    }
 
     // One original-to-duplicate map for this Paste only (REQ-003). Allocation
     // runs outside every undo scope, before and apart from the placements.

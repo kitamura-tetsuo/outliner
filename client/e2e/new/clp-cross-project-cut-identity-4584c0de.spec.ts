@@ -115,7 +115,7 @@ test(
         const beforeRefusal = await readGridProjectState(page);
         await page.evaluate(() => {
             (globalThis as any).__cutPasteResult = undefined;
-            window.addEventListener(
+            globalThis.addEventListener(
                 "diagram-clipboard-result",
                 event => (globalThis as any).__cutPasteResult = (event as CustomEvent).detail,
                 { once: true },

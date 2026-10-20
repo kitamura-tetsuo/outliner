@@ -41,7 +41,6 @@ import { readDiagram } from "../services/diagram/diagramQueries";
 import { DIAGRAM_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
-import { getGridHandles, getGridQuery } from "../services/yjstable/gridDocs";
 import { getItemGridId } from "../services/yjstable/itemBinding";
 import { getItemKanbanId } from "../services/yjstable/kanbanBinding";
 import { computeSnapshotClosure, exportGridSlice, exportTableStructure } from "../services/yjstable/tableClone";
@@ -3153,7 +3152,6 @@ export class KeyEventHandler {
             // be rolled back or undone.
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
             let pastedGridIdMap: Record<string, string> = {};
-            let reusedTableIdMap: Record<string, string> = {};
             let reusedGridIdMap: Record<string, string> = {};
             let pastedRuleIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
@@ -3210,7 +3208,6 @@ export class KeyEventHandler {
                         if (cloneResult === undefined || !destinationCurrent()) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
                         pastedGridIdMap = cloneResult.gridIdMap;
-                        reusedTableIdMap = cloneResult.reusedTableIdMap;
                         reusedGridIdMap = cloneResult.reusedGridIdMap;
                         pastedRuleIds = cloneResult.createdRuleIds;
                     } else {
@@ -3281,7 +3278,6 @@ export class KeyEventHandler {
                     if (pastedTableIdMap || Object.keys(pastedCalendarIdMap).length > 0) {
                         // A reused table is as good a binding target as a fresh
                         // clone; only the undo entry distinguishes them.
-                        const tableIdMap = { ...reusedTableIdMap, ...pastedTableIdMap };
                         // Grid ids are what pasted items bind to on the outline
                         // (Grid owns the SELECT + presentation).
                         const gridIdMap = { ...reusedGridIdMap, ...pastedGridIdMap };

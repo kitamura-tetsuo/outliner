@@ -64,6 +64,7 @@ interface MaterializedDuplication {
     removedReferenceCount: number;
     createdObjects: DuplicableObject[];
     diagnostics: string[];
+    ownership: ObjectOwnership[];
 }
 
 export interface DuplicationResult extends MaterializedDuplication {
@@ -82,18 +83,42 @@ export interface DuplicationSetResult extends MaterializedDuplication {
     sourceObjects: DuplicableObject[];
 }
 
-/** Remove every object materialized by one duplication attempt. */
+/** Transient creation-time evidence, never persisted as ownership metadata. */
+export interface ObjectOwnership {
+    object: DuplicableObject;
+    entry: unknown;
+    subdoc: unknown;
+}
+function objectRegistry(doc: Y.Doc, type: DuplicableObject["type"]): Y.Map<unknown> {
+    return doc.getMap(
+        type === "grid" ? "yjsGrids" : type === "table"
+            ? "yjsTables"
+            : type === "calendar"
+            ? "calendars"
+            : "schedules",
+    );
+}
+function ownsObject(doc: Y.Doc, witness: ObjectOwnership): boolean {
+    const entry = objectRegistry(doc, witness.object.type).get(witness.object.id);
+    return entry === witness.entry && (witness.object.type !== "table"
+        || (entry instanceof Y.Map && entry.get("doc") === witness.subdoc));
+}
+export function assertDuplicationOwnership(doc: Y.Doc, result: Pick<MaterializedDuplication, "ownership">): void {
+    if (result.ownership.some(witness => !ownsObject(doc, witness))) {
+        throw new Error("A duplicated object was replaced or removed");
+    }
+}
+/** Failure cleanup removes only entries still owned by this invocation. User
+ * Undo must first validate the entire set, before any placement side effect. */
 export function rollbackObjectDuplication(
     destination: Y.Doc,
-    result: Pick<MaterializedDuplication, "createdObjects">,
+    result: Pick<MaterializedDuplication, "ownership">,
 ): void {
-    const destinationProject = Project.fromDoc(destination);
     destination.transact(() => {
-        for (const object of result.createdObjects.toReversed()) {
-            if (object.type === "grid") getGridRegistry(destination).delete(object.id);
-            else if (object.type === "table") removeTable(destination, object.id);
-            else if (object.type === "calendar") destinationProject.calendars.delete(object.id);
-            else schedulesMapOf(destination).delete(object.id);
+        for (const witness of result.ownership.toReversed()) {
+            if (!ownsObject(destination, witness)) continue;
+            if (witness.object.type === "table") removeTable(destination, witness.object.id);
+            else objectRegistry(destination, witness.object.type).delete(witness.object.id);
         }
     });
 }
@@ -330,6 +355,15 @@ export async function materializeDuplicationPlan(
         throw error;
     }
     const sameProject = source === destination;
+    const ownership: ObjectOwnership[] = [];
+    const captureOwned = (type: DuplicableObject["type"], id: string) => {
+        const entry = objectRegistry(destination, type).get(id);
+        ownership.push({
+            object: { type, id },
+            entry,
+            subdoc: type === "table" && entry instanceof Y.Map ? entry.get("doc") : undefined,
+        });
+    };
     const createdTables: string[] = [];
     const createdGrids: string[] = [];
     const createdSchedules: string[] = [];
@@ -379,6 +413,7 @@ export async function materializeDuplicationPlan(
                 }
             });
             createdTables.push(destinationId);
+            captureOwned("table", destinationId);
         }
 
         for (const object of objects.filter(object => object.type === "grid")) {
@@ -435,6 +470,7 @@ export async function materializeDuplicationPlan(
                 insertTargetTableId: mappedPreference,
             });
             createdGrids.push(destinationId);
+            captureOwned("grid", destinationId);
         }
 
         // Schedules never own a Table, but a copied Schedule's definition
@@ -480,6 +516,7 @@ export async function materializeDuplicationPlan(
                 enabled: sameProject ? ruleMap.get("enabled") !== false : false,
             });
             createdSchedules.push(destinationId);
+            captureOwned("schedule", destinationId);
         }
 
         // A Calendar owns no row data of its own — its definition/view
@@ -507,6 +544,7 @@ export async function materializeDuplicationPlan(
                 query: targetQuery,
             });
             createdCalendars.push(destinationId);
+            captureOwned("calendar", destinationId);
         }
 
         // A Table's registry entry belongs to the project doc, but its schema
@@ -537,18 +575,21 @@ export async function materializeDuplicationPlan(
         // Stop providers before destroying their subdocs during rollback.
         await Promise.allSettled(connections.map(connection => connection.dispose()));
         connections.length = 0;
-        destination.transact(() => {
-            for (const calendarId of createdCalendars) destinationProject.calendars.delete(calendarId);
-            for (const ruleId of createdSchedules) schedulesMapOf(destination).delete(ruleId);
-            for (const gridId of createdGrids) getGridRegistry(destination).delete(gridId);
-            for (const tableId of createdTables) removeTable(destination, tableId);
-        });
+        rollbackObjectDuplication(destination, { ownership });
         throw error;
     } finally {
         await Promise.allSettled(connections.map(connection => connection.dispose()));
     }
 
+    try {
+        assertCurrent();
+        assertDuplicationOwnership(destination, { ownership });
+    } catch (error) {
+        rollbackObjectDuplication(destination, { ownership });
+        throw error;
+    }
     return {
+        ownership,
         idMap,
         removedReferenceCount,
         diagnostics,

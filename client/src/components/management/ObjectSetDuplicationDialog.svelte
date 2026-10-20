@@ -14,12 +14,11 @@
     import { projectObjectsSelectedRoute } from "../../lib/managementPaths";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { store } from "../../stores/store.svelte";
-    import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
+    import { captureDuplicationPlacement } from "../../services/yjstable/gridPlacement";
     import {
         buildDuplicationSetPreview,
         duplicateSelectedObjects,
         type DuplicationSetPreview,
-        type DuplicationSideEffect,
         type NamedObject,
     } from "../../services/objectManager/objectManagerController";
     import type { DuplicationSetResult } from "../../services/yjstable/objectDuplication";
@@ -76,21 +75,6 @@
         }
     });
 
-    /** Attach the one copied Grid to a destination Page, folded into the same undo step as the duplicate itself. */
-    function afterMaterialize(result: DuplicationSetResult): DuplicationSideEffect | void {
-        if (!singleGridSameProject || !destinationPageId) return;
-        const gridId = result.createdObjects.find(object => object.type === "grid")?.id;
-        if (!gridId) return;
-        const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
-        let placement = appendGridPlacement(project.ydoc, destinationPageId, gridId, authorId);
-        return {
-            undo: () => placement.delete(),
-            redo: () => {
-                placement = appendGridPlacement(project.ydoc, destinationPageId, gridId, authorId);
-            },
-        };
-    }
-
     async function executeDuplication() {
         if (!preview || preview.objects.length === 0) return;
         const destinationTitle = destinationProject.trim();
@@ -113,10 +97,13 @@
                 destinationDoc = destinationClient.project.ydoc;
             }
             assertCurrent();
+            const placement = singleGridSameProject && destinationPageId
+                ? captureDuplicationPlacement(sourceDoc, destinationPageId, userManager.getCurrentUser()?.id ?? "anonymous")
+                : {};
             const result = await duplicateSelectedObjects(sourceDoc, destinationDoc, selected, {
+                ...placement,
                 copyTableData,
                 synchronizeTableSubdocs: true,
-                afterMaterialize,
             });
             if (!result) throw new Error("Nothing was selected to duplicate.");
             onDuplicated(result, destinationTitle);

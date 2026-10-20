@@ -29,7 +29,7 @@ export function queryReadDependencies(doc: Y.Doc, query: string): QueryReadDepen
             !!value && typeof value === "object"
             && (Array.isArray(value)
                 ? value.some(containsWith)
-                : "WithClause" in value || Object.values(value).some(containsWith));
+                : "withClause" in value || "WithClause" in value || Object.values(value).some(containsWith));
         if (containsWith(parsed)) {
             unknown("CTE read inventory requires scoped relation resolution");
             return result;
@@ -44,7 +44,7 @@ export function queryReadDependencies(doc: Y.Doc, query: string): QueryReadDepen
             const node = value as Record<string, unknown>;
             // A CTE requires scoped name resolution. Preserve known references,
             // but do not certify an automatic closure from partial evidence.
-            if (node.WithClause) unknown("CTE read inventory is unavailable");
+            if (node.withClause || node.WithClause) unknown("CTE read inventory is unavailable");
             if (node.RangeFunction || node.RangeTableFunc) unknown("Function relation read inventory is unavailable");
             if (node.RangeVar) {
                 const range = node.RangeVar as { relname: string; schemaname?: string; catalogname?: string; };

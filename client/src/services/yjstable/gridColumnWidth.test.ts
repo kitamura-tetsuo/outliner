@@ -14,7 +14,6 @@ import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import {
     createGrid,
     duplicateGrid,
-    findGridsBySourceTable,
     getGridColumnWidth,
     getGridHandles,
     getGridQuery,
@@ -167,7 +166,7 @@ describe("Grid column width overrides", () => {
     });
 
     it("duplicates widths with the definition and keeps the duplicate independent", () => {
-        const { doc, tableId, gridA } = basicProject();
+        const { doc, gridA } = basicProject();
         const source = getGridHandles(doc, gridA)!;
         setGridColumnWidth(source, "ghost", 64);
         setGridComponentField(source, "done", "hidden", true);
@@ -253,7 +252,6 @@ describe("Grid width structural copy", { timeout: 30000 }, () => {
             { [gridId]: grid },
         );
         expect(result.failures).toEqual({});
-        const destTableId = result.tableIdMap[tableId];
         const destGrid = getGridHandles(
             destination,
             result.gridIdMap[gridId],

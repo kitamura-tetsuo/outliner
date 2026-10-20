@@ -484,7 +484,7 @@ export function isGridSnapshotMap(value: unknown): value is Record<string, GridS
                 typeof id === "string" && id.length > 0
             )
         ) return false;
-        const { gridId, name, tableIds, ...settings } = snapshot;
+        const { gridId: _gridId, name: _name, tableIds: _tableIds, ...settings } = snapshot;
         return isGridUiDefinitionDto(settings);
     });
 }

@@ -227,21 +227,26 @@ describe("Objects Manager Requirements", () => {
 
         it("deleteObject on a Table reuses the existing dependency-aware removal", () => {
             const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
 
+            const originalPlacement = project.tree.getNodeValueFromKey(item.key);
+            const originalGrid = project.ydoc.getMap("yjsGrids").get(gridId);
             const table = getObjects(project).find(o => o.id === tableId) as NamedObject;
             const impact = getDeleteImpact(project, table);
             expect(impact.tableDependencies?.dependentGridIds).toEqual([gridId]);
 
             const ok = deleteObject(project, table, { projectAccess: true, surfaceWritable: true });
             expect(ok).toBe(true);
-            // Reused Table policy also removed the dependent Grid and detached the placement.
-            expect(listGrids(project.ydoc).map(g => g.gridId)).not.toContain(gridId);
+            // Tables do not own independent view definitions or placements.
+            expect(listGrids(project.ydoc).map(g => g.gridId)).toContain(gridId);
             const nodeValue = item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
-            expect(nodeValue.get("componentType")).toBeUndefined();
+            expect(nodeValue).toBe(originalPlacement);
+            expect(project.ydoc.getMap("yjsGrids").get(gridId)).toBe(originalGrid);
+            expect(nodeValue.get("componentType")).toBe("yjstable");
+            expect(nodeValue.get("yjsGridId")).toBe(gridId);
         });
 
         it("deleteObject on a Schedule uses the existing Schedule deletion semantics", () => {

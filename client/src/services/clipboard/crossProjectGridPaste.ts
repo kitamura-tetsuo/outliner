@@ -1,4 +1,4 @@
-import { Item, Project } from "$shared/app-schema";
+import { Project } from "$shared/app-schema";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { cloneScheduleRules, rollbackClonedScheduleRules } from "../schedule/scheduleRuleClone";
@@ -845,6 +845,16 @@ export async function moveGridPlacementsAcrossProjects(
             && calendarIds.every(id => source.calendars.get(id) === calendarSources.get(id));
         const both = (change: () => void) => source.ydoc.transact(() => destination.ydoc.transact(change));
         await globalUndoRouter.captureManualAsync(async () => {
+            // Re-derive pending structural authority at the actual commit
+            // boundary, after every asynchronous import and history setup.
+            const currentTransfer = lookupCrossProjectGridCut(transferId, source.ydoc.guid);
+            if (
+                !currentTransfer.ok || currentTransfer.project !== source
+                || JSON.stringify(currentTransfer.rootKeys) !== JSON.stringify(roots)
+                || !portableStructuralEnumsStillCompatible(destination.ydoc, snapshots, source.ydoc, grids)
+            ) {
+                throw new StaleGridTransferError("Pending move changed");
+            }
             // No await separates final admission from the first shared mutation.
             assertSource();
             if (!permissions() || !calendarsCurrent() || !locationCurrent() || collision() || !namesCurrent()) {

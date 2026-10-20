@@ -485,6 +485,26 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         ]);
     });
 
+    it("refuses CTE/physical-name collisions before automatic Copy effects", () => {
+        createTable(state.doc, "Physical X", "x");
+        const grid = state.doc.getMap<Y.Map<unknown>>("yjsGrids").get(fixtureGridId(tableId))!;
+        grid.set("query", "WITH x AS (SELECT 1 AS n) SELECT * FROM x");
+        state.selection = {
+            startItemId: "a",
+            startOffset: 0,
+            endItemId: "c",
+            endOffset: "Trailing text".length,
+            userId: "local",
+        };
+        const baseline = state.doc.toJSON();
+        const { event, data } = copyEvent();
+        data.set("text/plain", "existing clipboard");
+        KeyEventHandler.handleCopy(event);
+        expect(data.get("text/plain")).toBe("existing clipboard");
+        expect(data.has(OUTLINER_ITEMS_MIME)).toBe(false);
+        expect(state.doc.toJSON()).toEqual(baseline);
+    });
+
     it("refuses the entire automatic capture if a selected dependency cannot be exported", () => {
         const invalidTableId = createTable(state.doc, "Invalid", "invalid");
         state.visible = [

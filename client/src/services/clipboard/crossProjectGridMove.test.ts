@@ -75,6 +75,37 @@ function setup(count = 3) {
 }
 
 describe("cross-Project staged Grid moves", () => {
+    it("rechecks pending structural authority inside the real history commit callback", async () => {
+        const f = setup(1);
+        const realCapture = globalUndoRouter.captureManualAsync.bind(globalUndoRouter);
+        let intervened = false;
+        vi.spyOn(globalUndoRouter, "captureManualAsync").mockImplementationOnce(async (fn, entry) => {
+            // A provider-delivered rebind at the final preparation/commit
+            // boundary, after all imports and destination checks completed.
+            const peer = new Y.Doc();
+            Y.applyUpdate(peer, Y.encodeStateAsUpdate(f.source.ydoc));
+            const peerProject = Project.fromDoc(peer);
+            const replacement = createGrid(peer, undefined, { query: "SELECT 1" });
+            (peerProject.tree.getNodeValueFromKey(f.selected[0].key) as Y.Map<unknown>).set("yjsGridId", replacement);
+            Y.applyUpdate(f.source.ydoc, Y.encodeStateAsUpdate(peer, Y.encodeStateVector(f.source.ydoc)), "provider");
+            intervened = true;
+            expect((f.source.tree.getNodeValueFromKey(f.selected[0].key) as Y.Map<unknown>).get("yjsGridId")).toBe(
+                replacement,
+            );
+            return realCapture(fn, entry);
+        });
+        const depths = [globalUndoRouter.undoDepth, globalUndoRouter.redoDepth];
+        const result = await moveGridPlacementsAcrossProjects(f.payload, f.context, () => true, false);
+        expect(intervened).toBe(true);
+        expect(result.ok).toBe(false);
+        expect(f.page.items.length).toBe(1);
+        expect(f.target.items.length).toBe(0);
+        expect(getGridRegistry(f.destination.ydoc).size).toBe(0);
+        expect(listTables(f.destination.ydoc)).toEqual([]);
+        expect([globalUndoRouter.undoDepth, globalUndoRouter.redoDepth]).toEqual(depths);
+        vi.restoreAllMocks();
+    });
+
     it("preserves mixed Calendar transfer behavior alongside a Grid move", async () => {
         const f = setup(1);
         const calendarId = createCalendar(f.source, {
