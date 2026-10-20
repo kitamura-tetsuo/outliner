@@ -25,14 +25,12 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         const query = "SELECT id AS id, title AS title FROM tasks ORDER BY id";
 
         const result = await relations.createGridOnPage("uid", "project-1", {
-            sourceTableId: "table-tasks",
             pageId: page.id,
             query,
             name: "My tasks",
         });
 
         expect(result).to.include({
-            sourceTableId: "table-tasks",
             pageId: page.id,
             name: "My tasks",
             query,
@@ -40,7 +38,6 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         expect(gridIds(project)).to.deep.equal([...beforeGrids, result.gridId].sort());
         const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(result.gridId)!;
         expect(Object.fromEntries([...grid.entries()].filter(([key]) => key !== "components"))).to.deep.equal({
-            sourceTableId: "table-tasks",
             name: "My tasks",
             query,
             sqlAliasPolicyVersion: 1,
@@ -51,12 +48,12 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         const placement = [...page.items][page.items.length - 1];
         expect(placement.componentType).to.equal("yjstable");
         expect(placement.yjsGridId).to.equal(result.gridId);
-        expect(placement.yjsTableId).to.equal("table-tasks");
+        expect(placement.yjsTableId).not.to.be.ok;
         expect(placement.items.length).to.equal(0);
 
         // The normal production read models resolve both returned IDs.
         const readGrid = await reads.getGrid("uid", "project-1", result.gridId);
-        expect(readGrid).to.include({ id: result.gridId, name: "My tasks", sourceTableId: "table-tasks", query });
+        expect(readGrid).to.include({ id: result.gridId, name: "My tasks", query });
         const readItem = await reads.getItem("uid", "project-1", result.placementId);
         expect(readItem).to.include({ id: result.placementId, kind: "grid", gridId: result.gridId });
         const ancestors = await reads.getAncestors("uid", "project-1", result.placementId);
@@ -65,20 +62,19 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         expect(validation.accepted).to.equal(true);
     });
 
-    it("defaults the name to the source Table's current display name (REQ-004)", async () => {
+    it("defaults the name independently of source Tables (REQ-004)", async () => {
         const { project, page, relations } = createGridFixture();
         project.ydoc.getMap<Y.Map<unknown>>("yjsTables").get("table-tasks")!.set("name", "Renamed tasks");
         const result = await relations.createGridOnPage("uid", "project-1", {
-            sourceTableId: "table-tasks",
             pageId: page.id,
             query: "SELECT id AS id FROM tasks",
         });
-        expect(result.name).to.equal("Renamed tasks");
+        expect(result.name).to.equal("Grid");
         expect(project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(result.gridId)!.get("name"))
-            .to.equal("Renamed tasks");
+            .to.equal("Grid");
     });
 
-    it("accepts a SELECT that joins another relation, keeping the requested source Table (AS-002)", async () => {
+    it("accepts a query-only JOIN without choosing an INSERT target (AS-002)", async () => {
         const { project, page, tasks, people, relations } = createGridFixture();
         const tasksBefore = Y.encodeStateAsUpdate(tasks);
         const peopleBefore = Y.encodeStateAsUpdate(people);
@@ -87,7 +83,6 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
             "SELECT t.id AS id, t.title AS title, p.label AS owner FROM tasks t JOIN people p ON p.id = t.owner";
 
         const result = await relations.createGridOnPage("uid", "project-1", {
-            sourceTableId: "table-tasks",
             pageId: page.id,
             query,
             name: "With owners",
@@ -96,7 +91,7 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         expect(result.validation.dependencies).to.have.members(["tasks", "people"]);
         expect(result.validation.sampleRows).to.deep.include({ id: "t1", title: "Write spec", owner: "Ada" });
         const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(result.gridId)!;
-        expect(grid.get("sourceTableId")).to.equal("table-tasks");
+        expect(grid.has("sourceTableId")).to.equal(false);
         expect(grid.get("query")).to.equal(query);
         // The source Table (and the joined one) are neither mutated nor cloned.
         expect(Y.encodeStateAsUpdate(tasks)).to.deep.equal(tasksBefore);
@@ -108,7 +103,6 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         const { project, page, relations } = createGridFixture();
         const query = "  select id as id\n  from tasks  ";
         const result = await relations.createGridOnPage("uid", "project-1", {
-            sourceTableId: "table-tasks",
             pageId: page.id,
             query,
         });
@@ -122,25 +116,25 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         const before = snapshot();
         const base = { pageId: page.id, query: "SELECT id AS id FROM tasks" };
         await expectRejected(
-            relations.createGridOnPage("uid", "project-1", { ...base, sourceTableId: "missing-table" }),
-            "not_found",
+            relations.createGridOnPage("uid", "project-1", { ...base, insertTargetTableId: "missing-table" }),
+            "invalid_argument",
         );
         await expectRejected(
-            relations.createGridOnPage("uid", "project-1", { ...base, sourceTableId: "table-tasks", pageId: "nope" }),
+            relations.createGridOnPage("uid", "project-1", { ...base, pageId: "nope" }),
             "not_found",
         );
         for (const item of [first, nested]) {
             await expectRejected(
                 relations.createGridOnPage("uid", "project-1", {
                     ...base,
-                    sourceTableId: "table-tasks",
+
                     pageId: item.id,
                 }),
                 "kind_mismatch",
             );
         }
         await expectRejected(
-            relations.createGridOnPage("uid", "project-1", { ...base, sourceTableId: "table-tasks", query: "  " }),
+            relations.createGridOnPage("uid", "project-1", { ...base, query: "  " }),
             "invalid_argument",
         );
         expect(snapshot()).to.deep.equal(before);
@@ -160,7 +154,6 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         for (const query of invalid) {
             const error = await expectRejected(
                 relations.createGridOnPage("uid", "project-1", {
-                    sourceTableId: "table-tasks",
                     pageId: page.id,
                     query,
                 }),

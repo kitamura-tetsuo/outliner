@@ -15,7 +15,6 @@ describe("Outliner MCP relation service", function() {
         project.ydoc.getMap("yjsTables").set(tableId, entry);
         const grid = new Y.Map<unknown>();
         grid.set("query", "SELECT * FROM tasks");
-        grid.set("sourceTableId", tableId);
         project.ydoc.getMap("yjsGrids").set("grid-1", grid);
         const calendar = new Y.Map<unknown>();
         calendar.set("query", "SELECT * FROM outline_items");
@@ -32,7 +31,9 @@ describe("Outliner MCP relation service", function() {
             ["projects/project-1", project.ydoc],
             ["projects/project-1/tables/table-1", table],
         ]);
+        for (const [room, doc] of rooms) Object.assign(doc, { name: room });
         const service = new OutlinerRelationService({
+            documents: rooms,
             openDirectConnection: async (room: string) => ({
                 document: rooms.get(room),
                 disconnect: async () => {},
@@ -360,11 +361,11 @@ describe("Outliner MCP relation service", function() {
         grid.set("components", components);
 
         const trace = await service.traceGrid("uid", "project-1", "grid-1", 2);
-        const source = trace.stages.find(stage => stage.stage === "source")!;
+        const source = trace.stages.find(stage => stage.stage === "sources")!;
         const execution = trace.stages.find(stage => stage.stage === "query-execution")!;
         const render = trace.stages.find(stage => stage.stage === "render")!;
-        expect(source).to.include({ status: "current", observed: true });
-        expect(source.schemaColumns).to.include("order");
+        expect(source.sourceDiagnostics.execution).to.include({ status: "completed", current: true });
+        expect(source.sourceDiagnostics.dependencies.relations.map(relation => relation.id)).to.deep.equal(["table-1"]);
         expect(execution).to.include({ status: "completed", orderSource: "sql-order-by", truncated: true });
         expect(execution.columns).to.deep.equal([
             { name: "id", shown: false },
@@ -448,9 +449,9 @@ describe("Outliner MCP relation service", function() {
         expect(errorStage).to.include({ status: "error", observed: true });
         expect(errorStage.error).to.include({ phase: "execution" });
 
-        grid.set("sourceTableId", "deleted-table");
+        grid.set("query", "SELECT id FROM deleted_relation");
         const stale = await service.traceGrid("uid", "project-1", "grid-1");
-        expect(stale.stages[1]).to.deep.include({ stage: "source", status: "stale" });
+        expect(stale.sourceDiagnostics.execution).to.deep.include({ status: "error", current: false });
         await expectFailure(fixture(false).service.traceGrid("uid", "project-1", "grid-1"), "inaccessible");
     });
 
@@ -468,7 +469,7 @@ describe("Outliner MCP relation service", function() {
         const render = trace.stages.find(stage => stage.stage === "render")!;
         expect(execution).to.include({ status: "completed", orderSource: "incidental-source-order" });
         expect(execution.editability).to.deep.include({ editable: true, rowIdentity: "source" });
-        expect(execution.rows[0].identity).to.deep.equal({ kind: "source", relation: "tasks", value: "r1" });
+        expect(execution.rows[0].identity).to.deep.include({ kind: "source", relation: "tasks", value: "r1" });
         expect(execution.rows[0].values.huge).to.equal("9007199254740993");
         expect(execution.rows[0].values.note).to.have.length(201);
         expect(render.transforms).to.include({ filtering: "none", sorting: "incidental-source-order" });

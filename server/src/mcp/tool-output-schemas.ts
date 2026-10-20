@@ -18,6 +18,68 @@ const gridPresentation = z.strictObject({
     showAddRowButton: z.boolean(),
     confirmRowDelete: z.boolean(),
 });
+const sourceRelation = z.object({
+    kind: z.enum(["table", "system"]),
+    id: z.string(),
+    sqlName: z.string(),
+    schemaRevision: z.string(),
+});
+const sourceDiagnostics = z.object({
+    execution: z.object({
+        status: z.enum(["completed", "loading", "error", "unavailable"]),
+        current: z.boolean(),
+        queryId: z.string().optional(),
+        executionGeneration: z.number().optional(),
+        catalogRevision: z.string().optional(),
+    }),
+    dependencies: z.object({
+        status: z.enum(["proven", "unknown"]),
+        relations: z.array(sourceRelation),
+        count: z.number().optional(),
+        truncated: z.boolean(),
+    }),
+    provenance: z.object({
+        supplierCount: z.number().optional(),
+        branchCount: z.number().optional(),
+        truncated: z.boolean(),
+        status: z.enum(["proven", "unsupported", "unknown"]),
+        reason: z.string().optional(),
+        suppliers: z.array(sourceRelation),
+        branches: z.array(
+            z.object({
+                source: sourceRelation,
+                columns: z.array(
+                    z.object({ outputColumn: z.string(), physicalColumn: z.string(), source: sourceRelation }),
+                ),
+                routedIdentity: z.boolean(),
+                claimedSourceKind: z.string().optional(),
+            }),
+        ),
+        bareIdSource: sourceRelation.optional(),
+    }),
+    insert: z.object({
+        mode: z.enum([
+            "automatic",
+            "configured",
+            "selection-required",
+            "invalid-selection",
+            "unsupported",
+            "unavailable",
+        ]),
+        target: z.object({
+            kind: z.enum(["table", "system"]),
+            id: z.string(),
+            sqlName: z.string(),
+            requiresDestination: z.boolean(),
+        }).optional(),
+        preferenceDiagnostic: z.object({
+            code: z.enum(["not-a-supplier", "unavailable"]),
+            tableId: z.string(),
+            message: z.string(),
+        }).optional(),
+        reason: z.string().optional(),
+    }),
+});
 const revision = z.string();
 const outlineNode: z.ZodType = z.lazy(() =>
     z.looseObject({
@@ -72,6 +134,8 @@ export const toolOutputSchemas = {
     get_ancestors: z.array(outlineNode),
     search_items: z.array(outlineNode),
     get_grid: z.looseObject({
+        insertTargetTableId: z.string().optional(),
+        sourceDiagnostics: sourceDiagnostics,
         id: z.string(),
         name: z.string(),
         query: z.string(),
@@ -110,6 +174,8 @@ export const toolOutputSchemas = {
         scheduleReferences: z.array(jsonObject),
     }),
     trace_grid: z.looseObject({
+        sourceDiagnostics,
+        insertTargetTableId: z.string().optional(),
         version: z.literal(1),
         gridId: z.string(),
         revision,
@@ -121,6 +187,7 @@ export const toolOutputSchemas = {
         warnings: z.array(z.string()),
     }),
     validate_grid_query: validation.extend({
+        sourceDiagnostics,
         dependencies: z.array(z.string()),
         resultColumns: z.array(gridColumn),
         sampleRows: z.array(jsonObject),
@@ -145,7 +212,8 @@ export const toolOutputSchemas = {
         replayed: z.boolean(),
         gridId: z.string().min(1).optional(),
         placementId: z.string().min(1).optional(),
-        sourceTableId: z.string(),
+        insertTargetTableId: z.string().optional(),
+        sourceDiagnostics: sourceDiagnostics,
         pageId: z.string(),
         name: z.string(),
         query: z.string().min(1),

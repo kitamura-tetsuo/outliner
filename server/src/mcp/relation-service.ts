@@ -3,6 +3,12 @@ import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
 import { EXPLICIT_SELECT_ALIAS_POLICY_VERSION } from "../../../shared/src/services/explicitSelectAlias.js";
+import { validateInsertTargetPreference } from "../../../shared/src/services/insertTargetPolicy.js";
+import {
+    analyzeProjectQueryProvenance,
+    unambiguousPhysicalColumn,
+    unambiguousRowSource,
+} from "../../../shared/src/services/projectQueryProvenance.js";
 import {
     parseSqlIdentifiers,
     parseTopLevelInsertTarget,
@@ -11,10 +17,19 @@ import {
 } from "../../../shared/src/services/readOnlySql.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
 import { compileSqlEnvironment, type SqlEnumMetadata } from "../../../shared/src/services/sqlEnvironmentCompiler.js";
+import { describeViewSources, unavailableViewSources } from "../../../shared/src/services/viewSourceDiagnostics.js";
+import type {
+    SelectProvenanceEvidence,
+    SelectRelationEvidence,
+} from "../../../shared/src/services/viewSourceEvidence.js";
 import { validateScheduleRowIdentities } from "../scheduler/row-validation.js";
 import { materializeScheduleRecords } from "../scheduler/table-materialization.js";
 import { type Item, Project } from "../schema/app-schema.js";
-import { gridColumnsWithVisibility } from "./grid-visibility.js";
+import { readGridPresentation } from "./grid-presentation.js";
+import { boundGridRelations } from "./grid-query-evidence.js";
+import { gridColumnsWithVisibility, mcpGridComponents } from "./grid-visibility.js";
+import { closeLiveRoom, isLiveRoom, type LiveRoomHost, openLiveRoom } from "./live-room.js";
+import { McpEffectError } from "./mcp-error.js";
 import {
     assertRevision,
     IdempotencyCache,
@@ -234,7 +249,7 @@ export class OutlinerRelationService {
     private readonly idempotency = new IdempotencyCache();
 
     constructor(
-        private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
+        private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection"> & Partial<Pick<Hocuspocus, "documents">>,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
         private readonly options: {
             beforeRecordBatchPublication?: () => Promise<void>;
@@ -275,6 +290,77 @@ export class OutlinerRelationService {
         } finally {
             await connection.disconnect();
         }
+    }
+
+    private gridHost(): LiveRoomHost {
+        if (!this.hocuspocus.documents) {
+            throw new McpReadError("internal_failure", "Live room authority is unavailable");
+        }
+        return this.hocuspocus as LiveRoomHost;
+    }
+
+    private async withGridProject<T>(
+        uid: string,
+        projectId: string,
+        fn: (doc: Y.Doc) => Promise<T>,
+        acceptedEffect: (result: T) => boolean = () => false,
+    ): Promise<T> {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId)) throw new McpReadError("invalid_argument", "Invalid project ID");
+        if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
+        const host = this.gridHost();
+        const connection = await openLiveRoom(host, `projects/${projectId}`, uid, { effect: "none" });
+        let accepted = false;
+        try {
+            if (!await this.canAccess(uid, projectId)) throw new McpReadError("forbidden", "Project is inaccessible");
+            const result = await fn(connection.document as unknown as Y.Doc);
+            accepted = acceptedEffect(result);
+            return result;
+        } finally {
+            await this.closeGridConnection(host, connection, accepted);
+        }
+    }
+
+    private async closeGridConnection(
+        host: LiveRoomHost,
+        connection: Awaited<ReturnType<typeof openLiveRoom>>,
+        accepted: boolean,
+    ) {
+        try {
+            await closeLiveRoom(host, connection);
+        } catch (error) {
+            // A confirmed in-memory publication stays replayable on cleanup failure.
+            if (!accepted) throw error;
+        }
+    }
+
+    private async releaseGridSources(sources: Map<string, TableDoc>, accepted = false) {
+        let cleanupError: unknown;
+        for (const source of sources.values()) {
+            try {
+                await source.disconnect();
+            } catch (error) {
+                cleanupError ??= error;
+            }
+        }
+        if (cleanupError && !accepted) throw cleanupError;
+    }
+
+    private async openGridTable(uid: string, projectId: string, tableId: string): Promise<TableDoc> {
+        const host = this.gridHost();
+        const connection = await openLiveRoom(host, `projects/${projectId}/tables/${tableId}`, uid, { effect: "none" });
+        const doc = connection.document as unknown as Y.Doc;
+        return {
+            doc,
+            schema: doc.getText("schema").toString(),
+            data: doc.getMap("data"),
+            disconnect: () => closeLiveRoom(host, connection),
+        };
+    }
+
+    private gridInputsLive(projectId: string, doc: Y.Doc, sources: Map<string, TableDoc>): boolean {
+        const host = this.gridHost();
+        return isLiveRoom(host, `projects/${projectId}`, doc)
+            && [...sources].every(([id, source]) => isLiveRoom(host, `projects/${projectId}/tables/${id}`, source.doc));
     }
 
     private tables(doc: Y.Doc): TableEntry[] {
@@ -1148,12 +1234,12 @@ export class OutlinerRelationService {
         if (!Number.isInteger(resultLimit) || resultLimit < 1 || resultLimit > 100) {
             throw new McpReadError("invalid_argument", "resultLimit must be an integer from 1 to 100");
         }
-        return this.withProject(uid, projectId, async doc => {
+        return this.withGridProject(uid, projectId, async doc => {
             const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
             if (!grid) throw new McpReadError("not_found", "Grid not found");
             const sources = new Map<string, TableDoc>();
             try {
-                const { validation } = await this.validateGridCandidate(
+                const { validation, snapshot } = await this.validateGridCandidate(
                     uid,
                     projectId,
                     doc,
@@ -1161,7 +1247,22 @@ export class OutlinerRelationService {
                     grid.get("components"),
                     resultLimit,
                     sources,
+                    typeof grid.get("insertTargetTableId") === "string"
+                        ? grid.get("insertTargetTableId") as string
+                        : undefined,
                 );
+                if (
+                    doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId) !== grid
+                    || !this.gridInputsLive(projectId, doc, sources)
+                    || (snapshot !== undefined && this.validationSnapshot(doc, sources) !== snapshot)
+                ) {
+                    return {
+                        ...validation,
+                        accepted: false,
+                        sourceDiagnostics: unavailableViewSources(),
+                        errors: [{ phase: "currentness", message: "Grid or sources changed during validation" }],
+                    };
+                }
                 return validation;
             } finally {
                 for (const source of sources.values()) await source.disconnect();
@@ -1173,7 +1274,7 @@ export class OutlinerRelationService {
      * The single executable Grid SELECT semantics shared by validate_grid_query
      * (an existing Grid) and createGridOnPage (an unpublished candidate):
      * read-only + explicit-alias validation, same-project materialization of
-     * every Table and outline_items, execution, and plan-derived dependencies.
+     * every Table and outline_items, execution, and native catalog bindings.
      *
      * `sources` is a caller-owned cache of opened Table docs so a caller that
      * later publishes can keep them open and compare `snapshot` against the
@@ -1192,6 +1293,7 @@ export class OutlinerRelationService {
         components: unknown,
         resultLimit: number,
         sources: Map<string, TableDoc>,
+        insertTargetTableId?: string,
     ) {
         let normalizedQuery: string;
         try {
@@ -1200,6 +1302,7 @@ export class OutlinerRelationService {
             return {
                 snapshot: undefined,
                 validation: {
+                    sourceDiagnostics: unavailableViewSources("error"),
                     accepted: false as const,
                     query,
                     dependencies: [] as string[],
@@ -1212,7 +1315,7 @@ export class OutlinerRelationService {
         }
         for (const table of this.tables(doc)) {
             if (!sources.has(table.tableId)) {
-                sources.set(table.tableId, await this.openTable(uid, projectId, table.tableId));
+                sources.set(table.tableId, await this.openGridTable(uid, projectId, table.tableId));
             }
         }
         // Everything below until the first await reads one consistent state.
@@ -1266,13 +1369,89 @@ export class OutlinerRelationService {
                 ...column,
                 shown: visibility.get(column.name) ?? true,
             }));
-            const dependencies = await this.queryPlanDependencies(
-                lease.db,
-                bounded,
-                ["outline_items", ...schemaColumns.keys()],
+            const binding = await boundGridRelations(lease.db, bounded, result.fields.length, [
+                "outline_items",
+                ...schemaColumns.keys(),
+            ]);
+            const dependencies = binding.relations;
+            const allSources: SelectRelationEvidence[] = tables.filter(table => schemaColumns.has(table.relation)).map(
+                table => ({
+                    kind: "table",
+                    id: table.tableId,
+                    sqlName: table.relation,
+                    schemaRevision: revisionOf(contents.get(table.tableId)?.schema),
+                    columns: schemaColumns.get(table.relation)!,
+                }),
             );
-            const sourceColumns = dependencies.length === 1 ? schemaColumns.get(dependencies[0]) ?? [] : [];
+            const systemColumns = (await lease.db.query<{ column_name: string; }>(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'outline_items' ORDER BY ordinal_position",
+            )).rows.map(row => row.column_name);
+            allSources.push({
+                kind: "system",
+                id: "outline_items",
+                sqlName: "outline_items",
+                schemaRevision: revisionOf(SYSTEM_SCHEMA),
+                columns: systemColumns,
+            });
+            const evidence: SelectProvenanceEvidence = {
+                queryId: crypto.randomUUID(),
+                queryRevision: 1,
+                query: normalizedQuery,
+                executionGeneration: 1,
+                catalogGeneration: 1,
+                catalogRevision: catalog.snapshot.revision,
+                sources: allSources.filter(source => dependencies.includes(source.sqlName)),
+                columns: result.fields.map(field => ({ name: field.name, typeId: field.dataTypeID })),
+            };
+            const provenance = binding.status === "proven" ? analyzeProjectQueryProvenance(evidence) : {
+                status: "unknown" as const,
+                reason: "Native bindings cannot certify the admitted Project relation subset",
+                dependencies: { status: "unknown" as const, relations: evidence.sources },
+                suppliers: [],
+                branches: [],
+                queryId: evidence.queryId,
+                queryRevision: 1,
+                executionGeneration: 1,
+                catalogGeneration: 1,
+                fingerprint: "",
+            };
+            const preference = binding.status === "proven"
+                ? await validateInsertTargetPreference({
+                    evidence,
+                    provenance,
+                    isEvidenceCurrent: () =>
+                        this.gridInputsLive(projectId, doc, sources)
+                        && this.validationSnapshot(doc, sources) === snapshot,
+                    resolveLiveInsertCandidate: async supplier => {
+                        const source = evidence.sources.find(source =>
+                            source.kind === supplier.kind && source.id === supplier.id
+                        );
+                        if (
+                            !source
+                            || (source.kind === "table"
+                                && !this.tables(doc).some(table =>
+                                    table.tableId === source.id && table.relation === source.sqlName
+                                ))
+                        ) return undefined;
+                        return { source, insert: { requiresDestination: source.kind === "system" } };
+                    },
+                }, insertTargetTableId)
+                : {
+                    valid: insertTargetTableId === undefined,
+                    resolution: { mode: "unavailable" as const, reason: provenance.reason },
+                };
+            const sourceDiagnostics =
+                this.gridInputsLive(projectId, doc, sources) && this.validationSnapshot(doc, sources) === snapshot
+                    ? describeViewSources(evidence, provenance, preference.resolution)
+                    : unavailableViewSources();
             const columnNames = resultColumns.map(column => column.name);
+            const hasRowIdentity = !!provenance.bareIdSource
+                || (provenance.branches.length > 0 && provenance.branches.every(branch => branch.routedIdentity));
+            const editableColumns = columnNames.filter(column =>
+                hasRowIdentity
+                && column !== "id"
+                && provenance.suppliers.some(source => !!unambiguousPhysicalColumn(provenance, source.sqlName, column))
+            );
             const analyzed = stripSqlNoise(normalizedQuery);
             return {
                 snapshot,
@@ -1283,13 +1462,23 @@ export class OutlinerRelationService {
                     resultColumns,
                     sampleRows: result.rows.slice(0, resultLimit).map(row => this.boundedTraceRow(row, columnNames)),
                     truncated: result.rows.length > resultLimit,
-                    editability: dependencies.length === 1
-                        ? this.gridEditability(normalizedQuery, sourceColumns, columnNames)
-                        : {
-                            editable: false,
-                            readOnlyReason: "Query does not resolve to exactly one source relation",
-                            editableColumns: [],
-                        },
+                    rowIdentities: result.rows.slice(0, resultLimit).map((row, index) =>
+                        this.gridRowIdentity(provenance, row, index)
+                    ),
+                    sourceDiagnostics,
+                    preferenceValid: preference.valid,
+                    editability: {
+                        editable: editableColumns.length > 0,
+                        rowIdentity: provenance.branches.some(branch => branch.routedIdentity)
+                            ? "source"
+                            : provenance.bareIdSource
+                            ? "id"
+                            : undefined,
+                        editableColumns,
+                        readOnlyReason: editableColumns.length
+                            ? undefined
+                            : provenance.reason ?? "No unambiguous physical columns",
+                    },
                     inferredOrdering: /\border\s+by\b/i.test(analyzed) ? "sql-order-by" : "incidental-source-order",
                     warnings: materializationWarnings,
                     errors: [],
@@ -1299,6 +1488,7 @@ export class OutlinerRelationService {
             return {
                 snapshot,
                 validation: {
+                    sourceDiagnostics: unavailableViewSources("error"),
                     accepted: false as const,
                     normalizedQuery,
                     dependencies: [] as string[],
@@ -1321,6 +1511,7 @@ export class OutlinerRelationService {
     private validationSnapshot(doc: Y.Doc, sources: Map<string, TableDoc>): string {
         const catalog = readSqlCatalog("validation-snapshot", doc as never);
         return revisionOf({
+            projectStateVector: Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
             catalog: catalog.status === "ready"
                 ? { revision: catalog.snapshot.revision, objects: catalog.snapshot.objects }
                 : { status: catalog.status, reason: catalog.reason },
@@ -1343,7 +1534,7 @@ export class OutlinerRelationService {
         uid: string,
         projectId: string,
         request: {
-            tableId: string;
+            insertTargetTableId?: string;
             pageId: string;
             query: string;
             name?: string;
@@ -1375,21 +1566,16 @@ export class OutlinerRelationService {
         const { result, replayed } = await this.idempotency.run(key, async () => {
             try {
                 const created = await this.createGridOnPage(uid, projectId, {
-                    sourceTableId: request.tableId,
+                    insertTargetTableId: request.insertTargetTableId,
                     pageId: request.pageId,
                     query: request.query,
                     name: request.name,
                 }, { dryRun: request.dryRun, beforePublication: authorize });
-                const { validation, ...configuration } = created;
-                const catalogRevision = await this.withProject(
-                    uid,
-                    projectId,
-                    doc => this.catalogRevision(projectId, doc),
-                );
+                const { validation: _validation, ...configuration } = created;
                 return {
                     ...configuration,
                     applied: !request.dryRun,
-                    revision: revisionOf({ query: created.query, catalogRevision }),
+                    revision: created.revision,
                 };
             } catch (error) {
                 if (error instanceof McpReadError && error.code === "kind_mismatch") {
@@ -1403,19 +1589,27 @@ export class OutlinerRelationService {
         });
         // An awaiting replay is a separate disclosure boundary. Revocation here
         // leaves the original successful cache entry intact for authorized callers.
-        await authorize();
+        try {
+            await authorize();
+        } catch {
+            throw new McpEffectError("forbidden", "Project is inaccessible", {}, {
+                applied: result.applied,
+                replayed,
+                entity: result.gridId ? `grid:${result.gridId}` : undefined,
+            });
+        }
         return { ...result, replayed };
     }
 
     /**
-     * Create one Grid definition over an existing Table and append one Grid
+     * Create one Grid definition from its own SELECT and append one Grid
      * placement to the end of an existing top-level Page, as one
      * all-or-nothing mutation (issue #5349).
      *
      * Yjs transactions cannot be cancelled, so atomicity comes from ordering:
-     * every fallible prerequisite (source Table, destination Page, executable
+     * every fallible prerequisite (SQL sources, destination Page, executable
      * query validation) is checked first; after the asynchronous validation
-     * the source, destination, and validation snapshot are re-resolved from
+     * the sources, destination, and validation snapshot are re-resolved from
      * the live documents synchronously, immediately followed by the single
      * publication transaction. A changed snapshot triggers revalidation
      * against the new state. If publication itself throws or leaves the two
@@ -1426,12 +1620,15 @@ export class OutlinerRelationService {
     async createGridOnPage(
         uid: string,
         projectId: string,
-        request: { sourceTableId: string; pageId: string; query: string; name?: string; },
+        request: { insertTargetTableId?: string; pageId: string; query: string; name?: string; },
         options: { dryRun?: boolean; beforePublication?: () => Promise<void>; } = {},
     ) {
-        const { sourceTableId, pageId, query, name } = request;
-        if (typeof sourceTableId !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(sourceTableId)) {
-            throw new McpReadError("invalid_argument", "Invalid source Table ID");
+        const { insertTargetTableId, pageId, query, name } = request;
+        if (
+            insertTargetTableId !== undefined
+            && (typeof insertTargetTableId !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(insertTargetTableId))
+        ) {
+            throw new McpReadError("invalid_argument", "Invalid INSERT preference Table ID");
         }
         if (typeof pageId !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(pageId)) {
             throw new McpReadError("invalid_argument", "Invalid Page ID");
@@ -1449,11 +1646,12 @@ export class OutlinerRelationService {
         if (name !== undefined && typeof name !== "string") {
             throw new McpReadError("invalid_argument", "Grid name must be a string");
         }
-        return this.withProject(uid, projectId, async doc => {
+        return this.withGridProject(uid, projectId, async doc => {
             const sources = new Map<string, TableDoc>();
+            let published = false;
             try {
                 for (let attempt = 1; attempt <= MAX_CREATE_GRID_VALIDATIONS; attempt++) {
-                    this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                    this.resolveGridCreationTargets(doc, pageId);
                     const catalogBefore = readSqlCatalog(projectId, doc as never);
                     if (catalogBefore.status !== "ready") {
                         throw new McpReadError("validation_failed", "Project SQL catalog is unavailable");
@@ -1466,9 +1664,17 @@ export class OutlinerRelationService {
                         undefined,
                         25,
                         sources,
+                        insertTargetTableId,
                     );
                     if (!validation.accepted) {
                         throw new McpReadError("validation_failed", "Grid query validation failed", { validation });
+                    }
+                    if (!validation.preferenceValid) {
+                        throw new McpReadError(
+                            "invalid_argument",
+                            "INSERT preference is not an available row supplier",
+                            { sourceDiagnostics: validation.sourceDiagnostics },
+                        );
                     }
                     const dependencies = new Set<string>(validation.dependencies);
                     const dependencyWarnings = validation.warnings.filter(warning =>
@@ -1484,7 +1690,7 @@ export class OutlinerRelationService {
                     await options.beforePublication?.();
                     // Mutation boundary: nothing below awaits until publication
                     // has completed, so no collaborator update can interleave.
-                    const { table, page } = this.resolveGridCreationTargets(doc, sourceTableId, pageId);
+                    const { page } = this.resolveGridCreationTargets(doc, pageId);
                     const currentCatalog = readSqlCatalog(projectId, doc as never);
                     if (
                         currentCatalog.status !== "ready"
@@ -1497,14 +1703,20 @@ export class OutlinerRelationService {
                                 : undefined,
                         });
                     }
+                    if (!this.gridInputsLive(projectId, doc, sources)) {
+                        throw new McpReadError("stale_revision", "Grid rooms changed during validation");
+                    }
                     if (this.validationSnapshot(doc, sources) !== snapshot) continue;
-                    const gridName = name ?? String(table.get("name") ?? "");
+                    const gridName = name ?? "Grid";
                     const created = options.dryRun
                         ? undefined
-                        : this.publishGridPlacement(doc, uid, page, sourceTableId, gridName, query);
+                        : this.publishGridPlacement(doc, uid, page, gridName, query, insertTargetTableId);
+                    published = !!created;
                     return {
                         ...(created ? { gridId: created.gridId, placementId: created.itemId } : {}),
-                        sourceTableId,
+                        insertTargetTableId,
+                        sourceDiagnostics: validation.sourceDiagnostics,
+                        revision: revisionOf({ query, catalogRevision: catalogBefore.snapshot.revision }),
                         pageId,
                         name: gridName,
                         query,
@@ -1517,14 +1729,12 @@ export class OutlinerRelationService {
                     { attempts: MAX_CREATE_GRID_VALIDATIONS },
                 );
             } finally {
-                for (const source of sources.values()) await source.disconnect();
+                await this.releaseGridSources(sources, published);
             }
-        });
+        }, result => !!result.gridId);
     }
 
-    private resolveGridCreationTargets(doc: Y.Doc, sourceTableId: string, pageId: string) {
-        const table = doc.getMap<Y.Map<unknown>>("yjsTables").get(sourceTableId);
-        if (!table) throw new McpReadError("not_found", "Source Table not found", { sourceTableId });
+    private resolveGridCreationTargets(doc: Y.Doc, pageId: string) {
         const project = Project.fromDoc(doc);
         const page = project.findPage(pageId);
         if (!page || page.parent?.parentKey !== "root") {
@@ -1533,23 +1743,26 @@ export class OutlinerRelationService {
             }
             throw new McpReadError("not_found", "Destination Page not found", { pageId });
         }
-        return { table, page };
+        return { page };
     }
 
     private publishGridPlacement(
         doc: Y.Doc,
         author: string,
         page: Item,
-        sourceTableId: string,
         name: string,
         query: string,
+        insertTargetTableId?: string,
     ): { gridId: string; itemId: string; } {
         const registry = doc.getMap<Y.Map<unknown>>("yjsGrids");
         const gridId = crypto.randomUUID();
         let itemKey: string | undefined;
         const consistent = () => {
             const grid = registry.get(gridId);
-            if (!grid || !itemKey || grid.get("sourceTableId") !== sourceTableId || grid.get("query") !== query) {
+            if (
+                !grid || !itemKey || grid.get("insertTargetTableId") !== insertTargetTableId
+                || grid.get("query") !== query
+            ) {
                 return false;
             }
             const children = [...page.items];
@@ -1557,27 +1770,25 @@ export class OutlinerRelationService {
             return placement?.key === itemKey
                 && placement.componentType === "yjstable"
                 && placement.yjsGridId === gridId
-                && placement.yjsTableId === sourceTableId;
+                && !placement.yjsTableId;
         };
         let failure: unknown;
         try {
             doc.transact(() => {
                 // Matches createGrid()'s default Grid configuration.
                 const entry = new Y.Map<unknown>();
-                entry.set("sourceTableId", sourceTableId);
+                if (insertTargetTableId !== undefined) entry.set("insertTargetTableId", insertTargetTableId);
                 entry.set("name", name);
                 entry.set("query", query);
                 entry.set("sqlAliasPolicyVersion", EXPLICIT_SELECT_ALIAS_POLICY_VERSION);
                 entry.set("components", new Y.Map<Y.Map<unknown>>());
                 registry.set(gridId, entry);
                 // Matches appendGridPlacement(): a fresh block at the end of
-                // the Page's current child order, bound via yjsGridId with
-                // yjsTableId provenance.
+                // the Page's current child order, bound only via yjsGridId.
                 const placement = page.items.addNode(author);
                 itemKey = placement.key;
                 placement.componentType = "yjstable";
                 placement.yjsGridId = gridId;
-                placement.yjsTableId = sourceTableId;
             }, "mcp-create-grid");
         } catch (error) {
             failure = error;
@@ -1621,27 +1832,6 @@ export class OutlinerRelationService {
 
     private nodeExists(doc: Y.Doc, itemKey: string): boolean {
         return this.allItems(Project.fromDoc(doc)).some(item => item.key === itemKey);
-    }
-
-    private async queryPlanDependencies(db: PGlite, query: string, relations: string[]): Promise<string[]> {
-        // PostgreSQL's plan resolves quoting, CTE shadowing, joins, and nested
-        // queries for us, so dependency reporting follows execution rather
-        // than attempting to reinterpret SQL with a regular expression.
-        const explained = await db.query<Record<string, unknown>>(`EXPLAIN (FORMAT JSON) ${query}`);
-        const found = new Set<string>();
-        const allowed = new Set(relations);
-        const visit = (value: unknown): void => {
-            if (Array.isArray(value)) {
-                value.forEach(visit);
-            } else if (value && typeof value === "object") {
-                for (const [key, nested] of Object.entries(value)) {
-                    if (key === "Relation Name" && typeof nested === "string" && allowed.has(nested)) found.add(nested);
-                    visit(nested);
-                }
-            }
-        };
-        visit(explained.rows);
-        return relations.filter(relation => found.has(relation));
     }
 
     /** Match the browser adapter: one malformed record must not hide valid rows from a Grid. */
@@ -1792,180 +1982,172 @@ export class OutlinerRelationService {
      * follows the config/query/client/render stages used by the browser's
      * gridRenderTrace rather than introducing an MCP-only tracing model.
      */
+    /** Read configuration and SELECT diagnostics from one retained incarnation. */
+    async inspectGrid(uid: string, projectId: string, gridId: string, maxRows = 25) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(projectId) || !/^[A-Za-z0-9_-]{1,200}$/.test(gridId)) {
+            throw new McpReadError("invalid_argument", "Invalid Grid or Project ID");
+        }
+        const authorize = async () => {
+            let allowed = false;
+            try {
+                allowed = await this.canAccess(uid, projectId);
+            } catch {}
+            if (!allowed) throw new McpReadError("forbidden", "Project is inaccessible");
+        };
+        await authorize();
+        const host = this.gridHost();
+        const connection = await openLiveRoom(host, `projects/${projectId}`, uid, { effect: "none" });
+        let captured: Record<string, unknown>;
+        try {
+            await authorize();
+            const doc = connection.document as unknown as Y.Doc;
+            const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
+            if (!grid) throw new McpReadError("not_found", "Grid not found");
+            const incarnation = revisionOf({
+                incarnation: Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
+                query: grid.get("query"),
+                preference: grid.get("insertTargetTableId"),
+                presentation: readGridPresentation(projectId, gridId, grid),
+            });
+            const query = String(grid.get("query") ?? "");
+            const insertTargetTableId = typeof grid.get("insertTargetTableId") === "string"
+                ? grid.get("insertTargetTableId") as string
+                : undefined;
+            const order = this.stringArray(grid.get("columnOrder"));
+            const components = grid.get("components");
+            const presentation = readGridPresentation(projectId, gridId, grid);
+            const metadata = {
+                id: gridId,
+                name: String(grid.get("name") ?? "Grid"),
+                query,
+                insertTargetTableId,
+                columnOrder: order,
+                columns: gridColumnsWithVisibility(components, order),
+                components: mcpGridComponents(components),
+                revision: revisionOf({ query, catalogRevision: this.catalogRevision(projectId, doc) }),
+                presentation: presentation.presentation,
+                presentationRevision: presentation.presentationRevision,
+            };
+            const sources = new Map<string, TableDoc>();
+            try {
+                const { validation, snapshot } = await this.validateGridCandidate(
+                    uid,
+                    projectId,
+                    doc,
+                    query,
+                    components,
+                    maxRows,
+                    sources,
+                    insertTargetTableId,
+                );
+                const current = this.gridInputsLive(projectId, doc, sources)
+                    && doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId) === grid
+                    && incarnation
+                        === revisionOf({
+                            incarnation: Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
+                            query: grid.get("query"),
+                            preference: grid.get("insertTargetTableId"),
+                            presentation: readGridPresentation(projectId, gridId, grid),
+                        })
+                    && (snapshot === undefined || this.validationSnapshot(doc, sources) === snapshot);
+                captured = {
+                    ...metadata,
+                    validation: current
+                        ? validation
+                        : {
+                            accepted: false,
+                            errors: [{ phase: "currentness", message: "Grid or sources changed during inspection" }],
+                        },
+                    sourceDiagnostics: current ? validation.sourceDiagnostics : unavailableViewSources(),
+                };
+            } finally {
+                for (const source of sources.values()) await source.disconnect();
+            }
+        } finally {
+            await closeLiveRoom(host, connection);
+        }
+        await authorize();
+        return captured!;
+    }
+
     async traceGrid(uid: string, projectId: string, gridId: string, maxRows = 25) {
-        if (!/^[A-Za-z0-9_-]{1,200}$/.test(gridId)) throw new McpReadError("invalid_argument", "Invalid Grid ID");
         if (!Number.isInteger(maxRows) || maxRows < 1 || maxRows > 100) {
             throw new McpReadError("invalid_argument", "maxRows must be an integer from 1 to 100");
         }
-        return this.withProject(uid, projectId, async doc => {
-            const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
-            if (!grid) throw new McpReadError("not_found", "Grid not found");
-            const sourceTableId = String(grid.get("sourceTableId") ?? "");
-            const sourceEntry = doc.getMap<Y.Map<unknown>>("yjsTables").get(sourceTableId);
-            const query = String(grid.get("query") ?? "");
-            const columnOrder = this.stringArray(grid.get("columnOrder"));
-            const components = grid.get("components");
-            const configuredColumns = gridColumnsWithVisibility(components, columnOrder);
-            const hiddenColumns = configuredColumns.filter(column => !column.shown).map(column => column.name);
-            const configRevision = revisionOf({
-                gridId,
-                sourceTableId,
-                query,
-                columnOrder,
-                hiddenColumns,
-                stateVector: Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
-            });
-            const trace: Record<string, unknown> = {
-                version: 1,
-                gridId,
-                sourceTableId,
-                revision: configRevision,
-                stages: [{
+        const inspected = await this.inspectGrid(uid, projectId, gridId, maxRows);
+        const validation = inspected.validation as {
+            accepted: boolean;
+            sampleRows?: Record<string, unknown>[];
+            resultColumns?: { name: string; shown: boolean; }[];
+            errors?: unknown[];
+            editability?: unknown;
+            truncated?: boolean;
+            inferredOrdering?: string;
+            rowIdentities?: unknown[];
+        };
+        const diagnostics = inspected.sourceDiagnostics;
+        const columns = (validation.resultColumns ?? []).slice(0, MAX_TRACE_COLUMNS);
+        const order = inspected.columnOrder as string[];
+        const ordered = [
+            ...order.filter(name => columns.some(column => column.name === name)),
+            ...columns.map(column => column.name).filter(name => !order.includes(name)),
+        ];
+        const visible = new Set(columns.filter(column => column.shown).map(column => column.name));
+        const presentationColumns = ordered.map(name => ({ name, shown: visible.has(name) }));
+        return {
+            version: 1,
+            gridId,
+            revision: inspected.revision,
+            insertTargetTableId: inspected.insertTargetTableId,
+            sourceDiagnostics: diagnostics,
+            stages: [
+                {
                     stage: "config",
                     observed: true,
-                    revision: configRevision,
-                    name: String(grid.get("name") ?? ""),
-                    sourceTableId,
-                    query,
-                    columnOrder,
-                    columns: configuredColumns,
-                    hiddenColumns,
-                }],
-            };
-            const stages = trace.stages as Record<string, unknown>[];
-            if (!sourceEntry) {
-                stages.push({
-                    stage: "source",
+                    revision: inspected.presentationRevision,
+                    name: inspected.name,
+                    query: inspected.query,
+                    columnOrder: order,
+                    columns: inspected.columns,
+                },
+                { stage: "sources", observed: true, sourceDiagnostics: diagnostics },
+                {
+                    stage: "query-execution",
                     observed: true,
-                    sourceTableId,
-                    status: "stale",
-                    error: { phase: "source", message: "Source Table is not registered" },
-                });
-                return trace;
-            }
-
-            const lease = await acquireDb();
-            const opened: TableDoc[] = [];
-            try {
-                const catalog = await materializeProjectCatalog(lease.db, projectId, doc);
-                await lease.db.exec(SYSTEM_SCHEMA);
-                await this.loadOutlineItems(lease.db, Project.fromDoc(doc));
-                let sourceRevision = "";
-                let sourceSchema = "";
-                for (const table of this.tables(doc)) {
-                    const source = await this.openTable(uid, projectId, table.tableId);
-                    opened.push(source);
-                    if (table.tableId === sourceTableId) {
-                        sourceSchema = source.schema;
-                        sourceRevision = revisionOf({
-                            schema: source.schema,
-                            stateVector: Buffer.from(Y.encodeStateVector(source.doc)).toString("base64url"),
-                        });
-                    }
-                    if (!source.schema.trim()) continue;
-                    await lease.db.exec(source.schema);
-                    await this.loadRecords(lease.db, table.relation, source.data);
-                }
-                const sourceSqlName = String(sourceEntry.get("sqlName") ?? "");
-                const schemaColumns = sourceSchema
-                    ? (await lease.db.query<{ column_name: string; }>(
-                        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' "
-                            + "AND table_name = $1 ORDER BY ordinal_position",
-                        [sourceSqlName],
-                    )).rows.map(column => column.column_name)
-                    : [];
-                stages.push({
-                    stage: "source",
-                    observed: true,
-                    sourceTableId,
-                    sqlName: sourceSqlName,
-                    schemaRevision: sourceRevision,
-                    schemaColumns,
-                    status: sourceRevision ? "current" : "unavailable",
-                });
-                let select: string;
-                try {
-                    select = validateReadOnlySelect(query);
-                } catch (error) {
-                    stages.push({
-                        stage: "query-execution",
-                        observed: true,
-                        status: "error",
-                        error: this.sqlDiagnostic(error, "validation"),
-                    });
-                    return trace;
-                }
-                try {
-                    const bounded = select.replace(/;\s*$/, "");
-                    const result = await lease.db.query<Record<string, unknown>>(
-                        `SELECT * FROM (${bounded}\n) AS mcp_grid_trace LIMIT ${maxRows + 1}`,
-                    );
-                    const resultColumns = await resultColumnMetadata(lease.db, result.fields ?? [], catalog);
-                    const columnNames = (result.fields ?? []).map(field => field.name).slice(0, MAX_TRACE_COLUMNS);
-                    const columns = gridColumnsWithVisibility(components, columnNames)
-                        .filter(column => columnNames.includes(column.name));
-                    const rows = result.rows.slice(0, maxRows);
-                    const editability = this.gridEditability(select, schemaColumns, columnNames);
-                    const ordered = [
-                        ...columnOrder.filter(column => columnNames.includes(column)),
-                        ...columnNames.filter(column => !columnOrder.includes(column)),
-                    ];
-                    const presentationColumns = gridColumnsWithVisibility(components, ordered)
-                        .filter(column => ordered.includes(column.name));
-                    const renderedColumns = presentationColumns.filter(column => column.shown).map(column =>
-                        column.name
-                    );
-                    const analyzedSql = stripSqlNoise(select);
-                    const orderSource = /\border\s+by\b/i.test(analyzedSql)
-                        ? "sql-order-by"
-                        : "incidental-source-order";
-                    stages.push({
-                        stage: "query-execution",
-                        observed: true,
-                        status: "completed",
-                        orderSource,
-                        columns,
-                        resultColumns,
-                        rows: rows.map((values, index) => ({
-                            identity: this.rowIdentity(values, index),
-                            values: this.boundedTraceRow(values, columnNames),
-                        })),
-                        rowCount: rows.length,
-                        totalCount: result.rows.length > maxRows ? undefined : rows.length,
-                        truncated: result.rows.length > maxRows,
-                        editability,
-                    });
-                    stages.push({
-                        stage: "render",
-                        observed: false,
-                        inferredFrom: "stored-grid-config-and-query-result",
-                        columns: presentationColumns,
-                        renderedColumns,
-                        columnCount: renderedColumns.length,
-                        rowCount: rows.length,
-                        orderSource,
-                        transforms: {
-                            hiddenColumns,
-                            presentationColumnOrder: ordered,
-                            presentationColumns,
-                            filtering: /\bwhere\b/i.test(analyzedSql) ? "sql" : "none",
-                            sorting: orderSource,
-                        },
-                    });
-                } catch (error) {
-                    stages.push({
-                        stage: "query-execution",
-                        observed: true,
-                        status: "error",
-                        error: this.sqlDiagnostic(error, "execution"),
-                    });
-                }
-                return trace;
-            } finally {
-                for (const source of opened) await source.disconnect();
-                lease.release();
-            }
-        });
+                    status: validation.accepted ? "completed" : "error",
+                    orderSource: validation.inferredOrdering,
+                    columns: columns.map(column => ({ name: column.name, shown: column.shown })),
+                    resultColumns: columns,
+                    rows: (validation.sampleRows ?? []).map((values, index) => ({
+                        identity: validation.rowIdentities?.[index]
+                            ?? { kind: "result-ordinal", value: index, stable: false },
+                        values: this.boundedTraceRow(values, columns.map(column => column.name)),
+                    })),
+                    rowCount: validation.sampleRows?.length ?? 0,
+                    truncated: validation.truncated ?? false,
+                    editability: validation.editability,
+                    errors: validation.errors,
+                    error: validation.errors?.[0],
+                },
+                {
+                    stage: "render",
+                    observed: false,
+                    inferredFrom: "stored-grid-config-and-query-result",
+                    columns: presentationColumns,
+                    columnCount: visible.size,
+                    renderedColumns: ordered.filter(name => visible.has(name)),
+                    transforms: {
+                        hiddenColumns: columns.filter(column => !column.shown).map(column => column.name),
+                        presentationColumnOrder: ordered,
+                        presentationColumns,
+                        filtering: /\bwhere\b/i.test(stripSqlNoise(String(inspected.query))) ? "sql" : "none",
+                        sorting: validation.inferredOrdering,
+                    },
+                    rowCount: validation.sampleRows?.length ?? 0,
+                    orderSource: validation.inferredOrdering,
+                },
+            ],
+        };
     }
 
     private stringArray(value: unknown): string[] {
@@ -1973,36 +2155,21 @@ export class OutlinerRelationService {
         return values.filter((entry): entry is string => typeof entry === "string").slice(0, 100);
     }
 
-    private rowIdentity(row: Record<string, unknown>, ordinal: number) {
-        if (typeof row.source_kind === "string" && typeof row.source_id === "string") {
-            return { kind: "source", relation: row.source_kind, value: row.source_id };
+    private gridRowIdentity(
+        proof: import("../../../shared/src/services/projectQueryProvenance.js").ProjectQueryProvenance,
+        row: Record<string, unknown>,
+        ordinal: number,
+    ) {
+        const identity = unambiguousRowSource(proof, row);
+        if (identity) {
+            return {
+                kind: identity.kind,
+                relation: identity.kind === "source" ? identity.source.sqlName : undefined,
+                source: identity.source,
+                value: identity.rowId,
+            };
         }
-        if (typeof row.id === "string") return { kind: "id", value: row.id };
         return { kind: "result-ordinal", value: ordinal, stable: false };
-    }
-
-    private gridEditability(query: string, schemaColumns: string[], resultColumns: string[]) {
-        const readOnly = (reason: string) => ({ editable: false, readOnlyReason: reason, editableColumns: [] });
-        const analyzedSql = stripSqlNoise(query);
-        if (
-            /\b(join|group\s+by|distinct)\b/i.test(analyzedSql)
-            || /\b(count|sum|avg|min|max)\s*\(/i.test(analyzedSql)
-        ) {
-            return readOnly("Rows are combined, aggregated, or distinct");
-        }
-        const identity = resultColumns.includes("source_kind") && resultColumns.includes("source_id")
-            ? "source"
-            : resultColumns.includes("id")
-            ? "id"
-            : undefined;
-        if (!identity) return readOnly("Query result has no stable row identity");
-        return {
-            editable: true,
-            rowIdentity: identity,
-            editableColumns: resultColumns.filter(column =>
-                schemaColumns.includes(column) && !["id", "source_kind", "source_id"].includes(column)
-            ),
-        };
     }
 
     private boundedTraceRow(row: Record<string, unknown>, columns: string[]): Record<string, unknown> {
@@ -2546,7 +2713,7 @@ export class OutlinerRelationService {
             precondition.dryRun ? undefined : precondition.operationId,
         );
         const { result, replayed } = await this.idempotency.run(cacheKey, async () => {
-            return this.withProject(uid, projectId, async doc => {
+            return this.withGridProject(uid, projectId, async doc => {
                 const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
                 if (!grid) throw new McpReadError("not_found", "Grid not found");
                 const catalog = readSqlCatalog(projectId, doc as never);
@@ -2563,6 +2730,9 @@ export class OutlinerRelationService {
                         grid.get("components"),
                         25,
                         sources,
+                        typeof grid.get("insertTargetTableId") === "string"
+                            ? grid.get("insertTargetTableId") as string
+                            : undefined,
                     );
                     if (!validation.accepted || !snapshot) {
                         throw new McpReadError("validation_failed", "Grid query validation failed", { validation });
@@ -2583,6 +2753,12 @@ export class OutlinerRelationService {
                         throw new McpReadError("forbidden", "Project is inaccessible");
                     }
                     const currentCatalog = readSqlCatalog(projectId, doc as never);
+                    if (doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId) !== grid) {
+                        throw new McpReadError("stale_revision", "Grid entry changed during validation");
+                    }
+                    if (!this.gridInputsLive(projectId, doc, sources)) {
+                        throw new McpReadError("stale_revision", "Grid rooms changed during validation");
+                    }
                     const currentSnapshot = this.validationSnapshot(doc, sources);
                     if (
                         currentCatalog.status !== "ready"

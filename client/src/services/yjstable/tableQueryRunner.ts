@@ -39,8 +39,8 @@ export interface TableQueryExecution {
     generation: number;
     query: string;
     status: "completed" | "skipped";
-    startedAt: string;
-    durationMs: number;
+    startedAt?: string;
+    durationMs?: number;
     rowCount: number;
     columnCount: number;
 }

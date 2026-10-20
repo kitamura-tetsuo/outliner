@@ -1,10 +1,10 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { analyzeProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
 import { KanbanCardOperationController } from "./kanbanCardOperations";
 import type { KanbanSettings } from "./kanbanDocs";
 import type { KanbanProjection } from "./kanbanQueryRunner";
 import { resetPgliteForTests } from "./pgliteService";
-import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
 import type { ProjectSelectEvidence } from "./projectSelectSession";
 import { projectSchemaName } from "./sqlNames";
 import { addRecord, createTable, getTableHandles, setSchemaText } from "./tableDocs";

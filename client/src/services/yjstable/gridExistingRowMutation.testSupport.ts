@@ -1,7 +1,10 @@
 import * as Y from "yjs";
+import {
+    analyzeProjectQueryProvenance,
+    type ProjectQueryProvenance,
+} from "../../../../shared/src/services/projectQueryProvenance";
 import { createGridExistingRowMutationBoundary } from "./gridExistingRowMutation";
 import { createGridMetadataResolver, type GridMetadataResolution } from "./gridMetadataResolver";
-import { analyzeProjectQueryProvenance, type ProjectQueryProvenance } from "./projectQueryProvenance";
 import { createProjectSelectSession, type ProjectSelectEvidence } from "./projectSelectSession";
 import type { RelationProvider } from "./relationProvider";
 import { addRecord, createTable, getTableHandles, setSchemaText, type TableRecordValue } from "./tableDocs";

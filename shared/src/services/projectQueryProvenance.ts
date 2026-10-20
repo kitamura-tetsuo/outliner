@@ -1,6 +1,8 @@
 import { loadModule, parseSync } from "libpg-query";
-import type { ProjectSelectEvidence } from "./projectSelectSession";
-import type { RelationEvidence } from "./relationProvider";
+import type {
+    SelectProvenanceEvidence as ProjectSelectEvidence,
+    SelectRelationEvidence as RelationEvidence,
+} from "./viewSourceEvidence.js";
 
 await loadModule();
 
@@ -239,6 +241,32 @@ export function unambiguousPhysicalColumn(
     return physicalColumns.size === 1 ? routes[0] : undefined;
 }
 
+/** Resolve a returned identity only when every possible branch agrees on its source. */
+export function unambiguousRowSource(
+    proof: ProjectQueryProvenance,
+    row: Readonly<Record<string, unknown>>,
+): { source: ProvenanceRelation; rowId: string; kind: "source" | "id"; } | undefined {
+    if (proof.status !== "proven") return undefined;
+    if (typeof row.source_kind === "string" && typeof row.source_id === "string") {
+        const possible = proof.branches.filter(branch =>
+            branch.claimedSourceKind === undefined || branch.claimedSourceKind === row.source_kind
+        );
+        if (
+            possible.length && possible.every(branch =>
+                branch.routedIdentity && branch.source.sqlName === row.source_kind
+            )
+            && unambiguousPhysicalColumn(proof, row.source_kind, "source_id") === "id"
+        ) {
+            const identities = new Set(possible.map(branch => `${branch.source.kind}:${branch.source.id}`));
+            if (identities.size === 1) return { source: possible[0]!.source, rowId: row.source_id, kind: "source" };
+        }
+    }
+    if (proof.bareIdSource && typeof row.id === "string") {
+        return { source: proof.bareIdSource, rowId: row.id, kind: "id" };
+    }
+    return undefined;
+}
+
 function branchProvenance(shape: BranchShape, outputNames: string[], duplicateNames: boolean): ProvenanceBranch {
     const source = relationIdentity(shape.relation);
     const columns: ProvenanceColumnWrite[] = [];
@@ -302,7 +330,7 @@ function containsAggregate(value: unknown): boolean {
     if (!isNode(value)) return false;
     if (isNode(value.FuncCall)) {
         const names = Array.isArray(value.FuncCall.funcname) ? value.FuncCall.funcname : [];
-        const last = names.at(-1);
+        const last = names[names.length - 1];
         if (
             isNode(last) && isNode(last.String) && typeof last.String.sval === "string"
             && AGGREGATES.has(last.String.sval)

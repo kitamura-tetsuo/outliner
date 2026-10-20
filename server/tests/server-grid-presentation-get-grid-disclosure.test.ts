@@ -3,7 +3,7 @@ import { expect } from "chai";
 import fs from "fs-extra";
 import * as Y from "yjs";
 import { setGridColumnWidth } from "../../shared/src/services/gridDefinition.js";
-import { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
+import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import {
     AclStore,
     deferred,
@@ -19,7 +19,7 @@ import { Peer, PROJECT, readGridAsClient, seedGridProject } from "./server-grid-
 const UID = "user-1";
 const ROOM = `projects/${PROJECT}`;
 
-type RoomHost = Pick<Hocuspocus, "openDirectConnection">;
+type RoomHost = Pick<Hocuspocus, "openDirectConnection" | "documents">;
 type OpenConnection = Awaited<ReturnType<RoomHost["openDirectConnection"]>>;
 
 // Issue #5456 REQ-005: an authenticated get_grid read rechecks resource-side
@@ -44,7 +44,7 @@ describe("get_grid withholds Grid metadata revoked mid-read (#5456 REQ-005)", fu
         setGridColumnWidth(browser.grid("grid-tasks"), "title", 180);
         await browser.disconnect();
         expect({ ...(await liveWidths()) }).to.deep.equal({ title: 180 });
-        const sanity = await reads().getGrid(UID, PROJECT, "grid-tasks");
+        const sanity = await reads().inspectGrid(UID, PROJECT, "grid-tasks");
         expect((sanity.components as Record<string, Record<string, unknown>>).title?.widthPx).to.equal(180);
     });
 
@@ -55,8 +55,7 @@ describe("get_grid withholds Grid metadata revoked mid-read (#5456 REQ-005)", fu
 
     const liveWidths = () =>
         withRoom(server.hocuspocus, ROOM, doc => readGridAsClient(Y.encodeStateAsUpdate(doc), "grid-tasks")!.widths);
-    const reads = (host?: RoomHost) =>
-        new OutlinerReadService(host ?? server.hocuspocus, acl.checkAccess, async () => []);
+    const reads = (host?: RoomHost) => new OutlinerRelationService(host ?? server.hocuspocus, acl.checkAccess);
     const expectWithheld = (error: { code?: string; debug?: Record<string, unknown>; }) => {
         expect(error.code).to.equal("forbidden");
         expect(JSON.stringify(error)).to.not.contain("widthPx");
@@ -72,6 +71,7 @@ describe("get_grid withholds Grid metadata revoked mid-read (#5456 REQ-005)", fu
         const releasing = deferred();
         const release = deferred();
         const host: RoomHost = {
+            documents: server.hocuspocus.documents,
             openDirectConnection: (async (...args: Parameters<RoomHost["openDirectConnection"]>) => {
                 const connection: OpenConnection = await server.hocuspocus.openDirectConnection(...args);
                 const disconnect = connection.disconnect.bind(connection);
@@ -91,6 +91,7 @@ describe("get_grid withholds Grid metadata revoked mid-read (#5456 REQ-005)", fu
         const entering = deferred();
         const release = deferred();
         const host: RoomHost = {
+            documents: server.hocuspocus.documents,
             openDirectConnection: (async (...args: Parameters<RoomHost["openDirectConnection"]>) => {
                 entering.resolve();
                 await release.promise;
@@ -102,7 +103,7 @@ describe("get_grid withholds Grid metadata revoked mid-read (#5456 REQ-005)", fu
 
     it("withholds get_grid when the grant is revoked during connection release", async () => {
         const { host, releasing, release } = heldReleaseHost();
-        const pending = reads(host).getGrid(UID, PROJECT, "grid-tasks");
+        const pending = reads(host).inspectGrid(UID, PROJECT, "grid-tasks");
         await releasing;
         acl.revokeAll(PROJECT);
         release();
@@ -111,7 +112,7 @@ describe("get_grid withholds Grid metadata revoked mid-read (#5456 REQ-005)", fu
 
     it("withholds get_grid when the grant is revoked during room opening", async () => {
         const { host, entering, release } = heldOpenHost();
-        const pending = reads(host).getGrid(UID, PROJECT, "grid-tasks");
+        const pending = reads(host).inspectGrid(UID, PROJECT, "grid-tasks");
         await entering;
         acl.revokeAll(PROJECT);
         release();
@@ -120,7 +121,7 @@ describe("get_grid withholds Grid metadata revoked mid-read (#5456 REQ-005)", fu
 
     it("withholds get_grid when the access backend errors during connection release", async () => {
         const { host, releasing, release } = heldReleaseHost();
-        const pending = reads(host).getGrid(UID, PROJECT, "grid-tasks");
+        const pending = reads(host).inspectGrid(UID, PROJECT, "grid-tasks");
         await releasing;
         acl.failing = true;
         release();

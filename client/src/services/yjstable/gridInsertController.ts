@@ -1,4 +1,5 @@
 import type * as Y from "yjs";
+import { analyzeProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
 import { canReplayProjectHistory } from "../undo/projectHistoryAuthorization";
 import { getGridRegistry } from "./gridDocs";
 import {
@@ -7,7 +8,6 @@ import {
     resolveInsertTarget,
     validateInsertTargetPreference,
 } from "./insertTargetResolver";
-import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
 import { createProjectSelectSession, type ProjectSelectEvidence } from "./projectSelectSession";
 import type { RelationProvider, RelationValue } from "./relationProvider";
 import type { TableColumnSchema } from "./schemaIntrospection";

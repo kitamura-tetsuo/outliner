@@ -86,3 +86,5 @@ render pipeline), force one locally:
    `grid-render-trace-<gridId>.json` next to the existing `error-context.md`
    (and any screenshot/video), and that the index's `gridIds`/`url` correlate
    with the failing test.
+
+Grid traces identify the Grid and optional explicit INSERT preference through `sourceDiagnostics`, with actual relation identities, supplier proof and INSERT resolution. They have no singular source Table/document field. Retained rows are stale whenever current execution evidence is missing, loading, failed, or invalidated; an unchanged SQL string alone does not establish currentness. Browser traces observe rendering, while server render stages remain explicitly inferred. Unmeasured timing is omitted.

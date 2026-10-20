@@ -16,7 +16,7 @@ describe("create_grid MCP production contract (#5350)", function() {
         let updates = 0;
         f.project.ydoc.on("update", () => updates++);
         const preview = (await f.call("create_grid", { ...f.args, dryRun: true })).payload;
-        expect(preview).to.include({ applied: false, replayed: false, name: "Task list", query: f.args.query });
+        expect(preview).to.include({ applied: false, replayed: false, name: "Grid", query: f.args.query });
         expect(preview).not.to.have.property("gridId");
         expect(preview).not.to.have.property("placementId");
         expect(Y.encodeStateAsUpdate(f.project.ydoc)).to.deep.equal(before);
@@ -30,7 +30,6 @@ describe("create_grid MCP production contract (#5350)", function() {
         const grid = (await f.call("get_grid", { projectId: f.args.projectId, gridId: saved.gridId })).payload;
         expect(grid).to.include({
             id: saved.gridId,
-            sourceTableId: f.args.tableId,
             query: f.args.query,
             revision: saved.revision,
         });
@@ -39,9 +38,9 @@ describe("create_grid MCP production contract (#5350)", function() {
         const trace = await f.call("trace_grid", { projectId: f.args.projectId, gridId: saved.gridId });
         expect(trace.isError).not.to.equal(true);
         expect(trace.payload.gridId).to.equal(saved.gridId);
-        expect(trace.payload.sourceTableId).to.equal(f.args.tableId);
+        expect(trace.payload).not.to.have.property("sourceTableId");
         expect(trace.payload.stages.find((stage: { stage: string; }) => stage.stage === "config"))
-            .to.include({ observed: true, query: f.args.query, sourceTableId: f.args.tableId });
+            .to.include({ observed: true, query: f.args.query });
         expect(trace.payload.stages.find((stage: { stage: string; }) => stage.stage === "query-execution"))
             .to.include({ observed: true, status: "completed", rowCount: 2 });
         const retry = (await f.call("create_grid", f.args)).payload;
@@ -61,7 +60,7 @@ describe("create_grid MCP production contract (#5350)", function() {
             type: "oauth2",
             scopes: ["outliner.read", "outliner.write"],
         }]);
-        expect(tool.inputSchema.required).to.have.members(["projectId", "tableId", "pageId", "query", "operationId"]);
+        expect(tool.inputSchema.required).to.have.members(["projectId", "pageId", "query", "operationId"]);
         expect(tool.inputSchema.properties).not.to.have.property("expectedRevision");
         expect(tool.outputSchema.properties).to.have.property("placementId");
         // Fault injection verifies common dispatch fails closed on malformed success.
@@ -75,10 +74,10 @@ describe("create_grid MCP production contract (#5350)", function() {
         const f = httpGridFixture();
         const before = Y.encodeStateAsUpdate(f.project.ydoc);
         const cases: [object, string][] = [
-            [{ tableId: "missing" }, "not_found"],
+            [{ insertTargetTableId: "missing" }, "invalid_argument"],
             [{ pageId: "missing" }, "not_found"],
             [{ pageId: f.nested.id }, "invalid_argument"],
-            [{ tableId: "../other" }, "invalid_argument"],
+            [{ insertTargetTableId: "../other" }, "invalid_argument"],
             [{ pageId: "../other" }, "invalid_argument"],
             [{ projectId: "../other" }, "invalid_argument"],
             [{ query: " " }, "invalid_argument"],

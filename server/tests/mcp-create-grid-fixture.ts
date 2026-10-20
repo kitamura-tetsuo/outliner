@@ -25,6 +25,7 @@ export function createGridFixture(canAccess: (uid: string, projectId: string) =>
         entry.set("sqlName", sqlName);
         tables.set(tableId, entry);
         const doc = new Y.Doc();
+        Object.assign(doc, { name: `projects/project-1/tables/${tableId}` });
         doc.getText("schema").insert(0, schema);
         for (const row of rows) {
             const record = new Y.Map<unknown>();
@@ -49,7 +50,6 @@ export function createGridFixture(canAccess: (uid: string, projectId: string) =>
         [{ id: "p1", label: "Ada" }, { id: "p2", label: "Lin" }],
     );
     const existingGrid = new Y.Map<unknown>();
-    existingGrid.set("sourceTableId", "table-tasks");
     existingGrid.set("name", "Existing");
     existingGrid.set("query", "SELECT * FROM tasks");
     project.ydoc.getMap("yjsGrids").set("grid-existing", existingGrid);
@@ -62,7 +62,9 @@ export function createGridFixture(canAccess: (uid: string, projectId: string) =>
     page.items.addNode("owner").updateText("second child");
     const otherPage = project.addPage("Other", "owner");
 
+    for (const [room, doc] of rooms) Object.assign(doc, { name: room });
     const hocuspocus = {
+        documents: rooms,
         openDirectConnection: async (room: string) => ({
             document: rooms.get(room),
             disconnect: async () => {},
@@ -70,7 +72,7 @@ export function createGridFixture(canAccess: (uid: string, projectId: string) =>
     } as never;
     const relations = new OutlinerRelationService(hocuspocus, canAccess);
     const reads = new OutlinerReadService(hocuspocus, canAccess, async () => []);
-    return { project, tasks, people, page, first, nested, otherPage, relations, reads };
+    return { project, tasks, people, page, first, nested, otherPage, relations, reads, addTable };
 }
 
 export function gridIds(project: Project): string[] {
@@ -103,11 +105,11 @@ export function gridPlacements(project: Project): string[] {
  */
 export function afterFirstValidation(relations: OutlinerRelationService, mutate: () => void, every = false) {
     const target = relations as unknown as {
-        queryPlanDependencies: (...args: unknown[]) => Promise<string[]>;
+        validateGridCandidate: (...args: unknown[]) => Promise<unknown>;
     };
-    const original = target.queryPlanDependencies.bind(relations);
+    const original = target.validateGridCandidate.bind(relations);
     const calls = { count: 0 };
-    target.queryPlanDependencies = async (...args: unknown[]) => {
+    target.validateGridCandidate = async (...args: unknown[]) => {
         const result = await original(...args);
         calls.count++;
         if (every || calls.count === 1) mutate();

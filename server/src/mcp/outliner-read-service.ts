@@ -2,6 +2,7 @@ import type { Hocuspocus } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { nodeKindOf, type OutlineNodeKind } from "../../../shared/src/services/outlineNodeKind.js";
 import { readSqlCatalog } from "../../../shared/src/services/sqlCatalog.js";
+import { unavailableViewSources } from "../../../shared/src/services/viewSourceDiagnostics.js";
 import { type ProjectDescriptor, ProjectDirectoryError } from "../project-directory.js";
 import { type Item, type Items, Project } from "../schema/app-schema.js";
 import { readGridPresentation } from "./grid-presentation.js";
@@ -387,7 +388,8 @@ export class OutlinerReadService {
             return {
                 id: gridId,
                 name: String(grid.get("name") ?? ""),
-                sourceTableId: grid.get("sourceTableId"),
+                insertTargetTableId: grid.get("insertTargetTableId"),
+                sourceDiagnostics: unavailableViewSources(),
                 query,
                 columnOrder,
                 columns: gridColumnsWithVisibility(components, orderedColumnNames),

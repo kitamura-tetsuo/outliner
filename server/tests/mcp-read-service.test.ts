@@ -15,7 +15,6 @@ describe("Outliner MCP read service", () => {
         grid.yjsGridId = "grid-1";
         const gridMap = new (project.ydoc.getMap("yjsGrids").constructor as new() => MapLike)();
         gridMap.set("name", "Roadmap grid");
-        gridMap.set("sourceTableId", "table-1");
         gridMap.set("query", "SELECT * FROM roadmap");
         project.ydoc.getMap("yjsGrids").set("grid-1", gridMap as never);
         const tableMap = new (project.ydoc.getMap("yjsTables").constructor as new() => MapLike)();
@@ -177,7 +176,6 @@ describe("Outliner MCP read service", () => {
         expect(grid).to.include({
             id: "grid-1",
             name: "Roadmap grid",
-            sourceTableId: "table-1",
             query: "SELECT * FROM roadmap",
         });
         expect(grid.columnOrder).to.deep.equal(["title", "computed", "id"]);

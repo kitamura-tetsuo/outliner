@@ -176,7 +176,10 @@ test.describe("Grid header drag resize lifecycle edges", () => {
             await commitQuery(queryB);
             await expect.poll(async () => (await gridEntry(page, gridId)).query).toBe(queryB);
             await expect(gridHeader(page, 0, "title")).not.toHaveClass(/col-fixed/);
-            await expect(page.getByTestId("yjs-table-view")).toHaveAttribute("data-source-table-id", tableB.id);
+            await expect(page.getByTestId("yjs-table-view")).toHaveAttribute(
+                "data-source-table-ids",
+                JSON.stringify([tableB.id]),
+            );
             await commitQuery(QUERY);
             await expect.poll(async () => (await gridEntry(page, gridId)).query).toBe(QUERY);
             await expect(gridHeader(page, 0, "title")).toBeVisible();

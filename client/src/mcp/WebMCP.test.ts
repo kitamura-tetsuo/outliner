@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { unavailableViewSources } from "../../../shared/src/services/viewSourceDiagnostics";
 import { registerWebMCPGridTools } from "./WebMCP";
 
 describe("registerWebMCPGridTools", () => {
@@ -16,16 +17,21 @@ describe("registerWebMCPGridTools", () => {
         const mockAddTool = vi.fn().mockImplementation(() => vi.fn());
         (window as { WebMCP?: { addTool: unknown; }; }).WebMCP = { addTool: mockAddTool };
 
-        const getContext = vi.fn().mockReturnValue({ gridId: "g1", sourceTableId: "t1" });
+        const getContext = vi.fn().mockReturnValue({ gridId: "g1", sourceDiagnostics: unavailableViewSources() });
         const getResult = vi.fn().mockReturnValue({
             gridId: "g1",
-            sourceTableId: "t1",
+            sourceDiagnostics: unavailableViewSources(),
             rows: [],
             columns: [],
             rowCount: 0,
         });
 
-        const getTrace = vi.fn().mockReturnValue({ version: 1, gridId: "g1", stages: [{ stage: "render" }] });
+        const getTrace = vi.fn().mockReturnValue({
+            version: 1,
+            gridId: "g1",
+            sourceDiagnostics: unavailableViewSources(),
+            stages: [{ stage: "render" }],
+        });
         const cleanup = registerWebMCPGridTools(getContext, getResult, getTrace);
 
         expect(mockAddTool).toHaveBeenCalledTimes(3);
@@ -50,6 +56,7 @@ describe("registerWebMCPGridTools", () => {
         expect(JSON.parse(traceResponse.content[0].text)).toEqual({
             version: 1,
             gridId: "g1",
+            sourceDiagnostics: unavailableViewSources(),
             stages: [{ stage: "render" }],
         });
 

@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
+import { analyzeProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
 import { resetPgliteForTests } from "./pgliteService";
-import { analyzeProjectQueryProvenance } from "./projectQueryProvenance";
 import { createProjectSelectSession } from "./projectSelectSession";
 import { addRecord, createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { resetTableEngineForTests, type TableDocConnector } from "./tableEngine";

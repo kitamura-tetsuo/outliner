@@ -1,3 +1,4 @@
+import type { SelectProvenanceEvidence } from "../../../../shared/src/services/viewSourceEvidence";
 // Primary-independent SELECT lifecycle for Project views.
 //
 // Unlike TableQueryRunnerBase this session has no distinguished Table: it
@@ -29,7 +30,7 @@ export interface ProjectSelectColumn {
     typeId?: number;
 }
 
-export interface ProjectSelectEvidence {
+export interface ProjectSelectEvidence extends SelectProvenanceEvidence {
     queryId: string;
     queryRevision: number;
     query: string;
