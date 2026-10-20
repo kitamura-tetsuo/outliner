@@ -463,7 +463,16 @@ const logger = getLogger("SearchPanel");
     });
 </script>
 
-<svelte:window onkeydown={(e) => { if (isVisible && e.key === 'Escape') onclose?.(); }} />
+<svelte:window onkeydown={(e) => {
+    if (isVisible && e.key === 'Escape') {
+        const active = document.activeElement;
+        const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (active as HTMLElement).isContentEditable);
+        const isWithinSearchPanel = inputEl?.contains(active) || active?.closest('.search-panel');
+        if (!isInput || isWithinSearchPanel) {
+            onclose?.();
+        }
+    }
+}} />
 
 {#if isVisible}
     <div

@@ -1,14 +1,9 @@
 [Issues]
-Svelte compiler emitted an accessibility warning in `ConfirmDialog.svelte` because interactive event handlers (`onmousedown`, `onclick`, `onpointerdown`, `onmouseup`) were bound directly to an element with `role="presentation"`. The presentation role explicitly strips elements of their semantic meaning, making the placement of interactive handlers a violation of accessibility guidelines.
+The `SearchPanel` used a global `svelte:window` listener for the Escape key, which caused it to close unintentionally when users pressed Escape elsewhere on the page, such as when typing in the editor or dismissing a context menu.
 
 [Changes]
-In `client/src/components/ConfirmDialog.svelte`:
-
-- Changed the role of the inner dialog wrapper `div` from `role="presentation"` to `role="document"`. This is the correct ARIA practice for content wrappers within a modal, satisfying accessibility requirements without altering visual presentation.
-- Preserved the existing `stopPropagation()` event handlers on the inner wrapper to maintain correct backdrop-click-to-close behavior, as requested during code review.
+- Scoped the Escape key handling directly to `SearchPanel.svelte` using `document.activeElement`.
+- Ensures the panel only closes if the user is explicitly focused within the SearchPanel itself, or if they aren't actively focused on another `INPUT`, `TEXTAREA`, or `contenteditable` element, preventing global interference and preserving simultaneous editor interaction.
 
 [Verification Results]
-
-- `npx svelte-check --workspace client` passes with 0 errors and 0 warnings.
-- `npm run test:unit ConfirmDialog` passes successfully.
-- Code review verifies that the functionality is preserved and regressions are avoided.
+Ran `svelte-check` successfully. Tested formatting and the build process. No regressions found.
