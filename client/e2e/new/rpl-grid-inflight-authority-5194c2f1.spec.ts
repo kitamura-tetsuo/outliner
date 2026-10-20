@@ -10,18 +10,6 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 registerCoverageHooks();
 
-async function waitForStableUndoDepth(page: Page): Promise<number> {
-    let previous = -1;
-    let unchangedSamples = 0;
-    await expect.poll(async () => {
-        const current = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth as number);
-        unchangedSamples = current === previous ? unchangedSamples + 1 : 0;
-        previous = current;
-        return unchangedSamples;
-    }).toBeGreaterThanOrEqual(5);
-    return previous;
-}
-
 async function captureReplace(page: Page, fixture: OverlappingTableFixture, replacement: string) {
     await page.getByTestId("search-toggle-button").click();
     await page.locator("#search-scope").selectOption("page");
@@ -146,15 +134,26 @@ test("Replace Current refuses a query change introduced while lookup is pending"
     await editor.fillAndCommit(page, `SELECT id, title, done FROM ${fixture.tableA.sqlName}`);
     await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
     // Rendering the new query and publishing its undo entry cross independent
-    // reactive boundaries. Establish that the intentional query edit is in
-    // history before taking the no-effect baseline for the held replacement.
-    const undoDepth = await waitForStableUndoDepth(page);
-    expect(undoDepth).toBeGreaterThan(undoDepthBeforeQueryChange);
+    // reactive boundaries. Exercise that entry before taking the refusal
+    // baseline: a merely stable global count is not proof that the query edit
+    // has reached the router, while Undo/Redo establishes both publication and
+    // the intentional edit's ordinary history semantics.
+    await expect.poll(() => page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth))
+        .toBeGreaterThan(undoDepthBeforeQueryChange);
+    const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth as number);
+    await page.evaluate(async () => await (globalThis as any).globalUndoRouter.undo());
+    await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from B", { timeout: 30000 });
+    expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth - 1);
+    await page.evaluate(async () => await (globalThis as any).globalUndoRouter.redo());
+    await expect(fixture.gridA.getByTestId("yjs-table-grid")).toContainText("Value from A", { timeout: 30000 });
+    expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth);
     await releaseRelation(page);
     await reopenHeldSearchIfHidden(page);
+    await expect(page.getByTestId("replace-status")).toContainText("changed or could not be revalidated");
     // Provider refresh timing may retain the stale alias or remove it after the
     // query switches to A. The authoritative B hit must remain navigable either
     // way, and the refused action must not mutate its source or history.
+    await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2");
     await expect(page.getByTestId("search-result-button").filter({ hasText: "Value from B" }).first()).toBeVisible();
     expect(await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth)).toBe(undoDepth);
     const state = await snapshotProject(page);
