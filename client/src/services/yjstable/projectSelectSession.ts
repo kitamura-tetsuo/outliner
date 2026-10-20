@@ -213,7 +213,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
 
             const names = referencedRelations(query);
             const usedNames = new Set(names);
-            const sources: RelationEvidence[] = [];
+            const capturedSources = new Map<string, RelationEvidence>();
             for (const name of names) {
                 const provider = await this.resolveDependency(name);
                 if (stale()) return undefined;
@@ -221,7 +221,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 // Let PostgreSQL resolve it; an actually missing source is
                 // classified from the authoritative execution error below.
                 if (!provider) continue;
-                if (provider.evidence) sources.push(provider.evidence);
+                if (provider.evidence) capturedSources.set(name, provider.evidence);
             }
 
             const result = await executeGridQuery(query, {
@@ -229,21 +229,42 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 registry: {
                     resolveRelation: name => {
                         usedNames.add(name);
-                        return this.resolveDependency(name);
+                        return this.resolveDependency(name).then(provider => {
+                            if (provider?.evidence && !capturedSources.has(name)) {
+                                capturedSources.set(name, provider.evidence);
+                            }
+                            return provider;
+                        });
                     },
                 },
                 isStale: stale,
                 requireExplicitAliases: this.requireExplicitAliases,
                 includeColumnTypes: true,
+                relationNames: names,
             });
             if (stale()) return undefined;
-            // executeGridQuery may discover a relation that static FROM
-            // extraction did not. Its resolver records that source here.
+            // A matching provider name alone is not native binding identity:
+            // pg_catalog (or an earlier schema) may shadow the Project object.
+            // Only the captured, still-current provider and visible native
+            // Project object together establish an execution dependency.
+            const sources: RelationEvidence[] = [];
             for (const name of usedNames) {
+                const source = capturedSources.get(name);
                 const provider = this.dependencyProviders.get(name);
-                if (provider?.evidence && !sources.some(source => source.sqlName === name)) {
-                    sources.push(provider.evidence);
+                const current = provider?.evidence;
+                if (!source || !current) continue;
+                if (
+                    provider?.sqlName !== name || source.sqlName !== name
+                    || current.kind !== source.kind || current.id !== source.id
+                    || current.sqlName !== name || current.schemaRevision !== source.schemaRevision
+                ) {
+                    throw new Error("SQL source changed during query execution");
                 }
+                if (
+                    result.relationBindings?.some(binding =>
+                        binding.sqlName === name && binding.schemaName === this.pgSchema && binding.visible === true
+                    )
+                ) sources.push(source);
             }
             for (const [name, unsubscribe] of this.dependencyUnsubscribes) {
                 if (usedNames.has(name)) continue;
@@ -259,15 +280,7 @@ class ProjectSelectSessionImpl implements ProjectSelectSession {
                 executionGeneration: generation,
                 catalogGeneration: ready.generation,
                 catalogRevision: ready.snapshot.revision,
-                dependencyStatus: [...usedNames].every(name => {
-                        const provider = this.dependencyProviders.get(name);
-                        const source = provider?.evidence;
-                        return source !== undefined && provider?.sqlName === name && source.sqlName === name
-                            && sources.some(known =>
-                                known.kind === source.kind && known.id === source.id
-                                && known.sqlName === name && known.schemaRevision === source.schemaRevision
-                            );
-                    })
+                dependencyStatus: result.relationBindings !== undefined && sources.length === usedNames.size
                     ? "proven"
                     : "unknown",
                 sources,

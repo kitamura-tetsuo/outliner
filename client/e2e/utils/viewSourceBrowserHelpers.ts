@@ -9,7 +9,8 @@ interface ViewBrowserGlobals {
 }
 export interface ViewProofGlobals {
     __catalogBrowserTest: {
-        snapshot(id: string): { schema: string; };
+        tables(): { tableId: string; sqlName: string; }[];
+        snapshot(id: string): { schema: string; records: Record<string, Record<string, unknown>>; };
         holdViewProof(query: string): Promise<{ sources: SelectRelationEvidence[]; status: string; }>;
         viewProofCurrent(): boolean;
         releaseViewProof(): void;
