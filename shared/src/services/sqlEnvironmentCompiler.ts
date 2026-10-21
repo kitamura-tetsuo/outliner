@@ -856,7 +856,7 @@ export async function analyzeScopedSqlEnumDependencies(
                 identity,
             ]);
             if (resolved.rows[0]?.oid) continue;
-            const name = reference.names.at(-1);
+            const name = reference.names[reference.names.length - 1];
             const matches = name === undefined ? [] : candidates.get(name) ?? [];
             if (matches.length !== 1) {
                 diagnostics.push({ kind: "dependency", message: `Unresolved or ambiguous custom type: ${identity}` });
