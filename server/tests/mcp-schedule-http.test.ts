@@ -158,6 +158,21 @@ describe("Schedule MCP HTTP contract", () => {
         ).value;
         expect(preview).to.include({ accepted: true, persisted: false });
         expect(preview.candidateRows[0]).to.include({ id: "fixed", order: 1 });
+        expect(preview.deterministicIds).to.include({ idempotent: true });
+        const mixedIdsPreview = payload(
+            await call(toolCall("validate_schedule_rule", {
+                projectId: "project-1",
+                ruleId: "rule-1",
+                candidate: {
+                    ...candidate,
+                    sql: "INSERT INTO tasks (id, \"order\") VALUES ('fixed-one', 1), (random()::text, 2) RETURNING *",
+                },
+                occurrence: "2099-01-01T09:00:00Z",
+            })),
+        ).value;
+        expect(mixedIdsPreview).to.include({ accepted: true, persisted: false });
+        expect(mixedIdsPreview.candidateRows).to.have.length(2);
+        expect(mixedIdsPreview.deterministicIds).to.include({ idempotent: false });
         const implicitAliasPreview = payload(
             await call(toolCall("validate_schedule_rule", {
                 projectId: "project-1",

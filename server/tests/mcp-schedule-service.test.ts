@@ -252,6 +252,54 @@ describe("MCP Schedule diagnostics", function() {
             "2026-08-30T09:00:00Z",
         );
         expect(occurrenceId.deterministicIds.idempotent).to.equal(true);
+        for (
+            const [sql, idempotent] of [
+                ["INSERT INTO tasks (id) VALUES ('one'), ('two') RETURNING *", true],
+                ["INSERT INTO tasks (id) VALUES (-42) RETURNING *", true],
+                [
+                    "WITH source AS (SELECT 'INSERT INTO fake VALUES (random())'::text AS note) INSERT INTO tasks (id) VALUES ('outer') RETURNING *",
+                    true,
+                ],
+                [
+                    "INSERT INTO tasks (id) VALUES ('task-' || pg_catalog.current_setting('job.occurrence')::pg_catalog.text) RETURNING *",
+                    true,
+                ],
+                ["INSERT INTO tasks (id) VALUES ('x' OPERATOR(pg_catalog.||) 'y') RETURNING *", true],
+                [
+                    "INSERT INTO tasks (id) VALUES ('fixed'), (random()::text) RETURNING *",
+                    false,
+                ],
+                [
+                    "INSERT INTO tasks (id) VALUES (random()::text), ('fixed') RETURNING *",
+                    false,
+                ],
+                [
+                    "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence') || random()::text) RETURNING *",
+                    false,
+                ],
+                ["INSERT INTO tasks (id) VALUES (current_setting('different.setting')) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES ('prefix-' || 42) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (public.current_setting('job.occurrence')) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES ('x' OPERATOR(public.||) 'y') RETURNING *", false],
+                ["INSERT INTO tasks (id) SELECT 'selected' RETURNING *", false],
+                ["INSERT INTO tasks (id, id) VALUES ('one', 'two') RETURNING *", false],
+                ["INSERT INTO tasks (\"ID\") VALUES ('quoted') RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (NULL) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (DEFAULT) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES ('first') RETURNING *; SELECT 1", false],
+                ["INSERT INTO tasks (id) VALUES (", false],
+            ] as const
+        ) {
+            const result = await service.validate(
+                "user",
+                "project-1",
+                { ...(read.stored as never), sql },
+                "rule-1",
+                "2026-08-30T09:00:00Z",
+            );
+            expect(result.deterministicIds.idempotent, sql).to.equal(idempotent);
+            expect(tableConnection.document.getMap("data").size, sql).to.equal(0);
+        }
         const randomIdWithOccurrenceColumn = await service.validate(
             "user",
             "project-1",

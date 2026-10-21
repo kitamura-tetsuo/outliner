@@ -1,7 +1,8 @@
 import type { Hocuspocus } from "@hocuspocus/server";
+import { loadModule, parseSync } from "libpg-query";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
-import { parseSqlIdentifiers, stripSqlNoise } from "../../../shared/src/services/readOnlySql.js";
+import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import {
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
@@ -11,6 +12,52 @@ import {
 import { computeNextRunAt, computeOccurrencesAfter } from "../scheduler/schedule-indexer.js";
 import { McpReadError } from "./mcp-error.js";
 import { assertRevision, IdempotencyCache, revisionOf } from "./mutation-contract.js";
+
+await loadModule();
+
+type PgNode = Record<string, unknown>;
+const pgNode = (value: unknown): value is PgNode => typeof value === "object" && value !== null;
+
+function pgNames(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+    const names = value.map(part => pgNode(part) && pgNode(part.String) ? part.String.sval : undefined);
+    return names.every(name => typeof name === "string") ? names as string[] : undefined;
+}
+
+function deterministicIdExpression(value: unknown, textConcatenationOperand = false): boolean {
+    if (!pgNode(value)) return false;
+    if (pgNode(value.A_Const)) {
+        const constant = value.A_Const;
+        return pgNode(constant.sval) && typeof constant.sval.sval === "string"
+            || !textConcatenationOperand && pgNode(constant.ival) && typeof constant.ival.ival === "number"
+            || !textConcatenationOperand && pgNode(constant.fval) && typeof constant.fval.fval === "string";
+    }
+    if (pgNode(value.FuncCall)) {
+        const call = value.FuncCall;
+        const name = pgNames(call.funcname);
+        const args = Array.isArray(call.args) ? call.args : [];
+        return (name?.length === 1 && name[0] === "current_setting"
+            || name?.length === 2 && name[0] === "pg_catalog" && name[1] === "current_setting")
+            && args.length === 1 && pgNode(args[0]) && pgNode(args[0].A_Const)
+            && pgNode(args[0].A_Const.sval) && args[0].A_Const.sval.sval === "job.occurrence";
+    }
+    if (pgNode(value.TypeCast)) {
+        const cast = value.TypeCast;
+        const type = pgNode(cast.typeName) ? pgNames(cast.typeName.names) : undefined;
+        return (type?.length === 1 && type[0] === "text"
+            || type?.length === 2 && type[0] === "pg_catalog" && type[1] === "text")
+            && deterministicIdExpression(cast.arg, textConcatenationOperand);
+    }
+    if (pgNode(value.A_Expr)) {
+        const expression = value.A_Expr;
+        const operator = pgNames(expression.name);
+        return expression.kind === "AEXPR_OP"
+            && (operator?.length === 1 && operator[0] === "||"
+                || operator?.length === 2 && operator[0] === "pg_catalog" && operator[1] === "||")
+            && deterministicIdExpression(expression.lexpr, true) && deterministicIdExpression(expression.rexpr, true);
+    }
+    return false;
+}
 
 export type Stored = string | boolean | number | undefined;
 export type ScheduleReferenceKind = "write-target" | "sql-reference";
@@ -466,51 +513,49 @@ export class OutlinerScheduleService {
     }
 
     private deterministicIdEvidence(sql: string): { idempotent: boolean; evidence: string; } {
-        const clean = stripSqlNoise(sql);
-        const insert = /\binsert\s+into\s+(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/i.exec(clean);
-        if (!insert) return { idempotent: false, evidence: "INSERT omits an explicit id value" };
-        const columns = insert[1].split(",").map(value => value.trim().replace(/^"|"$/g, "").toLowerCase());
-        if (!columns.includes("id")) return { idempotent: false, evidence: "INSERT omits an explicit id value" };
-        const valuesStart = /\bvalues\s*\(/i.exec(sql);
-        const values = valuesStart
-            ? this.parenthesizedValues(sql, valuesStart.index + valuesStart[0].length - 1)
-            : [];
-        const expression = values[columns.indexOf("id")];
-        if (!expression) return { idempotent: false, evidence: "Could not prove a deterministic explicit id value" };
-        if (/\b(gen_random_uuid|uuid_generate|random|nextval|now|clock_timestamp)\s*\(/i.test(expression)) {
-            return { idempotent: false, evidence: "The id expression uses a nondeterministic function" };
-        }
-        if (/current_setting\s*\(\s*'job\.occurrence'/i.test(expression)) {
-            return { idempotent: true, evidence: "The id is derived from the explicit occurrence instant" };
-        }
-        if (/^'(?:[^']|'')*'$/.test(expression) || /^[-+]?\d+(?:\.\d+)?$/.test(expression)) {
-            return { idempotent: true, evidence: "The id is a fixed literal" };
-        }
-        return { idempotent: false, evidence: "Could not prove that retries produce the same id" };
-    }
-
-    private parenthesizedValues(sql: string, opening: number): string[] {
-        const values: string[] = [];
-        let start = opening + 1;
-        let depth = 1;
-        let quoted = false;
-        for (let index = opening + 1; index < sql.length; index++) {
-            const character = sql[index]!;
-            if (character === "'" && sql[index + 1] === "'") {
-                index++;
-                continue;
+        const unavailable = (evidence: string) => ({ idempotent: false, evidence });
+        try {
+            const parsed = parseSync(sql) as unknown;
+            if (!pgNode(parsed) || !Array.isArray(parsed.stmts) || parsed.stmts.length !== 1) {
+                return unavailable("Deterministic ID evidence requires exactly one INSERT statement");
             }
-            if (character === "'") quoted = !quoted;
-            if (quoted) continue;
-            if (character === "(") depth++;
-            if (character === ")") depth--;
-            if ((character === "," && depth === 1) || depth === 0) {
-                values.push(sql.slice(start, index).trim());
-                start = index + 1;
+            const statement = parsed.stmts[0];
+            const insert = pgNode(statement) && pgNode(statement.stmt) && pgNode(statement.stmt.InsertStmt)
+                ? statement.stmt.InsertStmt
+                : undefined;
+            if (!insert || !Array.isArray(insert.cols)) {
+                return unavailable("INSERT omits an explicit lowercase id value");
             }
-            if (depth === 0) break;
+            const idIndexes = insert.cols.flatMap((column, index) =>
+                pgNode(column) && pgNode(column.ResTarget) && column.ResTarget.name === "id" ? [index] : []
+            );
+            if (idIndexes.length !== 1) {
+                return unavailable("INSERT must contain exactly one explicit lowercase id column");
+            }
+            const select = pgNode(insert.selectStmt) && pgNode(insert.selectStmt.SelectStmt)
+                ? insert.selectStmt.SelectStmt
+                : undefined;
+            if (!select || !Array.isArray(select.valuesLists) || select.valuesLists.length === 0) {
+                return unavailable("INSERT must use one or more explicit VALUES rows");
+            }
+            const expressions = select.valuesLists.map(row =>
+                pgNode(row) && pgNode(row.List) && Array.isArray(row.List.items)
+                    ? row.List.items[idIndexes[0]!]
+                    : undefined
+            );
+            if (expressions.some(expression => expression === undefined)) {
+                return unavailable("A VALUES row is missing its explicit id expression");
+            }
+            if (!expressions.every(deterministicIdExpression)) {
+                return unavailable("At least one id expression is outside the supported deterministic subset");
+            }
+            return {
+                idempotent: true,
+                evidence: "Every explicit id expression repeats for the same supplied occurrence",
+            };
+        } catch {
+            return unavailable("SQL could not be parsed for deterministic ID evidence");
         }
-        return values;
     }
 
     async update(
