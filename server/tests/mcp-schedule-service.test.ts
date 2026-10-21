@@ -252,6 +252,118 @@ describe("MCP Schedule diagnostics", function() {
             "2026-08-30T09:00:00Z",
         );
         expect(occurrenceId.deterministicIds.idempotent).to.equal(true);
+        const existingDiagnosticRecord = new Y.Map<unknown>();
+        existingDiagnosticRecord.set("occurrence_date", "2026-08-29");
+        tableConnection.document.getMap("data").set("existing-diagnostic", existingDiagnosticRecord);
+        const diagnosticScheduleBefore = await service.getSchedule("user", "project-1", "rule-1");
+        const diagnosticTableBefore = await relations.getTable("user", "project-1", "table-1", true);
+        for (
+            const [sql, idempotent] of [
+                ["INSERT INTO tasks (id) VALUES ('one'), ('two') RETURNING *", true],
+                ["INSERT INTO tasks (id) VALUES (1), (2) RETURNING *", true],
+                ["INSERT INTO tasks (id) VALUES ('one'), (2) RETURNING *", true],
+                ["INSERT INTO tasks (id) VALUES (1), ('two') RETURNING *", true],
+                ["INSERT INTO tasks (id) VALUES (+42) RETURNING *", true],
+                ["INSERT INTO tasks (id) VALUES (-42) RETURNING *", true],
+                [
+                    "WITH source AS (SELECT 'INSERT INTO fake VALUES (random())'::text AS note) INSERT INTO tasks (id) VALUES ('outer') RETURNING *",
+                    true,
+                ],
+                [
+                    "INSERT INTO tasks (id) VALUES ('task-' || pg_catalog.current_setting('job.occurrence')::pg_catalog.text) RETURNING *",
+                    true,
+                ],
+                ["INSERT INTO tasks (id) VALUES ('x' OPERATOR(pg_catalog.||) 'y') RETURNING *", true],
+                [
+                    "INSERT INTO tasks (id) VALUES ('fixed'), (random()::text) RETURNING *",
+                    false,
+                ],
+                [
+                    "INSERT INTO tasks (id) VALUES (random()::text), ('fixed') RETURNING *",
+                    false,
+                ],
+                [
+                    "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence') || random()::text) RETURNING *",
+                    false,
+                ],
+                ["INSERT INTO tasks (id) VALUES (current_setting('different.setting')) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES ('prefix-' || 42) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (+random()) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (public.current_setting('job.occurrence')) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES ('x' OPERATOR(public.||) 'y') RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (('one'::text[])::text) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (('one'::integer)::text) RETURNING *", false],
+                ["INSERT INTO tasks (id) SELECT 'selected' RETURNING *", false],
+                ["INSERT INTO tasks (id, id) VALUES ('one', 'two') RETURNING *", false],
+                ["INSERT INTO tasks (\"ID\") VALUES ('quoted') RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (NULL) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES (DEFAULT) RETURNING *", false],
+                ["INSERT INTO tasks (id) VALUES ('first') RETURNING *; SELECT 1", false],
+                ["INSERT INTO tasks (id) VALUES (", false],
+            ] as const
+        ) {
+            const result = await service.validate(
+                "user",
+                "project-1",
+                { ...(read.stored as never), sql },
+                "rule-1",
+                "2026-08-30T09:00:00Z",
+            );
+            expect(result.deterministicIds.idempotent, sql).to.equal(idempotent);
+            expect(tableConnection.document.getMap("data").size, sql).to.equal(1);
+        }
+        const precedingOccurrence = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (occurrence_time, id) VALUES (current_setting('job.occurrence')::timestamptz, random()::text) RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(precedingOccurrence).to.include({ accepted: true, persisted: false });
+        expect(precedingOccurrence.candidateRows[0]).to.include({ occurrence_time: "2026-08-30T09:00:00.000Z" });
+        expect(precedingOccurrence.candidateRows[0].id).to.be.a("string");
+        expect(precedingOccurrence.deterministicIds.idempotent).to.equal(false);
+        const precedingUnknown = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (occurrence_time, id) VALUES (now(), 'fixed-after') RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(precedingUnknown).to.include({ accepted: true, persisted: false });
+        expect(precedingUnknown.candidateRows[0]).to.include({ id: "fixed-after" });
+        expect(precedingUnknown.deterministicIds.idempotent).to.equal(true);
+        for (
+            const sql of [
+                "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence' ORDER BY random())) RETURNING *",
+                "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence') FILTER (WHERE random() > 0.5)) RETURNING *",
+            ]
+        ) {
+            const unsupportedCall = await service.validate(
+                "user",
+                "project-1",
+                { ...(read.stored as never), sql },
+                "rule-1",
+                "2026-08-30T09:00:00Z",
+            );
+            expect(unsupportedCall.accepted, sql).to.equal(false);
+            expect(unsupportedCall.candidateRows, sql).to.deep.equal([]);
+            expect(unsupportedCall.deterministicIds.idempotent, sql).to.equal(false);
+        }
+        const diagnosticScheduleAfter = await service.getSchedule("user", "project-1", "rule-1");
+        const diagnosticTableAfter = await relations.getTable("user", "project-1", "table-1", true);
+        expect(diagnosticScheduleAfter.stored).to.deep.equal(diagnosticScheduleBefore.stored);
+        expect(diagnosticScheduleAfter.revision).to.equal(diagnosticScheduleBefore.revision);
+        expect(diagnosticTableAfter.rawSchemaSql).to.equal(diagnosticTableBefore.rawSchemaSql);
+        expect(diagnosticTableAfter.records).to.deep.equal(diagnosticTableBefore.records);
+        expect(diagnosticTableAfter.revision).to.equal(diagnosticTableBefore.revision);
+        tableConnection.document.getMap("data").delete("existing-diagnostic");
         const randomIdWithOccurrenceColumn = await service.validate(
             "user",
             "project-1",
