@@ -31,7 +31,7 @@ const logger = getLogger("undoRouter");
  * they are and identity comparisons keep working.
  */
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
-import type { TransferBindings } from "../clipboard/transferBindings";
+import { TRANSFER_REGISTRY_ORIGIN, type TransferBindings } from "../clipboard/transferBindings";
 import { captureClonedScheduleRules, restoreClonedScheduleRules } from "../schedule/scheduleRuleClone";
 import { getGridRegistry } from "../yjstable/gridDocs";
 import { getTableRegistry } from "../yjstable/tableDocs";
@@ -58,6 +58,7 @@ export interface CompositeUndoEntry {
     createdTableIds: string[];
     createdGridIds?: string[];
     savedGrids?: Record<string, Record<string, unknown>>;
+    savedCalendars?: Record<string, Record<string, unknown>>;
     savedRegistryEntries: Record<
         string,
         { name: string; sqlName: string; sourceProjectId?: string; sourceTableId?: string; }
@@ -408,6 +409,12 @@ export class UndoRouter {
                     const entry = getGridRegistry(projectDoc).get(id);
                     return entry ? [[id, entry.toJSON() as Record<string, unknown>]] : [];
                 })),
+                savedCalendars: Object.fromEntries(
+                    bindings.ownedIds("calendar").map(id => [
+                        id,
+                        projectDoc.getMap<Y.Map<unknown>>("calendars").get(id)!.toJSON(),
+                    ]),
+                ),
                 savedRegistryEntries,
                 savedSubdocStates,
                 createdRuleIds,
@@ -717,6 +724,14 @@ export class UndoRouter {
                                     entry.bindings.capture("grid", id, true, restored);
                                 }
                             });
+                            entry.projectDoc.transact(() => {
+                                for (const [id, saved] of Object.entries(entry.savedCalendars ?? {})) {
+                                    const restored = historyMap(saved);
+                                    entry.projectDoc.getMap("calendars").set(id, restored);
+                                    entry.bindings.capture("calendar", id, true, restored);
+                                }
+                            }, TRANSFER_REGISTRY_ORIGIN);
+                            entry.bindings.refreshPlacementsAfterReplay();
                             restoreClonedScheduleRules(entry.projectDoc, entry.savedRules, (id, restored) => {
                                 entry.bindings.capture("schedule", id, true, restored as Y.Map<unknown>);
                             });

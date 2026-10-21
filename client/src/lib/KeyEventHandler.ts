@@ -24,7 +24,7 @@ import {
     type PasteSpecialVariant,
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
-import { TransferBindings } from "../services/clipboard/transferBindings";
+import { TRANSFER_REGISTRY_ORIGIN, TransferBindings } from "../services/clipboard/transferBindings";
 import { getItemDiagramId } from "../services/diagram/diagramBinding";
 import {
     currentDiagramAuthorization,
@@ -3220,6 +3220,9 @@ export class KeyEventHandler {
                             );
                             const { getLoadedProjectDocById } = await import("./yjsService.svelte");
                             const capturedCatalog = "catalog" in structured ? structured.catalog : undefined;
+                            const capturedCalendarQueries = "calendars" in structured
+                                ? Object.values(structured.calendars ?? {}).map(settings => settings.query)
+                                : [];
                             authorizePasteRedo = () =>
                                 portableStructuralEnumsStillCompatible(
                                     destinationDoc,
@@ -3227,6 +3230,7 @@ export class KeyEventHandler {
                                     getLoadedProjectDocById(structured.sourceProjectId),
                                     grids,
                                     capturedCatalog,
+                                    capturedCalendarQueries,
                                 );
                         }
                         if (!destinationCurrent()) return;
@@ -3316,10 +3320,17 @@ export class KeyEventHandler {
                             )
                         ) {
                             const rewrittenQuery = rewriteTableQuerySql(settings.query, sqlNameMap).sql;
-                            const newCalendarId = createCalendar(
-                                generalStore.project!,
-                                { ...settings, query: rewrittenQuery },
-                            );
+                            // A mixed transfer owns its Calendar effects in the outline composite.
+                            // A scoped origin leaves standalone Calendar history unchanged and
+                            // cannot truncate unrelated activity during asynchronous preparation.
+                            const allocate = () =>
+                                createCalendar(
+                                    generalStore.project!,
+                                    { ...settings, query: rewrittenQuery },
+                                );
+                            const newCalendarId = pendingPaste
+                                ? destinationDoc.transact(allocate, TRANSFER_REGISTRY_ORIGIN)
+                                : allocate();
                             pendingPaste?.bindings.capture("calendar", newCalendarId, true);
                             pastedCalendarIdMap[sourceCalendarId] = newCalendarId;
                         }
@@ -3382,7 +3393,8 @@ export class KeyEventHandler {
             if (text.includes("\n") || structuredItems) {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
                 const createsDefinitions = Object.keys(pastedTableIdMap ?? {}).length > 0
-                    || Object.keys(pastedGridIdMap).length > 0;
+                    || Object.keys(pastedGridIdMap).length > 0
+                    || (pendingPaste?.bindings.ownedIds("calendar").length ?? 0) > 0;
                 const sharedBindings = sameProjectItems ? sharedPlacementBindings : undefined;
                 const retainsTransferBindings = createsDefinitions || Object.keys(reusedGridIdMap).length > 0
                     || sharedBindings !== undefined;
@@ -3390,6 +3402,7 @@ export class KeyEventHandler {
                     // A reuse-only transfer allocates no object whose manager would
                     // otherwise close outline capture. Give this Paste its own entry.
                     if (retainsTransferBindings) generalStore.undoManager?.stopCapturing();
+                    const finishPlacementCapture = pendingPaste?.bindings.beginPlacementCapture(generalStore.project!);
                     window.dispatchEvent(
                         new CustomEvent("paste-multi-item", {
                             detail: {
@@ -3403,6 +3416,8 @@ export class KeyEventHandler {
                             },
                         }),
                     );
+
+                    finishPlacementCapture?.();
 
                     // Reused definitions still authorize placement replay. Retain the importer
                     // witnesses even when this attempt allocated no definitions.

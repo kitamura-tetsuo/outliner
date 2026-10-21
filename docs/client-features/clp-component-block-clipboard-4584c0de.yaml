@@ -93,3 +93,9 @@ tests:
 - client/e2e/new/clp-shared-grid-replay-4584c0de.spec.ts
 - client/e2e/new/clp-no-data-loaded-source-4584c0de.spec.ts
 - client/e2e/new/clp-calendar-reused-table-map-4584c0de.spec.ts
+
+- client/e2e/new/clp-owned-grid-peer-placement-4584c0de.spec.ts
+- client/e2e/new/clp-calendar-owned-history-4584c0de.spec.ts
+- client/e2e/new/clp-calendar-paste-rollback-4584c0de.spec.ts
+- client/e2e/new/clp-calendar-peer-placement-4584c0de.spec.ts
+- client/src/services/undo/undoRouter.pastePlacements.test.ts

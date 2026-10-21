@@ -1,4 +1,10 @@
+import type { Project } from "$shared/app-schema";
 import * as Y from "yjs";
+
+import { collectAllPlacements } from "../objectManager/objectPlacements";
+
+/** Registry effects owned by a Paste are replayed by its composite, not Calendar history. */
+export const TRANSFER_REGISTRY_ORIGIN = Symbol("clipboard-transfer-registry");
 
 type Kind = "table" | "grid" | "schedule" | "calendar";
 const registries = { table: "yjsTables", grid: "yjsGrids", schedule: "schedules", calendar: "calendars" } as const;
@@ -22,6 +28,56 @@ interface Binding {
 export class TransferBindings {
     private bindings: Binding[] = [];
 
+    private placementProject?: Project;
+    private placements?: ReturnType<TransferBindings["liveOwnedPlacements"]>;
+
+    private liveOwnedPlacements(project: Project) {
+        const all = collectAllPlacements(project);
+        return this.bindings.flatMap(binding => {
+            if (!binding.owned || (binding.kind !== "grid" && binding.kind !== "calendar")) return [];
+            const found = (binding.kind === "grid" ? all.gridPlacements : all.calendarPlacements).get(binding.id) ?? [];
+            return found.map(placement => ({
+                kind: binding.kind,
+                objectId: binding.id,
+                pageId: placement.pageId,
+                itemId: placement.itemId,
+                itemKey: placement.itemKey,
+                node: project.tree.getNodeValueFromKey(placement.itemKey),
+            }));
+        });
+    }
+
+    /** Capture only placements added by the immediately following synchronous dispatch. */
+    beginPlacementCapture(project: Project): () => void {
+        const before = this.liveOwnedPlacements(project);
+        this.placementProject = project;
+        return () => {
+            this.placements = this.liveOwnedPlacements(project).filter(placement =>
+                !before.some(previous => previous.node === placement.node && previous.objectId === placement.objectId)
+            );
+        };
+    }
+
+    refreshPlacementsAfterReplay(): void {
+        if (this.placementProject) this.placements = this.liveOwnedPlacements(this.placementProject);
+    }
+
+    private assertPlacements(): void {
+        if (!this.placementProject || !this.placements) return;
+        const current = this.liveOwnedPlacements(this.placementProject);
+        if (
+            current.length !== this.placements.length
+            || current.some(placement =>
+                !this.placements!.some(expected =>
+                    expected.node === placement.node
+                    && expected.kind === placement.kind && expected.objectId === placement.objectId
+                    && expected.pageId === placement.pageId && expected.itemId === placement.itemId
+                    && expected.itemKey === placement.itemKey
+                )
+            )
+        ) throw new Error("A pasted object has changed or additional placements");
+    }
+
     constructor(readonly doc: Y.Doc, private readonly assertAdmission?: () => void) {}
 
     capture(kind: Kind, id: string, owned: boolean, entry = this.registry(kind).get(id)): void {
@@ -38,10 +94,12 @@ export class TransferBindings {
         else this.bindings[index] = binding;
     }
 
-    /** Calendar definitions retain their separate existing history handling. */
+    /** Keep transfer-owned definitions; unrelated Calendar history stays independent. */
     forComposite(): TransferBindings {
         const evidence = new TransferBindings(this.doc, this.assertAdmission);
-        evidence.bindings = this.bindings.filter(binding => binding.kind !== "calendar");
+        evidence.bindings = this.bindings.filter(binding => binding.kind !== "calendar" || binding.owned);
+        evidence.placementProject = this.placementProject;
+        evidence.placements = this.placements;
         return evidence;
     }
 
@@ -73,6 +131,7 @@ export class TransferBindings {
 
     /** User Undo is atomic across owned objects. In-place content edits are allowed. */
     assertOwned(): void {
+        this.assertPlacements();
         if (this.bindings.some(binding => binding.owned && !this.owns(binding))) {
             throw new Error("A pasted object is missing or has a newer incarnation");
         }
@@ -80,6 +139,9 @@ export class TransferBindings {
 
     assertReplayAvailable(): void {
         this.assertAdmission?.();
+        if (this.placementProject && this.liveOwnedPlacements(this.placementProject).length > 0) {
+            throw new Error("A pasted object identity has an existing placement before replay");
+        }
         const names = new Set<unknown>();
         for (const binding of this.bindings) {
             if (!binding.owned) {
@@ -110,10 +172,12 @@ export class TransferBindings {
 
     /** Failure cleanup is selective; user Undo must call assertOwned first. */
     cleanupOwned(removeTable: (id: string) => void): void {
-        for (const binding of this.bindings) {
-            if (!binding.owned || !this.owns(binding)) continue;
-            if (binding.kind === "table") removeTable(binding.id);
-            else this.registry(binding.kind).delete(binding.id);
-        }
+        this.doc.transact(() => {
+            for (const binding of this.bindings) {
+                if (!binding.owned || !this.owns(binding)) continue;
+                if (binding.kind === "table") removeTable(binding.id);
+                else this.registry(binding.kind).delete(binding.id);
+            }
+        }, TRANSFER_REGISTRY_ORIGIN);
     }
 }

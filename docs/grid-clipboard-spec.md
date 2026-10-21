@@ -139,7 +139,8 @@ Delayed transfers validate live registry incarnations and SQL names after asynch
 Duplication history validates all created object incarnations and destination placements before Undo, and the destination Page before Redo. A refused replay preserves peer replacements and history position; successful Redo refreshes the creation witnesses for the new incarnation.
 
 Ordinary cross-Project Copy/Paste keeps transient witnesses for the destination
-Table, Grid and Schedule entries produced or reused by that attempt. Delayed
+Table, Grid and Schedule entries produced or reused by that attempt, and Calendars
+created by a supported mixed Grid/Calendar transfer. Delayed
 source acquisition, source disposal and later Calendar preparation do not
 permit a deleted, replaced or rebound destination to receive a placement.
 Final admission runs immediately before placement dispatch; refusal removes
@@ -201,3 +202,33 @@ refuses the operation; a genuinely never-loaded source retains portable
 structure-only behavior. Calendar SQL uses both fresh and provenance-reused
 Table mappings, resolved through admitted destination identities. Reuse grants
 no allocation ownership and causes no row or Schedule recopy.
+
+A supported mixed Grid/Calendar structural Paste is one history operation,
+including a Paste that reuses every Grid and Table and creates only a Calendar.
+Its first Undo removes the pasted placements and only definitions created by
+that Paste. Redo restores their recorded destination IDs, full Calendar registry
+settings (including alias policy and presentation), SQL remapping and retained
+data, without recopying current source rows. Calendar allocation, rollback and
+composite replay do not add separate Calendar-manager history entries. Standalone
+Calendar edits and Object Manager deletion retain their independent history.
+A failed later Calendar allocation cleans up earlier owned allocations without
+changing the clipboard or leaving a successful Paste or Calendar history entry.
+
+Paste-owned Grids and Calendars also retain the exact Page/Layout placement
+identities and bindings added by the synchronous outline insertion. Before Undo,
+the current direct placements must match that set and its occurrence identities.
+An additional peer placement, removed occurrence or rebound placement refuses the
+whole operation before outline/registry changes or history movement. It never
+detaches the peer's placement as a way to delete the definition. Once a separate
+supported operation removes an extra placement and the owned occurrences still
+match, the same pending Undo can proceed. Unrelated rows and presentation edits
+do not invalidate placement evidence. Redo checks destination identities and
+refreshes owned registry and placement witnesses after successful restoration.
+Explicit Object Manager deletion remains a separate operation with its own
+placement confirmation/removal semantics; direct Grid placements do not create
+a new Table read-ownership cascade.
+
+Mixed Paste definition replay also checks captured Calendar SQL type references
+against the current destination catalog. A type used only by the Calendar cannot
+bypass the same synchronous ENUM compatibility gate used for Table/Grid replay.
+An incompatible type refuses before effects and retains the history position.

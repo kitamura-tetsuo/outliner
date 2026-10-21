@@ -9,6 +9,7 @@ import {
     readGridProjectState,
     seedCrossProjectFixture,
 } from "../utils/crossProjectGridHelpers";
+import { transferHistory } from "../utils/mixedTransferHistory";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
@@ -53,6 +54,7 @@ for (const fresh of [false, true]) {
             await copyGridHosts(page);
             await openProjectPage(page, fixture, "destination");
             const before = await readGridProjectState(page);
+            const historyBefore = await transferHistory(page);
             await pasteAtAnchor(page, fresh ? 5 : 3);
             await expect(page.getByTestId("calendar-view")).toHaveCount(1);
             const after = await readGridProjectState(page);
@@ -72,6 +74,43 @@ for (const fresh of [false, true]) {
             expect(after.tables.find(table => table.sqlName === "a_2")?.id).toBe(reused.id);
             expect(after.tables).toHaveLength(fresh ? 4 : 2);
             for (const table of before.tables) expect(after.tables.find(value => value.id === table.id)).toEqual(table);
+            const pastedHistory = await transferHistory(page);
+            expect(pastedHistory.positions).toEqual([
+                historyBefore.positions[0] + 1,
+                0,
+                historyBefore.positions[2] + 1,
+                0,
+                ...historyBefore.positions.slice(4),
+            ]);
+            const calendarSnapshot = await page.evaluate(() =>
+                (globalThis as any).generalStore.project.ydoc.getMap("calendars").toJSON()
+            );
+            await page.getByTestId("toolbar-undo").click();
+            expect(
+                await page.evaluate(() => (globalThis as any).generalStore.project.ydoc.getMap("calendars").toJSON()),
+            ).toEqual({});
+            expect(await readGridProjectState(page)).toEqual(before);
+            const undoneHistory = await transferHistory(page);
+            expect(undoneHistory.positions).toEqual([
+                historyBefore.positions[0],
+                1,
+                historyBefore.positions[2],
+                1,
+                ...historyBefore.positions.slice(4),
+            ]);
+            await page.getByTestId("toolbar-redo").click();
+            expect(await readGridProjectState(page)).toEqual(after);
+            expect(
+                await page.evaluate(() => (globalThis as any).generalStore.project.ydoc.getMap("calendars").toJSON()),
+            ).toEqual(calendarSnapshot);
+            await page.getByTestId("toolbar-undo").click();
+            await page.getByTestId("toolbar-redo").click();
+            expect((await transferHistory(page)).positions).toEqual(pastedHistory.positions);
+            expect(await readGridProjectState(page)).toEqual(after);
+            await info.attach("mixed-history-identities", {
+                body: JSON.stringify({ before, after, historyBefore, pastedHistory, undoneHistory }),
+                contentType: "application/json",
+            });
             if (fresh) {
                 const b = after.tables.find(table => table.sqlName === "b_2")!;
                 expect(b.id).not.toBe(source.tables.find(table => table.sqlName === "b")!.id);

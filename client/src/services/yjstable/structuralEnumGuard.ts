@@ -51,6 +51,7 @@ export function portableStructuralEnumsStillCompatible(
     currentSourceDoc?: Y.Doc,
     grids: Readonly<Record<string, import("../clipboard/itemClipboard").GridSnapshot>> = {},
     capturedCatalog?: SqlCatalogSnapshot,
+    additionalQueries: readonly string[] = [],
 ): boolean {
     // Query-only Grids can require types without carrying any Table snapshots.
     const catalog = capturedCatalog ?? Object.values(snapshots)[0]?.catalog;
@@ -66,6 +67,7 @@ export function portableStructuralEnumsStillCompatible(
             const sql of [
                 ...Object.values(snapshots).map(snapshot => snapshot.schemaSql),
                 ...Object.values(grids).map(grid => grid.query),
+                ...additionalQueries,
             ]
         ) {
             for (const reference of collectTypeNames(parseSync(sql) as unknown as Record<string, unknown>)) {

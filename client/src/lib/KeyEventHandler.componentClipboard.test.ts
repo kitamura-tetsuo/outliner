@@ -7,6 +7,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { Item, Project } from "../schema/app-schema";
+import { createCalendar, ensureCalendarUndoManager, updateCalendar } from "../services/calendar/calendarService";
 import { GRID_EXPORT_ROW_LIMIT } from "../services/clipboard/gridClipboardExport";
 import { GRID_PASTE_CANCEL_EVENT, GRID_PASTE_WRITE_CHECK_EVENT } from "../services/clipboard/gridPasteEvents";
 import {
@@ -1422,6 +1423,140 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
                 expect(getTableHandles(state.doc, table.id)!.data.toJSON()).toEqual(table.data);
             }
             expect(listTables(state.doc).find(table => table.sqlName === "a_2")?.tableId).toBe(reused.tableId);
+        });
+    }
+
+    for (const failure of [false, true]) {
+        it(`mixed Calendar handler keeps native stacks and rolls back partial allocation: failure=${failure}`, async () => {
+            const project = Project.fromDoc(state.doc);
+            const page = project.addPage("Destination", "fixture");
+            const manager = new Y.UndoManager(state.doc.getMap("orderedTree"));
+            state.undoManager = manager;
+            globalUndoRouter.register(manager);
+            const existing = createCalendar(project, { name: "Unrelated", query: "" });
+            const calendarManager = ensureCalendarUndoManager(project);
+            manager.stopCapturing();
+            calendarManager.stopCapturing();
+            globalUndoRouter.clear();
+            const before = [manager.undoStack.length, calendarManager.undoStack.length];
+            const source = new Y.Doc({ guid: "calendar-history-source" });
+            const enumSql = "CREATE TYPE calendar_state AS ENUM ('Open', 'Closed')";
+            createSqlCatalogObject(source, "enum", enumSql);
+            const destinationEnum = createSqlCatalogObject(state.doc, "enum", enumSql);
+            const table = createPortableTable(source, "History", "history_records");
+            const grid = fixtureGridId(table);
+            const catalog = readSqlCatalog(source.guid, source);
+            if (catalog.status !== "ready") throw new Error("catalog unavailable");
+            const settings = {
+                name: "Owned Calendar",
+                query: "SELECT id::calendar_state AS id FROM history_records",
+                viewType: "month",
+                timezone: "Asia/Tokyo",
+                roleTitle: "id",
+                roleStart: "id",
+                roleDuration: "id",
+                roleDue: "id",
+                groupAxes: ["id"],
+                laneOrder: ["x", "y"],
+                weekStart: 1,
+                showEmptyLanes: true,
+                workingHoursStartMinutes: 600,
+                workingHoursEndMinutes: 1100,
+                ganttScale: "quarter",
+            };
+            const encoded = JSON.stringify({
+                version: 3,
+                sourceProjectId: source.guid,
+                tables: exportTableStructures(source, [table]),
+                grids: { [grid]: exportGridSlice(source, grid) },
+                catalog: catalog.snapshot,
+                calendars: {
+                    one: settings,
+                    ...(failure ? { two: { ...settings, timezone: "invalid/timezone" } } : {}),
+                },
+                items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: grid }, {
+                    text: "",
+                    depth: 0,
+                    componentType: "calendar",
+                    calendarId: "one",
+                }, ...(failure ? [{ text: "", depth: 0, componentType: "calendar", calendarId: "two" }] : [])],
+            });
+            const insert = (event: Event) =>
+                state.doc.transact(() => {
+                    for (const item of (event as CustomEvent).detail.structuredItems) {
+                        const node = page.items.addNode("local");
+                        const value = project.tree.getNodeValueFromKey(node.key) as Y.Map<unknown>;
+                        value.set("componentType", item.componentType);
+                        if (item.yjsGridId) value.set("yjsGridId", item.yjsGridId);
+                        if (item.calendarId) value.set("calendarId", item.calendarId);
+                    }
+                });
+            window.addEventListener("paste-multi-item", insert);
+            try {
+                const detail = await pasteAndCapture(encoded, "Grid\nCalendar");
+                expect(calendarManager.undoStack.length).toBe(before[1]);
+                expect(calendarManager.redoStack.length).toBe(0);
+                if (failure) {
+                    expect(detail).toBeUndefined();
+                    expect(project.calendars.size).toBe(1);
+                    expect(listTables(state.doc)).toEqual([]);
+                    expect(getGridRegistry(state.doc).size).toBe(0);
+                    expect(page.items.length).toBe(0);
+                    expect(globalUndoRouter.undoDepth).toBe(0);
+                    expect(manager.undoStack.length).toBe(before[0]);
+                } else {
+                    const saved = project.calendars.toJSON();
+                    expect(globalUndoRouter.undoDepth).toBe(1);
+                    for (let i = 0; i < 2; i++) {
+                        globalUndoRouter.undo();
+                        expect([...project.calendars.keys()]).toEqual([existing]);
+                        expect(listTables(state.doc)).toEqual([]);
+                        expect(page.items.length).toBe(0);
+                        globalUndoRouter.redo();
+                        expect(project.calendars.toJSON()).toEqual(saved);
+                        expect(page.items.length).toBe(2);
+                        expect(calendarManager.undoStack.length).toBe(before[1]);
+                        expect(calendarManager.redoStack.length).toBe(0);
+                        expect(globalUndoRouter.undoDepth).toBe(1);
+                    }
+                    globalUndoRouter.undo();
+                    replaceSqlCatalogSource(
+                        state.doc,
+                        destinationEnum,
+                        "CREATE TYPE calendar_state AS ENUM ('Closed', 'Open')",
+                    );
+                    const positions = [
+                        globalUndoRouter.undoDepth,
+                        globalUndoRouter.redoDepth,
+                        manager.undoStack.length,
+                        manager.redoStack.length,
+                        calendarManager.undoStack.length,
+                        calendarManager.redoStack.length,
+                    ];
+                    globalUndoRouter.redo();
+                    expect([
+                        globalUndoRouter.undoDepth,
+                        globalUndoRouter.redoDepth,
+                        manager.undoStack.length,
+                        manager.redoStack.length,
+                        calendarManager.undoStack.length,
+                        calendarManager.redoStack.length,
+                    ]).toEqual(positions);
+                    expect(page.items.length).toBe(0);
+                    expect([...project.calendars.keys()]).toEqual([existing]);
+                    replaceSqlCatalogSource(state.doc, destinationEnum, enumSql);
+                    globalUndoRouter.redo();
+                    expect(project.calendars.toJSON()).toEqual(saved);
+                    updateCalendar(project, existing, { name: "Legitimate independent edit" });
+                    expect(globalUndoRouter.undoDepth).toBe(2);
+                    globalUndoRouter.undo();
+                    expect(project.calendars.get(existing)?.get("name")).toBe("Unrelated");
+                }
+            } finally {
+                window.removeEventListener("paste-multi-item", insert);
+                globalUndoRouter.unregister(manager);
+                manager.destroy();
+            }
         });
     }
 
