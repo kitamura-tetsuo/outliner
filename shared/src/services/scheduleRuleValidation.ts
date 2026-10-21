@@ -1,14 +1,35 @@
+import { loadModule, parseSync, scanSync } from "libpg-query";
 import * as rruleImport from "rrule";
 import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
 
 const SCHEDULE_TARGET_PLACEHOLDER = "{{table}}";
 const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
 
+await loadModule();
+
+/** Replace scanner-visible placeholder tokens, never occurrences inside literals or comments. */
+function scheduleParserSql(sql: string): string {
+    const tokens = scanSync(sql).tokens;
+    const replacements: Array<{ start: number; end: number; }> = [];
+    for (let index = 0; index <= tokens.length - 5; index++) {
+        const group = tokens.slice(index, index + 5);
+        if (group.map(token => token.text.toLowerCase()).join("") === SCHEDULE_TARGET_PLACEHOLDER) {
+            replacements.push({ start: group[0]!.start, end: group[4]!.end });
+            index += 4;
+        }
+    }
+    let result = sql;
+    for (const replacement of replacements.reverse()) {
+        result = result.slice(0, replacement.start) + PARSER_SCHEDULE_TARGET + result.slice(replacement.end);
+    }
+    return result;
+}
+
 /** Validate aliases after replacing the Schedule-only target placeholder in parser input. */
 export function validateScheduleRuleExplicitAliases(sql: string): void {
     // This parser-only substitution must never be returned or persisted: validation
     // rejects invalid source instead of formatting or repairing authoritative SQL.
-    validateExplicitSelectAliases(sql.split(SCHEDULE_TARGET_PLACEHOLDER).join(PARSER_SCHEDULE_TARGET));
+    validateExplicitSelectAliases(scheduleParserSql(sql));
 }
 
 function getRRuleFallback(mod: unknown): typeof rruleImport.RRule | undefined {
@@ -36,36 +57,24 @@ export function validateScheduleRuleSql(
         return { valid: false, error: "SQL is empty" };
     }
 
-    const stripped = trimmed
-        .replace(/--[^\n]*/g, " ")
-        .replace(/\/\*[\s\S]*?\*\//g, " ")
-        .replace(/'(?:[^']|'')*'/g, "''")
-        .replace(/"(?:[^"]|"")*"/g, '""')
-        .trim();
-
-    if (!/^\s*(with|insert)\b/i.test(stripped)) {
-        return { valid: false, error: "Query must start with INSERT or WITH" };
-    }
-
-    if (!/\binsert\b/i.test(stripped)) {
-        return { valid: false, error: "Query must contain an INSERT statement" };
-    }
-
-    if (!/\breturning\s+\*/i.test(stripped)) {
-        return { valid: false, error: "Query must end with RETURNING *" };
-    }
-
-    const withoutTrailing = stripped.replace(/;\s*$/, "");
-    if (withoutTrailing.includes(";")) {
-        return { valid: false, error: "Query must contain exactly one statement" };
-    }
-
-    if (requireExplicitAliases) {
-        try {
-            validateScheduleRuleExplicitAliases(trimmed);
-        } catch (error) {
-            return { valid: false, error: error instanceof Error ? error.message : String(error) };
+    try {
+        const parsed = parseSync(scheduleParserSql(trimmed));
+        if (parsed.stmts?.length !== 1) return { valid: false, error: "Query must contain exactly one statement" };
+        const statement = parsed.stmts[0]?.stmt as Record<string, unknown> | undefined;
+        const insert = statement?.InsertStmt as Record<string, unknown> | undefined;
+        if (!insert) return { valid: false, error: "Query must be an INSERT statement" };
+        const returning = (insert.returningClause as { exprs?: unknown[]; } | undefined)?.exprs;
+        const target = returning?.[0] as
+            | { ResTarget?: { val?: { ColumnRef?: { fields?: unknown[]; }; }; }; }
+            | undefined;
+        const fields = target?.ResTarget?.val?.ColumnRef?.fields;
+        const wildcard = fields?.length === 1 && Boolean((fields[0] as { A_Star?: unknown; } | undefined)?.A_Star);
+        if (returning?.length !== 1 || !wildcard) {
+            return { valid: false, error: "Query must end with RETURNING *" };
         }
+        if (requireExplicitAliases) validateScheduleRuleExplicitAliases(trimmed);
+    } catch (error) {
+        return { valid: false, error: error instanceof Error ? error.message : String(error) };
     }
 
     return { valid: true };

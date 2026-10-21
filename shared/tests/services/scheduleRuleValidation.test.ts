@@ -32,7 +32,7 @@ describe("scheduleRuleValidation", () => {
         it("should reject SELECT", () => {
             const res = validateScheduleRuleSql("SELECT * FROM my_table");
             expect(res.valid).toBe(false);
-            expect(res.error).toMatch(/must start with INSERT or WITH/i);
+            expect(res.error).toMatch(/INSERT/i);
         });
 
         it("should reject multiple statements", () => {
@@ -47,6 +47,21 @@ describe("scheduleRuleValidation", () => {
             const res = validateScheduleRuleSql("INSERT INTO t VALUES (1)");
             expect(res.valid).toBe(false);
             expect(res.error).toMatch(/must end with RETURNING \*/i);
+        });
+
+        it("requires the outer INSERT and exactly its unqualified wildcard RETURNING", () => {
+            expect(
+                validateScheduleRuleSql(
+                    "WITH x AS (INSERT INTO other VALUES (1) RETURNING *) SELECT * FROM x",
+                ).valid,
+            ).toBe(false);
+            expect(validateScheduleRuleSql("INSERT INTO t VALUES (1) RETURNING t.*").valid).toBe(false);
+            expect(validateScheduleRuleSql("INSERT INTO t VALUES (1) RETURNING *, id").valid).toBe(false);
+        });
+
+        it("does not treat placeholders in strings or comments as a target", () => {
+            expect(validateScheduleRuleSql("INSERT INTO {{table}} VALUES ('{{table}}') RETURNING *").valid).toBe(true);
+            expect(validateScheduleRuleSql("SELECT '{{table}}' AS value -- {{table}}").valid).toBe(false);
         });
     });
 
@@ -127,7 +142,7 @@ describe("validateScheduleRuleSql (edge cases)", () => {
     it("rejects SQL with no INSERT statement", () => {
         const res = validateScheduleRuleSql("WITH vars AS (SELECT 1 AS id) SELECT id FROM vars RETURNING *");
         expect(res.valid).toBe(false);
-        expect(res.error).toMatch(/must contain an INSERT statement/i);
+        expect(res.error).toMatch(/INSERT|syntax/i);
     });
 
     it("handles null SQL", () => {

@@ -1,190 +1,102 @@
-/**
- * Single-pass SQL noise scan shared by the helpers below. Line comments run
- * to the newline, string/identifier quotes honor their doubled escapes, and
- * block comments nest the way PostgreSQL parses them (`/* outer /* inner *\/`
- * stays a comment through the second terminator). A regex-only strip stops
- * at the inner terminator and leaks trailing comment text — such as a comma
- * joining a second FROM source — back into the inspected SQL (issue #5547).
- * Comment markers inside quotes never open a comment, and quotes inside a
- * comment never open a quoted value. An unterminated opener is left in place,
- * matching the previous behavior for SQL the engine itself would reject.
- */
-function scanSqlNoise(sql: string, keepDoubleQuoted: boolean): string {
-    let out = "";
-    let index = 0;
-    while (index < sql.length) {
-        const char = sql[index]!;
-        const next = sql[index + 1];
-        if (char === "-" && next === "-") {
-            // PostgreSQL ends a `--` line comment at a newline, where CR
-            // counts: `-- c\r, b` hides nothing from the engine (issue #5547).
-            const lf = sql.indexOf("\n", index + 2);
-            const cr = sql.indexOf("\r", index + 2);
-            const end = lf < 0 ? cr : cr < 0 ? lf : Math.min(lf, cr);
-            out += " ";
-            index = end < 0 ? sql.length : end;
-            continue;
-        }
-        if (char === "/" && next === "*") {
-            let depth = 1;
-            let cursor = index + 2;
-            let closed = false;
-            while (cursor < sql.length) {
-                if (sql[cursor] === "/" && sql[cursor + 1] === "*") {
-                    depth++;
-                    cursor += 2;
-                } else if (sql[cursor] === "*" && sql[cursor + 1] === "/") {
-                    depth--;
-                    cursor += 2;
-                    if (depth === 0) {
-                        closed = true;
-                        break;
-                    }
-                } else {
-                    cursor++;
-                }
-            }
-            if (!closed) {
-                out += sql.slice(index);
-                index = sql.length;
-            } else {
-                out += " ";
-                index = cursor;
-            }
-            continue;
-        }
-        const dollarOpen = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(index));
-        if (dollarOpen) {
-            // PostgreSQL dollar-quoted string (`$$...$$`, `$tag$...$tag$`).
-            // The literal can hide keywords such as FROM/WHERE plus a comma
-            // joining a second FROM source (issue #5547): without stripping
-            // it, provenance parsing mistakes the literal's FROM for the
-            // outer FROM and stops at the literal's WHERE.
-            const tag = dollarOpen[0];
-            const close = sql.indexOf(tag, index + tag.length);
-            if (close < 0) {
-                out += sql.slice(index);
-                index = sql.length;
-            } else {
-                out += "''";
-                index = close + tag.length;
-            }
-            continue;
-        }
-        if (char === "'" || char === '"') {
-            let cursor = index + 1;
-            let closed = false;
-            while (cursor < sql.length) {
-                if (sql[cursor] === char) {
-                    if (sql[cursor + 1] === char) {
-                        cursor += 2;
-                    } else {
-                        closed = true;
-                        cursor++;
-                        break;
-                    }
-                } else {
-                    cursor++;
-                }
-            }
-            if (!closed) {
-                out += sql.slice(index);
-                index = sql.length;
-            } else if (keepDoubleQuoted && char === '"') {
-                out += sql.slice(index, cursor);
-                index = cursor;
-            } else {
-                out += char === "'" ? "''" : '""';
-                index = cursor;
-            }
-            continue;
-        }
-        out += char;
-        index++;
-    }
-    return out;
+import { loadModule, parseSync, scanSync, type ScanToken } from "libpg-query";
+import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
+
+await loadModule();
+type AstNode = Record<string, unknown>;
+const node = (value: unknown): AstNode | undefined =>
+    typeof value === "object" && value !== null ? value as AstNode : undefined;
+
+function singleStatement(sql: string): AstNode {
+    const parsed = parseSync(sql);
+    if (parsed.stmts?.length !== 1) throw new Error("Query must contain exactly one statement");
+    const statement = node(parsed.stmts[0]?.stmt);
+    if (!statement) throw new Error("Query must contain exactly one statement");
+    return statement;
 }
 
-/** Remove comments and quoted values before inspecting SQL control words. */
-export function stripSqlNoise(sql: string): string {
-    return scanSqlNoise(sql, false);
+function decodedIdentifier(token: ScanToken): string {
+    return token.text.startsWith('"') ? token.text.slice(1, -1).replace(/""/g, '"') : token.text.toLowerCase();
 }
 
-/** SQL identifiers, excluding comments and string literals. */
+/** Scanner-recognized SQL words; this is candidate discovery, not resolved dependency evidence. */
 export function parseSqlIdentifiers(sql: string): Set<string> {
-    const withoutNoise = scanSqlNoise(sql, true);
     const identifiers = new Set<string>();
-    const regex = /"((?:[^"]|"")+)"|\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(withoutNoise))) {
-        identifiers.add(match[1]?.replace(/""/g, '"') ?? match[2]!.toLowerCase());
+    for (const token of scanSync(sql).tokens) {
+        if (token.tokenName === "IDENT" || token.keywordKind !== 0) identifiers.add(decodedIdentifier(token));
     }
     return identifiers;
 }
 
-/** Return the destination of the top-level INSERT, including WITH-prefixed statements. */
-export function parseTopLevelInsertTarget(sql: string): string | undefined {
-    let depth = 0;
-    let quote: "'" | '"' | undefined;
-    for (let index = 0; index < sql.length;) {
-        const current = sql[index]!;
-        const next = sql[index + 1];
-        if (quote) {
-            if (current === quote && next === quote) {
-                index += 2;
-                continue;
-            }
-            if (current === quote) quote = undefined;
-            index++;
-            continue;
-        }
-        if (current === "-" && next === "-") {
-            const lf = sql.indexOf("\n", index + 2);
-            const cr = sql.indexOf("\r", index + 2);
-            index = lf < 0 ? cr : cr < 0 ? lf : Math.min(lf, cr);
-            if (index < 0) return undefined;
-            continue;
-        }
-        if (current === "/" && next === "*") {
-            const end = sql.indexOf("*/", index + 2);
-            if (end < 0) return undefined;
-            index = end + 2;
-            continue;
-        }
-        if (current === "'" || current === '"') {
-            quote = current;
-            index++;
-            continue;
-        }
-        if (current === "(") depth++;
-        else if (current === ")") depth--;
-        else if (depth === 0 && /[A-Za-z_]/.test(current)) {
-            const word = /^[A-Za-z_][A-Za-z0-9_]*/.exec(sql.slice(index))![0];
-            if (word.toLowerCase() === "insert") {
-                const target = /^\s+into\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_]*))/i.exec(
-                    sql.slice(index + word.length),
-                );
-                return target?.[1]?.replace(/""/g, '"') ?? target?.[2]?.toLowerCase();
-            }
-            index += word.length;
-            continue;
-        }
-        index++;
-    }
-    return undefined;
+/** Compatibility utility whose lexical boundaries are defined by PostgreSQL's scanner. */
+export function stripSqlNoise(sql: string): string {
+    return scanSync(sql).tokens.map(token =>
+        ["SCONST", "USCONST", "BCONST", "XCONST"].includes(token.tokenName) ? "''" : token.text
+    ).join(" ");
 }
 
-/** Validate the single, read-only SELECT contract shared by views and MCP. */
-export function validateReadOnlySelect(sql: string, requireExplicitAliases = true): string {
-    const trimmed = (sql ?? "").trim();
-    if (!trimmed) throw new Error("Query is empty");
-    const stripped = stripSqlNoise(trimmed);
-    if (!/^\s*(select|with)\b/i.test(stripped)) throw new Error("Only SELECT queries are allowed");
-    if (/\b(insert|update|delete|drop|alter|create|truncate|grant|revoke)\b/i.test(stripped)) {
+export interface InsertTarget {
+    readonly name: string;
+    readonly schema?: string;
+}
+
+/** Return the relation owned by the one outer INSERT statement. */
+export function parseTopLevelInsertRelation(sql: string): InsertTarget | undefined {
+    const insert = node(singleStatement(sql).InsertStmt);
+    if (!insert) return undefined;
+    const relation = node(insert.relation);
+    if (!relation || typeof relation.relname !== "string") return undefined;
+    return {
+        name: relation.relname,
+        schema: typeof relation.schemaname === "string" ? relation.schemaname : undefined,
+    };
+}
+
+export function parseTopLevelInsertTarget(sql: string): string | undefined {
+    try {
+        const relation = parseTopLevelInsertRelation(sql);
+        return relation && relation.schema === undefined ? relation.name : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function validateSelectTree(value: unknown): void {
+    if (Array.isArray(value)) return void value.forEach(validateSelectTree);
+    const wrapper = node(value);
+    if (!wrapper) return;
+    if (wrapper.InsertStmt || wrapper.UpdateStmt || wrapper.DeleteStmt || wrapper.MergeStmt) {
         throw new Error("Only read-only SELECT queries are allowed");
     }
-    if (stripped.replace(/;\s*$/, "").includes(";")) throw new Error("Query must contain exactly one statement");
-    if (requireExplicitAliases) validateExplicitSelectAliases(trimmed);
-    return trimmed;
+    const select = node(wrapper.SelectStmt);
+    if (select?.intoClause) throw new Error("SELECT INTO is not allowed");
+    if (select && Array.isArray(select.lockingClause) && select.lockingClause.length) {
+        throw new Error("Row-locking SELECT queries are not allowed");
+    }
+    Object.values(wrapper).forEach(validateSelectTree);
 }
-import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
+
+export interface ReadOnlySelectShape {
+    readonly sql: string;
+    readonly hasOuterWhere: boolean;
+    readonly hasOuterOrderBy: boolean;
+}
+
+/** Validate and describe the outer SELECT without accumulating nested clauses. */
+export function analyzeReadOnlySelect(sql: string, requireExplicitAliases = true): ReadOnlySelectShape {
+    const trimmed = (sql ?? "").trim();
+    if (!trimmed) throw new Error("Query is empty");
+    const statement = singleStatement(trimmed);
+    const select = node(statement.SelectStmt);
+    if (!select) throw new Error("Only SELECT queries are allowed");
+    validateSelectTree(statement);
+    if (requireExplicitAliases) validateExplicitSelectAliases(trimmed);
+    return {
+        sql: trimmed,
+        hasOuterWhere: select.whereClause !== undefined,
+        hasOuterOrderBy: Array.isArray(select.sortClause) && select.sortClause.length > 0,
+    };
+}
+
+export function validateReadOnlySelect(sql: string, requireExplicitAliases = true): string {
+    return analyzeReadOnlySelect(sql, requireExplicitAliases).sql;
+}

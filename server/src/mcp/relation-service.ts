@@ -10,9 +10,9 @@ import {
     unambiguousRowSource,
 } from "../../../shared/src/services/projectQueryProvenance.js";
 import {
+    analyzeReadOnlySelect,
     parseSqlIdentifiers,
     parseTopLevelInsertTarget,
-    stripSqlNoise,
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
@@ -450,7 +450,7 @@ export class OutlinerRelationService {
             }
             const targetRelation = String(target.get("sqlName") ?? "");
             const destination = parseTopLevelInsertTarget(candidate.sql);
-            if (!destination || destination !== targetRelation && destination !== targetRelation.toLowerCase()) {
+            if (!destination || destination !== targetRelation) {
                 return {
                     accepted: false,
                     candidateRows: [],
@@ -1471,7 +1471,7 @@ export class OutlinerRelationService {
                 && column !== "id"
                 && provenance.suppliers.some(source => !!unambiguousPhysicalColumn(provenance, source.sqlName, column))
             );
-            const analyzed = stripSqlNoise(normalizedQuery);
+            const analyzed = analyzeReadOnlySelect(normalizedQuery, false);
             return {
                 snapshot,
                 validation: {
@@ -1498,7 +1498,7 @@ export class OutlinerRelationService {
                             ? undefined
                             : provenance.reason ?? "No unambiguous physical columns",
                     },
-                    inferredOrdering: /\border\s+by\b/i.test(analyzed) ? "sql-order-by" : "incidental-source-order",
+                    inferredOrdering: analyzed.hasOuterOrderBy ? "sql-order-by" : "incidental-source-order",
                     warnings: materializationWarnings,
                     errors: [],
                 },
@@ -2154,7 +2154,7 @@ export class OutlinerRelationService {
                         hiddenColumns: columns.filter(column => !column.shown).map(column => column.name),
                         presentationColumnOrder: ordered,
                         presentationColumns,
-                        filtering: /\bwhere\b/i.test(stripSqlNoise(String(inspected.query))) ? "sql" : "none",
+                        filtering: analyzeReadOnlySelect(String(inspected.query), false).hasOuterWhere ? "sql" : "none",
                         sorting: validation.inferredOrdering,
                     },
                     rowCount: validation.sampleRows?.length ?? 0,
