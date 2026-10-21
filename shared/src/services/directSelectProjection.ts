@@ -75,10 +75,22 @@ function leafProjection(select: Node, starColumns: readonly string[]): LeafProje
         } else {
             const column = plainColumn(target.val, relation, alias);
             columns.push(column);
-            outputNames.push(typeof target.name === "string" ? target.name : column);
+            outputNames.push(inferredOutputName(target, column));
         }
     }
     return { columns, outputNames };
+}
+
+function inferredOutputName(target: Node, directColumn?: string): string | undefined {
+    if (typeof target.name === "string") return target.name;
+    if (directColumn) return directColumn;
+    // PostgreSQL names an unaliased function-call output after the final
+    // component of the function name. Preserve that result-shape name even
+    // though the expression itself is not writable, so an explicit direct
+    // projection cannot claim the same ambiguous output name.
+    const call = isNode(target.val) ? target.val.FuncCall : undefined;
+    if (!isNode(call) || !Array.isArray(call.funcname) || call.funcname.length === 0) return undefined;
+    return stringValue(call.funcname[call.funcname.length - 1]);
 }
 
 function collectUnionLeaves(select: Node, leaves: Node[]): boolean {

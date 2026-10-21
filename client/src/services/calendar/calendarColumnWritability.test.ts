@@ -96,6 +96,12 @@ it("refuses calculated later UNION branches and duplicate output names", () => {
     );
     expect(duplicate.has("role")).toBe(false);
     expect(duplicate.get("duration")).toBe("duration");
+
+    const implicitFunctionName = analyzeCalendarColumnWritability(
+        "SELECT lower(text), text AS lower, duration FROM source",
+    );
+    expect(implicitFunctionName.has("lower")).toBe(false);
+    expect(implicitFunctionName.get("duration")).toBe("duration");
 });
 
 it("refuses wildcard shapes without authoritative expansion context", () => {
