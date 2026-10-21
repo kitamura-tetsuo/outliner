@@ -14,26 +14,46 @@ import { appendGridPlacement } from "./gridPlacement";
 
 describe("query-only Grid definitions", () => {
     it("retains identity and presentation without synthesizing a primary Table", () => {
-        const doc = new Y.Doc();
+        const project = Project.createInstance("Round trip");
+        const doc = project.ydoc;
+        const page = project.addPage("Page", "author");
         const gridId = createGrid(doc, {
             gridId: "query-grid",
             name: "Independent query",
-            query: "SELECT 1 AS value",
+            query: "SELECT 1 AS value  /* exact SQL */",
             columnOrder: ["value"],
-            components: { value: { label: "Result", widthPx: 180 } },
+            components: { value: { type: "text", label: "Result", hidden: true, widthPx: 180 } },
+            showAddRowButton: false,
+            confirmRowDelete: true,
+            insertTargetTableId: "explicit-choice",
         });
 
         const handles = getGridHandles(doc, gridId);
         expect(gridId).toBe("query-grid");
-        expect(getGridRegistry(doc).get(gridId)?.get("sourceTableId")).toBeUndefined();
+        expect(getGridRegistry(doc).get(gridId)?.has("sourceTableId")).toBe(false);
         expect(handles?.entry.has("sourceTableId")).toBe(false);
-        expect(handles?.entry.get("query")).toBe("SELECT 1 AS value");
+        expect(handles?.entry.get("query")).toBe("SELECT 1 AS value  /* exact SQL */");
         expect(listGrids(doc)).toEqual([{
             gridId,
             name: "Independent query",
-            showAddRowButton: true,
-            confirmRowDelete: false,
+            showAddRowButton: false,
+            confirmRowDelete: true,
         }]);
+        const placement = appendGridPlacement(doc, page.id, gridId, "author");
+        placement.columnSpan = 5;
+        const restoredDoc = new Y.Doc();
+        Y.applyUpdate(restoredDoc, Y.encodeStateAsUpdate(doc));
+        const restored = Project.fromDoc(restoredDoc);
+        const restoredPage = [...restored.items].find(item => item.id === page.id)!;
+        const restoredPlacement = [...restoredPage.items].find(item => item.id === placement.id)!;
+        expect(restoredPlacement.yjsGridId).toBe(gridId);
+        expect(restoredPlacement.columnSpan).toBe(5);
+        expect((restoredPlacement.tree.getNodeValueFromKey(restoredPlacement.key) as Y.Map<unknown>).has("yjsTableId"))
+            .toBe(false);
+        const entry = getGridRegistry(restoredDoc).get(gridId)!;
+        expect(entry.has("sourceTableId")).toBe(false);
+        expect(entry.toJSON()).toEqual(handles!.entry.toJSON());
+        expect(entry.get("insertTargetTableId")).toBe("explicit-choice");
     });
 });
 

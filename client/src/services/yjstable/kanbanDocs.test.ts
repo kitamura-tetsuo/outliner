@@ -86,7 +86,7 @@ describe("Kanban creation over an existing Table", () => {
     });
 
     it("reads back the exact stored settings, including order", () => {
-        const { doc, tableId } = tasksProject();
+        const { doc } = tasksProject();
         const kanbanId = createKanban(doc, {
             name: "Sprint",
             query: "SELECT id, status, title FROM tasks ORDER BY id",
@@ -107,7 +107,7 @@ describe("Kanban creation over an existing Table", () => {
     });
 
     it("stores an empty query and absent roles as incomplete configuration", () => {
-        const { doc, tableId } = tasksProject();
+        const { doc } = tasksProject();
         const kanbanId = createKanban(doc, { name: "Draft", query: "" });
 
         expect(getKanban(doc, kanbanId)).toEqual({
@@ -136,7 +136,7 @@ describe("Kanban creation over an existing Table", () => {
 
 describe("Kanban reconstruction through document persistence", () => {
     it("restores the exact definition without replaying creation", () => {
-        const { doc, tableId } = tasksProject();
+        const { doc } = tasksProject();
         const query = 'SELECT "weird ""col""",\n  title AS "Title"  FROM tasks   WHERE status = \'open\'  ORDER BY 1';
         const kanbanId = createKanban(doc, {
             name: "Exact",
@@ -187,7 +187,7 @@ describe("Kanban validation and missing identities", () => {
     });
 
     it("rejects duplicate or mistyped settings without changing the stored definition", () => {
-        const { doc, tableId } = tasksProject();
+        const { doc } = tasksProject();
         const kanbanId = createKanban(doc, {
             name: "Board",
             query: "SELECT id FROM tasks",
@@ -212,7 +212,7 @@ describe("Kanban validation and missing identities", () => {
 
     it("rejects creation with an occupied explicit id without replacing the definition", () => {
         globalUndoRouter.clear();
-        const { doc, tableId } = tasksProject();
+        const { doc } = tasksProject();
         const kanbanId = createKanban(doc, {
             kanbanId: "board-1",
             name: "Original",
@@ -281,7 +281,7 @@ describe("Kanban validation and missing identities", () => {
     });
 
     it("uses a selected Table only to initialize SQL", () => {
-        const { doc, tableId } = tasksProject();
+        const { doc } = tasksProject();
         const kanbanId = createKanban(doc, { name: "Board", query: "SELECT * FROM tasks" });
 
         expect(getKanban(doc, kanbanId)?.query).toBe("SELECT * FROM tasks");
@@ -292,7 +292,7 @@ describe("Kanban validation and missing identities", () => {
 describe("Kanban consumer lifetime", () => {
     it("keeps observation and history usable until the last consumer releases", () => {
         globalUndoRouter.clear();
-        const { doc, tableId } = tasksProject();
+        const { doc } = tasksProject();
         const kanbanId = createKanban(doc, { name: "Board", query: "SELECT * FROM tasks" });
         const other = createKanban(doc, { name: "Other" });
         const first = getKanbanHandles(doc, kanbanId)!;

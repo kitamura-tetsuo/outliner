@@ -165,9 +165,9 @@ describe("MCP create_table persists and composes with existing tools (#5412 AS-0
         const grids = await withRoom(
             again.server.hocuspocus,
             `projects/${PROJECT}`,
-            doc => (doc.getMap<Y.Map<unknown>>("yjsGrids").get(grid.payload.gridId))?.get("sourceTableId"),
+            doc => (doc.getMap<Y.Map<unknown>>("yjsGrids").get(grid.payload.gridId))?.has("sourceTableId"),
         );
-        expect(grids).to.equal(undefined);
+        expect(grids).to.equal(false);
         const finalTable = (await again.mcp.call("get_table", { projectId: PROJECT, tableId })).payload;
         expect(finalTable).to.include({ rawSchemaSql: SCHEMA, recordCount: 1 });
     });

@@ -97,7 +97,7 @@ describe("YjsTableBlock width drafts across Grid entry replacement", { timeout: 
     });
 
     it("discards a pending draft when the registry entry is replaced under the same ID", async () => {
-        const { project, host, grid, gridId, tasksId } = seedGridHost();
+        const { project, host, grid, gridId } = seedGridHost();
         const rendered = render(YjsTableBlock, { props: { item: host } });
         try {
             const input = await openWidthInput(rendered);

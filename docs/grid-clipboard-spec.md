@@ -14,6 +14,8 @@ A Table owns schema and records in a Project-scoped subdocument. Its
 `sourceProjectId`/`sourceTableId` copy provenance remains supported. Schedule
 `targetTableId` also remains supported. Neither establishes Grid ownership.
 Current Grid definitions and placements carry no primary Table metadata.
+Old primary-bearing view/placement formats are unsupported. Transfer accepts
+current-format data without legacy readers, migration or raw-field cleanup.
 
 ## Read dependencies and deletion
 

@@ -171,7 +171,7 @@ export function updateKanban(projectDoc: Y.Doc, kanbanId: string, updates: Kanba
 
 /**
  * Remove a Kanban from the registry and dispose its undo manager. Removes
- * only that definition and its local resources — never its source Table,
+ * only that definition and its local resources — never its SQL dependency Tables,
  * records or other view definitions. Placement cleanup belongs to the
  * separate reference-lifecycle stage, not to this low-level operation.
  */

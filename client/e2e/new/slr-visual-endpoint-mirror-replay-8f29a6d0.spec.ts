@@ -25,7 +25,6 @@ async function model(page: Page) {
                             text: unknown;
                             componentType?: string;
                             calendarId?: string;
-                            yjsTableId?: string;
                             yjsGridId?: string;
                         }>;
                     };
@@ -38,7 +37,6 @@ async function model(page: Page) {
                 text: String(item.text),
                 kind: item.componentType,
                 calendarId: item.calendarId,
-                yjsTableId: item.yjsTableId,
                 yjsGridId: item.yjsGridId,
             })),
             order: Array.from(

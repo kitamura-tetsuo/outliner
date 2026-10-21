@@ -36,7 +36,7 @@ import {
     routineOccurrenceSql,
     seedDemoTableDoc,
 } from "../src/demo-content.js";
-import type { Item, Items } from "../src/schema/app-schema.js";
+import { type Item, type Items, Project } from "../src/schema/app-schema.js";
 
 function childTexts(items: Items | undefined): string[] {
     const texts: string[] = [];
@@ -338,6 +338,34 @@ describe("Demo seed content", () => {
         expect(guidance).to.contain("gutter");
         expect(guidance).to.contain("keeps its own clicks");
         expect(guidance).to.contain("Shift+Down");
+    });
+
+    it("reconstructs production demo placements with registered independent Grid identities", () => {
+        const restoredDoc = new Y.Doc();
+        Y.applyUpdate(restoredDoc, Y.encodeStateAsUpdate(project.ydoc));
+        const restored = Project.fromDoc(restoredDoc);
+        const grids = restoredDoc.getMap<Y.Map<unknown>>("yjsGrids");
+        let count = 0;
+        const inspect = (items: Items) => {
+            for (const item of items) {
+                if (item.componentType === "yjstable") {
+                    count++;
+                    const value = item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
+                    expect(value.has("yjsTableId")).to.equal(false);
+                    expect(item.yjsGridId).to.be.a("string");
+                    const grid = grids.get(item.yjsGridId!);
+                    expect(grid, `registered Grid ${item.yjsGridId}`).not.to.equal(undefined);
+                    expect(grid!.has("sourceTableId")).to.equal(false);
+                    expect(grid!.toJSON()).to.deep.equal(
+                        project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(item.yjsGridId!)!.toJSON(),
+                    );
+                }
+                inspect(item.items);
+            }
+        };
+        inspect(restored.items);
+        expect(count).to.be.greaterThan(0);
+        expect(restored.schedules.toJSON()).to.deep.equal(project.schedules.toJSON());
     });
 
     it("registers every demo table in the project doc registry", () => {

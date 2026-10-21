@@ -9,13 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import { getGridColumnWidth, readGridComponents } from "../../services/yjstable/gridDocs";
-import {
-    createGrid,
-    getGridHandles,
-    getGridRegistry,
-    type GridHandles,
-    setGridColumnWidth,
-} from "../../services/yjstable/gridDocs";
+import { createGrid, getGridHandles, type GridHandles, setGridColumnWidth } from "../../services/yjstable/gridDocs";
 import { createTable } from "../../services/yjstable/tableDocs";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
@@ -32,7 +26,7 @@ function makeGrid(seed: Record<string, { widthPx?: number; hidden?: boolean; lab
     grid: GridHandles;
 } {
     const doc = new Y.Doc();
-    const tableId = createTable(doc, "T", "t");
+    createTable(doc, "T", "t");
     const gridId = createGrid(doc, { name: "G", query: QUERY, components: seed });
     return { doc, grid: getGridHandles(doc, gridId)! };
 }

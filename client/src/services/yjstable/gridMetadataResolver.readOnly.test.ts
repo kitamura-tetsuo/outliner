@@ -53,7 +53,7 @@ describe("Grid metadata production-boundary invariants", { timeout: 30_000 }, ()
 
     it("does not mutate Project, Table, Grid, query, or undo history while resolving twice", async () => {
         const doc = new Y.Doc({ guid: "grid-metadata-read-only" });
-        const { tableId, handles } = seededTable(doc);
+        const { handles } = seededTable(doc);
         const gridId = createGrid(doc, { name: "Read only", query: "SELECT value FROM a" });
         const grid = getGridHandles(doc, gridId)!;
         const select = createProjectSelectSession({

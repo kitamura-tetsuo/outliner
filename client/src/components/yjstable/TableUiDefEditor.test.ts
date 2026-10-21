@@ -25,7 +25,7 @@ const ROUTINE_OCCURRENCES_QUERY = "SELECT id, template_id, title, cadence, occur
 
 function makeGrid(query: string): GridHandles {
     const doc = new Y.Doc();
-    const tableId = createTable(doc, "T", "t");
+    createTable(doc, "T", "t");
     const gridId = createGrid(doc, { name: "G", query });
     return getGridHandles(doc, gridId)!;
 }

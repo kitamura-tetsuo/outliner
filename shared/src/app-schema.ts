@@ -514,11 +514,9 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
-    // Id of the Yjs table (subdoc) embedded by this item (componentType "yjstable")
-
     // Id of the Grid definition (project-level registry entry) this item
-    // renders. Grid owns the SELECT and column UI; the Grid points at a source
-    // Table for schema+data. New yjstable hosts bind through this field.
+    // renders. Grid owns the SELECT and column UI; SQL determines its Table
+    // dependencies. Grid placements bind only through this field.
     get yjsGridId(): string | undefined {
         return this.value.get("yjsGridId") as string | undefined;
     }

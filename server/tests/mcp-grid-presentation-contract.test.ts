@@ -144,10 +144,16 @@ describe("MCP grid presentation contract (#5436)", function() {
         expect(client.showAddRowButton).to.equal(false);
         expect(client.confirmRowDelete).to.equal(true);
 
-        // Nothing else moved: query, source table, placements, other grids,
+        // Nothing else moved: query, placements, other grids,
         // Table schema/records and row identities are untouched.
         expect(client.query).to.equal("SELECT id, title, due_date, done FROM tasks");
-        expect(client.sourceTableId).to.equal("table-tasks");
+        expect(
+            await withRoom(
+                t.server.hocuspocus,
+                `projects/${PROJECT}`,
+                doc => doc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-tasks")!.has("sourceTableId"),
+            ),
+        ).to.equal(false);
         const untouchedAfter = await withRoom(
             t.server.hocuspocus,
             `projects/${PROJECT}`,

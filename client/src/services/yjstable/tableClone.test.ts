@@ -98,6 +98,28 @@ describe("independent portable Tables and Grids", () => {
         expect(getGridHandles(destination, result.gridIdMap[f.other])?.entry.has("insertTargetTableId")).toBe(false);
         expect(result.tableIdMap[f.c]).toBeUndefined();
         expect(getTableHandles(destination, result.tableIdMap[f.a])?.data.size).toBe(0);
+        // Load the copied Table subdocuments as well as the project update.
+        // The project update carries subdocument identities, not their content.
+        copyTableData(getTableHandles(f.doc, f.a)!, getTableHandles(destination, result.tableIdMap[f.a])!);
+        const restored = new Y.Doc({ guid: destination.guid });
+        Y.applyUpdate(restored, Y.encodeStateAsUpdate(destination));
+        for (const table of listTables(destination)) {
+            const original = getTableHandles(destination, table.tableId)!;
+            const reloaded = getTableHandles(restored, table.tableId)!;
+            reloaded.doc.load();
+            Y.applyUpdate(reloaded.doc, Y.encodeStateAsUpdate(original.doc));
+            expect(reloaded.doc.guid).toBe(original.doc.guid);
+            expect(reloaded.schemaText.toString()).toBe(original.schemaText.toString());
+            expect(reloaded.data.toJSON()).toEqual(original.data.toJSON());
+        }
+        expect(listTables(restored)).toEqual(listTables(destination));
+        expect(listTables(restored).find(table => table.tableId === result.tableIdMap[f.a])).toMatchObject({
+            sourceProjectId: f.doc.guid,
+            sourceTableId: f.a,
+        });
+        expect(getTableHandles(restored, result.tableIdMap[f.a])!.data.toJSON()).toEqual({ record: { id: "record" } });
+        expect(getGridRegistry(restored).toJSON()).toEqual(getGridRegistry(destination).toJSON());
+        expect(getGridRegistry(restored).get(result.gridIdMap[f.grid])!.has("sourceTableId")).toBe(false);
         expect(result.outcomes).toContainEqual({
             type: "view-omission",
             gridId: f.other,

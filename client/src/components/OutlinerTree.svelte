@@ -42,7 +42,7 @@
     import { registerPageOutline } from "../services/navigation/outlinePageRegistry";
     import { registerEditorSurface } from "../services/editorSurface";
     import { createVisualNodeAtTarget } from "../services/outline/visualNodePlacement";
-    import { setItemGridId, setItemTableId } from "../services/yjstable/itemBinding";
+    import { setItemGridId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
     import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
@@ -1297,7 +1297,6 @@
         item.componentType = metadata.componentType;
         // A placement identifies its independent Grid; it has no primary Table.
         setItemGridId(item, metadata.componentType === "yjstable" ? metadata.yjsGridId : undefined);
-        setItemTableId(item, undefined);
         setItemCalendarId(item, metadata.componentType === "calendar" ? metadata.calendarId : undefined);
         // Layout width travels with the child (#4997); order is the pasted
         // item order, so nothing else about placement needs restoring.

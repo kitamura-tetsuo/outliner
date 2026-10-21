@@ -8,6 +8,7 @@ acceptance:
 - A Kanban executes its exact SELECT through Project-scoped dependencies without requiring a persisted primary Table
 - Configuration drafts change nothing until Apply, Cancel discards the draft, and a peer change to the same dirty setting produces a conflict instead of being overwritten
 - Loading, incomplete, invalid, missing and successful empty states remain distinct
+- Old primary-bearing Grid/Kanban definitions and Grid placements are unsupported; current writers persist independent view IDs, SQL and settings without migration or inferred INSERT preferences.
 - Project management lists every Kanban by stable identity and creates a definition without cloning its source Table or creating a Grid or Page placement
 - The board preserves SQL result order, distinguishes SQL NULL, empty strings and literal labels, and renders configured title and detail values as inert text
 tests:

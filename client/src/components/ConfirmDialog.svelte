@@ -16,7 +16,7 @@ let {
     message?: string;
     confirmText?: string;
     cancelText?: string;
-    onConfirm: () => void | boolean;
+    onConfirm: () => void | boolean | Promise<void>;
     onCancel?: () => void;
     isDestructive?: boolean;
 } = $props();

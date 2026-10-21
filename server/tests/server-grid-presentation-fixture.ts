@@ -157,7 +157,6 @@ export function readGridAsClient(state: Uint8Array, gridId: string) {
     } as Pick<GridDefinitionTarget, "entry" | "components">;
     return {
         name: entry.get("name"),
-        sourceTableId: entry.get("sourceTableId"),
         query: getGridQuery(target),
         columnOrder: getGridColumnOrder(target),
         showAddRowButton: getGridShowAddRowButton(target),
@@ -196,7 +195,8 @@ export function untouchedState(doc: Y.Doc, gridId: string) {
             .map(key => [key, plain(doc.getMap(key))]),
     );
     return {
-        sourceTableId: entry.get("sourceTableId"),
+        gridId,
+        insertTargetTableId: entry.get("insertTargetTableId"),
         query: entry.get("query"),
         sqlAliasPolicyVersion: entry.get("sqlAliasPolicyVersion"),
         pages,

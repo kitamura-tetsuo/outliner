@@ -183,9 +183,11 @@ use one of two forms:
     kind (#5015). A node with a `componentType` is a **visual node**: it owns
     no ordinary outline text, so give it no `text` and put the heading in a
     separate Text item immediately before it. For `"yjstable"`, set
-    `yjsTableId` to the id of an entry in `demoTables` (in
-    `server/src/demo-content.ts`); the table's schema, UI definition and
-    records are seeded into its own subdoc room by the demo API.
+    `yjsGridId` to a registered demo Grid ID. For intentionally paired demo
+    definitions, use `demoGridIdFor(tableId)` from `server/src/demo-content.ts`.
+    The referenced Grid must be registered with its own SQL and presentation
+    settings; Table schema and data are independent and seeded into the
+    Table's own subdoc room by the demo API.
   - `votes: string[]` — seed votes from these voter ids.
   - `comments: { author, text }[]` — seed a comment thread.
   - `attachments: string[]` — seed attachment urls (use `data:` URIs so they

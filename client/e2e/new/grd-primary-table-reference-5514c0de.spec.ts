@@ -71,8 +71,8 @@ test(
         const stored = await page.evaluate((id) => {
             const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
             const entry = project.ydoc.getMap("yjsGrids").get(id);
-            return { sourceTableId: entry.get("sourceTableId"), query: entry.get("query") };
+            return { hasPrimary: entry.has("sourceTableId"), query: entry.get("query") };
         }, gridId);
-        expect(stored).toEqual({ sourceTableId: undefined, query: "SELECT * FROM table_b" });
+        expect(stored).toEqual({ hasPrimary: false, query: "SELECT * FROM table_b" });
     },
 );

@@ -119,7 +119,7 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             // Both transitions revoked the old execution: returning to matching
             // text alone does not revive the outstanding mutation.
             expect(getGridQuery(grid)).toBe(paddedA);
-            expect(getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId")).toBeUndefined();
+            expect(getGridRegistry(projectDoc).get(gridId)?.has("sourceTableId")).toBe(false);
             expect(view().querySelector("input.cell-input")).toBeNull();
             expect(queryByTestId("grid-readonly-reason")?.textContent).toBe(
                 "Current query source evidence is unavailable",
@@ -154,7 +154,7 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             expect(titleOf(handlesA)).toBe("Fresh edit");
             expect(titleOf(handlesB)).toBe("Value from B");
             expect(getGridQuery(grid)).toBe(paddedA);
-            expect(getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId")).toBeUndefined();
+            expect(getGridRegistry(projectDoc).get(gridId)?.has("sourceTableId")).toBe(false);
 
             // A relevant schema change revokes authority until a fresh execution validates it.
             setSchemaText(handlesA, SCHEMA_A.replace("title TEXT", "title TEXT, note TEXT"));

@@ -14,7 +14,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
-test("mixed Diagram/Grid Copy refuses a deleted live Grid before allocation", async ({ page }, info) => {
+test("mixed Diagram/Grid Copy preserves live bindings and refuses a deleted Grid", async ({ page }, info) => {
     test.setTimeout(120000);
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await TestHelpers.seedProjectAndNavigate(page, info, ["Diagram here", "Anchor", "Neighbour"]);
@@ -32,6 +32,14 @@ test("mixed Diagram/Grid Copy refuses a deleted live Grid before allocation", as
     await copySelection(page);
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard.length).toBeGreaterThan(0);
+    const beforeDiagrams = await projectDiagrams(page);
+    await pasteAfterRow(page, page.locator(".outliner-item:not(.page-title)").filter({ hasText: "Anchor" }).last());
+    expect(await lastClipboardResult(page, 1)).toMatchObject({ ok: true });
+    const copied = await readGridProjectState(page);
+    expect(copied.grids).toEqual(initial.grids);
+    expect(copied.placements).toHaveLength(initial.placements.length + 1);
+    expect(copied.placements.every(item => item.gridId === grid.id && !item.hasPrimaryMetadata)).toBe(true);
+    expect(Object.keys(await projectDiagrams(page))).toHaveLength(Object.keys(beforeDiagrams).length + 1);
     const show = page.getByRole("button", { name: "Show sidebar" });
     if (await show.isVisible()) await show.click();
     await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
@@ -50,7 +58,7 @@ test("mixed Diagram/Grid Copy refuses a deleted live Grid before allocation", as
         return [router.undoDepth, router.redoDepth];
     });
     await pasteAfterRow(page, page.locator(".outliner-item:not(.page-title)").filter({ hasText: "Anchor" }).last());
-    expect(await lastClipboardResult(page, 1)).toMatchObject({ ok: false, reason: "stale-transfer" });
+    expect(await lastClipboardResult(page, 2)).toMatchObject({ ok: false, reason: "stale-transfer" });
     expect(await readGridProjectState(page)).toEqual(baseline);
     expect(await projectDiagrams(page)).toEqual(diagrams);
     expect(await readOutline()).toEqual(outline);

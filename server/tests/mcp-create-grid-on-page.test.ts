@@ -48,7 +48,7 @@ describe("createGridOnPage: Grid definition plus Page placement", function() {
         const placement = [...page.items][page.items.length - 1];
         expect(placement.componentType).to.equal("yjstable");
         expect(placement.yjsGridId).to.equal(result.gridId);
-        expect(placement.yjsTableId).not.to.be.ok;
+        expect((placement.tree.getNodeValueFromKey(placement.key) as Y.Map<unknown>).has("yjsTableId")).to.equal(false);
         expect(placement.items.length).to.equal(0);
 
         // The normal production read models resolve both returned IDs.

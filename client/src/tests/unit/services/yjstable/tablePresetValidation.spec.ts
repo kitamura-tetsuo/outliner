@@ -16,7 +16,7 @@ function snapshotRegistry(registry: Y.Map<Y.Map<unknown>>): unknown {
 describe("preset SQL-name validation", () => {
     it.each(TABLE_PRESETS)("refuses system_user for $key before any project effect", preset => {
         const doc = new Y.Doc({ guid: `reserved-${preset.key}` });
-        const existingTableId = createTable(doc, "Existing", "existing");
+        createTable(doc, "Existing", "existing");
         createGrid(doc, {
             name: "Existing Grid",
             query: "SELECT id, title FROM existing ORDER BY title",

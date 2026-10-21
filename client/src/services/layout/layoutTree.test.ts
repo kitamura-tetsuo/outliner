@@ -1,3 +1,4 @@
+import { createGridEntry } from "$shared/services/gridDefinition";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Item, Project } from "../../schema/app-schema";
@@ -27,10 +28,11 @@ function buildPage() {
     return { project, page };
 }
 
-function addGrid(parent: { addNode: (author: string) => Item; }, tableId: string): Item {
+function addGrid(parent: { addNode: (author: string) => Item; }, gridId: string): Item {
     const item = parent.addNode("tester");
     item.componentType = "yjstable";
-    item.yjsTableId = tableId;
+    createGridEntry(item.ydoc, gridId, { query: "SELECT 1 AS value" });
+    item.yjsGridId = gridId;
     return item;
 }
 
@@ -205,7 +207,8 @@ describe("layoutTree", () => {
             expect(idsOf([...page.items])).toEqual([before.id, layout.id, grid.id]);
             expect(grid.columnSpan).toBeUndefined();
             // The component binding is untouched by the move.
-            expect(grid.yjsTableId).toBe("t1");
+            expect((grid.tree.getNodeValueFromKey(grid.key) as Y.Map<unknown>).get("yjsGridId")).toBe("t1");
+            expect((grid.tree.getNodeValueFromKey(grid.key) as Y.Map<unknown>).has("yjsTableId")).toBe(false);
         });
 
         it("leaves an empty Layout in place rather than deleting it", () => {
@@ -234,7 +237,8 @@ describe("layoutTree", () => {
             expect(textsOf([...page.items])).toEqual(["before", "", "", "after"]);
             expect(idsOf([...page.items])).toEqual([before.id, first.id, second.id, after.id]);
             // Component bindings survive; only the arrangement is gone.
-            expect(first.yjsTableId).toBe("t1");
+            expect((first.tree.getNodeValueFromKey(first.key) as Y.Map<unknown>).get("yjsGridId")).toBe("t1");
+            expect((first.tree.getNodeValueFromKey(first.key) as Y.Map<unknown>).has("yjsTableId")).toBe(false);
             expect(second.calendarId).toBe("c1");
             expect(first.columnSpan).toBeUndefined();
         });

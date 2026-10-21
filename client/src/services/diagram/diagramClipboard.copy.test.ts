@@ -1,3 +1,4 @@
+import type * as Y from "yjs";
 // Structural Copy/Paste of Diagram transclusions duplicates the Diagram (#5314).
 // Runs against a real Y.Doc project; payloads come from the production
 // serializer and snapshotter, never from hand-written JSON (except the
@@ -33,13 +34,20 @@ describe("Diagram structural Copy/Paste (#5314)", () => {
         const diagram = addOccurrence(fx.page, d);
         const grid = createGrid(fx.project.ydoc, { query: "SELECT 1" });
         const placement = appendGridPlacement(fx.project.ydoc, fx.page.id, grid, "tester");
+        placement.columnSpan = 4;
         const payload = copyPayload(fx, [diagram, placement]);
         const positive = pasteDiagramPayload(payload, pasteContext(fx, undefined));
         expect(positive.ok).toBe(true);
         if (!positive.ok) throw new Error("expected mixed paste");
         expect(positive.diagramIdMap![d]).not.toBe(d);
         expect(getGridRegistry(fx.project.ydoc).size).toBe(1);
-        expect([...fx.page.items].filter(item => item.componentType === "yjstable")).toHaveLength(2);
+        const gridPlacements = [...fx.page.items].filter(item => item.componentType === "yjstable");
+        expect(gridPlacements).toHaveLength(2);
+        const pasted = gridPlacements.find(item => item.id !== placement.id)!;
+        const value = pasted.tree.getNodeValueFromKey(pasted.key) as Y.Map<unknown>;
+        expect(value.get("yjsGridId")).toBe(grid);
+        expect(value.get("columnSpan")).toBe(4);
+        expect(value.has("yjsTableId")).toBe(false);
         expect(removeGridWithPlacements(fx.project, grid)).toBe(true);
         const baseline = fx.project.ydoc.toJSON();
         const history = [globalUndoRouter.undoDepth, globalUndoRouter.redoDepth];

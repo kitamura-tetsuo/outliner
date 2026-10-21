@@ -183,7 +183,7 @@ describe("Grid column width overrides", () => {
 
     it("restores valid widths, including dormant ones and absence, through delete/Undo", () => {
         const project = Project.createInstance("proj-width");
-        const tableId = createTable(project.ydoc, "T", "t");
+        createTable(project.ydoc, "T", "t");
         const gridId = createGrid(project.ydoc, {
             name: "G",
             query: "SELECT id, t FROM t",
@@ -322,7 +322,7 @@ describe("Grid width structural copy", { timeout: 30000 }, () => {
 describe("Grid width collaboration", () => {
     function syncedPair(): { docA: Y.Doc; docB: Y.Doc; gridId: string; } {
         const docA = new Y.Doc();
-        const tableId = createTable(docA, "Tasks", "tasks");
+        createTable(docA, "Tasks", "tasks");
         const gridId = createGrid(docA, {
             name: "A",
             query: "SELECT id, title FROM tasks",
@@ -364,7 +364,7 @@ describe("Grid width collaboration", () => {
         // leaf (never the parent map), so both peers converge to auto width
         // with the label retained.
         const docA = new Y.Doc();
-        const tableId = createTable(docA, "Tasks", "tasks");
+        createTable(docA, "Tasks", "tasks");
         const gridId = createGrid(docA, {
             name: "A",
             query: "SELECT id, title FROM tasks",

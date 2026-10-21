@@ -14,7 +14,6 @@ import { expect, type Page } from "@playwright/test";
 export interface WidthGridEntry {
     gridId: string;
     name: string;
-    sourceTableId: string;
     query: string;
     columnOrder: string[];
     components: Record<string, Record<string, unknown>>;
@@ -56,7 +55,6 @@ export async function readWidthGridRegistry(page: Page): Promise<WidthGridEntry[
             out.push({
                 gridId,
                 name: String(entry.get("name") ?? ""),
-                sourceTableId: String(entry.get("sourceTableId") ?? ""),
                 query: String(entry.get("query") ?? ""),
                 columnOrder: Array.isArray(orderValue)
                     ? [...orderValue]

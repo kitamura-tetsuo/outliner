@@ -136,7 +136,7 @@ export async function readKanbanPurityState(page: Page): Promise<KanbanPuritySta
                     id: String(item.id),
                     text: String(item.text ?? ""),
                     componentType: item.componentType ?? undefined,
-                    yjsTableId: item.yjsTableId ?? undefined,
+                    yjsGridId: item.yjsGridId ?? undefined,
                     items: snapshotItems(item.items),
                 });
             }

@@ -5,12 +5,12 @@ description: Users can place project Kanbans on Pages and in Layout-compatible o
 category: tables
 status: implemented
 acceptance:
+- Both Table deletion policies retain independent Kanban definitions and Page/Layout placements. Structural Kanban Copy/Cut/Paste/Duplicate remains refused, while ordinary card-text Copy remains supported.
 - Kanban is a visual leaf and stores only its project-owned Kanban identity in each placement
 - Keeping Table references preserves affected Kanbans, while removing direct references removes only primary-source Kanbans and their placements
 - Missing Kanban definitions render an unavailable state and are not recreated from placement data
 - Object management discovers all Kanban placements and revalidates live bindings when deleting a board
 - Table dependency analysis includes primary and parsed SQL references without matching comments or literals
-- Both Table deletion policies retain independent Kanban definitions and Page/Layout placements. Structural Kanban Copy/Cut/Paste/Duplicate remains refused, while ordinary card-text Copy remains supported.
 tests:
 - client/e2e/new/kan-kanban-multiple-placement-reload-91b8f20c.spec.ts
 - client/e2e/new/kan-kanban-placement-production-lifecycle-91b8f20c.spec.ts

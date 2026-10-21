@@ -85,17 +85,17 @@ test.describe("FTR-6a03c2f1: live source revalidation", () => {
         expect(await registries(page)).toEqual(reserved);
     });
 
-    test("places an existing Grid when legacy source metadata changes", async ({ page }) => {
+    test("places an existing Grid when its current query changes", async ({ page }) => {
         await createBlank(page, 0, "One", "one");
         await createBlank(page, 1, "Two", "two");
         const initial = await registries(page);
         const panel = await slashGrid(page, 2);
         await panel.getByRole("button", { name: "Existing Grid", exact: true }).click();
         await panel.getByTestId("yjs-grid-existing-select").selectOption(initial.grids[0].id);
-        await page.evaluate(({ gridId, tableId }) => {
+        await page.evaluate(gridId => {
             const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
-            project.ydoc.getMap("yjsGrids").get(gridId).set("sourceTableId", tableId);
-        }, { gridId: initial.grids[0].id, tableId: initial.tables[1].id });
+            project.ydoc.getMap("yjsGrids").get(gridId).set("query", "SELECT * FROM two");
+        }, initial.grids[0].id);
         const rebound = await registries(page);
         await panel.getByTestId("yjs-grid-select-existing").click();
         await expect(panel).toBeHidden();

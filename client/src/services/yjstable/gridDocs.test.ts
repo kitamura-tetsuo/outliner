@@ -87,7 +87,7 @@ describe("Grid registry", () => {
 
     it("creates one project-level Grid entry per Grid, referencing its source Table", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
         const gridId = createGrid(projectDoc, {
             name: "Open tasks",
@@ -102,7 +102,7 @@ describe("Grid registry", () => {
 
     it("supports one Table with many independent Grids", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
         const openGridId = createGrid(projectDoc, {
             name: "Open",
@@ -133,7 +133,7 @@ describe("Grid registry", () => {
 
     it("keeps per-column UI settings scoped to the Grid that owns them", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
         const a = createGrid(projectDoc, { name: "A", query: "SELECT * FROM tasks" });
         const b = createGrid(projectDoc, { name: "B", query: "SELECT * FROM tasks" });
 
@@ -175,7 +175,7 @@ describe("Grid registry", () => {
 
     it("preserves showAddRowButton flag on duplicateGrid", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
         const originalId = createGrid(projectDoc, {
             name: "Original",
@@ -189,7 +189,7 @@ describe("Grid registry", () => {
 
     it("sets and gets confirmRowDelete correctly", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
         // Test default creation
         const gridId = createGrid(projectDoc, { name: "G" });
@@ -210,7 +210,7 @@ describe("Grid registry", () => {
 
     it("preserves confirmRowDelete flag on duplicateGrid", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
         const originalId = createGrid(projectDoc, {
             name: "Original",
@@ -224,7 +224,7 @@ describe("Grid registry", () => {
 
     it("sets and gets showAddRowButton correctly", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
         const gridId = createGrid(projectDoc, { name: "G" });
         const handles = getGridHandles(projectDoc, gridId)!;
 
@@ -276,7 +276,7 @@ describe("Grid registry", () => {
 
     it("removes a Grid without touching the Table it referenced", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
         const gridId = createGrid(projectDoc, { name: "G" });
         expect(removeGrid(projectDoc, gridId)).toBe(true);
         expect(listGrids(projectDoc)).toEqual([]);

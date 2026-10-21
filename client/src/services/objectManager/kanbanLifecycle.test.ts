@@ -17,7 +17,7 @@ function bind(item: { tree: { getNodeValueFromKey(key: string): unknown; }; key:
 describe("Kanban placement and reference lifecycle", () => {
     it("adds a reference-only placement after validating its Page and definition", () => {
         const project = Project.createInstance("kanban-place");
-        const tableId = createTable(project.ydoc, "Tasks", "tasks");
+        createTable(project.ydoc, "Tasks", "tasks");
         const board = createKanban(project.ydoc, { kanbanId: "board" });
         const page = project.addPage("Dashboard", "test");
         placeObjectOnPage(project.ydoc, page.id, "kanban", board, "test", {
@@ -84,7 +84,7 @@ describe("Kanban placement and reference lifecycle", () => {
     it("tracks only parsed query dependencies and preserves SQL-dependent Kanbans for both Table policies", () => {
         const project = Project.createInstance("kanban-table-policy");
         const a = createTable(project.ydoc, "A", "table_a");
-        const b = createTable(project.ydoc, "B", "table_b");
+        createTable(project.ydoc, "B", "table_b");
         const direct = createKanban(project.ydoc, { kanbanId: "direct", query: "SELECT * FROM table_a" });
         const indirect = createKanban(project.ydoc, {
             kanbanId: "indirect",

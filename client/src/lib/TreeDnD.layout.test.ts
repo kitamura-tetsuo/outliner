@@ -1,4 +1,6 @@
+import { createGridEntry } from "$shared/services/gridDefinition";
 import { describe, expect, it } from "vitest";
+import type * as Y from "yjs";
 import { Item, Project } from "../schema/app-schema";
 import { DEFAULT_COLUMN_SPAN, LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
@@ -57,7 +59,8 @@ describe("TreeDnD and the Layout child constraint", () => {
         });
         const grid = add(item => {
             item.componentType = "yjstable";
-            item.yjsTableId = "table-1";
+            createGridEntry(item.ydoc, "grid-1", { query: "SELECT 1 AS value" });
+            item.yjsGridId = "grid-1";
         });
 
         controller([layout, grid]).moveItem(grid.id, layout.id, "middle");
@@ -65,6 +68,9 @@ describe("TreeDnD and the Layout child constraint", () => {
         expect(childIds(layout)).toEqual([grid.id]);
         expect(grid.columnSpan).toBe(DEFAULT_COLUMN_SPAN);
         expect(pageIds(page)).toEqual([layout.id]);
+        const persisted = layout.tree.getNodeValueFromKey(grid.key) as Y.Map<unknown>;
+        expect(persisted.get("yjsGridId")).toBe("grid-1");
+        expect(persisted.has("yjsTableId")).toBe(false);
     });
 
     it("accepts a Calendar as well", () => {
