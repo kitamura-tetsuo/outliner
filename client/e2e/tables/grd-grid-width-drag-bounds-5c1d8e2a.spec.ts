@@ -129,13 +129,49 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         await page.mouse.move(press.x + 30, press.y, { steps: 3 });
         await expectColumnGeometry(page, 0, "id", Math.round(start + 30));
 
-        // A real wheel scroll under the stationary pointer moves the header
-        // left by the scroll delta, which grows the candidate by the same.
-        const before = await scroller.evaluate((el) => el.scrollLeft);
+        // Keep the captured resize pointer at the same content x, but move it
+        // over a body row. Wheel dispatch is hit-tested independently of
+        // pointer capture, so leaving it on the moving, narrow resize handle
+        // made Chromium intermittently choose a non-scrollable boundary.
+        const bodyCell = scroller.locator("td[data-col]").first();
+        const bodyBox = await bodyCell.boundingBox();
+        expect(bodyBox, "the real Grid needs a rendered body row for wheel hit testing").not.toBeNull();
+        const wheelPoint = { x: press.x + 30, y: Math.round(bodyBox!.y + bodyBox!.height / 2) };
+        await page.mouse.move(wheelPoint.x, wheelPoint.y);
+
+        // Retain boundary evidence immediately before the real wheel input:
+        // the pointer is over this overflowing Grid and the resize preview is
+        // still active. This distinguishes input delivery from resize math.
+        const boundary = await scroller.evaluate((el, point) => {
+            const target = document.elementFromPoint(point.x, point.y);
+            const targetElement = target instanceof HTMLElement ? target : undefined;
+            return {
+                hitInsideGrid: target !== null && el.contains(target),
+                hitTag: targetElement?.tagName,
+                hitTestId: targetElement?.dataset.testid,
+                hitColumn: targetElement?.dataset.col,
+                clientWidth: el.clientWidth,
+                scrollWidth: el.scrollWidth,
+                scrollLeft: el.scrollLeft,
+                resizing: el.dataset.columnResizing,
+            };
+        }, wheelPoint);
+        expect(boundary, `wheel boundary evidence: ${JSON.stringify(boundary)}`).toMatchObject({
+            hitInsideGrid: true,
+            resizing: "true",
+            scrollLeft: 12,
+        });
+        expect(boundary.scrollWidth).toBeGreaterThan(boundary.clientWidth);
+
+        // A real wheel scroll over the verified Grid moves the header left by
+        // the observed scroll delta, which grows the candidate by the same.
+        const before = boundary.scrollLeft;
         await page.mouse.wheel(40, 0);
         await expect.poll(() => scroller.evaluate((el) => el.scrollLeft), { timeout: 10000 }).toBeGreaterThan(before);
         const delta = (await scroller.evaluate((el) => el.scrollLeft)) - before;
         const expected = Math.round(start + 30 + delta);
+        expect(expected, "the oracle must reject a resize calculation that omits scroll delta")
+            .not.toBe(Math.round(start + 30));
         await expectColumnGeometry(page, 0, "id", expected);
         expect(await savedWidth(page, "id")).toBe(120);
         await page.mouse.up();
