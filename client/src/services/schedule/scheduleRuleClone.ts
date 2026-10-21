@@ -40,6 +40,7 @@ export function cloneScheduleRules(
     destinationProject: Project,
     tableIdMap: Readonly<Record<string, string>>,
     sqlNameMap: ReadonlyMap<string, string>,
+    onCreated?: (id: string, entry: Y.Map<ScheduleRuleValueType>) => void,
 ): ScheduleRuleCloneResult {
     const result: ScheduleRuleCloneResult = { createdRuleIds: [], copied: [], skipped: [] };
 
@@ -90,6 +91,7 @@ export function cloneScheduleRules(
             catchUp: catchUp !== false,
             enabled: false,
         });
+        onCreated?.(createdRuleId, destinationProject.schedules.get(createdRuleId)!);
         result.createdRuleIds.push(createdRuleId);
         result.copied.push({ sourceTableId, ruleName });
     }
@@ -137,6 +139,7 @@ export function captureClonedScheduleRules(
 export function restoreClonedScheduleRules(
     projectDoc: Y.Doc,
     saved: Readonly<Record<string, Record<string, ScheduleRuleValueType>>>,
+    onRestored?: (id: string, entry: Y.Map<ScheduleRuleValueType>) => void,
 ): void {
     const rules = scheduleRules(projectDoc);
     projectDoc.transact(() => {
@@ -144,6 +147,7 @@ export function restoreClonedScheduleRules(
             const rule = new Y.Map<ScheduleRuleValueType>();
             for (const [key, value] of Object.entries(fields)) rule.set(key, value);
             rules.set(ruleId, rule);
+            onRestored?.(ruleId, rule);
         }
     });
 }

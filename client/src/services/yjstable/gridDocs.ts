@@ -12,7 +12,6 @@
 // no benefit.
 //
 // Each Grid Y.Map holds:
-//   sourceTableId  string    - the primary Table (write target).
 //   query          string    - SELECT text.
 //   columnOrder    string[]  - display column order (subset/superset of query result).
 //   components     Y.Map     - nested Y.Map per column with {type,label,hidden,widthPx}.
@@ -34,8 +33,7 @@ import * as Y from "yjs";
 import { findGridPlacements } from "../objectManager/objectPlacements";
 import { canReplayProjectHistory } from "../undo/projectHistoryAuthorization";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import { listTables } from "./tableDocs";
-import { rewriteTableQuerySql } from "./tableSqlRewrite";
+import { queryReadDependencies } from "./queryReadDependencies";
 
 // The Grid writers/readers are framework-neutral and shared with the server
 // (shared/src/services/gridDefinition.ts), so server-side regressions run the
@@ -315,7 +313,6 @@ export function getGridSourceTableId(projectDoc: Y.Doc, gridId: string): string 
 /** Plain-JS copy of a Grid registry entry's fields, detached from the Y.Doc. */
 interface GridEntrySnapshot {
     name: string;
-    sourceTableId: string;
     query: string;
     insertTargetTableId?: string;
     columnOrder: string[];
@@ -356,7 +353,6 @@ function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
 
     return {
         name: String(entry.get("name") ?? "Grid"),
-        sourceTableId: String(entry.get("sourceTableId") ?? ""),
         query: String(entry.get("query") ?? ""),
         insertTargetTableId: getGridInsertTargetTableId({ entry }),
         columnOrder,
@@ -367,8 +363,8 @@ function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
 }
 
 /**
- * Duplicate a Grid definition into a new registry entry. `sourceTableId` and
- * every field (query, columnOrder, components) are copied; Table schema/data
+ * Duplicate the Grid query and settings into an independent definition.
+ * Table schema/data
  * are NOT touched. The new Grid gets a fresh id.
  */
 export function duplicateGrid(
@@ -379,11 +375,11 @@ export function duplicateGrid(
     const source = getGridRegistry(projectDoc).get(gridId);
     if (!source) return undefined;
     const snapshot = readGridEntrySnapshot(source);
-    if (!snapshot.sourceTableId) return undefined;
 
-    return createGrid(projectDoc, snapshot.sourceTableId, {
+    return createGrid(projectDoc, undefined, {
         name: overrides.name ?? `${snapshot.name} (copy)`,
         query: snapshot.query,
+        insertTargetTableId: snapshot.insertTargetTableId,
         columnOrder: snapshot.columnOrder,
         components: snapshot.components,
         showAddRowButton: snapshot.showAddRowButton,
@@ -408,16 +404,26 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
     if (!entry) return false;
 
     const snapshot = readGridEntrySnapshot(entry);
+    // Copy provenance belongs to deletion restoration, not independent duplication.
+    const copyProvenance = ["copiedFromProjectId", "copiedFromGridId"].flatMap(key => {
+        const value = entry.get(key);
+        return typeof value === "string" ? [[key, value] as const] : [];
+    });
     const placements = findGridPlacements(project, gridId);
 
+    let ownedEntry = entry;
+    const detached = new Map<string, Y.Map<unknown>>();
     const applyDelete = () => {
+        if (registry.get(gridId) !== ownedEntry) return;
+        detached.clear();
         projectDoc.transact(() => {
             for (const placement of placements) {
                 try {
                     const nodeValue = project.tree.getNodeValueFromKey(placement.itemKey) as
                         | Y.Map<unknown>
                         | undefined;
-                    if (nodeValue) {
+                    if (nodeValue?.get("componentType") === "yjstable" && nodeValue.get("yjsGridId") === gridId) {
+                        detached.set(placement.itemKey, nodeValue);
                         nodeValue.set("componentType", undefined);
                         nodeValue.set("yjsGridId", undefined);
                     }
@@ -432,21 +438,29 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
     };
 
     const applyRestore = () => {
+        if (registry.has(gridId)) return;
         projectDoc.transact(() => {
-            createGrid(projectDoc, snapshot.sourceTableId, {
+            createGrid(projectDoc, undefined, {
                 gridId,
                 name: snapshot.name,
                 query: snapshot.query,
                 insertTargetTableId: snapshot.insertTargetTableId,
                 columnOrder: snapshot.columnOrder,
                 components: snapshot.components,
+                showAddRowButton: snapshot.showAddRowButton,
+                confirmRowDelete: snapshot.confirmRowDelete,
             });
+            ownedEntry = registry.get(gridId)!;
+            for (const [key, value] of copyProvenance) ownedEntry.set(key, value);
             for (const placement of placements) {
                 try {
                     const nodeValue = project.tree.getNodeValueFromKey(placement.itemKey) as
                         | Y.Map<unknown>
                         | undefined;
-                    if (nodeValue) {
+                    if (
+                        nodeValue && nodeValue === detached.get(placement.itemKey) && !nodeValue.get("componentType")
+                        && !nodeValue.get("yjsGridId")
+                    ) {
                         nodeValue.set("componentType", "yjstable");
                         nodeValue.set("yjsGridId", gridId);
                     }
@@ -474,17 +488,12 @@ export function findGridsBySourceTable(projectDoc: Y.Doc, sourceTableId: string)
 
 /** Current-format Grids whose SQL reads the registered Table. */
 export function findGridsByTableDependency(projectDoc: Y.Doc, tableId: string): GridRegistryEntry[] {
-    const table = listTables(projectDoc).find(candidate => candidate.tableId === tableId);
     const registry = getGridRegistry(projectDoc);
-    return listGrids(projectDoc).filter(grid => {
-        if (!table) return false;
-        const query = String(registry.get(grid.gridId)?.get("query") ?? "");
-        try {
-            return rewriteTableQuerySql(query, new Map()).actualRelationDependencies.includes(table.sqlName);
-        } catch {
-            return false;
-        }
-    });
+    return listGrids(projectDoc).filter(grid =>
+        queryReadDependencies(projectDoc, String(registry.get(grid.gridId)?.get("query") ?? "")).tableIds.includes(
+            tableId,
+        )
+    );
 }
 
 // Test-only bridge so width E2E specs commit through the supported production

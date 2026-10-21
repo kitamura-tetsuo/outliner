@@ -45,7 +45,27 @@ acceptance:
 - Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.
 - 'The Grid export never truncates silently: a result past the row cap, or a chart image past the size cap, carries a notice in the copied content.'
 - The private in-app payload still names the Grid, so pasting back into Outliner behaves exactly as before.
+- Portable definitions are keyed by Grid identity independently of Table snapshots. Same-Project Copy shares a Grid, staged Cut preserves placement/Grid IDs, and cross-Project Cut retains the source Grid even when unplaced while refusing destination Grid or placement ID collisions.
+- Reuse-only Grid Paste retains destination binding checks during Redo without requiring the source Project to remain loaded; Undo preserves reused definitions and unrelated rows.
+- Grid object Delete/Undo restores copy provenance for repeat Paste reuse while independent duplication remains fresh.
+- Copied Schedule SQL remaps fresh and reused relations by admitted Table identities without duplicating rules targeting reused Tables.
+- An acquired cross-Project source stays live through final placement admission; relevant source deletion, query or incarnation changes refuse stale Copy while unrelated rows and presentation remain independent.
+- Fresh definition Redo uses retained SQL/catalog evidence and saved records after source release, including zero-Table Grids and SQL literals containing unrelated ENUM names; actual missing or incompatible required ENUMs still refuse before effects.
+- An unreachable cold source Project retains the structure-only fallback and releases its unsynchronized temporary client; missing metadata before initial sync is not evidence of Grid deletion.
 tests:
+- client/e2e/new/clp-paste-source-room-unavailable-4584c0de.spec.ts
+- client/e2e/new/clp-paste-live-source-4584c0de.spec.ts
+- client/e2e/new/clp-fresh-paste-unloaded-redo-4584c0de.spec.ts
+- client/e2e/new/clp-restored-grid-provenance-4584c0de.spec.ts
+- client/src/services/yjstable/gridDocs.test.ts
+- client/e2e/new/clp-paste-peer-undo-4584c0de.spec.ts
+- client/e2e/new/clp-paste-special-stale-source-4584c0de.spec.ts
+- client/src/services/clipboard/crossProjectGridPaste.admission.test.ts
+- client/src/services/undo/undoRouter.pasteOwnership.test.ts
+- client/e2e/new/clp-mixed-grid-admission-4584c0de.spec.ts
+- client/src/services/yjstable/tableClone.admission.test.ts
+- client/e2e/new/clp-cross-project-cut-identity-4584c0de.spec.ts
+- client/src/services/clipboard/crossProjectGridMove.test.ts
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-chart-image-clipboard-4584c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
@@ -70,3 +90,12 @@ tests:
 - client/src/services/clipboard/gridClipboardExport.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts
 - client/src/services/yjstable/tableClone.test.ts
+- client/e2e/new/clp-shared-grid-replay-4584c0de.spec.ts
+- client/e2e/new/clp-no-data-loaded-source-4584c0de.spec.ts
+- client/e2e/new/clp-calendar-reused-table-map-4584c0de.spec.ts
+
+- client/e2e/new/clp-owned-grid-peer-placement-4584c0de.spec.ts
+- client/e2e/new/clp-calendar-owned-history-4584c0de.spec.ts
+- client/e2e/new/clp-calendar-paste-rollback-4584c0de.spec.ts
+- client/e2e/new/clp-calendar-peer-placement-4584c0de.spec.ts
+- client/src/services/undo/undoRouter.pastePlacements.test.ts

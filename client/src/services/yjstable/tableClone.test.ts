@@ -1,385 +1,205 @@
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import type { GridTableSnapshot } from "../clipboard/itemClipboard";
-import { createGrid, findGridsBySourceTable, getGridHandles } from "./gridDocs";
+import { createGrid, getGridHandles, getGridRegistry } from "./gridDocs";
 import { resetPgliteForTests } from "./pgliteService";
 import {
     computeSnapshotClosure,
     computeTableClosure,
     copyTableData,
+    exportGridSlice,
     exportTableStructure,
     exportTableStructures,
     importTableStructures,
 } from "./tableClone";
-import { addRecord, createTable, getTableHandles, listTables, setSchemaText, tableDocGuid } from "./tableDocs";
+import { addRecord, createTable, getTableHandles, listTables } from "./tableDocs";
 
-function configureUi(
-    doc: Y.Doc,
-    tableId: string,
-    query: string,
-    label = "金額 €",
-): string {
-    // Grid state now lives in a project-level Grid entry, not on the Table
-    // subdoc. Creating one here mirrors what the runtime does the moment a
-    // Table + Grid pair is set up together.
-    return createGrid(doc, tableId, {
-        name: `Grid for ${tableId}`,
-        query,
-        columnOrder: ["amount", "id"],
-        components: { amount: { type: "number", label, hidden: false } },
-    });
-}
-
-function simpleSnapshot(
-    sourceTableId: string,
-    sqlName: string,
-    query = `SELECT id FROM ${sqlName}`,
-): GridTableSnapshot {
-    return {
-        sourceTableId,
-        name: sqlName.toUpperCase(),
-        sqlName,
-        schemaSql: `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`,
-        ui: { query, components: {}, columnOrder: ["id"], showAddRowButton: true },
-    };
-}
-
-function sourceProject(): {
-    doc: Y.Doc;
-    ordersId: string;
-    customersId: string;
-} {
+function fixture() {
     const doc = new Y.Doc({ guid: "source-project" });
-    const ordersId = createTable(doc, "受注", "orders");
-    const orders = getTableHandles(doc, ordersId)!;
-    setSchemaText(
-        orders,
-        "CREATE TABLE orders (id TEXT PRIMARY KEY, customer_id TEXT, amount INTEGER)",
-    );
-    configureUi(
+    const a = createTable(
         doc,
-        ordersId,
-        "SELECT 'orders' AS source_kind, o.id AS source_id, o.amount, c.name "
-            + "FROM orders o JOIN customers c ON c.id = o.customer_id",
+        "A",
+        "a",
+        undefined,
+        handles => handles.schemaText.insert(0, "CREATE TABLE a (id TEXT PRIMARY KEY)"),
     );
-    addRecord(orders, { customer_id: "c1", amount: 42 }, "o1");
-
-    const customersId = createTable(doc, "顧客", "customers");
-    const customers = getTableHandles(doc, customersId)!;
-    setSchemaText(customers, "CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT)");
-    createGrid(doc, customersId, {
-        name: "Customers",
-        query: "SELECT id, name FROM customers",
+    const b = createTable(
+        doc,
+        "B",
+        "b",
+        undefined,
+        handles => handles.schemaText.insert(0, "CREATE TABLE b (id TEXT PRIMARY KEY)"),
+    );
+    const c = createTable(
+        doc,
+        "Unused",
+        "c",
+        undefined,
+        handles => handles.schemaText.insert(0, "CREATE TABLE c (id TEXT PRIMARY KEY)"),
+    );
+    const grid = createGrid(doc, undefined, {
+        name: "Joined",
+        query: "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b)",
+        insertTargetTableId: b,
+        columnOrder: ["id"],
+        components: { id: { label: "Identity", widthPx: 180 } },
+        showAddRowButton: false,
+        confirmRowDelete: true,
     });
-    addRecord(customers, { name: "Acme" }, "c1");
-    return { doc, ordersId, customersId };
+    const other = createGrid(doc, undefined, { name: "Other", query: "SELECT id FROM a", insertTargetTableId: c });
+    addRecord(getTableHandles(doc, a)!, { id: "record" }, "record");
+    return { doc, a, b, c, grid, other };
 }
 
-afterAll(async () => {
-    await resetPgliteForTests();
-});
+afterAll(resetPgliteForTests);
 
-describe("table structure export", () => {
-    it("exports schema and explicit UI only, never Data Storage or Yjs objects", () => {
-        const { doc, ordersId } = sourceProject();
-        const snapshot = exportTableStructure(doc, ordersId);
-
-        expect(snapshot).toMatchObject({
-            sourceTableId: ordersId,
-            name: "受注",
-            sqlName: "orders",
-            schemaSql: "CREATE TABLE orders (id TEXT PRIMARY KEY, customer_id TEXT, amount INTEGER)",
-            ui: {
-                query: "SELECT 'orders' AS source_kind, o.id AS source_id, o.amount, c.name "
-                    + "FROM orders o JOIN customers c ON c.id = o.customer_id",
-                components: { amount: { type: "number", label: "金額 €", hidden: false } },
-                columnOrder: ["amount", "id"],
-                showAddRowButton: true,
-            },
+describe("independent portable Tables and Grids", () => {
+    it("exports independent definitions and exact SQL read identities, never records or primary fields", () => {
+        const f = fixture();
+        const table = exportTableStructure(f.doc, f.a);
+        expect(table).toMatchObject({
+            sourceTableId: f.a,
+            sqlName: "a",
+            schemaSql: "CREATE TABLE a (id TEXT PRIMARY KEY)",
         });
-        expect(snapshot.catalog).toMatchObject({ projectId: "source-project", format: 1, objects: [] });
-        expect("data" in snapshot).toBe(false);
-        expect(snapshot.ui.components).not.toBeInstanceOf(Y.Map);
-        expect(Array.isArray(snapshot.ui.columnOrder)).toBe(true);
+        expect(table).not.toHaveProperty("ui");
+        expect(table).not.toHaveProperty("data");
+        const grid = exportGridSlice(f.doc, f.grid);
+        expect(grid.tableIds).toEqual([f.a, f.b]);
+        expect(grid.insertTargetTableId).toBe(f.b);
+        expect(grid).not.toHaveProperty("sourceTableId");
+        expect(exportGridSlice(f.doc, f.other).tableIds).toEqual([f.a]);
+        expect(Object.keys(exportTableStructures(f.doc, [f.a, f.a]))).toEqual([f.a]);
+        expect([...computeTableClosure(f.doc, [f.a])]).toEqual([f.a]);
+        expect([...computeSnapshotClosure({ [f.a]: table }, [f.a])]).toEqual([f.a]);
     });
 
-    it("deduplicates table IDs during batch export", () => {
-        const { doc, ordersId } = sourceProject();
-        expect(Object.keys(exportTableStructures(doc, [ordersId, ordersId]))).toEqual([ordersId]);
-    });
-
-    it("exports the explicitly preferred query-only Grid slice", () => {
-        const { doc, ordersId } = sourceProject();
-        const queryOnlyGridId = createGrid(doc, undefined, {
-            name: "Query-only orders",
-            query: "SELECT id, amount FROM orders",
-            components: { amount: { type: "number", label: "Query amount" } },
-            columnOrder: ["amount", "id"],
-        });
-
-        expect(exportTableStructure(doc, ordersId, queryOnlyGridId).ui).toMatchObject({
-            query: "SELECT id, amount FROM orders",
-            components: { amount: { type: "number", label: "Query amount" } },
-            columnOrder: ["amount", "id"],
-        });
-    });
-});
-
-describe("computeTableClosure", () => {
-    it("finds the closure of a chain of dependencies", () => {
-        const doc = new Y.Doc();
-        const tableA = createTable(doc, "Table A", "table_a");
-        createGrid(doc, tableA, { name: "A", query: "SELECT * FROM table_b" });
-        const tableB = createTable(doc, "Table B", "table_b");
-        createGrid(doc, tableB, { name: "B", query: "SELECT * FROM table_c" });
-        const tableC = createTable(doc, "Table C", "table_c");
-        createGrid(doc, tableC, { name: "C", query: "SELECT * FROM something_else" });
-
-        const closure = computeTableClosure(doc, [tableA]);
-        expect(closure.has(tableA)).toBe(true);
-        expect(closure.has(tableB)).toBe(true);
-        expect(closure.has(tableC)).toBe(true);
-        expect(closure.size).toBe(3);
-    });
-
-    it("handles cycles gracefully", () => {
-        const doc = new Y.Doc();
-        const tableA = createTable(doc, "Table A", "table_a");
-        createGrid(doc, tableA, { name: "A", query: "SELECT * FROM table_b" });
-        const tableB = createTable(doc, "Table B", "table_b");
-        createGrid(doc, tableB, { name: "B", query: "SELECT * FROM table_a" });
-
-        const closure = computeTableClosure(doc, [tableA]);
-        expect(closure.has(tableA)).toBe(true);
-        expect(closure.has(tableB)).toBe(true);
-        expect(closure.size).toBe(2);
-    });
-
-    it("ignores unresolvable dependencies", () => {
-        const doc = new Y.Doc();
-        const tableA = createTable(doc, "Table A", "table_a");
-        createGrid(doc, tableA, { name: "A", query: "SELECT * FROM table_non_existent" });
-
-        const closure = computeTableClosure(doc, [tableA]);
-        expect(closure.has(tableA)).toBe(true);
-        expect(closure.size).toBe(1);
-    });
-});
-
-describe("computeSnapshotClosure", () => {
-    it("keeps transitive portable dependencies and rejects unrelated snapshots", () => {
-        const snapshots = {
-            host: simpleSnapshot("host", "host", "SELECT * FROM dependency"),
-            dependency: simpleSnapshot("dependency", "dependency"),
-            unrelated: simpleSnapshot("unrelated", "unrelated"),
-        };
-
-        expect([...computeSnapshotClosure(snapshots, ["host"])]).toEqual(["host", "dependency"]);
-    });
-});
-
-describe("table structure import", { timeout: 30000 }, () => {
-    it("creates fresh destination tables, rewrites conflicts and cross-table references, and keeps data empty", async () => {
-        const source = sourceProject();
-        const snapshots = exportTableStructures(source.doc, [source.ordersId, source.customersId]);
-        const destination = new Y.Doc({ guid: "destination-project" });
-        createTable(destination, "Existing orders", "orders", undefined, handles => {
-            handles.schemaText.insert(0, "CREATE TABLE orders (id TEXT PRIMARY KEY)");
-        });
-
+    it("imports two Grids over one copied Table without synthesizing extra definitions", async () => {
+        const f = fixture();
+        const destination = new Y.Doc({ guid: "destination" });
+        createTable(destination, "Coincident", "a");
         const result = await importTableStructures(
             destination,
-            snapshots,
-            "source-project",
-            new Set([source.ordersId]),
+            exportTableStructures(f.doc, [f.a, f.b]),
+            f.doc.guid,
+            new Set([f.a]),
+            false,
+            { [f.grid]: exportGridSlice(f.doc, f.grid), [f.other]: exportGridSlice(f.doc, f.other) },
         );
         expect(result.failures).toEqual({});
-        expect(Object.keys(result.tableIdMap).sort()).toEqual([source.customersId, source.ordersId].sort());
-
-        const destinationOrdersId = result.tableIdMap[source.ordersId];
-        const destinationCustomersId = result.tableIdMap[source.customersId];
-        const destinationOrders = getTableHandles(destination, destinationOrdersId)!;
-        const destinationCustomers = getTableHandles(destination, destinationCustomersId)!;
-
-        expect(destinationOrdersId).not.toBe(source.ordersId);
-        expect(destinationCustomersId).not.toBe(source.customersId);
-        expect(destinationOrders.doc.guid).toBe(tableDocGuid("destination-project", destinationOrdersId));
-        expect(destinationOrders.schemaText.toString()).toContain("CREATE TABLE orders_2");
-        expect(destinationCustomers.schemaText.toString()).toContain("CREATE TABLE customers");
-        // Grid query lives on the Grid the import created alongside the Table.
-        const destinationOrdersGrid = getGridHandles(
-            destination,
-            findGridsBySourceTable(destination, destinationOrdersId)[0].gridId,
-        )!;
-        expect(destinationOrdersGrid.entry.get("query")).toBe(
-            "SELECT 'orders_2' AS source_kind, o.id AS source_id, o.amount, c.name "
-                + "FROM orders_2 o JOIN customers c ON c.id = o.customer_id",
-        );
-        expect(destinationOrders.data.size).toBe(0);
-        expect(destinationCustomers.data.size).toBe(0);
-        expect(listTables(destination).find(table => table.tableId === destinationOrdersId)?.sqlName).toBe("orders_2");
-        expect(
-            result.outcomes.filter(outcome => outcome.type !== "cloned").sort((a, b) => a.type.localeCompare(b.type)),
-        ).toEqual([
-            { type: "dependency-added", sourceTableId: source.customersId, tableName: "顧客" },
-            { type: "renamed", sourceTableId: source.ordersId, tableName: "受注", from: "orders", to: "orders_2" },
-        ]);
-    });
-
-    it("materializes independent Y.Map/Y.Array values and remains independent in both directions", async () => {
-        const source = sourceProject();
-        const snapshot = exportTableStructure(source.doc, source.ordersId);
-        snapshot.ui.query = "SELECT id, amount FROM orders";
-        const destination = new Y.Doc({ guid: "destination-independent" });
-        const result = await importTableStructures(destination, { [source.ordersId]: snapshot }, "source-project");
-
-        const sourceGrid = getGridHandles(source.doc, findGridsBySourceTable(source.doc, source.ordersId)[0].gridId)!;
-        const destinationGrid = getGridHandles(
-            destination,
-            findGridsBySourceTable(destination, result.tableIdMap[source.ordersId])[0].gridId,
-        )!;
-        const sourceComponents = sourceGrid.components;
-        const destinationComponents = destinationGrid.components;
-        const sourceOrder = sourceGrid.entry.get("columnOrder") as string[];
-        const destinationOrder = destinationGrid.entry.get("columnOrder") as string[];
-
-        expect(destinationComponents).not.toBe(sourceComponents);
-        expect(destinationComponents.get("amount")).not.toBe(sourceComponents.get("amount"));
-        expect(destinationOrder).not.toBe(sourceOrder);
-
-        sourceComponents.get("amount")!.set("label", "source changed");
-        sourceGrid.entry.set("columnOrder", [...sourceOrder, "customer_id"]);
-        expect(destinationComponents.get("amount")!.get("label")).toBe("金額 €");
-        expect(destinationOrder).toEqual(["amount", "id"]);
-
-        destinationGrid.entry.set("query", "SELECT amount FROM orders");
-        destinationComponents.get("amount")!.set("label", "destination changed");
-        expect(sourceGrid.entry.get("query")).toContain("JOIN customers");
-        expect(sourceComponents.get("amount")!.get("label")).toBe("source changed");
-    });
-
-    it("reuses the table a previous import made from the same source", async () => {
-        const destination = new Y.Doc({ guid: "destination-repeat-provenance" });
-        const snapshot = simpleSnapshot("source-one", "tasks");
-
-        const first = await importTableStructures(destination, { "source-one": snapshot }, "source-project");
-        const second = await importTableStructures(destination, { "source-one": snapshot }, "source-project");
-
-        expect(Object.keys(first.tableIdMap)).toEqual(["source-one"]);
-        // The second import creates nothing and reports the table it already made.
-        expect(Object.keys(second.tableIdMap)).toEqual([]);
-        expect(second.reusedTableIdMap).toEqual({ "source-one": first.tableIdMap["source-one"] });
-
-        // And the table is only created once
-        expect(listTables(destination).map(table => table.sqlName)).toEqual(["tasks"]);
-        expect(second.outcomes).toEqual([
-            {
-                type: "reused",
-                sourceTableId: "source-one",
-                destinationTableId: first.tableIdMap["source-one"],
-                tableName: "TASKS",
-            },
-        ]);
-    });
-
-    it("imports one table per source snapshot in one call and fresh tables in a later call", async () => {
-        const destination = new Y.Doc({ guid: "destination-repeat" });
-        const snapshot = simpleSnapshot("source-one", "tasks");
-
-        const first = await importTableStructures(destination, { "source-one": snapshot }, undefined);
-        const second = await importTableStructures(destination, { "source-one": snapshot }, undefined);
-
-        expect(Object.keys(first.tableIdMap)).toEqual(["source-one"]);
-        expect(Object.keys(second.tableIdMap)).toEqual(["source-one"]);
-        expect(first.tableIdMap["source-one"]).not.toBe(second.tableIdMap["source-one"]);
-        expect(listTables(destination).map(table => table.sqlName)).toEqual(["tasks", "tasks_2"]);
-    });
-
-    it("validates outline_items in the scratch schema", async () => {
-        const destination = new Y.Doc({ guid: "destination-items" });
-        const snapshot = simpleSnapshot(
-            "calendar-host",
-            "events",
-            "SELECT e.id, i.text FROM events e LEFT JOIN outline_items i ON i.id = e.id",
-        );
-
-        const result = await importTableStructures(destination, { "calendar-host": snapshot }, "source-project");
-        expect(result.failures).toEqual({});
-        expect(result.tableIdMap["calendar-host"]).toBeDefined();
+        expect(Object.keys(result.gridIdMap).sort()).toEqual([f.grid, f.other].sort());
+        expect(getGridRegistry(destination).size).toBe(2);
+        const copied = getGridHandles(destination, result.gridIdMap[f.grid])!;
+        expect(copied.entry.has("sourceTableId")).toBe(false);
+        expect(copied.entry.get("query")).toBe("SELECT a_2.id FROM a_2 WHERE EXISTS (SELECT 1 FROM b)");
+        expect(copied.entry.get("insertTargetTableId")).toBe(result.tableIdMap[f.b]);
+        expect(copied.entry.get("showAddRowButton")).toBe(false);
+        expect(copied.entry.get("confirmRowDelete")).toBe(true);
+        expect(copied.components.get("id")?.get("widthPx")).toBe(180);
+        expect(getGridHandles(destination, result.gridIdMap[f.other])?.entry.has("insertTargetTableId")).toBe(false);
+        expect(result.tableIdMap[f.c]).toBeUndefined();
+        expect(getTableHandles(destination, result.tableIdMap[f.a])?.data.size).toBe(0);
         expect(result.outcomes).toContainEqual({
-            type: "rebound",
-            sourceTableId: "calendar-host",
-            tableName: "EVENTS",
-            relation: "outline_items",
+            type: "view-omission",
+            gridId: f.other,
+            reason: `Cleared unmappable INSERT preference ${f.c}`,
         });
     });
 
-    it("skips a failed dependency group while cloning an independent valid table", async () => {
-        const destination = new Y.Doc({ guid: "destination-partial" });
-        const host = simpleSnapshot("host", "host", "SELECT * FROM host JOIN broken ON true");
-        const broken = {
-            ...simpleSnapshot("broken", "broken"),
-            schemaSql: "CREATE TABLE wrong_name (id TEXT)",
-        };
-        const independent = simpleSnapshot("independent", "independent");
-
-        const result = await importTableStructures(destination, { host, broken, independent }, "source-project");
-
-        expect(result.tableIdMap.independent).toBeDefined();
-        expect(result.tableIdMap.host).toBeUndefined();
-        expect(result.tableIdMap.broken).toBeUndefined();
-        expect(result.failedSourceTableIds).toEqual(["broken", "host"]);
-        expect(result.failures.host).toMatch(/expected source relation/);
-        expect(listTables(destination)).toHaveLength(1);
-        expect(listTables(destination)[0].sqlName).toBe("independent");
-        expect(result.outcomes).toContainEqual({
-            type: "failed-group",
-            sourceTableIds: ["broken", "host"],
-            tableNames: ["BROKEN", "HOST"],
-            reason: result.failures.host,
-        });
+    it("does not bind omitted dependencies to same-named destination Tables", async () => {
+        const f = fixture();
+        const destination = new Y.Doc({ guid: "destination" });
+        const coincident = createTable(destination, "B", "b");
+        const result = await importTableStructures(
+            destination,
+            exportTableStructures(f.doc, [f.a]),
+            f.doc.guid,
+            undefined,
+            false,
+            { [f.grid]: exportGridSlice(f.doc, f.grid) },
+        );
+        const grid = getGridHandles(destination, result.gridIdMap[f.grid])!;
+        expect(grid.entry.get("query")).toBe("");
+        expect(grid.entry.has("insertTargetTableId")).toBe(false);
+        expect(result.tableIdMap[f.b]).toBeUndefined();
+        expect(result.outcomes.filter(outcome => outcome.type === "view-omission")).toHaveLength(2);
+        expect(getTableHandles(destination, coincident)?.data.size).toBe(0);
     });
 
-    it("rejects an absent source relation without leaving registry debris", async () => {
-        const destination = new Y.Doc({ guid: "destination-missing" });
-        const snapshot = simpleSnapshot("host", "host", "SELECT * FROM host JOIN not_copied ON true");
+    it("preserves omitted same-Project references and stale preferences", async () => {
+        const f = fixture();
+        const result = await importTableStructures(
+            f.doc,
+            exportTableStructures(f.doc, [f.a]),
+            f.doc.guid,
+            undefined,
+            false,
+            { [f.grid]: exportGridSlice(f.doc, f.grid), [f.other]: exportGridSlice(f.doc, f.other) },
+        );
+        expect(getGridHandles(f.doc, result.gridIdMap[f.grid])?.entry.get("query")).toBe(
+            "SELECT a_2.id FROM a_2 WHERE EXISTS (SELECT 1 FROM b)",
+        );
+        expect(getGridHandles(f.doc, result.gridIdMap[f.grid])?.entry.get("insertTargetTableId")).toBe(f.b);
+        expect(getGridHandles(f.doc, result.gridIdMap[f.other])?.entry.get("insertTargetTableId")).toBe(f.c);
+    });
 
-        const result = await importTableStructures(destination, { host: snapshot }, "source-project");
+    it("reuses by source view identity without overwriting newer destination settings; independent repeats are fresh", async () => {
+        const f = fixture();
+        const destination = new Y.Doc({ guid: "destination" });
+        const tables = exportTableStructures(f.doc, [f.a, f.b]);
+        const grids = { [f.grid]: exportGridSlice(f.doc, f.grid) };
+        const first = await importTableStructures(destination, tables, f.doc.guid, undefined, true, grids);
+        getGridHandles(destination, first.gridIdMap[f.grid])!.entry.set("query", "SELECT 42 AS peer");
+        const second = await importTableStructures(destination, tables, f.doc.guid, undefined, true, grids);
+        expect(second.tableIdMap).toEqual({});
+        expect(second.reusedTableIdMap).toEqual(first.tableIdMap);
+        expect(second.reusedGridIdMap).toEqual(first.gridIdMap);
+        expect(getGridHandles(destination, second.reusedGridIdMap[f.grid])?.entry.get("query")).toBe(
+            "SELECT 42 AS peer",
+        );
+        const independent = await importTableStructures(destination, tables, f.doc.guid, undefined, false, grids);
+        expect(independent.gridIdMap[f.grid]).not.toBe(first.gridIdMap[f.grid]);
+        expect(independent.tableIdMap[f.a]).not.toBe(first.tableIdMap[f.a]);
+    });
 
+    it("imports dependency-free/system queries with zero Tables and rejects unknown automatic evidence", async () => {
+        const doc = new Y.Doc();
+        const destination = new Y.Doc();
+        const id = createGrid(doc, undefined, { query: "SELECT 1 AS value" });
+        const result = await importTableStructures(destination, {}, doc.guid, undefined, false, {
+            [id]: exportGridSlice(doc, id),
+        });
         expect(result.tableIdMap).toEqual({});
-        expect(result.failures.host).toMatch(/absent from the clipboard/);
         expect(listTables(destination)).toEqual([]);
-        expect([...destination.getSubdocs()]).toEqual([]);
-    });
-});
-
-describe("copyTableData", () => {
-    it("copies records with fresh nested maps and keeps both tables independent", () => {
-        const source = sourceProject();
-        const destinationDoc = new Y.Doc({ guid: "destination-data" });
-        const destinationId = createTable(destinationDoc, "Orders", "orders");
-        const sourceHandles = getTableHandles(source.doc, source.ordersId)!;
-        const destinationHandles = getTableHandles(destinationDoc, destinationId)!;
-
-        copyTableData(sourceHandles, destinationHandles);
-
-        expect(destinationHandles.data.toJSON()).toEqual(sourceHandles.data.toJSON());
-        expect(destinationHandles.data.get("o1")).not.toBe(sourceHandles.data.get("o1"));
-        sourceHandles.data.get("o1")!.set("amount", 99);
-        expect(destinationHandles.data.get("o1")!.get("amount")).toBe(42);
-        destinationHandles.data.get("o1")!.set("amount", 7);
-        expect(sourceHandles.data.get("o1")!.get("amount")).toBe(99);
+        expect(getGridHandles(destination, result.gridIdMap[id])?.entry.get("query")).toBe("SELECT 1 AS value");
+        getGridHandles(doc, id)!.entry.set("query", "SELECT * FROM");
+        expect(() => exportGridSlice(doc, id)).toThrow("unknown read dependencies");
+        expect(() => computeSnapshotClosure({}, ["missing"])).toThrow("unavailable");
     });
 
-    it("treats a reachable empty source as a successful empty snapshot", () => {
-        const sourceDoc = new Y.Doc({ guid: "source-empty" });
-        const destinationDoc = new Y.Doc({ guid: "destination-empty" });
-        const source = getTableHandles(sourceDoc, createTable(sourceDoc, "Empty", "empty"))!;
-        const destination = getTableHandles(destinationDoc, createTable(destinationDoc, "Empty", "empty"))!;
-        addRecord(destination, { value: "stale" }, "stale");
+    it("rejects invalid schema groups without losing independent valid Tables", async () => {
+        const f = fixture();
+        const snapshots = exportTableStructures(f.doc, [f.a, f.b, f.c]);
+        snapshots[f.b]!.schemaSql = "CREATE TABLE wrong_name (id TEXT)";
+        const destination = new Y.Doc();
+        const result = await importTableStructures(destination, snapshots, f.doc.guid, undefined, false, {
+            [f.grid]: exportGridSlice(f.doc, f.grid),
+        });
+        expect(result.tableIdMap[f.a]).toBeUndefined();
+        expect(result.tableIdMap[f.b]).toBeUndefined();
+        expect(result.tableIdMap[f.c]).toBeDefined();
+        expect(result.failedSourceTableIds.sort()).toEqual([f.a, f.b].sort());
+    });
 
+    it("copies live rows independently and clears destination rows for a successful empty source", () => {
+        const f = fixture();
+        const destination = getTableHandles(f.doc, f.b)!;
+        const source = getTableHandles(f.doc, f.a)!;
         copyTableData(source, destination);
-
+        expect(destination.data.toJSON()).toEqual(source.data.toJSON());
+        expect(destination.data.get("record")).not.toBe(source.data.get("record"));
+        source.data.get("record")!.set("id", "peer");
+        expect(destination.data.get("record")!.get("id")).toBe("record");
+        copyTableData(getTableHandles(f.doc, f.c)!, destination);
         expect(destination.data.size).toBe(0);
     });
 });

@@ -11,7 +11,7 @@ describe("tableDependencies", () => {
     it("finds direct grid references", () => {
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, tableId, { name: "G", query: "SELECT * FROM t" });
+        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
 
         const page = project.addPage("Page 1", "test");
         const item1 = page.items.addNode("test");
@@ -33,7 +33,7 @@ describe("tableDependencies", () => {
     it("removes table keeping references", () => {
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
 
         const page = project.addPage("Page 1", "test");
         const item1 = page.items.addNode("test");
@@ -61,7 +61,7 @@ describe("tableDependencies", () => {
     it("removes table removing direct references", () => {
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
 
         const page = project.addPage("Page 1", "test");
         const item1 = page.items.addNode("test");
@@ -74,35 +74,39 @@ describe("tableDependencies", () => {
         });
 
         const res = removeTableWithPolicy(project, tableId, "remove-direct-references");
-        expect(res?.detachedGridCount).toBe(1);
-        expect(res?.deletedGridCount).toBe(1);
+        expect(res?.detachedGridCount).toBe(0);
+        expect(res?.deletedGridCount).toBe(0);
 
         // Registry entry gone
         expect(getTableRegistry(project.ydoc).has(tableId)).toBe(false);
         // Direct reference detached
-        expect(nodeValue!.get("componentType")).toBeUndefined();
-        expect(nodeValue!.get("yjsGridId")).toBeUndefined();
+        expect(nodeValue!.get("componentType")).toBe("yjstable");
+        expect(nodeValue!.get("yjsGridId")).toBe(gridId);
         // The Grid definition has also been removed together with the Table.
-        expect(listGrids(project.ydoc)).toEqual([]);
+        expect(listGrids(project.ydoc).map(grid => grid.gridId)).toEqual([gridId]);
     });
 
-    it("restores a Table and its dependent Grid in one undo", () => {
+    it("restores only the Table and preserves peer Grid edits in Undo and Redo", () => {
         globalUndoRouter.clear();
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, tableId, { name: "G", query: "SELECT * FROM t" });
+        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
 
         expect(removeTableWithPolicyUndoable(project, tableId)).toBe(true);
         expect(getTableRegistry(project.ydoc).has(tableId)).toBe(false);
-        expect(listGrids(project.ydoc)).toEqual([]);
+        expect(listGrids(project.ydoc).map(grid => grid.gridId)).toEqual([gridId]);
 
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId)!;
+        project.ydoc.transact(() => grid.set("query", "SELECT 1 AS peer"), "peer");
         globalUndoRouter.undo();
         expect(getTableRegistry(project.ydoc).has(tableId)).toBe(true);
         expect(listGrids(project.ydoc).map(grid => grid.gridId)).toEqual([gridId]);
 
+        expect(grid.get("query")).toBe("SELECT 1 AS peer");
         globalUndoRouter.redo();
+        expect(grid.get("query")).toBe("SELECT 1 AS peer");
         expect(getTableRegistry(project.ydoc).has(tableId)).toBe(false);
-        expect(listGrids(project.ydoc)).toEqual([]);
+        expect(listGrids(project.ydoc).map(grid => grid.gridId)).toEqual([gridId]);
     });
 });
 

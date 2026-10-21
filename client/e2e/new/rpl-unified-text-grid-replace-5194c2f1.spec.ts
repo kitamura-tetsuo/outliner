@@ -24,7 +24,7 @@ test(
         await page.keyboard.press("Enter");
         await expect(row).toContainText("needle", { timeout: 30000 });
         const beforeReplace = await readGridProjectState(page);
-        const sourceTableId = beforeReplace.hostTableIds[0];
+        const sourceTableId = beforeReplace.tables[0].id;
         const sourceRecordId = Object.keys(beforeReplace.tables.find(table => table.id === sourceTableId)!.data)[0];
 
         await page.getByTestId("search-toggle-button").click();

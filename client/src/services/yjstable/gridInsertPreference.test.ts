@@ -12,8 +12,12 @@ import { resetPgliteForTests } from "./pgliteService";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { resetTableEngineForTests } from "./tableEngine";
 
-afterEach(async () => await resetTableEngineForTests());
-afterAll(async () => await resetPgliteForTests());
+// This fixture starts and closes a real WASM database. Keep its asynchronous
+// observations and cleanup within the same budget as the integration case,
+// including instrumented CI runs; Vitest's shorter defaults are insufficient.
+const engineTimeout = 60_000;
+afterEach(async () => await resetTableEngineForTests(), engineTimeout);
+afterAll(async () => await resetPgliteForTests(), engineTimeout);
 
 // Native initialization competes with coverage work in CI. Wait for the
 // published policy, not a timer tick or merely a terminal failure state.
@@ -24,7 +28,7 @@ function waitForState(controller: GridInsertController, ready: (state: GridInser
         const timer = setTimeout(() => {
             unsubscribe();
             reject(new Error(`INSERT readiness deadline: ${JSON.stringify(controller.state)}`));
-        }, 20000);
+        }, engineTimeout);
         unsubscribe = controller.subscribe(state => {
             if (!ready(state)) return;
             settled = true;
@@ -36,7 +40,7 @@ function waitForState(controller: GridInsertController, ready: (state: GridInser
     });
 }
 
-describe("explicit Grid INSERT preference", { timeout: 60000 }, () => {
+describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
     it("isolates local history, merges disjoint peer fields and persists the exact Grid", () => {
         const doc = new Y.Doc();
         const id = createGrid(doc, undefined, { query: "SELECT 1 AS value" });

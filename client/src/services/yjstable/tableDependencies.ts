@@ -1,25 +1,22 @@
 // What else in a project would notice if a Table disappeared.
 //
-// Everything here is a *reference*, never a child: Grids name a Table through
-// `sourceTableId`, Schedules name it as a write target or inside their SQL,
-// outline items name a Grid that names the Table. A Table owns its schema and
+// Everything here is a reference, never a child: views read Tables through
+// parsed SQL, Schedules also name explicit write targets, and outline items
+// place independent views. A Table owns its schema and
 // its data and nothing else (issue #5012), so this module answers "used by",
 // not "contains".
 
 import * as Y from "yjs";
 import { type Item, Project } from "../../../../shared/src/app-schema";
 import type { ScheduleRuleValueType } from "../../../../shared/src/types/yjs-types";
-import { findKanbanPlacements } from "../objectManager/objectPlacements";
+import { buildObjectDependencyGraph, type GraphObject } from "../objectManager/objectDependencyGraph";
 import { findSchedulesReferencingTable } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import { destroyGridUndoManager, findGridsBySourceTable, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
-import { getKanban, getKanbanRegistry, listKanbans } from "./kanbanDocs";
-import { parseIdentifiers } from "./queryAnalysis";
-import { destroyTableUndoManager, getTableRegistry, listTables } from "./tableDocs";
+import { destroyTableUndoManager, getTableRegistry } from "./tableDocs";
 import { tableDocGuid } from "./tableDocs";
-import { rewriteTableQuerySql } from "./tableSqlRewrite";
 
 export interface TableDependencies {
+    unknownReferences: { object: GraphObject; diagnostics: string[]; }[];
     directGridReferences: {
         pageId: string;
         pageTitle: string;
@@ -53,26 +50,31 @@ export interface TableDependencies {
         type: "query" | "calendar" | "schedule" | "kanban";
         name: string;
     }[];
-    /** Grids in the project registry that name this Table as their source. */
+    /** Grids whose parsed SQL reads this Table. */
     dependentGridIds: string[];
-    /** Kanbans whose primary source is this Table. */
+    /** Kanbans whose parsed SQL reads this Table. */
     dependentKanbanIds: string[];
 }
 
 export function getTableDependencies(project: Project, tableId: string): TableDependencies {
     const scheduleReferences = findSchedulesReferencingTable(project, tableId);
+    const graph = buildObjectDependencyGraph(project.ydoc);
+    const readers = graph.dependentsOf({ type: "table", id: tableId });
     const dependencies: TableDependencies = {
+        unknownReferences: graph.unknownObjects.map(object => ({
+            object,
+            diagnostics: graph.analysisOf(object)!.diagnostics,
+        })),
         directGridReferences: [],
         scheduledTargets: scheduleReferences
             .filter(r => r.kind === "write-target")
             .map(({ ruleId, ruleName }) => ({ ruleId, ruleName })),
         scheduleReferences: scheduleReferences.map(({ ruleId, ruleName, kind }) => ({ ruleId, ruleName, kind })),
         indirectSqlReferences: [],
-        dependentGridIds: findGridsBySourceTable(project.ydoc, tableId).map(g => g.gridId),
-        dependentKanbanIds: [],
+        dependentGridIds: readers.filter(object => object.type === "grid").map(object => object.id),
+        dependentKanbanIds: readers.filter(object => object.type === "kanban").map(object => object.id),
     };
 
-    const targetSqlName = listTables(project.ydoc).find(t => t.tableId === tableId)?.sqlName;
     const gridsOfTable = new Set(dependencies.dependentGridIds);
 
     // 1. Direct Grid References — outline items bound to a Grid whose source is this Table.
@@ -119,49 +121,12 @@ export function getTableDependencies(project: Project, tableId: string): TableDe
         dependencies.indirectSqlReferences.push({ type: "schedule", name: reference.ruleName });
     }
 
-    // 3. Indirect SQL References — Grids whose SELECT (via any source Table)
-    // references the target Table by SQL name.
-    if (targetSqlName) {
-        for (const g of listGrids(project.ydoc)) {
-            if (gridsOfTable.has(g.gridId)) continue;
-            const gridHandles = getGridHandles(project.ydoc, g.gridId);
-            if (!gridHandles) continue;
-            const query = String(gridHandles.entry.get("query") ?? "");
-            if (!query) continue;
-            const identifiers = parseIdentifiers(query);
-            if (identifiers.has(targetSqlName.toLowerCase()) || identifiers.has(targetSqlName)) {
-                dependencies.indirectSqlReferences.push({
-                    type: "query",
-                    name: g.name || "Untitled Grid",
-                });
-            }
-        }
-
-        // Calendars
-        if (project.calendars) {
-            project.calendars.forEach((calMap, _calId) => {
-                const query = calMap.get("query") as string | undefined;
-                if (query) {
-                    const identifiers = parseIdentifiers(query);
-                    if (identifiers.has(targetSqlName.toLowerCase()) || identifiers.has(targetSqlName)) {
-                        dependencies.indirectSqlReferences.push({
-                            type: "calendar",
-                            name: calMap.get("name") as string || "Untitled Calendar",
-                        });
-                    }
-                }
+    for (const reader of readers) {
+        if (reader.type === "calendar") {
+            dependencies.indirectSqlReferences.push({
+                type: "calendar",
+                name: String(project.calendars.get(reader.id)?.get("name") ?? "Untitled Calendar"),
             });
-        }
-
-        for (const board of listKanbans(project.ydoc)) {
-            if (dependencies.dependentKanbanIds.includes(board.kanbanId)) continue;
-            const query = getKanban(project.ydoc, board.kanbanId)?.query ?? "";
-            try {
-                const relations = rewriteTableQuerySql(query, new Map()).actualRelationDependencies;
-                if (relations.includes(targetSqlName)) {
-                    dependencies.indirectSqlReferences.push({ type: "kanban", name: board.name || "Untitled Kanban" });
-                }
-            } catch (_error) { /* Invalid SQL has no safely identifiable relation set. */ }
         }
     }
 
@@ -191,52 +156,13 @@ export function removeTableWithPolicy(
 
     // Inventory must be taken before the transaction begins, or inside it
     const deps = getTableDependencies(project, tableId);
-    const gridRegistry = getGridRegistry(project.ydoc);
 
-    let detachedGridCount = 0;
-    let deletedGridCount = 0;
+    const detachedGridCount = 0;
+    const deletedGridCount = 0;
     let deletedScheduleCount = 0;
 
     project.ydoc.transact(() => {
         if (policy === "remove-direct-references") {
-            const kanbanRegistry = getKanbanRegistry(project.ydoc);
-            for (const kanbanId of deps.dependentKanbanIds) {
-                for (const placement of findKanbanPlacements(project, kanbanId)) {
-                    try {
-                        const node = project.tree.getNodeValueFromKey(placement.itemKey) as Y.Map<unknown> | undefined;
-                        if (node?.get("componentType") === "kanban" && node.get("kanbanId") === kanbanId) {
-                            project.tree.deleteNodeAndDescendants(placement.itemKey);
-                        }
-                    } catch (_error) { /* Concurrently removed placement. */ }
-                }
-                kanbanRegistry.delete(kanbanId);
-            }
-            // Remove direct Grid references from outline items
-            for (const ref of deps.directGridReferences) {
-                try {
-                    const nodeValue = project.tree.getNodeValueFromKey(ref.itemKey) as Y.Map<unknown> | undefined;
-                    if (nodeValue) {
-                        nodeValue.set("componentType", undefined);
-                        nodeValue.set("yjsGridId", undefined);
-                        detachedGridCount++;
-                    }
-                } catch (_e) {
-                    // Node might be deleted concurrently
-                }
-            }
-
-            // Remove Grid registry entries whose source Table is being deleted.
-            // A Grid without a source cannot render usefully, so cleaning them
-            // up now is what "remove references" means for the Grid layer.
-            for (const dependentGridId of deps.dependentGridIds) {
-                const gridEntry = gridRegistry.get(dependentGridId);
-                if (gridEntry) {
-                    destroyGridUndoManager(gridEntry);
-                    gridRegistry.delete(dependentGridId);
-                    deletedGridCount++;
-                }
-            }
-
             // Remove direct Schedule references
             for (const ref of deps.scheduledTargets) {
                 project.schedules.delete(ref.ruleId);
@@ -283,38 +209,29 @@ export function removeTableWithPolicyUndoable(project: Project, tableId: string)
     delete metadata.doc;
     const tableState = Y.encodeStateAsUpdate(doc);
     const deps = getTableDependencies(project, tableId);
-    const gridRegistry = getGridRegistry(project.ydoc);
-    const grids = new Map(deps.dependentGridIds.flatMap(id => {
-        const grid = gridRegistry.get(id);
-        return grid ? [[id, grid.toJSON() as Record<string, unknown>] as const] : [];
-    }));
     const schedules = new Map(deps.scheduledTargets.flatMap(({ ruleId }) => {
         const rule = project.schedules.get(ruleId);
         return rule ? [[ruleId, rule.toJSON() as Record<string, unknown>] as const] : [];
     }));
 
+    let ownedEntry = entry;
     const applyDelete = () => {
+        if (registry.get(tableId) !== ownedEntry) return;
         removeTableWithPolicy(project, tableId, "remove-direct-references");
     };
     const applyRestore = () =>
         project.ydoc.transact(() => {
+            if (registry.has(tableId)) return;
             const restoredDoc = new Y.Doc({ guid: tableDocGuid(project.ydoc.guid, tableId), autoLoad: true });
             Y.applyUpdate(restoredDoc, tableState);
             const restoredEntry = yMapFromJson(metadata);
             restoredEntry.set("doc", restoredDoc);
             registry.set(tableId, restoredEntry);
-            for (const [id, snapshot] of grids) gridRegistry.set(id, yMapFromJson(snapshot));
+            ownedEntry = restoredEntry;
             for (const [id, snapshot] of schedules) {
-                project.schedules.set(id, yMapFromJson(snapshot) as Y.Map<ScheduleRuleValueType>);
-            }
-            for (const ref of deps.directGridReferences) {
-                try {
-                    const node = project.tree.getNodeValueFromKey(ref.itemKey) as Y.Map<unknown> | undefined;
-                    if (node && ref.gridId) {
-                        node.set("componentType", "yjstable");
-                        node.set("yjsGridId", ref.gridId);
-                    }
-                } catch (_error) { /* The placement may have been removed later. */ }
+                if (!project.schedules.has(id)) {
+                    project.schedules.set(id, yMapFromJson(snapshot) as Y.Map<ScheduleRuleValueType>);
+                }
             }
         });
     globalUndoRouter.captureManual(applyDelete, {

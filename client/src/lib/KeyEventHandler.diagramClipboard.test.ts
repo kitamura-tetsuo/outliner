@@ -4,6 +4,9 @@ import { deserializeClipboardItems, OUTLINER_ITEMS_MIME } from "../services/clip
 import { DIAGRAM_CLIPBOARD_RESULT_EVENT, type DiagramClipboardResult } from "../services/diagram/diagramClipboard";
 import { invalidatePendingCut } from "../services/diagram/diagramClipboardTransfer";
 import { getDiagram, listDiagrams, setDiagramSource } from "../services/diagram/diagramService";
+import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
+import { createGrid, getGridRegistry, removeGridWithPlacements } from "../services/yjstable/gridDocs";
+import { appendGridPlacement } from "../services/yjstable/gridPlacement";
 import {
     addDiagram,
     addOccurrence,
@@ -26,6 +29,7 @@ vi.mock("../stores/AliasPickerStore.svelte", () => ({
 }));
 vi.mock("./yjsService.svelte", () => ({
     acquireClientByProjectId: () => Promise.resolve(undefined),
+    getLoadedProjectDocById: () => undefined,
 }));
 
 type Endpoint = { kind: "node-boundary"; itemId: string; side: "before" | "after"; } | {
@@ -149,6 +153,28 @@ describe("KeyEventHandler Diagram clipboard route (#5314)", () => {
         await KeyEventHandler.handlePaste(event);
         return results.at(-1);
     }
+
+    it("refuses mixed Diagram/Grid Copy after supported Grid deletion without clipboard or history effects", async () => {
+        const d = addDiagram(fx.project, "snapshot");
+        const diagram = addOccurrence(fx.page, d);
+        const grid = createGrid(fx.project.ydoc, undefined, { query: "SELECT 1" });
+        const placement = appendGridPlacement(fx.project.ydoc, fx.page.id, grid, "tester");
+        const anchor = addText(fx.page, "anchor");
+        showRows([diagram, 0], [placement, 0], [anchor, 0]);
+        selectWhole(diagram, placement);
+        const { event, data } = clipboardEvent();
+        KeyEventHandler.handleCopy(event);
+        expect(deserializeClipboardItems(data.get(OUTLINER_ITEMS_MIME)!)?.items).toHaveLength(2);
+        expect(removeGridWithPlacements(fx.project, grid)).toBe(true);
+        const baseline = fx.project.ydoc.toJSON();
+        const clipboard = [...data];
+        const history = [globalUndoRouter.undoDepth, globalUndoRouter.redoDepth];
+        expect(await paste(data, anchor)).toMatchObject({ ok: false, reason: "stale-transfer" });
+        expect(fx.project.ydoc.toJSON()).toEqual(baseline);
+        expect(getGridRegistry(fx.project.ydoc).has(grid)).toBe(false);
+        expect([...data]).toEqual(clipboard);
+        expect([globalUndoRouter.undoDepth, globalUndoRouter.redoDepth]).toEqual(history);
+    });
 
     it("copies a whole transclusion as a snapshot and pastes an independent Diagram", async () => {
         const d = addDiagram(fx.project, "graph TD\n  A-->B");

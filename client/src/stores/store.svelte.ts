@@ -12,7 +12,10 @@ import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Items } from "../schema/app-schema";
 import { Item, Project } from "../schema/app-schema";
-import { invalidatePendingCut } from "../services/diagram/diagramClipboardTransfer";
+import {
+    invalidatePendingCut,
+    invalidatePendingCutForProjectSwitch,
+} from "../services/diagram/diagramClipboardTransfer";
 import { destroyDiagramUndoManager } from "../services/diagram/diagramUndo";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { ITEMS_RELATION_ORIGIN } from "../services/yjstable/itemsRelation";
@@ -359,7 +362,7 @@ export class GeneralStore {
         destroyDiagramUndoManager();
         // A pending structural Cut belongs to the project session that staged it
         // (#5314); moving between pages of that same project keeps it.
-        if (previousDoc !== v.ydoc) invalidatePendingCut();
+        if (previousDoc !== v.ydoc) invalidatePendingCutForProjectSwitch();
         if (this.undoManager) {
             globalUndoRouter.unregister(this.undoManager);
             this.undoManager.destroy();

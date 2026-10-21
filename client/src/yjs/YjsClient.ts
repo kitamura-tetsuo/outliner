@@ -53,8 +53,8 @@ export class YjsClient {
     }
 
     // Build a client with active provider/awareness
-    static async connect(projectId: string, project: Project): Promise<YjsClient> {
-        const { doc, provider, awareness, dispose } = await createProjectConnection(projectId);
+    static async connect(projectId: string, project: Project, bindPresence = true): Promise<YjsClient> {
+        const { doc, provider, awareness, dispose } = await createProjectConnection(projectId, bindPresence);
         // Build a Project bound to the provider's doc to ensure schema/awareness consistency
         let connectedProject: Project = project;
         try {

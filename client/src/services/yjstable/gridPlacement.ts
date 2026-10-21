@@ -1,6 +1,5 @@
 import { Item, Project } from "$shared/app-schema";
 import type * as Y from "yjs";
-import { getGridSourceTableId } from "./gridDocs";
 import { bindItemToGrid, getItemGridId } from "./itemBinding";
 
 export const GRID_PLACEMENT_MIME = "application/x-outliner-grid-placement";
@@ -73,7 +72,7 @@ export function appendGridPlacement(doc: Y.Doc, pageId: string, gridId: string, 
     if (!page) throw new Error("The destination Page no longer exists.");
     const placement = page.items.addNode(author);
     placement.componentType = "yjstable";
-    bindItemToGrid(placement, gridId, getGridSourceTableId(doc, gridId));
+    bindItemToGrid(placement, gridId);
     return placement;
 }
 
@@ -98,4 +97,51 @@ export function moveGridPlacement(doc: Y.Doc, itemId: string, destinationPageId:
         project.tree.setNodeOrderToEnd(item.key);
     });
     return true;
+}
+
+/** Capture destination authority before asynchronous duplication. The returned
+ * hooks also validate replay before any object or placement mutation. */
+export function captureDuplicationPlacement(doc: Y.Doc, pageId: string, author: string) {
+    const project = Project.fromDoc(doc);
+    const page = project.findPage(pageId);
+    if (!page) throw new Error("The destination Page no longer exists.");
+    const pageEntry = project.tree.getNodeValueFromKey(page.key);
+    const assertDestination = () => {
+        if (
+            doc.isDestroyed || project.findPage(pageId)?.key !== page.key
+            || project.tree.getNodeValueFromKey(page.key) !== pageEntry
+        ) {
+            throw new Error("The destination Page changed.");
+        }
+    };
+    return {
+        assertDestination,
+        afterMaterialize: (
+            result: import("./objectDuplication").DuplicationSetResult,
+        ): import("../objectManager/objectManagerController").DuplicationSideEffect => {
+            assertDestination();
+            const gridId = result.createdObjects.find(object => object.type === "grid")!.id;
+            let placement = appendGridPlacement(doc, pageId, gridId, author);
+            let entry = project.tree.getNodeValueFromKey(placement.key) as Y.Map<unknown>;
+            let expected = JSON.stringify(entry.toJSON());
+            return {
+                assertUndo: () => {
+                    assertDestination();
+                    if (
+                        project.tree.getNodeValueFromKey(placement.key) !== entry
+                        || placement.parent?.parentKey !== page.key
+                        || JSON.stringify(entry.toJSON()) !== expected
+                        || [...placement.items].length
+                    ) throw new Error("The duplicated placement changed.");
+                },
+                assertRedo: assertDestination,
+                undo: () => placement.delete(),
+                redo: () => {
+                    placement = appendGridPlacement(doc, pageId, gridId, author);
+                    entry = project.tree.getNodeValueFromKey(placement.key) as Y.Map<unknown>;
+                    expected = JSON.stringify(entry.toJSON());
+                },
+            };
+        },
+    };
 }

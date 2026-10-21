@@ -26,6 +26,7 @@ import {
     DEMO_TEMPLATE_REVISION,
     DEMO_WEEKLY_RULE_ID,
     demoCalendars,
+    demoGridIdFor,
     demoPages,
     demoRoutineTemplates,
     demoTables,
@@ -70,7 +71,7 @@ function findChildBy(items: Items | undefined, match: (item: Item) => boolean): 
 }
 
 function findGrid(items: Items | undefined, tableId: string): Item | undefined {
-    return findChildBy(items, item => item.componentType === "yjstable" && item.yjsTableId === tableId);
+    return findChildBy(items, item => item.componentType === "yjstable" && item.yjsGridId === demoGridIdFor(tableId));
 }
 
 function findCalendarBlock(items: Items | undefined, calendarId: string): Item | undefined {

@@ -1,12 +1,15 @@
 import { Project } from "$shared/app-schema";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "$shared/services/sqlCatalog";
 import {
+    collectTypeNames,
     compileSqlEnvironment,
+    parseEnum,
     type SqlDependencyEvidence,
     type SqlEnvironmentInput,
     type SqlInspectionTarget,
     type SqlTableSnapshot,
 } from "$shared/services/sqlEnvironmentCompiler";
+import { parseSync } from "libpg-query";
 import * as Y from "yjs";
 import { getCalendar, listCalendars } from "../calendar/calendarService";
 import { getGridHandles, listGrids } from "./gridDocs";
@@ -34,21 +37,11 @@ function declaredEnumNames(snapshot: StructuralSqlSnapshot): string[] {
 }
 
 function enumDeclaration(source: string): { name: string; labels: string[]; } | undefined {
-    const match = /^\s*CREATE\s+TYPE\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))\s+AS\s+ENUM\s*\((.*)\)\s*;?\s*$/is
-        .exec(source);
-    if (!match) return undefined;
-    const labels: string[] = [];
-    const body = match[3];
-    const token = /\s*'((?:[^']|'')*)'\s*(?:,|$)/gy;
-    let offset = 0;
-    while (offset < body.length) {
-        token.lastIndex = offset;
-        const value = token.exec(body);
-        if (!value) return undefined;
-        labels.push(value[1].replaceAll("''", "'"));
-        offset = token.lastIndex;
+    try {
+        return parseEnum(source);
+    } catch {
+        return undefined;
     }
-    return { name: match[1]?.replaceAll('""', '"') ?? match[2], labels };
 }
 
 /** Synchronous replay admission after the original compiler-backed paste admission. */
@@ -56,23 +49,44 @@ export function portableStructuralEnumsStillCompatible(
     destinationDoc: Y.Doc,
     snapshots: Readonly<Record<string, import("../clipboard/itemClipboard").GridTableSnapshot>>,
     currentSourceDoc?: Y.Doc,
+    grids: Readonly<Record<string, import("../clipboard/itemClipboard").GridSnapshot>> = {},
+    capturedCatalog?: SqlCatalogSnapshot,
+    additionalQueries: readonly string[] = [],
 ): boolean {
-    const first = Object.values(snapshots)[0];
-    if (!first?.catalog) return true;
-    if (currentSourceDoc) {
-        const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
-        if (current.status !== "ready" || current.snapshot.revision !== first.catalog.revision) return false;
+    // Query-only Grids can require types without carrying any Table snapshots.
+    const catalog = capturedCatalog ?? Object.values(snapshots)[0]?.catalog;
+    if (!catalog) return true;
+    if (Object.values(snapshots).some(snapshot => snapshot.catalog && snapshot.catalog.revision !== catalog.revision)) {
+        return false;
     }
-    const sql = Object.values(snapshots).flatMap(snapshot => [snapshot.schemaSql, snapshot.ui.query]).join("\n")
-        .toLowerCase();
-    const required = first.catalog.objects.map(object => enumDeclaration(object.source)).filter(value =>
-        value !== undefined
-        && new RegExp(
-            `(^|[^a-z0-9_$])${value.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9_$]|$)`,
-        )
-            .test(sql)
+    // The original admission already loaded the shared parser. Retain its SQL
+    // identifier semantics: an ENUM name in a string/comment is not a type use.
+    const requiredNames = new Set<string>();
+    try {
+        for (
+            const sql of [
+                ...Object.values(snapshots).map(snapshot => snapshot.schemaSql),
+                ...Object.values(grids).map(grid => grid.query),
+                ...additionalQueries,
+            ]
+        ) {
+            for (const reference of collectTypeNames(parseSync(sql) as unknown as Record<string, unknown>)) {
+                if (reference.names.length <= 2 && (reference.names.length === 1 || reference.names[0] === "public")) {
+                    requiredNames.add(reference.names[reference.names.length - 1]);
+                }
+            }
+        }
+    } catch {
+        return false;
+    }
+    const required = catalog.objects.map(object => enumDeclaration(object.source)).filter(value =>
+        value !== undefined && requiredNames.has(value.name)
     );
     if (required.length === 0) return true;
+    if (currentSourceDoc) {
+        const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
+        if (current.status !== "ready" || current.snapshot.revision !== catalog.revision) return false;
+    }
     const destination = readSqlCatalog(destinationDoc.guid, destinationDoc);
     if (destination.status !== "ready") return false;
     const actual = destination.snapshot.objects.map(object => enumDeclaration(object.source));

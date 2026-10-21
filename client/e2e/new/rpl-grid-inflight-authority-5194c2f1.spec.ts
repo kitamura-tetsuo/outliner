@@ -17,7 +17,15 @@ async function captureReplace(page: Page, fixture: OverlappingTableFixture, repl
     await page.getByTestId("replace-input").fill(replacement);
     await page.getByTestId("search-button").click();
     await expect(page.getByTestId("search-results-hits")).toHaveText("Hits: 2", { timeout: 30000 });
-    await page.getByTestId("search-result-button").first().click();
+    // Both placements currently read B. Target A explicitly: result order is
+    // identity-sorted, so its first hit can belong to the unchanged B Grid.
+    const placementId = await fixture.gridA.evaluate(element =>
+        element.closest("[data-item-id]")?.getAttribute("data-item-id")
+    );
+    expect(placementId).toBeTruthy();
+    const result = page.locator(`[data-testid="search-result-button"][data-placement-id="${placementId}"]`);
+    await expect(result).toHaveCount(1);
+    await result.click();
     await page.evaluate(sqlName => {
         let release!: () => void;
         const gate = new Promise<void>(resolve => release = resolve);

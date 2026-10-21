@@ -232,6 +232,8 @@ export function demoContentEn(): DemoLocaleContent {
                     "Visual blocks are selected atomically: on [Advanced Features], extend a selection to either edge of a live Grid, then copy, cut, or delete it as one block.",
                     "Selecting a block directly: on [Advanced Features], press the narrow gutter down a Grid's left edge to select the whole block, or drag from it into the text around it. The block keeps its own clicks and cell selections; Shift+Down and Shift+Up cross it one edge at a time.",
                     "Try selecting across the items above and copying them.",
+                    "Grid Copy creates another placement of the same Grid in this project. Cut waits for Paste and retains the placement ID. Independent copies preserve each Grid query and INSERT preference through the selected Table map.",
+                    "Tables own records, not their Grid or Kanban views: deleting a Table preserves those views and placements, with broken SQL or invalid INSERT preferences reported in the surviving view.",
                 ],
             },
             {

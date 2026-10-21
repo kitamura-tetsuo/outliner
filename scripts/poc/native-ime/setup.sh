@@ -40,7 +40,7 @@ test "$fingerprint" = 35BAA0B33E9EB396F59CA838C0BA5CE6DC6315A3
 stage=mozilla-repository
 sudo install -m 644 "$ROOT/work/native-ime/mozilla.asc" /usr/share/keyrings/native-ime-mozilla.asc
 echo 'deb [signed-by=/usr/share/keyrings/native-ime-mozilla.asc] https://packages.mozilla.org/apt mozilla main' | sudo tee /etc/apt/sources.list.d/native-ime-mozilla.list
-printf 'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000\n' | sudo tee /etc/apt/preferences.d/native-ime-mozilla
+printf 'Package: firefox\nPin: origin packages.mozilla.org\nPin-Priority: 1001\n' | sudo tee /etc/apt/preferences.d/native-ime-mozilla
 sudo apt-get update --error-on=any
 stage=firefox-candidate
 LC_ALL=C apt-cache policy firefox | tee "$ARTIFACTS/firefox-candidate-policy.txt"

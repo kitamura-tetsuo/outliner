@@ -27,6 +27,7 @@ import { invokingSurfaceWritable } from "../editorSurface";
 import { getProjectCapabilities } from "../project/projectCapabilities";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { setItemGridId, setItemTableId } from "../yjstable/itemBinding";
+import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
 import { canMutateDiagrams, canReadDiagrams, type DiagramAuthorization } from "./diagramAuthorization";
 import { setItemDiagramId } from "./diagramBinding";
 import { consumePendingCut, lookupPendingCut, nodeExists, stagePendingCut } from "./diagramClipboardTransfer";
@@ -51,7 +52,8 @@ export type DiagramClipboardFailureReason =
     | "source-editing-target"
     | "unknown-transfer"
     | "already-consumed"
-    | "stale-transfer";
+    | "stale-transfer"
+    | "identity-collision";
 
 export type DiagramClipboardOperation = "copy" | "cut" | "paste" | "undo" | "redo";
 
@@ -77,6 +79,7 @@ const FAILURE_MESSAGES: Record<DiagramClipboardFailureReason, string> = {
     "source-editing-target": "Whole items cannot be pasted into Diagram source. Use plain-text paste instead.",
     "unknown-transfer": "This cut is no longer available. Cut the items again.",
     "already-consumed": "These items were already moved by an earlier paste.",
+    "identity-collision": "The destination already contains a Grid or placement with this identity. Nothing was moved.",
     "stale-transfer": "The cut items changed after they were cut. Cut them again.",
 };
 
@@ -136,7 +139,7 @@ function childKeys(project: Project, key: string): string[] {
     return project.tree.sortChildrenByOrder(project.tree.getNodeChildrenFromKey(key), key);
 }
 
-function subtreeKeys(project: Project, key: string, into: string[] = []): string[] {
+export function subtreeKeys(project: Project, key: string, into: string[] = []): string[] {
     into.push(key);
     for (const child of childKeys(project, key)) subtreeKeys(project, child, into);
     return into;
@@ -173,9 +176,10 @@ export function stageDiagramCut(
     project: Project,
     rootKeys: readonly string[],
     auth: DiagramAuthorization,
+    crossProjectAllowed = false,
 ): { ok: true; transferId: string; } | { ok: false; reason: DiagramClipboardFailureReason; } {
     if (!canMutateDiagrams(auth)) return { ok: false, reason: "capability-denied" };
-    const transferId = stagePendingCut(project, rootKeys);
+    const transferId = stagePendingCut(project, rootKeys, crossProjectAllowed);
     return transferId ? { ok: true, transferId } : { ok: false, reason: "unsupported-selection" };
 }
 
@@ -193,7 +197,7 @@ export interface DiagramPasteContext {
     auth: DiagramAuthorization;
 }
 
-interface Destination {
+export interface Destination {
     parentKey: string;
     /** Kind of the parent; undefined for the page root, which behaves like Text. */
     parentKind: NodeKindLike | undefined;
@@ -221,7 +225,7 @@ function isWithinPage(project: Project, key: string, pageKey: string): boolean {
     return false;
 }
 
-function resolveDestination(context: DiagramPasteContext): Destination | undefined {
+export function resolveDestination(context: DiagramPasteContext): Destination | undefined {
     const { project, pageItem, anchor } = context;
     if (!nodeExists(project, pageItem.key)) return undefined;
     if (!anchor) return { parentKey: pageItem.key, parentKind: undefined, afterKey: undefined, append: true };
@@ -252,7 +256,13 @@ interface TreeOrdering {
 }
 
 /** Order `key` (already a child of `parentKey`) right after `afterKey`, or first. */
-function orderAt(project: Project, key: string, parentKey: string, afterKey: string | undefined, append: boolean) {
+export function orderAt(
+    project: Project,
+    key: string,
+    parentKey: string,
+    afterKey: string | undefined,
+    append: boolean,
+) {
     const tree = project.tree as unknown as TreeOrdering;
     if (afterKey !== undefined) {
         tree.setNodeAfter(key, afterKey);
@@ -336,6 +346,21 @@ function pasteCopy(payload: ItemClipboardPayloadV4, context: DiagramPasteContext
     const forest = payloadForest(payload.items);
     if (!forestIsValid(forest, destination.parentKind)) return fail("paste", "invalid-destination");
 
+    // Mixed copies share live Grid definitions; Diagram snapshots do not
+    // authorize a dangling Grid reference. Admit before any allocation.
+    try {
+        const ids = [
+            ...new Set(
+                payload.items.filter(item => item.componentType === "yjstable")
+                    .map(item => item.yjsGridId),
+            ),
+        ];
+        if (ids.some(id => !id)) return fail("paste", "stale-transfer");
+        captureDuplicationAdmission(project.ydoc, ids.map(id => ({ type: "grid" as const, id: id! })))();
+    } catch {
+        return fail("paste", "stale-transfer");
+    }
+
     // One original-to-duplicate map for this Paste only (REQ-003). Allocation
     // runs outside every undo scope, before and apart from the placements.
     const diagramIdMap: Record<string, string> = {};
@@ -361,7 +386,7 @@ function pasteCopy(payload: ItemClipboardPayloadV4, context: DiagramPasteContext
             } else if (item.componentType === "yjstable") {
                 // Same-project Grid/Calendar policy is unchanged: another view.
                 setItemGridId(created, item.yjsGridId);
-                setItemTableId(created, item.yjsTableId);
+                setItemTableId(created, undefined);
             } else if (item.componentType === "calendar") {
                 setItemCalendarId(created, item.calendarId);
             }

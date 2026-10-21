@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { type CalendarSettings, createCalendar, getCalendar } from "../calendar/calendarService";
 import { createScheduleRule, type ScheduleRule } from "../schedule/scheduleRuleService";
-import { createGrid, getGridSourceTableId, listGrids } from "./gridDocs";
+import { createGrid, getGridHandles, getGridSourceTableId, listGrids } from "./gridDocs";
 import { duplicateObjectSet, previewObjectSetDuplication } from "./objectDuplication";
 import { addRecord, createTable, getTableHandles, listTables } from "./tableDocs";
 
@@ -33,8 +33,8 @@ function scheduleRuleMap(doc: Y.Doc, ruleId: string): Y.Map<unknown> {
 describe("explicit-selection duplication (Duplicate selected)", () => {
     it("duplicates exactly one selected object and nothing else", async () => {
         const doc = new Y.Doc();
-        const tableId = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, { name: "Board" });
+        table(doc, "Tasks", "tasks");
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
 
         const preview = previewObjectSetDuplication(doc, [{ type: "grid", id: gridId }]);
         expect(preview.objects).toEqual([{ type: "grid", id: gridId }]);
@@ -47,8 +47,8 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
 
     it("never pulls in a dependency neighbor that was not explicitly selected", async () => {
         const doc = new Y.Doc();
-        const tableId = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId);
+        table(doc, "Tasks", "tasks");
+        const gridId = createGrid(doc, undefined, { query: "SELECT * FROM tasks" });
 
         // Selecting only the Grid must not behave like the recursive
         // "referenced" scope — the Table is left alone.
@@ -61,7 +61,7 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
         const owners = table(doc, "Owners", "owners");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
 
         const selection = [
             { type: "table" as const, id: tasks },
@@ -81,15 +81,15 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
     it("rewrites a selected Grid's Table reference to the copied Table", async () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
 
         const result = await duplicateObjectSet(doc, doc, [
             { type: "grid", id: gridId },
             { type: "table", id: tasks },
         ]);
         const copiedGridId = result.idMap.get(`grid:${gridId}`)!;
-        const copiedTableId = result.idMap.get(`table:${tasks}`)!;
-        expect(getGridSourceTableId(doc, copiedGridId)).toBe(copiedTableId);
+        result.idMap.get(`table:${tasks}`)!;
+        expect(getGridHandles(doc, copiedGridId)?.entry.get("query")).toBe("SELECT * FROM tasks_2");
     });
 
     it("rewrites a selected Schedule's target and SQL references to the copied Table", async () => {
@@ -126,20 +126,20 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
 
     it("preserves a same-project reference to an unselected object", async () => {
         const doc = new Y.Doc();
-        const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        table(doc, "Tasks", "tasks");
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
 
         // Only the Grid is selected; the Table it points at is not.
         const result = await duplicateObjectSet(doc, doc, [{ type: "grid", id: gridId }]);
         const copiedGridId = result.idMap.get(`grid:${gridId}`)!;
-        expect(getGridSourceTableId(doc, copiedGridId)).toBe(tasks);
+        expect(getGridHandles(doc, copiedGridId)?.entry.get("query")).toBe("SELECT * FROM tasks");
         expect(result.removedReferenceCount).toBe(0);
     });
 
     it("clears and warns about a cross-project reference to an unselected object", async () => {
         const source = new Y.Doc();
-        const tasks = table(source, "Tasks", "tasks");
-        const gridId = createGrid(source, tasks, { name: "Board" });
+        table(source, "Tasks", "tasks");
+        const gridId = createGrid(source, undefined, { name: "Board", query: "SELECT * FROM tasks" });
 
         const preview = previewObjectSetDuplication(source, [{ type: "grid", id: gridId }]);
         expect(preview.omittedReferenceCount).toBe(1);
@@ -156,8 +156,8 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
     it("copies a shared dependency exactly once when reachable from two selected roots", async () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const first = createGrid(doc, tasks, { name: "First" });
-        const second = createGrid(doc, tasks, { name: "Second" });
+        const first = createGrid(doc, undefined, { name: "First", query: "SELECT * FROM tasks" });
+        const second = createGrid(doc, undefined, { name: "Second", query: "SELECT * FROM tasks" });
 
         const result = await duplicateObjectSet(doc, doc, [
             { type: "grid", id: first },
@@ -166,9 +166,9 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         ]);
         expect(result.createdObjects.filter(o => o.type === "table")).toHaveLength(1);
         expect(result.createdObjects.filter(o => o.type === "grid")).toHaveLength(2);
-        const copiedTableId = result.idMap.get(`table:${tasks}`)!;
+        result.idMap.get(`table:${tasks}`)!;
         for (const gridId of [result.idMap.get(`grid:${first}`), result.idMap.get(`grid:${second}`)]) {
-            expect(getGridSourceTableId(doc, gridId!)).toBe(copiedTableId);
+            expect(getGridHandles(doc, gridId!)?.entry.get("query")).toBe("SELECT * FROM tasks_2");
         }
     });
 
@@ -194,7 +194,7 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
     it("rolls back every created object when materialization fails partway through", async () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
 
         await expect(
             duplicateObjectSet(doc, doc, [

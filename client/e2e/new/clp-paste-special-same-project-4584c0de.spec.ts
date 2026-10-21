@@ -40,7 +40,7 @@ test.describe("Paste Special in the source project", () => {
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
         let state = await readGridProjectState(page);
         expect(state.tables).toHaveLength(1);
-        expect(new Set(state.hostTableIds)).toEqual(new Set([source.tables[0].id]));
+        expect(new Set(state.hostGridIds)).toEqual(new Set([source.grids[0].id]));
 
         await openPasteSpecialAtAnchor(page);
         await page.getByTestId("paste-special-copy-with-data").click();

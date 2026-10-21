@@ -14,6 +14,7 @@ import { GRID_PASTE_PROGRESS_EVENT, GRID_PASTE_WRITE_CHECK_EVENT, type GridPaste
 // as unreachable rather than opening a WebSocket out of JSDOM.
 vi.mock("../../lib/yjsService.svelte", () => ({
     acquireClientByProjectId: () => Promise.resolve(undefined),
+    getLoadedProjectDocById: () => undefined,
 }));
 
 const SOURCE_PROJECT_ID = "source-project";

@@ -63,7 +63,10 @@ do {
 if (@($ready.Values | Where-Object { -not $_ }).Count -gt 0) { throw 'Windows localhost did not reach every Linux Compose service' }
 # The source Vite actually serves to Windows Firefox must be the evaluated checkout's.
 node "$PSScriptRoot/../verify-served-revision.mjs" $app 'http://127.0.0.1:7090' "$nativeOutput/application-identity.json"
-if ($LASTEXITCODE -ne 0) { throw 'Served application does not match the evaluated checkout' }
+if ($LASTEXITCODE -ne 0) {
+    $identity = Get-Content -Raw "$nativeOutput/application-identity.json" | ConvertFrom-Json
+    throw "Served application identity verification failed ($($identity.failure.kind)): $($identity.failure.message); inspect application-identity.json"
+}
 # `start-compose.sh` inspects the exact Compose container immediately after it
 # starts and emits its image id, platform and revision. Read that captured
 # evidence instead of opening a second WSL/Docker CLI session: current hosted

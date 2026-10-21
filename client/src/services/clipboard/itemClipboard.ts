@@ -66,6 +66,15 @@ export interface GridUiDefinitionDto {
     components: Record<string, GridUiComponentDto>;
     columnOrder: string[];
     showAddRowButton?: boolean;
+    confirmRowDelete?: boolean;
+    insertTargetTableId?: string;
+}
+
+export interface GridSnapshot extends GridUiDefinitionDto {
+    gridId: string;
+    name: string;
+    /** Complete SQL read set resolved at capture, never INSERT preferences. */
+    tableIds: string[];
 }
 
 /** Structure-only table snapshot. Data Storage and Yjs identities are deliberately absent. */
@@ -74,7 +83,6 @@ export interface GridTableSnapshot {
     name: string;
     sqlName: string;
     schemaSql: string;
-    ui: GridUiDefinitionDto;
     /** Immutable project-bound type authority captured with structural clipboard data. */
     catalog?: SqlCatalogSnapshot;
 }
@@ -88,10 +96,12 @@ export interface ItemClipboardPayloadV1 {
 
 export interface ItemClipboardPayloadV2 {
     version: 2;
+    catalog?: SqlCatalogSnapshot;
     sourceProjectId: string;
     items: ClipboardItem[];
     operation?: "cut";
     /** Deduplicated by source table id. */
+    grids?: Record<string, GridSnapshot>;
     tables: Record<string, GridTableSnapshot>;
 }
 
@@ -100,6 +110,7 @@ export interface ItemClipboardPayloadV3 {
     sourceProjectId: string;
     items: ClipboardItem[];
     operation?: "cut";
+    grids?: Record<string, GridSnapshot>;
     tables?: Record<string, GridTableSnapshot>;
     calendars?: Record<string, CalendarSettings>;
     catalog?: SqlCatalogSnapshot;
@@ -129,6 +140,7 @@ export interface ItemClipboardPayloadV4 {
     sourceProjectId: string;
     items: ClipboardItem[];
     operation?: "cut";
+    grids?: Record<string, GridSnapshot>;
     tables?: Record<string, GridTableSnapshot>;
     calendars?: Record<string, CalendarSettings>;
     catalog?: SqlCatalogSnapshot;
@@ -146,7 +158,9 @@ export type ItemClipboardPayload =
 
 /** True when a payload carries at least one whole Diagram transclusion. */
 export function payloadHasDiagram(payload: ItemClipboardPayload): payload is ItemClipboardPayloadV4 {
-    return payload.version === 4 && payload.items.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE);
+    return payload.version === 4
+        && (payload.items.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE)
+            || (payload.operation === "cut" && payload.transferId !== undefined));
 }
 
 /**
@@ -154,6 +168,16 @@ export function payloadHasDiagram(payload: ItemClipboardPayload): payload is Ite
  * must be refused as a whole rather than degrade into a plain-text paste that
  * would silently drop or flatten the Diagram (#5314, REQ-007).
  */
+export function looksLikeUnsupportedKanbanPayload(encoded: string): boolean {
+    try {
+        const payload = JSON.parse(encoded);
+        return Array.isArray(payload?.items)
+            && payload.items.some((item: { componentType?: string; }) => item?.componentType === "kanban");
+    } catch {
+        return false;
+    }
+}
+
 export function looksLikeDiagramPayload(encoded: string): boolean {
     if (!encoded) return false;
     try {
@@ -174,19 +198,29 @@ interface ItemLike {
 }
 
 const bindings = {
-    yjstable: "yjsTableId",
+    yjstable: "yjsGridId",
     calendar: "calendarId",
     diagram: "diagramId",
 } as const;
 
 const PAYLOAD_V1_KEYS = new Set(["version", "sourceProjectId", "items", "operation"]);
-const PAYLOAD_V2_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "operation"]);
-const PAYLOAD_V3_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "calendars", "catalog", "operation"]);
+const PAYLOAD_V2_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "grids", "catalog", "operation"]);
+const PAYLOAD_V3_KEYS = new Set([
+    "version",
+    "sourceProjectId",
+    "items",
+    "tables",
+    "grids",
+    "calendars",
+    "catalog",
+    "operation",
+]);
 const PAYLOAD_V4_KEYS = new Set([
     "version",
     "sourceProjectId",
     "items",
     "tables",
+    "grids",
     "calendars",
     "catalog",
     "diagrams",
@@ -222,8 +256,15 @@ const ITEM_KEYS = new Set([
     "diagramId",
     "columnSpan",
 ]);
-const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui", "catalog"]);
-const UI_KEYS = new Set(["query", "components", "columnOrder", "showAddRowButton"]);
+const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "catalog"]);
+const UI_KEYS = new Set([
+    "query",
+    "components",
+    "columnOrder",
+    "showAddRowButton",
+    "confirmRowDelete",
+    "insertTargetTableId",
+]);
 const COMPONENT_KEYS = new Set(["type", "label", "hidden", "widthPx"]);
 const CELL_COMPONENT_TYPES = new Set(["text", "number", "checkbox", "select", "date"]);
 
@@ -260,27 +301,20 @@ function isClipboardItem(value: unknown): value is ClipboardItem {
 
     if (value.componentType !== DIAGRAM_COMPONENT_TYPE && value.diagramId !== undefined) return false;
     if (value.componentType === undefined) {
-        return value.yjsTableId === undefined && value.calendarId === undefined;
+        return value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
     }
     // A Layout carries no binding of its own: it owns ordinary tree children,
     // which travel as the following, deeper clipboard items.
     if (value.componentType === LAYOUT_COMPONENT_TYPE) {
-        return value.yjsTableId === undefined && value.calendarId === undefined;
+        return value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === DIAGRAM_COMPONENT_TYPE) {
         return typeof value.diagramId === "string" && value.diagramId.length > 0
             && value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === "yjstable") {
-        // New-format same-project payloads need only the Grid identity. A
-        // physical Table id is included when current query provenance proves
-        // one and a cross-project clone therefore has a snapshot to carry.
-        const hasGrid = typeof value.yjsGridId === "string" && value.yjsGridId.length > 0;
-        const hasTable = typeof value.yjsTableId === "string" && value.yjsTableId.length > 0;
-        return (hasGrid || hasTable)
-            && (value.yjsGridId === undefined || hasGrid)
-            && (value.yjsTableId === undefined || hasTable)
-            && value.calendarId === undefined;
+        return typeof value.yjsGridId === "string" && value.yjsGridId.length > 0
+            && value.yjsTableId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === "calendar") {
         return typeof value.calendarId === "string" && value.calendarId.length > 0
@@ -331,6 +365,12 @@ export function isGridUiDefinitionDto(value: unknown): value is GridUiDefinition
     ) {
         return false;
     }
+    if (value.showAddRowButton !== undefined && typeof value.showAddRowButton !== "boolean") return false;
+    if (value.confirmRowDelete !== undefined && typeof value.confirmRowDelete !== "boolean") return false;
+    if (
+        value.insertTargetTableId !== undefined
+        && (typeof value.insertTargetTableId !== "string" || !value.insertTargetTableId)
+    ) return false;
     if (!value.columnOrder.every(column => typeof column === "string" && column.length > 0)) return false;
     return new Set(value.columnOrder).size === value.columnOrder.length;
 }
@@ -358,7 +398,7 @@ export function isGridTableSnapshot(value: unknown, sourceTableId?: string): val
             )
         ) return false;
     }
-    return isGridUiDefinitionDto(value.ui);
+    return true;
 }
 
 function isSqlCatalogSnapshot(value: unknown): value is SqlCatalogSnapshot {
@@ -421,7 +461,10 @@ function isValidDiagramTransfer(
     diagrams: unknown,
     transferId: unknown,
 ): boolean {
-    if (!items.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE)) return false;
+    if (
+        !items.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE)
+        && !(operation === "cut" && items.some(item => item.componentType === "yjstable"))
+    ) return false;
     if (operation === "cut") {
         return diagrams === undefined && typeof transferId === "string" && transferId.length > 0;
     }
@@ -430,6 +473,20 @@ function isValidDiagramTransfer(
         item.componentType !== DIAGRAM_COMPONENT_TYPE
         || Object.prototype.hasOwnProperty.call(diagrams, item.diagramId as string)
     );
+}
+
+export function isGridSnapshotMap(value: unknown): value is Record<string, GridSnapshot> {
+    if (!isRecord(value)) return false;
+    return Object.entries(value).every(([id, snapshot]) => {
+        if (
+            !isRecord(snapshot) || snapshot.gridId !== id || !id || typeof snapshot.name !== "string"
+            || !Array.isArray(snapshot.tableIds) || !snapshot.tableIds.every(id =>
+                typeof id === "string" && id.length > 0
+            )
+        ) return false;
+        const { gridId: _gridId, name: _name, tableIds: _tableIds, ...settings } = snapshot;
+        return isGridUiDefinitionDto(settings);
+    });
 }
 
 function isSnapshotMap(value: unknown): value is Record<string, GridTableSnapshot> {
@@ -449,7 +506,7 @@ export function serializeClipboardItems(
     operation?: "cut",
     diagramTransfer?: { diagrams?: Readonly<Record<string, DiagramSnapshot>>; transferId?: string; },
     catalog?: SqlCatalogSnapshot,
-    gridTableIds?: Readonly<Record<string, string>>,
+    grids?: Readonly<Record<string, GridSnapshot>>,
 ): string {
     // Defense in depth for every structural-copy caller. Kanban placements
     // are references whose transfer semantics are outside this release.
@@ -473,11 +530,7 @@ export function serializeClipboardItems(
         // physical supplier is captured separately at copy time so the
         // existing cross-project transfer format can carry a Table snapshot
         // without restoring yjsTableId as durable placement ownership.
-        const binding = rawType === "yjstable" && gridId
-            ? gridTableIds?.[gridId] ?? value?.get?.("yjsTableId")
-            : bindingField
-            ? value?.get?.(bindingField)
-            : undefined;
+        const binding = bindingField ? value?.get?.(bindingField) : undefined;
         const rawSpan = value?.get?.("columnSpan");
         // Repaired on the way out, by the same rule rendering uses, so a broken
         // stored span cannot travel to another document.
@@ -503,8 +556,9 @@ export function serializeClipboardItems(
         } as ClipboardItem;
     });
 
+    if (grids && !isGridSnapshotMap(grids)) throw new TypeError("Cannot serialize invalid Grid definitions");
     if (!serialized.every(isClipboardItem)) throw new TypeError("Cannot serialize invalid clipboard items");
-    if (serialized.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE)) {
+    if (serialized.some(item => item.componentType === DIAGRAM_COMPONENT_TYPE) || diagramTransfer?.transferId) {
         const snapshotMap = tables ? { ...tables } : undefined;
         if (snapshotMap && !isSnapshotMap(snapshotMap)) {
             throw new TypeError("Cannot serialize invalid Grid table snapshots");
@@ -524,15 +578,16 @@ export function serializeClipboardItems(
                 sourceProjectId,
                 items: serialized,
                 ...(snapshotMap ? { tables: snapshotMap } : {}),
+                ...(grids ? { grids: { ...grids } } : {}),
                 ...(calendarMap ? { calendars: calendarMap } : {}),
-                ...(calendarMap && catalog ? { catalog } : {}),
+                ...(catalog ? { catalog } : {}),
                 ...(diagrams ? { diagrams } : {}),
                 ...(transferId ? { transferId } : {}),
                 ...(operation ? { operation } : {}),
             } satisfies ItemClipboardPayloadV4,
         );
     }
-    if (tables === undefined && calendars === undefined) {
+    if (tables === undefined && calendars === undefined && grids === undefined) {
         return JSON.stringify(
             {
                 version: 1,
@@ -554,6 +609,8 @@ export function serializeClipboardItems(
                 sourceProjectId,
                 items: serialized,
                 tables: snapshotMap,
+                ...(catalog ? { catalog } : {}),
+                ...(grids ? { grids: { ...grids } } : {}),
                 ...(operation ? { operation } : {}),
             } satisfies ItemClipboardPayloadV2,
         );
@@ -573,8 +630,9 @@ export function serializeClipboardItems(
             sourceProjectId,
             items: serialized,
             ...(snapshotMap ? { tables: snapshotMap } : {}),
+            ...(grids ? { grids: { ...grids } } : {}),
             ...(calendarMap ? { calendars: calendarMap } : {}),
-            ...(calendarMap && catalog ? { catalog } : {}),
+            ...(catalog ? { catalog } : {}),
             ...(operation ? { operation } : {}),
         } satisfies ItemClipboardPayloadV3,
     );
@@ -590,6 +648,8 @@ export function deserializeClipboardItems(value: string): ItemClipboardPayload |
         ) {
             return undefined;
         }
+        if (payload.catalog !== undefined && !isSqlCatalogSnapshot(payload.catalog)) return undefined;
+        if (payload.grids !== undefined && !isGridSnapshotMap(payload.grids)) return undefined;
         if (!payload.items.every(isClipboardItem)) return undefined;
         if (!hasValidKindStructure(payload.items)) return undefined;
         if (payload.version === 4) {

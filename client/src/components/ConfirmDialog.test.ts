@@ -32,6 +32,24 @@ describe("ConfirmDialog", () => {
         expect(onCancel).toHaveBeenCalledTimes(0);
     });
 
+    it("keeps an actionable confirmation open when the callback requests refreshed review", async () => {
+        let refreshed = false;
+        const { getByText, getByTestId } = render(ConfirmDialogWrapper, {
+            isOpen: true,
+            onConfirm: () => {
+                if (!refreshed) {
+                    refreshed = true;
+                    return false;
+                }
+            },
+            onCancel,
+        });
+        await fireEvent.click(getByText("Confirm", { selector: "button" }));
+        expect(getByTestId("is-open").textContent).toBe("true");
+        await fireEvent.click(getByText("Confirm", { selector: "button" }));
+        expect(getByTestId("is-open").textContent).toBe("false");
+    });
+
     it("cancel invokes only onCancel", async () => {
         const { getByText } = render(ConfirmDialog, {
             isOpen: true,

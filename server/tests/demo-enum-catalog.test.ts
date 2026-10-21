@@ -204,9 +204,7 @@ describe("Demo ENUM declaration-order example", function() {
                 item => item.componentType === "yjstable",
             );
             expect(blocks, `${slug}: exactly one live Grid block`).to.have.lengthOf(1);
-            expect(blocks[0].yjsTableId, `${slug}: block binds the ENUM table`).to.equal(
-                DEMO_ENUM_PRIORITIES_TABLE_ID,
-            );
+            expect(blocks[0].yjsTableId, `${slug}: placement has no primary Table binding`).to.equal(undefined);
             expect(blocks[0].yjsGridId, `${slug}: block binds the ENUM Grid`).to.equal(expectedGridId);
             expect(blocks[0].yjsGridId, `${slug}: block does not reuse the Tasks Grid`).to.not.equal(
                 DEMO_TASKS_PRIORITY_GRID_ID,

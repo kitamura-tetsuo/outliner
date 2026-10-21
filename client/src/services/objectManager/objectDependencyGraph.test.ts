@@ -4,6 +4,7 @@ import * as Y from "yjs";
 import { createCalendar } from "../calendar/calendarService";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid } from "../yjstable/gridDocs";
+import { getTableDependencies } from "../yjstable/tableDependencies";
 import { createTable } from "../yjstable/tableDocs";
 import {
     buildObjectDependencyGraph,
@@ -23,11 +24,24 @@ function ids(objects: GraphObject[]): string[] {
 }
 
 describe("buildObjectDependencyGraph", () => {
-    it("records a Grid's explicit and query-derived Table dependencies, with the reverse edge on the Table", () => {
+    it("reports colliding CTE scope as uncertainty in graph and Table usage", () => {
+        const project = Project.createInstance("cte-usage");
+        const x = table(project.ydoc, "Physical X", "x");
+        const grid = createGrid(project.ydoc, undefined, { query: "WITH x AS (SELECT 1) SELECT * FROM x" });
+        const graph = buildObjectDependencyGraph(project.ydoc);
+        expect(graph.analysisOf({ type: "grid", id: grid })?.status).toBe("unknown");
+        expect(graph.dependenciesOf({ type: "grid", id: grid })).toEqual([]);
+        expect(getTableDependencies(project, x).unknownReferences.length).toBe(1);
+        expect(getTableDependencies(project, x).dependentGridIds).toEqual([]);
+    });
+
+    it("records a Grid's SQL-derived Table dependencies, with the reverse edge on the Table", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
         const owners = table(doc, "Owners", "owners");
-        const gridId = createGrid(doc, tasks, { query: "SELECT id FROM tasks JOIN owners ON owners.id = tasks.id" });
+        const gridId = createGrid(doc, undefined, {
+            query: "SELECT id FROM tasks JOIN owners ON owners.id = tasks.id",
+        });
 
         const graph = buildObjectDependencyGraph(doc);
         const gridObject: GraphObject = { type: "grid", id: gridId };
@@ -84,7 +98,7 @@ describe("buildObjectDependencyGraph", () => {
         const doc = new Y.Doc();
         const project = Project.fromDoc(doc);
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const ruleId = createScheduleRule(project, {
             targetTableId: tasks,
             sql: "INSERT INTO tasks (id) SELECT 1 RETURNING *",
@@ -121,7 +135,7 @@ describe("traverseObjectGraph", () => {
     it("follows only forward edges for 'dependencies'", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
         const result = traverseObjectGraph(graph, [{ type: "grid", id: gridId }], "dependencies");
@@ -131,7 +145,7 @@ describe("traverseObjectGraph", () => {
     it("follows only reverse edges for 'dependents'", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
         const result = traverseObjectGraph(graph, [{ type: "table", id: tasks }], "dependents");
@@ -142,7 +156,7 @@ describe("traverseObjectGraph", () => {
         const doc = new Y.Doc();
         const project = Project.fromDoc(doc);
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tasks, { name: "Board" });
+        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         const calendarId = createCalendar(project, { name: "Team Calendar", query: "SELECT id FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
@@ -157,8 +171,8 @@ describe("traverseObjectGraph", () => {
     it("unions multiple roots and selects each shared dependency only once", () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const first = createGrid(doc, tasks, { name: "First" });
-        const second = createGrid(doc, tasks, { name: "Second" });
+        const first = createGrid(doc, undefined, { name: "First", query: "SELECT * FROM tasks" });
+        const second = createGrid(doc, undefined, { name: "Second", query: "SELECT * FROM tasks" });
         const graph = buildObjectDependencyGraph(doc);
 
         const result = traverseObjectGraph(
@@ -178,7 +192,7 @@ describe("traverseObjectGraph", () => {
         const doc = new Y.Doc();
         const project = Project.fromDoc(doc);
         const tasks = table(doc, "Tasks", "tasks");
-        createGrid(doc, tasks, { name: "Board" });
+        createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
         createScheduleRule(project, {
             targetTableId: tasks,
             sql: "INSERT INTO tasks (id) SELECT id FROM tasks RETURNING *",

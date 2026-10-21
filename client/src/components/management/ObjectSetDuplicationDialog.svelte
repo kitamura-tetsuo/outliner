@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { captureDuplicationAdmission } from "../../services/yjstable/objectDuplication";
+    import { toDuplicableObjects } from "../../services/objectManager/objectManagerController";
     // Object Manager's `Duplicate selected` (issue #5153): the current
     // selection is the authoritative duplication scope. Unlike the
     // single-object `ObjectDuplicationDialog`, this never asks for a
@@ -12,12 +14,11 @@
     import { projectObjectsSelectedRoute } from "../../lib/managementPaths";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { store } from "../../stores/store.svelte";
-    import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
+    import { captureDuplicationPlacement } from "../../services/yjstable/gridPlacement";
     import {
         buildDuplicationSetPreview,
         duplicateSelectedObjects,
         type DuplicationSetPreview,
-        type DuplicationSideEffect,
         type NamedObject,
     } from "../../services/objectManager/objectManagerController";
     import type { DuplicationSetResult } from "../../services/yjstable/objectDuplication";
@@ -74,21 +75,6 @@
         }
     });
 
-    /** Attach the one copied Grid to a destination Page, folded into the same undo step as the duplicate itself. */
-    function afterMaterialize(result: DuplicationSetResult): DuplicationSideEffect | void {
-        if (!singleGridSameProject || !destinationPageId) return;
-        const gridId = result.createdObjects.find(object => object.type === "grid")?.id;
-        if (!gridId) return;
-        const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
-        let placement = appendGridPlacement(project.ydoc, destinationPageId, gridId, authorId);
-        return {
-            undo: () => placement.delete(),
-            redo: () => {
-                placement = appendGridPlacement(project.ydoc, destinationPageId, gridId, authorId);
-            },
-        };
-    }
-
     async function executeDuplication() {
         if (!preview || preview.objects.length === 0) return;
         const destinationTitle = destinationProject.trim();
@@ -102,6 +88,7 @@
         // call's remaining source-doc reads.
         const sourceDoc = project.ydoc;
         try {
+            const assertCurrent = captureDuplicationAdmission(sourceDoc, toDuplicableObjects(selected));
             let destinationDoc = sourceDoc;
             let destinationClient: Awaited<ReturnType<typeof getYjsClientByProjectTitle>> | undefined;
             if (destinationTitle !== sourceProject) {
@@ -109,10 +96,14 @@
                 if (!destinationClient) throw new Error(`Project "${destinationTitle}" could not be opened.`);
                 destinationDoc = destinationClient.project.ydoc;
             }
+            assertCurrent();
+            const placement = singleGridSameProject && destinationPageId
+                ? captureDuplicationPlacement(sourceDoc, destinationPageId, userManager.getCurrentUser()?.id ?? "anonymous")
+                : {};
             const result = await duplicateSelectedObjects(sourceDoc, destinationDoc, selected, {
+                ...placement,
                 copyTableData,
                 synchronizeTableSubdocs: true,
-                afterMaterialize,
             });
             if (!result) throw new Error("Nothing was selected to duplicate.");
             onDuplicated(result, destinationTitle);
@@ -208,6 +199,11 @@
                 >
                     {hiddenSelectedCount} selected {hiddenSelectedCount === 1 ? "object is" : "objects are"} hidden by
                     the current filter and will still be duplicated.
+                </div>
+            {/if}
+            {#if preview && !sameProject && preview.preferenceOmissions.length > 0}
+                <div role="status" data-testid="duplicate-preference-omissions">
+                    {#each preview.preferenceOmissions as omission (omission.gridId)}<p>Grid {omission.gridId}: the unmappable INSERT preference {omission.tableId} will be cleared.</p>{/each}
                 </div>
             {/if}
             {#if preview && preview.omittedReferenceCount > 0}

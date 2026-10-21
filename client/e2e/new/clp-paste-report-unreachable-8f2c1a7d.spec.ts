@@ -77,7 +77,7 @@ test.describe("cross-project Grid paste with an unreachable source", () => {
             expect(clone.name).toBe(sourceTable.name);
             expect(clone.schema.replace(/\s+/g, " ")).toBe(sourceTable.schema.replace(/\s+/g, " "));
             expect(clone.dataSize).toBe(0);
-            expect(destinationState.hostTableIds).toContain(clone.id);
+            expect(destinationState.hostGridIds).toContain(destinationState.grids[0].id);
         },
     );
 });

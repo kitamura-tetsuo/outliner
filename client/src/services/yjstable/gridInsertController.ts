@@ -116,7 +116,19 @@ export function createGridInsertController(options: {
     }
     function publish(next: GridInsertState) {
         if (disposed) return;
-        state = { ...next, pending: pending !== undefined, preference: readPreference(options.gridEntry) };
+        const preference = readPreference(options.gridEntry);
+        const resolution = next.resolution;
+        if (preference && resolution?.mode === "unavailable" && !resolution.preferenceDiagnostic) {
+            const exists = listTables(options.projectDoc).some(table => table.tableId === preference);
+            resolution.preferenceDiagnostic = {
+                code: "unavailable",
+                tableId: preference,
+                message: exists
+                    ? `The saved INSERT preference ${preference} cannot be validated while query evidence is unavailable`
+                    : `The saved INSERT preference ${preference} names a Table that no longer exists`,
+            };
+        }
+        state = { ...next, pending: pending !== undefined, preference };
         for (const listener of listeners) listener(state);
     }
     function refresh(): Promise<void> {

@@ -10,6 +10,7 @@
 import * as Y from "yjs";
 import { onDestroy, onMount } from "svelte";
 import { findGridsByTableDependency, getGridRegistry } from "../../services/yjstable/gridDocs";
+import { queryReadDependencies } from "../../services/yjstable/queryReadDependencies";
 import { getTableRegistry } from "../../services/yjstable/tableDocs";
 import { projectGridRoute } from "../../lib/managementPaths";
 import type { ResolvedPathname } from "$app/types";
@@ -26,8 +27,15 @@ let { projectDoc, projectName, tableId }: Props = $props();
 // state below is reassigned, so a Grid created elsewhere shows up here.
 let grids = $state<{ gridId: string; name: string; query: string; }[]>([]);
 
+let unknownGrids = $state<{ gridId: string; name: string; diagnostics: string[]; }[]>([]);
+
 function refresh() {
     const registry = getGridRegistry(projectDoc);
+    unknownGrids = [];
+    registry.forEach((entry, gridId) => {
+        const evidence = queryReadDependencies(projectDoc, String(entry.get("query") ?? ""));
+        if (evidence.status === "unknown") unknownGrids.push({ gridId, name: String(entry.get("name") ?? "Untitled grid"), diagnostics: evidence.diagnostics });
+    });
     grids = findGridsByTableDependency(projectDoc, tableId).map(entry => ({
         gridId: entry.gridId,
         name: entry.name || "Untitled grid",
@@ -61,7 +69,11 @@ function queryPreview(query: string): string {
 
 <section class="reference-section" data-testid="table-grid-references">
     <h2 class="reference-title">Grids using this table</h2>
-    {#if grids.length === 0}
+    {#if unknownGrids.length > 0}
+        <p data-testid="table-grid-references-unknown">Read dependencies are uncertain for {unknownGrids.length} Grid(s):</p>
+        <ul>{#each unknownGrids as grid (grid.gridId)}<li><a href={gridHref(grid.gridId)}>{grid.name}</a>: {grid.diagnostics.join("; ")}</li>{/each}</ul>
+    {/if}
+    {#if grids.length === 0 && unknownGrids.length === 0}
         <p class="empty-state" data-testid="table-grid-references-empty">
             No grid presents this table yet. Add a grid block to a page to create one.
         </p>

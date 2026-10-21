@@ -296,8 +296,9 @@ export async function acquireClientByProjectId(
     if (signal?.aborted) return undefined;
 
     try {
-        const client = await connectAndRegister(projectId, "", userId);
-        return {
+        // A temporary row reader must not apply source-room cursors to the destination editor.
+        const client = await connectAndRegister(projectId, "", userId, false);
+        const acquired = {
             client,
             release: () => {
                 try {
@@ -308,6 +309,14 @@ export async function acquireClientByProjectId(
                 registry.delete(key);
             },
         };
+        // Construction can return after a silent initial-sync timeout. A cold
+        // room then supplies no live registry evidence, so preserve the caller's
+        // unavailable-source fallback rather than reporting a deleted Grid.
+        if (client.wsProvider && !client.wsProvider.isSynced) {
+            acquired.release();
+            return undefined;
+        }
+        return acquired;
     } catch (error) {
         logger.warn({ error, projectId }, "[acquireClientByProjectId] Source project is unavailable");
         return undefined;
@@ -328,10 +337,15 @@ function authorizeClientHistory(client: YjsClient, principalId: string | undefin
     });
 }
 
-async function connectAndRegister(projectId: string, title: string, userId: string): Promise<YjsClient> {
+async function connectAndRegister(
+    projectId: string,
+    title: string,
+    userId: string,
+    bindPresence = true,
+): Promise<YjsClient> {
     const project = Project.createInstance(title);
     logger.info(`[connectAndRegister] Calling YjsClient.connect for projectId=${projectId}`);
-    const client = await YjsClient.connect(projectId, project);
+    const client = await YjsClient.connect(projectId, project, bindPresence);
     authorizeClientHistory(client, userId);
     logger.info(`[connectAndRegister] YjsClient.connect completed`);
     registry.set(keyFor(userId, projectId), [client, project]);
@@ -488,6 +502,15 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
     const isTest = isTestEnvironment();
 
     if (!userId && isTest) userId = "test-user-id";
+    // Re-entering a loaded Project must keep its admitted document alive:
+    // pending transfers and cross-Project history retain that exact context.
+    if (containerId) {
+        const loaded = registry.get(keyFor(userId, containerId))?.[0];
+        if (loaded && !loaded.isDestroyed) {
+            yjsStore.yjsClient = loaded;
+            return loaded;
+        }
+    }
     const resolvedId = containerId || uuid();
     const title = typeof window !== "undefined"
         ? ((window.__CURRENT_PROJECT_TITLE__ as string | undefined) ?? "Test Project")

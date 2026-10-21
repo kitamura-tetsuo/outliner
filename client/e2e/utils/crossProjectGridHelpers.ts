@@ -18,7 +18,6 @@ export interface GridTableState {
     sqlName: string;
     guid: string;
     schema: string;
-    ui: Record<string, unknown>;
     dataSize: number;
     /** Data Storage as plain values: record id -> column -> value. */
     data: Record<string, Record<string, unknown>>;
@@ -27,7 +26,19 @@ export interface GridTableState {
 export interface GridProjectState {
     guid: string;
     tables: GridTableState[];
-    hostTableIds: string[];
+    grids: {
+        id: string;
+        name: string;
+        query: string;
+        components: Record<string, unknown>;
+        columnOrder: string[];
+        showAddRowButton: boolean;
+        confirmRowDelete: boolean;
+        insertTargetTableId?: string;
+        hasPrimaryMetadata: boolean;
+    }[];
+    placements: { id: string; gridId: string; hasPrimaryMetadata: boolean; }[];
+    hostGridIds: string[];
 }
 
 /**
@@ -387,35 +398,21 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
         const client = (window as any).__YJS_STORE__?.yjsClient;
         const project = client?.getProject();
         if (!project?.ydoc) throw new Error("Current Yjs project is unavailable");
-        // Grid state (query + column UI) lives in the project-level `yjsGrids`
-        // registry, not the Table subdoc: the Table owns schema + data only.
-        // Report the first Grid over each Table as that Table's `ui` so the
-        // cross-project assertions keep reading one presentation per Table.
-        const gridUiBySourceTable = new Map<string, Record<string, unknown>>();
-        const tableIdBySqlName = new Map<string, string>();
-        project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
-            tableIdBySqlName.set(String(entry.get("sqlName") ?? "").toLowerCase(), id);
-        });
-        const gridSourceTableId = (grid: any): string => {
-            const legacySource = String(grid?.get("sourceTableId") ?? "");
-            if (legacySource) return legacySource;
-            const query = String(grid?.get("query") ?? "");
-            const match = /\bfrom\s+(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|([\w-]+))/i.exec(query);
-            const sqlName = (match?.[1] ?? match?.[2] ?? match?.[3] ?? match?.[4] ?? "").toLowerCase();
-            return tableIdBySqlName.get(sqlName) ?? "";
-        };
-        const gridsById = new Map<string, any>();
-        project.ydoc.getMap("yjsGrids").forEach((grid: any) => {
-            const sourceTableId = gridSourceTableId(grid);
-            if (!sourceTableId || gridUiBySourceTable.has(sourceTableId)) return;
-            const componentsMap = grid.get("components");
-            gridUiBySourceTable.set(sourceTableId, {
-                query: grid.get("query"),
-                components: componentsMap?.toJSON ? componentsMap.toJSON() : {},
-                columnOrder: grid.get("columnOrder") ?? [],
+        const grids: GridProjectState["grids"] = [];
+        project.ydoc.getMap("yjsGrids").forEach((grid: any, id: string) => {
+            const order = grid.get("columnOrder");
+            grids.push({
+                id,
+                name: String(grid.get("name") ?? ""),
+                query: String(grid.get("query") ?? ""),
+                components: grid.get("components")?.toJSON?.() ?? {},
+                columnOrder: Array.isArray(order) ? order : order?.toArray?.() ?? [],
+                showAddRowButton: grid.get("showAddRowButton") !== false,
+                confirmRowDelete: grid.get("confirmRowDelete") === true,
+                insertTargetTableId: grid.get("insertTargetTableId"),
+                hasPrimaryMetadata: grid.has("sourceTableId"),
             });
         });
-        project.ydoc.getMap("yjsGrids").forEach((grid: any, id: string) => gridsById.set(id, grid));
         const tables: GridTableState[] = [];
         project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
             const doc = entry.get("doc");
@@ -425,23 +422,32 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
                 sqlName: String(entry.get("sqlName") ?? ""),
                 guid: String(doc.guid),
                 schema: doc.getText("schema").toString(),
-                ui: gridUiBySourceTable.get(id) ?? {},
                 dataSize: doc.getMap("data").size,
                 data: doc.getMap("data").toJSON(),
             });
         });
-        const hostTableIds: string[] = [];
+        const placements: GridProjectState["placements"] = [];
         const walk = (items: any) => {
             for (let i = 0; i < items.length; i++) {
                 const item = items.at(i);
                 if (item?.componentType === "yjstable") {
-                    const tableId = item.yjsTableId || gridSourceTableId(gridsById.get(item.yjsGridId));
-                    if (tableId) hostTableIds.push(tableId);
+                    const value = item.tree.getNodeValueFromKey(item.key);
+                    placements.push({
+                        id: item.id,
+                        gridId: String(value.get("yjsGridId") ?? ""),
+                        hasPrimaryMetadata: value.has("yjsTableId"),
+                    });
                 }
                 if (item?.items) walk(item.items);
             }
         };
         walk(project.items);
-        return { guid: project.ydoc.guid, tables, hostTableIds };
+        return {
+            guid: project.ydoc.guid,
+            tables,
+            grids,
+            placements,
+            hostGridIds: placements.map(placement => placement.gridId),
+        };
     });
 }

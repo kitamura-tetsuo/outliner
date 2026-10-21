@@ -9,12 +9,11 @@
 import { Project } from "$shared/app-schema";
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { isGridTableSnapshot } from "../clipboard/itemClipboard";
+import { isGridSnapshotMap, isGridTableSnapshot } from "../clipboard/itemClipboard";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import {
     createGrid,
     duplicateGrid,
-    findGridsBySourceTable,
     getGridColumnWidth,
     getGridHandles,
     getGridQuery,
@@ -27,7 +26,7 @@ import {
     setGridComponentField,
 } from "./gridDocs";
 import { resetPgliteForTests } from "./pgliteService";
-import { exportTableStructure, importTableStructures } from "./tableClone";
+import { exportGridSlice, exportTableStructure, importTableStructures } from "./tableClone";
 import { createTable, getTableHandles, listTables, setSchemaText } from "./tableDocs";
 
 const INVALID_WIDTHS = [31, 4097, 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "180", "", true, null];
@@ -167,7 +166,7 @@ describe("Grid column width overrides", () => {
     });
 
     it("duplicates widths with the definition and keeps the duplicate independent", () => {
-        const { doc, tableId, gridA } = basicProject();
+        const { doc, gridA } = basicProject();
         const source = getGridHandles(doc, gridA)!;
         setGridColumnWidth(source, "ghost", 64);
         setGridComponentField(source, "done", "hidden", true);
@@ -181,7 +180,7 @@ describe("Grid column width overrides", () => {
 
         setGridColumnWidth(dup, "title", 300);
         expect(getGridColumnWidth(source, "title")).toBe(180);
-        expect(getGridHandles(doc, dupId)!.entry.get("sourceTableId")).toBe(tableId);
+        expect(getGridHandles(doc, dupId)!.entry.has("sourceTableId")).toBe(false);
     });
 
     it("restores valid widths, including dormant ones and absence, through delete/Undo", () => {
@@ -210,14 +209,14 @@ describe("Grid width structural copy", { timeout: 30000 }, () => {
         await resetPgliteForTests();
     });
 
-    function widthProject(): { doc: Y.Doc; tableId: string; } {
+    function widthProject(): { doc: Y.Doc; tableId: string; gridId: string; } {
         const doc = new Y.Doc({ guid: "width-source" });
         const tableId = createTable(doc, "Tasks", "tasks");
         setSchemaText(
             getTableHandles(doc, tableId)!,
             "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN)",
         );
-        createGrid(doc, tableId, {
+        const gridId = createGrid(doc, undefined, {
             name: "Tasks grid",
             query: "SELECT id, title, done FROM tasks",
             columnOrder: ["title", "id", "done"],
@@ -230,25 +229,32 @@ describe("Grid width structural copy", { timeout: 30000 }, () => {
                 ["__proto__", { widthPx: 100 }],
             ]),
         });
-        return { doc, tableId };
+        return { doc, tableId, gridId };
     }
 
     it("exports, validates and reconstructs widths without changing clone decisions", async () => {
-        const { doc, tableId } = widthProject();
+        const { doc, tableId, gridId } = widthProject();
         const snapshot = exportTableStructure(doc, tableId);
+        const grid = exportGridSlice(doc, gridId);
         expect(isGridTableSnapshot(snapshot, tableId)).toBe(true);
-        expect(snapshot.ui.components["title"].widthPx).toBe(180);
-        expect(snapshot.ui.components["done"].widthPx).toBe(32);
-        expect(snapshot.ui.components["ghost"].widthPx).toBe(64);
-        expect(snapshot.ui.components["__proto__"].widthPx).toBe(100);
+        expect(grid.components["title"].widthPx).toBe(180);
+        expect(grid.components["done"].widthPx).toBe(32);
+        expect(grid.components["ghost"].widthPx).toBe(64);
+        expect(grid.components["__proto__"].widthPx).toBe(100);
 
         const destination = new Y.Doc({ guid: "width-destination" });
-        const result = await importTableStructures(destination, { [tableId]: snapshot }, "width-source");
+        const result = await importTableStructures(
+            destination,
+            { [tableId]: snapshot },
+            "width-source",
+            undefined,
+            true,
+            { [gridId]: grid },
+        );
         expect(result.failures).toEqual({});
-        const destTableId = result.tableIdMap[tableId];
         const destGrid = getGridHandles(
             destination,
-            findGridsBySourceTable(destination, destTableId)[0].gridId,
+            result.gridIdMap[gridId],
         )!;
         expect(getGridColumnWidth(destGrid, "title")).toBe(180);
         expect(getGridColumnWidth(destGrid, "done")).toBe(32);
@@ -256,10 +262,17 @@ describe("Grid width structural copy", { timeout: 30000 }, () => {
         expect(getGridColumnWidth(destGrid, "__proto__")).toBe(100);
 
         // The same input without widths takes the identical clone branch.
-        const stripped = JSON.parse(JSON.stringify(snapshot)) as typeof snapshot;
-        for (const cfg of Object.values(stripped.ui.components)) delete cfg.widthPx;
+        const stripped = JSON.parse(JSON.stringify(grid)) as typeof grid;
+        for (const cfg of Object.values(stripped.components)) delete cfg.widthPx;
         const plainDestination = new Y.Doc({ guid: "width-plain-destination" });
-        const plain = await importTableStructures(plainDestination, { [tableId]: stripped }, "width-source");
+        const plain = await importTableStructures(
+            plainDestination,
+            { [tableId]: snapshot },
+            "width-source",
+            undefined,
+            true,
+            { [gridId]: stripped },
+        );
         const projectOutcome = (entry: { type: string; sqlName?: string; tableName?: string; }) => ({
             type: entry.type,
             sqlName: (entry as { sqlName?: string; }).sqlName,
@@ -269,38 +282,42 @@ describe("Grid width structural copy", { timeout: 30000 }, () => {
         expect(result.failures).toEqual(plain.failures);
         const plainGrid = getGridHandles(
             plainDestination,
-            findGridsBySourceTable(plainDestination, plain.tableIdMap[tableId])[0].gridId,
+            plain.gridIdMap[gridId],
         )!;
         expect(getGridColumnWidth(plainGrid, "title")).toBeUndefined();
 
         // A later width change on the reconstruction stays independent.
         setGridColumnWidth(destGrid, "title", 300);
-        expect(getGridColumnWidth(getGridHandles(doc, findGridsBySourceTable(doc, tableId)[0].gridId)!, "title"))
+        expect(getGridColumnWidth(getGridHandles(doc, gridId)!, "title"))
             .toBe(180);
     });
 
     it("rejects invalid DTO widths before any destination effect", async () => {
-        const { doc, tableId } = widthProject();
+        const { doc, tableId, gridId } = widthProject();
         const snapshot = exportTableStructure(doc, tableId);
-        snapshot.ui.components["title"].widthPx = 31;
-        expect(isGridTableSnapshot(snapshot, tableId)).toBe(false);
+        const grid = exportGridSlice(doc, gridId);
+        grid.components["title"].widthPx = 31;
+        expect(isGridSnapshotMap({ [gridId]: grid })).toBe(false);
 
         const destination = new Y.Doc({ guid: "width-invalid-destination" });
-        const result = await importTableStructures(destination, { [tableId]: snapshot }, "width-source");
-        expect(result.tableIdMap[tableId]).toBeUndefined();
-        expect(Object.keys(result.failures)).toEqual([tableId]);
+        await expect(
+            importTableStructures(destination, { [tableId]: snapshot }, "width-source", undefined, true, {
+                [gridId]: grid,
+            }),
+        ).rejects.toThrow("Grid definitions are malformed");
         expect(listTables(destination)).toHaveLength(0);
     });
 
     it("exports a malformed stored width as automatic sizing instead of failing", () => {
-        const { doc, tableId } = widthProject();
-        const handles = getGridHandles(doc, findGridsBySourceTable(doc, tableId)[0].gridId)!;
+        const { doc, tableId, gridId } = widthProject();
+        const handles = getGridHandles(doc, gridId)!;
         (handles.components.get("title") as Y.Map<unknown>).set("widthPx", "180");
 
         expect(getGridColumnWidth(handles, "title")).toBeUndefined();
         const snapshot = exportTableStructure(doc, tableId);
+        const grid = exportGridSlice(doc, gridId);
         expect(isGridTableSnapshot(snapshot, tableId)).toBe(true);
-        expect(snapshot.ui.components["title"].widthPx).toBeUndefined();
+        expect(grid.components["title"].widthPx).toBeUndefined();
     });
 });
 
