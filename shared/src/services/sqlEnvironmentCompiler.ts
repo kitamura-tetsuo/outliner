@@ -174,7 +174,10 @@ export function parseEnum(source: string): { name: string; labels: string[]; } {
         throw new Error("Catalog enum must be one CREATE TYPE ... AS ENUM declaration");
     }
     const names = stringNodes(statement.CreateEnumStmt.typeName);
-    const labels = stringNodes(statement.CreateEnumStmt.vals);
+    // libpg-query omits `vals` for PostgreSQL's valid zero-label ENUM shape
+    // rather than returning an empty array. Normalize only that absent field;
+    // a present malformed value still fails the AST shape check below.
+    const labels = statement.CreateEnumStmt.vals === undefined ? [] : stringNodes(statement.CreateEnumStmt.vals);
     if (!names || names.length !== 1 || !labels) {
         throw new Error("Catalog enum name must be unqualified");
     }

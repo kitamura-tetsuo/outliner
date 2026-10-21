@@ -1,3 +1,4 @@
+import { parseEnum } from "$shared/services/sqlEnvironmentCompiler";
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -42,9 +43,25 @@ describe("sqlCatalogClient naming", () => {
         expect(isExecutableEnumSource("CREATE TYPE TaskState AS ENUM ('Open');")).toBe(true);
     });
 
+    it("uses the shared parser for nested comments and PostgreSQL literal syntax", () => {
+        const sources = [
+            "CREATE TYPE empty_mood AS ENUM ()",
+            "/* outer /* nested */ comment */ CREATE /* between */ TYPE 状態 AS ENUM ('open;now', E'line\\nfeed');",
+            "CREATE TYPE \"My \"\"Mood\"\"\" AS ENUM ('happy; yes', 'it''s fine');",
+        ];
+
+        for (const source of sources) {
+            expect(resolveCatalogTypeName(source)).toBe(parseEnum(source).name);
+            expect(isExecutableEnumSource(source)).toBe(true);
+        }
+    });
+
     it("reports every other DDL shape as unsupported", () => {
         expect(resolveCatalogTypeName("CREATE TABLE tasks (id TEXT PRIMARY KEY)")).toBeUndefined();
         expect(resolveCatalogTypeName("SELECT 1")).toBeUndefined();
+        expect(resolveCatalogTypeName("CREATE TYPE mood AS ENUM ('happy'")).toBeUndefined();
+        expect(resolveCatalogTypeName("CREATE TYPE mood AS ENUM ('happy")).toBeUndefined();
+        expect(resolveCatalogTypeName("/* unterminated CREATE TYPE mood AS ENUM ('happy')")).toBeUndefined();
         // Qualified names are not the supported Project-level shape.
         expect(resolveCatalogTypeName("CREATE TYPE public.task_state AS ENUM ('a')")).toBeUndefined();
         // Two declarations are not one declaration per object.
