@@ -99,6 +99,20 @@ export interface SqlEnvironmentCompilerOptions {
     readonly acquire?: () => Promise<SqlEnvironmentLease>;
 }
 
+export type ScopedSqlEnumAnalysis =
+    | {
+        readonly status: "complete";
+        readonly descriptor: SqlEnvironmentDescriptor;
+        readonly scopedInput: SqlEnvironmentInput;
+        readonly dependencies: readonly SqlDependencyEvidence[];
+        readonly requiredEnums: readonly SqlEnumMetadata[];
+    }
+    | {
+        readonly status: "incomplete";
+        readonly descriptor: SqlEnvironmentDescriptor;
+        readonly diagnostics: readonly SqlEnvironmentDiagnostic[];
+    };
+
 type AstNode = Record<string, unknown>;
 
 function isNode(value: unknown): value is AstNode {
@@ -206,8 +220,24 @@ export function collectTypeNames(statement: AstNode): TypeReference[] {
     return names;
 }
 
-function collectReferencedTables(statement: AstNode): [name: string, alias: string | undefined][] {
-    const tables: [string, string | undefined][] = [];
+interface RelationReference {
+    readonly schema?: string;
+    readonly name: string;
+}
+
+/** Collect physical relations while respecting names introduced by WITH. */
+function collectReferencedTables(statement: AstNode): RelationReference[] {
+    const tables: RelationReference[] = [];
+    const cteNames = new Set<string>();
+    const findCtes = (value: unknown): void => {
+        if (Array.isArray(value)) return value.forEach(findCtes);
+        if (!isNode(value)) return;
+        if (isNode(value.CommonTableExpr) && typeof value.CommonTableExpr.ctename === "string") {
+            cteNames.add(value.CommonTableExpr.ctename);
+        }
+        Object.values(value).forEach(findCtes);
+    };
+    findCtes(statement);
     const walk = (value: unknown): void => {
         if (Array.isArray(value)) {
             value.forEach(walk);
@@ -215,10 +245,10 @@ function collectReferencedTables(statement: AstNode): [name: string, alias: stri
         }
         if (!isNode(value)) return;
         if (isNode(value.RangeVar) && typeof value.RangeVar.relname === "string") {
-            const alias = isNode(value.RangeVar.alias) && typeof value.RangeVar.alias.aliasname === "string"
-                ? value.RangeVar.alias.aliasname
-                : undefined;
-            tables.push([value.RangeVar.relname, alias]);
+            const schema = typeof value.RangeVar.schemaname === "string" ? value.RangeVar.schemaname : undefined;
+            if (schema !== undefined || !cteNames.has(value.RangeVar.relname)) {
+                tables.push({ schema, name: value.RangeVar.relname });
+            }
         }
         Object.values(value).forEach(walk);
     };
@@ -226,31 +256,16 @@ function collectReferencedTables(statement: AstNode): [name: string, alias: stri
     return tables;
 }
 
-function collectReferencedColumns(statement: AstNode): { name: string; qualifier?: string; }[] {
-    const columns: { name: string; qualifier?: string; }[] = [];
+function hasUnsupportedRelationShape(statement: AstNode): boolean {
+    let unsupported = false;
     const walk = (value: unknown): void => {
-        if (Array.isArray(value)) {
-            value.forEach(walk);
-            return;
-        }
+        if (Array.isArray(value)) return value.forEach(walk);
         if (!isNode(value)) return;
-        if (isNode(value.ColumnRef) && Array.isArray(value.ColumnRef.fields)) {
-            const fields = value.ColumnRef.fields;
-            const names = fields.map(field => {
-                if (isNode(field) && isNode(field.String) && typeof field.String.sval === "string") {
-                    return field.String.sval;
-                }
-                return isNode(field) && field.A_Star !== undefined ? "*" : undefined;
-            });
-            if (names.length === 1 && names[0]) columns.push({ name: names[0] });
-            else if (names.length === 2 && names[0] && names[1]) {
-                columns.push({ qualifier: names[0], name: names[1] });
-            }
-        }
+        if (isNode(value.RangeFunction) || isNode(value.RangeTableFunc)) unsupported = true;
         Object.values(value).forEach(walk);
     };
     walk(statement);
-    return columns;
+    return unsupported;
 }
 
 async function resetDatabase(db: PGlite): Promise<void> {
@@ -278,11 +293,11 @@ async function defaultLease(): Promise<SqlEnvironmentLease> {
     return { db, release: () => db.close() };
 }
 
-function dependencyEvidence(
+async function dependencyEvidence(
+    db: PGlite,
     input: SqlEnvironmentInput,
     enumsByName: ReadonlyMap<string, { objectId: string; identity: string; }>,
-    enumColumnsByTable: ReadonlyMap<string, ReadonlyMap<string, { objectId: string; identity: string; }>>,
-): { evidence: SqlDependencyEvidence[]; diagnostics: SqlEnvironmentDiagnostic[]; } {
+): Promise<{ evidence: SqlDependencyEvidence[]; diagnostics: SqlEnvironmentDiagnostic[]; }> {
     const evidence: SqlDependencyEvidence[] = [];
     const diagnostics: SqlEnvironmentDiagnostic[] = [];
     const sources = [
@@ -303,6 +318,9 @@ function dependencyEvidence(
                         : "Dependency analysis only supports declarative query and mutation statements",
                 );
             }
+            if (source.kind !== "table" && hasUnsupportedRelationShape(statement)) {
+                throw new Error("Unsupported relation-producing function shape");
+            }
             const matches = new Map<string, { objectId: string; identity: string; }>();
             for (const reference of collectTypeNames(statement)) {
                 const parts = reference.names;
@@ -317,20 +335,37 @@ function dependencyEvidence(
                 }
                 if (match) matches.set(match.objectId, match);
             }
-            if (source.kind !== "table") {
-                const referencedTables = collectReferencedTables(statement);
-                const referencedColumns = collectReferencedColumns(statement);
-                for (const [tableName, alias] of referencedTables) {
-                    const enumColumns = enumColumnsByTable.get(tableName);
-                    if (!enumColumns) continue;
-                    for (const column of referencedColumns) {
-                        if (column.qualifier && column.qualifier !== tableName && column.qualifier !== alias) continue;
-                        if (column.name === "*") {
-                            for (const metadata of enumColumns.values()) matches.set(metadata.objectId, metadata);
-                        } else {
-                            const metadata = enumColumns.get(column.name);
-                            if (metadata) matches.set(metadata.objectId, metadata);
-                        }
+            const referencedTables: RelationReference[] = source.kind === "table"
+                ? (() => {
+                    const create = statement.CreateStmt;
+                    if (!isNode(create) || !isNode(create.relation) || typeof create.relation.relname !== "string") {
+                        return [];
+                    }
+                    return [{ name: create.relation.relname }];
+                })()
+                : collectReferencedTables(statement);
+            {
+                for (const relation of referencedTables) {
+                    if (relation.schema !== undefined && relation.schema !== "public") {
+                        throw new Error(`Unsupported relation schema: ${relation.schema}`);
+                    }
+                    const columns = await db.query<{ name: string; }>(
+                        "SELECT DISTINCT t.typname AS name FROM pg_attribute a "
+                            + "JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace "
+                            + "JOIN pg_type t ON t.oid=a.atttypid "
+                            + "WHERE n.nspname='public' AND c.relname=$1 AND a.attnum>0 AND NOT a.attisdropped AND t.typtype='e'",
+                        [relation.name],
+                    );
+                    const exists = await db.query<{ exists: boolean; }>(
+                        "SELECT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+                            + "WHERE n.nspname='public' AND c.relname=$1) AS exists",
+                        [relation.name],
+                    );
+                    if (!exists.rows[0]?.exists) throw new Error(`Unresolved relation: ${relation.name}`);
+                    for (const column of columns.rows) {
+                        const metadata = enumsByName.get(column.name);
+                        if (!metadata) throw new Error(`Unresolved ENUM identity: ${column.name}`);
+                        matches.set(metadata.objectId, metadata);
                     }
                 }
             }
@@ -565,7 +600,6 @@ export async function compileSqlEnvironment(
         name,
         { objectId, identity: `"public".${quotedIdentifier(name)}` },
     ]));
-    const enumColumnsByTable = new Map<string, Map<string, { objectId: string; identity: string; }>>();
     const tableOwnerByName = new Map<string, string>();
     for (const table of captured.tables) {
         try {
@@ -579,38 +613,26 @@ export async function compileSqlEnvironment(
             if (owner) throw new Error(`Duplicate requested Table SQL name "${tableName}" (${owner}, ${table.id})`);
             if (create.if_not_exists === true) throw new Error("CREATE TABLE IF NOT EXISTS is not supported");
             tableOwnerByName.set(tableName, table.id);
-            const enumColumns = new Map<string, { objectId: string; identity: string; }>();
-            const elements = Array.isArray(create.tableElts) ? create.tableElts : [];
-            for (const element of elements) {
-                if (!isNode(element) || !isNode(element.ColumnDef) || typeof element.ColumnDef.colname !== "string") {
-                    continue;
-                }
-                const references = collectTypeNames(element.ColumnDef);
-                for (const reference of references) {
-                    const typeName = reference.names.length === 1 ? reference.names[0] : undefined;
-                    const metadata = typeName ? enumIdentities.get(typeName) : undefined;
-                    if (metadata && !reference.isArray) enumColumns.set(element.ColumnDef.colname, metadata);
-                }
-            }
-            enumColumnsByTable.set(tableName, enumColumns);
         } catch (error) {
             diagnostics.push({ kind: "schema", objectId: table.id, message: messageOf(error) });
         }
     }
-    const dependencies = dependencyEvidence(captured, enumIdentities, enumColumnsByTable);
-    diagnostics.push(...dependencies.diagnostics);
     if (diagnostics.length > 0) {
         return {
             status: "failed",
             descriptor,
             diagnostics: Object.freeze(diagnostics),
-            dependencies: Object.freeze(dependencies.evidence),
+            dependencies: Object.freeze([]),
         };
     }
 
     const lease = await (options.acquire ?? defaultLease)();
     const { db } = lease;
     let handedOff = false;
+    let dependencies: { evidence: SqlDependencyEvidence[]; diagnostics: SqlEnvironmentDiagnostic[]; } = {
+        evidence: [],
+        diagnostics: [],
+    };
     try {
         await resetDatabase(db);
         for (const declaration of enumDeclarations) {
@@ -661,6 +683,9 @@ export async function compileSqlEnvironment(
                 diagnostics.push({ kind: "inspection", objectId: target.id, message: messageOf(error) });
             }
         }
+
+        dependencies = await dependencyEvidence(db, captured, enumIdentities);
+        diagnostics.push(...dependencies.diagnostics);
 
         if (diagnostics.length > 0) {
             return {
@@ -718,5 +743,169 @@ export async function compileSqlEnvironment(
                 await lease.release();
             }
         }
+    }
+}
+
+/**
+ * Compile only the captured relation closure needed by the requested objects.
+ * Selection is syntax-aware, while PostgreSQL itself decides whether a type
+ * reference is built in before a project declaration is selected.
+ */
+export async function analyzeScopedSqlEnumDependencies(
+    input: Readonly<SqlEnvironmentInput>,
+    relevantIds: ReadonlySet<string>,
+    options: SqlEnvironmentCompilerOptions = {},
+): Promise<ScopedSqlEnumAnalysis> {
+    const captured = captureInput(input);
+    const descriptor = descriptorFor(captured);
+    const diagnostics: SqlEnvironmentDiagnostic[] = [];
+    const tableById = new Map(captured.tables.map(table => [table.id, table]));
+    const inspectionById = new Map(captured.inspections.map(target => [target.id, target]));
+    const tableByName = new Map<string, SqlTableSnapshot>();
+    for (const table of captured.tables) {
+        try {
+            const create = parseOne(table.schema).CreateStmt;
+            if (!isNode(create) || !isNode(create.relation) || typeof create.relation.relname !== "string") continue;
+            if (tableByName.has(create.relation.relname)) {
+                diagnostics.push({
+                    kind: "schema",
+                    objectId: table.id,
+                    message: `Ambiguous Table SQL name: ${create.relation.relname}`,
+                });
+            } else tableByName.set(create.relation.relname, table);
+        } catch {
+            // A malformed unrelated Table is deliberately outside this scope.
+        }
+    }
+
+    const selectedTables = new Map<string, SqlTableSnapshot>();
+    const selectedInspections: SqlInspectionTarget[] = [];
+    const pendingSql: string[] = [];
+    for (const id of relevantIds) {
+        const table = tableById.get(id);
+        const inspection = inspectionById.get(id);
+        if (!table && !inspection) {
+            diagnostics.push({
+                kind: "dependency",
+                objectId: id,
+                message: `Requested SQL object does not exist: ${id}`,
+            });
+        } else if (table) {
+            selectedTables.set(table.id, table);
+            pendingSql.push(table.schema);
+        } else if (inspection) {
+            selectedInspections.push(inspection);
+            pendingSql.push(inspection.sql);
+        }
+    }
+
+    const typeReferences: TypeReference[] = [];
+    for (let index = 0; index < pendingSql.length; index++) {
+        try {
+            const statement = parseOne(pendingSql[index]);
+            if (hasUnsupportedRelationShape(statement)) {
+                throw new Error("Unsupported relation-producing function shape");
+            }
+            typeReferences.push(...collectTypeNames(statement));
+            for (const relation of collectReferencedTables(statement)) {
+                if (relation.schema !== undefined && relation.schema !== "public") {
+                    throw new Error(`Unsupported relation schema: ${relation.schema}`);
+                }
+                const table = tableByName.get(relation.name);
+                if (!table) throw new Error(`Unresolved relation: ${relation.name}`);
+                if (!selectedTables.has(table.id)) {
+                    selectedTables.set(table.id, table);
+                    pendingSql.push(table.schema);
+                }
+            }
+        } catch (error) {
+            diagnostics.push({
+                kind: "dependency",
+                message: `Scoped dependency analysis is incomplete: ${messageOf(error)}`,
+            });
+        }
+    }
+    if (diagnostics.length > 0) return { status: "incomplete", descriptor, diagnostics: Object.freeze(diagnostics) };
+
+    const candidates = new Map<string, typeof captured.catalog.objects[number][]>();
+    for (const object of captured.catalog.objects) {
+        try {
+            const { name } = parseEnum(object.source);
+            const values = candidates.get(name) ?? [];
+            values.push(object);
+            candidates.set(name, values);
+        } catch {
+            // Malformed declarations matter only when selected; they cannot
+            // authoritatively claim a PostgreSQL identifier.
+        }
+    }
+    const selectedCatalog = new Map<string, typeof captured.catalog.objects[number]>();
+    const lease = await (options.acquire ?? defaultLease)();
+    try {
+        await resetDatabase(lease.db);
+        for (const reference of typeReferences) {
+            if (reference.names.length > 2) {
+                diagnostics.push({
+                    kind: "dependency",
+                    message: `Unsupported type qualification: ${reference.names.join(".")}`,
+                });
+                continue;
+            }
+            const identity = reference.names.map(quotedIdentifier).join(".");
+            const resolved = await lease.db.query<{ oid: string | null; }>("SELECT to_regtype($1)::text AS oid", [
+                identity,
+            ]);
+            if (resolved.rows[0]?.oid) continue;
+            const name = reference.names.at(-1);
+            const matches = name === undefined ? [] : candidates.get(name) ?? [];
+            if (matches.length !== 1) {
+                diagnostics.push({ kind: "dependency", message: `Unresolved or ambiguous custom type: ${identity}` });
+            } else selectedCatalog.set(matches[0].id, matches[0]);
+        }
+    } catch (error) {
+        diagnostics.push({ kind: "dependency", message: messageOf(error) });
+    } finally {
+        try {
+            await resetDatabase(lease.db);
+        } finally {
+            await lease.release();
+        }
+    }
+    if (diagnostics.length > 0) return { status: "incomplete", descriptor, diagnostics: Object.freeze(diagnostics) };
+
+    const scopedInput = captureInput({
+        catalog: Object.freeze({ ...captured.catalog, objects: Object.freeze([...selectedCatalog.values()]) }),
+        tables: Object.freeze([...selectedTables.values()]),
+        inspections: Object.freeze(selectedInspections),
+    });
+    const result = await compileSqlEnvironment(scopedInput, options);
+    if (result.status === "failed") {
+        return { status: "incomplete", descriptor, diagnostics: result.diagnostics };
+    }
+    try {
+        const requestedDependencies = result.environment.dependencies.filter(row => relevantIds.has(row.referencingId));
+        if (
+            requestedDependencies.length !== relevantIds.size
+            || requestedDependencies.some(row => row.status !== "complete")
+        ) {
+            return {
+                status: "incomplete",
+                descriptor,
+                diagnostics: Object.freeze([{
+                    kind: "dependency",
+                    message: "Not every requested object produced complete evidence",
+                }]),
+            };
+        }
+        const ids = new Set(requestedDependencies.flatMap(row => row.requiredEnums.map(item => item.objectId)));
+        return Object.freeze({
+            status: "complete" as const,
+            descriptor,
+            scopedInput,
+            dependencies: Object.freeze(requestedDependencies),
+            requiredEnums: Object.freeze(result.environment.enums.filter(item => ids.has(item.objectId))),
+        });
+    } finally {
+        await result.environment.dispose();
     }
 }

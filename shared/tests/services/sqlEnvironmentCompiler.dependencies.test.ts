@@ -67,4 +67,31 @@ describe("SQL inspection ENUM dependencies", () => {
         }
         await result.environment.dispose();
     }, 30_000);
+
+    it("finds qualified ENUM columns through CTE and derived-table scopes", async () => {
+        const inspections: SqlInspectionTarget[] = [
+            {
+                id: "cte",
+                kind: "grid",
+                sql: "WITH renamed AS (SELECT priority AS value FROM tasks) SELECT value FROM renamed",
+            },
+            { id: "derived", kind: "calendar", sql: "SELECT value FROM (SELECT priority AS value FROM tasks) nested" },
+        ];
+        const result = await compileSqlEnvironment({
+            catalog,
+            tables: [{ id: "tasks-table", schema: "CREATE TABLE tasks (priority public.priority_level)", records: [] }],
+            inspections,
+        });
+        expect(result.status).toBe("ready");
+        if (result.status !== "ready") return;
+        for (const target of inspections) {
+            expect(result.environment.dependencies).toContainEqual({
+                referencingId: target.id,
+                sourceKind: target.kind,
+                status: "complete",
+                requiredEnums: [{ objectId: "priority-enum", identity: '"public"."priority_level"' }],
+            });
+        }
+        await result.environment.dispose();
+    }, 30_000);
 });
