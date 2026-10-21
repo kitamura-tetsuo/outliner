@@ -1,6 +1,6 @@
 /** @feature GRD-5c1d8e2a */
 import "../utils/registerAfterEachSnapshot";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { addSourceRecord, configureGrid, createBlankGrid } from "../utils/crossProjectGridHelpers";
 import {
     expectColumnGeometry,
@@ -39,6 +39,39 @@ async function setNumericWidth(page: Page, column: string, px: string): Promise<
     await input.fill(px);
     await input.press("Enter");
     await expect.poll(() => savedWidth(page, column)).toBe(px === "" ? undefined : Number(px));
+}
+
+interface WheelBoundaryEvidence {
+    hitInsideGrid: boolean;
+    hitInsideHeader: boolean;
+    hitTag?: string;
+    hitTestId?: string;
+    hitColumn?: string;
+    clientWidth: number;
+    scrollWidth: number;
+    scrollLeft: number;
+    resizing?: string;
+}
+
+async function wheelBoundaryEvidence(
+    scroller: Locator,
+    point: { x: number; y: number; },
+): Promise<WheelBoundaryEvidence> {
+    return scroller.evaluate((el, hitPoint) => {
+        const target = document.elementFromPoint(hitPoint.x, hitPoint.y);
+        const targetElement = target instanceof HTMLElement ? target : undefined;
+        return {
+            hitInsideGrid: target !== null && el.contains(target),
+            hitInsideHeader: Boolean(targetElement?.closest("th[data-col]")),
+            hitTag: targetElement?.tagName,
+            hitTestId: targetElement?.dataset.testid,
+            hitColumn: targetElement?.closest<HTMLElement>("[data-col]")?.dataset.col,
+            clientWidth: el.clientWidth,
+            scrollWidth: el.scrollWidth,
+            scrollLeft: el.scrollLeft,
+            resizing: el.dataset.columnResizing,
+        };
+    }, point);
 }
 
 test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
@@ -113,7 +146,7 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         await expect.poll(() => savedWidth(page, "quantity")).toBe(4096);
     });
 
-    test("displacement uses content coordinates while scrolled and while scrolling", async ({ page }) => {
+    test("displacement uses content coordinates while scrolled and while scrolling", async ({ page }, testInfo) => {
         await addSourceRecord(page);
         await setNumericWidth(page, "id", "120");
         await setNumericWidth(page, "title", "1600");
@@ -129,13 +162,87 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         await page.mouse.move(press.x + 30, press.y, { steps: 3 });
         await expectColumnGeometry(page, 0, "id", Math.round(start + 30));
 
-        // A real wheel scroll under the stationary pointer moves the header
-        // left by the scroll delta, which grows the candidate by the same.
-        const before = await scroller.evaluate((el) => el.scrollLeft);
+        const originalPoint = { x: press.x + 30, y: press.y };
+        const originalBoundary = await wheelBoundaryEvidence(scroller, originalPoint);
+        await testInfo.attach("wheel-boundary-original-target.json", {
+            body: JSON.stringify({ point: originalPoint, ...originalBoundary }, undefined, 2),
+            contentType: "application/json",
+        });
+        expect(originalBoundary.resizing).toBe("true");
+        expect(originalBoundary.scrollWidth).toBeGreaterThan(originalBoundary.clientWidth);
+
+        // The resize handle's boundary y can hit either the header or its
+        // surrounding SECTION after preview layout. Retain that observation;
+        // only correct the ambiguous y coordinate when it is not already the
+        // resized header, while preserving the pointer's content x.
+        let headerPoint = originalPoint;
+        if (!originalBoundary.hitInsideHeader || originalBoundary.hitColumn !== "id") {
+            const headerBox = await scroller.locator('th[data-col="id"]').boundingBox();
+            expect(headerBox, "the resized header must remain rendered during the active gesture").not.toBeNull();
+            headerPoint = { x: originalPoint.x, y: Math.round(headerBox!.y + headerBox!.height / 2) };
+            await page.mouse.move(headerPoint.x, headerPoint.y);
+        }
+        const headerBoundary = await wheelBoundaryEvidence(scroller, headerPoint);
+        expect(headerBoundary, `original header wheel boundary: ${JSON.stringify(headerBoundary)}`).toMatchObject({
+            hitInsideGrid: true,
+            hitInsideHeader: true,
+            hitColumn: "id",
+            resizing: "true",
+            scrollLeft: 12,
+        });
+
+        // Prove the scroll oracle cannot be rescued by a later wheel: suppress
+        // this exact header target's next wheel at the browser boundary and
+        // require the original-action assertion to reject the unchanged offset.
+        await page.evaluate((point) => {
+            const target = document.elementFromPoint(point.x, point.y);
+            if (!(target instanceof HTMLElement)) throw new Error("original wheel target disappeared");
+            target.addEventListener("wheel", (event) => event.preventDefault(), { capture: true, once: true });
+        }, headerPoint);
+        await page.mouse.wheel(40, 0);
+        await expect(
+            expect.poll(() => scroller.evaluate((el) => el.scrollLeft), { timeout: 500 }).toBeGreaterThan(12),
+            "the original header-wheel oracle must reject suppressed delivery",
+        ).rejects.toThrow();
+        const suppressedAfter = await wheelBoundaryEvidence(scroller, headerPoint);
+        await testInfo.attach("wheel-boundary-suppressed-header.json", {
+            body: JSON.stringify(
+                { point: headerPoint, before: headerBoundary, after: suppressedAfter },
+                undefined,
+                2,
+            ),
+            contentType: "application/json",
+        });
+        expect(suppressedAfter).toMatchObject({
+            hitInsideGrid: true,
+            hitInsideHeader: true,
+            resizing: "true",
+            scrollLeft: 12,
+        });
+
+        // Deliver the unsuppressed real wheel to the same verified header
+        // target. An unchanged offset is a failure here; no later body-target
+        // action can rescue the original production-boundary oracle.
+        const before = suppressedAfter.scrollLeft;
         await page.mouse.wheel(40, 0);
         await expect.poll(() => scroller.evaluate((el) => el.scrollLeft), { timeout: 10000 }).toBeGreaterThan(before);
-        const delta = (await scroller.evaluate((el) => el.scrollLeft)) - before;
+        const after = await wheelBoundaryEvidence(scroller, headerPoint);
+        const delta = after.scrollLeft - before;
         const expected = Math.round(start + 30 + delta);
+        await testInfo.attach("wheel-boundary-original-wheel.json", {
+            body: JSON.stringify({ point: headerPoint, before: suppressedAfter, after, delta }, undefined, 2),
+            contentType: "application/json",
+        });
+        expect(after.resizing).toBe("true");
+
+        // Negative control: exercise the same measured header/body oracle with
+        // the deliberately incorrect pointer-only result. It must reject that
+        // result before the correct pointer-plus-scroll expectation is checked.
+        const pointerOnly = Math.round(start + 30);
+        await expect(
+            expectColumnGeometry(page, 0, "id", pointerOnly, 500),
+            "the geometry oracle must reject a resize result that omits scroll delta",
+        ).rejects.toThrow(`column id should measure ${pointerOnly}px`);
         await expectColumnGeometry(page, 0, "id", expected);
         expect(await savedWidth(page, "id")).toBe(120);
         await page.mouse.up();
