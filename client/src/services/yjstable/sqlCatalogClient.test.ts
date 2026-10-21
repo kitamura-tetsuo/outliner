@@ -45,6 +45,7 @@ describe("sqlCatalogClient naming", () => {
 
     it("uses the shared parser for nested comments and PostgreSQL literal syntax", () => {
         const sources = [
+            "CREATE TYPE empty_mood AS ENUM ()",
             "/* outer /* nested */ comment */ CREATE /* between */ TYPE 状態 AS ENUM ('open;now', E'line\\nfeed');",
             "CREATE TYPE \"My \"\"Mood\"\"\" AS ENUM ('happy; yes', 'it''s fine');",
         ];

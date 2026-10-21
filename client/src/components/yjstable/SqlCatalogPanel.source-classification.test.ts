@@ -25,6 +25,7 @@ const objects = [
         kind: "enum",
         source: 'CREATE TYPE "My ""Mood""" AS ENUM (\'happy; yes\')',
     },
+    { id: "valid-empty", kind: "enum", source: "CREATE TYPE empty_mood AS ENUM ()" },
     { id: "malformed", kind: "enum", source: "CREATE TYPE mood AS ENUM ('happy'" },
     { id: "multiple", kind: "enum", source: "CREATE TYPE a AS ENUM ('x'); SELECT 1" },
     { id: "qualified", kind: "enum", source: "CREATE TYPE public.mood AS ENUM ('happy')" },
@@ -64,6 +65,7 @@ describe("SqlCatalogPanel source classification", () => {
         expect(view.getAllByTestId("sql-catalog-name").map(node => node.textContent)).toEqual([
             "状態",
             'My "Mood"',
+            "empty_mood",
             "(unsupported source)",
             "(unsupported source)",
             "(unsupported source)",
@@ -77,11 +79,11 @@ describe("SqlCatalogPanel source classification", () => {
         expect(view.getByTestId("sql-catalog-detail-name").textContent).toBe("状態");
         expect(view.queryByTestId("sql-catalog-detail-unsupported")).toBeNull();
 
-        await fireEvent.click(items[2]);
+        await fireEvent.click(items[3]);
         expect(view.getByTestId("sql-catalog-detail-name").textContent).toBe("(unsupported source)");
         expect(view.getByTestId("sql-catalog-detail-unsupported")).toBeTruthy();
 
-        await fireEvent.click(items[6]);
+        await fireEvent.click(items[7]);
         expect(view.getByTestId("sql-catalog-detail-name").textContent).toBe("apparent");
         expect(view.getByTestId("sql-catalog-detail-unsupported")).toBeTruthy();
 
