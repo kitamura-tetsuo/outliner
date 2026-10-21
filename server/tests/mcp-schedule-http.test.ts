@@ -183,6 +183,20 @@ describe("Schedule MCP HTTP contract", () => {
         expect(mixedIdsPreview).to.include({ accepted: true, persisted: false });
         expect(mixedIdsPreview.candidateRows).to.have.length(2);
         expect(mixedIdsPreview.deterministicIds).to.include({ idempotent: false });
+        const modifiedCallPreview = payload(
+            await call(toolCall("validate_schedule_rule", {
+                projectId: "project-1",
+                ruleId: "rule-1",
+                candidate: {
+                    ...candidate,
+                    sql: "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence' ORDER BY random())) RETURNING *",
+                },
+                occurrence: "2099-01-01T09:00:00Z",
+            })),
+        ).value;
+        expect(modifiedCallPreview).to.include({ accepted: false, persisted: false });
+        expect(modifiedCallPreview.candidateRows).to.deep.equal([]);
+        expect(modifiedCallPreview.deterministicIds).to.include({ idempotent: false });
         const scheduleAfterPreviews =
             payload(await call(toolCall("get_schedule", { projectId: "project-1", ruleId: "rule-1" }))).value;
         const tableAfterPreviews = payload(

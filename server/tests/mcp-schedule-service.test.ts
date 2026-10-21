@@ -312,6 +312,50 @@ describe("MCP Schedule diagnostics", function() {
             expect(result.deterministicIds.idempotent, sql).to.equal(idempotent);
             expect(tableConnection.document.getMap("data").size, sql).to.equal(1);
         }
+        const precedingOccurrence = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (occurrence_time, id) VALUES (current_setting('job.occurrence')::timestamptz, random()::text) RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(precedingOccurrence).to.include({ accepted: true, persisted: false });
+        expect(precedingOccurrence.candidateRows[0]).to.include({ occurrence_time: "2026-08-30T09:00:00.000Z" });
+        expect(precedingOccurrence.candidateRows[0].id).to.be.a("string");
+        expect(precedingOccurrence.deterministicIds.idempotent).to.equal(false);
+        const precedingUnknown = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(read.stored as never),
+                sql: "INSERT INTO tasks (occurrence_time, id) VALUES (now(), 'fixed-after') RETURNING *",
+            },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(precedingUnknown).to.include({ accepted: true, persisted: false });
+        expect(precedingUnknown.candidateRows[0]).to.include({ id: "fixed-after" });
+        expect(precedingUnknown.deterministicIds.idempotent).to.equal(true);
+        for (
+            const sql of [
+                "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence' ORDER BY random())) RETURNING *",
+                "INSERT INTO tasks (id) VALUES (current_setting('job.occurrence') FILTER (WHERE random() > 0.5)) RETURNING *",
+            ]
+        ) {
+            const unsupportedCall = await service.validate(
+                "user",
+                "project-1",
+                { ...(read.stored as never), sql },
+                "rule-1",
+                "2026-08-30T09:00:00Z",
+            );
+            expect(unsupportedCall.accepted, sql).to.equal(false);
+            expect(unsupportedCall.candidateRows, sql).to.deep.equal([]);
+            expect(unsupportedCall.deterministicIds.idempotent, sql).to.equal(false);
+        }
         const diagnosticScheduleAfter = await service.getSchedule("user", "project-1", "rule-1");
         const diagnosticTableAfter = await relations.getTable("user", "project-1", "table-1", true);
         expect(diagnosticScheduleAfter.stored).to.deep.equal(diagnosticScheduleBefore.stored);

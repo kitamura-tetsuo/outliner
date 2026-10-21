@@ -53,6 +53,13 @@ function deterministicIdExpression(value: unknown, textConcatenationOperand = fa
         const args = Array.isArray(call.args) ? call.args : [];
         return (name?.length === 1 && name[0] === "current_setting"
             || name?.length === 2 && name[0] === "pg_catalog" && name[1] === "current_setting")
+            && (!Array.isArray(call.agg_order) || call.agg_order.length === 0)
+            && call.agg_filter === undefined
+            && call.over === undefined
+            && call.agg_within_group !== true
+            && call.agg_star !== true
+            && call.agg_distinct !== true
+            && call.func_variadic !== true
             && args.length === 1 && pgNode(args[0]) && pgNode(args[0].A_Const)
             && pgNode(args[0].A_Const.sval) && args[0].A_Const.sval.sval === "job.occurrence";
     }
