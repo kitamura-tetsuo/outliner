@@ -194,8 +194,28 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         // offset with real input so the negative and repaired comparisons use
         // the same active gesture and measured starting state.
         if (originalAfter.scrollLeft !== originalBoundary.scrollLeft) {
+            const resetCell = scroller.locator("td[data-col]").first();
+            const resetBox = await resetCell.boundingBox();
+            expect(resetBox, "the Grid body supplies a verified target for resetting the control state").not.toBeNull();
+            const resetPoint = { x: originalPoint.x, y: Math.round(resetBox!.y + resetBox!.height / 2) };
+            await page.mouse.move(resetPoint.x, resetPoint.y);
+            const resetBoundary = await wheelBoundaryEvidence(scroller, resetPoint);
+            expect(resetBoundary).toMatchObject({
+                hitInsideGrid: true,
+                resizing: "true",
+                scrollLeft: originalAfter.scrollLeft,
+            });
+            expect(resetBoundary.scrollWidth).toBeGreaterThan(resetBoundary.clientWidth);
             await page.mouse.wheel(originalBoundary.scrollLeft - originalAfter.scrollLeft, 0);
-            await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBe(originalBoundary.scrollLeft);
+            await expect.poll(() => scroller.evaluate((el) => el.scrollLeft), { timeout: 10000 }).toBe(
+                originalBoundary.scrollLeft,
+            );
+            const resetAfter = await wheelBoundaryEvidence(scroller, resetPoint);
+            await testInfo.attach("wheel-boundary-reset-scroll.json", {
+                body: JSON.stringify({ point: resetPoint, before: resetBoundary, after: resetAfter }, undefined, 2),
+                contentType: "application/json",
+            });
+            expect(resetAfter.resizing).toBe("true");
             await expectColumnGeometry(page, 0, "id", Math.round(start + 30));
         }
 
