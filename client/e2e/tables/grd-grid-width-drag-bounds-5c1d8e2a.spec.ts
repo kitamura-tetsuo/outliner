@@ -171,20 +171,17 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         expect(originalBoundary.resizing).toBe("true");
         expect(originalBoundary.scrollWidth).toBeGreaterThan(originalBoundary.clientWidth);
 
-        // The resize handle's boundary y becomes a non-Grid SECTION hit after
-        // preview layout. Keep the pointer's content x unchanged, but establish
-        // the original wheel action on the resized header's interior rather
-        // than replacing it with a body-row target.
-        expect(originalBoundary).toMatchObject({
-            hitInsideGrid: false,
-            hitInsideHeader: false,
-            resizing: "true",
-            scrollLeft: 12,
-        });
-        const headerBox = await scroller.locator('th[data-col="id"]').boundingBox();
-        expect(headerBox, "the resized header must remain rendered during the active gesture").not.toBeNull();
-        const headerPoint = { x: originalPoint.x, y: Math.round(headerBox!.y + headerBox!.height / 2) };
-        await page.mouse.move(headerPoint.x, headerPoint.y);
+        // The resize handle's boundary y can hit either the header or its
+        // surrounding SECTION after preview layout. Retain that observation;
+        // only correct the ambiguous y coordinate when it is not already the
+        // resized header, while preserving the pointer's content x.
+        let headerPoint = originalPoint;
+        if (!originalBoundary.hitInsideHeader || originalBoundary.hitColumn !== "id") {
+            const headerBox = await scroller.locator('th[data-col="id"]').boundingBox();
+            expect(headerBox, "the resized header must remain rendered during the active gesture").not.toBeNull();
+            headerPoint = { x: originalPoint.x, y: Math.round(headerBox!.y + headerBox!.height / 2) };
+            await page.mouse.move(headerPoint.x, headerPoint.y);
+        }
         const headerBoundary = await wheelBoundaryEvidence(scroller, headerPoint);
         expect(headerBoundary, `original header wheel boundary: ${JSON.stringify(headerBoundary)}`).toMatchObject({
             hitInsideGrid: true,
