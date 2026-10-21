@@ -136,7 +136,8 @@ export function extractCheckInOptions(
         const expr = node(node(selectExpression(expression))?.A_Expr);
         const names = expr?.name;
         if (
-            expr?.kind !== "AEXPR_OP_ANY" || !Array.isArray(names) || names.length !== 1
+            (expr?.kind !== "AEXPR_OP_ANY" && expr?.kind !== "AEXPR_OP")
+            || !Array.isArray(names) || names.length !== 1
             || node(node(names[0])?.String)?.sval !== "="
         ) {
             return undefined;
@@ -145,7 +146,9 @@ export function extractCheckInOptions(
         if (!Array.isArray(fields) || fields.length !== 1) return undefined;
         const column = node(node(fields[0])?.String)?.sval;
         if (typeof column !== "string") return undefined;
-        const elements = node(node(expr.rexpr)?.A_ArrayExpr)?.elements;
+        const elements = expr.kind === "AEXPR_OP"
+            ? [expr.rexpr]
+            : node(node(expr.rexpr)?.A_ArrayExpr)?.elements;
         if (!Array.isArray(elements) || elements.length === 0) return undefined;
         const options: string[] = [];
         for (const element of elements) {

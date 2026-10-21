@@ -100,6 +100,30 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         }
     });
 
+    it("inserts through a catalog-normalized singleton IN check", async () => {
+        const doc = new Y.Doc({ guid: "grid-insert-singleton-check" });
+        const schema =
+            `CREATE TABLE target (id TEXT PRIMARY KEY, "状態 値" TEXT DEFAULT '開''始];' CHECK ("状態 値" IN ('開''始];')))`;
+        const parsed = await parseCreateTable(schema);
+        expect(parsed.hasUnsupportedInsertCheck).toBe(false);
+        expect(parsed.columns.find(column => column.name === "状態 値")?.checkOptions).toEqual(["開'始];"]);
+        const run = fixture(doc, schema, doc.guid);
+        run.table.undo.stopCapturing();
+        const history = run.table.undo.undoStack.length;
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "inserted" });
+            expect(run.table.data.size).toBe(1);
+            expect([...run.table.data.values()][0]!.toJSON()).toMatchObject({ "状態 値": "開'始];" });
+            expect(run.table.undo.undoStack.length).toBeGreaterThan(history);
+            const physical = await runSelect<{ "状態 値": string; }>(
+                `SELECT "状態 値" FROM "${projectSchemaName(doc.guid)}".target`,
+            );
+            expect(physical.rows).toEqual([{ "状態 値": "開'始];" }]);
+        } finally {
+            run.controller.dispose();
+        }
+    });
+
     it("normalizes DATE and TIMESTAMP defaults through the real Grid writer", async () => {
         const doc = new Y.Doc({ guid: "grid-insert-date-defaults" });
         const run = fixture(
