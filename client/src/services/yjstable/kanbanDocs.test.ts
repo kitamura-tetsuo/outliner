@@ -186,7 +186,6 @@ describe("Kanban validation and missing identities", () => {
         expect(getKanbanRegistry(doc).get(kanbanId)?.has("sourceTableId")).toBe(false);
     });
 
-
     it("rejects duplicate or mistyped settings without changing the stored definition", () => {
         const { doc, tableId } = tasksProject();
         const kanbanId = createKanban(doc, {

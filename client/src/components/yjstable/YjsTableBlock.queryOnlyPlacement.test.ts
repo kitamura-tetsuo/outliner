@@ -1,6 +1,6 @@
-import * as Y from "yjs";
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import { Project } from "../../schema/app-schema";
 import { createGrid, getGridHandles, getGridQuery, getGridRegistry } from "../../services/yjstable/gridDocs";
 import { getItemGridId } from "../../services/yjstable/itemBinding";
