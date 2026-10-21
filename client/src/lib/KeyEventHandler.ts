@@ -24,6 +24,7 @@ import {
     type PasteSpecialVariant,
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
+import { TransferBindings } from "../services/clipboard/transferBindings";
 import { getItemDiagramId } from "../services/diagram/diagramBinding";
 import {
     currentDiagramAuthorization,
@@ -44,6 +45,7 @@ import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemGridId } from "../services/yjstable/itemBinding";
 import { getItemKanbanId } from "../services/yjstable/kanbanBinding";
+import { queryReadDependencies } from "../services/yjstable/queryReadDependencies";
 import { computeSnapshotClosure, exportGridSlice, exportTableStructure } from "../services/yjstable/tableClone";
 import { listTables } from "../services/yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../services/yjstable/tableSqlRewrite";
@@ -2819,6 +2821,7 @@ export class KeyEventHandler {
                 ? [...new Set(structured.items.flatMap(item => item.yjsGridId ? [item.yjsGridId] : []))]
                 : [];
             let assertSharedSource = () => {};
+            let sharedPlacementBindings: TransferBindings | undefined;
             if (sharedGridIds.length && generalStore.project) {
                 const { captureDuplicationAdmission } = await import("../services/yjstable/objectDuplication");
                 if (!destinationCurrent() || !generalStore.project) return;
@@ -2827,6 +2830,17 @@ export class KeyEventHandler {
                         generalStore.project.ydoc,
                         sharedGridIds.map(id => ({ type: "grid" as const, id })),
                     );
+                    const doc = generalStore.project.ydoc;
+                    sharedPlacementBindings = new TransferBindings(doc, assertSharedSource);
+                    const dependencies = new Set<string>();
+                    for (const id of sharedGridIds) {
+                        sharedPlacementBindings.capture("grid", id, false);
+                        const query = String(
+                            doc.getMap<import("yjs").Map<unknown>>("yjsGrids").get(id)?.get("query") ?? "",
+                        );
+                        for (const tableId of queryReadDependencies(doc, query).tableIds) dependencies.add(tableId);
+                    }
+                    for (const id of dependencies) sharedPlacementBindings.capture("table", id, false);
                 } catch (error) {
                     if (!isSpecial) throw error;
                     // Captured text needs no live Grid. Retain the structural
@@ -3164,6 +3178,7 @@ export class KeyEventHandler {
             // created here that this one binds to instead. Only the former may
             // be rolled back or undone.
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
+            let reusedTableIdMap: Record<string, string> = {};
             let pastedGridIdMap: Record<string, string> = {};
             let reusedGridIdMap: Record<string, string> = {};
             const destinationDoc = generalStore.project?.ydoc;
@@ -3237,6 +3252,7 @@ export class KeyEventHandler {
                         pendingPaste = cloneResult;
                         if (cloneResult === undefined || !destinationCurrent()) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
+                        reusedTableIdMap = cloneResult.reusedTableIdMap;
                         pastedGridIdMap = cloneResult.gridIdMap;
                         reusedGridIdMap = cloneResult.reusedGridIdMap;
                     } else {
@@ -3273,7 +3289,12 @@ export class KeyEventHandler {
                         pendingPaste?.admit();
                         const sqlNameMap = new Map<string, string>();
                         if (pastedTableIdMap) {
-                            for (const [sourceTableId, destinationTableId] of Object.entries(pastedTableIdMap)) {
+                            for (
+                                const [sourceTableId, destinationTableId] of Object.entries({
+                                    ...reusedTableIdMap,
+                                    ...pastedTableIdMap,
+                                })
+                            ) {
                                 const srcTables = ("tables" in structured)
                                     ? structured.tables as Record<string, { sqlName?: string; }>
                                     : undefined;
@@ -3353,6 +3374,7 @@ export class KeyEventHandler {
 
             if (!destinationCurrent()) return;
             pendingPaste?.admit();
+            if (sameProjectItems) sharedPlacementBindings?.assertCurrent();
             if (specialVariant !== "values-only") assertSharedSource();
 
             // No awaited preparation may follow this final admission before dispatch.
@@ -3361,11 +3383,13 @@ export class KeyEventHandler {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
                 const createsDefinitions = Object.keys(pastedTableIdMap ?? {}).length > 0
                     || Object.keys(pastedGridIdMap).length > 0;
-                const retainsTransferBindings = createsDefinitions || Object.keys(reusedGridIdMap).length > 0;
+                const sharedBindings = sameProjectItems ? sharedPlacementBindings : undefined;
+                const retainsTransferBindings = createsDefinitions || Object.keys(reusedGridIdMap).length > 0
+                    || sharedBindings !== undefined;
                 if (typeof window !== "undefined") {
                     // A reuse-only transfer allocates no object whose manager would
                     // otherwise close outline capture. Give this Paste its own entry.
-                    if (pendingPaste && retainsTransferBindings) generalStore.undoManager?.stopCapturing();
+                    if (retainsTransferBindings) generalStore.undoManager?.stopCapturing();
                     window.dispatchEvent(
                         new CustomEvent("paste-multi-item", {
                             detail: {
@@ -3387,14 +3411,16 @@ export class KeyEventHandler {
                         && destinationDoc
                         && generalStore.undoManager
                     ) {
-                        if (pendingPaste) {
+                        const evidence = pendingPaste?.bindings.forComposite() ?? sharedBindings;
+                        if (evidence) {
                             globalUndoRouter.captureCrossProjectPaste(
                                 generalStore.undoManager,
                                 destinationDoc,
-                                pendingPaste.bindings.forComposite(),
+                                evidence,
                                 // Only definition restoration needs the source ENUM/catalog check.
                                 createsDefinitions ? authorizePasteRedo : undefined,
                             );
+                            generalStore.undoManager.stopCapturing();
                         }
                     }
                     pasteCommitted = true;

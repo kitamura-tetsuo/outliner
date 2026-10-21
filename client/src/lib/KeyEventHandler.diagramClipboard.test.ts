@@ -29,6 +29,7 @@ vi.mock("../stores/AliasPickerStore.svelte", () => ({
 }));
 vi.mock("./yjsService.svelte", () => ({
     acquireClientByProjectId: () => Promise.resolve(undefined),
+    getLoadedProjectDocById: () => undefined,
 }));
 
 type Endpoint = { kind: "node-boundary"; itemId: string; side: "before" | "after"; } | {

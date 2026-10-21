@@ -185,3 +185,19 @@ structure-only fallback, including a cold Project room whose initial sync times
 out: its newly opened client is released and is not evidence of Grid deletion.
 Already-loaded shared clients retain their existing acquisition behavior.
 Explicit no-data Copy opens no new source room.
+
+Same-Project ordinary Paste and Another view retain non-owned Grid and dependency
+Table witnesses in an isolated placement history entry. Undo removes placements
+without deleting shared definitions or records. Redo requires the original Grid
+and Table incarnations, query, INSERT preference and resolved dependencies;
+refusal changes neither native nor router history, clipboard bytes or peer data.
+Presentation and row edits remain independent.
+
+No-data cross-Project Copy uses an already-loaded authorized source as identity
+evidence without opening a source connection or reading rows. Evidence is
+captured before asynchronous SQL/import preparation and rechecked at final
+placement admission. An observed deletion, replacement or structural change
+refuses the operation; a genuinely never-loaded source retains portable
+structure-only behavior. Calendar SQL uses both fresh and provenance-reused
+Table mappings, resolved through admitted destination identities. Reuse grants
+no allocation ownership and causes no row or Schedule recopy.

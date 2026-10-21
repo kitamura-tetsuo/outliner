@@ -22,7 +22,7 @@ interface Binding {
 export class TransferBindings {
     private bindings: Binding[] = [];
 
-    constructor(readonly doc: Y.Doc) {}
+    constructor(readonly doc: Y.Doc, private readonly assertAdmission?: () => void) {}
 
     capture(kind: Kind, id: string, owned: boolean, entry = this.registry(kind).get(id)): void {
         if (!entry) throw new Error(`Destination ${kind} binding is unavailable`);
@@ -40,7 +40,7 @@ export class TransferBindings {
 
     /** Calendar definitions retain their separate existing history handling. */
     forComposite(): TransferBindings {
-        const evidence = new TransferBindings(this.doc);
+        const evidence = new TransferBindings(this.doc, this.assertAdmission);
         evidence.bindings = this.bindings.filter(binding => binding.kind !== "calendar");
         return evidence;
     }
@@ -65,6 +65,7 @@ export class TransferBindings {
 
     /** Pending commit requires the exact identity and mapping accepted by planning. */
     assertCurrent(): void {
+        this.assertAdmission?.();
         if (this.bindings.some(binding => !this.current(binding))) {
             throw new Error("A destination binding changed during preparation");
         }
@@ -78,6 +79,7 @@ export class TransferBindings {
     }
 
     assertReplayAvailable(): void {
+        this.assertAdmission?.();
         const names = new Set<unknown>();
         for (const binding of this.bindings) {
             if (!binding.owned) {

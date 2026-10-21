@@ -20,6 +20,7 @@ import {
     type PasteSpecialRequest,
 } from "../services/clipboard/pasteSpecial";
 import { registerEditorSurface } from "../services/editorSurface";
+import { createScheduleRule } from "../services/schedule/scheduleRuleService";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { createGrid, getGridRegistry, removeGridWithPlacements } from "../services/yjstable/gridDocs";
 import { exportGridSlice, exportTableStructures } from "../services/yjstable/tableClone";
@@ -790,6 +791,77 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         state.cursors = [];
     });
 
+    for (const mutation of ["query", "preference", "dependency", "presentation"] as const) {
+        it(`shared placement keeps an isolated non-owned replay witness: ${mutation}`, async () => {
+            const doc = state.doc;
+            const table = createPortableTable(doc);
+            const handles = getTableHandles(doc, table)!;
+            addRecord(handles, { id: "saved", value: "source" }, "saved");
+            const grid = createGrid(doc, undefined, { query: "SELECT * FROM sales", insertTargetTableId: table });
+            const entry = getGridRegistry(doc).get(grid)!;
+            const outline = doc.getMap("clipboard-outline");
+            const manager = new Y.UndoManager(outline);
+            state.undoManager = manager;
+            globalUndoRouter.clear();
+            globalUndoRouter.register(manager);
+            const listener = () => outline.set("placement", grid);
+            window.addEventListener("paste-multi-item", listener);
+            try {
+                outline.set("precedingText", "keep this edit");
+                await KeyEventHandler.handlePaste(pasteEvent(
+                    JSON.stringify({
+                        version: 3,
+                        sourceProjectId: doc.guid,
+                        tables: exportTableStructures(doc, [table]),
+                        grids: { [grid]: exportGridSlice(doc, grid) },
+                        items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: grid }],
+                    }),
+                    "Grid",
+                ));
+                expect(manager.undoStack).toHaveLength(2);
+                outline.set("followingText", "separate edit");
+                expect(manager.undoStack).toHaveLength(3);
+                globalUndoRouter.undo();
+                expect(outline.toJSON()).toEqual({ precedingText: "keep this edit", placement: grid });
+                globalUndoRouter.undo();
+                expect(outline.toJSON()).toEqual({ precedingText: "keep this edit" });
+                expect(getGridRegistry(doc).get(grid)).toBe(entry);
+                expect(handles.data.toJSON()).toEqual({ saved: { id: "saved", value: "source" } });
+                doc.transact(() => {
+                    if (mutation === "query") entry.set("query", "SELECT id FROM sales");
+                    if (mutation === "preference") entry.delete("insertTargetTableId");
+                    if (mutation === "dependency") {
+                        doc.getMap<Y.Map<unknown>>("yjsTables").get(table)!.set("doc", new Y.Doc());
+                    }
+                    if (mutation === "presentation") entry.set("name", "Peer name");
+                }, "peer");
+                const positions = [
+                    globalUndoRouter.undoDepth,
+                    globalUndoRouter.redoDepth,
+                    manager.undoStack.length,
+                    manager.redoStack.length,
+                ];
+                globalUndoRouter.redo();
+                if (mutation === "presentation") expect(outline.get("placement")).toBe(grid);
+                else {
+                    expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("refused");
+                    expect(outline.toJSON()).toEqual({ precedingText: "keep this edit" });
+                    expect([
+                        globalUndoRouter.undoDepth,
+                        globalUndoRouter.redoDepth,
+                        manager.undoStack.length,
+                        manager.redoStack.length,
+                    ]).toEqual(positions);
+                }
+                expect(getGridRegistry(doc).get(grid)).toBe(entry);
+            } finally {
+                window.removeEventListener("paste-multi-item", listener);
+                globalUndoRouter.unregister(manager);
+                manager.destroy();
+            }
+        });
+    }
+
     it("fresh data Copy replays retained exact state after the owned source lease is released", async () => {
         const source = Project.createInstance("leased-source");
         const table = createPortableTable(source.ydoc);
@@ -1260,6 +1332,98 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             { text: "", depth: 0 },
         ]);
     });
+
+    for (const fresh of [false, true]) {
+        it(`mixed Grid/Calendar Paste maps reused Tables alongside fresh=${fresh}`, async () => {
+            const source = new Y.Doc({ guid: "mixed-calendar-source" });
+            const a = createPortableTable(source, "A", "a");
+            const b = fresh ? createPortableTable(source, "B", "b") : undefined;
+            const unrelated = createPortableTable(state.doc, "Unrelated A", "a");
+            addRecord(getTableHandles(state.doc, unrelated)!, { id: "unrelated" }, "unrelated");
+            if (fresh) {
+                const unrelatedB = createPortableTable(state.doc, "Unrelated B", "b");
+                addRecord(getTableHandles(state.doc, unrelatedB)!, { id: "unrelated-b" }, "unrelated-b");
+            }
+            const grid = fixtureGridId(a);
+            const tables = exportTableStructures(source, [a]);
+            const grids = { [grid]: exportGridSlice(source, grid) };
+            await pasteAndCapture(
+                JSON.stringify({
+                    version: 3,
+                    sourceProjectId: source.guid,
+                    tables,
+                    grids,
+                    items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: grid }],
+                }),
+                "Grid",
+            );
+            const reused = listTables(state.doc).find(table => table.sqlName === "a_2")!;
+            expect(reused.sqlName).toBe("a_2");
+            addRecord(getTableHandles(state.doc, reused.tableId)!, { id: "keep-reused" }, "keep-reused");
+            createScheduleRule(Project.fromDoc(state.doc), {
+                targetTableId: reused.tableId,
+                sql: "",
+                rrule: "FREQ=DAILY",
+            });
+            const schedules = state.doc.getMap("schedules").toJSON();
+            if (b) {
+                Object.assign(tables, exportTableStructures(source, [b]));
+                Object.assign(grids, { [fixtureGridId(b)]: exportGridSlice(source, fixtureGridId(b)) });
+            }
+            const query = b ? "SELECT a.id AS id FROM a JOIN b ON a.id = b.id" : "SELECT id AS id FROM a";
+            const settings = {
+                name: "Shared query",
+                query,
+                viewType: "month",
+                timezone: "Asia/Tokyo",
+                groupAxes: [],
+                laneOrder: [],
+                roleTitle: "id",
+            };
+            const catalog = readSqlCatalog(source.guid, source);
+            if (catalog.status !== "ready") throw new Error("catalog unavailable");
+            const beforeTables = listTables(state.doc).map(table => ({
+                id: table.tableId,
+                data: getTableHandles(state.doc, table.tableId)!.data.toJSON(),
+            }));
+            const detail = await pasteAndCapture(
+                JSON.stringify({
+                    version: 3,
+                    sourceProjectId: source.guid,
+                    tables,
+                    grids,
+                    catalog: catalog.snapshot,
+                    calendars: { calendar: settings },
+                    items: [
+                        { text: "", depth: 0, componentType: "yjstable", yjsGridId: grid },
+                        ...(b ? [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: fixtureGridId(b) }] : []),
+                        { text: "", depth: 0, componentType: "calendar", calendarId: "calendar" },
+                    ],
+                }),
+                "Grid\nCalendar",
+            );
+            expect(detail).toBeDefined();
+            expect(state.doc.getMap("schedules").toJSON()).toEqual(schedules);
+            const calendar = [...state.doc.getMap<Y.Map<unknown>>("calendars").values()][0];
+            expect(calendar?.get("query")).toBe(
+                b ? "SELECT a_2.id AS id FROM a_2 JOIN b_2 ON a_2.id = b_2.id" : "SELECT id AS id FROM a_2",
+            );
+            expect(calendar?.get("name")).toBe(settings.name);
+            expect(calendar?.get("timezone")).toBe(settings.timezone);
+            expect(
+                getGridRegistry(state.doc).get(
+                    (detail?.structuredItems as Array<{ yjsGridId: string; }> | undefined)?.[0].yjsGridId ?? "",
+                )?.get("query"),
+            ).toBe(
+                "SELECT id FROM a_2",
+            );
+            expect(listTables(state.doc)).toHaveLength(fresh ? 4 : 2);
+            for (const table of beforeTables) {
+                expect(getTableHandles(state.doc, table.id)!.data.toJSON()).toEqual(table.data);
+            }
+            expect(listTables(state.doc).find(table => table.sqlName === "a_2")?.tableId).toBe(reused.tableId);
+        });
+    }
 
     it("refuses a foreign Calendar cast when its captured ENUM is missing at the destination", async () => {
         const source = new Y.Doc({ guid: "calendar-source" });

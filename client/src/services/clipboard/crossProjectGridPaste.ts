@@ -1,6 +1,7 @@
 import { Project } from "$shared/app-schema";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
+import { getLoadedProjectDocById } from "../../lib/yjsService.svelte";
 import { cloneScheduleRules } from "../schedule/scheduleRuleClone";
 import { getGridInsertTargetTableId, getGridRegistry } from "../yjstable/gridDocs";
 import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
@@ -228,6 +229,47 @@ export async function cloneGridTablesAcrossProjects(
     let handedOff = false;
     let acquired: Awaited<ReturnType<typeof import("../../lib/yjsService.svelte").acquireClientByProjectId>>;
     let assertSource = () => {};
+    let sourceCaptured = false;
+    const captureSource = (source: Y.Doc, closed: () => boolean) => {
+        try {
+            for (const [id, grid] of Object.entries(grids ?? {})) {
+                const entry = getGridRegistry(source).get(id);
+                const reads = entry
+                    ? queryReadDependencies(source, String(entry.get("query") ?? ""))
+                    : undefined;
+                if (
+                    !entry || entry.get("query") !== grid.query
+                    || getGridInsertTargetTableId({ entry }) !== grid.insertTargetTableId
+                    || reads?.status !== "complete"
+                    || JSON.stringify([...reads.tableIds].sort()) !== JSON.stringify([...grid.tableIds].sort())
+                ) {
+                    throw new Error("The source Grid no longer matches the captured transfer.");
+                }
+            }
+            for (const [id, table] of Object.entries(snapshots)) {
+                if (getTableSqlName(source, id) !== table.sqlName) {
+                    throw new Error("The source Table no longer matches the captured transfer.");
+                }
+            }
+            const current = captureDuplicationAdmission(source, [
+                ...Object.keys(grids ?? {}).map(id => ({ type: "grid" as const, id })),
+                ...Object.keys(snapshots).map(id => ({ type: "table" as const, id })),
+            ]);
+            assertSource = () => {
+                try {
+                    if (closed() || source.isDestroyed) {
+                        throw new Error("The acquired source was closed.");
+                    }
+                    current();
+                } catch (error) {
+                    throw new StaleGridTransferError(String(error));
+                }
+            };
+        } catch (error) {
+            throw new StaleGridTransferError(String(error));
+        }
+        sourceCaptured = true;
+    };
     const releaseSource = () => {
         const lease = acquired;
         acquired = undefined;
@@ -250,6 +292,13 @@ export async function cloneGridTablesAcrossProjects(
     };
 
     try {
+        // Capture loaded identity authority before SQL preparation, independently
+        // of whether this operation acquires a source for copying rows.
+        if (sourceProjectId !== destinationDoc.guid) {
+            const source = getLoadedProjectDocById(sourceProjectId);
+            if (source) captureSource(source, () => getLoadedProjectDocById(sourceProjectId) !== source);
+        }
+        admit();
         progress({ state: "copying", tableCount: Object.keys(snapshots).length });
         const cloneResult = await importTableStructures(
             destinationDoc,
@@ -259,11 +308,7 @@ export async function cloneGridTablesAcrossProjects(
             allowProvenanceReuse,
             grids,
             catalog,
-            () => {
-                if (cancelled() || !destinationAcceptsWrites()) {
-                    throw new Error("The destination changed or no longer accepts writes.");
-                }
-            },
+            admit,
         );
         bindings = cloneResult.bindings;
         admit();
@@ -299,44 +344,9 @@ export async function cloneGridTablesAcrossProjects(
                 logger.warn({ error, sourceProjectId }, "The source project could not be acquired");
             }
             if (acquired) {
-                const client = acquired.client;
-                const source = client.project.ydoc;
-                try {
-                    for (const [id, grid] of Object.entries(grids ?? {})) {
-                        const entry = getGridRegistry(source).get(id);
-                        const reads = entry
-                            ? queryReadDependencies(source, String(entry.get("query") ?? ""))
-                            : undefined;
-                        if (
-                            !entry || entry.get("query") !== grid.query
-                            || getGridInsertTargetTableId({ entry }) !== grid.insertTargetTableId
-                            || reads?.status !== "complete"
-                            || JSON.stringify([...reads.tableIds].sort()) !== JSON.stringify([...grid.tableIds].sort())
-                        ) {
-                            throw new Error("The source Grid no longer matches the captured transfer.");
-                        }
-                    }
-                    for (const [id, table] of Object.entries(snapshots)) {
-                        if (getTableSqlName(source, id) !== table.sqlName) {
-                            throw new Error("The source Table no longer matches the captured transfer.");
-                        }
-                    }
-                    const current = captureDuplicationAdmission(source, [
-                        ...Object.keys(grids ?? {}).map(id => ({ type: "grid" as const, id })),
-                        ...Object.keys(snapshots).map(id => ({ type: "table" as const, id })),
-                    ]);
-                    assertSource = () => {
-                        try {
-                            if (client.isDestroyed || source.isDestroyed) {
-                                throw new Error("The acquired source was closed.");
-                            }
-                            current();
-                        } catch (error) {
-                            throw new StaleGridTransferError(String(error));
-                        }
-                    };
-                } catch (error) {
-                    throw new StaleGridTransferError(String(error));
+                if (!sourceCaptured) {
+                    const client = acquired.client;
+                    captureSource(client.project.ydoc, () => client.isDestroyed);
                 }
             }
         }
