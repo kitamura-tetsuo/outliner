@@ -20,6 +20,7 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
         await createBlankGrid(page, "Source", "source_rows");
         await addSourceRecord(page);
         const source = await readGridProjectState(page);
+        await page.evaluate(() => navigator.clipboard.writeText(""));
         await copyGridHosts(page);
         const peer = await page.context().newPage();
         await peer.goto(page.url());
@@ -27,8 +28,15 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
         await openProjectPage(page, fixture, "destination");
         await createBlankGrid(page, "Keep", "keep");
         if (mutation === "unavailable") {
-            await page.reload();
-            await expect(page.getByTestId("yjs-table-view")).toHaveCount(1);
+            // Close the real source client; retain the supported same-tab Paste
+            // Special clipboard origin (native Ctrl+Shift+V supplies plain text).
+            await page.evaluate(async title => {
+                const path = "/src/lib/yjsService.svelte.ts";
+                const { getClientByProjectTitle } = await import(/* @vite-ignore */ path);
+                const client = await getClientByProjectTitle(title);
+                if (!client) throw new Error("Expected the registered source client");
+                client.dispose();
+            }, fixture.sourceProject);
         }
         const sourceConnections: string[] = [];
         page.on("websocket", socket => {
