@@ -91,6 +91,30 @@ describe("MCP Schedule diagnostics", function() {
         expect(preview.candidateRows[0]).to.include({ id: "daily" });
         expect(preview.deterministicIds).to.include({ idempotent: true });
         expect(tableConnection.document.getMap("data").size).to.equal(0);
+        const placeholderSql = "INSERT INTO {{table}} (id) VALUES ('placeholder') RETURNING *";
+        const placeholderPreview = await service.validate(
+            "user",
+            "project-1",
+            { ...(read.stored as never), sql: placeholderSql },
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(placeholderPreview).to.include({ accepted: true, persisted: false });
+        expect(placeholderPreview.candidateRows[0]).to.include({ id: "placeholder" });
+        expect(tableConnection.document.getMap("data").size).to.equal(0);
+        const placeholderSave = await service.update(
+            "user",
+            "project-1",
+            "rule-1",
+            { sql: placeholderSql },
+            read.revision,
+        );
+        expect(placeholderSave).to.include({ applied: true });
+        expect(rule.get("sql")).to.equal(placeholderSql);
+        expect(tableConnection.document.getMap("data").size).to.equal(0);
+        const placeholderRead = await service.getSchedule("user", "project-1", "rule-1");
+        expect(placeholderRead.stored.sql).to.equal(placeholderSql);
+        rule.set("sql", read.stored.sql);
         const legacySql =
             "WITH source AS (SELECT 'legacy'::text AS id) INSERT INTO tasks (id) SELECT id value FROM source RETURNING *";
         rule.set("sql", legacySql);

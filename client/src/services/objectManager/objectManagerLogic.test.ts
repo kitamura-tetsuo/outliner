@@ -66,7 +66,7 @@ describe("Objects Manager Requirements", () => {
         const ruleId = createScheduleRule(project, {
             name: "Original Schedule",
             targetTableId: "table1",
-            sql: "SELECT 1",
+            sql: "INSERT INTO {{table}} (id) VALUES ('1') RETURNING *",
             rrule: "",
         });
 
@@ -82,7 +82,11 @@ describe("Objects Manager Requirements", () => {
             const tableId = createTable(project.ydoc, "T", "t");
             const gridId = createGrid(project.ydoc, { name: "G" });
             const calendarId = createCalendar(project, { name: "My Calendar", query: "SELECT 1" });
-            const ruleId = createScheduleRule(project, { targetTableId: tableId, sql: "SELECT 1", rrule: "" });
+            const ruleId = createScheduleRule(project, {
+                targetTableId: tableId,
+                sql: "INSERT INTO {{table}} (id) VALUES ('1') RETURNING *",
+                rrule: "",
+            });
 
             const objects = getObjects(project);
             const ids = objects.map(o => o.id);
@@ -178,7 +182,11 @@ describe("Objects Manager Requirements", () => {
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
-            const ruleId = createScheduleRule(project, { targetTableId: tableId, sql: "SELECT 1", rrule: "" });
+            const ruleId = createScheduleRule(project, {
+                targetTableId: tableId,
+                sql: "INSERT INTO {{table}} (id) VALUES ('1') RETURNING *",
+                rrule: "",
+            });
 
             const objects = getObjects(project);
             const schedule = objects.find(o => o.id === ruleId) as NamedObject;
@@ -254,7 +262,7 @@ describe("Objects Manager Requirements", () => {
             const ruleId = createScheduleRule(project, {
                 name: "Rule",
                 targetTableId: tableId,
-                sql: "SELECT 1",
+                sql: "INSERT INTO {{table}} (id) VALUES ('1') RETURNING *",
                 rrule: "",
             });
             const schedule = getObjects(project).find(o => o.id === ruleId) as NamedObject;
@@ -409,7 +417,7 @@ describe("Objects Manager Requirements", () => {
             const ruleId = createScheduleRule(project, {
                 name: "Nightly",
                 targetTableId: tableId,
-                sql: "SELECT 1",
+                sql: "INSERT INTO {{table}} (id) VALUES ('1') RETURNING *",
                 rrule: "FREQ=DAILY",
             });
 
@@ -423,7 +431,7 @@ describe("Objects Manager Requirements", () => {
             expect(project.schedules.has(ruleId)).toBe(true);
             const restored = project.schedules.get(ruleId) as Y.Map<ScheduleRuleValueType>;
             expect(restored.get("name")).toBe("Nightly");
-            expect(restored.get("sql")).toBe("SELECT 1");
+            expect(restored.get("sql")).toBe("INSERT INTO {{table}} (id) VALUES ('1') RETURNING *");
         });
     });
 });

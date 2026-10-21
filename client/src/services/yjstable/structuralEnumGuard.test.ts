@@ -163,7 +163,7 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
         });
         const scheduleId = createScheduleRule(project, {
             targetTableId: tableId,
-            sql: "SELECT id FROM tasks ORDER BY state::task_state",
+            sql: "INSERT INTO tasks (id) SELECT id FROM tasks ORDER BY state::task_state RETURNING *",
             rrule: "RRULE:FREQ=DAILY",
         });
         const destination = new Y.Doc({ guid: "cast-carriers-destination" });

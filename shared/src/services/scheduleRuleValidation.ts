@@ -8,7 +8,7 @@ const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
 await loadModule();
 
 /** Replace scanner-visible placeholder tokens, never occurrences inside literals or comments. */
-function scheduleParserSql(sql: string): string {
+function replaceScheduleTargetPlaceholder(sql: string, replacementText: string): string {
     const tokens = scanSync(sql).tokens;
     const replacements: Array<{ start: number; end: number; }> = [];
     for (let index = 0; index <= tokens.length - 5; index++) {
@@ -22,7 +22,7 @@ function scheduleParserSql(sql: string): string {
     // Apply replacements to encoded bytes so non-ASCII text before a target
     // placeholder cannot shift or corrupt the parser-only copy.
     let result = new TextEncoder().encode(sql);
-    const replacementBytes = new TextEncoder().encode(PARSER_SCHEDULE_TARGET);
+    const replacementBytes = new TextEncoder().encode(replacementText);
     for (const replacement of replacements.reverse()) {
         const next = new Uint8Array(result.length - (replacement.end - replacement.start) + replacementBytes.length);
         next.set(result.slice(0, replacement.start));
@@ -31,6 +31,19 @@ function scheduleParserSql(sql: string): string {
         result = next;
     }
     return new TextDecoder().decode(result);
+}
+
+function scheduleParserSql(sql: string): string {
+    return replaceScheduleTargetPlaceholder(sql, PARSER_SCHEDULE_TARGET);
+}
+
+/**
+ * Resolve the Schedule-only target placeholder for transient execution.
+ * The submitted SQL remains authoritative and must be stored unchanged.
+ */
+export function resolveScheduleTargetPlaceholder(sql: string, targetRelation: string): string {
+    const quotedTarget = `"${targetRelation.split('"').join('""')}"`;
+    return replaceScheduleTargetPlaceholder(sql, quotedTarget);
 }
 
 /** Validate aliases after replacing the Schedule-only target placeholder in parser input. */

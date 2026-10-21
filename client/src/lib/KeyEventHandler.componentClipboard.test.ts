@@ -1363,7 +1363,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             addRecord(getTableHandles(state.doc, reused.tableId)!, { id: "keep-reused" }, "keep-reused");
             createScheduleRule(Project.fromDoc(state.doc), {
                 targetTableId: reused.tableId,
-                sql: "",
+                sql: "INSERT INTO {{table}} (id) VALUES ('1') RETURNING *",
                 rrule: "FREQ=DAILY",
             });
             const schedules = state.doc.getMap("schedules").toJSON();

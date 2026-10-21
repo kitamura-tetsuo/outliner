@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    resolveScheduleTargetPlaceholder,
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
     validateScheduleRuleSql,
@@ -68,6 +69,15 @@ describe("scheduleRuleValidation", () => {
         it("does not treat placeholders in strings or comments as a target", () => {
             expect(validateScheduleRuleSql("INSERT INTO {{table}} VALUES ('{{table}}') RETURNING *").valid).toBe(true);
             expect(validateScheduleRuleSql("SELECT '{{table}}' AS value -- {{table}}").valid).toBe(false);
+        });
+
+        it("resolves only scanner-visible target placeholders for transient execution", () => {
+            const sql = "/* {{table}} 日 */ INSERT INTO {{table}} (id) VALUES ('{{table}}') RETURNING *";
+
+            expect(resolveScheduleTargetPlaceholder(sql, 'Tasks "daily"')).toBe(
+                '/* {{table}} 日 */ INSERT INTO "Tasks ""daily""" (id) VALUES (\'{{table}}\') RETURNING *',
+            );
+            expect(sql).toContain("INSERT INTO {{table}}");
         });
     });
 

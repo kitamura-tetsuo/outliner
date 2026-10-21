@@ -207,7 +207,7 @@ describe("standalone table route", () => {
             createScheduleRule(currentProject(), {
                 name: "Sales nightly",
                 targetTableId: "demo-table-sales",
-                sql: "INSERT INTO sales (id) VALUES (gen_random_uuid())",
+                sql: "INSERT INTO sales (id) VALUES (gen_random_uuid()) RETURNING *",
                 rrule: "FREQ=DAILY",
             });
             await waitFor(() => {
@@ -250,7 +250,7 @@ describe("standalone table route", () => {
             createScheduleRule(currentProject(), {
                 name: "Nightly refresh",
                 targetTableId: "demo-table-sales",
-                sql: "INSERT INTO sales (id) VALUES (gen_random_uuid())",
+                sql: "INSERT INTO sales (id) VALUES (gen_random_uuid()) RETURNING *",
                 rrule: "FREQ=DAILY",
             });
 

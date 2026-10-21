@@ -103,12 +103,14 @@ describe("cloneScheduleRules", () => {
 
     it("reports a rewritten rule the destination would reject", () => {
         const source = project("source-invalid");
-        createScheduleRule(source, {
-            name: "Read only",
-            targetTableId: "source-occurrences",
-            sql: "SELECT * FROM routine_occurrences",
-            rrule: "RRULE:FREQ=DAILY",
-        });
+        // A legacy/corrupt document can still contain SQL that current admission
+        // refuses; cloning must not turn that stored state into a valid rule.
+        const invalidRule = new Y.Map<unknown>();
+        invalidRule.set("name", "Read only");
+        invalidRule.set("targetTableId", "source-occurrences");
+        invalidRule.set("sql", "SELECT * FROM routine_occurrences");
+        invalidRule.set("rrule", "RRULE:FREQ=DAILY");
+        source.schedules.set("legacy-invalid", invalidRule);
         const destination = project("destination-invalid");
 
         const result = cloneScheduleRules(

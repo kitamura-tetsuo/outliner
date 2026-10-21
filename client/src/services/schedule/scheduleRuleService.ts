@@ -1,6 +1,6 @@
 import type { Project } from "$shared/app-schema";
 import { EXPLICIT_SELECT_ALIAS_POLICY_VERSION } from "$shared/services/explicitSelectAlias";
-import { validateScheduleRuleExplicitAliases } from "$shared/services/scheduleRuleValidation";
+import { validateScheduleRuleSql } from "$shared/services/scheduleRuleValidation";
 import type { ScheduleRunStatusValue } from "$shared/services/scheduleStatus";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
@@ -63,9 +63,7 @@ export function createScheduleRule(
     project: Project,
     options: Partial<ScheduleRule> & { targetTableId: string; sql: string; rrule: string; ruleId?: string; },
 ): string {
-    if (options.sql.trim()) {
-        validateScheduleRuleExplicitAliases(options.sql);
-    }
+    assertValidScheduleSql(options.sql);
     const ruleId = options.ruleId ?? uuid();
     const schedulesMap = project.schedules;
     const ruleMap = new Y.Map<ScheduleRuleValueType>();
@@ -135,7 +133,7 @@ export function updateScheduleRule(
     }
     const sqlChanged = updates.sql !== undefined && updates.sql !== String(ruleMap.get("sql") ?? "");
     if (sqlChanged) {
-        validateScheduleRuleExplicitAliases(updates.sql!);
+        assertValidScheduleSql(updates.sql!);
     }
 
     // Apply updates
@@ -151,6 +149,11 @@ export function updateScheduleRule(
     if (updates.enabled !== undefined) ruleMap.set("enabled", updates.enabled);
     if (updates.catchUp !== undefined) ruleMap.set("catchUp", updates.catchUp);
     // Scheduler-owned fields are intentionally absent — see the note above.
+}
+
+function assertValidScheduleSql(sql: string): void {
+    const validation = validateScheduleRuleSql(sql);
+    if (!validation.valid) throw new Error(validation.error ?? "Invalid Schedule SQL");
 }
 
 /**

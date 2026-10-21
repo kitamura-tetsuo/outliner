@@ -1,5 +1,6 @@
 import { Project } from "$shared/app-schema";
 import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { createTable } from "../yjstable/tableDocs";
 import {
     createScheduleRule,
@@ -61,6 +62,34 @@ describe("scheduleRuleService", () => {
         expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
     });
 
+    it("refuses non-INSERT Schedule SQL without changing saved rules", () => {
+        const project = Project.createInstance("Test Project");
+        const originalSql = "INSERT INTO tasks (id, title) VALUES ('old', 'Old') RETURNING *";
+        const ruleId = createScheduleRule(project, {
+            targetTableId: "tasks",
+            sql: originalSql,
+            rrule: "FREQ=DAILY",
+        });
+        const before = Y.encodeStateAsUpdate(project.ydoc);
+
+        expect(() =>
+            updateScheduleRule(project, ruleId, {
+                sql: "SELECT 'new-row'::text AS id, 'Injected'::text AS title",
+            })
+        ).toThrow("Query must be an INSERT statement");
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(before);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(originalSql);
+
+        expect(() =>
+            createScheduleRule(project, {
+                targetTableId: "tasks",
+                sql: "WITH changed AS (INSERT INTO tasks (id) VALUES ('nested') RETURNING *) SELECT * FROM changed",
+                rrule: "FREQ=DAILY",
+            })
+        ).toThrow("Query must be an INSERT statement");
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(before);
+    });
+
     // Issue #5012: a Schedule belongs to the project. Its relationship to a
     // Table is a reference — the Table it writes to, or any Table its SQL
     // names — and the same rule shows up for every Table it touches.
@@ -76,7 +105,7 @@ describe("scheduleRuleService", () => {
         const ruleId = createScheduleRule(project, {
             name: "Nightly audit",
             targetTableId: auditId,
-            sql: "INSERT INTO audit (id) SELECT id FROM tasks",
+            sql: "INSERT INTO audit (id) SELECT id FROM tasks RETURNING *",
             rrule: "FREQ=DAILY",
         });
 
@@ -91,7 +120,7 @@ describe("scheduleRuleService", () => {
         createScheduleRule(project, {
             name: "Unrelated",
             targetTableId: "some-other-table",
-            sql: "INSERT INTO elsewhere (id) VALUES (1)",
+            sql: "INSERT INTO elsewhere (id) VALUES (1) RETURNING *",
             rrule: "FREQ=DAILY",
         });
         expect(findSchedulesReferencingTable(project, tasksId)).toHaveLength(1);
@@ -111,7 +140,7 @@ describe("scheduleRuleService", () => {
         const tasksId = createTable(project.ydoc, "Tasks", "tasks");
         const ruleId = createScheduleRule(project, {
             targetTableId: tasksId,
-            sql: "INSERT INTO tasks (id) VALUES (1)",
+            sql: "INSERT INTO tasks (id) VALUES (1) RETURNING *",
             rrule: "FREQ=DAILY",
         });
 

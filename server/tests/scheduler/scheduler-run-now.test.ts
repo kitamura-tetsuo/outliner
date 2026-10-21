@@ -65,7 +65,7 @@ describe("Job Scheduler - runRuleNow", () => {
         table.set("sqlName", "t");
         doc.getMap("yjsTables").set("table1", table);
         const ruleMap = new Y.Map();
-        ruleMap.set("sql", "SELECT 1;");
+        ruleMap.set("sql", "INSERT INTO t (id, title) VALUES ('row-1', 'Title') RETURNING *;");
         ruleMap.set("targetTableId", "table1");
         doc.getMap("schedules").set("rule1", ruleMap);
         return ruleMap;
@@ -87,10 +87,31 @@ describe("Job Scheduler - runRuleNow", () => {
         expect(res.error).to.contain("Missing required rule data");
     });
 
+    it("refuses stored SELECT SQL before dispatching or publishing target rows", async () => {
+        const ruleMap = new Y.Map<unknown>();
+        ruleMap.set("sql", "SELECT 'new-row'::text AS id, 'Injected'::text AS title");
+        ruleMap.set("targetTableId", "table1");
+        doc.getMap("schedules").set("rule1", ruleMap);
+        const targetData = doc.getMap("data");
+        const existing = new Y.Map<unknown>();
+        existing.set("title", "Existing");
+        targetData.set("existing", existing);
+        const before = Y.encodeStateAsUpdate(doc);
+        const dispatch = sinon.stub(scheduler as any, "dispatchJob").resolves({ success: true });
+
+        const res = await scheduler.runRuleNow("projects/proj1", "rule1");
+
+        expect(res.success).to.be.false;
+        expect(res.error).to.equal("Query must be an INSERT statement");
+        expect(dispatch.called).to.be.false;
+        expect(Y.encodeStateAsUpdate(doc)).to.deep.equal(before);
+        expect([...targetData.keys()]).to.deep.equal(["existing"]);
+    });
+
     it("should return success when dispatchJob succeeds", async () => {
         const schedules = doc.getMap("schedules");
         const ruleMap = new Y.Map();
-        ruleMap.set("sql", "SELECT 1;");
+        ruleMap.set("sql", "INSERT INTO t (id, title) VALUES ('row-1', 'Title') RETURNING *;");
         ruleMap.set("targetTableId", "table1");
         schedules.set("rule1", ruleMap);
 
@@ -118,6 +139,22 @@ describe("Job Scheduler - runRuleNow", () => {
         expect(ruleMap.get("lastRunStatus")).to.equal("ok");
         expect(ruleMap.get("lastRunError")).to.be.undefined;
         expect(ruleMap.get("lastRunAt")).to.be.a("string");
+    });
+
+    it("resolves the stored target placeholder only for scheduler execution", async () => {
+        const ruleMap = seedRunnableRule();
+        const storedSql = "INSERT INTO {{table}} (id, title) VALUES ('placeholder', 'Title') RETURNING *";
+        ruleMap.set("sql", storedSql);
+        const executeJob = sinon.stub((scheduler as any).executor, "executeJob").resolves({ success: true, rows: [] });
+
+        const res = await scheduler.runRuleNow("projects/proj1", "rule1");
+
+        expect(res.success).to.be.true;
+        expect(executeJob.calledOnce).to.be.true;
+        expect(executeJob.firstCall.args[0].ruleSql).to.equal(
+            "INSERT INTO \"t\" (id, title) VALUES ('placeholder', 'Title') RETURNING *",
+        );
+        expect(ruleMap.get("sql")).to.equal(storedSql);
     });
 
     it("should write lastRunStatus/lastRunError back into the schedules map on SQL failure", async () => {
@@ -231,7 +268,7 @@ describe("Job Scheduler - runRuleNow", () => {
     it("should return error from dispatchJob", async () => {
         const schedules = doc.getMap("schedules");
         const ruleMap = new Y.Map();
-        ruleMap.set("sql", "SELECT 1;");
+        ruleMap.set("sql", "INSERT INTO t (id, title) VALUES ('row-1', 'Title') RETURNING *;");
         ruleMap.set("targetTableId", "table1");
         schedules.set("rule1", ruleMap);
 

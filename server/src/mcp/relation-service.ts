@@ -15,6 +15,7 @@ import {
     parseTopLevelInsertTarget,
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
+import { resolveScheduleTargetPlaceholder } from "../../../shared/src/services/scheduleRuleValidation.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
 import { compileSqlEnvironment, type SqlEnumMetadata } from "../../../shared/src/services/sqlEnvironmentCompiler.js";
 import { describeViewSources, unavailableViewSources } from "../../../shared/src/services/viewSourceDiagnostics.js";
@@ -449,7 +450,8 @@ export class OutlinerRelationService {
                 };
             }
             const targetRelation = String(target.get("sqlName") ?? "");
-            const destination = parseTopLevelInsertTarget(candidate.sql);
+            const executionSql = resolveScheduleTargetPlaceholder(candidate.sql, targetRelation);
+            const destination = parseTopLevelInsertTarget(executionSql);
             if (!destination || destination !== targetRelation) {
                 return {
                     accepted: false,
@@ -470,7 +472,7 @@ export class OutlinerRelationService {
                 // compiler as execution. The lease was reset before this
                 // preview, so no type can be inherited from an earlier call.
                 const catalog = await materializeProjectCatalog(lease.db, projectId, doc);
-                const identifiers = parseSqlIdentifiers(candidate.sql);
+                const identifiers = parseSqlIdentifiers(executionSql);
                 const requiredTables = this.tables(doc).filter(table =>
                     table.tableId === candidate.targetTableId
                     || identifiers.has(table.relation)
@@ -516,7 +518,7 @@ export class OutlinerRelationService {
                 // every preview, preventing values from crossing requests.
                 await lease.db.query("SELECT set_config('TimeZone', $1, false)", [candidate.timezone]);
                 await lease.db.query("SELECT set_config('job.occurrence', $1, false)", [occurrence]);
-                const result = await lease.db.query<Record<string, unknown>>(candidate.sql);
+                const result = await lease.db.query<Record<string, unknown>>(executionSql);
                 const columns = (result.fields ?? []).map(field => field.name);
                 const targetColumns = await lease.db.query<{ column_name: string; }>(
                     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",

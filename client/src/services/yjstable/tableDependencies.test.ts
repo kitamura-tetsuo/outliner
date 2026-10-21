@@ -122,7 +122,7 @@ describe("schedule references are project-level, not Table-owned", () => {
         const ruleId = createScheduleRule(project, {
             name: "Nightly routines",
             targetTableId: occurrencesId,
-            sql: "INSERT INTO routine_occurrences (id, title) SELECT t.id, t.title FROM routine_templates t",
+            sql: "INSERT INTO routine_occurrences (id, title) SELECT t.id, t.title FROM routine_templates t RETURNING *",
             rrule: "FREQ=DAILY",
         });
         return { project, templatesId, occurrencesId, ruleId };
