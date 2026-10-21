@@ -67,3 +67,52 @@ describe("analyzeCalendarColumnWritability", () => {
         expect(map.get("begins")).toBe("start_at");
     });
 });
+
+it("uses positional agreement across every UNION ALL branch", () => {
+    const writable = analyzeCalendarColumnWritability(
+        "SELECT start AS begins, tags AS lanes FROM first_source "
+            + "UNION ALL SELECT start AS ignored_name, tags FROM second_source",
+    );
+    expect([...writable]).toEqual([["begins", "start"], ["lanes", "tags"]]);
+
+    const differing = analyzeCalendarColumnWritability(
+        "SELECT start AS begins, tags AS lanes FROM first_source "
+            + "UNION ALL SELECT due, tags FROM second_source",
+    );
+    expect(differing.has("begins")).toBe(false);
+    expect(differing.get("lanes")).toBe("tags");
+});
+
+it("refuses calculated later UNION branches and duplicate output names", () => {
+    const calculated = analyzeCalendarColumnWritability(
+        "SELECT start AS begins, tags AS lanes FROM first_source "
+            + "UNION ALL SELECT start + interval '1 day', tags FROM second_source",
+    );
+    expect(calculated.has("begins")).toBe(false);
+    expect(calculated.get("lanes")).toBe("tags");
+
+    const duplicate = analyzeCalendarColumnWritability(
+        "SELECT start AS role, upper(tags) AS role, duration FROM source",
+    );
+    expect(duplicate.has("role")).toBe(false);
+    expect(duplicate.get("duration")).toBe("duration");
+});
+
+it("uses PostgreSQL lexical rules for comments, dollar strings, and Unicode names", () => {
+    const writable = analyzeCalendarColumnWritability(
+        'SELECT /* from, join */ "開始" AS "始まり", start AS begins FROM source WHERE note <> $tag$from, join$tag$',
+    );
+    expect(writable.get("始まり")).toBe("開始");
+    expect(writable.get("begins")).toBe("start");
+});
+
+it("returns no authority for malformed, multiple, joined, or CTE queries", () => {
+    for (
+        const query of [
+            "SELECT start FROM",
+            "SELECT start FROM source; SELECT start FROM source",
+            "SELECT a.start FROM a JOIN b ON true",
+            "WITH source AS (SELECT start FROM real_source) SELECT start FROM source",
+        ]
+    ) expect(analyzeCalendarColumnWritability(query).size, query).toBe(0);
+});
