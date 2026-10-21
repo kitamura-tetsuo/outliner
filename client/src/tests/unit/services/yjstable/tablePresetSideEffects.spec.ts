@@ -41,7 +41,7 @@ function projectWithKanban(): {
         "CREATE TABLE existing (id TEXT PRIMARY KEY, title TEXT NOT NULL, marker INTEGER NOT NULL)",
     );
     addRecord(existingTableHandles, { title: "Preserve me", marker: 73 }, "existing-record");
-    const kanbanId = createKanban(doc, existingTableId, {
+    const kanbanId = createKanban(doc, {
         name: "Existing board",
         query: "SELECT id FROM existing",
     });

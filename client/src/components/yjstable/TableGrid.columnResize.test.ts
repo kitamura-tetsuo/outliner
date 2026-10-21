@@ -50,7 +50,7 @@ interface Fixture {
 function fixture(components: Record<string, { widthPx?: number; }> = {}): Fixture {
     const doc = new Y.Doc();
     const tableId = createTable(doc, "Tasks", "tasks");
-    const gridId = createGrid(doc, undefined, { name: "G", query: QUERY, components });
+    const gridId = createGrid(doc, { name: "G", query: QUERY, components });
     const grid = getGridHandles(doc, gridId)!;
     // Mounted views retain the shared manager; mirror that so the width
     // writer's history isolation is the one production uses.

@@ -66,7 +66,7 @@ describe("dependency-aware Calendar duplication", () => {
     it("traverses a connected Grid -> Table <- Calendar graph from either end", async () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+        const gridId = createGrid(doc, { name: "Board", query: "SELECT * FROM tasks" });
         const calendarId = calendar(doc, "Team Calendar", "SELECT id, title FROM tasks");
 
         const fromGrid = previewObjectDuplication(doc, { type: "grid", id: gridId }, "connected");

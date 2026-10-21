@@ -44,7 +44,7 @@ afterEach(async () => {
 afterAll(resetPgliteForTests);
 const cell = () => screen.getByTestId("yjs-table-view").querySelector('td[data-col="value"] button');
 const seed = (id = "grid-a", name = "Independent", value = 42) =>
-    createGrid(projectDoc, undefined, { gridId: id, name, query: `SELECT ${value} AS value` });
+    createGrid(projectDoc, { gridId: id, name, query: `SELECT ${value} AS value` });
 
 describe("current-format standalone Grid route", { timeout: 60000 }, () => {
     it("renders its own SELECT and identity without any Table", async () => {
@@ -86,7 +86,7 @@ describe("current-format standalone Grid route", { timeout: 60000 }, () => {
     });
 
     it("keeps a broken SELECT editable without a fallback Table", async () => {
-        createGrid(projectDoc, undefined, { gridId: "grid-a", query: "SELECT * FROM missing_relation" });
+        createGrid(projectDoc, { gridId: "grid-a", query: "SELECT * FROM missing_relation" });
         render(GridStandalonePage);
         await waitFor(
             () => expect(screen.getByTestId("yjs-table-query-error").textContent).toContain("missing_relation"),

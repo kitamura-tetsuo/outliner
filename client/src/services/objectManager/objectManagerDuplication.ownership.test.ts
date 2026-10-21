@@ -30,8 +30,8 @@ function peerReplace(project: Project, id: string) {
 describe("duplication materialization ownership", () => {
     it("refuses the whole Undo after a peer Delete/Undo, preserving another copied object and placement", async () => {
         const project = Project.createInstance("ownership");
-        const a = createGrid(project.ydoc, undefined, { query: "SELECT 1", name: "A" });
-        const b = createGrid(project.ydoc, undefined, { query: "SELECT 2", name: "B" });
+        const a = createGrid(project.ydoc, { query: "SELECT 1", name: "A" });
+        const b = createGrid(project.ydoc, { query: "SELECT 2", name: "B" });
         const page = project.addPage("Page", "author");
         let sideUndo = 0;
         const result = await duplicateSelectedObjects(
@@ -70,7 +70,7 @@ describe("duplication materialization ownership", () => {
 
     it("preserves a peer incarnation delivered during final disposal and never invokes the placement callback", async () => {
         const project = Project.createInstance("final-admission");
-        const grid = createGrid(project.ydoc, undefined, { query: "SELECT 1" });
+        const grid = createGrid(project.ydoc, { query: "SELECT 1" });
         let copied: string | undefined;
         let delivered = false;
         const observe = () => {
@@ -104,7 +104,7 @@ describe("duplication materialization ownership", () => {
 
     it("preflights a deleted destination Page before Redo creates anything", async () => {
         const project = Project.createInstance("deleted-page");
-        const grid = createGrid(project.ydoc, undefined, { query: "SELECT 1" });
+        const grid = createGrid(project.ydoc, { query: "SELECT 1" });
         const page = project.addPage("Page", "author");
         const result = await duplicateSelectedObjects(
             project.ydoc,

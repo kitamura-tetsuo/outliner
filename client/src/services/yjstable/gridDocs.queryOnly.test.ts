@@ -7,7 +7,6 @@ import {
     duplicateGrid,
     getGridHandles,
     getGridRegistry,
-    getGridSourceTableId,
     listGrids,
     removeGridWithPlacements,
 } from "./gridDocs";
@@ -16,7 +15,7 @@ import { appendGridPlacement } from "./gridPlacement";
 describe("query-only Grid definitions", () => {
     it("retains identity and presentation without synthesizing a primary Table", () => {
         const doc = new Y.Doc();
-        const gridId = createGrid(doc, undefined, {
+        const gridId = createGrid(doc, {
             gridId: "query-grid",
             name: "Independent query",
             query: "SELECT 1 AS value",
@@ -26,13 +25,12 @@ describe("query-only Grid definitions", () => {
 
         const handles = getGridHandles(doc, gridId);
         expect(gridId).toBe("query-grid");
-        expect(getGridSourceTableId(doc, gridId)).toBeUndefined();
+        expect(getGridRegistry(doc).get(gridId)?.get("sourceTableId")).toBeUndefined();
         expect(handles?.entry.has("sourceTableId")).toBe(false);
         expect(handles?.entry.get("query")).toBe("SELECT 1 AS value");
         expect(listGrids(doc)).toEqual([{
             gridId,
             name: "Independent query",
-            sourceTableId: undefined,
             showAddRowButton: true,
             confirmRowDelete: false,
         }]);
@@ -41,7 +39,7 @@ describe("query-only Grid definitions", () => {
 
 it("duplicates an independent Grid with all saved settings and no primary field", () => {
     const doc = new Y.Doc();
-    const id = createGrid(doc, undefined, {
+    const id = createGrid(doc, {
         query: "SELECT 1 AS value",
         insertTargetTableId: "stale-preference",
         showAddRowButton: false,
@@ -60,12 +58,12 @@ it("explicit deletion and Undo preserve a placement rebound to another Grid", ()
     globalUndoRouter.clear();
     const project = Project.createInstance("Lifecycle");
     const page = project.addPage("Page", "author");
-    const id = createGrid(project.ydoc, undefined, {
+    const id = createGrid(project.ydoc, {
         query: "SELECT 1 AS value",
         showAddRowButton: false,
         confirmRowDelete: true,
     });
-    const peer = createGrid(project.ydoc, undefined, { query: "SELECT 2 AS value" });
+    const peer = createGrid(project.ydoc, { query: "SELECT 2 AS value" });
     const placement = appendGridPlacement(project.ydoc, page.id, id, "author");
     const value = project.tree.getNodeValueFromKey(placement.key) as Y.Map<unknown>;
     expect(value.has("yjsTableId")).toBe(false);

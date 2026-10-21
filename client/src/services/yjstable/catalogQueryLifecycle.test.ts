@@ -30,7 +30,7 @@ describe("catalog query lifecycle", { timeout: 60_000 }, () => {
         setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state TEXT)");
         addRecord(table, { state: "Open" }, "open");
         addRecord(table, { state: "Done" }, "done");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             query: "SELECT id, state::task_state AS typed_state FROM tasks ORDER BY state::task_state",
         });
         const session = createTableEngineSession({ projectDoc: doc, projectId, connect: localConnector });

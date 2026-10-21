@@ -116,7 +116,7 @@ describe("comma-joined Grid mutation authority (issue #5547)", { timeout: 90000 
         const projectId = "proj-comma-join-refusal";
         const { projectDoc, tableA, tableB, handlesA, handlesB } = seedTables(projectId);
         const schema = await parseCreateTable("CREATE TABLE tasks_a (id TEXT PRIMARY KEY, title TEXT)");
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -191,7 +191,7 @@ describe("comma-joined Grid mutation authority (issue #5547)", { timeout: 90000 
         const projectId = "proj-comma-join-variants";
         const { projectDoc, tableA, tableB, handlesA } = seedTables(projectId);
         const schema = await parseCreateTable("CREATE TABLE tasks_a (id TEXT PRIMARY KEY, title TEXT)");
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -251,7 +251,7 @@ describe("comma-joined Grid mutation authority (issue #5547)", { timeout: 90000 
         const schema: ParsedTableSchema = await parseCreateTable(
             "CREATE TABLE tasks_a (id TEXT PRIMARY KEY, title TEXT)",
         );
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });

@@ -58,7 +58,7 @@ function fixture() {
         h => h.schemaText.insert(0, "CREATE TABLE contacts (id TEXT PRIMARY KEY)"),
     );
     addRecord(getTableHandles(source.ydoc, table)!, { id: "source" }, "source");
-    const grid = createGrid(source.ydoc, undefined, { query: "SELECT * FROM contacts", insertTargetTableId: table });
+    const grid = createGrid(source.ydoc, { query: "SELECT * FROM contacts", insertTargetTableId: table });
     const options = {
         sourceProjectId: source.ydoc.guid,
         destinationDoc: destination.ydoc,
@@ -142,7 +142,7 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
                 handles => handles.schemaText.insert(0, "CREATE TABLE keep (id TEXT PRIMARY KEY)"),
             );
             addRecord(getTableHandles(f.destination.ydoc, keep)!, { id: "unrelated" }, "unrelated");
-            const keepGrid = createGrid(f.destination.ydoc, undefined, { query: "SELECT * FROM keep" });
+            const keepGrid = createGrid(f.destination.ydoc, { query: "SELECT * FROM keep" });
             const keepEntry = getGridRegistry(f.destination.ydoc).get(keepGrid);
             const entered = deferred();
             const resume = deferred();
@@ -383,7 +383,7 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
             const sourceRules = source.schedules.toJSON();
             const sourceRows = [a, b].map(id => getTableHandles(source.ydoc, id)!.data.toJSON());
             const otherRows = unrelated.map(id => getTableHandles(destination.ydoc, id)!.data.toJSON());
-            const grid = createGrid(source.ydoc, undefined, {
+            const grid = createGrid(source.ydoc, {
                 query: "SELECT a.id AS id, b.value AS value FROM a JOIN b ON a.id = b.id",
                 insertTargetTableId: b,
             });

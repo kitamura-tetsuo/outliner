@@ -17,7 +17,7 @@ function table(doc: Y.Doc, sqlName: string) {
 }
 
 function insertController(doc: Y.Doc, query: string, connector = connect, projectId?: string) {
-    const gridId = createGrid(doc, undefined, { query });
+    const gridId = createGrid(doc, { query });
     const grid = getGridHandles(doc, gridId)!;
     return {
         grid,

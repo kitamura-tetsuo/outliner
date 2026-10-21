@@ -27,7 +27,7 @@ describe("Object Manager Grid INSERT preference history", { timeout: 60_000 }, (
             return handles;
         });
         const query = "SELECT id AS id, title AS title FROM a UNION ALL SELECT id AS id, title AS title FROM b";
-        const gridId = createGrid(project.ydoc, undefined, {
+        const gridId = createGrid(project.ydoc, {
             name: "Restored destination",
             query,
             columnOrder: ["title", "id"],

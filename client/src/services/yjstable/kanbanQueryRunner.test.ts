@@ -22,7 +22,7 @@ async function setup(schema = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TE
     const tableId = createTable(projectDoc, "Tasks", "tasks");
     const table = getTableHandles(projectDoc, tableId)!;
     setSchemaText(table, schema);
-    const kanbanId = createKanban(projectDoc, tableId, {
+    const kanbanId = createKanban(projectDoc, {
         query: "SELECT id, title, status, priority FROM tasks ORDER BY priority DESC, id",
         groupField: "status",
         titleField: "title",

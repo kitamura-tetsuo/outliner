@@ -69,7 +69,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: QUERY,
             components: { title: { widthPx: 180 } },
@@ -134,7 +134,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: QUERY,
             components: { title: { widthPx: 180 } },
@@ -161,7 +161,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: QUERY,
             components: {
@@ -208,7 +208,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, { name: "G", query: QUERY });
+        const gridId = createGrid(doc, { name: "G", query: QUERY });
         const grid = getGridHandles(doc, gridId)!;
         const handles = getTableHandles(doc, tableId)!;
 
@@ -234,7 +234,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: QUERY,
             components: {
@@ -295,7 +295,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: QUERY,
             components: { title: { widthPx: 180 }, done: { widthPx: 48 } },
@@ -333,7 +333,7 @@ describe("TableGrid fixed column widths", () => {
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
         const computedQuery = "SELECT id, title, UPPER(title) AS shout FROM tasks";
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: computedQuery,
             components: { title: { widthPx: 180 }, shout: { widthPx: 120 } },
@@ -394,7 +394,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: QUERY,
             components: { title: { widthPx: 180 } },
@@ -432,7 +432,7 @@ describe("TableGrid fixed column widths", () => {
         const { Doc } = await import("yjs");
         const doc = new Doc();
         const tableId = createTable(doc, "Tasks", "tasks");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: QUERY,
             components: { title: { widthPx: 180 } },

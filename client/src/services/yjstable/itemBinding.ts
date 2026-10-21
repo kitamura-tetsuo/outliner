@@ -16,9 +16,6 @@ interface ItemLike {
 }
 
 const GRID_ID_FIELD = "yjsGridId";
-// Legacy field name from the pre-Grid model. Kept only so old node values that
-// still expose it can be observed and cleared; nothing new writes it.
-const LEGACY_TABLE_ID_FIELD = "yjsTableId";
 
 function nodeValue(
     item: ItemLike,
@@ -44,54 +41,16 @@ export function setItemGridId(item: ItemLike, gridId: string | undefined): void 
 }
 
 /**
- * Bind an item to a Grid. Current creators pass no Table hint and remove the
- * old Table field instead of persisting an undefined value. Grid rendering and
+ * Bind an item to its independent Grid identity. Grid rendering and
  * mutation authority use the live Grid binding and completed SQL evidence.
  */
 export function bindItemToGrid(
     item: ItemLike,
     gridId: string | undefined,
-    _sourceTableId?: string,
 ): void {
     const value = nodeValue(item);
     value?.set?.(GRID_ID_FIELD, gridId);
-    value?.delete?.(LEGACY_TABLE_ID_FIELD);
 }
-
-/**
- * Legacy accessor: prior versions bound items directly to a table. Callers that
- * still need to know whether an item carries the old field can inspect it here,
- * but new code should read/write `gridId` instead.
- */
-export function getItemLegacyTableId(item: ItemLike): string | undefined {
-    const value = nodeValue(item)?.get?.(LEGACY_TABLE_ID_FIELD);
-    return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-/**
- * Legacy alias for {@link getItemLegacyTableId}. Kept so callers that identify a
- * host by its source Table id (clipboard export, cut/detach) keep compiling
- * during the Grid split. Prefer {@link getItemGridId} on read paths.
- */
-export const getItemTableId = getItemLegacyTableId;
-
-/**
- * Legacy setter for the `yjsTableId` field. Retained so cut/detach paths that
- * clear the field with `setItemTableId(item, undefined)` keep working. New code
- * should call {@link setItemGridId}.
- */
-export function setItemTableId(item: ItemLike, tableId: string | undefined): void {
-    const value = nodeValue(item);
-    if (tableId === undefined) value?.delete?.(LEGACY_TABLE_ID_FIELD);
-    else value?.set?.(LEGACY_TABLE_ID_FIELD, tableId);
-}
-
-/**
- * Legacy alias: watch the item for either grid-id or table-id changes. Old
- * callsites use `observeItemTableId`; new code should call
- * {@link observeItemGridId}. Both notify on either field.
- */
-export const observeItemTableId = observeItemGridId;
 
 interface ObservableMap {
     observe?: (f: (event: { keysChanged?: Set<string>; }) => void) => void;
@@ -109,7 +68,6 @@ export function observeItemGridId(item: ItemLike, onChange: () => void): () => v
         if (
             !event.keysChanged
             || event.keysChanged.has(GRID_ID_FIELD)
-            || event.keysChanged.has(LEGACY_TABLE_ID_FIELD)
         ) onChange();
     };
     value.observe(handler);

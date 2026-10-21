@@ -36,7 +36,7 @@ function setup(count = 3) {
         undefined,
         h => h.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY)"),
     );
-    const grid = createGrid(source.ydoc, undefined, {
+    const grid = createGrid(source.ydoc, {
         query: "SELECT * FROM tasks",
         insertTargetTableId: table,
         confirmRowDelete: true,
@@ -85,7 +85,7 @@ describe("cross-Project staged Grid moves", () => {
             const peer = new Y.Doc();
             Y.applyUpdate(peer, Y.encodeStateAsUpdate(f.source.ydoc));
             const peerProject = Project.fromDoc(peer);
-            const replacement = createGrid(peer, undefined, { query: "SELECT 1" });
+            const replacement = createGrid(peer, { query: "SELECT 1" });
             (peerProject.tree.getNodeValueFromKey(f.selected[0].key) as Y.Map<unknown>).set("yjsGridId", replacement);
             Y.applyUpdate(f.source.ydoc, Y.encodeStateAsUpdate(peer, Y.encodeStateVector(f.source.ydoc)), "provider");
             intervened = true;
@@ -224,7 +224,7 @@ describe("cross-Project staged Grid moves", () => {
         it(`refuses a destination ${kind} identity anywhere in the Project without consuming Cut`, async () => {
             const f = setup();
             if (kind === "grid") {
-                createGrid(f.destination.ydoc, undefined, { gridId: f.grid, query: "SELECT 1 AS peer" });
+                createGrid(f.destination.ydoc, { gridId: f.grid, query: "SELECT 1 AS peer" });
             } else {
                 const elsewhere = f.destination.addPage("Elsewhere", "peer");
                 const value = new Y.Map<unknown>();
@@ -249,7 +249,7 @@ describe("cross-Project staged Grid moves", () => {
         const intervene = () => {
             if (!reached) {
                 reached = true;
-                createGrid(f.destination.ydoc, undefined, { gridId: f.grid, query: "SELECT 1 AS peer" });
+                createGrid(f.destination.ydoc, { gridId: f.grid, query: "SELECT 1 AS peer" });
             }
         };
         window.addEventListener(GRID_PASTE_WRITE_CHECK_EVENT, intervene);
@@ -290,7 +290,7 @@ describe("cross-Project staged Grid moves", () => {
 
     it("refuses a source rebind observed during preparation without overwriting the peer binding", async () => {
         const f = setup();
-        const peer = createGrid(f.source.ydoc, undefined, { query: "SELECT 1 AS peer" });
+        const peer = createGrid(f.source.ydoc, { query: "SELECT 1 AS peer" });
         let reached = false;
         const intervene = () => {
             if (reached) return;
@@ -322,7 +322,7 @@ describe("cross-Project staged Grid moves", () => {
         await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
         const depth = globalUndoRouter.redoDepth;
         f.destination.ydoc.transact(
-            () => createGrid(f.destination.ydoc, undefined, { gridId: f.grid, query: "SELECT 7 AS peer" }),
+            () => createGrid(f.destination.ydoc, { gridId: f.grid, query: "SELECT 7 AS peer" }),
             "peer",
         );
         globalUndoRouter.redo();

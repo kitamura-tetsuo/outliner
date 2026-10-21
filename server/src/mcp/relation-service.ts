@@ -1784,8 +1784,7 @@ export class OutlinerRelationService {
             const placement = children[children.length - 1];
             return placement?.key === itemKey
                 && placement.componentType === "yjstable"
-                && placement.yjsGridId === gridId
-                && !placement.yjsTableId;
+                && placement.yjsGridId === gridId;
         };
         let failure: unknown;
         try {

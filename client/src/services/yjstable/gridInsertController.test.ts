@@ -16,7 +16,7 @@ function table(doc: Y.Doc, sqlName: string, schema: string) {
 }
 
 function controller(doc: Y.Doc, query: string) {
-    const gridId = createGrid(doc, undefined, { query });
+    const gridId = createGrid(doc, { query });
     const grid = getGridHandles(doc, gridId)!;
     return {
         grid,

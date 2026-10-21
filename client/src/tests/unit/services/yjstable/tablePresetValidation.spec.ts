@@ -17,14 +17,14 @@ describe("preset SQL-name validation", () => {
     it.each(TABLE_PRESETS)("refuses system_user for $key before any project effect", preset => {
         const doc = new Y.Doc({ guid: `reserved-${preset.key}` });
         const existingTableId = createTable(doc, "Existing", "existing");
-        createGrid(doc, existingTableId, {
+        createGrid(doc, {
             name: "Existing Grid",
             query: "SELECT id, title FROM existing ORDER BY title",
             components: {
                 title: { type: "text", label: "Distinctive title", hidden: true },
             },
         });
-        createKanban(doc, existingTableId, {
+        createKanban(doc, {
             name: "Existing Kanban",
             query: "SELECT id, title FROM existing",
         });

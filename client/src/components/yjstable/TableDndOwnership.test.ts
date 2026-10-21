@@ -159,7 +159,7 @@ beforeEach(() => {
     doc = new Y.Doc();
     const tableId = createTable(doc, "test_table", "test_table");
     handles = getTableHandles(doc, tableId)!;
-    const gridId = createGrid(doc, tableId, { name: "G", query: QUERY });
+    const gridId = createGrid(doc, { name: "G", query: QUERY });
     grid = getGridHandles(doc, gridId)!;
 });
 

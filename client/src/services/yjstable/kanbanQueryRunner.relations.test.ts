@@ -40,7 +40,7 @@ describe("Kanban additional-relation invalidation", { timeout: 30000 }, () => {
         setSchemaText(filter, "CREATE TABLE task_filter (id TEXT PRIMARY KEY, task_id TEXT)");
         addRecord(filter, { task_id: "t1" }, "f1");
 
-        const kanbanId = createKanban(projectDoc, tasksId, {
+        const kanbanId = createKanban(projectDoc, {
             query: "SELECT tasks.id, tasks.title, tasks.status FROM tasks "
                 + "JOIN task_filter ON task_filter.task_id = tasks.id ORDER BY tasks.id",
             groupField: "status",

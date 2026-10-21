@@ -14,7 +14,7 @@ function fixture(doc: Y.Doc, schema: string, projectId?: string) {
     const tableId = createTable(doc, "Target", "target");
     const table = getTableHandles(doc, tableId)!;
     setSchemaText(table, schema);
-    const gridId = createGrid(doc, undefined, { query: "SELECT * FROM target WHERE false" });
+    const gridId = createGrid(doc, { query: "SELECT * FROM target WHERE false" });
     const grid = getGridHandles(doc, gridId)!;
     return {
         grid,

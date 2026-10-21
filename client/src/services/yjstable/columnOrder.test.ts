@@ -11,7 +11,7 @@ describe("columnOrder", () => {
             const docA = new Y.Doc();
             const docB = new Y.Doc();
             const tableId = createTable(docA, "T", "t");
-            const gridId = createGrid(docA, tableId, { name: "G" });
+            const gridId = createGrid(docA, { name: "G" });
             Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
 
             const handlesA = getGridHandles(docA, gridId)!;

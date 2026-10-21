@@ -34,12 +34,12 @@ const INVALID_WIDTHS = [31, 4097, 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINI
 function basicProject(): { doc: Y.Doc; tableId: string; gridA: string; gridB: string; } {
     const doc = new Y.Doc();
     const tableId = createTable(doc, "Tasks", "tasks");
-    const gridA = createGrid(doc, tableId, {
+    const gridA = createGrid(doc, {
         name: "A",
         query: "SELECT id, title, done FROM tasks",
         components: { title: { widthPx: 180 } },
     });
-    const gridB = createGrid(doc, tableId, { name: "B", query: "SELECT id, title, done FROM tasks" });
+    const gridB = createGrid(doc, { name: "B", query: "SELECT id, title, done FROM tasks" });
     return { doc, tableId, gridA, gridB };
 }
 
@@ -73,9 +73,7 @@ describe("Grid column width overrides", () => {
 
         const gridsBefore = listGrids(doc).length;
         for (const invalid of INVALID_WIDTHS) {
-            expect(() =>
-                createGrid(doc, listTables(doc)[0].tableId, { components: { x: { widthPx: invalid as number } } })
-            )
+            expect(() => createGrid(doc, { components: { x: { widthPx: invalid as number } } }))
                 .toThrow(/Invalid widthPx/);
         }
         expect(listGrids(doc)).toHaveLength(gridsBefore);
@@ -186,7 +184,7 @@ describe("Grid column width overrides", () => {
     it("restores valid widths, including dormant ones and absence, through delete/Undo", () => {
         const project = Project.createInstance("proj-width");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, tableId, {
+        const gridId = createGrid(project.ydoc, {
             name: "G",
             query: "SELECT id, t FROM t",
             components: { t: { label: "Tee", widthPx: 200 }, ghost: { widthPx: 64 } },
@@ -216,7 +214,7 @@ describe("Grid width structural copy", { timeout: 30000 }, () => {
             getTableHandles(doc, tableId)!,
             "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN)",
         );
-        const gridId = createGrid(doc, undefined, {
+        const gridId = createGrid(doc, {
             name: "Tasks grid",
             query: "SELECT id, title, done FROM tasks",
             columnOrder: ["title", "id", "done"],
@@ -325,7 +323,7 @@ describe("Grid width collaboration", () => {
     function syncedPair(): { docA: Y.Doc; docB: Y.Doc; gridId: string; } {
         const docA = new Y.Doc();
         const tableId = createTable(docA, "Tasks", "tasks");
-        const gridId = createGrid(docA, tableId, {
+        const gridId = createGrid(docA, {
             name: "A",
             query: "SELECT id, title FROM tasks",
             components: { title: { label: "Title" } },
@@ -367,7 +365,7 @@ describe("Grid width collaboration", () => {
         // with the label retained.
         const docA = new Y.Doc();
         const tableId = createTable(docA, "Tasks", "tasks");
-        const gridId = createGrid(docA, tableId, {
+        const gridId = createGrid(docA, {
             name: "A",
             query: "SELECT id, title FROM tasks",
             components: { title: { widthPx: 180 } },

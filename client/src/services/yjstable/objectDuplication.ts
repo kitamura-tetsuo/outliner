@@ -459,7 +459,7 @@ export async function materializeDuplicationPlan(
                     `Grid ${object.id}: query unavailable because read dependencies were omitted or unknown`,
                 );
             }
-            createGrid(destination, undefined, {
+            createGrid(destination, {
                 gridId: destinationId,
                 name: allocateCopyName(String(sourceGrid.get("name") ?? "Grid"), gridNames, sameProject),
                 query: targetQuery,

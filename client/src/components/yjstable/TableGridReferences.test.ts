@@ -9,8 +9,8 @@ afterEach(cleanup);
 it("reacts to Table identities and distinguishes incomplete SQL from empty reads", async () => {
     const doc = new Y.Doc();
     const tableId = createTable(doc, "Orders", "orders");
-    createGrid(doc, undefined, { gridId: "old", name: "Old query", query: "SELECT * FROM orders" });
-    createGrid(doc, undefined, { gridId: "next", name: "New query", query: "SELECT * FROM renamed_orders" });
+    createGrid(doc, { gridId: "old", name: "Old query", query: "SELECT * FROM orders" });
+    createGrid(doc, { gridId: "next", name: "New query", query: "SELECT * FROM renamed_orders" });
     const view = render(TableGridReferences, { props: { projectDoc: doc, projectName: "demo", tableId } });
     const known = () => within(view.container.querySelector(".reference-list") as HTMLElement);
     await waitFor(() =>

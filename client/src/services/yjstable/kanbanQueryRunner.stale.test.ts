@@ -36,7 +36,7 @@ describe("Kanban execution currentness", { timeout: 30000 }, () => {
         const queryA = "SELECT tasks.id, tasks.title, tasks.status FROM tasks "
             + "JOIN task_filter ON task_filter.task_id = tasks.id ORDER BY tasks.id";
         const queryB = "SELECT id, title, status FROM tasks WHERE false";
-        const kanbanId = createKanban(projectDoc, tasksId, { query: queryA, groupField: "status" });
+        const kanbanId = createKanban(projectDoc, { query: queryA, groupField: "status" });
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
         const acquired = await session.acquire(tasksId);
 

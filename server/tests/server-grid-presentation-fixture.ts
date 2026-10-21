@@ -113,15 +113,15 @@ export async function seedGridProject(hocuspocus: Hocuspocus, projectId = PROJEC
         table.set("doc", new Y.Doc({ guid: `${projectId}--table--${tableId}` }));
         doc.getMap("yjsTables").set(tableId, table);
     }
-    createGridEntry(doc, "grid-tasks", TABLE_ID, {
+    createGridEntry(doc, "grid-tasks", {
         name: "Tasks",
         query: "SELECT id, title, due_date, done FROM tasks",
     });
-    createGridEntry(doc, "grid-separate", TABLE_ID, {
+    createGridEntry(doc, "grid-separate", {
         name: "Separate",
         query: "SELECT id, title, due_date, done FROM tasks",
     });
-    createGridEntry(doc, "grid-other", OTHER_TABLE_ID, { name: "Other", query: "SELECT id FROM other_table" });
+    createGridEntry(doc, "grid-other", { name: "Other", query: "SELECT id FROM other_table" });
     for (const gridId of ["grid-tasks", "grid-tasks", "grid-separate"]) {
         const placement = page.items.addNode("owner");
         placement.componentType = "yjstable";

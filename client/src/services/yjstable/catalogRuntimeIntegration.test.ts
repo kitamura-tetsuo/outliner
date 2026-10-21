@@ -99,7 +99,7 @@ describe("browser catalog generations", { timeout: 60_000 }, () => {
         const handles = getTableHandles(projectDoc, tableId)!;
         setSchemaText(handles, "CREATE TABLE tasks (id TEXT PRIMARY KEY, priority priority)");
         addRecord(handles, { priority: "Low" }, "r1");
-        const gridId = createGrid(projectDoc, tableId, { query: "SELECT id, priority FROM tasks ORDER BY priority" });
+        const gridId = createGrid(projectDoc, { query: "SELECT id, priority FROM tasks ORDER BY priority" });
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
         let execution: TableQueryExecution | undefined;
         let invalidated = false;

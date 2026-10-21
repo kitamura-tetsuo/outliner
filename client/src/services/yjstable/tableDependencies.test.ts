@@ -11,7 +11,7 @@ describe("tableDependencies", () => {
     it("finds direct grid references", () => {
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
+        const gridId = createGrid(project.ydoc, { name: "G", query: "SELECT * FROM t" });
 
         const page = project.addPage("Page 1", "test");
         const item1 = page.items.addNode("test");
@@ -33,7 +33,7 @@ describe("tableDependencies", () => {
     it("removes table keeping references", () => {
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
+        const gridId = createGrid(project.ydoc, { name: "G", query: "SELECT * FROM t" });
 
         const page = project.addPage("Page 1", "test");
         const item1 = page.items.addNode("test");
@@ -61,7 +61,7 @@ describe("tableDependencies", () => {
     it("removes table removing direct references", () => {
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
+        const gridId = createGrid(project.ydoc, { name: "G", query: "SELECT * FROM t" });
 
         const page = project.addPage("Page 1", "test");
         const item1 = page.items.addNode("test");
@@ -90,7 +90,7 @@ describe("tableDependencies", () => {
         globalUndoRouter.clear();
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");
-        const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
+        const gridId = createGrid(project.ydoc, { name: "G", query: "SELECT * FROM t" });
 
         expect(removeTableWithPolicyUndoable(project, tableId)).toBe(true);
         expect(getTableRegistry(project.ydoc).has(tableId)).toBe(false);

@@ -63,7 +63,7 @@ describe("SQL-only Kanban over outline_items", { timeout: 30000 }, () => {
         literalLane.start = "2026-10-19";
         literalLane.allDay = true;
 
-        const kanbanId = createKanban(projectDoc, undefined, {
+        const kanbanId = createKanban(projectDoc, {
             kanbanId: "outline-only-board",
             name: "Outline board",
             query: QUERY,

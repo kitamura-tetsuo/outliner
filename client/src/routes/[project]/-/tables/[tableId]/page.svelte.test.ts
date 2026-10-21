@@ -69,7 +69,7 @@ function currentProject(): NonNullable<typeof store.project> {
 }
 
 function referenceGrid(sqlName: string, options: { gridId: string; name: string; query?: string; }) {
-    return createGrid(projectDoc, undefined, { ...options, query: options.query ?? `SELECT * FROM ${sqlName}` });
+    return createGrid(projectDoc, { ...options, query: options.query ?? `SELECT * FROM ${sqlName}` });
 }
 
 describe("standalone table route", () => {

@@ -50,7 +50,6 @@ export interface DemoItem {
     columnSpan?: number;
     // For "yjstable" components: id of the demo table (see demoTables below)
     // this item embeds.
-    yjsTableId?: string;
     /** A placement of an explicitly authored query Grid. */
     yjsGridId?: string;
     // For "calendar" components: id of the demo calendar (see demoCalendars
@@ -1104,11 +1103,6 @@ function addDemoItems(
         const node = parent.addNode(author);
         if (def.text !== undefined) node.text = def.text;
         if (def.componentType) node.componentType = def.componentType;
-        if (def.yjsTableId !== undefined) {
-            // Template Table IDs select an explicitly seeded Grid; the durable
-            // placement stores only that Grid binding.
-            node.yjsGridId = demoGridIdFor(def.yjsTableId);
-        }
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;
         if (def.yjsGridId !== undefined) node.yjsGridId = def.yjsGridId;
         if (def.diagramId !== undefined) node.diagramId = def.diagramId;

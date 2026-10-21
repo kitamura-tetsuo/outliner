@@ -30,7 +30,7 @@ async function fixture(schema: string, filtered = false) {
     expect(await engine.acquire(otherId)).toBeDefined();
     const provider = (await engine.resolveRelation("target"))!;
     const query = `SELECT id AS id FROM target${filtered ? " WHERE false" : ""}`;
-    const grid = getGridHandles(doc, createGrid(doc, undefined, { query }))!;
+    const grid = getGridHandles(doc, createGrid(doc, { query }))!;
     const controller = createGridInsertController({
         projectDoc: doc,
         projectId: doc.guid,

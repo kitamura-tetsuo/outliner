@@ -32,6 +32,7 @@ import {
     DEMO_SALES_TARGETS_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
     DEMO_WEEKLY_RULE_ID,
+    demoGridIdFor,
     type DemoLocaleContent,
     demoUtcDate,
 } from "./demo-content.js";
@@ -350,7 +351,7 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_SALES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_SALES_TABLE_ID),
                     },
                     {
                         text:
@@ -443,7 +444,7 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_SALES_TARGETS_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_SALES_TARGETS_TABLE_ID),
                     },
                     { text: "エイリアス: 項目は別の項目を写し取り、元の項目と同期し続けられます。" },
                     {
@@ -502,7 +503,7 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_TASKS_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_TASKS_TABLE_ID),
                     },
                     {
                         text:
@@ -514,7 +515,7 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_HABITS_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_HABITS_TABLE_ID),
                     },
                     {
                         text:
@@ -565,7 +566,7 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_ROUTINE_TEMPLATES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_ROUTINE_TEMPLATES_TABLE_ID),
                     },
                     {
                         text:
@@ -573,7 +574,7 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_ROUTINE_OCCURRENCES_TABLE_ID),
                     },
                     {
                         text:
@@ -780,7 +781,7 @@ export function demoContentJa(): DemoLocaleContent {
                         children: [
                             {
                                 componentType: "yjstable",
-                                yjsTableId: DEMO_SALES_TABLE_ID,
+                                yjsGridId: demoGridIdFor(DEMO_SALES_TABLE_ID),
                                 columnSpan: 6,
                             },
                             {
@@ -873,7 +874,7 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_ENUM_PRIORITIES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_ENUM_PRIORITIES_TABLE_ID),
                     },
                     {
                         text:

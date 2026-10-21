@@ -6,7 +6,7 @@ import { getGridHandles } from "../yjstable/gridDocs";
 import { appendGridPlacement } from "../yjstable/gridPlacement";
 import { getKanban } from "../yjstable/kanbanDocs";
 import { createKanban } from "../yjstable/kanbanDocs";
-import { getTableRegistry } from "../yjstable/tableDocs";
+import { getTableRegistry, getTableSqlName } from "../yjstable/tableDocs";
 
 export type PlaceableObjectType = "grid" | "calendar" | "kanban" | "table";
 
@@ -111,7 +111,10 @@ export function placeObjectOnPage(
             if (!project.findPage(pageId) || !getTableRegistry(doc).has(objectId)) {
                 throw new Error("The source Table or destination Page no longer exists.");
             }
-            const kanbanId = createKanban(doc, objectId, { name: "Kanban" });
+            const kanbanId = createKanban(doc, {
+                name: "Kanban",
+                query: `SELECT * FROM ${getTableSqlName(doc, objectId)}`,
+            });
             const placement = page.items.addNode(author);
             placement.componentType = "kanban";
             placement.kanbanId = kanbanId;

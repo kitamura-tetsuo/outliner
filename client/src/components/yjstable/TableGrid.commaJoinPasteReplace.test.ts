@@ -37,7 +37,7 @@ function seedTables() {
     const tableA = createTable(doc, "Table A", "tasks_a");
     createTable(doc, "Table B", "tasks_b");
     const handlesA = getTableHandles(doc, tableA)!;
-    const gridId = createGrid(doc, tableA, { name: "Grid", query: BASE_QUERY });
+    const gridId = createGrid(doc, { name: "Grid", query: BASE_QUERY });
     const grid = getGridHandles(doc, gridId)!;
     addRecord(handlesA, { title: "Value in A" }, "r1");
     addRecord(handlesA, { title: "Second in A" }, "r2");

@@ -36,7 +36,7 @@ describe("Kanban setting-only projection races", { timeout: 30000 }, () => {
         setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, detail TEXT)");
         addRecord(table, { status: "open", detail: "First" }, "t1");
         addRecord(table, { status: "done", detail: "Second" }, "t2");
-        const kanbanId = createKanban(projectDoc, tableId, {
+        const kanbanId = createKanban(projectDoc, {
             query: "SELECT tasks.id AS id, tasks.status AS status, tasks.detail AS detail FROM tasks ORDER BY tasks.id",
             groupField: "status",
         });

@@ -1,7 +1,6 @@
 // Yjs data model for the Grid feature.
 //
-// A Grid is a project-level presentation/query definition. Older definitions
-// may retain `sourceTableId` as creation/migration metadata. Multiple Grids
+// A Grid is a project-level presentation/query definition. Multiple Grids
 // may reference the same Table so several filtered/labeled views can share the
 // same underlying schema/data without cloning it.
 //
@@ -63,8 +62,6 @@ export interface GridRegistryEntry {
     gridId: string;
     /** Free-form label (never appears in SQL). */
     name: string;
-    /** Optional legacy creation Table; never query or mutation authority. */
-    sourceTableId?: string;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
     /** Whether deleting a row requires confirmation (default false). */
@@ -97,9 +94,6 @@ export function listGrids(projectDoc: Y.Doc): GridRegistryEntry[] {
         entries.push({
             gridId,
             name: String(entry.get("name") ?? ""),
-            sourceTableId: typeof entry.get("sourceTableId") === "string"
-                ? String(entry.get("sourceTableId"))
-                : undefined,
             showAddRowButton: entry.get("showAddRowButton") !== false,
             confirmRowDelete: entry.get("confirmRowDelete") === true,
         });
@@ -122,17 +116,16 @@ export interface CreateGridOptions extends GridDefinitionSeed {
 }
 
 /**
- * Create a new Grid in the project registry with the given `sourceTableId`.
+ * Create an independent Grid definition in the project registry.
  * Returns the new Grid id. All initialization happens in one transaction so
  * observers never see a partially populated Grid.
  */
 export function createGrid(
     projectDoc: Y.Doc,
-    sourceTableId: string | undefined,
     options: CreateGridOptions = {},
 ): string {
     const gridId = options.gridId ?? uuidv4();
-    createGridEntry(projectDoc, gridId, sourceTableId, options);
+    createGridEntry(projectDoc, gridId, options);
     return gridId;
 }
 
@@ -305,11 +298,6 @@ export function getGridName(projectDoc: Y.Doc, gridId: string): string | undefin
     return entry ? String(entry.get("name") ?? "") : undefined;
 }
 
-export function getGridSourceTableId(projectDoc: Y.Doc, gridId: string): string | undefined {
-    const value = getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId");
-    return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
 /** Plain-JS copy of a Grid registry entry's fields, detached from the Y.Doc. */
 interface GridEntrySnapshot {
     name: string;
@@ -376,7 +364,7 @@ export function duplicateGrid(
     if (!source) return undefined;
     const snapshot = readGridEntrySnapshot(source);
 
-    return createGrid(projectDoc, undefined, {
+    return createGrid(projectDoc, {
         name: overrides.name ?? `${snapshot.name} (copy)`,
         query: snapshot.query,
         insertTargetTableId: snapshot.insertTargetTableId,
@@ -440,7 +428,7 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
     const applyRestore = () => {
         if (registry.has(gridId)) return;
         projectDoc.transact(() => {
-            createGrid(projectDoc, undefined, {
+            createGrid(projectDoc, {
                 gridId,
                 name: snapshot.name,
                 query: snapshot.query,
@@ -479,11 +467,6 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
     });
 
     return true;
-}
-
-/** Grids referencing a given source Table id. */
-export function findGridsBySourceTable(projectDoc: Y.Doc, sourceTableId: string): GridRegistryEntry[] {
-    return listGrids(projectDoc).filter(g => g.sourceTableId === sourceTableId);
 }
 
 /** Current-format Grids whose SQL reads the registered Table. */

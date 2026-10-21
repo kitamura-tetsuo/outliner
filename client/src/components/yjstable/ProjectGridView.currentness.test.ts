@@ -22,7 +22,7 @@ it(
         setSchemaText(handles, "CREATE TABLE a (id TEXT PRIMARY KEY, value TEXT)");
         addRecord(handles, { value: "needle" }, "same");
         const query = "SELECT id AS id, value AS value FROM a";
-        const grid = getGridHandles(projectDoc, createGrid(projectDoc, undefined, { query }))!;
+        const grid = getGridHandles(projectDoc, createGrid(projectDoc, { query }))!;
         const view = render(ProjectGridView, { props: { grid, projectDoc, placementId: "placement", pageId: "page" } });
         const cell = () => view.container.querySelector('td[data-col="value"]')!;
         const find = (text: string) => gridSearchMatches("page", text, options);

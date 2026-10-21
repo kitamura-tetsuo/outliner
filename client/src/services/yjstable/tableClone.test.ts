@@ -36,7 +36,7 @@ function fixture() {
         undefined,
         handles => handles.schemaText.insert(0, "CREATE TABLE c (id TEXT PRIMARY KEY)"),
     );
-    const grid = createGrid(doc, undefined, {
+    const grid = createGrid(doc, {
         name: "Joined",
         query: "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b)",
         insertTargetTableId: b,
@@ -45,7 +45,7 @@ function fixture() {
         showAddRowButton: false,
         confirmRowDelete: true,
     });
-    const other = createGrid(doc, undefined, { name: "Other", query: "SELECT id FROM a", insertTargetTableId: c });
+    const other = createGrid(doc, { name: "Other", query: "SELECT id FROM a", insertTargetTableId: c });
     addRecord(getTableHandles(doc, a)!, { id: "record" }, "record");
     return { doc, a, b, c, grid, other };
 }
@@ -164,7 +164,7 @@ describe("independent portable Tables and Grids", () => {
     it("imports dependency-free/system queries with zero Tables and rejects unknown automatic evidence", async () => {
         const doc = new Y.Doc();
         const destination = new Y.Doc();
-        const id = createGrid(doc, undefined, { query: "SELECT 1 AS value" });
+        const id = createGrid(doc, { query: "SELECT 1 AS value" });
         const result = await importTableStructures(destination, {}, doc.guid, undefined, false, {
             [id]: exportGridSlice(doc, id),
         });

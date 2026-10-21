@@ -31,7 +31,7 @@ describe("saved Grid commands use the verified actual source", { timeout: 60_000
         addRecord(handlesB, { value: "B value" }, "same");
         handlesA.undo.clear();
         handlesB.undo.clear();
-        const gridId = createGrid(projectDoc, undefined, { name: "Grid", query: "SELECT id, value FROM b" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, value FROM b" });
         const grid = getGridHandles(projectDoc, gridId)!;
         const readText = vi.fn().mockResolvedValue("Pasted B");
         Object.defineProperty(navigator, "clipboard", { configurable: true, value: { readText } });

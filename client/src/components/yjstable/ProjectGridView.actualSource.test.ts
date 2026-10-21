@@ -23,7 +23,7 @@ it("renders source-specific UNION choices and routes its verified branch edit", 
     });
     const query =
         "SELECT 'a' AS source_kind, id AS source_id, status AS status FROM a UNION ALL SELECT 'b' AS source_kind, id AS source_id, status AS status FROM b";
-    const grid = getGridHandles(projectDoc, createGrid(projectDoc, undefined, { name: "Independent", query }))!;
+    const grid = getGridHandles(projectDoc, createGrid(projectDoc, { name: "Independent", query }))!;
     const view = render(ProjectGridView, { props: { grid, projectDoc, projectName: "Project" } });
     await waitFor(() => expect(view.container.querySelectorAll("td select")).toHaveLength(2), { timeout: 30000 });
     const selects = view.container.querySelectorAll<HTMLSelectElement>("td select");
@@ -54,7 +54,7 @@ it("keeps zero-Table computed results in the rich Grid and clears dependencies",
     const projectDoc = new Y.Doc({ guid: "grid-no-tables" });
     const grid = getGridHandles(
         projectDoc,
-        createGrid(projectDoc, undefined, { name: "Numbers", query: "SELECT 42 AS value, true AS flag" }),
+        createGrid(projectDoc, { name: "Numbers", query: "SELECT 42 AS value, true AS flag" }),
     )!;
     const view = render(ProjectGridView, { props: { grid, projectDoc } });
     await waitFor(() => expect(view.getByTestId("yjs-table-grid").textContent).toContain("42"), { timeout: 30000 });
@@ -85,7 +85,7 @@ it(
         const branch = "SELECT 'a' AS source_kind, id AS source_id, status AS status FROM a";
         const grid = getGridHandles(
             projectDoc,
-            createGrid(projectDoc, undefined, { query: `${branch} UNION ALL ${branch}` }),
+            createGrid(projectDoc, { query: `${branch} UNION ALL ${branch}` }),
         )!;
         const view = render(ProjectGridView, { props: { grid, projectDoc } });
         try {

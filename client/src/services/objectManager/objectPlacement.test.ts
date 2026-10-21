@@ -34,7 +34,7 @@ describe("Object Manager Page placement", () => {
     it("refuses denied and read-only placement before changing the tree", () => {
         const project = Project.createInstance("Project");
         const page = project.addPage("Inbox", "user");
-        const gridId = createGrid(project.ydoc, "table", { name: "Tasks" });
+        const gridId = createGrid(project.ydoc, { name: "Tasks" });
 
         expect(() =>
             placeObjectOnPage(project.ydoc, page.id, "grid", gridId, "user", {
@@ -54,7 +54,7 @@ describe("Object Manager Page placement", () => {
     it("places the same Grid definition more than once", () => {
         const project = Project.createInstance("Project");
         const page = project.addPage("Inbox", "user");
-        const gridId = createGrid(project.ydoc, "table", { name: "Tasks" });
+        const gridId = createGrid(project.ydoc, { name: "Tasks" });
 
         placeObjectOnPage(project.ydoc, page.id, "grid", gridId, "user", {
             projectAccess: true,

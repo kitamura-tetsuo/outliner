@@ -22,12 +22,6 @@ export interface ClipboardItem {
     depth: number;
     componentType?: ClipboardComponentType;
     /**
-     * The source Table id on the copying end. On paste it drives the
-     * destination Table lookup/clone; the receiver binds the newly pasted
-     * outline item to a fresh Grid via `yjsGridId`.
-     */
-    yjsTableId?: string;
-    /**
      * The Grid id on the copying end (present only when the source outline
      * item was already Grid-bound). On paste it is remapped to the freshly
      * created Grid id in the destination project.
@@ -250,7 +244,6 @@ const ITEM_KEYS = new Set([
     "text",
     "depth",
     "componentType",
-    "yjsTableId",
     "yjsGridId",
     "calendarId",
     "diagramId",
@@ -301,24 +294,23 @@ function isClipboardItem(value: unknown): value is ClipboardItem {
 
     if (value.componentType !== DIAGRAM_COMPONENT_TYPE && value.diagramId !== undefined) return false;
     if (value.componentType === undefined) {
-        return value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
+        return value.yjsGridId === undefined && value.calendarId === undefined;
     }
     // A Layout carries no binding of its own: it owns ordinary tree children,
     // which travel as the following, deeper clipboard items.
     if (value.componentType === LAYOUT_COMPONENT_TYPE) {
-        return value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
+        return value.yjsGridId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === DIAGRAM_COMPONENT_TYPE) {
         return typeof value.diagramId === "string" && value.diagramId.length > 0
-            && value.yjsTableId === undefined && value.yjsGridId === undefined && value.calendarId === undefined;
+            && value.yjsGridId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === "yjstable") {
         return typeof value.yjsGridId === "string" && value.yjsGridId.length > 0
-            && value.yjsTableId === undefined && value.calendarId === undefined;
+            && value.calendarId === undefined;
     }
     if (value.componentType === "calendar") {
-        return typeof value.calendarId === "string" && value.calendarId.length > 0
-            && value.yjsTableId === undefined;
+        return typeof value.calendarId === "string" && value.calendarId.length > 0;
     }
     return false;
 }

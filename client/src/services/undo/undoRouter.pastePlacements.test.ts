@@ -8,7 +8,7 @@ import { UndoRouter } from "./undoRouter.svelte";
 function fixture() {
     const project = Project.createInstance("Placement witnesses");
     const page = project.addPage("Page", "fixture");
-    const grid = createGrid(project.ydoc, undefined, { name: "Owned", query: "SELECT 1 AS id" });
+    const grid = createGrid(project.ydoc, { name: "Owned", query: "SELECT 1 AS id" });
     const bindings = new TransferBindings(project.ydoc);
     bindings.capture("grid", grid, true);
     const manager = new Y.UndoManager(project.ydoc.getMap("orderedTree"));
@@ -68,7 +68,7 @@ for (const layout of [false, true]) {
 
 it("refuses an owned placement rebound to another Grid before deleting either definition", () => {
     const f = fixture();
-    const other = createGrid(f.project.ydoc, undefined, { name: "Peer", query: "SELECT 2 AS id" });
+    const other = createGrid(f.project.ydoc, { name: "Peer", query: "SELECT 2 AS id" });
     f.project.ydoc.transact(() => {
         (f.project.tree.getNodeValueFromKey(f.original.key) as Y.Map<unknown>).set("yjsGridId", other);
     }, "peer");

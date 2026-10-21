@@ -22,7 +22,7 @@ it("retains Grid query and A cell history through a live supplier switch", { tim
     });
     const grid = getGridHandles(
         projectDoc,
-        createGrid(projectDoc, undefined, { name: "Independent", query: "SELECT id AS id, value AS value FROM a" }),
+        createGrid(projectDoc, { name: "Independent", query: "SELECT id AS id, value AS value FROM a" }),
     )!;
     const view = render(ProjectGridView, { props: { grid, projectDoc } });
     const cell = () => view.container.querySelector('td[data-col="value"]')!;

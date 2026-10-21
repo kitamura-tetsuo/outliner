@@ -65,7 +65,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
     describe("buildDuplicationSetPreview", () => {
         it("reflects the exact selection, never expanding it through the dependency graph", () => {
             table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+            const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
             const grid = objects.find(o => o.id === gridId)!;
 
@@ -84,7 +84,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
     describe("duplicateSelectedObjects", () => {
         it("duplicates a mixed-type selection as one operation", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+            const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const calendarId = createCalendar(project, { name: "Team", query: "" });
             const objects = getObjects(project);
             const selected = objects.filter(o => [tableId, gridId, calendarId].includes(o.id));
@@ -102,7 +102,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("undoes the whole operation, across every object type, as a single step", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+            const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const ruleId = createScheduleRule(project, {
                 targetTableId: tableId,
                 sql: "SELECT 1",
@@ -129,7 +129,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("redo recreates every duplicated object with the same identity", async () => {
             const tableId = table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+            const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
             const selected = objects.filter(o => [tableId, gridId].includes(o.id));
 
@@ -150,7 +150,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("folds an afterMaterialize side effect into the same undo/redo step", async () => {
             table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+            const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const page = project.addPage("Dashboard", "test");
             const objects = getObjects(project);
             const selected = objects.filter(o => o.id === gridId);
@@ -196,7 +196,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("survives a second undo after redo — the redo does not leave an orphaned, untracked auto-capture", async () => {
             table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+            const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const page = project.addPage("Dashboard", "test");
             const objects = getObjects(project);
             const selected = objects.filter(o => o.id === gridId);
@@ -236,7 +236,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
 
         it("rolls back the duplicated objects when afterMaterialize throws", async () => {
             table(project.ydoc, "Tasks", "tasks");
-            const gridId = createGrid(project.ydoc, undefined, { name: "Board", query: "SELECT * FROM tasks" });
+            const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const objects = getObjects(project);
             const selected = objects.filter(o => o.id === gridId);
 

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { getItemTableId, observeItemTableId, setItemTableId } from "../../../../services/yjstable/itemBinding";
+import { getItemGridId, observeItemGridId, setItemGridId } from "../../../../services/yjstable/itemBinding";
 
 describe("itemBinding", () => {
-    describe("getItemTableId", () => {
+    describe("getItemGridId", () => {
         it("should return tableId when it exists and is a valid string", () => {
             const item = {
                 tree: {
@@ -12,7 +12,7 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            expect(getItemTableId(item)).toBe("table123");
+            expect(getItemGridId(item)).toBe("table123");
         });
 
         it("should return undefined when tableId is not a string", () => {
@@ -24,7 +24,7 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            expect(getItemTableId(item)).toBeUndefined();
+            expect(getItemGridId(item)).toBeUndefined();
         });
 
         it("should return undefined when tableId is an empty string", () => {
@@ -36,7 +36,7 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            expect(getItemTableId(item)).toBeUndefined();
+            expect(getItemGridId(item)).toBeUndefined();
         });
 
         it("should return undefined when nodeValue throws", () => {
@@ -48,7 +48,7 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            expect(getItemTableId(item)).toBeUndefined();
+            expect(getItemGridId(item)).toBeUndefined();
         });
 
         it("should return undefined when get is undefined", () => {
@@ -58,11 +58,11 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            expect(getItemTableId(item)).toBeUndefined();
+            expect(getItemGridId(item)).toBeUndefined();
         });
     });
 
-    describe("setItemTableId", () => {
+    describe("setItemGridId", () => {
         it("should set tableId when set function is available", () => {
             const setMock = vi.fn();
             const item = {
@@ -73,8 +73,8 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            setItemTableId(item, "table123");
-            expect(setMock).toHaveBeenCalledWith("yjsTableId", "table123");
+            setItemGridId(item, "table123");
+            expect(setMock).toHaveBeenCalledWith("yjsGridId", "table123");
         });
 
         it("should do nothing when set function is not available", () => {
@@ -84,7 +84,7 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            expect(() => setItemTableId(item, "table123")).not.toThrow();
+            expect(() => setItemGridId(item, "table123")).not.toThrow();
         });
 
         it("should do nothing when nodeValue throws", () => {
@@ -96,11 +96,11 @@ describe("itemBinding", () => {
                 },
                 key: "item1",
             };
-            expect(() => setItemTableId(item, "table123")).not.toThrow();
+            expect(() => setItemGridId(item, "table123")).not.toThrow();
         });
     });
 
-    describe("observeItemTableId", () => {
+    describe("observeItemGridId", () => {
         it("should call onChange when keysChanged is not provided", () => {
             const observeMock = vi.fn((handler) => handler({}));
             const unobserveMock = vi.fn();
@@ -114,12 +114,12 @@ describe("itemBinding", () => {
                 key: "item1",
             };
             const onChangeMock = vi.fn();
-            observeItemTableId(item, onChangeMock);
+            observeItemGridId(item, onChangeMock);
             expect(onChangeMock).toHaveBeenCalled();
         });
 
-        it("should call onChange when keysChanged contains yjsTableId", () => {
-            const keysChanged = new Set(["yjsTableId"]);
+        it("should call onChange when keysChanged contains yjsGridId", () => {
+            const keysChanged = new Set(["yjsGridId"]);
             const observeMock = vi.fn((handler) => handler({ keysChanged }));
             const unobserveMock = vi.fn();
             const item = {
@@ -132,11 +132,11 @@ describe("itemBinding", () => {
                 key: "item1",
             };
             const onChangeMock = vi.fn();
-            observeItemTableId(item, onChangeMock);
+            observeItemGridId(item, onChangeMock);
             expect(onChangeMock).toHaveBeenCalled();
         });
 
-        it("should not call onChange when keysChanged does not contain yjsTableId", () => {
+        it("should not call onChange when keysChanged does not contain yjsGridId", () => {
             const keysChanged = new Set(["otherField"]);
             const observeMock = vi.fn((handler) => handler({ keysChanged }));
             const unobserveMock = vi.fn();
@@ -150,7 +150,7 @@ describe("itemBinding", () => {
                 key: "item1",
             };
             const onChangeMock = vi.fn();
-            observeItemTableId(item, onChangeMock);
+            observeItemGridId(item, onChangeMock);
             expect(onChangeMock).not.toHaveBeenCalled();
         });
 
@@ -167,7 +167,7 @@ describe("itemBinding", () => {
                 key: "item1",
             };
             const onChangeMock = vi.fn();
-            const unsubscribe = observeItemTableId(item, onChangeMock);
+            const unsubscribe = observeItemGridId(item, onChangeMock);
             unsubscribe();
             expect(unobserveMock).toHaveBeenCalled();
         });
@@ -180,7 +180,7 @@ describe("itemBinding", () => {
                 key: "item1",
             };
             const onChangeMock = vi.fn();
-            const unsubscribe = observeItemTableId(item, onChangeMock);
+            const unsubscribe = observeItemGridId(item, onChangeMock);
             expect(() => unsubscribe()).not.toThrow();
         });
 
@@ -194,7 +194,7 @@ describe("itemBinding", () => {
                 key: "item1",
             };
             const onChangeMock = vi.fn();
-            const unsubscribe = observeItemTableId(item, onChangeMock);
+            const unsubscribe = observeItemGridId(item, onChangeMock);
             expect(() => unsubscribe()).not.toThrow();
         });
     });

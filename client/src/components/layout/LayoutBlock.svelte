@@ -48,7 +48,7 @@ import { Project } from "$shared/app-schema";
 import { diagramChooserStore } from "../../stores/DiagramChooserStore.svelte";
 import { shouldYieldToNativeContextMenu } from "../../lib/nativeContextMenu";
 import { createKanban, listKanbans } from "../../services/yjstable/kanbanDocs";
-import { listTables } from "../../services/yjstable/tableDocs";
+import { listTables, getTableSqlName } from "../../services/yjstable/tableDocs";
 
 /** `DataTransfer` type an OutlinerItem drag carries (OutlinerItem.handleDragStart). */
 const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
@@ -451,7 +451,7 @@ function confirmKanbanPlacement() {
     if (kanbanMode === "existing" && !boards.some(board => board.kanbanId === selectedKanbanId)) return;
     project.ydoc.transact(() => {
         const kanbanId = kanbanMode === "new"
-            ? createKanban(project.ydoc, selectedTableId, { name: "Kanban" })
+            ? createKanban(project.ydoc, { name: "Kanban", query: `SELECT * FROM ${getTableSqlName(project.ydoc, selectedTableId)}` })
             : selectedKanbanId;
         const placement = createVisualNodeUnderParent(item, "kanban", "local", {
             columnSpan: DEFAULT_COLUMN_SPAN,

@@ -52,7 +52,7 @@ describe("whitespace-tolerant grid execution currency (issue #5525)", { timeout:
         const projectId = "proj-whitespace-currency";
         const { projectDoc, tableA, handlesA, handlesB } = seedOverlappingTables(projectId);
         const base = "SELECT id, title FROM tasks_a";
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: base });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: base });
         const grid = getGridHandles(projectDoc, gridId)!;
         const schema = await parseCreateTable("CREATE TABLE tasks_a (id TEXT PRIMARY KEY, title TEXT)");
 
@@ -113,7 +113,7 @@ describe("whitespace-tolerant grid execution currency (issue #5525)", { timeout:
         const projectId = "proj-whitespace-outer-only";
         const { projectDoc, tableA } = seedOverlappingTables(projectId);
         const base = "SELECT id, title FROM tasks_a";
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: base });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: base });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -150,7 +150,7 @@ describe("whitespace-tolerant grid execution currency (issue #5525)", { timeout:
         const projectId = "proj-whitespace-gates";
         const { projectDoc, tableA, tableB, handlesA, handlesB } = seedOverlappingTables(projectId);
         const base = "SELECT id, title FROM tasks_a";
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: base });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: base });
         const grid = getGridHandles(projectDoc, gridId)!;
         const schema = await parseCreateTable("CREATE TABLE tasks_a (id TEXT PRIMARY KEY, title TEXT)");
 
@@ -171,7 +171,7 @@ describe("whitespace-tolerant grid execution currency (issue #5525)", { timeout:
                 expect(isCurrentExecutionForQuery(undefined, base)).toBe(false);
 
                 // An empty query is skipped, never current.
-                const emptyGridId = createGrid(projectDoc, tableA, { name: "Empty" });
+                const emptyGridId = createGrid(projectDoc, { name: "Empty" });
                 const emptyRunner = new GridQueryRunner({
                     grid: getGridHandles(projectDoc, emptyGridId)!,
                     sourceAdapter: acquiredA!.adapter,

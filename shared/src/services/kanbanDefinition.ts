@@ -1,7 +1,7 @@
 // Framework-neutral Yjs writers and readers for one Kanban definition.
 //
 // A Kanban definition is an entry of the project document's `yjsKanbans`
-// registry: a project-owned view over one Table's shared schema/data, like a
+// registry: a project-owned SQL view over shared schema/data, like a
 // Grid entry but with Kanban roles (grouping column, card-title column,
 // visible detail columns and a preferred lane order) instead of Grid column
 // settings. No card copies, query results, ranks or drag/editor state are
@@ -129,7 +129,6 @@ export function validateKanbanFields(fields: KanbanUpdates): void {
 export function createKanbanEntry(
     projectDoc: Y.Doc,
     kanbanId: string,
-    _sourceTableId: string | undefined,
     options: KanbanDefinitionSeed = {},
 ): void {
     if (typeof kanbanId !== "string" || kanbanId.length === 0) {
@@ -155,8 +154,7 @@ export function createKanbanEntry(
 
 function readStringArray(value: unknown): string[] {
     const raw = Array.isArray(value) ? value : value instanceof Y.Array ? value.toArray() : [];
-    // De-duplicate for backward compatibility with documents that stored
-    // duplicates before validation existed; writers always reject them.
+    // Read structurally valid unique values without mutating stored settings.
     return Array.from(new Set(raw.filter((item): item is string => typeof item === "string")));
 }
 
