@@ -18,6 +18,8 @@ const input: SqlEnvironmentInput = {
         { id: "tasks-id", schema: "CREATE TABLE tasks (id text, state public.mood)", records: [] },
         { id: "plain-id", schema: "CREATE TABLE plain (value text)", records: [] },
         { id: "broken-table", schema: "not a table", records: [] },
+        { id: "duplicate-a", schema: "CREATE TABLE duplicate_name (value text)", records: [] },
+        { id: "duplicate-b", schema: "CREATE TABLE duplicate_name (value integer)", records: [] },
     ],
     inspections: [
         {
@@ -66,6 +68,19 @@ describe("scoped SQL ENUM dependency analysis", () => {
                 expect.objectContaining({ objectId: "missing", message: expect.stringContaining("does not exist") }),
             ]);
         }
+    }, 30_000);
+
+    it("does not let unrelated duplicate relation names contaminate a directly requested Table", async () => {
+        const result = await analyzeScopedSqlEnumDependencies(input, new Set(["plain-id"]));
+        expect(result.status).toBe("complete");
+        if (result.status !== "complete") return;
+        expect(result.scopedInput.tables.map(table => table.id)).toEqual(["plain-id"]);
+        expect(result.dependencies).toEqual([{
+            referencingId: "plain-id",
+            sourceKind: "table",
+            status: "complete",
+            requiredEnums: [],
+        }]);
     }, 30_000);
 
     it("keeps an unresolved custom type explicit", async () => {

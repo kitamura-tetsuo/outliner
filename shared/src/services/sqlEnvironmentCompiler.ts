@@ -228,6 +228,9 @@ interface RelationReference {
 /** Collect physical relations while respecting names introduced by WITH. */
 function collectReferencedTables(statement: AstNode): RelationReference[] {
     const tables: RelationReference[] = [];
+    const createTarget = isNode(statement.CreateStmt) && isNode(statement.CreateStmt.relation)
+        ? statement.CreateStmt.relation
+        : undefined;
     const cteNames = new Set<string>();
     const findCtes = (value: unknown): void => {
         if (Array.isArray(value)) return value.forEach(findCtes);
@@ -245,6 +248,10 @@ function collectReferencedTables(statement: AstNode): RelationReference[] {
         }
         if (!isNode(value)) return;
         if (isNode(value.RangeVar) && typeof value.RangeVar.relname === "string") {
+            if (value.RangeVar === createTarget) {
+                Object.values(value).forEach(walk);
+                return;
+            }
             const schema = typeof value.RangeVar.schemaname === "string" ? value.RangeVar.schemaname : undefined;
             if (schema !== undefined || !cteNames.has(value.RangeVar.relname)) {
                 tables.push({ schema, name: value.RangeVar.relname });
@@ -761,18 +768,14 @@ export async function analyzeScopedSqlEnumDependencies(
     const diagnostics: SqlEnvironmentDiagnostic[] = [];
     const tableById = new Map(captured.tables.map(table => [table.id, table]));
     const inspectionById = new Map(captured.inspections.map(target => [target.id, target]));
-    const tableByName = new Map<string, SqlTableSnapshot>();
+    const tablesByName = new Map<string, SqlTableSnapshot[]>();
     for (const table of captured.tables) {
         try {
             const create = parseOne(table.schema).CreateStmt;
             if (!isNode(create) || !isNode(create.relation) || typeof create.relation.relname !== "string") continue;
-            if (tableByName.has(create.relation.relname)) {
-                diagnostics.push({
-                    kind: "schema",
-                    objectId: table.id,
-                    message: `Ambiguous Table SQL name: ${create.relation.relname}`,
-                });
-            } else tableByName.set(create.relation.relname, table);
+            const tables = tablesByName.get(create.relation.relname) ?? [];
+            tables.push(table);
+            tablesByName.set(create.relation.relname, tables);
         } catch {
             // A malformed unrelated Table is deliberately outside this scope.
         }
@@ -811,8 +814,10 @@ export async function analyzeScopedSqlEnumDependencies(
                 if (relation.schema !== undefined && relation.schema !== "public") {
                     throw new Error(`Unsupported relation schema: ${relation.schema}`);
                 }
-                const table = tableByName.get(relation.name);
-                if (!table) throw new Error(`Unresolved relation: ${relation.name}`);
+                const tables = tablesByName.get(relation.name) ?? [];
+                if (tables.length === 0) throw new Error(`Unresolved relation: ${relation.name}`);
+                if (tables.length > 1) throw new Error(`Ambiguous Table SQL name: ${relation.name}`);
+                const table = tables[0];
                 if (!selectedTables.has(table.id)) {
                     selectedTables.set(table.id, table);
                     pendingSql.push(table.schema);
