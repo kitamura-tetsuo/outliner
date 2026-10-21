@@ -1,11 +1,9 @@
-import { loadModule, parseSync, scanSync } from "libpg-query";
+import { parseSync, scanSync } from "libpg-query";
 import * as rruleImport from "rrule";
 import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
 
 const SCHEDULE_TARGET_PLACEHOLDER = "{{table}}";
 const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
-
-await loadModule();
 
 /** Replace scanner-visible placeholder tokens, never occurrences inside literals or comments. */
 function replaceScheduleTargetPlaceholder(sql: string, replacementText: string): string {

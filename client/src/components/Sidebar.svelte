@@ -240,7 +240,7 @@ import { isPublicProject } from "../lib/publicProject";
         // The statement must name the relation the schema declares, not the
         // table id: the id is not a SQL identifier.
         const defaultSql = target?.sqlName
-            ? `INSERT INTO "${target.sqlName}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`
+            ? `INSERT INTO "${target.sqlName}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz) RETURNING *;`
             : "";
         const ruleId = createScheduleRule(project, {
             targetTableId,
