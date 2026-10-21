@@ -92,3 +92,9 @@ needs no second reconciliation model beside the tree:
 - Any change to Grid or Calendar data ownership and entity models: a Layout
   child keeps binding to its own table or calendar exactly as it does outside a
   Layout.
+
+## Kanban setup
+
+### KAN-d847ac63 Card INSERT during slash setup
+
+The `/kanban` setup flow creates or places query-based boards. New-card INSERT controls and saved INSERT preferences are outside this feature's scope; selecting a Table only initializes SQL.

@@ -1,0 +1,23 @@
+id: KAN-d847ac63
+title: Create Kanban from the slash palette
+title-ja: スラッシュパレットから Kanban を作成
+category: tables
+status: implemented
+description: Type /kanban on a writable Page to place an unbound board, then create a preset Table, seed a new board from an existing Table, or reuse an existing Kanban.
+acceptance:
+- Existing Kanban placements share the selected ID and committed settings, including after reload.
+- Existing Table selection seeds exact SQL only; no sourceTableId or insertTargetTableId is stored.
+- Live permissions, pending placement and source identity are checked before publication; failed or abandoned setup creates no objects.
+- Missing bound definitions remain unavailable and never become setup forms.
+- New Table reuses the shared preset and SQL-name form, publishing one initialized Table and one independent board without a Grid or copied records.
+- New Tables persist through their own connection lifecycle even when the board configuration is incomplete; normal reload and Table navigation preserve schema and identity.
+- Slash selection replaces an empty non-title Text leaf or inserts a sibling preserving existing text and children; selection creates no definitions.
+- Tasks uses status/title roles, Habits uses kind/name, and Blank leaves grouping unassigned.
+tests:
+- client/e2e/new/kan-slash-existing-sources-d847ac63.spec.ts
+- client/e2e/new/kan-slash-preset-creation-d847ac63.spec.ts
+- client/e2e/new/kan-slash-query-source-change-d847ac63.spec.ts
+- client/e2e/new/kan-slash-setup-refusals-d847ac63.spec.ts
+- client/src/components/kanban/KanbanBlock.test.ts
+- client/src/services/yjstable/kanbanSetup.test.ts
+- client/src/stores/CommandPaletteStore.kanban.test.ts

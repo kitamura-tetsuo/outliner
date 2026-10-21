@@ -34,6 +34,22 @@ describe("visual node placement (#5015)", () => {
     const childTexts = () => [...page.items].map(item => String(item.text ?? ""));
     const childKinds = () => [...page.items].map(item => item.componentType);
 
+    it("places Kanban as an empty visual leaf without replacing title, children or text", () => {
+        const blank = addText("");
+        const blankId = blank.id;
+        const replaced = createVisualNodeAtTarget(blank, "", "kanban", "tester");
+        expect(replaced?.placement).toBe("replaced");
+        expect([...page.items].some(item => item.id === blankId)).toBe(false);
+        expect(replaced?.item.componentType).toBe("kanban");
+        expect(replaced?.item.items.length).toBe(0);
+        for (const target of [page, addText("keep"), addText("")]) {
+            if (target !== page && !String(target.text)) target.items.addNode("tester").updateText("child");
+            const created = createVisualNodeAtTarget(target, String(target.text), "kanban", "tester");
+            expect(created?.placement).toBe("inserted-after");
+            expect(target.componentType).toBeUndefined();
+        }
+    });
+
     describe("eligibility", () => {
         it("accepts a normal Text node left empty once the command is removed", () => {
             expect(canReplaceWithVisualNode(addText(""), "")).toBe(true);

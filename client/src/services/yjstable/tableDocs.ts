@@ -105,6 +105,21 @@ export function createTable(
         | ((handles: TableInitializationHandles) => void),
     initialize?: (handles: TableInitializationHandles) => void,
 ): string {
+    const prepared = prepareTable(projectDoc, name, sqlName, options, initialize);
+    projectDoc.transact(() => getTableRegistry(projectDoc).set(prepared.tableId, prepared.entry));
+    return prepared.tableId;
+}
+
+/** Initialize a detached Table; callers publish only after all composed objects are ready. */
+export function prepareTable(
+    projectDoc: Y.Doc,
+    name: string,
+    sqlName: string,
+    options?:
+        | { sourceProjectId?: string; sourceTableId?: string; tableId?: string; }
+        | ((handles: TableInitializationHandles) => void),
+    initialize?: (handles: TableInitializationHandles) => void,
+): { tableId: string; entry: Y.Map<unknown>; doc: Y.Doc; } {
     const tableId = typeof options === "object" && options.tableId ? options.tableId : uuidv4();
     const subdoc = new Y.Doc({ guid: tableDocGuid(projectDoc.guid, tableId), autoLoad: true });
     const handles: TableInitializationHandles = {
@@ -124,18 +139,15 @@ export function createTable(
         throw err;
     }
 
-    projectDoc.transact(() => {
-        const entry = new Y.Map<unknown>();
-        entry.set("name", name);
-        entry.set("sqlName", sqlName);
-        if (options && typeof options !== "function") {
-            if (options.sourceProjectId) entry.set("sourceProjectId", options.sourceProjectId);
-            if (options.sourceTableId) entry.set("sourceTableId", options.sourceTableId);
-        }
-        entry.set("doc", subdoc);
-        getTableRegistry(projectDoc).set(tableId, entry);
-    });
-    return tableId;
+    const entry = new Y.Map<unknown>();
+    entry.set("name", name);
+    entry.set("sqlName", sqlName);
+    if (options && typeof options !== "function") {
+        if (options.sourceProjectId) entry.set("sourceProjectId", options.sourceProjectId);
+        if (options.sourceTableId) entry.set("sourceTableId", options.sourceTableId);
+    }
+    entry.set("doc", subdoc);
+    return { tableId, entry, doc: subdoc };
 }
 
 export function removeTable(projectDoc: Y.Doc, tableId: string): boolean {

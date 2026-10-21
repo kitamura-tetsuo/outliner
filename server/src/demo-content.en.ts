@@ -328,7 +328,7 @@ export function demoContentEn(): DemoLocaleContent {
                     { componentType: "yjstable", yjsGridId: "demo-insert-configured-grid" },
                     {
                         text:
-                            "Kanban placements reference one project board; removing this occurrence does not delete its source Table or records.",
+                            "Type /kanban on a writable Page: choose New Table for Tasks, Habits or Blank, New Kanban over Existing Table to initialize SQL, or Existing Kanban to share a board. Blank needs a grouping column configured. Kanban placements reference one project board; removing this occurrence does not delete its source Table or records.",
                     },
                     {
                         componentType: "kanban",
