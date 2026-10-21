@@ -28,4 +28,6 @@ export interface JobResult {
     catalogRevision?: string;
     targetSchema?: string;
     enumColumns?: Record<string, readonly string[]>;
+    /** Catalog facts for the exact compiled target relation. */
+    targetColumns?: readonly { readonly name: string; readonly type: string; }[];
 }

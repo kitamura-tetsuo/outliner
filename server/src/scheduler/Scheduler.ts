@@ -31,64 +31,6 @@ interface OwedRun {
 // Upper bound on how many past occurrences a single tick walks through, so a
 // rule whose dtstart lies far in the past cannot stall the scheduler.
 const MAX_CATCHUP_OCCURRENCES = 500;
-// Minimal schema parsing/casting for the rows a rule returns. The client has a
-// full implementation (services/yjstable/schemaIntrospection + valueCasting);
-// the server only needs enough to store returned values in the column's type.
-
-const TABLE_CONSTRAINT_KEYWORDS = new Set([
-    "primary",
-    "foreign",
-    "unique",
-    "check",
-    "constraint",
-    "exclude",
-]);
-
-/**
- * Split a CREATE TABLE body into its top-level definitions. Commas inside
- * parentheses (e.g. `CHECK (status IN ('open', 'done'))`) do not separate
- * column definitions.
- */
-function splitColumnDefs(body: string): string[] {
-    const defs: string[] = [];
-    let depth = 0;
-    let inString = false;
-    let current = "";
-    for (const ch of body) {
-        if (ch === "'") inString = !inString;
-        if (!inString) {
-            if (ch === "(") depth++;
-            else if (ch === ")") depth--;
-            else if (ch === "," && depth === 0) {
-                defs.push(current);
-                current = "";
-                continue;
-            }
-        }
-        current += ch;
-    }
-    if (current.trim()) defs.push(current);
-    return defs;
-}
-
-export interface SchemaDefinition {
-    columns: { name: string; type: string; }[];
-}
-
-export function parseSchemaString(sql: string): SchemaDefinition {
-    const cols = sql.match(/\((.*)\)/s);
-    if (!cols) return { columns: [] };
-    const columns: { name: string; type: string; }[] = [];
-    for (const def of splitColumnDefs(cols[1])) {
-        const parts = def.trim().split(/\s+/);
-        if (parts.length < 2) continue;
-        // Skip table-level constraints; they are not columns.
-        if (TABLE_CONSTRAINT_KEYWORDS.has(parts[0].toLowerCase())) continue;
-        columns.push({ name: parts[0].replace(/"/g, ""), type: parts[1] });
-    }
-    return { columns };
-}
-
 export function castValueForColumn(val: unknown, type: string): unknown {
     if (val === null || val === undefined) return val;
     const lowered = type?.toLowerCase() ?? "";
@@ -1447,7 +1389,9 @@ export class JobScheduler {
                 ) {
                     return { success: false, error: "stale-catalog/schema: Schedule inputs changed before write-back" };
                 }
-                const schemaDef = parseSchemaString(schemaSql);
+                if (!result.targetColumns) {
+                    return { success: false, error: "Schedule target column metadata is unavailable" };
+                }
 
                 let preparedRows: Record<string, unknown>[];
                 try {
@@ -1471,7 +1415,7 @@ export class JobScheduler {
                         const id = row.id!;
 
                         let validRow = { ...row };
-                        for (const col of schemaDef.columns) {
+                        for (const col of result.targetColumns!) {
                             if (result.enumColumns?.[col.name]) continue;
                             if (validRow[col.name] !== undefined && validRow[col.name] !== null) {
                                 try {

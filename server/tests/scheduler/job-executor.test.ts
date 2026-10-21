@@ -85,6 +85,10 @@ describe("Job executor", function() {
         expect(second.success, second.error).to.equal(true);
         expect(first.rows).to.deep.equal([{ id: "row", value: "second" }]);
         expect(second.enumColumns).to.deep.equal({ value: ["second", "first"] });
+        expect(second.targetColumns).to.deep.equal([
+            { name: "id", type: "text" },
+            { name: "value", type: "int_like_state" },
+        ]);
     });
 
     it("fails the complete job when a captured catalog dependency is unavailable", async function() {

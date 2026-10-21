@@ -8,7 +8,7 @@ import {
     demoTables,
 } from "../../src/demo-content.js";
 import { JobExecutor } from "../../src/scheduler/executor.js";
-import { castValueForColumn, parseSchemaString } from "../../src/scheduler/Scheduler.js";
+import { castValueForColumn } from "../../src/scheduler/Scheduler.js";
 
 // The demo's recurring-task rules are executed here through the real job
 // executor (PGlite in a worker thread), exactly as the scheduler runs them:
@@ -111,18 +111,8 @@ describe("Demo routine schedule rule SQL", function() {
 
     it("returns values the client can store: dates as text, done as boolean", async function() {
         const result = await runRule(DEMO_DAILY_RULE_ID, dailyRule.sql, "2026-03-05T00:00:00Z");
-        const schema = parseSchemaString(occurrences.schemaSql);
-        const columnTypes = new Map(schema.columns.map((c: any) => [c.name, c.type]));
-
-        // Every schema column is parsed despite the CHECK constraints.
-        expect([...columnTypes.keys()]).to.deep.equal([
-            "id",
-            "template_id",
-            "title",
-            "cadence",
-            "occurrence_date",
-            "done",
-        ]);
+        // Production receives these physical types from the worker catalog.
+        const columnTypes = new Map<string, string>([["done", "boolean"], ["occurrence_date", "date"]]);
 
         for (const row of result.rows) {
             expect(typeof row.occurrence_date, "date is returned as text").to.equal("string");

@@ -39,6 +39,15 @@ describe("assertSingleCreateTable", () => {
     it("rejects schema-qualified table names", () => {
         expect(() => assertSingleCreateTable("CREATE TABLE public.t (id TEXT)")).toThrow(/Schema-qualified/);
     });
+
+    it.each(["CREATE TEMP TABLE t (id TEXT)", "CREATE UNLOGGED TABLE t (id TEXT)", "CREATE TABLE t AS SELECT 1"])(
+        "rejects unsupported CREATE TABLE modes: %s",
+        sql => expect(() => assertSingleCreateTable(sql)).toThrow(TableSqlError),
+    );
+
+    it("rejects malformed SQL without executing it", () => {
+        expect(() => assertSingleCreateTable("CREATE TABLE t (value TEXT /* unterminated")).toThrow(TableSqlError);
+    });
 });
 
 describe("parseCreateTable (PGlite introspection)", () => {
@@ -88,6 +97,33 @@ describe("parseCreateTable (PGlite introspection)", () => {
         expect(status?.checkOptions).toEqual(["open", "done"]);
     });
 
+    it("publishes only whole-expression finite text checks", async () => {
+        const supported = await parseCreateTable(
+            `CREATE TABLE t (id TEXT, "状態" TEXT CHECK ("状態" IN ('進行中', 'it''s];')))`,
+        );
+        expect(supported.columns[1]?.checkOptions).toEqual(["進行中", "it's];"]);
+        expect(supported.hasUnsupportedInsertCheck).toBe(false);
+
+        const unsupported = await parseCreateTable(
+            "CREATE TABLE t (id TEXT, status TEXT CHECK (status IN ('open', 'done') AND length(status) > 0))",
+        );
+        expect(unsupported.columns[1]?.checkOptions).toBeUndefined();
+        expect(unsupported.hasUnsupportedInsertCheck).toBe(true);
+    });
+
+    it("resolves static defaults and marks dynamic defaults unsupported without evaluating them", async () => {
+        const parsed = await parseCreateTable(
+            "CREATE TABLE t (id TEXT, label TEXT DEFAULT 'it''s', count INTEGER DEFAULT -2, active BOOLEAN DEFAULT true, dynamic TEXT DEFAULT gen_random_uuid()::text)",
+        );
+        expect(parsed.columns.map(column => column.literalDefault)).toEqual([
+            undefined,
+            { status: "literal", value: "it's" },
+            { status: "literal", value: -2 },
+            { status: "literal", value: true },
+            { status: "unsupported", diagnostic: "DEFAULT is not a supported scalar literal" },
+        ]);
+    });
+
     it("rejects invalid SQL with a schema error", async () => {
         await expect(parseCreateTable("CREATE TABLE t (id NOSUCHTYPE)")).rejects.toMatchObject({
             kind: "schema",
@@ -104,16 +140,16 @@ describe("parseCreateTable (PGlite introspection)", () => {
 
 describe("extractCheckInOptions", () => {
     it("parses the ANY(ARRAY[...]) form Postgres normalizes IN lists to", () => {
-        const def = "CHECK ((status = ANY (ARRAY['open'::text, 'done'::text])))";
+        const def = "(status = ANY (ARRAY['open'::text, 'done'::text]))";
         expect(extractCheckInOptions(def)).toEqual({ column: "status", options: ["open", "done"] });
     });
 
     it("returns undefined for other CHECK expressions", () => {
-        expect(extractCheckInOptions("CHECK ((points > 0))")).toBeUndefined();
+        expect(extractCheckInOptions("(points > 0)")).toBeUndefined();
     });
 
     it("unescapes doubled quotes in literals", () => {
-        const def = "CHECK ((label = ANY (ARRAY['it''s'::text])))";
+        const def = "(label = ANY (ARRAY['it''s'::text]))";
         expect(extractCheckInOptions(def)).toEqual({ column: "label", options: ["it's"] });
     });
 });
