@@ -1,10 +1,6 @@
 [Issues]
-During test runs (`vitest` in jsdom), components utilizing `echarts.init()` (specifically `GraphView` and `TableChartPanel`) generate a console warning: `[ECharts] Can't get DOM width or height`. This occurs because jsdom doesn't fully support layout metrics like `clientWidth` and `clientHeight` without being explicitly set.
+The existing documentation omitted the "Pages" section in the sidebar navigation list and did not mention the ability to create new pages directly from the sidebar.
 
 [Changes]
-- Modified `client/src/components/GraphView.svelte` to provide fallback dimensions (width: 800, height: 400) to `echarts.init()` if `graphDiv.clientWidth/Height` are 0.
-- Modified `client/src/components/yjstable/TableChartPanel.svelte` to provide fallback dimensions (width: 400, height: 300) to `echarts.init()` if `chartDiv.clientWidth/Height` are 0.
-
-[Verification Results]
-- All tests pass, and the previously logged `[ECharts] Can't get DOM width or height` console warnings no longer appear.
-- Verified that `npm run test:base`, `npx svelte-check`, and `npm run build` finish successfully.
+- Updated docs/user-manual/index.md and docs/ja/user-manual/index.md to include the "Pages" section in the Sidebar Navigation.
+- Updated the page creation instructions in both files to mention the `+` button in the Pages section of the sidebar.
