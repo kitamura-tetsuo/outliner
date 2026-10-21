@@ -18,7 +18,7 @@
         "dprint-plugin-markup": "0.27.6",
         "dprint-plugin-yaml": "0.6.0",
         "patch-package": "^8.0.1",
-        "playwright": "^1.64.0",
+        "playwright": "^1.64.1",
         "pm2": "^7.0.4",
         "semver": "7.8.5",
         "vitepress": "^1.6.4"
