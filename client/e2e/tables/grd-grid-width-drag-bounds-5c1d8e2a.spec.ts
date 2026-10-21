@@ -169,10 +169,11 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         expect(originalBoundary.resizing).toBe("true");
         expect(originalBoundary.scrollWidth).toBeGreaterThan(originalBoundary.clientWidth);
 
-        // Controlled reproduction of the observed unchanged-scroll boundary:
+        // Negative boundary control with the same unchanged-scroll symptom:
         // pointer capture keeps the resize active when the physical pointer is
         // over a non-Grid target, but wheel hit-testing does not follow that
-        // capture. A real wheel there must not be mistaken for Grid scrolling.
+        // capture. This proves why the repaired sequence verifies its target;
+        // it does not claim that this condition caused every historical flake.
         const toolbarBox = await page.getByTestId("toolbar-undo").boundingBox();
         expect(toolbarBox, "the toolbar supplies a visible non-Grid wheel target").not.toBeNull();
         const controlPoint = { x: originalPoint.x, y: Math.round(toolbarBox!.y + toolbarBox!.height / 2) };
@@ -192,7 +193,7 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         const controlAfter = await wheelBoundaryEvidence(scroller, controlPoint);
         expect(controlAfter.scrollLeft).toBe(controlBefore.scrollLeft);
         expect(controlAfter.resizing).toBe("true");
-        await testInfo.attach("wheel-boundary-controlled-unchanged.json", {
+        await testInfo.attach("wheel-boundary-negative-control.json", {
             body: JSON.stringify({ point: controlPoint, before: controlBefore, after: controlAfter }, undefined, 2),
             contentType: "application/json",
         });
