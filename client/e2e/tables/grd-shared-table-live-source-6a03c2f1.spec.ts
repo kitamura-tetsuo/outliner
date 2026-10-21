@@ -7,7 +7,7 @@ import { expect, test } from "../fixtures/grid-render-trace";
 import { TestHelpers } from "../utils/testHelpers";
 
 async function slashGrid(page: Page, itemIndex: number) {
-    const item = page.locator(".outliner-item[data-item-id]").nth(itemIndex);
+    const item = page.locator(".outliner-item:not(.page-title)[data-item-id]").nth(itemIndex);
     const id = await item.getAttribute("data-item-id");
     expect(id).toBeTruthy();
     await TestHelpers.setCursor(page, id!, 0);
@@ -64,7 +64,15 @@ test.describe("FTR-6a03c2f1: live source revalidation", () => {
 
         await page.evaluate(({ tableId }) => {
             const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
-            project.ydoc.getMap("yjsTables").get(tableId).set("sqlName", "archived_tasks");
+            const entry = project.ydoc.getMap("yjsTables").get(tableId);
+            // Keep the actual Table schema and registry identity consistent:
+            // the live engine records the SQL name from the schema.
+            const schema = entry.get("doc").getText("schema");
+            schema.doc.transact(() => {
+                schema.delete(0, schema.length);
+                schema.insert(0, "CREATE TABLE archived_tasks (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN)");
+            });
+            entry.set("sqlName", "archived_tasks");
         }, { tableId: initial.tables[0].id });
         const changed = await registries(page);
         await panel.getByTestId("yjs-table-select-existing").click();
@@ -75,7 +83,15 @@ test.describe("FTR-6a03c2f1: live source revalidation", () => {
         await panel.getByRole("button", { name: "New Grid over Existing Table" }).click();
         await page.evaluate(({ tableId }) => {
             const project = (globalThis as any).__YJS_STORE__.yjsClient.getProject();
-            project.ydoc.getMap("yjsTables").get(tableId).set("sqlName", "order");
+            const entry = project.ydoc.getMap("yjsTables").get(tableId);
+            // Keep the actual Table schema and registry identity consistent:
+            // the live engine records the SQL name from the schema.
+            const schema = entry.get("doc").getText("schema");
+            schema.doc.transact(() => {
+                schema.delete(0, schema.length);
+                schema.insert(0, 'CREATE TABLE "order" (id TEXT PRIMARY KEY, title TEXT, done BOOLEAN)');
+            });
+            entry.set("sqlName", "order");
         }, { tableId: initial.tables[0].id });
         const reserved = await registries(page);
         await panel.getByRole("button", { name: "New Table" }).click();
