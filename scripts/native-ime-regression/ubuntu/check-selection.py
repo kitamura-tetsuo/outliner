@@ -29,7 +29,7 @@ def main():
         # Also exercise all three sizes in a single composition and cancellation.
         r.tab("reference")
         r.driver.execute_script("document.getElementById('reference').value = ''")
-        samples, _, after = r.compose("reference", "#reference", "observer-preflight", r.reference_line, "cancel")
+        samples, _, after = r.compose("reference", "#reference", "observer-preflight", r.reference_line, "cancel", prefix="")
         r.record("observer-preflight-cancel-restores-empty", after["value"] == "")
         r.save("selection-preflight", dict(ok=True, controls=controls, samples=samples, assertions=r.assertions))
     except Exception:
