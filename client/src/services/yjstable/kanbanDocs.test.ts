@@ -280,7 +280,7 @@ describe("Kanban validation and missing identities", () => {
         expect(getKanbanRegistry(doc).has("absent")).toBe(false);
     });
 
-    it("uses a selected Table only to initialize SQL", () => {
+    it("stores caller-supplied SQL without a persisted primary Table", () => {
         const { doc } = tasksProject();
         const kanbanId = createKanban(doc, { name: "Board", query: "SELECT * FROM tasks" });
 

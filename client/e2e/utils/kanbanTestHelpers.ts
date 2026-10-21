@@ -108,6 +108,25 @@ export async function readKanbans(page: Page): Promise<KanbanState[]> {
     });
 }
 
+/** Observe the persisted entry, including key presence that public settings omit. */
+export async function readKanbanEntry(page: Page, id: string): Promise<{
+    value: Record<string, unknown>;
+    hasSourceTableId: boolean;
+    hasInsertTargetTableId: boolean;
+}> {
+    return page.evaluate(kanbanId => {
+        const project = (globalThis as any).__YJS_STORE__?.yjsClient?.getProject();
+        if (!project?.ydoc) throw new Error("Project unavailable while reading Kanban entry");
+        const entry = project.ydoc.getMap("yjsKanbans").get(kanbanId);
+        if (!entry) throw new Error(`Kanban entry ${kanbanId} unavailable`);
+        return {
+            value: entry.toJSON(),
+            hasSourceTableId: entry.has("sourceTableId"),
+            hasInsertTargetTableId: entry.has("insertTargetTableId"),
+        };
+    }, id);
+}
+
 /** Snapshot every non-Kanban object that Kanban read/configuration actions must leave untouched. */
 export async function readKanbanPurityState(page: Page): Promise<KanbanPurityState> {
     return page.evaluate(() => {

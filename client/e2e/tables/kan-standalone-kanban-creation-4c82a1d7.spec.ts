@@ -5,6 +5,7 @@ import {
     createKanbanThroughUi,
     createSourceThroughUi,
     openKanbanList,
+    readKanbanEntry,
     readKanbanPurityState,
     readKanbans,
     TASK_QUERY,
@@ -19,7 +20,35 @@ test(
         const fixture = await createSourceThroughUi(page, testInfo);
         const nonKanbanBaseline = await readKanbanPurityState(page);
         await openKanbanList(page, fixture.projectName);
+        expect(await readKanbans(page)).toEqual([]);
+        // The selected Table's identity is not its fixture SQL name.
+        expect(fixture.tableId).not.toBe("tasks");
+        expect(nonKanbanBaseline.tables.find(table => table.id === fixture.tableId)?.sqlName).toBe("tasks");
         const id = await createKanbanThroughUi(page, "Work board", fixture.tableId);
+        expect(id).not.toBe(fixture.tableId);
+        const expectInitialSeed = async () => {
+            expect(await readKanbans(page)).toEqual([{
+                id,
+                name: "Work board",
+                query: "SELECT * FROM tasks",
+                groupField: undefined,
+                titleField: undefined,
+                detailFields: [],
+                laneOrder: [],
+            }]);
+            expect(await readKanbanEntry(page, id)).toEqual({
+                value: { name: "Work board", query: "SELECT * FROM tasks" },
+                hasSourceTableId: false,
+                hasInsertTargetTableId: false,
+            });
+            // Equality includes schema and records: wait for ordinary Table
+            // subdocument loading, not just the project registry update.
+            await expect.poll(() => readKanbanPurityState(page), { timeout: 30000 }).toEqual(nonKanbanBaseline);
+        };
+        await expectInitialSeed();
+        await page.reload();
+        await expect(page.getByTestId("kanban-board")).toHaveAttribute("data-kanban-id", id, { timeout: 30000 });
+        await expectInitialSeed();
         await configureKanbanThroughUi(page, {
             query: TASK_QUERY,
             group: "status",
