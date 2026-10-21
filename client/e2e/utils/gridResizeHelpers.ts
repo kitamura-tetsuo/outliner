@@ -51,7 +51,13 @@ export async function headerWidth(page: Page, placement: number, column: string)
 }
 
 /** Header and every body-cell width of one placement, within 1 CSS px of `px`. */
-export async function expectColumnGeometry(page: Page, placement: number, column: string, px: number) {
+export async function expectColumnGeometry(
+    page: Page,
+    placement: number,
+    column: string,
+    px: number,
+    timeout = 15000,
+) {
     const grid = page.getByTestId("yjs-table-view").nth(placement).getByTestId("yjs-table-grid");
     let widths: number[] = [];
     const matches = () => widths.length > 0 && widths.every((w) => Math.abs(w - px) <= 1);
@@ -62,7 +68,7 @@ export async function expectColumnGeometry(page: Page, placement: number, column
         for (let i = 0; i < await cells.count(); i++) boxes.push(await cells.nth(i).boundingBox());
         widths = boxes.map((b) => b?.width ?? Number.NaN);
         return matches();
-    }, { timeout: 15000 }).toBe(true).catch(() => undefined);
+    }, { timeout }).toBe(true).catch(() => undefined);
     expect(matches(), `column ${column} should measure ${px}px; measured ${JSON.stringify(widths)}`).toBe(true);
 }
 
