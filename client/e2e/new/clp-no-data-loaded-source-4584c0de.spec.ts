@@ -27,6 +27,7 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
         await expect(peer.getByTestId("yjs-table-view")).toHaveCount(1, { timeout: 60000 });
         await openProjectPage(page, fixture, "destination");
         await createBlankGrid(page, "Keep", "keep");
+        await addSourceRecord(page);
         if (mutation === "unavailable") {
             // Close the real source client; retain the supported same-tab Paste
             // Special clipboard origin (native Ctrl+Shift+V supplies plain text).
