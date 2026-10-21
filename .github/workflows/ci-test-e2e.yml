@@ -240,6 +240,24 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
+      - name: Record retry-free Grid resize wheel verification
+        if: matrix.project == 'tables-1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/test.sh client/e2e/tables/grd-grid-width-drag-bounds-5c1d8e2a.spec.ts -- \
+            --project=tables \
+            --retries=0 \
+            2>&1 | tee job_logs/grid-resize-wheel-retry-free.log
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          SKIP_AUTO_SETUP: '1'
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+
       - name: Summarise failures
         if: failure()
         run: |

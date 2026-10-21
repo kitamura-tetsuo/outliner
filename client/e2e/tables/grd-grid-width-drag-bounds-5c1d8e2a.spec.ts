@@ -169,6 +169,36 @@ test.describe("Grid header drag resize bounds and zero-effect gestures", () => {
         expect(originalBoundary.resizing).toBe("true");
         expect(originalBoundary.scrollWidth).toBeGreaterThan(originalBoundary.clientWidth);
 
+        // Exercise the historical sequence before applying the verified-target
+        // repair. Whether it scrolls or reproduces the intermittent unchanged
+        // offset, retain the post-wheel browser boundary rather than inferring
+        // delivery from the later repaired action.
+        await page.mouse.wheel(40, 0);
+        await scroller.evaluate(() =>
+            new Promise<void>((resolve) => {
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+            })
+        );
+        const originalAfter = await wheelBoundaryEvidence(scroller, originalPoint);
+        await testInfo.attach("wheel-boundary-original-wheel.json", {
+            body: JSON.stringify(
+                { point: originalPoint, before: originalBoundary, after: originalAfter },
+                undefined,
+                2,
+            ),
+            contentType: "application/json",
+        });
+        expect(originalAfter.resizing).toBe("true");
+
+        // If the intermittent original action succeeds, restore the starting
+        // offset with real input so the negative and repaired comparisons use
+        // the same active gesture and measured starting state.
+        if (originalAfter.scrollLeft !== originalBoundary.scrollLeft) {
+            await page.mouse.wheel(originalBoundary.scrollLeft - originalAfter.scrollLeft, 0);
+            await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBe(originalBoundary.scrollLeft);
+            await expectColumnGeometry(page, 0, "id", Math.round(start + 30));
+        }
+
         // Negative boundary control with the same unchanged-scroll symptom:
         // pointer capture keeps the resize active when the physical pointer is
         // over a non-Grid target, but wheel hit-testing does not follow that
