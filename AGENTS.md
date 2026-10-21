@@ -179,6 +179,14 @@ Mocks are generally forbidden. Limited exceptions:
 - Follow error message when git commit fails by pre-commit hooks.
 - Avoid direct DOM manipulation; use Svelte for all UI operations. Direct DOM manipulation can interfere with Svelte's reactivity system and cause unexpected behavior. Instead, use Svelte's reactive declarations and state management to update the UI.
 
+### SQL Parsing and Semantic Analysis
+
+- Use the existing `libpg-query` PostgreSQL parser and shared AST-based utilities to recognize SQL statements, extract identifiers or references, and perform syntax-aware rewrites. Do not implement these operations with regular expressions, string splitting, or hand-written SQL lexers/scanners.
+- Reuse the existing PGlite-backed SQL environment compiler and PostgreSQL catalog metadata when a decision requires resolved types, column types, ENUM labels/order, or semantic dependencies. An AST identifies syntax; it does not by itself resolve the type of a referenced column.
+- Reuse and extend common parsing/analysis code instead of creating competing parsers or introducing another SQL library for functionality already supported by `libpg-query` and PGlite.
+- Keep invalid, unsupported, unavailable, incomplete, or stale analysis explicit. The absence of an explicit type reference is not proof that SQL has no ENUM dependency. Skip validation only when authoritative evidence proves it unnecessary; otherwise perform the required validation or refuse/defer the operation before effects.
+- Regular expressions remain appropriate for non-parsing text processing, such as escaping a known identifier or formatting display text. They must not become the authority for SQL syntax, type/dependency resolution, compatibility checks, or syntax-aware rewriting.
+
 ## 4. Development Workflow
 
 - At the end of each session, create a prompt for the next session describing remaining tasks. Mention that tasks should proceed sequentially.
