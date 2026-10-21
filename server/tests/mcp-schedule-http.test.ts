@@ -141,6 +141,16 @@ describe("Schedule MCP HTTP contract", () => {
         const readRule =
             payload(await call(toolCall("get_schedule", { projectId: "project-1", ruleId: "rule-1" }))).value;
         expect(readRule.stored).to.include({ lastRunStatus: "error" });
+        const existingPreviewRecord = new Y.Map<string | number>();
+        existingPreviewRecord.set("order", 7);
+        tableConnection.document.getMap("data").set("existing-preview", existingPreviewRecord);
+        const tableBeforePreviews = payload(
+            await call(toolCall("get_table", {
+                projectId: "project-1",
+                tableId: "table-1",
+                includeRecords: true,
+            })),
+        ).value;
         const candidate = {
             ...readRule.stored,
             sql: "INSERT INTO tasks (id, \"order\") VALUES ('fixed', 1) RETURNING *",
@@ -173,6 +183,21 @@ describe("Schedule MCP HTTP contract", () => {
         expect(mixedIdsPreview).to.include({ accepted: true, persisted: false });
         expect(mixedIdsPreview.candidateRows).to.have.length(2);
         expect(mixedIdsPreview.deterministicIds).to.include({ idempotent: false });
+        const scheduleAfterPreviews =
+            payload(await call(toolCall("get_schedule", { projectId: "project-1", ruleId: "rule-1" }))).value;
+        const tableAfterPreviews = payload(
+            await call(toolCall("get_table", {
+                projectId: "project-1",
+                tableId: "table-1",
+                includeRecords: true,
+            })),
+        ).value;
+        expect(scheduleAfterPreviews.stored).to.deep.equal(readRule.stored);
+        expect(scheduleAfterPreviews.revision).to.equal(readRule.revision);
+        expect(tableAfterPreviews.rawSchemaSql).to.equal(tableBeforePreviews.rawSchemaSql);
+        expect(tableAfterPreviews.records).to.deep.equal(tableBeforePreviews.records);
+        expect(tableAfterPreviews.revision).to.equal(tableBeforePreviews.revision);
+        tableConnection.document.getMap("data").delete("existing-preview");
         const implicitAliasPreview = payload(
             await call(toolCall("validate_schedule_rule", {
                 projectId: "project-1",

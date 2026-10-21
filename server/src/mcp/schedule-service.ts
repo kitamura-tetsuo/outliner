@@ -24,13 +24,28 @@ function pgNames(value: unknown): string[] | undefined {
     return names.every(name => typeof name === "string") ? names as string[] : undefined;
 }
 
-function deterministicIdExpression(value: unknown, textConcatenationOperand = false): boolean {
+function numericLiteral(value: unknown): boolean {
     if (!pgNode(value)) return false;
     if (pgNode(value.A_Const)) {
+        return pgNode(value.A_Const.ival) && typeof value.A_Const.ival.ival === "number"
+            || pgNode(value.A_Const.fval) && typeof value.A_Const.fval.fval === "string";
+    }
+    if (!pgNode(value.A_Expr)) return false;
+    const expression = value.A_Expr;
+    const operator = pgNames(expression.name);
+    return expression.kind === "AEXPR_OP"
+        && expression.lexpr === undefined
+        && operator?.length === 1
+        && (operator[0] === "+" || operator[0] === "-")
+        && numericLiteral(expression.rexpr);
+}
+
+function deterministicIdExpression(value: unknown, textConcatenationOperand = false): boolean {
+    if (!pgNode(value)) return false;
+    if (!textConcatenationOperand && numericLiteral(value)) return true;
+    if (pgNode(value.A_Const)) {
         const constant = value.A_Const;
-        return pgNode(constant.sval) && typeof constant.sval.sval === "string"
-            || !textConcatenationOperand && pgNode(constant.ival) && typeof constant.ival.ival === "number"
-            || !textConcatenationOperand && pgNode(constant.fval) && typeof constant.fval.fval === "string";
+        return pgNode(constant.sval) && typeof constant.sval.sval === "string";
     }
     if (pgNode(value.FuncCall)) {
         const call = value.FuncCall;
@@ -43,9 +58,14 @@ function deterministicIdExpression(value: unknown, textConcatenationOperand = fa
     }
     if (pgNode(value.TypeCast)) {
         const cast = value.TypeCast;
-        const type = pgNode(cast.typeName) ? pgNames(cast.typeName.names) : undefined;
+        const typeName = pgNode(cast.typeName) ? cast.typeName : undefined;
+        const type = pgNames(typeName?.names);
         return (type?.length === 1 && type[0] === "text"
             || type?.length === 2 && type[0] === "pg_catalog" && type[1] === "text")
+            && (!Array.isArray(typeName?.arrayBounds) || typeName.arrayBounds.length === 0)
+            && (!Array.isArray(typeName?.typmods) || typeName.typmods.length === 0)
+            && typeName?.setof !== true
+            && typeName?.pct_type !== true
             && deterministicIdExpression(cast.arg, textConcatenationOperand);
     }
     if (pgNode(value.A_Expr)) {
@@ -546,7 +566,7 @@ export class OutlinerScheduleService {
             if (expressions.some(expression => expression === undefined)) {
                 return unavailable("A VALUES row is missing its explicit id expression");
             }
-            if (!expressions.every(deterministicIdExpression)) {
+            if (!expressions.every(expression => deterministicIdExpression(expression))) {
                 return unavailable("At least one id expression is outside the supported deterministic subset");
             }
             return {
