@@ -6,7 +6,7 @@
     "scripts": {
         "build": "npm run paraglide:compile && vite build",
         "build:production": "npm run paraglide:compile && dotenvx run --overload --env-file=.env.production -- vite build",
-        "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+        "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.worker.json --noEmit",
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
         "ci:test:e2e": "env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'npx playwright test' --",
         "ci:test:e2e:ui": "env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'playwright test --ui' --",
