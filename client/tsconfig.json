@@ -37,6 +37,9 @@
             ]
         }
     },
+    "exclude": [
+        "src/service-worker.ts"
+    ],
     "include": [
         "src/vite-env.d.ts",
         "src/**/*",

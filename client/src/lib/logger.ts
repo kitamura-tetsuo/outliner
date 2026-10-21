@@ -1,4 +1,6 @@
 import pino from "pino";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare let window: any;
 
 // Type definition for Console to avoid no-undef errors
 type Console = typeof console;
@@ -433,7 +435,8 @@ function setupGlobalErrorHandlers(): void {
     const uncaughtLogger = getLogger("UncaughtError", false);
 
     // Log uncaught exceptions
-    window.onerror = (message, source, lineno, colno, error) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    window.onerror = (message: any, source: any, lineno: any, colno: any, error: any) => {
         const errorInfo = {
             type: "uncaught_exception",
             source: source || "",
