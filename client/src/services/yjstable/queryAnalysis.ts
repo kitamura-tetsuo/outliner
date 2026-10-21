@@ -17,7 +17,7 @@
 // `source_id` — see `relationRowWrite.ts`.
 
 import { analyzeDirectSelectProjection } from "$shared/services/directSelectProjection";
-import { parseSqlIdentifiers, stripSqlNoise, validateReadOnlySelect } from "$shared/services/readOnlySql";
+import { parseSqlIdentifiers, validateReadOnlySelect } from "$shared/services/readOnlySql";
 import { TableSqlError } from "./pgliteService";
 import type { ParsedTableSchema } from "./schemaIntrospection";
 export { stripSqlNoise } from "$shared/services/readOnlySql";
