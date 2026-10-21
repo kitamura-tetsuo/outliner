@@ -340,7 +340,10 @@ export async function introspectTable(
             const value = resolved.rows[0]?.value;
             let normalized: string | number | boolean | null | undefined;
             if (value === null) normalized = null;
-            else if (typeof value === "string" || typeof value === "boolean") normalized = value;
+            else if (typeof value === "string" && (kind === "number" || kind === "integer")) {
+                const numeric = Number(value);
+                if (Number.isFinite(numeric) && (kind !== "integer" || Number.isInteger(numeric))) normalized = numeric;
+            } else if (typeof value === "string" || typeof value === "boolean") normalized = value;
             else if (typeof value === "number" && Number.isFinite(value)) normalized = value;
             else if (value instanceof Date && !Number.isNaN(value.valueOf())) {
                 const iso = value.toISOString();

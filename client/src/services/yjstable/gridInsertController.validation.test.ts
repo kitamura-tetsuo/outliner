@@ -142,6 +142,50 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         }
     });
 
+    it("preserves a finite NUMERIC default as a number through the real Grid writer", async () => {
+        const schema = "CREATE TABLE target (id TEXT PRIMARY KEY, v NUMERIC(5,2) DEFAULT 1.25)";
+        const parsed = await parseCreateTable(schema);
+        const literalDefault = parsed.columns.find(column => column.name === "v")?.literalDefault;
+        expect(literalDefault).toEqual({ status: "literal", value: 1.25 });
+        expect(literalDefault?.status === "literal" && typeof literalDefault.value).toBe("number");
+
+        const doc = new Y.Doc({ guid: "grid-insert-numeric-default" });
+        const run = fixture(doc, schema, doc.guid);
+        run.table.undo.stopCapturing();
+        const history = run.table.undo.undoStack.length;
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "inserted" });
+            expect([...run.table.data.values()][0]!.toJSON()).toMatchObject({ v: 1.25 });
+            expect(run.table.undo.undoStack.length).toBeGreaterThan(history);
+            const physical = await runSelect<{ v: number; }>(
+                `SELECT v::DOUBLE PRECISION AS v FROM "${projectSchemaName(doc.guid)}".target`,
+            );
+            expect(physical.rows).toEqual([{ v: 1.25 }]);
+        } finally {
+            run.controller.dispose();
+        }
+    });
+
+    it("refuses a non-finite NUMERIC default before Grid effects", async () => {
+        const schema = "CREATE TABLE target (id TEXT PRIMARY KEY, v NUMERIC DEFAULT 'NaN'::NUMERIC)";
+        const parsed = await parseCreateTable(schema);
+        expect(parsed.columns.find(column => column.name === "v")?.literalDefault).toEqual({ status: "unsupported" });
+
+        const doc = new Y.Doc({ guid: "grid-insert-nonfinite-default" });
+        const run = fixture(doc, schema, doc.guid);
+        run.table.undo.stopCapturing();
+        const history = run.table.undo.undoStack.length;
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "refused", mode: "invalid-record" });
+            expect(run.table.data.size).toBe(0);
+            expect(run.table.undo.undoStack.length).toBe(history);
+            const physical = await runSelect(`SELECT * FROM "${projectSchemaName(doc.guid)}".target`);
+            expect(physical.rows).toEqual([]);
+        } finally {
+            run.controller.dispose();
+        }
+    });
+
     it("never evaluates a sequence default while refusing Grid insertion", async () => {
         await enqueueWrite(async db => {
             await db.exec("CREATE SEQUENCE public.grid_default_probe; SELECT nextval('public.grid_default_probe');");
