@@ -10,8 +10,8 @@ describe("columnOrder", () => {
         it("does not duplicate columns on concurrent reorders", () => {
             const docA = new Y.Doc();
             const docB = new Y.Doc();
-            const tableId = createTable(docA, "T", "t");
-            const gridId = createGrid(docA, tableId, { name: "G" });
+            createTable(docA, "T", "t");
+            const gridId = createGrid(docA, { name: "G" });
             Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
 
             const handlesA = getGridHandles(docA, gridId)!;

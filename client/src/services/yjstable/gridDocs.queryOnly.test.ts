@@ -7,7 +7,6 @@ import {
     duplicateGrid,
     getGridHandles,
     getGridRegistry,
-    getGridSourceTableId,
     listGrids,
     removeGridWithPlacements,
 } from "./gridDocs";
@@ -15,33 +14,52 @@ import { appendGridPlacement } from "./gridPlacement";
 
 describe("query-only Grid definitions", () => {
     it("retains identity and presentation without synthesizing a primary Table", () => {
-        const doc = new Y.Doc();
-        const gridId = createGrid(doc, undefined, {
+        const project = Project.createInstance("Round trip");
+        const doc = project.ydoc;
+        const page = project.addPage("Page", "author");
+        const gridId = createGrid(doc, {
             gridId: "query-grid",
             name: "Independent query",
-            query: "SELECT 1 AS value",
+            query: "SELECT 1 AS value  /* exact SQL */",
             columnOrder: ["value"],
-            components: { value: { label: "Result", widthPx: 180 } },
+            components: { value: { type: "text", label: "Result", hidden: true, widthPx: 180 } },
+            showAddRowButton: false,
+            confirmRowDelete: true,
+            insertTargetTableId: "explicit-choice",
         });
 
         const handles = getGridHandles(doc, gridId);
         expect(gridId).toBe("query-grid");
-        expect(getGridSourceTableId(doc, gridId)).toBeUndefined();
+        expect(getGridRegistry(doc).get(gridId)?.has("sourceTableId")).toBe(false);
         expect(handles?.entry.has("sourceTableId")).toBe(false);
-        expect(handles?.entry.get("query")).toBe("SELECT 1 AS value");
+        expect(handles?.entry.get("query")).toBe("SELECT 1 AS value  /* exact SQL */");
         expect(listGrids(doc)).toEqual([{
             gridId,
             name: "Independent query",
-            sourceTableId: undefined,
-            showAddRowButton: true,
-            confirmRowDelete: false,
+            showAddRowButton: false,
+            confirmRowDelete: true,
         }]);
+        const placement = appendGridPlacement(doc, page.id, gridId, "author");
+        placement.columnSpan = 5;
+        const restoredDoc = new Y.Doc();
+        Y.applyUpdate(restoredDoc, Y.encodeStateAsUpdate(doc));
+        const restored = Project.fromDoc(restoredDoc);
+        const restoredPage = [...restored.items].find(item => item.id === page.id)!;
+        const restoredPlacement = [...restoredPage.items].find(item => item.id === placement.id)!;
+        expect(restoredPlacement.yjsGridId).toBe(gridId);
+        expect(restoredPlacement.columnSpan).toBe(5);
+        expect((restoredPlacement.tree.getNodeValueFromKey(restoredPlacement.key) as Y.Map<unknown>).has("yjsTableId"))
+            .toBe(false);
+        const entry = getGridRegistry(restoredDoc).get(gridId)!;
+        expect(entry.has("sourceTableId")).toBe(false);
+        expect(entry.toJSON()).toEqual(handles!.entry.toJSON());
+        expect(entry.get("insertTargetTableId")).toBe("explicit-choice");
     });
 });
 
 it("duplicates an independent Grid with all saved settings and no primary field", () => {
     const doc = new Y.Doc();
-    const id = createGrid(doc, undefined, {
+    const id = createGrid(doc, {
         query: "SELECT 1 AS value",
         insertTargetTableId: "stale-preference",
         showAddRowButton: false,
@@ -60,12 +78,12 @@ it("explicit deletion and Undo preserve a placement rebound to another Grid", ()
     globalUndoRouter.clear();
     const project = Project.createInstance("Lifecycle");
     const page = project.addPage("Page", "author");
-    const id = createGrid(project.ydoc, undefined, {
+    const id = createGrid(project.ydoc, {
         query: "SELECT 1 AS value",
         showAddRowButton: false,
         confirmRowDelete: true,
     });
-    const peer = createGrid(project.ydoc, undefined, { query: "SELECT 2 AS value" });
+    const peer = createGrid(project.ydoc, { query: "SELECT 2 AS value" });
     const placement = appendGridPlacement(project.ydoc, page.id, id, "author");
     const value = project.tree.getNodeValueFromKey(placement.key) as Y.Map<unknown>;
     expect(value.has("yjsTableId")).toBe(false);

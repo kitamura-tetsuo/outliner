@@ -43,9 +43,9 @@ function waitForState(controller: GridInsertController, ready: (state: GridInser
 describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
     it("isolates local history, merges disjoint peer fields and persists the exact Grid", () => {
         const doc = new Y.Doc();
-        const id = createGrid(doc, undefined, { query: "SELECT 1 AS value" });
+        const id = createGrid(doc, { query: "SELECT 1 AS value" });
         const grid = getGridHandles(doc, id)!;
-        const separate = getGridHandles(doc, createGrid(doc, undefined))!;
+        const separate = getGridHandles(doc, createGrid(doc))!;
         const peer = new Y.Doc();
         Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
         peer.getMap<Y.Map<unknown>>("yjsGrids").get(id)!.set("name", "Peer title");
@@ -79,7 +79,7 @@ describe("explicit Grid INSERT preference", { timeout: engineTimeout }, () => {
             return { id, handles };
         });
         const query = "SELECT id AS id, title AS title FROM a UNION ALL SELECT id AS id, title AS title FROM b";
-        const grid = getGridHandles(doc, createGrid(doc, undefined, { query }))!;
+        const grid = getGridHandles(doc, createGrid(doc, { query }))!;
         const controller = createGridInsertController({
             projectDoc: doc,
             gridEntry: grid.entry,

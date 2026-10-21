@@ -1,3 +1,4 @@
+import { createGridEntry } from "$shared/services/gridDefinition";
 import { render, waitFor } from "@testing-library/svelte";
 import { afterEach, describe, expect, it } from "vitest";
 import type * as Y from "yjs";
@@ -48,8 +49,11 @@ function buildLayout(children: Array<{ type: "yjstable" | "calendar"; span?: num
     const created = children.map(({ type, span, text }) => {
         const child = layout.items.addNode("tester");
         child.componentType = type;
-        if (type === "yjstable") child.yjsTableId = `table-${child.id}`;
-        else child.calendarId = `calendar-${child.id}`;
+        if (type === "yjstable") {
+            const gridId = `grid-${child.id}`;
+            createGridEntry(project.ydoc, gridId, { query: "SELECT 1 AS value" });
+            child.yjsGridId = gridId;
+        } else child.calendarId = `calendar-${child.id}`;
         if (span !== undefined) child.columnSpan = span;
         if (text !== undefined) child.updateText(text);
         return child;
@@ -62,8 +66,11 @@ function buildLayout(children: Array<{ type: "yjstable" | "calendar"; span?: num
 function addStandaloneItem(page: Item, componentType?: "yjstable" | "calendar" | typeof LAYOUT_COMPONENT_TYPE): Item {
     const item = page.items.addNode("tester");
     if (componentType !== undefined) item.componentType = componentType;
-    if (componentType === "yjstable") item.yjsTableId = `table-${item.id}`;
-    else if (componentType === "calendar") item.calendarId = `calendar-${item.id}`;
+    if (componentType === "yjstable") {
+        const gridId = `grid-${item.id}`;
+        createGridEntry(page.ydoc, gridId, { query: "SELECT 1 AS value" });
+        item.yjsGridId = gridId;
+    } else if (componentType === "calendar") item.calendarId = `calendar-${item.id}`;
     return item;
 }
 

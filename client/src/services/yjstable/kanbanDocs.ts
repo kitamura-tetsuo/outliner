@@ -6,7 +6,7 @@
 //
 // Kanban state is stored as a flat entry in a project-level registry (a
 // `yjsKanbans` Y.Map of id -> Y.Map of settings), not as a subdoc: a Kanban
-// definition is a handful of small fields (name, source reference, query,
+// definition is a handful of small fields (name, query,
 // grouping/title roles, detail order, lane preference) that every
 // collaborator loads eagerly with the project doc, so a subdoc's lazy-load
 // lifecycle would be pure cost with no benefit — the same shape Grids use
@@ -38,7 +38,6 @@ import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { findKanbanPlacements } from "../objectManager/objectPlacements";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import { getTableRegistry, getTableSqlName } from "./tableDocs";
 
 // The Kanban writers/readers are framework-neutral and shared with the
 // server (shared/src/services/kanbanDefinition.ts), so server-side
@@ -115,36 +114,17 @@ export interface CreateKanbanOptions extends KanbanDefinitionSeed {
     kanbanId?: string;
 }
 
-function assertSourceTableExists(projectDoc: Y.Doc, sourceTableId: string): void {
-    if (!getTableRegistry(projectDoc).has(sourceTableId)) {
-        throw new Error(`Kanban source Table does not exist: ${sourceTableId}`);
-    }
-}
-
 /**
- * Create a new Kanban in the project registry over an existing Table of the
- * same project. Returns the new Kanban id. Creates exactly one Kanban
+ * Create an independent Kanban definition in the project registry. Returns the new Kanban id. Creates exactly one Kanban
  * identity and no Table, Grid, source record or Page placement. All
  * initialization happens in one transaction so observers never see a
  * partially populated definition.
  */
 export function createKanban(
     projectDoc: Y.Doc,
-    sourceTableId: string | undefined,
     options: CreateKanbanOptions = {},
 ): string {
-    // Validated before the operation has any effect: a missing/foreign Table
-    // or a structurally invalid seed rejects the whole creation rather than
-    // partially seeding a definition.
-    if (sourceTableId !== undefined) {
-        if (typeof sourceTableId !== "string" || sourceTableId.length === 0) {
-            throw new Error("Kanban sourceTableId must be a non-empty string");
-        }
-        assertSourceTableExists(projectDoc, sourceTableId);
-    }
     const { kanbanId, ...seed } = options;
-    const initialQuery = seed.query
-        ?? (sourceTableId ? `SELECT * FROM ${getTableSqlName(projectDoc, sourceTableId)}` : undefined);
     const newId = kanbanId ?? uuidv4();
     if (typeof newId !== "string" || newId.length === 0) {
         throw new Error("Kanban id must be a non-empty string");
@@ -152,7 +132,7 @@ export function createKanban(
     if (getKanbanRegistry(projectDoc).has(newId)) {
         throw new Error(`Kanban with id ${newId} already exists`);
     }
-    createKanbanEntry(projectDoc, newId, undefined, { ...seed, query: initialQuery });
+    createKanbanEntry(projectDoc, newId, seed);
     return newId;
 }
 
@@ -191,7 +171,7 @@ export function updateKanban(projectDoc: Y.Doc, kanbanId: string, updates: Kanba
 
 /**
  * Remove a Kanban from the registry and dispose its undo manager. Removes
- * only that definition and its local resources — never its source Table,
+ * only that definition and its local resources — never its SQL dependency Tables,
  * records or other view definitions. Placement cleanup belongs to the
  * separate reference-lifecycle stage, not to this low-level operation.
  */
@@ -236,7 +216,7 @@ export function removeKanbanWithPlacements(project: Project, kanbanId: string): 
         });
     const applyRestore = () =>
         project.ydoc.transact(() => {
-            if (!registry.has(kanbanId)) createKanbanEntry(project.ydoc, kanbanId, undefined, settings);
+            if (!registry.has(kanbanId)) createKanbanEntry(project.ydoc, kanbanId, settings);
         });
     globalUndoRouter.captureManual(applyDelete, {
         type: "manual",

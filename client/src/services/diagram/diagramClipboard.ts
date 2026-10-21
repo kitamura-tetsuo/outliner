@@ -26,7 +26,7 @@ import type { ClipboardItem, DiagramSnapshot, ItemClipboardPayloadV4 } from "../
 import { invokingSurfaceWritable } from "../editorSurface";
 import { getProjectCapabilities } from "../project/projectCapabilities";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import { setItemGridId, setItemTableId } from "../yjstable/itemBinding";
+import { setItemGridId } from "../yjstable/itemBinding";
 import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
 import { canMutateDiagrams, canReadDiagrams, type DiagramAuthorization } from "./diagramAuthorization";
 import { setItemDiagramId } from "./diagramBinding";
@@ -386,7 +386,6 @@ function pasteCopy(payload: ItemClipboardPayloadV4, context: DiagramPasteContext
             } else if (item.componentType === "yjstable") {
                 // Same-project Grid/Calendar policy is unchanged: another view.
                 setItemGridId(created, item.yjsGridId);
-                setItemTableId(created, undefined);
             } else if (item.componentType === "calendar") {
                 setItemCalendarId(created, item.calendarId);
             }

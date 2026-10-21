@@ -13,7 +13,7 @@ afterEach(() => {
 function owner() {
     const doc = new Y.Doc();
     docs.push(doc);
-    const grid = getGridHandles(doc, createGrid(doc, undefined, { query: "SELECT 1 AS value" }))!;
+    const grid = getGridHandles(doc, createGrid(doc, { query: "SELECT 1 AS value" }))!;
     const table = getTableHandles(doc, createTable(doc, "Rows", "rows"))!;
     addRecord(table, { title: "before" }, "row");
     grid.undo.clear();

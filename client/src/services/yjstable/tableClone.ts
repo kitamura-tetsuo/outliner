@@ -644,7 +644,7 @@ export async function importTableStructures(
                         reason: `Cleared unmappable INSERT preference ${preference}`,
                     });
                 }
-                const id = createGrid(destinationProjectDoc, undefined, {
+                const id = createGrid(destinationProjectDoc, {
                     ...grid,
                     gridId: undefined,
                     query,

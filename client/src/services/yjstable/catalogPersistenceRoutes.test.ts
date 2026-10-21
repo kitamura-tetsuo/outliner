@@ -31,7 +31,7 @@ describe("catalog persistence route boundaries", { timeout: 60_000 }, () => {
         const sourceTable = getTableHandles(source, tableId)!;
         setSchemaText(sourceTable, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
         addRecord(sourceTable, { state: "Closed" }, "r1");
-        const gridId = createGrid(source, tableId, {
+        const gridId = createGrid(source, {
             query: "SELECT id, state FROM tasks ORDER BY state",
         });
 

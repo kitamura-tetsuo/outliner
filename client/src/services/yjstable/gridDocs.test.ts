@@ -6,13 +6,12 @@ import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import {
     createGrid,
     duplicateGrid,
-    findGridsBySourceTable,
     findGridsByTableDependency,
     getGridColumnOrder,
     getGridConfirmRowDelete,
     getGridHandles,
     getGridQuery,
-    getGridSourceTableId,
+    getGridRegistry,
     listGrids,
     readGridComponents,
     removeGrid,
@@ -31,7 +30,7 @@ describe("Grid registry", () => {
             const project = Project.createInstance("delete-copy-provenance");
             const page = project.addPage("Views", "user");
             const table = createTable(project.ydoc, "Records", "records");
-            const grid = createGrid(project.ydoc, undefined, {
+            const grid = createGrid(project.ydoc, {
                 query: "SELECT * FROM records",
                 insertTargetTableId: table,
                 columnOrder: ["id"],
@@ -79,7 +78,7 @@ describe("Grid registry", () => {
 
     it("rejects an implicit output alias without changing the saved query", () => {
         const doc = new Y.Doc();
-        const gridId = createGrid(doc, "table-1", { query: "SELECT value FROM table1" });
+        const gridId = createGrid(doc, { query: "SELECT value FROM table1" });
         const grid = getGridHandles(doc, gridId)!;
 
         expect(() => setGridQuery(grid, "SELECT value v FROM table1")).toThrow(/explicit AS/);
@@ -88,37 +87,37 @@ describe("Grid registry", () => {
 
     it("creates one project-level Grid entry per Grid, referencing its source Table", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
-        const gridId = createGrid(projectDoc, tableId, {
+        const gridId = createGrid(projectDoc, {
             name: "Open tasks",
             query: "SELECT id, title FROM tasks WHERE status = 'open'",
         });
 
         expect(listGrids(projectDoc)).toEqual([
-            { gridId, name: "Open tasks", sourceTableId: tableId, showAddRowButton: true, confirmRowDelete: false },
+            { gridId, name: "Open tasks", showAddRowButton: true, confirmRowDelete: false },
         ]);
-        expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableId);
+        expect(getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId")).toBeUndefined();
     });
 
     it("supports one Table with many independent Grids", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
-        const openGridId = createGrid(projectDoc, tableId, {
+        const openGridId = createGrid(projectDoc, {
             name: "Open",
             query: "SELECT id, title FROM tasks WHERE status = 'open'",
             columnOrder: ["title", "id"],
         });
-        const mineGridId = createGrid(projectDoc, tableId, {
+        const mineGridId = createGrid(projectDoc, {
             name: "Mine",
             query: "SELECT id, title FROM tasks WHERE assignee = 'me'",
             columnOrder: ["id", "title"],
         });
 
         // Both point at the same Table without cloning it.
-        expect(getGridSourceTableId(projectDoc, openGridId)).toBe(tableId);
-        expect(getGridSourceTableId(projectDoc, mineGridId)).toBe(tableId);
+        expect(getGridRegistry(projectDoc).get(openGridId)?.get("sourceTableId")).toBeUndefined();
+        expect(getGridRegistry(projectDoc).get(mineGridId)?.get("sourceTableId")).toBeUndefined();
         expect(listTables(projectDoc)).toHaveLength(1);
 
         // Grid A's query changes do not touch Grid B.
@@ -134,9 +133,9 @@ describe("Grid registry", () => {
 
     it("keeps per-column UI settings scoped to the Grid that owns them", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
-        const a = createGrid(projectDoc, tableId, { name: "A", query: "SELECT * FROM tasks" });
-        const b = createGrid(projectDoc, tableId, { name: "B", query: "SELECT * FROM tasks" });
+        createTable(projectDoc, "Tasks", "tasks");
+        const a = createGrid(projectDoc, { name: "A", query: "SELECT * FROM tasks" });
+        const b = createGrid(projectDoc, { name: "B", query: "SELECT * FROM tasks" });
 
         setGridComponentField(getGridHandles(projectDoc, a)!, "title", "label", "Title-A");
         setGridComponentField(getGridHandles(projectDoc, a)!, "status", "hidden", true);
@@ -154,7 +153,7 @@ describe("Grid registry", () => {
     it("duplicates only the Grid definition and shares the underlying Table", () => {
         const projectDoc = new Y.Doc();
         const tableId = createTable(projectDoc, "Tasks", "tasks");
-        const originalId = createGrid(projectDoc, tableId, {
+        const originalId = createGrid(projectDoc, {
             name: "Original",
             query: "SELECT id FROM tasks",
             columnOrder: ["id"],
@@ -165,7 +164,7 @@ describe("Grid registry", () => {
         expect(dupId).not.toBe(originalId);
 
         const dupHandles = getGridHandles(projectDoc, dupId)!;
-        expect(getGridSourceTableId(projectDoc, dupId)).toBeUndefined();
+        expect(getGridRegistry(projectDoc).get(dupId)?.get("sourceTableId")).toBeUndefined();
         expect(findGridsByTableDependency(projectDoc, tableId).map(grid => grid.gridId).sort())
             .toEqual([originalId, dupId].sort());
         expect(getGridQuery(dupHandles)).toBe("SELECT id FROM tasks");
@@ -176,9 +175,9 @@ describe("Grid registry", () => {
 
     it("preserves showAddRowButton flag on duplicateGrid", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
-        const originalId = createGrid(projectDoc, tableId, {
+        const originalId = createGrid(projectDoc, {
             name: "Original",
             showAddRowButton: false,
         });
@@ -190,10 +189,10 @@ describe("Grid registry", () => {
 
     it("sets and gets confirmRowDelete correctly", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
         // Test default creation
-        const gridId = createGrid(projectDoc, tableId, { name: "G" });
+        const gridId = createGrid(projectDoc, { name: "G" });
         const handles = getGridHandles(projectDoc, gridId)!;
 
         expect(getGridConfirmRowDelete(handles)).toBe(false);
@@ -211,9 +210,9 @@ describe("Grid registry", () => {
 
     it("preserves confirmRowDelete flag on duplicateGrid", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        createTable(projectDoc, "Tasks", "tasks");
 
-        const originalId = createGrid(projectDoc, tableId, {
+        const originalId = createGrid(projectDoc, {
             name: "Original",
             confirmRowDelete: true,
         });
@@ -225,8 +224,8 @@ describe("Grid registry", () => {
 
     it("sets and gets showAddRowButton correctly", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
-        const gridId = createGrid(projectDoc, tableId, { name: "G" });
+        createTable(projectDoc, "Tasks", "tasks");
+        const gridId = createGrid(projectDoc, { name: "G" });
         const handles = getGridHandles(projectDoc, gridId)!;
 
         // Default is true
@@ -248,7 +247,7 @@ describe("Grid registry", () => {
     it("undo/redo covers only the Grid definition, not the source Table data", () => {
         const projectDoc = new Y.Doc();
         const tableId = createTable(projectDoc, "Tasks", "tasks");
-        const gridId = createGrid(projectDoc, tableId, { name: "G", query: "SELECT 1" });
+        const gridId = createGrid(projectDoc, { name: "G", query: "SELECT 1" });
         const grid = getGridHandles(projectDoc, gridId)!;
         const table = getTableHandles(projectDoc, tableId)!;
 
@@ -263,22 +262,22 @@ describe("Grid registry", () => {
         expect(getGridQuery(grid)).toBe("SELECT 1");
     });
 
-    it("lists Grids by their source Table", () => {
+    it("lists Grids by their SQL dependencies", () => {
         const projectDoc = new Y.Doc();
         const tasksId = createTable(projectDoc, "Tasks", "tasks");
         const notesId = createTable(projectDoc, "Notes", "notes");
-        const g1 = createGrid(projectDoc, tasksId, { name: "G1" });
-        const g2 = createGrid(projectDoc, tasksId, { name: "G2" });
-        createGrid(projectDoc, notesId, { name: "G3" });
+        const g1 = createGrid(projectDoc, { name: "G1", query: "SELECT * FROM tasks" });
+        const g2 = createGrid(projectDoc, { name: "G2", query: "SELECT * FROM tasks" });
+        createGrid(projectDoc, { name: "G3", query: "SELECT * FROM notes" });
 
-        expect(findGridsBySourceTable(projectDoc, tasksId).map(g => g.gridId).sort()).toEqual([g1, g2].sort());
-        expect(findGridsBySourceTable(projectDoc, notesId)).toHaveLength(1);
+        expect(findGridsByTableDependency(projectDoc, tasksId).map(g => g.gridId).sort()).toEqual([g1, g2].sort());
+        expect(findGridsByTableDependency(projectDoc, notesId)).toHaveLength(1);
     });
 
     it("removes a Grid without touching the Table it referenced", () => {
         const projectDoc = new Y.Doc();
-        const tableId = createTable(projectDoc, "Tasks", "tasks");
-        const gridId = createGrid(projectDoc, tableId, { name: "G" });
+        createTable(projectDoc, "Tasks", "tasks");
+        const gridId = createGrid(projectDoc, { name: "G" });
         expect(removeGrid(projectDoc, gridId)).toBe(true);
         expect(listGrids(projectDoc)).toEqual([]);
         // Table stays intact for other Grids or later reuse.
@@ -299,7 +298,7 @@ describe("Grid creation is explicit", () => {
         const projectDoc = new Y.Doc();
         const tableId = createTable(projectDoc, "Tasks", "tasks");
 
-        expect(findGridsBySourceTable(projectDoc, tableId)).toHaveLength(0);
+        expect(findGridsByTableDependency(projectDoc, tableId)).toHaveLength(0);
         expect(listGrids(projectDoc)).toHaveLength(0);
     });
 });

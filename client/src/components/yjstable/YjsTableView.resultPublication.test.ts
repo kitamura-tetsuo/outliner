@@ -46,7 +46,7 @@ function salesProject(name: string) {
     setSchemaText(table, "CREATE TABLE sales (id TEXT PRIMARY KEY, month TEXT NOT NULL, revenue INTEGER NOT NULL)");
     addRecord(table, { month: "Jan", revenue: 120 }, "jan");
     addRecord(table, { month: "Feb", revenue: 180 }, "feb");
-    const gridId = createGrid(projectDoc, undefined, {
+    const gridId = createGrid(projectDoc, {
         name: "Sales",
         query: "SELECT id, month, revenue FROM sales ORDER BY month DESC",
     });

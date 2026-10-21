@@ -13,18 +13,18 @@ acceptance:
 - Duplicate selected is disabled with no selection and duplicates the exact current selection, including objects hidden by the active filter, with the count and hidden-selection warning matching bulk Rename/Delete.
 - 'Duplicate selected is one undo-router step: Undo removes every object (and any destination-Page placement) the operation created, and Redo recreates them with the same ids.'
 - Duplicate selected never expands the selection through the dependency graph and never shows the old referenced/referencing/connected scope chooser.
+- Exact selected Grids and Tables use independent identity maps; explicit INSERT preferences remap only through actually copied Tables, omitted cross-Project dependencies never bind by coincident SQL names, and asynchronous replay refuses stale plans without advancing history.
 - The Table rows/data option applies to every selected Table; the destination-Page option appears only for a single-Grid, same-project selection.
 - The preview reflects the exact explicit selection (never a recomputed scope) with an object-count/type breakdown and destination project.
-- Exact selected Grids and Tables use independent identity maps; explicit INSERT preferences remap only through actually copied Tables, omitted cross-Project dependencies never bind by coincident SQL names, and asynchronous replay refuses stale plans without advancing history.
 tests:
-- client/e2e/new/obj-sql-related-transfer-8ac92ce2.spec.ts
-- client/src/services/yjstable/tableClone.test.ts
 - client/e2e/new/obj-manager-calendar-duplicate-3235bc3d.spec.ts
 - client/e2e/new/obj-manager-duplicate-selected-4812d1f3.spec.ts
 - client/e2e/new/obj-manager-duplicate-selected-cross-project-b850f92c.spec.ts
 - client/e2e/new/obj-manager-duplicate-table-data-persistence-9b64f3a1.spec.ts
+- client/e2e/new/obj-sql-related-transfer-8ac92ce2.spec.ts
 - client/e2e/schedule/dup-schedule-duplication-1f5f6ffd.spec.ts
 - client/e2e/tables/dup-grid-duplication-destination-page.spec.ts
 - client/e2e/tables/dup-lazy-table-dependency-sync-5090c0de.spec.ts
 - client/src/services/objectManager/objectManagerController.duplication.test.ts
 - client/src/services/yjstable/objectDuplicationSet.test.ts
+- client/src/services/yjstable/tableClone.test.ts

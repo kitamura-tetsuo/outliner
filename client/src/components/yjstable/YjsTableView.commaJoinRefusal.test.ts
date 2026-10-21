@@ -14,7 +14,7 @@ import {
     createGrid,
     getGridHandles,
     getGridQuery,
-    getGridSourceTableId,
+    getGridRegistry,
     setGridQuery,
 } from "../../services/yjstable/gridDocs";
 import { collectGridRenderTraces } from "../../services/yjstable/gridRenderTraceRegistry";
@@ -76,7 +76,7 @@ function mountEmbedded(
     handlesA: TableHandles,
     query: string,
 ) {
-    const gridId = createGrid(projectDoc, undefined, { name: "Grid", query });
+    const gridId = createGrid(projectDoc, { name: "Grid", query });
     const grid = getGridHandles(projectDoc, gridId)!;
     const view = render(YjsTableView, {
         props: { grid, projectDoc },
@@ -177,7 +177,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
 
             // Neither the saved query nor the source binding moved.
             expect(getGridQuery(grid)).toBe(COMMA_QUERY);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
+            expect(getGridRegistry(projectDoc).get(gridId)?.has("sourceTableId")).toBe(false);
         } finally {
             view.unmount();
             await waitForTableEngineIdle();
@@ -235,7 +235,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
             expect(getGridQuery(grid)).toBe(COMMA_QUERY);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
+            expect(getGridRegistry(projectDoc).get(gridId)?.has("sourceTableId")).toBe(false);
         } finally {
             view.unmount();
             await waitForTableEngineIdle();
@@ -296,7 +296,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
             expect(getGridQuery(grid)).toBe(NESTED_COMMA_QUERY);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
+            expect(getGridRegistry(projectDoc).get(gridId)?.has("sourceTableId")).toBe(false);
         } finally {
             view.unmount();
             await waitForTableEngineIdle();
@@ -381,7 +381,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             expect(handlesB.data.get("b2")?.get("title")).toBe("Second");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
             expect(getGridQuery(grid)).toBe(query);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBeUndefined();
+            expect(getGridRegistry(projectDoc).get(gridId)?.has("sourceTableId")).toBe(false);
         } finally {
             view.unmount();
             await waitForTableEngineIdle();

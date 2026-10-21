@@ -53,13 +53,13 @@ function seedGridHost() {
     setSchemaText(handles, "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, status TEXT)");
     addRecord(handles, { title: "Draft", status: "open" }, "t1");
     addRecord(handles, { title: "Ship", status: "done" }, "t2");
-    const gridId = createGrid(project.ydoc, tasksId, {
+    const gridId = createGrid(project.ydoc, {
         name: "G",
         query: QUERY,
         components: { title: { widthPx: 180 } },
     });
     const grid = getGridHandles(project.ydoc, gridId)!;
-    bindItemToGrid(host, gridId, tasksId);
+    bindItemToGrid(host, gridId);
     return { project, host, grid, gridId, tasksId };
 }
 
@@ -97,7 +97,7 @@ describe("YjsTableBlock width drafts across Grid entry replacement", { timeout: 
     });
 
     it("discards a pending draft when the registry entry is replaced under the same ID", async () => {
-        const { project, host, grid, gridId, tasksId } = seedGridHost();
+        const { project, host, grid, gridId } = seedGridHost();
         const rendered = render(YjsTableBlock, { props: { item: host } });
         try {
             const input = await openWidthInput(rendered);
@@ -109,7 +109,7 @@ describe("YjsTableBlock width drafts across Grid entry replacement", { timeout: 
             // A synchronized transaction replaces the Grid entry under the
             // same Grid ID, retaining the source Table and result names.
             project.ydoc.transact(() => {
-                createGrid(project.ydoc, tasksId, { gridId, name: "G", query: QUERY });
+                createGrid(project.ydoc, { gridId, name: "G", query: QUERY });
             });
             const replacement = getGridHandles(project.ydoc, gridId)!;
             expect(replacement.entry).not.toBe(grid.entry);

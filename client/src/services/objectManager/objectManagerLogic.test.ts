@@ -54,7 +54,7 @@ describe("Objects Manager Requirements", () => {
     });
 
     it("should allow renaming a Grid while keeping its ID", () => {
-        const gridId = createGrid(project.ydoc, "orig-table", { name: "Original Grid" });
+        const gridId = createGrid(project.ydoc, { name: "Original Grid" });
 
         renameGrid(project.ydoc, gridId, "Renamed Grid");
 
@@ -80,7 +80,7 @@ describe("Objects Manager Requirements", () => {
     describe("Calendar inclusion", () => {
         it("lists Calendar objects alongside Table, Grid and Schedule", () => {
             const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const calendarId = createCalendar(project, { name: "My Calendar", query: "SELECT 1" });
             const ruleId = createScheduleRule(project, { targetTableId: tableId, sql: "SELECT 1", rrule: "" });
 
@@ -99,8 +99,8 @@ describe("Objects Manager Requirements", () => {
 
     describe("Grid/Calendar direct placement discovery", () => {
         it("finds a single Grid placement", () => {
-            const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
 
@@ -124,8 +124,8 @@ describe("Objects Manager Requirements", () => {
         });
 
         it("finds multiple placements across different Pages", () => {
-            const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page1 = project.addPage("Dashboard", "test");
             const item1 = page1.items.addNode("test");
             const page2 = project.addPage("Today", "test");
@@ -142,8 +142,8 @@ describe("Objects Manager Requirements", () => {
         });
 
         it("finds multiple placements on the same Page as distinguishable entries", () => {
-            const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page = project.addPage("Dashboard", "test");
             const item1 = page.items.addNode("test");
             const item2 = page.items.addNode("test");
@@ -162,7 +162,7 @@ describe("Objects Manager Requirements", () => {
 
         it("a Table does not inherit the Pages of Grids that reference it", () => {
             const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
@@ -174,7 +174,7 @@ describe("Objects Manager Requirements", () => {
 
         it("a Schedule does not inherit the Pages of Tables/Grids it references", () => {
             const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
@@ -188,8 +188,8 @@ describe("Objects Manager Requirements", () => {
 
     describe("Delete", () => {
         it("removeGridWithPlacements deletes the Grid and clears its placements", () => {
-            const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
@@ -227,7 +227,7 @@ describe("Objects Manager Requirements", () => {
 
         it("deleteObject on a Table reuses the existing dependency-aware removal", () => {
             const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, undefined, { name: "G", query: "SELECT * FROM t" });
+            const gridId = createGrid(project.ydoc, { name: "G", query: "SELECT * FROM t" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
@@ -267,8 +267,8 @@ describe("Objects Manager Requirements", () => {
 
     describe("Undo", () => {
         it("restores a deleted Grid and its placements with a single undo", () => {
-            const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G", query: "SELECT * FROM t" });
+            createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, { name: "G", query: "SELECT * FROM t" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
@@ -288,8 +288,8 @@ describe("Objects Manager Requirements", () => {
         });
 
         it("redo re-applies a Grid delete after an undo", () => {
-            const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page = project.addPage("Dashboard", "test");
             const item = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(item, gridId));
@@ -329,8 +329,8 @@ describe("Objects Manager Requirements", () => {
             // that manager's own stack keeps it as its real top item, and a
             // later unrelated outline undo pops the orphaned item instead of
             // the unrelated edit.
-            const tableId = createTable(project.ydoc, "T", "t");
-            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, { name: "G" });
             const page = project.addPage("Dashboard", "test");
             const gridItem = page.items.addNode("test");
             project.ydoc.transact(() => bindItemToGrid(gridItem, gridId));

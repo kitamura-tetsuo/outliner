@@ -17,7 +17,7 @@ describe("TableGrid", () => {
         // the way the runtime uses them.
         const doc = new (await import("yjs")).Doc();
         const tableId = createTable(doc, "test_table", "test_table");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: "SELECT id, col_a, col_b, col_c FROM test",
             columnOrder: ["col_c", "col_a", "col_b"],
@@ -121,7 +121,7 @@ describe("TableGrid", () => {
         // focus in the middle of keyboard navigation.
         const doc = new (await import("yjs")).Doc();
         const tableId = createTable(doc, "test_table", "test_table");
-        const gridId = createGrid(doc, tableId, {
+        const gridId = createGrid(doc, {
             name: "G",
             query: "SELECT id, col_a FROM test",
             columnOrder: ["col_a"],

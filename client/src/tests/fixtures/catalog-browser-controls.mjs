@@ -174,7 +174,7 @@ const controls = {
     },
     createViews() {
         const doc = project().ydoc;
-        const gridId = createGrid(doc, undefined, {
+        const gridId = createGrid(doc, {
             name: "Catalog order",
             query: "SELECT id, state FROM catalog_tasks ORDER BY state NULLS LAST",
             components: { state: { type: "select" } },
@@ -208,7 +208,7 @@ const controls = {
         if (!handles) throw new Error("The UI-created embedded Grid is missing");
         setGridQuery(handles, "SELECT id, state FROM catalog_tasks ORDER BY state NULLS LAST");
         setGridComponentField(handles, "state", "type", "select");
-        const secondGrid = createGrid(project().ydoc, undefined, {
+        const secondGrid = createGrid(project().ydoc, {
             query: getGridQuery(handles),
             components: { state: { type: "select" } },
         });

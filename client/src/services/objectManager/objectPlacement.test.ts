@@ -4,7 +4,7 @@ import { getItemCalendarId } from "../calendar/calendarBinding";
 import { createCalendar } from "../calendar/calendarService";
 import { createGrid, getGridHandles } from "../yjstable/gridDocs";
 import { getItemGridId } from "../yjstable/itemBinding";
-import { listKanbans } from "../yjstable/kanbanDocs";
+import { getKanban, getKanbanRegistry, listKanbans } from "../yjstable/kanbanDocs";
 import { createTable } from "../yjstable/tableDocs";
 import {
     OBJECT_PLACEMENT_MIME,
@@ -26,15 +26,30 @@ describe("Object Manager Page placement", () => {
             surfaceWritable: true,
         });
 
-        expect(listKanbans(project.ydoc)).toHaveLength(1);
-        expect(page.items.at(0)?.kanbanId).toBe(listKanbans(project.ydoc)[0].kanbanId);
+        const boards = listKanbans(project.ydoc);
+        expect(boards).toHaveLength(1);
+        const id = boards[0].kanbanId;
+        expect(tableId).not.toBe("tasks");
+        expect(id).not.toBe(tableId);
+        expect(getKanban(project.ydoc, id)).toEqual({
+            name: "Kanban",
+            query: "SELECT * FROM tasks",
+            detailFields: [],
+            laneOrder: [],
+        });
+        const entry = getKanbanRegistry(project.ydoc).get(id)!;
+        expect(entry.get("query")).toBe("SELECT * FROM tasks");
+        expect(entry.has("sourceTableId")).toBe(false);
+        expect(entry.has("insertTargetTableId")).toBe(false);
+        expect(page.items.length).toBe(1);
+        expect(page.items.at(0)?.kanbanId).toBe(id);
         expect(updates).toHaveLength(1);
     });
 
     it("refuses denied and read-only placement before changing the tree", () => {
         const project = Project.createInstance("Project");
         const page = project.addPage("Inbox", "user");
-        const gridId = createGrid(project.ydoc, "table", { name: "Tasks" });
+        const gridId = createGrid(project.ydoc, { name: "Tasks" });
 
         expect(() =>
             placeObjectOnPage(project.ydoc, page.id, "grid", gridId, "user", {
@@ -54,7 +69,7 @@ describe("Object Manager Page placement", () => {
     it("places the same Grid definition more than once", () => {
         const project = Project.createInstance("Project");
         const page = project.addPage("Inbox", "user");
-        const gridId = createGrid(project.ydoc, "table", { name: "Tasks" });
+        const gridId = createGrid(project.ydoc, { name: "Tasks" });
 
         placeObjectOnPage(project.ydoc, page.id, "grid", gridId, "user", {
             projectAccess: true,

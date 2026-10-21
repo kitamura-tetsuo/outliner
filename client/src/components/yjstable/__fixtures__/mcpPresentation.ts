@@ -20,7 +20,7 @@ export function setupSavedPresentation() {
     setSchemaText(handles, "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, due_date DATE, done BOOLEAN)");
     addRecord(handles, { title: "Write report", due_date: "2026-10-31", done: false }, "r1");
     addRecord(handles, { title: "Pay bills", due_date: "2026-11-30", done: true }, "r2");
-    const gridId = createGrid(doc, undefined, { name: "Tasks", query: QUERY });
+    const gridId = createGrid(doc, { name: "Tasks", query: QUERY });
     const grid = getGridHandles(doc, gridId)!;
     setGridComponentField(grid, "due_date", "label", "期限");
     setGridComponentField(grid, "done", "label", "完了");
@@ -29,7 +29,7 @@ export function setupSavedPresentation() {
     setGridColumnOrder(grid, ["done", "due_date"]);
     setGridShowAddRowButton(grid, false);
     setGridConfirmRowDelete(grid, true);
-    const separateId = createGrid(doc, undefined, { name: "Separate", query: QUERY });
+    const separateId = createGrid(doc, { name: "Separate", query: QUERY });
     const synced = new Y.Doc();
     Y.applyUpdate(synced, Y.encodeStateAsUpdate(doc));
     const subdoc = (synced.getMap("yjsTables").get(tableId) as Y.Map<unknown>).get("doc") as Y.Doc;

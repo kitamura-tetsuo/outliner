@@ -17,8 +17,8 @@ function bind(item: { tree: { getNodeValueFromKey(key: string): unknown; }; key:
 describe("Kanban placement and reference lifecycle", () => {
     it("adds a reference-only placement after validating its Page and definition", () => {
         const project = Project.createInstance("kanban-place");
-        const tableId = createTable(project.ydoc, "Tasks", "tasks");
-        const board = createKanban(project.ydoc, tableId, { kanbanId: "board" });
+        createTable(project.ydoc, "Tasks", "tasks");
+        const board = createKanban(project.ydoc, { kanbanId: "board" });
         const page = project.addPage("Dashboard", "test");
         placeObjectOnPage(project.ydoc, page.id, "kanban", board, "test", {
             projectAccess: true,
@@ -37,8 +37,8 @@ describe("Kanban placement and reference lifecycle", () => {
     it("discovers multiple placements and deletes only bindings still targeting the board", () => {
         const project = Project.createInstance("kanban-lifecycle");
         const tableId = createTable(project.ydoc, "Tasks", "tasks");
-        const first = createKanban(project.ydoc, tableId, { kanbanId: "first", name: "First" });
-        const second = createKanban(project.ydoc, tableId, { kanbanId: "second", name: "Second" });
+        const first = createKanban(project.ydoc, { kanbanId: "first", name: "First" });
+        const second = createKanban(project.ydoc, { kanbanId: "second", name: "Second" });
         const page = project.addPage("Dashboard", "test");
         const a = page.items.addNode("test");
         const b = page.items.addNode("test");
@@ -59,7 +59,7 @@ describe("Kanban placement and reference lifecycle", () => {
         const project = Project.createInstance("kanban-literal-dependency");
         const tasks = createTable(project.ydoc, "Tasks", "tasks");
         const unrelated = createTable(project.ydoc, "Unrelated", "unrelated");
-        const board = createKanban(project.ydoc, tasks, {
+        const board = createKanban(project.ydoc, {
             query: "SELECT 'unrelated' AS source_kind, status, title FROM tasks",
         });
         expect(buildObjectDependencyGraph(project.ydoc).dependenciesOf({ type: "kanban", id: board }))
@@ -70,7 +70,7 @@ describe("Kanban placement and reference lifecycle", () => {
     it("keeps empty-query evidence unknown instead of inferring ownership", () => {
         const project = Project.createInstance("kanban-unknown");
         const source = createTable(project.ydoc, "A", "table_a");
-        const board = createKanban(project.ydoc, undefined, { query: "" });
+        const board = createKanban(project.ydoc, { query: "" });
         const deps = getTableDependencies(project, source);
         expect(deps.dependentKanbanIds).toEqual([]);
         expect(deps.unknownReferences).toContainEqual(
@@ -84,9 +84,9 @@ describe("Kanban placement and reference lifecycle", () => {
     it("tracks only parsed query dependencies and preserves SQL-dependent Kanbans for both Table policies", () => {
         const project = Project.createInstance("kanban-table-policy");
         const a = createTable(project.ydoc, "A", "table_a");
-        const b = createTable(project.ydoc, "B", "table_b");
-        const direct = createKanban(project.ydoc, a, { kanbanId: "direct", query: "SELECT * FROM table_a" });
-        const indirect = createKanban(project.ydoc, b, {
+        createTable(project.ydoc, "B", "table_b");
+        const direct = createKanban(project.ydoc, { kanbanId: "direct", query: "SELECT * FROM table_a" });
+        const indirect = createKanban(project.ydoc, {
             kanbanId: "indirect",
             query: "SELECT * FROM table_a -- table_b in a comment\nWHERE 'table_b' = 'table_b'",
         });
@@ -110,7 +110,7 @@ describe("Kanban placement and reference lifecycle", () => {
 
         const project2 = Project.createInstance("kanban-table-remove");
         const source = createTable(project2.ydoc, "A", "table_a");
-        const direct2 = createKanban(project2.ydoc, source, { kanbanId: "direct", query: "SELECT * FROM table_a" });
+        const direct2 = createKanban(project2.ydoc, { kanbanId: "direct", query: "SELECT * FROM table_a" });
         expect(removeTableWithPolicy(project2, source, "remove-direct-references")).toBeDefined();
         expect(getKanban(project2.ydoc, direct2)).toBeDefined();
     });

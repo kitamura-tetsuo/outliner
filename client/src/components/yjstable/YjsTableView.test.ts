@@ -28,7 +28,7 @@ function makeProps() {
     const projectDoc = new Y.Doc();
     const tableId = createTable(projectDoc, "T", "t");
     const handles = getTableHandles(projectDoc, tableId)!;
-    const gridId = createGrid(projectDoc, undefined, { name: "G", query: "SELECT 1 AS value" });
+    const gridId = createGrid(projectDoc, { name: "G", query: "SELECT 1 AS value" });
     const grid = getGridHandles(projectDoc, gridId)!;
     return { projectDoc, handles, grid };
 }

@@ -157,7 +157,7 @@ describe("KeyEventHandler Diagram clipboard route (#5314)", () => {
     it("refuses mixed Diagram/Grid Copy after supported Grid deletion without clipboard or history effects", async () => {
         const d = addDiagram(fx.project, "snapshot");
         const diagram = addOccurrence(fx.page, d);
-        const grid = createGrid(fx.project.ydoc, undefined, { query: "SELECT 1" });
+        const grid = createGrid(fx.project.ydoc, { query: "SELECT 1" });
         const placement = appendGridPlacement(fx.project.ydoc, fx.page.id, grid, "tester");
         const anchor = addText(fx.page, "anchor");
         showRows([diagram, 0], [placement, 0], [anchor, 0]);

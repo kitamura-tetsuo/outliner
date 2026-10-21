@@ -19,8 +19,8 @@ describe("Grid Page placement", () => {
         const destination = project.addPage("Destination", "user");
         const existing = destination.items.addNode("user");
         const placement = source.items.addNode("user");
-        const gridId = createGrid(project.ydoc, "table", { name: "Grid" });
-        bindItemToGrid(placement, gridId, "table");
+        const gridId = createGrid(project.ydoc, { name: "Grid" });
+        bindItemToGrid(placement, gridId);
 
         expect(moveGridPlacement(project.ydoc, placement.id, destination.id)).toBe(true);
         expect(pageContaining(project, placement)?.id).toBe(destination.id);
@@ -32,7 +32,7 @@ describe("Grid Page placement", () => {
     it("appends a duplicate placement to a selected Page", () => {
         const project = Project.createInstance("Project");
         const page = project.addPage("Destination", "user");
-        const gridId = createGrid(project.ydoc, "table", { name: "Grid" });
+        const gridId = createGrid(project.ydoc, { name: "Grid" });
         const placement = appendGridPlacement(project.ydoc, page.id, gridId, "user");
         expect(page.items.at(0)?.id).toBe(placement.id);
         expect(placement.componentType).toBe("yjstable");
@@ -47,8 +47,8 @@ describe("Grid Page placement", () => {
         layout.componentType = "layout";
         const placement = layout.items.addNode("user");
         placement.columnSpan = 7;
-        const gridId = createGrid(project.ydoc, "table", { name: "Grid" });
-        bindItemToGrid(placement, gridId, "table");
+        const gridId = createGrid(project.ydoc, { name: "Grid" });
+        bindItemToGrid(placement, gridId);
 
         moveGridPlacement(project.ydoc, placement.id, destination.id);
 
@@ -60,8 +60,8 @@ describe("Grid Page placement", () => {
         const project = Project.createInstance("Project");
         const page = project.addPage("Source", "user");
         const placement = page.items.addNode("user");
-        const gridId = createGrid(project.ydoc, "table", { name: "Grid" });
-        bindItemToGrid(placement, gridId, "table");
+        const gridId = createGrid(project.ydoc, { name: "Grid" });
+        bindItemToGrid(placement, gridId);
         let payload = "";
         const transfer = {
             types: [GRID_PLACEMENT_MIME],

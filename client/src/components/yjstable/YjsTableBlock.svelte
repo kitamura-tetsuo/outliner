@@ -158,11 +158,11 @@ function selectExistingTable() {
         return;
     }
     sourceError = undefined;
-    const newGridId = createGrid(item.ydoc, undefined, {
+    const newGridId = createGrid(item.ydoc, {
         name: table.name || "Grid",
         query: `SELECT * FROM ${table.sqlName}`,
     });
-    bindItemToGrid(item, newGridId, undefined);
+    bindItemToGrid(item, newGridId);
     gridId = newGridId;
 }
 
@@ -174,7 +174,7 @@ function selectExistingGrid() {
         return;
     }
     sourceError = undefined;
-    bindItemToGrid(item, selectedGrid.gridId, undefined);
+    bindItemToGrid(item, selectedGrid.gridId);
     gridId = selectedExistingGridId;
 }
 
@@ -190,17 +190,17 @@ function createFromPreset(input: TableCreationInput): string | undefined {
         input.name,
         input.sqlName,
     );
-    bindItemToGrid(item, newGridId, undefined);
+    bindItemToGrid(item, newGridId);
     gridId = newGridId;
     return undefined;
 }
 
 function createQueryGrid() {
-    const newGridId = createGrid(item.ydoc, undefined, {
+    const newGridId = createGrid(item.ydoc, {
         name: "Query Grid",
         query: "SELECT 1 AS value",
     });
-    bindItemToGrid(item, newGridId, undefined);
+    bindItemToGrid(item, newGridId);
     gridId = newGridId;
 }
 </script>

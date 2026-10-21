@@ -9,13 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import { getGridColumnWidth, readGridComponents } from "../../services/yjstable/gridDocs";
-import {
-    createGrid,
-    getGridHandles,
-    getGridSourceTableId,
-    type GridHandles,
-    setGridColumnWidth,
-} from "../../services/yjstable/gridDocs";
+import { createGrid, getGridHandles, type GridHandles, setGridColumnWidth } from "../../services/yjstable/gridDocs";
 import { createTable } from "../../services/yjstable/tableDocs";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
@@ -32,8 +26,8 @@ function makeGrid(seed: Record<string, { widthPx?: number; hidden?: boolean; lab
     grid: GridHandles;
 } {
     const doc = new Y.Doc();
-    const tableId = createTable(doc, "T", "t");
-    const gridId = createGrid(doc, tableId, { name: "G", query: QUERY, components: seed });
+    createTable(doc, "T", "t");
+    const gridId = createGrid(doc, { name: "G", query: QUERY, components: seed });
     return { doc, grid: getGridHandles(doc, gridId)! };
 }
 
@@ -224,8 +218,7 @@ describe("TableUiDefEditor width controls", () => {
         // saved width. The mounted editor observes the replacement handles on
         // rerender. Without entry-identity tracking the retained 240 draft
         // would commit into the replacement object it never began editing.
-        const sourceTableId = getGridSourceTableId(doc, gridId)!;
-        createGrid(doc, sourceTableId, {
+        createGrid(doc, {
             gridId,
             name: "G",
             query: QUERY,

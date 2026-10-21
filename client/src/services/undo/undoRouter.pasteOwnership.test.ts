@@ -34,7 +34,7 @@ async function paste(reuse = false) {
         h.schemaText.insert(0, "CREATE TABLE contacts (id TEXT PRIMARY KEY, name TEXT)");
     });
     const grids = [0, 1].map(i =>
-        createGrid(source, undefined, {
+        createGrid(source, {
             name: `Grid ${i}`,
             query: "SELECT * FROM contacts",
             insertTargetTableId: table,

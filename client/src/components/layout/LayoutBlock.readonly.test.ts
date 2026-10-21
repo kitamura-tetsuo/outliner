@@ -52,9 +52,9 @@ function seedLayoutGrid() {
     setSchemaText(handles, "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, status TEXT)");
     addRecord(handles, { title: "Draft", status: "open" }, "t1");
     addRecord(handles, { title: "Ship", status: "done" }, "t2");
-    const gridId = createGrid(project.ydoc, tasksId, { name: "G", query: QUERY });
+    const gridId = createGrid(project.ydoc, { name: "G", query: QUERY });
     const grid = getGridHandles(project.ydoc, gridId)!;
-    bindItemToGrid(placement, gridId, tasksId);
+    bindItemToGrid(placement, gridId);
     return { project, layout, grid };
 }
 

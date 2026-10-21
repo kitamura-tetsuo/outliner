@@ -1,8 +1,9 @@
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import { Project } from "../../schema/app-schema";
-import { createGrid, getGridHandles, getGridQuery, getGridSourceTableId } from "../../services/yjstable/gridDocs";
-import { getItemGridId, getItemLegacyTableId } from "../../services/yjstable/itemBinding";
+import { createGrid, getGridHandles, getGridQuery, getGridRegistry } from "../../services/yjstable/gridDocs";
+import { getItemGridId } from "../../services/yjstable/itemBinding";
 import { createTable } from "../../services/yjstable/tableDocs";
 import { setPage } from "../../tests/mocks/appState.svelte";
 import YjsTableBlock from "./YjsTableBlock.svelte";
@@ -16,7 +17,7 @@ describe("YjsTableBlock query-only placement", () => {
         const page = project.addPage("Page", "tester");
         const host = page.items.addNode("tester");
         host.componentType = "yjstable";
-        const gridId = createGrid(project.ydoc, undefined, {
+        const gridId = createGrid(project.ydoc, {
             name: "Independent",
             query: "SELECT 1 AS value",
         });
@@ -26,9 +27,23 @@ describe("YjsTableBlock query-only placement", () => {
         await fireEvent.click(rendered.getByTestId("yjs-grid-select-existing"));
 
         await waitFor(() => expect(getItemGridId(host)).toBe(gridId));
-        expect(getItemLegacyTableId(host)).toBeUndefined();
+        expect((host.tree.getNodeValueFromKey(host.key) as Y.Map<unknown>).has("yjsTableId")).toBe(false);
         expect(getGridQuery(getGridHandles(project.ydoc, gridId)!)).toBe("SELECT 1 AS value");
-        expect(getGridSourceTableId(project.ydoc, gridId)).toBeUndefined();
+        expect(getGridRegistry(project.ydoc).get(gridId)?.has("sourceTableId")).toBe(false);
+        const restoredDoc = new Y.Doc();
+        Y.applyUpdate(restoredDoc, Y.encodeStateAsUpdate(project.ydoc));
+        const restored = Project.fromDoc(restoredDoc);
+        const restoredPage = [...restored.items].find(item => item.id === page.id)!;
+        const restoredHost = [...restoredPage.items].find(item => item.id === host.id)!;
+        expect(getItemGridId(restoredHost)).toBe(gridId);
+        expect((restoredHost.tree.getNodeValueFromKey(restoredHost.key) as Y.Map<unknown>).has("yjsTableId")).toBe(
+            false,
+        );
+        expect(getGridRegistry(restoredDoc).get(gridId)!.toJSON()).toEqual(
+            getGridRegistry(project.ydoc).get(gridId)!.toJSON(),
+        );
+        expect(getGridRegistry(restoredDoc).get(gridId)!.has("insertTargetTableId")).toBe(false);
+        rendered.unmount();
     });
 
     it("uses a selected Table only to seed the new Grid query", async () => {
@@ -44,8 +59,10 @@ describe("YjsTableBlock query-only placement", () => {
 
         const gridId = getItemGridId(host);
         expect(gridId).toBeDefined();
-        expect(getItemLegacyTableId(host)).toBeUndefined();
-        expect(getGridSourceTableId(project.ydoc, gridId!)).toBeUndefined();
+        expect((host.tree.getNodeValueFromKey(host.key) as Y.Map<unknown>).has("yjsTableId")).toBe(false);
+        expect(getGridRegistry(project.ydoc).get(gridId!)?.has("sourceTableId")).toBe(false);
         expect(getGridQuery(getGridHandles(project.ydoc, gridId!)!)).toBe("SELECT * FROM current_people");
+        expect(getGridRegistry(project.ydoc).get(gridId!)!.has("insertTargetTableId")).toBe(false);
+        rendered.unmount();
     });
 });

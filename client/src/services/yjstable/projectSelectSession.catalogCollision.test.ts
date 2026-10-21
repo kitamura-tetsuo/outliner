@@ -58,7 +58,7 @@ describe("native catalog collision source authority", { timeout: 60000 }, () => 
         await acquired.adapter.applySchema(prepared.parsed);
         expect(table.schemaText.toString()).toBe(sql);
         const query = "SELECT oid AS oid FROM pg_class LIMIT 1";
-        const grid = getGridHandles(doc, createGrid(doc, undefined, { query }))!;
+        const grid = getGridHandles(doc, createGrid(doc, { query }))!;
         const session = createProjectSelectSession({ projectDoc: doc, projectId, query, connect });
         const controller = createGridInsertController({
             projectDoc: doc,

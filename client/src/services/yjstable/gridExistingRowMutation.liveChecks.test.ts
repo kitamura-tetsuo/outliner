@@ -73,7 +73,7 @@ describe("Grid mutation live target checks", { timeout: 30_000 }, () => {
         const other = createTestTable(doc, "other", "CREATE TABLE other (id TEXT PRIMARY KEY, value TEXT)", "o1", {
             value: "other",
         });
-        const gridId = createGrid(doc, b.tableId, { name: "Grid", query: "SELECT id, value, peer FROM b" });
+        const gridId = createGrid(doc, { name: "Grid", query: "SELECT id, value, peer FROM b" });
         const h = await createMutationHarness(doc, "SELECT id, value, peer FROM b");
         try {
             const pending = h.boundary.captureUpdate(0, "value", "after");

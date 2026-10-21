@@ -85,7 +85,7 @@ test("slash-created Grid queries and renders the selected non-first Table", asyn
     const after = await snapshot(page);
     const added = after.grids.filter(grid => !before.grids.some(existing => existing.id === grid.id));
     expect(added).toHaveLength(1);
-    expect(added[0].sourceTableId).toBeUndefined();
+    expect(added[0]).not.toHaveProperty("sourceTableId");
     expect(added[0].query).toBe("SELECT * FROM chosen_table");
     expect(after.tables).toEqual(before.tables);
     expect(after.grids.filter(grid => before.grids.some(existing => existing.id === grid.id))).toEqual(before.grids);

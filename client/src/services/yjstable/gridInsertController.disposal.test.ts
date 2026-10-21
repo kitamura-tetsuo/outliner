@@ -20,7 +20,7 @@ it("disposal waits for its already-started provider preparation before engine re
     const table = getTableHandles(doc, createTable(doc, "A", "a"))!;
     setSchemaText(table, "CREATE TABLE a (id TEXT PRIMARY KEY)");
     const query = "SELECT id AS id FROM a";
-    const grid = getGridHandles(doc, createGrid(doc, undefined, { query }))!;
+    const grid = getGridHandles(doc, createGrid(doc, { query }))!;
     let connectionsClosed = 0;
     const controller = createGridInsertController({
         projectDoc: doc,
@@ -61,7 +61,7 @@ it("disposal waits for its already-started provider preparation before engine re
 it("settles a real preference refresh already awaiting its supplier before native cleanup", async () => {
     const doc = new Y.Doc(), started = deferred(), release = deferred();
     const query = "SELECT id AS id FROM outline_items";
-    const grid = getGridHandles(doc, createGrid(doc, undefined, { query }))!;
+    const grid = getGridHandles(doc, createGrid(doc, { query }))!;
     const controller = createGridInsertController({ projectDoc: doc, gridEntry: grid.entry, query });
     const original = ItemsRelationProvider.prototype.materialize;
     try {

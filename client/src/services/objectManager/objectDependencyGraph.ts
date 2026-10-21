@@ -91,7 +91,7 @@ export function buildObjectDependencyGraph(doc: Y.Doc): ObjectDependencyGraph {
                 .filter((tableId): tableId is string => tableId !== undefined);
         } catch {
             // An invalid query/statement stays part of the graph via its
-            // explicit reference (sourceTableId/targetTableId, if any); only
+            // explicit Schedule target (targetTableId, if any); only
             // the SQL-derived edges are unavailable until it is fixed.
             return [];
         }

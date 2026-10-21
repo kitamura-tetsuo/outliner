@@ -128,7 +128,6 @@ export async function seedProject(hocuspocus: Hocuspocus, projectId: string) {
     existing.set("doc", new Y.Doc({ guid: `${projectId}--table--table-existing` }));
     project.ydoc.getMap("yjsTables").set("table-existing", existing);
     const grid = new Y.Map<unknown>();
-    grid.set("sourceTableId", "table-existing");
     grid.set("query", "SELECT id FROM existing_table");
     project.ydoc.getMap("yjsGrids").set("grid-existing", grid);
     const connection = await hocuspocus.openDirectConnection(`projects/${projectId}`, {});

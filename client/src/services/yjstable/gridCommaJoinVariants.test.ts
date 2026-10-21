@@ -9,14 +9,7 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { commitGridPaste, planGridPaste } from "./gridClipboard";
-import {
-    createGrid,
-    getGridHandles,
-    getGridQuery,
-    getGridSourceTableId,
-    type GridHandles,
-    setGridQuery,
-} from "./gridDocs";
+import { createGrid, getGridHandles, getGridQuery, getGridRegistry, type GridHandles, setGridQuery } from "./gridDocs";
 import { GridQueryRunner } from "./gridQueryRunner";
 import { GridSelection } from "./gridSelection";
 import {
@@ -160,7 +153,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
         const projectId = "proj-comma-join-nested-comment";
         const { projectDoc, tableA, tableB, handlesA, handlesB } = seedTables(projectId);
         const schema = await parseCreateTable(SCHEMA_SQL);
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -197,7 +190,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
             removeRowTargets(ctx, [...ctx.rowTargets.values()]);
             expect(snapshotOf(handlesA, handlesB)).toEqual(before);
             expect(getGridQuery(grid)).toBe(query);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId")).toBeUndefined();
         } finally {
             session.dispose();
             await waitForTableEngineIdle();
@@ -208,7 +201,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
         const projectId = "proj-comma-join-cr-comment";
         const { projectDoc, tableA, tableB, handlesA, handlesB } = seedTables(projectId);
         const schema = await parseCreateTable(SCHEMA_SQL);
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -247,7 +240,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
                 removeRowTargets(ctx, [...ctx.rowTargets.values()]);
                 expect(snapshotOf(handlesA, handlesB), query).toEqual(before);
                 expect(getGridQuery(grid), query).toBe(query);
-                expect(getGridSourceTableId(projectDoc, gridId), query).toBe(tableA);
+                expect(getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId"), query).toBeUndefined();
             }
         } finally {
             session.dispose();
@@ -261,7 +254,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
         const schema = await parseCreateTable(SCHEMA_SQL);
         const statusColumn = schema.columns.find((column) => column.name === "status")!;
         statusColumn.checkOptions = ["Open", "Done"];
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -325,7 +318,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
         const projectId = "proj-comma-join-pending";
         const { projectDoc, tableA, tableB, handlesA, handlesB } = seedTables(projectId);
         const schema = await parseCreateTable(SCHEMA_SQL);
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -383,7 +376,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
             removeRowTargets(commaCtx, pendingDelete.targets);
             expect(snapshotOf(handlesA, handlesB)).toEqual(before);
             expect(getGridQuery(grid)).toBe(commaQuery);
-            expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableA);
+            expect(getGridRegistry(projectDoc).get(gridId)?.get("sourceTableId")).toBeUndefined();
         } finally {
             session.dispose();
             await waitForTableEngineIdle();
@@ -394,7 +387,7 @@ describe("comma-join mutation variants (issue #5547)", { timeout: 90000 }, () =>
         const projectId = "proj-comma-join-positive";
         const { projectDoc, tableA, tableB, handlesA, handlesB } = seedTables(projectId);
         const schema = await parseCreateTable(SCHEMA_SQL);
-        const gridId = createGrid(projectDoc, tableA, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
+        const gridId = createGrid(projectDoc, { name: "Grid", query: "SELECT id, title FROM tasks_a" });
         const grid = getGridHandles(projectDoc, gridId)!;
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });

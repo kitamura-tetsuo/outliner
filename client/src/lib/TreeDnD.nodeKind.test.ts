@@ -1,4 +1,6 @@
+import { createGridEntry } from "$shared/services/gridDefinition";
 import { describe, expect, it } from "vitest";
+import type * as Y from "yjs";
 import { Item, Project } from "../schema/app-schema";
 import { LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
@@ -72,7 +74,8 @@ describe("TreeDnD and leaf node kinds (#5015)", () => {
             });
             const other = add(item => {
                 item.componentType = "yjstable";
-                item.yjsTableId = "table-1";
+                createGridEntry(item.ydoc, "grid-1", { query: "SELECT 1 AS value" });
+                item.yjsGridId = "grid-1";
             });
 
             controller([leaf, other]).moveItem(other.id, leaf.id, "middle");
@@ -97,12 +100,16 @@ describe("TreeDnD and leaf node kinds (#5015)", () => {
         const heading = add(item => item.updateText("Upcoming tasks"));
         const grid = add(item => {
             item.componentType = "yjstable";
-            item.yjsTableId = "table-1";
+            createGridEntry(item.ydoc, "grid-1", { query: "SELECT 1 AS value" });
+            item.yjsGridId = "grid-1";
         });
 
         controller([heading, grid]).moveItem(grid.id, heading.id, "middle");
 
         expect(childIds(heading)).toEqual([grid.id]);
+        const persisted = heading.tree.getNodeValueFromKey(grid.key) as Y.Map<unknown>;
+        expect(persisted.get("yjsGridId")).toBe("grid-1");
+        expect(persisted.has("yjsTableId")).toBe(false);
     });
 
     it("refuses a sibling drop that would put ordinary text inside a Layout", () => {
@@ -112,7 +119,8 @@ describe("TreeDnD and leaf node kinds (#5015)", () => {
         layout.componentType = LAYOUT_COMPONENT_TYPE;
         const block = layout.items.addNode("tester");
         block.componentType = "yjstable";
-        block.yjsTableId = "table-1";
+        createGridEntry(block.ydoc, "grid-1", { query: "SELECT 1 AS value" });
+        block.yjsGridId = "grid-1";
         const note = page.items.addNode("tester");
         note.updateText("note");
 

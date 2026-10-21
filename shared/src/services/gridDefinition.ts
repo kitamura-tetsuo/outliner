@@ -68,7 +68,6 @@ export function getGridRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> {
 export function createGridEntry(
     projectDoc: Y.Doc,
     gridId: string,
-    sourceTableId: string | undefined,
     options: GridDefinitionSeed = {},
 ): void {
     if (options.query?.trim()) validateExplicitSelectAliases(options.query);
@@ -91,7 +90,6 @@ export function createGridEntry(
         // New query-only Grids deliberately have no legacy primary owner.
         // Do not serialize an empty sentinel: absence is what lets consumers
         // distinguish these definitions from old broken references.
-        if (sourceTableId) entry.set("sourceTableId", sourceTableId);
         entry.set("name", options.name ?? "Grid");
         if (options.insertTargetTableId !== undefined) entry.set("insertTargetTableId", options.insertTargetTableId);
         if (options.query !== undefined) {

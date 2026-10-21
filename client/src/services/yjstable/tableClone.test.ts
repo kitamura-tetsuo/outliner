@@ -36,7 +36,7 @@ function fixture() {
         undefined,
         handles => handles.schemaText.insert(0, "CREATE TABLE c (id TEXT PRIMARY KEY)"),
     );
-    const grid = createGrid(doc, undefined, {
+    const grid = createGrid(doc, {
         name: "Joined",
         query: "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b)",
         insertTargetTableId: b,
@@ -45,7 +45,7 @@ function fixture() {
         showAddRowButton: false,
         confirmRowDelete: true,
     });
-    const other = createGrid(doc, undefined, { name: "Other", query: "SELECT id FROM a", insertTargetTableId: c });
+    const other = createGrid(doc, { name: "Other", query: "SELECT id FROM a", insertTargetTableId: c });
     addRecord(getTableHandles(doc, a)!, { id: "record" }, "record");
     return { doc, a, b, c, grid, other };
 }
@@ -98,6 +98,28 @@ describe("independent portable Tables and Grids", () => {
         expect(getGridHandles(destination, result.gridIdMap[f.other])?.entry.has("insertTargetTableId")).toBe(false);
         expect(result.tableIdMap[f.c]).toBeUndefined();
         expect(getTableHandles(destination, result.tableIdMap[f.a])?.data.size).toBe(0);
+        // Load the copied Table subdocuments as well as the project update.
+        // The project update carries subdocument identities, not their content.
+        copyTableData(getTableHandles(f.doc, f.a)!, getTableHandles(destination, result.tableIdMap[f.a])!);
+        const restored = new Y.Doc({ guid: destination.guid });
+        Y.applyUpdate(restored, Y.encodeStateAsUpdate(destination));
+        for (const table of listTables(destination)) {
+            const original = getTableHandles(destination, table.tableId)!;
+            const reloaded = getTableHandles(restored, table.tableId)!;
+            reloaded.doc.load();
+            Y.applyUpdate(reloaded.doc, Y.encodeStateAsUpdate(original.doc));
+            expect(reloaded.doc.guid).toBe(original.doc.guid);
+            expect(reloaded.schemaText.toString()).toBe(original.schemaText.toString());
+            expect(reloaded.data.toJSON()).toEqual(original.data.toJSON());
+        }
+        expect(listTables(restored)).toEqual(listTables(destination));
+        expect(listTables(restored).find(table => table.tableId === result.tableIdMap[f.a])).toMatchObject({
+            sourceProjectId: f.doc.guid,
+            sourceTableId: f.a,
+        });
+        expect(getTableHandles(restored, result.tableIdMap[f.a])!.data.toJSON()).toEqual({ record: { id: "record" } });
+        expect(getGridRegistry(restored).toJSON()).toEqual(getGridRegistry(destination).toJSON());
+        expect(getGridRegistry(restored).get(result.gridIdMap[f.grid])!.has("sourceTableId")).toBe(false);
         expect(result.outcomes).toContainEqual({
             type: "view-omission",
             gridId: f.other,
@@ -164,7 +186,7 @@ describe("independent portable Tables and Grids", () => {
     it("imports dependency-free/system queries with zero Tables and rejects unknown automatic evidence", async () => {
         const doc = new Y.Doc();
         const destination = new Y.Doc();
-        const id = createGrid(doc, undefined, { query: "SELECT 1 AS value" });
+        const id = createGrid(doc, { query: "SELECT 1 AS value" });
         const result = await importTableStructures(destination, {}, doc.guid, undefined, false, {
             [id]: exportGridSlice(doc, id),
         });

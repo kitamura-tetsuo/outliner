@@ -24,6 +24,7 @@ import {
     DEMO_SALES_TABLE_ID,
     DEMO_SALES_TARGETS_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
+    demoGridIdFor,
     type DemoLocaleContent,
     demoUtcDate,
 } from "./demo-content.js";
@@ -313,7 +314,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_SALES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_SALES_TABLE_ID),
                     },
                     {
                         text:
@@ -408,7 +409,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_SALES_TARGETS_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_SALES_TARGETS_TABLE_ID),
                     },
                     { text: "Aliases: an item can mirror another item and stay in sync with the original." },
                     {
@@ -466,7 +467,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_TASKS_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_TASKS_TABLE_ID),
                     },
                     {
                         text:
@@ -478,7 +479,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_HABITS_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_HABITS_TABLE_ID),
                     },
                     {
                         text:
@@ -529,7 +530,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_ROUTINE_TEMPLATES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_ROUTINE_TEMPLATES_TABLE_ID),
                     },
                     {
                         text:
@@ -537,7 +538,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_ROUTINE_OCCURRENCES_TABLE_ID),
                     },
                     {
                         text:
@@ -744,7 +745,7 @@ export function demoContentEn(): DemoLocaleContent {
                         children: [
                             {
                                 componentType: "yjstable",
-                                yjsTableId: DEMO_SALES_TABLE_ID,
+                                yjsGridId: demoGridIdFor(DEMO_SALES_TABLE_ID),
                                 columnSpan: 6,
                             },
                             {
@@ -837,7 +838,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         componentType: "yjstable",
-                        yjsTableId: DEMO_ENUM_PRIORITIES_TABLE_ID,
+                        yjsGridId: demoGridIdFor(DEMO_ENUM_PRIORITIES_TABLE_ID),
                     },
                     {
                         text:

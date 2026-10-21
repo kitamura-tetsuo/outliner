@@ -26,7 +26,7 @@ describe("saved Grid catalog errors", { timeout: 60_000 }, () => {
         const tableId = createTable(doc, "Tasks", "tasks");
         const table = getTableHandles(doc, tableId)!;
         setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
-        const gridId = createGrid(doc, undefined, { query: "SELECT id, state FROM tasks" });
+        const gridId = createGrid(doc, { query: "SELECT id, state FROM tasks" });
         const component = render(YjsTableView, {
             props: {
                 grid: getGridHandles(doc, gridId)!,

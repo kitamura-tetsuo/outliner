@@ -155,7 +155,7 @@ function makeItem(id: string, text: string, tableId?: string, calendarId?: strin
     value.set("text", new Y.Text(tableId || calendarId ? "" : text));
     if (tableId) {
         if (!getGridRegistry(state.doc).has(fixtureGridId(tableId))) {
-            createGrid(state.doc, undefined, {
+            createGrid(state.doc, {
                 gridId: fixtureGridId(tableId),
                 query: `SELECT * FROM ${listTables(state.doc).find(table => table.tableId === tableId)!.sqlName}`,
             });
@@ -195,7 +195,7 @@ function createPortableTable(doc: Y.Doc, name = "Sales", sqlName = "sales"): str
     const tableId = createTable(doc, name, sqlName, undefined, handles => {
         handles.schemaText.insert(0, `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`);
     });
-    createGrid(doc, undefined, { gridId: fixtureGridId(tableId), query: `SELECT id FROM ${sqlName}` });
+    createGrid(doc, { gridId: fixtureGridId(tableId), query: `SELECT id FROM ${sqlName}` });
     return tableId;
 }
 
@@ -280,7 +280,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
     });
 
     it("copies a current Grid binding across partial text endpoints without a Table placement field", () => {
-        const gridId = createGrid(state.doc, undefined, { query: "SELECT id FROM sales" });
+        const gridId = createGrid(state.doc, { query: "SELECT id FROM sales" });
         const value = new Map<string, unknown>([["componentType", "yjstable"], ["yjsGridId", gridId]]);
         state.visible[1].model.original = {
             id: "b",
@@ -798,7 +798,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             const table = createPortableTable(doc);
             const handles = getTableHandles(doc, table)!;
             addRecord(handles, { id: "saved", value: "source" }, "saved");
-            const grid = createGrid(doc, undefined, { query: "SELECT * FROM sales", insertTargetTableId: table });
+            const grid = createGrid(doc, { query: "SELECT * FROM sales", insertTargetTableId: table });
             const entry = getGridRegistry(doc).get(grid)!;
             const outline = doc.getMap("clipboard-outline");
             const manager = new Y.UndoManager(outline);
@@ -868,7 +868,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         const table = createPortableTable(source.ydoc);
         const handles = getTableHandles(source.ydoc, table)!;
         addRecord(handles, { id: "saved", value: "original" }, "saved");
-        const grid = createGrid(source.ydoc, undefined, { query: "SELECT * FROM sales", insertTargetTableId: table });
+        const grid = createGrid(source.ydoc, { query: "SELECT * FROM sales", insertTargetTableId: table });
         const released = vi.fn();
         sourceTransport.acquire = async () => ({ client: { project: source }, release: released });
         const destination = state.doc;
@@ -1094,7 +1094,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
     for (const change of ["deleted-before", "deleted-during", "query-during"] as const) {
         for (const variant of ["values-only", "another-view"] as const) {
             it(`Paste Special ${variant} after ${change} uses the appropriate captured authority`, async () => {
-                const id = createGrid(state.doc, undefined, { query: "SELECT 1 AS value" });
+                const id = createGrid(state.doc, { query: "SELECT 1 AS value" });
                 const encoded = JSON.stringify({
                     version: 3,
                     sourceProjectId: state.doc.guid,
@@ -1218,7 +1218,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
     }
 
     it("reuses a surviving same-project Grid without a portable snapshot", async () => {
-        createGrid(state.doc, undefined, { gridId: "grid:source-table", query: "SELECT 1" });
+        createGrid(state.doc, { gridId: "grid:source-table", query: "SELECT 1" });
         const encoded = JSON.stringify({
             version: 2,
             sourceProjectId: state.doc.guid,

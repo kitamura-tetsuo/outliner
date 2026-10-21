@@ -53,7 +53,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
         const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
             handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
         });
-        createGrid(source, tableId, { query: "SELECT * FROM tasks ORDER BY state::task_state" });
+        createGrid(source, { query: "SELECT * FROM tasks ORDER BY state::task_state" });
         const snapshots = { [tableId]: exportTableStructure(source, tableId) };
 
         for (const labels of [undefined, [" Done ", "Open"]] as const) {
@@ -98,7 +98,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
         const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
             handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
         });
-        createGrid(source, tableId, { query: "SELECT * FROM tasks" });
+        createGrid(source, { query: "SELECT * FROM tasks" });
         const destination = new Y.Doc({ guid: "unresolved-enum-destination" });
 
         await expect(cloneGridTablesAcrossProjects({
@@ -119,7 +119,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
         const tableId = createTable(source, "Tasks", "tasks", undefined, handles => {
             handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
         });
-        createGrid(source, tableId, { query: "SELECT * FROM tasks ORDER BY state" });
+        createGrid(source, { query: "SELECT * FROM tasks ORDER BY state" });
         const destination = new Y.Doc({ guid: "held-enum-destination" });
         const destinationEnum = createSqlCatalogObject(
             destination,
@@ -223,7 +223,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
             handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state)");
         });
         addRecord(getTableHandles(source, tableId)!, { state: "Closed" }, "one");
-        createGrid(source, tableId, { query: "SELECT * FROM tasks" });
+        createGrid(source, { query: "SELECT * FROM tasks" });
         const snapshots = { [tableId]: exportTableStructure(source, tableId) };
         replaceSqlCatalogSource(source, enumId, "CREATE TYPE task_state AS ENUM ('Open')");
 

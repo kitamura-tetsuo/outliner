@@ -49,7 +49,7 @@ describe("one Table, many Grids", { timeout: 30000 }, () => {
     it("executes an unchanged pre-policy Grid with an implicit alias", async () => {
         const projectId = "proj-legacy-grid-alias";
         const { projectDoc, tasksId } = seedTasksTable(projectId);
-        const gridId = createGrid(projectDoc, tasksId, {
+        const gridId = createGrid(projectDoc, {
             name: "Legacy",
             query: "SELECT title AS value FROM tasks ORDER BY id",
         });
@@ -77,11 +77,11 @@ describe("one Table, many Grids", { timeout: 30000 }, () => {
     it("runs two Grids' SELECTs independently against the same source Table", async () => {
         const projectId = "proj-one-table-many-grids";
         const { projectDoc, tasksId } = seedTasksTable(projectId);
-        const openGridId = createGrid(projectDoc, tasksId, {
+        const openGridId = createGrid(projectDoc, {
             name: "Open",
             query: "SELECT id, title, status FROM tasks WHERE status = 'open' ORDER BY id",
         });
-        const aliceGridId = createGrid(projectDoc, tasksId, {
+        const aliceGridId = createGrid(projectDoc, {
             name: "Alice",
             query: "SELECT id, title FROM tasks WHERE assignee = 'alice' ORDER BY id",
         });
@@ -136,11 +136,11 @@ describe("one Table, many Grids", { timeout: 30000 }, () => {
     it("propagates a Table data edit to every Grid's live result", async () => {
         const projectId = "proj-data-propagation";
         const { projectDoc, tasksId, handles } = seedTasksTable(projectId);
-        const aId = createGrid(projectDoc, tasksId, {
+        const aId = createGrid(projectDoc, {
             name: "A",
             query: "SELECT COUNT(*)::TEXT AS n FROM tasks",
         });
-        const bId = createGrid(projectDoc, tasksId, {
+        const bId = createGrid(projectDoc, {
             name: "B",
             query: "SELECT COUNT(*)::TEXT AS n FROM tasks WHERE status = 'open'",
         });

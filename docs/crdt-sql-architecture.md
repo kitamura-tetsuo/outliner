@@ -40,6 +40,8 @@ Where this is stated in the codebase:
   `schedule_index` is an index derived from documents in the Hocuspocus
   `onStoreDocument` hook; documents are never scanned.
 
+Grid and Kanban definitions own independent IDs, exact SQL and presentation/role settings. Grid placements store `yjsGridId` only. A selected Table may seed SQL but does not establish view ownership or save an INSERT preference. Explicit `insertTargetTableId` choices remain stored, including when later SQL makes them invalid. Old primary-bearing view/placement formats are unsupported; there is no compatibility reader, migration, normalization or old-history reconciliation. Table-copy provenance and Schedule targets retain their existing meanings.
+
 ## 2. Why the responsibilities are split this way
 
 1. **Merge semantics differ.** A document's defining case is two people editing

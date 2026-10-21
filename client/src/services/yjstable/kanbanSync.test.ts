@@ -29,7 +29,6 @@ function boardPair(): { docA: Y.Doc; docB: Y.Doc; tableId: string; kanbanId: str
     addRecord(table, { id: "row-1", status: "open" });
     const kanbanId = createKanban(
         docA,
-        tableId,
         { kanbanId: "board-1", name: "Board", query: "SELECT id FROM tasks", titleField: "id" },
     );
     const docB = new Y.Doc();
@@ -142,7 +141,7 @@ describe("Kanban history through the global router", () => {
 
     it("keeps two boards independent while sharing one Table, then removes one cleanly", () => {
         const { docA, tableId } = boardPair();
-        const second = createKanban(docA, tableId, { name: "Second", query: "SELECT id FROM tasks" });
+        const second = createKanban(docA, { name: "Second", query: "SELECT id FROM tasks" });
 
         updateKanban(docA, "board-1", { laneOrder: ["open", null] });
         expect(getKanban(docA, "board-1")?.laneOrder).toEqual(["open", null]);

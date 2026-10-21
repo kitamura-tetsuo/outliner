@@ -77,7 +77,7 @@ describe("Table import binding admission", () => {
                 sourceProjectId: source.ydoc.guid,
                 sourceTableId: a,
             });
-            const grid = createGrid(source.ydoc, undefined, {
+            const grid = createGrid(source.ydoc, {
                 query: "SELECT a.id FROM a JOIN b ON true",
                 insertTargetTableId: a,
             });

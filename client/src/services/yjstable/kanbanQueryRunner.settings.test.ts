@@ -28,7 +28,7 @@ async function setup(query: string, groupField = "") {
     setSchemaText(table, "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, status TEXT, detail TEXT)");
     addRecord(table, { title: "Alpha", status: "open", detail: "First" }, "t1");
     addRecord(table, { title: "Beta", status: "done", detail: "Second" }, "t2");
-    const kanbanId = createKanban(projectDoc, tableId, { query, groupField });
+    const kanbanId = createKanban(projectDoc, { query, groupField });
     const handles = getKanbanHandles(projectDoc, kanbanId)!;
     const engine = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
     const runner = new KanbanQueryRunner({ projectDoc, projectId, kanbanId, kanban: handles, connect: localConnector });

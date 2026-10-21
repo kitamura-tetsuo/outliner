@@ -31,7 +31,7 @@ async function fixture(query = "SELECT id, title, status FROM tasks ORDER BY tit
     const other = getTableHandles(projectDoc, otherId)!;
     setSchemaText(other, SCHEMA.replace("tasks", "other_tasks"));
     addRecord(other, { title: "Union", status: "todo" }, "one");
-    const kanbanId = createKanban(projectDoc, tableId, { query, groupField: "status", titleField: "title" });
+    const kanbanId = createKanban(projectDoc, { query, groupField: "status", titleField: "title" });
     const session = createTableEngineSession({ projectDoc, projectId: projectDoc.guid, connect: localConnector });
     const runner = new KanbanQueryRunner({
         projectDoc,
@@ -104,7 +104,7 @@ async function catalogFixture(query = "SELECT id, title, status FROM tasks ORDER
     const other = getTableHandles(projectDoc, otherId)!;
     setSchemaText(other, "CREATE TABLE other_tasks (id TEXT PRIMARY KEY, title TEXT, status other_state)");
     addRecord(other, { title: "Union", status: "todo" }, "other-one");
-    const kanbanId = createKanban(projectDoc, tableId, { query, groupField: "status", titleField: "title" });
+    const kanbanId = createKanban(projectDoc, { query, groupField: "status", titleField: "title" });
     const session = createTableEngineSession({ projectDoc, projectId: projectDoc.guid, connect: localConnector });
     const acquired = await session.acquire(tableId);
     const acquiredOther = await session.acquire(otherId);
