@@ -30,7 +30,7 @@ You can create and browse pages from the project homepage or use the Search inpu
 
 To browse your pages, go to the project homepage which lists all pages in the current project. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
-To create a new page, enter a title in the "New page name" input field on the project homepage and click **Create**.
+To create a new page, enter a title in the "New page name" input field on the project homepage and click **Create**. You can also create a new page by clicking the **+** (Add new page) button in the Pages section of the main sidebar.
 
 ### Switching to Edit Mode
 
@@ -70,6 +70,7 @@ The login status indicator located in the top right area of the top toolbar show
 Click the sidebar toggle button in the top-left corner to access the main sidebar navigation. Sections in the sidebar can be expanded or collapsed by clicking their headers. The sidebar provides quick access to:
 
 - **Projects:** Switch between your projects or go home.
+- **Pages:** Browse and navigate pages within the current project.
 - **Tables:** View and manage database tables.
 - **Object Manager:** Manage Grids, Tables, and Schedules centrally.
 - **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **+** (Add scheduled SQL) button in the section header.
