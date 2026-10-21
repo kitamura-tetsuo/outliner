@@ -16,7 +16,7 @@ let {
     message?: string;
     confirmText?: string;
     cancelText?: string;
-    onConfirm: () => void | boolean;
+    onConfirm: () => void | boolean | Promise<void | boolean>;
     onCancel?: () => void;
     isDestructive?: boolean;
 } = $props();
@@ -43,8 +43,9 @@ $effect(() => {
     }
 });
 
-function handleConfirm() {
-    if (onConfirm() !== false) isOpen = false;
+async function handleConfirm() {
+    const result = await onConfirm();
+    if (result !== false) isOpen = false;
 }
 
 function handleCancel(_e?: Event) {
