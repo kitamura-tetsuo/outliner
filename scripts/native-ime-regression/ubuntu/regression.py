@@ -352,9 +352,14 @@ def stage(env, selector, label, line_of, prefix=""):
                 screenshot=path.name, compositions=selected["compositions"])
 
 
-def compose(env, selector, label, line_of, end):
+def compose(env, selector, label, line_of, end, prefix):
     """One composition: short -> long -> shrunk, sampling at each stage, then end it."""
     before = state(selector)
+    # The editor receiver is transient and may already be cleared after typing.
+    # Compare the actual document prefix with the normal textarea's value.
+    actual_prefix = app_item()["canonical"] if env == "application" else before["value"]
+    record(f"{label}-authoritative-prefix", actual_prefix == prefix,
+           actual=actual_prefix, expected=prefix)
     record(f"{label}-receiver-focused", before["focused"] and not before["composing"], state=before)
     ime(True)
     samples, kana = [], 0
@@ -367,7 +372,7 @@ def compose(env, selector, label, line_of, end):
         expected = (before["compositions"] + 1)
         wait(lambda: (s := state(selector))["composing"] and s["compositions"] == expected
              and s["preedit"] == "あ" * kana, f"{label}-{name}: trusted Japanese preedit in one ongoing composition")
-        samples.append(stage(env, selector, f"{label}-{name}", line_of, before["value"]))
+        samples.append(stage(env, selector, f"{label}-{name}", line_of, actual_prefix))
         if index < len(STAGES) - 1:
             key("Escape")  # Mozc: leave conversion; the same composition continues as its reading.
             wait(lambda: (s := state(selector))["composing"] and s["preedit"] == samples[-1]["reading"],
@@ -479,7 +484,7 @@ def reference_run(label, start, keys_end="cancel", prefix=""):
     ime(False)
     os_click(*rect)
     wait(lambda: state("#reference")["focused"], f"{label}: OS click focuses the reference textarea")
-    samples, _, after = compose("reference", "#reference", label, reference_line, keys_end)
+    samples, _, after = compose("reference", "#reference", label, reference_line, keys_end, prefix)
     record(f"{label}-reference-cancel-restores-prefix", after["value"] == prefix, value=after["value"], prefix=prefix)
     return samples
 
@@ -499,7 +504,7 @@ def application_run(label, prefix, end, matched, mutation=None, expect_failure=N
     try:
         start = utf16_length(prefix)
         samples, selected, after = compose("application", APP_RECEIVER, label,
-                                           lambda preedit: app_line(item["id"], start, utf16_length(preedit)), end)
+                                           lambda preedit: app_line(item["id"], start, utf16_length(preedit)), end, prefix)
     finally:
         if mutation:
             driver.execute_script("document.getElementById(arguments[0])?.remove()", NEGATIVE_STYLE_ID)
