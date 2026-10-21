@@ -98,6 +98,21 @@ it("refuses calculated later UNION branches and duplicate output names", () => {
     expect(duplicate.get("duration")).toBe("duration");
 });
 
+it("refuses wildcard shapes without authoritative expansion context", () => {
+    const duplicate = analyzeCalendarColumnWritability(
+        "SELECT *, text AS tags FROM outline_items",
+    );
+    expect(duplicate.size).toBe(0);
+
+    const shiftedUnion = analyzeCalendarColumnWritability(
+        "SELECT id AS source_id, 'tasks' AS source_kind, '2026-10-22T09:00:00Z' AS begins, *, label AS lanes "
+            + "FROM tasks WHERE false UNION ALL "
+            + "SELECT id AS source_id, 'tasks' AS source_kind, '2026-10-22T09:00:00Z' AS begins, label AS ignored, * "
+            + "FROM tasks WHERE id = 'r1'",
+    );
+    expect(shiftedUnion.size).toBe(0);
+});
+
 it("uses PostgreSQL lexical rules for comments, dollar strings, and Unicode names", () => {
     const writable = analyzeCalendarColumnWritability(
         'SELECT /* from, join */ "開始" AS "始まり", start AS begins FROM source WHERE note <> $tag$from, join$tag$',

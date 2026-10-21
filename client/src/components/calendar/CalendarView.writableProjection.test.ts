@@ -110,4 +110,19 @@ describe("Calendar parsed projection write boundary", { timeout: 30000 }, () => 
         expect(globalUndoRouter.undoDepth).toBe(0);
         destroyCalendarUndoManager(f.projectDoc);
     });
+
+    it("refuses an explicit alias that duplicates a wildcard output", async () => {
+        const f = fixture(
+            "SELECT *, text AS tags, text AS title, 'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            "tags",
+        );
+        const component = await dropToUrgent(f);
+        globalUndoRouter.clear();
+        expect(component.queryByTestId(`calendar-entry-lane-handle-outline_items:${f.item.key}`)).toBeNull();
+        await fireEvent.drop(component.getByTestId("calendar-lane-urgent"));
+        expect(f.item.text).toBe("Movable");
+        expect(f.item.tags).toEqual(["work"]);
+        expect(globalUndoRouter.undoDepth).toBe(0);
+        destroyCalendarUndoManager(f.projectDoc);
+    });
 });

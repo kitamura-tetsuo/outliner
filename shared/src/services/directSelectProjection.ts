@@ -63,6 +63,11 @@ function leafProjection(select: Node, starColumns: readonly string[]): LeafProje
         const target = isNode(wrapped) ? wrapped.ResTarget : undefined;
         if (!isNode(target)) return undefined;
         if (isSourceStar(target.val, relation, alias)) {
+            // A star changes both the number and names of result positions. If
+            // the caller cannot supply the exact applied schema, retaining the
+            // surrounding explicit targets could collapse UNION positions or
+            // miss an output-name collision with a star-expanded column.
+            if (starColumns.length === 0) return undefined;
             for (const column of starColumns) {
                 columns.push(column);
                 outputNames.push(column);
