@@ -47,7 +47,7 @@ describe("scheduleRuleService", () => {
 
     it("accepts and preserves the Schedule target placeholder", () => {
         const project = Project.createInstance("Test Project");
-        const sql = "INSERT INTO {{table}} (title, id) VALUES ('test', gen_random_uuid())";
+        const sql = "/* 日 */ INSERT INTO {{table}} (title, id) VALUES ('値', gen_random_uuid()) RETURNING *";
 
         const ruleId = createScheduleRule(project, {
             targetTableId: "table1",
@@ -55,6 +55,9 @@ describe("scheduleRuleService", () => {
             rrule: "FREQ=DAILY",
         });
 
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+        expect(() => updateScheduleRule(project, ruleId, { sql: "INSERT INTO {{table}} VALUES ('unterminated" }))
+            .toThrow();
         expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
     });
 

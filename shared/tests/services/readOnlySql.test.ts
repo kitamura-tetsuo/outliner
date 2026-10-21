@@ -22,6 +22,12 @@ describe("readOnlySql PostgreSQL AST admission", () => {
         ).toThrow(/read-only/i);
         expect(() => validateReadOnlySelect("SELECT * INTO copied FROM tasks")).toThrow(/SELECT INTO/i);
         expect(() => validateReadOnlySelect("SELECT * FROM tasks FOR UPDATE")).toThrow(/Row-locking/i);
+        expect(() => validateReadOnlySelect("SELECT 1 AS value INTO copied UNION SELECT 2 AS value"))
+            .toThrow(/SELECT INTO/i);
+        expect(() => validateReadOnlySelect("(SELECT id FROM tasks FOR UPDATE) UNION SELECT id FROM tasks"))
+            .toThrow(/Row-locking/i);
+        expect(validateReadOnlySelect("SELECT id FROM tasks UNION SELECT id FROM tasks"))
+            .toContain("UNION");
         expect(validateReadOnlySelect("WITH source AS (SELECT * FROM tasks) SELECT * FROM source"))
             .toContain("SELECT * FROM source");
     });

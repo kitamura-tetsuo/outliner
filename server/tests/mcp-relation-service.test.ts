@@ -326,6 +326,8 @@ describe("Outliner MCP relation service", function() {
                 "SELECT 1; SELECT 2",
                 "UPDATE tasks SET title = 'changed'",
                 "CREATE TABLE poison (id TEXT)",
+                "SELECT 1 AS value INTO copied UNION SELECT 2 AS value",
+                "(SELECT id FROM tasks FOR UPDATE) UNION SELECT id FROM tasks",
             ]
         ) {
             const result = await service.validateGridQuery("uid", "project-1", "grid-1", rejected);
@@ -335,6 +337,27 @@ describe("Outliner MCP relation service", function() {
         expect(grid.get("query")).to.equal(savedQuery);
         expect(Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64")).to.equal(before);
         expect(first.get("title")).to.equal("First");
+    });
+
+    it("reports filtering and ordering from only the outer SELECT", async () => {
+        const { service, project } = fixture();
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        const nested = "WITH x AS (SELECT id FROM tasks WHERE done ORDER BY id) SELECT id FROM x";
+        const validation = await service.validateGridQuery("uid", "project-1", "grid-1", nested);
+        expect(validation).to.include({ accepted: true, inferredOrdering: "incidental-source-order" });
+
+        grid.set("query", nested);
+        const nestedTrace = await service.traceGrid("uid", "project-1", "grid-1");
+        const nestedRender = nestedTrace.stages.find(stage => stage.stage === "render")!;
+        expect(nestedRender.transforms).to.include({
+            filtering: "none",
+            sorting: "incidental-source-order",
+        });
+
+        grid.set("query", "WITH x AS (SELECT id FROM tasks) SELECT id FROM x WHERE true ORDER BY id");
+        const outerTrace = await service.traceGrid("uid", "project-1", "grid-1");
+        const outerRender = outerTrace.stages.find(stage => stage.stage === "render")!;
+        expect(outerRender.transforms).to.include({ filtering: "sql", sorting: "sql-order-by" });
     });
 
     it("traces bounded Grid results, identities, ordering, and presentation transforms", async () => {

@@ -60,6 +60,19 @@ export function parseTopLevelInsertTarget(sql: string): string | undefined {
     }
 }
 
+function validateSelectBody(select: AstNode): void {
+    if (select.intoClause) throw new Error("SELECT INTO is not allowed");
+    if (Array.isArray(select.lockingClause) && select.lockingClause.length) {
+        throw new Error("Row-locking SELECT queries are not allowed");
+    }
+    // Set-operation operands are bare SelectStmt bodies rather than tagged
+    // `{ SelectStmt: ... }` nodes, so validate them explicitly.
+    const left = node(select.larg);
+    const right = node(select.rarg);
+    if (left) validateSelectBody(left);
+    if (right) validateSelectBody(right);
+}
+
 function validateSelectTree(value: unknown): void {
     if (Array.isArray(value)) return void value.forEach(validateSelectTree);
     const wrapper = node(value);
@@ -68,10 +81,7 @@ function validateSelectTree(value: unknown): void {
         throw new Error("Only read-only SELECT queries are allowed");
     }
     const select = node(wrapper.SelectStmt);
-    if (select?.intoClause) throw new Error("SELECT INTO is not allowed");
-    if (select && Array.isArray(select.lockingClause) && select.lockingClause.length) {
-        throw new Error("Row-locking SELECT queries are not allowed");
-    }
+    if (select) validateSelectBody(select);
     Object.values(wrapper).forEach(validateSelectTree);
 }
 

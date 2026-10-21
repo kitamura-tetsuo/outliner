@@ -29,6 +29,12 @@ describe("scheduleRuleValidation", () => {
             expect(sql).toContain("{{table}}");
         });
 
+        it("accepts a placeholder after multibyte SQL text without changing the source", () => {
+            const sql = "/* 日 */ INSERT INTO {{table}} (id) VALUES ('値') RETURNING *";
+            expect(validateScheduleRuleSql(sql)).toEqual({ valid: true });
+            expect(sql).toBe("/* 日 */ INSERT INTO {{table}} (id) VALUES ('値') RETURNING *");
+        });
+
         it("should reject SELECT", () => {
             const res = validateScheduleRuleSql("SELECT * FROM my_table");
             expect(res.valid).toBe(false);

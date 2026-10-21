@@ -92,6 +92,7 @@ export function parseSchemaString(sql: string): SchemaDefinition {
 export function castValueForColumn(val: unknown, type: string): unknown {
     if (val === null || val === undefined) return val;
     const lowered = type?.toLowerCase() ?? "";
+    if (lowered === "date" && val instanceof Date) return val.toISOString().slice(0, 10);
     if (lowered.includes("bool")) {
         if (typeof val === "boolean") return val;
         if (val === "true" || val === "t" || val === 1) return true;

@@ -18,11 +18,19 @@ function scheduleParserSql(sql: string): string {
             index += 4;
         }
     }
-    let result = sql;
+    // Scanner spans are UTF-8 byte offsets, not JavaScript UTF-16 indices.
+    // Apply replacements to encoded bytes so non-ASCII text before a target
+    // placeholder cannot shift or corrupt the parser-only copy.
+    let result = new TextEncoder().encode(sql);
+    const replacementBytes = new TextEncoder().encode(PARSER_SCHEDULE_TARGET);
     for (const replacement of replacements.reverse()) {
-        result = result.slice(0, replacement.start) + PARSER_SCHEDULE_TARGET + result.slice(replacement.end);
+        const next = new Uint8Array(result.length - (replacement.end - replacement.start) + replacementBytes.length);
+        next.set(result.slice(0, replacement.start));
+        next.set(replacementBytes, replacement.start);
+        next.set(result.slice(replacement.end), replacement.start + replacementBytes.length);
+        result = next;
     }
-    return result;
+    return new TextDecoder().decode(result);
 }
 
 /** Validate aliases after replacing the Schedule-only target placeholder in parser input. */
