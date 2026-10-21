@@ -129,7 +129,7 @@
         "knip": "^6.41.0",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.8",
-        "monocart-coverage-reports": "^2.13.2",
+        "monocart-coverage-reports": "^3.0.0",
         "patch-package": "^8.0.1",
         "picomatch": "4.0.7",
         "playwright": "1.64.0",
