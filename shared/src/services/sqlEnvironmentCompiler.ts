@@ -231,35 +231,48 @@ function collectReferencedTables(statement: AstNode): RelationReference[] {
     const createTarget = isNode(statement.CreateStmt) && isNode(statement.CreateStmt.relation)
         ? statement.CreateStmt.relation
         : undefined;
-    const cteNames = new Set<string>();
-    const findCtes = (value: unknown): void => {
-        if (Array.isArray(value)) return value.forEach(findCtes);
-        if (!isNode(value)) return;
-        if (isNode(value.CommonTableExpr) && typeof value.CommonTableExpr.ctename === "string") {
-            cteNames.add(value.CommonTableExpr.ctename);
-        }
-        Object.values(value).forEach(findCtes);
-    };
-    findCtes(statement);
-    const walk = (value: unknown): void => {
+    const walk = (value: unknown, visibleCtes: ReadonlySet<string>): void => {
         if (Array.isArray(value)) {
-            value.forEach(walk);
+            value.forEach(child => walk(child, visibleCtes));
             return;
         }
         if (!isNode(value)) return;
+        if (isNode(value.SelectStmt)) {
+            const select = value.SelectStmt;
+            const withClause = isNode(select.withClause) ? select.withClause : undefined;
+            const ctes = withClause && Array.isArray(withClause.ctes) ? withClause.ctes : [];
+            const allLocalNames = ctes.flatMap(cte =>
+                isNode(cte) && isNode(cte.CommonTableExpr) && typeof cte.CommonTableExpr.ctename === "string"
+                    ? [cte.CommonTableExpr.ctename]
+                    : []
+            );
+            const localNames = new Set(visibleCtes);
+            for (const cte of ctes) {
+                if (!isNode(cte) || !isNode(cte.CommonTableExpr)) continue;
+                const scope = withClause?.recursive === true
+                    ? new Set([...visibleCtes, ...allLocalNames])
+                    : localNames;
+                walk(cte.CommonTableExpr.ctequery, scope);
+                if (typeof cte.CommonTableExpr.ctename === "string") localNames.add(cte.CommonTableExpr.ctename);
+            }
+            for (const [key, child] of Object.entries(select)) {
+                if (key !== "withClause") walk(child, localNames);
+            }
+            return;
+        }
         if (isNode(value.RangeVar) && typeof value.RangeVar.relname === "string") {
             if (value.RangeVar === createTarget) {
-                Object.values(value).forEach(walk);
+                Object.values(value).forEach(child => walk(child, visibleCtes));
                 return;
             }
             const schema = typeof value.RangeVar.schemaname === "string" ? value.RangeVar.schemaname : undefined;
-            if (schema !== undefined || !cteNames.has(value.RangeVar.relname)) {
+            if (schema !== undefined || !visibleCtes.has(value.RangeVar.relname)) {
                 tables.push({ schema, name: value.RangeVar.relname });
             }
         }
-        Object.values(value).forEach(walk);
+        Object.values(value).forEach(child => walk(child, visibleCtes));
     };
-    walk(statement);
+    walk(statement, new Set());
     return tables;
 }
 
@@ -331,15 +344,19 @@ async function dependencyEvidence(
             const matches = new Map<string, { objectId: string; identity: string; }>();
             for (const reference of collectTypeNames(statement)) {
                 const parts = reference.names;
-                const name = parts.length === 1
-                    ? parts[0]
-                    : parts.length === 2 && parts[0] === "public"
-                    ? parts[1]
-                    : undefined;
-                const match = name ? enumsByName.get(name) : undefined;
-                if (match && reference.isArray) {
-                    throw new Error(`ENUM array usage is not supported: ${name}[]`);
+                const identity = parts.map(quotedIdentifier).join(".");
+                const resolved = await db.query<{ typtype: string; typcategory: string; enum_name: string | null; }>(
+                    "SELECT t.typtype, t.typcategory, CASE WHEN t.typtype='e' THEN t.typname "
+                        + "WHEN et.typtype='e' THEN et.typname ELSE NULL END AS enum_name "
+                        + "FROM pg_type t LEFT JOIN pg_type et ON et.oid=t.typelem WHERE t.oid=to_regtype($1)",
+                    [identity],
+                );
+                const type = resolved.rows[0];
+                if (type?.enum_name && (reference.isArray || type.typcategory === "A")) {
+                    throw new Error(`ENUM array usage is not supported: ${identity}`);
                 }
+                const match = type?.enum_name ? enumsByName.get(type.enum_name) : undefined;
+                if (type?.enum_name && !match) throw new Error(`Unresolved ENUM identity: ${type.enum_name}`);
                 if (match) matches.set(match.objectId, match);
             }
             const referencedTables: RelationReference[] = source.kind === "table"
@@ -683,15 +700,29 @@ export async function compileSqlEnvironment(
             }
         }
 
+        const failedInspectionIds = new Set<string>();
         for (const target of captured.inspections) {
             try {
                 await db.query(`EXPLAIN ${target.sql}`);
             } catch (error) {
+                failedInspectionIds.add(target.id);
                 diagnostics.push({ kind: "inspection", objectId: target.id, message: messageOf(error) });
             }
         }
 
         dependencies = await dependencyEvidence(db, captured, enumIdentities);
+        if (failedInspectionIds.size > 0) {
+            dependencies.evidence = dependencies.evidence.map(row =>
+                failedInspectionIds.has(row.referencingId)
+                    ? Object.freeze({
+                        ...row,
+                        status: "incomplete" as const,
+                        requiredEnums: Object.freeze([]),
+                        diagnostic: "Dependency analysis is incomplete because engine validation failed",
+                    })
+                    : row
+            );
+        }
         diagnostics.push(...dependencies.diagnostics);
 
         if (diagnostics.length > 0) {
@@ -863,9 +894,9 @@ export async function analyzeScopedSqlEnumDependencies(
             if (resolved.rows[0]?.oid) continue;
             const name = reference.names[reference.names.length - 1];
             const matches = name === undefined ? [] : candidates.get(name) ?? [];
-            if (matches.length !== 1) {
+            if (matches.length > 1) {
                 diagnostics.push({ kind: "dependency", message: `Unresolved or ambiguous custom type: ${identity}` });
-            } else selectedCatalog.set(matches[0].id, matches[0]);
+            } else if (matches.length === 1) selectedCatalog.set(matches[0].id, matches[0]);
         }
     } catch (error) {
         diagnostics.push({ kind: "dependency", message: messageOf(error) });

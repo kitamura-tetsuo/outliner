@@ -92,11 +92,30 @@ describe("scoped SQL ENUM dependency analysis", () => {
         const result = await analyzeScopedSqlEnumDependencies(unresolved, new Set(["custom"]));
         expect(result.status).toBe("incomplete");
         if (result.status === "incomplete") {
-            expect(result.diagnostics).toEqual([
-                expect.objectContaining({ message: expect.stringContaining("Unresolved or ambiguous custom type") }),
-            ]);
+            expect(result.diagnostics).toEqual(expect.arrayContaining([
+                expect.objectContaining({ message: expect.stringContaining("absent_type") }),
+            ]));
         }
     }, 30_000);
+
+    it("lets PGlite resolve CREATE TABLE pseudo-types without selecting unrelated catalog entries", async () => {
+        for (const pseudoType of ["serial", "smallserial", "bigserial"]) {
+            const scoped = await analyzeScopedSqlEnumDependencies({
+                ...input,
+                tables: [{
+                    id: "generated",
+                    schema: `CREATE TABLE generated (id ${pseudoType} PRIMARY KEY)`,
+                    records: [],
+                }],
+                inspections: [],
+            }, new Set(["generated"]));
+            expect(scoped.status).toBe("complete");
+            if (scoped.status === "complete") {
+                expect(scoped.requiredEnums).toEqual([]);
+                expect(scoped.scopedInput.catalog.objects).toEqual([]);
+            }
+        }
+    }, 60_000);
 
     it("releases every temporary engine on complete and incomplete outcomes", async () => {
         let acquired = 0;
