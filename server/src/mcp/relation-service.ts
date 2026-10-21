@@ -2154,7 +2154,10 @@ export class OutlinerRelationService {
                         hiddenColumns: columns.filter(column => !column.shown).map(column => column.name),
                         presentationColumnOrder: ordered,
                         presentationColumns,
-                        filtering: analyzeReadOnlySelect(String(inspected.query), false).hasOuterWhere ? "sql" : "none",
+                        filtering: validation.accepted
+                                && analyzeReadOnlySelect(String(inspected.query), false).hasOuterWhere
+                            ? "sql"
+                            : "none",
                         sorting: validation.inferredOrdering,
                     },
                     rowCount: validation.sampleRows?.length ?? 0,

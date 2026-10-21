@@ -389,7 +389,7 @@ describe("MCP Schedule diagnostics", function() {
                 code: "invalid_occurrence",
             });
         }
-        const unknownReturnedColumn = await service.validate(
+        const unsupportedReturningShape = await service.validate(
             "user",
             "project-1",
             {
@@ -399,12 +399,10 @@ describe("MCP Schedule diagnostics", function() {
             "rule-1",
             "2026-08-30T09:00:00Z",
         );
-        expect(unknownReturnedColumn).to.include({ accepted: false });
-        expect(unknownReturnedColumn.candidateRows).to.deep.equal([]);
-        expect(unknownReturnedColumn.errors[0]).to.include({
-            code: "unknown_target_column",
-            column: "bogus",
-        });
+        expect(unsupportedReturningShape).to.include({ accepted: false });
+        expect(unsupportedReturningShape.candidateRows).to.deep.equal([]);
+        expect(unsupportedReturningShape.fieldValidation.sql.valid).to.equal(false);
+        expect(unsupportedReturningShape.fieldValidation.sql.error).to.match(/RETURNING \*/);
         auditConnection.document.getText("schema").delete(0, auditConnection.document.getText("schema").length);
         auditConnection.document.getText("schema").insert(
             0,
