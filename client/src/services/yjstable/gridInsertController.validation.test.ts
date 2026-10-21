@@ -3,7 +3,8 @@ import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createGrid, getGridHandles } from "./gridDocs";
 import { createGridInsertController } from "./gridInsertController";
-import { resetPgliteForTests, runSelect } from "./pgliteService";
+import { enqueueWrite, resetPgliteForTests, runSelect } from "./pgliteService";
+import { parseCreateTable } from "./schemaIntrospection";
 import { projectSchemaName } from "./sqlNames";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
@@ -96,6 +97,50 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         } finally {
             controller.dispose();
             warm.dispose();
+        }
+    });
+
+    it("normalizes DATE and TIMESTAMP defaults through the real Grid writer", async () => {
+        const doc = new Y.Doc({ guid: "grid-insert-date-defaults" });
+        const run = fixture(
+            doc,
+            "CREATE TABLE target (id TEXT PRIMARY KEY, due DATE DEFAULT DATE '2026-03-05', scheduled TIMESTAMP DEFAULT TIMESTAMP '2026-03-05 10:00:00')",
+            doc.guid,
+        );
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "inserted" });
+            expect([...run.table.data.values()][0]!.toJSON()).toMatchObject({
+                due: "2026-03-05",
+                scheduled: "2026-03-05T10:00:00.000Z",
+            });
+        } finally {
+            run.controller.dispose();
+        }
+    });
+
+    it("never evaluates a sequence default while refusing Grid insertion", async () => {
+        await enqueueWrite(async db => {
+            await db.exec("CREATE SEQUENCE public.grid_default_probe; SELECT nextval('public.grid_default_probe');");
+        });
+        const before = await runSelect<{ last_value: number; }>("SELECT last_value FROM public.grid_default_probe");
+        const schema =
+            "CREATE TABLE target (id TEXT PRIMARY KEY, ordinal BIGINT NOT NULL DEFAULT nextval('public.grid_default_probe'))";
+        const parsed = await parseCreateTable(schema);
+        expect(parsed.columns.find(column => column.name === "ordinal")?.literalDefault?.status).toBe("unsupported");
+        const doc = new Y.Doc({ guid: "grid-insert-dynamic-default" });
+        const run = fixture(doc, schema, doc.guid);
+        const history = run.table.undo.undoStack.length;
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "refused", mode: "invalid-record" });
+            const after = await runSelect<{ last_value: number; }>("SELECT last_value FROM public.grid_default_probe");
+            expect(after.rows).toEqual(before.rows);
+            expect(run.table.data.size).toBe(0);
+            expect(run.table.undo.undoStack.length).toBe(history);
+            const physical = await runSelect(`SELECT * FROM "${projectSchemaName(doc.guid)}".target`);
+            expect(physical.rows).toEqual([]);
+        } finally {
+            run.controller.dispose();
+            await enqueueWrite(async db => await db.exec("DROP SEQUENCE public.grid_default_probe CASCADE"));
         }
     });
 

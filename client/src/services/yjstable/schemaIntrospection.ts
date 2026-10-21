@@ -339,7 +339,10 @@ export async function introspectTable(
             if (value === null) normalized = null;
             else if (typeof value === "string" || typeof value === "boolean") normalized = value;
             else if (typeof value === "number" && Number.isFinite(value)) normalized = value;
-            else if (value instanceof Date && !Number.isNaN(value.valueOf())) normalized = value.toISOString();
+            else if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+                const iso = value.toISOString();
+                normalized = kind === "date" ? iso.slice(0, 10) : iso;
+            }
             literalDefaults.set(
                 row.column_name,
                 normalized === undefined ? { status: "unsupported" } : { status: "literal", value: normalized },

@@ -75,6 +75,22 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
         expect(await records(value, projectId)).to.deep.equal({});
     });
 
+    for (const targetColumns of [undefined, []] as const) {
+        it(`refuses ${targetColumns ? "empty" : "missing"} target metadata before record effects`, async () => {
+            const projectId = `schedule-target-metadata-${targetColumns ? "empty" : "missing"}`;
+            await seedCatalogSchedule(value, projectId);
+            const executor = (value.scheduler as unknown as {
+                executor: { executeJob: (job: JobData) => Promise<JobResult>; };
+            }).executor;
+            const execute = executor.executeJob.bind(executor);
+            executor.executeJob = async job => ({ ...await execute(job), targetColumns });
+
+            const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+            expect(run).to.deep.include({ success: false, error: "Schedule target column metadata is unavailable" });
+            expect(await records(value, projectId)).to.deep.equal({});
+        });
+    }
+
     it("refuses a catalog changed after worker calculation and permits a later current run", async () => {
         const projectId = "schedule-catalog-stale";
         await seedCatalogSchedule(value, projectId);
