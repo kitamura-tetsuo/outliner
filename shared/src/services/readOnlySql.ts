@@ -18,25 +18,58 @@ function decodedIdentifier(token: ScanToken): string {
     return token.text.startsWith('"') ? token.text.slice(1, -1).replace(/""/g, '"') : token.text.toLowerCase();
 }
 
+/** Preserve AST structural paths so two parses can identify generated occurrences. */
 function collectParsedRelationNames(
     value: unknown,
-    identifiers: Set<string>,
-    suppressedSpans?: readonly { start: number; end: number; }[],
+    relations: Map<string, string>,
+    path: readonly (string | number)[] = [],
 ): void {
     if (Array.isArray(value)) {
-        value.forEach(child => collectParsedRelationNames(child, identifiers, suppressedSpans));
+        value.forEach((child, index) => collectParsedRelationNames(child, relations, [...path, index]));
         return;
     }
     const wrapper = node(value);
     if (!wrapper) return;
-    const range = node(wrapper.RangeVar) ?? node(wrapper.relation);
+    const relationField = node(wrapper.RangeVar) ? "RangeVar" : "relation";
+    const range = node(wrapper[relationField]);
     if (range && typeof range.relname === "string") {
-        const loc = typeof range.location === "number" ? range.location : undefined;
-        const isSuppressed = loc !== undefined
-            && suppressedSpans?.some(span => loc >= span.start && loc < span.end);
-        if (!isSuppressed) identifiers.add(range.relname);
+        relations.set(JSON.stringify([...path, relationField]), range.relname);
     }
-    Object.values(wrapper).forEach(child => collectParsedRelationNames(child, identifiers, suppressedSpans));
+    Object.entries(wrapper).forEach(([key, child]) => collectParsedRelationNames(child, relations, [...path, key]));
+}
+
+function parsedRelationNames(sql: string): Map<string, string> {
+    const relations = new Map<string, string>();
+    const parsed = parseSync(sql);
+    parsed.stmts?.forEach((statement, index) => collectParsedRelationNames(statement.stmt, relations, [index]));
+    return relations;
+}
+
+/** Change only generated ordinary ASCII identifiers, without shifting UTF-8 byte offsets. */
+function alternateSyntheticIdentifiers(
+    sql: string,
+    spans: readonly { start: number; end: number; }[],
+    tokens: readonly ScanToken[],
+): string {
+    const bytes = new TextEncoder().encode(sql);
+    for (const span of spans) {
+        const token = tokens.find(token =>
+            token.start === span.start && token.end === span.end && token.tokenName === "IDENT"
+        );
+        const first = bytes[span.start];
+        const startsOrdinaryIdentifier = first === 95 || first !== undefined
+                && (first >= 65 && first <= 90 || first >= 97 && first <= 122);
+        if (
+            !token || !startsOrdinaryIdentifier || span.start >= span.end || span.end > bytes.length
+            || bytes.slice(span.start, span.end).some(byte => byte > 127)
+        ) {
+            throw new Error("Generated SQL identifier occurrence comparison is unavailable");
+        }
+        // PostgreSQL folds unquoted ASCII case; change the first byte so even
+        // a truncated identifier changes its parsed relname.
+        bytes[span.start] = first === 90 || first === 122 ? 121 : 122;
+    }
+    return new TextDecoder().decode(bytes);
 }
 
 export interface IdentifierAnalysisOptions {
@@ -58,9 +91,17 @@ export function parseSqlIdentifiers(sql: string, options: IdentifierAnalysisOpti
     // implementation token rather than IDENT. The parsed RangeVar is the
     // library-authoritative decoded spelling, including UESCAPE handling.
     if (tokens.some(token => token.tokenName === "UNKNOWN" && token.keywordKind === 0)) {
-        const parsed = parseSync(sql);
-        for (const statement of parsed.stmts ?? []) {
-            collectParsedRelationNames(statement.stmt, identifiers, suppressedSpans);
+        const relations = parsedRelationNames(sql);
+        if (suppressedSpans.length === 0) {
+            relations.forEach(name => identifiers.add(name));
+        } else {
+            const counterpart = parsedRelationNames(alternateSyntheticIdentifiers(sql, suppressedSpans, tokens));
+            if (relations.size !== counterpart.size || [...relations.keys()].some(path => !counterpart.has(path))) {
+                throw new Error("Generated SQL identifier occurrence comparison is unavailable");
+            }
+            relations.forEach((name, path) => {
+                if (name === counterpart.get(path)) identifiers.add(name);
+            });
         }
     }
     return identifiers;

@@ -105,6 +105,36 @@ describe("scheduleRuleValidation", () => {
             expect(sql).toContain("INSERT INTO {{table}}");
         });
 
+        it("does not turn a qualified source placeholder into a registered Table reference", () => {
+            const sql = "INSERT INTO {{table}} (id) SELECT id || '-copy' AS id FROM public.{{table}} RETURNING *";
+
+            expect(validateScheduleRuleSql(sql)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(sql)).not.toContain("__outliner_schedule_target__");
+            expect(sql).toContain("public.{{table}}");
+        });
+
+        it("retains actual parser-marker relations while suppressing qualified generated occurrences", () => {
+            const sql = `/* 日本語 */ INSERT INTO {{table}} (id)
+                SELECT id FROM "public" /* qualified */ . /* source */ {{table}}
+                UNION SELECT id FROM U&"__outliner_schedule_t\\0061rget__"
+                RETURNING *`;
+
+            expect(validateScheduleRuleSql(sql)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(sql)).toContain("__outliner_schedule_target__");
+
+            const generatedOnly = `/* 🧪 */ INSERT INTO {{table}} (id)
+                SELECT id FROM U&"pub!006cic" UESCAPE '!'.{{table}}
+                UNION SELECT id FROM public.{{table}} RETURNING *`;
+            expect(validateScheduleRuleSql(generatedOnly)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(generatedOnly)).not.toContain("__outliner_schedule_target__");
+
+            // A generated qualifier must not suppress a real decoded relname.
+            const generatedQualifier = `INSERT INTO tasks (id) SELECT id FROM {{table}}.U&"d\\0061t\\0061" RETURNING *`;
+            expect(validateScheduleRuleSql(generatedQualifier)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(generatedQualifier)).toContain("data");
+            expect(parseScheduleSqlIdentifiers(generatedQualifier)).not.toContain("__outliner_schedule_target__");
+        });
+
         it("discovers lexical candidates from malformed concrete SQL without full parse admission", () => {
             const malformedOrderSql = "INSERT INTO tasks (id, order) VALUES ('daily', 1) RETURNING *";
             const identifiers = parseScheduleSqlIdentifiers(malformedOrderSql);

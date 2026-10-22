@@ -784,4 +784,137 @@ RETURNING *`;
         await hocuspocus.unloadDocument(project);
         hocuspocus.documents.clear();
     });
+
+    it("does not fabricate Schedule dependencies from qualified generated source names", async () => {
+        const hocuspocus = new Hocuspocus({ name: "mcp-schedule-qualified-source", quiet: true });
+        const connection = await hocuspocus.openDirectConnection("projects/qualified-source", {
+            context: { uid: "user" },
+        });
+        const project = connection.document;
+        const targetId = "tasks-table";
+        const unrelatedId = "marker-table";
+        const markerSqlName = "__outliner_schedule_target__";
+        for (
+            const [id, name, sqlName] of [
+                [targetId, "Tasks", "tasks"],
+                [unrelatedId, "Unrelated", markerSqlName],
+            ]
+        ) {
+            const entry = new Y.Map<unknown>();
+            entry.set("name", name);
+            entry.set("sqlName", sqlName);
+            entry.set("doc", new Y.Doc());
+            project.getMap("yjsTables").set(id, entry);
+        }
+        const targetConnection = await hocuspocus.openDirectConnection(
+            `projects/qualified-source/tables/${targetId}`,
+            { context: { uid: "user" } },
+        );
+        const unrelatedConnection = await hocuspocus.openDirectConnection(
+            `projects/qualified-source/tables/${unrelatedId}`,
+            { context: { uid: "user" } },
+        );
+        const targetDocument = targetConnection.document;
+        const unrelatedDocument = unrelatedConnection.document;
+        targetDocument.getText("schema").insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY)");
+        unrelatedDocument.getText("schema").insert(
+            0,
+            `CREATE TABLE ${markerSqlName} (id TEXT PRIMARY KEY)`,
+        );
+        const seed = new Y.Map<unknown>();
+        seed.set("id", "one");
+        targetDocument.getMap("data").set("one", seed);
+
+        const concreteSql = "INSERT INTO tasks (id) SELECT id || '-copy' AS id FROM public.tasks RETURNING *";
+        const rule = new Y.Map<unknown>();
+        rule.set("name", "Copy tasks");
+        rule.set("targetTableId", targetId);
+        rule.set("sql", concreteSql);
+        rule.set("rrule", "FREQ=DAILY;COUNT=2");
+        rule.set("dtstart", "2026-08-30T09:00:00");
+        rule.set("timezone", "UTC");
+        rule.set("enabled", false);
+        project.getMap("schedules").set("rule-1", rule);
+        const canAccess = async (uid: string) => uid === "user";
+        const relations = new OutlinerRelationService(hocuspocus, canAccess);
+        const schedules = new OutlinerScheduleService(hocuspocus, canAccess, relations);
+        const before = await schedules.getSchedule("user", "qualified-source", "rule-1");
+        expect(before.derived.referencedTables.map(ref => [ref.tableId, ref.kind])).to.deep.equal([
+            [targetId, "write-target"],
+        ]);
+
+        const templateSql = "INSERT INTO {{table}} (id) SELECT id || '-copy' AS id FROM public.{{table}} RETURNING *";
+        const saved = await schedules.update(
+            "user",
+            "qualified-source",
+            "rule-1",
+            { sql: templateSql },
+            before.revision,
+        );
+        expect(saved).to.include({ applied: true });
+        expect(saved.validation.accepted).to.equal(true);
+        expect(saved.validation.candidateRows).to.deep.equal([{ id: "one-copy" }]);
+        expect(saved.validation.references.map(ref => [ref.tableId, ref.kind])).to.deep.equal([
+            [targetId, "write-target"],
+        ]);
+        expect(saved.validation.revisions.dependencies).not.to.have.property(unrelatedId);
+        expect(rule.get("sql")).to.equal(templateSql);
+
+        const projectSnapshot = Y.encodeStateAsUpdate(project);
+        const targetSnapshot = Y.encodeStateAsUpdate(targetDocument);
+        const unrelatedSnapshot = Y.encodeStateAsUpdate(unrelatedDocument);
+        const inspected = await schedules.getSchedule("user", "qualified-source", "rule-1");
+        expect(inspected.stored.sql).to.equal(templateSql);
+        expect(inspected.derived.referencedTables.map(ref => [ref.tableId, ref.kind])).to.deep.equal([
+            [targetId, "write-target"],
+        ]);
+        expect((await relations.getTable("user", "qualified-source", unrelatedId)).scheduleReferences)
+            .to.deep.equal([]);
+        expect((await schedules.listSchedules("user", "qualified-source", unrelatedId, "sql-reference")).schedules)
+            .to.deep.equal([]);
+        const preview = await schedules.validate(
+            "user",
+            "qualified-source",
+            inspected.stored as never,
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(preview).to.include({ accepted: true, persisted: false });
+        expect(preview.candidateRows).to.deep.equal([{ id: "one-copy" }]);
+        expect(preview.revisions.dependencies).not.to.have.property(unrelatedId);
+        expect(targetDocument.getMap("data").size).to.equal(1);
+        expect(targetDocument.getMap("data").get("one")).to.equal(seed);
+        expect(Y.encodeStateAsUpdate(project)).to.deep.equal(projectSnapshot);
+        expect(Y.encodeStateAsUpdate(targetDocument)).to.deep.equal(targetSnapshot);
+        expect(Y.encodeStateAsUpdate(unrelatedDocument)).to.deep.equal(unrelatedSnapshot);
+
+        // A genuinely authored relation with the same spelling remains discoverable.
+        const realSourceSql = `INSERT INTO tasks (id) SELECT id FROM public.${markerSqlName} RETURNING *`;
+        const realSource = await schedules.update(
+            "user",
+            "qualified-source",
+            "rule-1",
+            { sql: realSourceSql },
+            inspected.revision,
+        );
+        expect(realSource.validation.accepted).to.equal(true);
+        expect(realSource.validation.references.find(ref => ref.tableId === unrelatedId)).to.include({
+            tableId: unrelatedId,
+            displayName: "Unrelated",
+            sqlName: markerSqlName,
+            kind: "sql-reference",
+        });
+        expect(realSource.validation.revisions.dependencies).to.have.property(unrelatedId);
+        expect((await schedules.listSchedules("user", "qualified-source", unrelatedId, "sql-reference")).schedules)
+            .to.have.length(1);
+
+        await unrelatedConnection.disconnect();
+        await targetConnection.disconnect();
+        await connection.disconnect();
+        hocuspocus.closeConnections();
+        await hocuspocus.unloadDocument(targetDocument);
+        await hocuspocus.unloadDocument(unrelatedDocument);
+        await hocuspocus.unloadDocument(project);
+        hocuspocus.documents.clear();
+    });
 });

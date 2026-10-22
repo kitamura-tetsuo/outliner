@@ -75,6 +75,38 @@ describe("scheduleRuleService", () => {
         expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
     });
 
+    it("does not expose qualified generated names as Schedule references", () => {
+        const project = Project.createInstance("Qualified references");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const unrelatedId = createTable(project.ydoc, "Unrelated", "__outliner_schedule_target__");
+        const sql = "INSERT INTO {{table}} (id) SELECT id || '-copy' AS id FROM public.{{table}} RETURNING *";
+        const ruleId = createScheduleRule(project, {
+            name: "Copy tasks",
+            targetTableId: tasksId,
+            sql,
+            rrule: "FREQ=DAILY",
+        });
+        const before = Y.encodeStateAsUpdate(project.ydoc);
+
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+        ]);
+        expect(findSchedulesReferencingTable(project, unrelatedId)).toEqual([]);
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(before);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+
+        updateScheduleRule(project, ruleId, {
+            sql: "INSERT INTO {{table}} (id) SELECT id FROM public.__outliner_schedule_target__ RETURNING *",
+        });
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+            { tableId: unrelatedId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, unrelatedId)).toEqual([
+            { ruleId, ruleName: "Copy tasks", kind: "sql-reference", enabled: true },
+        ]);
+    });
+
     it("refuses non-INSERT Schedule SQL without changing saved rules", () => {
         const project = Project.createInstance("Test Project");
         const originalSql = "INSERT INTO tasks (id, title) VALUES ('old', 'Old') RETURNING *";

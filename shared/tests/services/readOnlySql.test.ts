@@ -5,6 +5,7 @@ import {
     parseTopLevelInsertTarget,
     validateReadOnlySelect,
 } from "../../src/services/readOnlySql";
+import { prepareScheduleTargetPlaceholder } from "../../src/services/scheduleRuleValidation";
 
 describe("readOnlySql PostgreSQL AST admission", () => {
     it("preserves valid SQL and its PostgreSQL lexical boundaries", () => {
@@ -68,5 +69,24 @@ describe("readOnlySql PostgreSQL AST admission", () => {
         expect(parseSqlIdentifiers(`INSERT INTO U&"a\\0075dit" (id) VALUES ('one') RETURNING *`))
             .toContain("audit");
         expect(() => parseSqlIdentifiers(`SELECT id FROM U&"d\\0061t\\0061" UESCAPE '\\' WHERE`)).toThrow();
+    });
+
+    it("matches synthetic relation occurrences by parsed structure rather than RangeVar.location", () => {
+        const marker = "__outliner_schedule_target__";
+        const sql = `/* 日本語 */ INSERT INTO {{table}} (id)
+            SELECT id FROM public.{{table}}
+            UNION SELECT id FROM U&"__outliner_schedule_t\\0061rget__" RETURNING *`;
+        const prepared = prepareScheduleTargetPlaceholder(sql, marker);
+
+        expect(prepared.syntheticIdentifierSpans).toHaveLength(2);
+        expect(parseSqlIdentifiers(prepared.sql, { suppressedSpans: prepared.syntheticIdentifierSpans }))
+            .toContain(marker);
+
+        const onlyGenerated = prepareScheduleTargetPlaceholder(
+            "INSERT INTO {{table}} (id) SELECT id FROM public.{{table}} RETURNING *",
+            marker,
+        );
+        expect(parseSqlIdentifiers(onlyGenerated.sql, { suppressedSpans: onlyGenerated.syntheticIdentifierSpans }))
+            .not.toContain(marker);
     });
 });

@@ -5,6 +5,7 @@ import {
     createScheduleRule,
     findSchedulesReferencingTable,
     scheduleTableReferences,
+    updateScheduleRule,
 } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid, listGrids } from "./gridDocs";
@@ -114,6 +115,40 @@ describe("tableDependencies", () => {
             name: "Audit Rule",
         });
         expect(project.schedules.get(ruleId)?.get("sql")).toBe(concreteSql);
+    });
+
+    it("does not warn about marker-named Tables reached only through generated qualified placeholders", () => {
+        const project = Project.createInstance("Test");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const unrelatedId = createTable(project.ydoc, "Unrelated", "__outliner_schedule_target__");
+        const sql = "INSERT INTO {{table}} (id) SELECT id FROM public.{{table}} RETURNING *";
+        const ruleId = createScheduleRule(project, {
+            name: "Copy tasks",
+            targetTableId: tasksId,
+            sql,
+            rrule: "FREQ=DAILY",
+        });
+        const before = Y.encodeStateAsUpdate(project.ydoc);
+
+        const unrelatedDependencies = getTableDependencies(project, unrelatedId);
+        expect(unrelatedDependencies.scheduleReferences).toEqual([]);
+        expect(unrelatedDependencies.indirectSqlReferences).not.toContainEqual({
+            type: "schedule",
+            name: "Copy tasks",
+        });
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(before);
+
+        updateScheduleRule(project, ruleId, {
+            sql: "INSERT INTO {{table}} (id) SELECT id FROM public.__outliner_schedule_target__ RETURNING *",
+        });
+        const realSourceDependencies = getTableDependencies(project, unrelatedId);
+        expect(realSourceDependencies.scheduleReferences).toEqual([
+            { ruleId, ruleName: "Copy tasks", kind: "sql-reference" },
+        ]);
+        expect(realSourceDependencies.indirectSqlReferences).toContainEqual({
+            type: "schedule",
+            name: "Copy tasks",
+        });
     });
 
     it("removes table removing direct references", () => {
