@@ -433,10 +433,10 @@ async function enumMetadata(
     db: PGlite,
     objectByName: ReadonlyMap<string, string>,
 ): Promise<SqlEnumMetadata[]> {
-    const result = await db.query<{ schema: string; name: string; label: string; }>(
+    const result = await db.query<{ schema: string; name: string; label: string | null; }>(
         "SELECT n.nspname AS schema, t.typname AS name, e.enumlabel AS label "
             + "FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace "
-            + "JOIN pg_enum e ON e.enumtypid=t.oid WHERE n.nspname='public' "
+            + "LEFT JOIN pg_enum e ON e.enumtypid=t.oid WHERE n.nspname='public' AND t.typtype='e' "
             + "ORDER BY t.oid, e.enumsortorder",
     );
     const grouped = new Map<string, SqlEnumMetadata>();
@@ -444,14 +444,15 @@ async function enumMetadata(
         const objectId = objectByName.get(row.name);
         if (!objectId) continue;
         const current = grouped.get(row.name);
-        if (current) (current.labels as string[]).push(row.label);
-        else {
+        if (current) {
+            if (row.label !== null) (current.labels as string[]).push(row.label);
+        } else {
             grouped.set(row.name, {
                 objectId,
                 schema: row.schema,
                 name: row.name,
                 identity: `${quotedIdentifier(row.schema)}.${quotedIdentifier(row.name)}`,
-                labels: [row.label],
+                labels: row.label === null ? [] : [row.label],
             });
         }
     }

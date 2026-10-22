@@ -365,7 +365,7 @@ export function demoContentJa(): DemoLocaleContent {
                     { componentType: "yjstable", yjsGridId: "demo-insert-configured-grid" },
                     {
                         text:
-                            "Kanban 配置はプロジェクトのボードを参照し、この配置を削除しても元のテーブルやレコードは削除しません。",
+                            "編集可能なページで /kanban を入力すると、新しいテーブル（Tasks・Habits・Blank）、既存テーブルからの新規ボード、既存 Kanban の共有を選べます。Blank はグループ列の設定が必要です。 Kanban 配置はプロジェクトのボードを参照し、この配置を削除しても元のテーブルやレコードは削除しません。",
                     },
                     {
                         componentType: "kanban",

@@ -138,18 +138,21 @@ export function createKanbanEntry(
     if (getKanbanRegistry(projectDoc).has(kanbanId)) {
         throw new Error(`Kanban with id ${kanbanId} already exists`);
     }
-    projectDoc.transact(() => {
-        const entry = new Y.Map<unknown>();
-        entry.set("name", options.name ?? "Kanban");
-        if (options.query !== undefined) entry.set("query", options.query);
-        if (options.groupField) entry.set("groupField", options.groupField);
-        if (options.titleField) entry.set("titleField", options.titleField);
-        if (options.detailFields && options.detailFields.length > 0) {
-            entry.set("detailFields", [...options.detailFields]);
-        }
-        if (options.laneOrder && options.laneOrder.length > 0) entry.set("laneOrder", [...options.laneOrder]);
-        getKanbanRegistry(projectDoc).set(kanbanId, entry);
-    });
+    const entry = prepareKanbanEntry(options);
+    projectDoc.transact(() => getKanbanRegistry(projectDoc).set(kanbanId, entry));
+}
+
+/** Prepare a validated, detached definition for composed publication. */
+export function prepareKanbanEntry(options: KanbanDefinitionSeed = {}): Y.Map<unknown> {
+    validateKanbanFields(options);
+    const entry = new Y.Map<unknown>();
+    entry.set("name", options.name ?? "Kanban");
+    if (options.query !== undefined) entry.set("query", options.query);
+    if (options.groupField) entry.set("groupField", options.groupField);
+    if (options.titleField) entry.set("titleField", options.titleField);
+    if (options.detailFields?.length) entry.set("detailFields", [...options.detailFields]);
+    if (options.laneOrder?.length) entry.set("laneOrder", [...options.laneOrder]);
+    return entry;
 }
 
 function readStringArray(value: unknown): string[] {

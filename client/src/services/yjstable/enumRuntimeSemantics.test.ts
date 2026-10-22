@@ -6,6 +6,39 @@ import { introspectTable } from "./schemaIntrospection";
 import { castValueForColumn } from "./valueCasting";
 
 describe("runtime ENUM serialization", () => {
+    it("includes a valid zero-label ENUM in executable catalog metadata", async () => {
+        const built = await compileSqlEnvironment({
+            catalog: {
+                projectId: "empty-enum-runtime",
+                format: 1,
+                revision: "empty-enum-v1",
+                objects: [{ id: "empty-enum", kind: "enum", source: "CREATE TYPE empty_mood AS ENUM ()" }],
+            },
+            tables: [{
+                id: "tasks-table",
+                schema: "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT)",
+                records: [{ id: "one", values: { id: "one", title: "Existing task" } }],
+            }],
+            inspections: [],
+        });
+        expect(built.status, built.status === "failed" ? JSON.stringify(built.diagnostics) : "").toBe("ready");
+        if (built.status !== "ready") return;
+        try {
+            expect(built.environment.enums).toEqual([{
+                objectId: "empty-enum",
+                schema: "public",
+                name: "empty_mood",
+                identity: '"public"."empty_mood"',
+                labels: [],
+            }]);
+            await expect(built.environment.query("SELECT title FROM tasks")).resolves.toMatchObject({
+                rows: [{ title: "Existing task" }],
+            });
+        } finally {
+            await built.environment.dispose();
+        }
+    }, 30_000);
+
     it("uses real catalog metadata to preserve exact labels and reject unknown values", async () => {
         const source = "CREATE TYPE state_level AS ENUM ('', ' waiting ', 'Done')";
         const catalog: SqlCatalogSnapshot = {

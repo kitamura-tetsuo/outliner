@@ -27,10 +27,12 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
         // Every visual node kind has its own creation command (#5015); the
         // Grid entry still carries the "yjstable" discriminator.
         const gridOption = page.locator('[data-testid="command-item-yjstable"]');
+        const kanbanOption = page.getByTestId("command-item-kanban");
         const calendarOption = page.locator('[data-testid="command-item-calendar"]');
         const aliasOption = page.locator('[data-testid="command-item-alias"]');
         await expect(gridOption).toBeVisible();
         await expect(calendarOption).toBeVisible();
+        await expect(kanbanOption).toBeVisible();
         await expect(aliasOption).toBeVisible();
 
         // Type 'ali' to narrow down to Alias
@@ -39,6 +41,7 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
         await expect(aliasOption).toBeVisible();
         await expect(gridOption).toBeHidden();
         await expect(calendarOption).toBeHidden();
+        await expect(kanbanOption).toBeHidden();
 
         // Test arrow up/down on the list without query
         await page.keyboard.press("Backspace");

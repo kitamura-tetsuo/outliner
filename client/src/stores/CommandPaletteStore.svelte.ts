@@ -1,4 +1,7 @@
+import { isTextNode, KANBAN_COMPONENT_TYPE } from "$shared/services/outlineNodeKind";
 import { getLogger } from "../lib/logger";
+import { invokingSurfaceWritable } from "../services/editorSurface";
+import { yjsStore } from "./yjsStore.svelte";
 const logger = getLogger("Store");
 import { createMermaidDiagramAtTarget } from "../services/diagram/diagramPlacement";
 import {
@@ -19,6 +22,7 @@ import { store as generalStore } from "./store.svelte";
 export const DIAGRAM_TRANSCLUSION_COMMAND = "diagram-transclusion";
 
 export type CommandType =
+    | typeof KANBAN_COMPONENT_TYPE
     | typeof GRID_COMPONENT_TYPE
     | typeof CALENDAR_COMPONENT_TYPE
     | typeof LAYOUT_COMPONENT_TYPE
@@ -52,6 +56,7 @@ class CommandPaletteStore {
     readonly commands: ReadonlyArray<{ label: string; type: CommandType; keywords?: string[]; }> = [
         { label: "Grid", type: GRID_COMPONENT_TYPE, keywords: ["database", "table"] },
         { label: "Calendar", type: CALENDAR_COMPONENT_TYPE, keywords: ["schedule"] },
+        { label: "Kanban", type: KANBAN_COMPONENT_TYPE },
         { label: "Layout", type: LAYOUT_COMPONENT_TYPE },
         { label: "New Mermaid diagram", type: DIAGRAM_COMPONENT_TYPE, keywords: ["mermaid", "diagram"] },
         {
@@ -313,6 +318,16 @@ class CommandPaletteStore {
         const cursors = editorOverlayStore.getCursorInstances();
         const cursor = cursors.length > 0 ? cursors[0] : null;
         const target = cursor && this.commandCursorItemId ? cursor.findTarget() : undefined;
+
+        if (type === KANBAN_COMPONENT_TYPE) {
+            const project = generalStore.project;
+            if (
+                !target || !target.tree.getNodeValueFromKey(target.key) || !isTextNode(target)
+                || !project || target.ydoc !== project.ydoc
+                || !yjsStore.currentProjectId || yjsStore.syncError === "denied"
+                || !invokingSurfaceWritable() || !getProjectCapabilities(project).canWrite
+            ) return;
+        }
 
         // Delete entire command string (including slash). What is left is also
         // what decides whether the node may be replaced: a node holding nothing

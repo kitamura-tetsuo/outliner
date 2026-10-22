@@ -82,7 +82,9 @@ const selectionSurfaceAttributes = $derived({ [VISUAL_NODE_SELECTION_SURFACE_ATT
     {#await import("./kanban/KanbanBlock.svelte") then { default: KanbanBlock }}
         <div class="component-wrapper" class:outline-row={outlineRow} {...rootAttributes}>
             {@render selectionSurface()}
-            <KanbanBlock item={item} {isReadOnly} />
+            {#key `${item.ydoc.guid}:${item.key}`}
+                <KanbanBlock item={item} {isReadOnly} />
+            {/key}
         </div>
     {/await}
 {/if}
