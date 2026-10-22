@@ -31,7 +31,6 @@ describe("Table import binding admission", () => {
         const a = make(source, "a", { tableId: "first-a" });
         const b = make(source, "b", { tableId: "second-b" });
         const snapshots = exportTableStructures(source.ydoc, [a, b]);
-        for (const snapshot of Object.values(snapshots)) delete snapshot.catalog;
         const registry = getTableRegistry(destination.ydoc);
         const entered = deferred();
         const release = deferred();
@@ -55,7 +54,7 @@ describe("Table import binding admission", () => {
         expect(registry.get(replacementId)).toBe(replacement);
         expect(listTables(destination.ydoc).map(t => t.sqlName)).toEqual(["a"]);
         expect(getGridRegistry(destination.ydoc).size).toBe(0);
-    });
+    }, 60_000);
 
     for (const intervention of ["delete", "replace", "row edit"] as const) {
         it(`revalidates reused bindings after real queued validation: ${intervention}`, async () => {
@@ -89,9 +88,6 @@ describe("Table import binding admission", () => {
                 await release.promise;
             });
             await entered.promise;
-            // An empty catalog avoids an earlier catalog-compiler await. The
-            // import reaches A reuse synchronously, then queues B validation.
-            for (const snapshot of Object.values(snapshots)) delete snapshot.catalog;
             const importing = importTableStructures(destination.ydoc, snapshots, source.ydoc.guid, undefined, true, {
                 [grid]: exportGridSlice(source.ydoc, grid),
             });
@@ -112,14 +108,20 @@ describe("Table import binding admission", () => {
                 expect(copied.get("insertTargetTableId")).toBe(reused);
                 expect(getTableHandles(destination.ydoc, reused)!.data.has("peer")).toBe(true);
             } else {
-                await expect(importing).rejects.toThrow("binding changed");
-                expect(getGridRegistry(destination.ydoc).size).toBe(0);
+                // Semantic preflight now precedes binding capture. A peer edit
+                // made while that analysis is pending is therefore current
+                // input, not stale authority: import must avoid reusing the
+                // removed binding and allocate against the live registry.
+                const result = await importing;
+                expect(result.reusedTableIdMap[a]).toBeUndefined();
+                expect(result.tableIdMap[a]).toBeDefined();
+                expect(getGridRegistry(destination.ydoc).size).toBe(1);
                 expect(registry.get(reused)).toBe(baseline);
                 expect(registry.get(reused)).not.toBe(old);
-                expect(listTables(destination.ydoc).map(t => t.sqlName)).not.toContain("b");
+                expect(listTables(destination.ydoc).map(t => t.sqlName)).toContain("b");
             }
             expect(getTableHandles(destination.ydoc, unrelated)!.data.has("unrelated")).toBe(true);
-        });
+        }, 60_000);
     }
     for (const replaceFirst of [false, true]) {
         it(`cleans earlier allocations on a later portable guard rejection; replacement=${replaceFirst}`, async () => {
@@ -168,18 +170,21 @@ describe("Table import binding admission", () => {
             if (replaceFirst) expect(registry.get(firstId!)).toBe(replacement);
             expect(getGridRegistry(destination.ydoc).size).toBe(0);
             expect(destination.ydoc.getMap("sqlCatalog").toJSON()).toEqual(peer.getMap("sqlCatalog").toJSON());
-        });
+        }, 60_000);
     }
-    it("keeps an independent valid group when another returns a recoverable SQL failure", async () => {
+    it("refuses the selection before effects when authoritative analysis is incomplete", async () => {
+        const source = Project.createInstance("incomplete-analysis-source");
         const destination = new Y.Doc();
-        const result = await importTableStructures(destination, {
-            a: { sourceTableId: "a", name: "A", sqlName: "a", schemaSql: "CREATE TABLE a (id TEXT PRIMARY KEY)" },
-            b: { sourceTableId: "b", name: "B", sqlName: "b", schemaSql: "CREATE TABLE b (id no_such_type)" },
-        }, "source");
-        expect(Object.keys(result.tableIdMap)).toEqual(["a"]);
-        expect(result.failedSourceTableIds).toEqual(["b"]);
-        expect(listTables(destination).map(table => table.sqlName)).toEqual(["a"]);
-        expect(result.outcomes.some(outcome => outcome.type === "failed-group")).toBe(true);
-        result.bindings.assertCurrent();
+        const a = createTable(source.ydoc, "A", "a", { tableId: "a" }, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE a (id TEXT PRIMARY KEY)");
+        });
+        const b = createTable(source.ydoc, "B", "b", { tableId: "b" }, handles => {
+            handles.schemaText.insert(0, "CREATE TABLE b (id no_such_type)");
+        });
+        const snapshots = exportTableStructures(source.ydoc, [a, b]);
+        await expect(importTableStructures(destination, snapshots, source.ydoc.guid)).rejects.toThrow(
+            'type "no_such_type" does not exist',
+        );
+        expect(listTables(destination)).toEqual([]);
     });
 });

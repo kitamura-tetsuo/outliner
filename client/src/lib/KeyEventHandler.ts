@@ -3214,25 +3214,6 @@ export class KeyEventHandler {
                         const { cloneGridTablesAcrossProjects } = await import(
                             "../services/clipboard/crossProjectGridPaste"
                         );
-                        if (generalStore.undoManager) {
-                            const { portableStructuralEnumsStillCompatible } = await import(
-                                "../services/yjstable/structuralEnumGuard"
-                            );
-                            const { getLoadedProjectDocById } = await import("./yjsService.svelte");
-                            const capturedCatalog = "catalog" in structured ? structured.catalog : undefined;
-                            const capturedCalendarQueries = "calendars" in structured
-                                ? Object.values(structured.calendars ?? {}).map(settings => settings.query)
-                                : [];
-                            authorizePasteRedo = () =>
-                                portableStructuralEnumsStillCompatible(
-                                    destinationDoc,
-                                    referencedSnapshots,
-                                    getLoadedProjectDocById(structured.sourceProjectId),
-                                    grids,
-                                    capturedCatalog,
-                                    capturedCalendarQueries,
-                                );
-                        }
                         if (!destinationCurrent()) return;
                         const cloneResult = await cloneGridTablesAcrossProjects({
                             destinationDoc,

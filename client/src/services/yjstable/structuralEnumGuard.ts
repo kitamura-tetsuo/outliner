@@ -63,7 +63,7 @@ export function portableStructuralEnumsStillCompatible(
     currentSourceDoc?: Y.Doc,
     grids: Readonly<Record<string, import("../clipboard/itemClipboard").GridSnapshot>> = {},
     capturedCatalog?: SqlCatalogSnapshot,
-    additionalQueries: readonly string[] = [],
+    _additionalQueries: readonly string[] = [],
     admission?: StructuralEnumAdmission,
 ): boolean {
     // Query-only Grids can require types without carrying any Table snapshots.
