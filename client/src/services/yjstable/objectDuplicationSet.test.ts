@@ -109,6 +109,24 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         expect(copiedRule.get("sql")).toBe(`INSERT INTO ${copiedSqlName} (id) SELECT 1 RETURNING *`);
     });
 
+    it("rewrites a Schedule DML target even when a CTE has the same name", async () => {
+        const doc = new Y.Doc();
+        const tasks = table(doc, "Tasks", "tasks");
+        const ruleId = schedule(
+            doc,
+            tasks,
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks (id) SELECT id FROM tasks RETURNING *",
+        );
+        const result = await duplicateObjectSet(doc, doc, [
+            { type: "schedule", id: ruleId },
+            { type: "table", id: tasks },
+        ]);
+        const copiedRule = scheduleRuleMap(doc, result.idMap.get(`schedule:${ruleId}`)!);
+        expect(copiedRule.get("sql")).toBe(
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks_2 (id) SELECT id FROM tasks RETURNING *",
+        );
+    });
+
     it("rewrites a selected Calendar's query to the copied Table", async () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
@@ -207,5 +225,27 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         // The Table created before the failing Grid must not survive either.
         expect(listTables(doc)).toHaveLength(1);
         expect(listGrids(doc)).toHaveLength(1);
+    });
+
+    it("rejects invalid required Schedule SQL before publishing a selected Table", async () => {
+        const source = new Y.Doc();
+        const tasks = table(source, "Tasks", "tasks");
+        const ruleId = schedule(source, tasks, "INSERT INTO tasks (id) VALUES ('1') RETURNING *");
+        // A remote/legacy Yjs update can bypass the local creation validator;
+        // duplication must therefore re-admit the persisted definition.
+        scheduleRuleMap(source, ruleId).set("sql", "SELECT FROM");
+        const destination = new Y.Doc();
+        let tableEvents = 0;
+        let scheduleEvents = 0;
+        let updates = 0;
+        destination.getMap("yjsTables").observe(() => tableEvents++);
+        destination.getMap("schedules").observe(() => scheduleEvents++);
+        destination.on("update", () => updates++);
+
+        await expect(duplicateObjectSet(source, destination, [
+            { type: "table", id: tasks },
+            { type: "schedule", id: ruleId },
+        ])).rejects.toThrow(/parsing failed/);
+        expect({ tableEvents, scheduleEvents, updates }).toEqual({ tableEvents: 0, scheduleEvents: 0, updates: 0 });
     });
 });

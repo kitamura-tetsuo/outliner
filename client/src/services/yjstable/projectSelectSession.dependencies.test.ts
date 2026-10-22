@@ -25,6 +25,37 @@ afterEach(async () => await resetTableEngineForTests());
 afterAll(async () => await resetPgliteForTests());
 
 describe("Project SELECT relation dependencies", { timeout: 30_000 }, () => {
+    it("observes a dependency used by a set-operation LIMIT subquery", async () => {
+        const doc = new Y.Doc({ guid: "project-select-set-tail" });
+        const aId = createTable(doc, "A", "a");
+        const a = getTableHandles(doc, aId)!;
+        setSchemaText(a, "CREATE TABLE a (id TEXT PRIMARY KEY)");
+        addRecord(a, {}, "a1");
+        addRecord(a, {}, "a2");
+        const bId = createTable(doc, "B", "b");
+        const b = getTableHandles(doc, bId)!;
+        setSchemaText(b, "CREATE TABLE b (id TEXT PRIMARY KEY)");
+        addRecord(b, {}, "b1");
+        const session = createProjectSelectSession({
+            projectDoc: doc,
+            query: "SELECT id FROM a UNION ALL SELECT id FROM a LIMIT (SELECT count(*) FROM b)",
+            connect: localConnector,
+        });
+        try {
+            const first = await session.runNow();
+            expect(first?.rows).toHaveLength(1);
+            expect(first?.sources.map(source => source.sqlName)).toEqual(["a", "b"]);
+            addRecord(b, {}, "b2");
+            const refreshed = await eventually(
+                session,
+                state => state.status === "success" && state.evidence.rows.length === 2,
+            );
+            expect(refreshed.status === "success" && refreshed.evidence.rows).toHaveLength(2);
+        } finally {
+            await session.dispose();
+        }
+    });
+
     it("retains and observes every warm comma-joined relation", async () => {
         const doc = new Y.Doc({ guid: "project-select-comma-dependencies" });
         const aId = createTable(doc, "A", "a");

@@ -330,6 +330,22 @@ export async function materializeDuplicationPlan(
     if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
         sqlSnapshot = captureStructuralSqlSnapshot(source);
     }
+    // Syntax admission must precede even read-like destination helper calls:
+    // obtaining a previously absent Yjs root type publishes an update.
+    try {
+        for (const object of tableObjects) {
+            const entry = listTables(source).find(table => table.tableId === object.id);
+            const snapshot = sqlSnapshot.tables.find(table => table.id === object.id);
+            if (!entry || !snapshot) throw new Error(`Table "${object.id}" no longer exists`);
+            rewriteCreateTableSql(snapshot.schema, entry.sqlName, entry.sqlName);
+        }
+        for (const inspection of sqlSnapshot.inspections) {
+            if (relevantSqlIds.has(inspection.id)) rewriteTableQuerySql(inspection.sql, new Map());
+        }
+    } catch (error) {
+        await Promise.allSettled(connections.map(connection => connection.dispose()));
+        throw error;
+    }
     const idMap = new Map<string, string>(existingIdMap);
     try {
         if (structuralSqlSnapshotRequiresGuard(sqlSnapshot, relevantSqlIds)) {
@@ -337,19 +353,6 @@ export async function materializeDuplicationPlan(
         }
         assertCurrent();
         for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
-
-        for (const object of objects) {
-            const registry = destination.getMap(
-                object.type === "table"
-                    ? "yjsTables"
-                    : object.type === "grid"
-                    ? "yjsGrids"
-                    : object.type === "calendar"
-                    ? "calendars"
-                    : "schedules",
-            );
-            if (registry.has(idMap.get(key(object))!)) throw new Error("A destination identity is already occupied.");
-        }
     } catch (error) {
         await Promise.allSettled(connections.map(connection => connection.dispose()));
         throw error;
@@ -380,10 +383,59 @@ export async function materializeDuplicationPlan(
     });
     const sqlNameMap = new Map<string, string>();
     const sourceProject = Project.fromDoc(source);
-    const destinationProject = Project.fromDoc(destination);
-    const calendarNames = new Set(listCalendars(destinationProject).map(entry => entry.settings.name));
     let removedReferenceCount = 0;
     const diagnostics: string[] = [];
+
+    // Build and validate the complete required SQL plan before the first
+    // destination registry/subdoc effect. Rollback cannot retract Yjs events
+    // already observed by peers, so parsing later in the creation loops would
+    // not satisfy admission-before-publication.
+    const destinationSqlNames = new Map<string, string>();
+    const rewrittenSchemas = new Map<string, string>();
+    try {
+        for (const object of tableObjects) {
+            const sourceEntry = listTables(source).find(table => table.tableId === object.id);
+            const sourceHandles = getTableHandles(source, object.id);
+            if (!sourceEntry || !sourceHandles) throw new Error(`Table "${object.id}" no longer exists`);
+            const destinationSqlName = deriveSqlName(sourceEntry.sqlName, sqlNames);
+            sqlNames.add(destinationSqlName);
+            sqlNameMap.set(sourceEntry.sqlName, destinationSqlName);
+            destinationSqlNames.set(object.id, destinationSqlName);
+            rewrittenSchemas.set(
+                object.id,
+                rewriteCreateTableSql(sourceHandles.schemaText.toString(), sourceEntry.sqlName, destinationSqlName).sql,
+            );
+        }
+        for (const object of objects) {
+            if (object.type === "grid") {
+                const query = String(getGridHandles(source, object.id)?.entry.get("query") ?? "");
+                if (query) rewriteTableQuerySql(query, sqlNameMap);
+            } else if (object.type === "schedule") {
+                const sql = String(schedulesMapOf(source).get(object.id)?.get("sql") ?? "");
+                if (sql) rewriteTableQuerySql(sql, sqlNameMap);
+            } else if (object.type === "calendar") {
+                const query = getCalendar(sourceProject, object.id)?.query ?? "";
+                if (query) rewriteTableQuerySql(query, sqlNameMap);
+            }
+        }
+    } catch (error) {
+        await Promise.allSettled(connections.map(connection => connection.dispose()));
+        throw error;
+    }
+    for (const object of objects) {
+        const registry = destination.getMap(
+            object.type === "table"
+                ? "yjsTables"
+                : object.type === "grid"
+                ? "yjsGrids"
+                : object.type === "calendar"
+                ? "calendars"
+                : "schedules",
+        );
+        if (registry.has(idMap.get(key(object))!)) throw new Error("A destination identity is already occupied.");
+    }
+    const destinationProject = Project.fromDoc(destination);
+    const calendarNames = new Set(listCalendars(destinationProject).map(entry => entry.settings.name));
 
     try {
         // Tables precede Grids, but both kinds already have destination IDs.
@@ -392,14 +444,8 @@ export async function materializeDuplicationPlan(
             const sourceHandles = getTableHandles(source, object.id);
             if (!sourceEntry || !sourceHandles) throw new Error(`Table "${object.id}" no longer exists`);
             const destinationId = idMap.get(key(object))!;
-            const destinationSqlName = deriveSqlName(sourceEntry.sqlName, sqlNames);
-            sqlNameMap.set(sourceEntry.sqlName, destinationSqlName);
-            sqlNames.add(destinationSqlName);
-            const schema = rewriteCreateTableSql(
-                sourceHandles.schemaText.toString(),
-                sourceEntry.sqlName,
-                destinationSqlName,
-            ).sql;
+            const destinationSqlName = destinationSqlNames.get(object.id)!;
+            const schema = rewrittenSchemas.get(object.id)!;
             createTable(destination, allocateCopyName(sourceEntry.name, tableNames, sameProject), destinationSqlName, {
                 tableId: destinationId,
             }, handles => {

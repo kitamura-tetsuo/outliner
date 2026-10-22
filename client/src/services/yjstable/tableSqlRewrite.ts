@@ -169,7 +169,7 @@ export function rewriteTableQuerySql(
         }
         return undefined;
     };
-    const rewriteRangeVar = (range: Node, scope: Scope): void => {
+    const rewriteRangeVar = (range: Node, scope: Scope, physicalTarget = false): void => {
         if (typeof range.relname !== "string") fail("Relation reference is missing a name");
         if (range.schemaname || range.catalogname) {
             fail(`Schema-qualified relation "${range.relname}" is not supported`);
@@ -178,7 +178,9 @@ export function rewriteTableQuerySql(
         const alias = node(range.alias) && typeof range.alias.aliasname === "string"
             ? range.alias.aliasname
             : undefined;
-        if (findCte(scope, name)) {
+        // PostgreSQL CTE names participate in read-source lookup, but DML
+        // target relations always resolve through the physical catalog.
+        if (!physicalTarget && findCte(scope, name)) {
             scope.bindings.set(alias ?? name, {});
             return;
         }
@@ -256,6 +258,8 @@ export function rewriteTableQuerySql(
         if (node(value.JoinExpr)) {
             walkFrom(value.JoinExpr.larg, scope);
             walkFrom(value.JoinExpr.rarg, scope);
+            const alias = value.JoinExpr.alias;
+            if (node(alias) && typeof alias.aliasname === "string") scope.bindings.set(alias.aliasname, {});
             walkExpression(value.JoinExpr.quals, scope);
             return;
         }
@@ -276,6 +280,10 @@ export function rewriteTableQuerySql(
             if (!node(select.larg) || !node(select.rarg)) fail("Malformed set-operation query");
             walkSelect(select.larg, scope);
             walkSelect(select.rarg, scope);
+            for (const [key, value] of Object.entries(select)) {
+                if (["withClause", "larg", "rarg", "op"].includes(key)) continue;
+                walkExpression(value, scope);
+            }
             return;
         }
         const scope = prepareWith(select, outer);
@@ -307,7 +315,7 @@ export function rewriteTableQuerySql(
         const scope = prepareWith(dml, outer);
         const relation = dml.relation;
         if (!node(relation)) fail(`${kind} target relation is missing`);
-        rewriteRangeVar(relation, scope);
+        rewriteRangeVar(relation, scope, true);
         walkFrom(dml.fromClause ?? dml.usingClause ?? [], scope);
         for (const [key, value] of Object.entries(dml)) {
             if (["withClause", "relation", "fromClause", "usingClause"].includes(key)) continue;

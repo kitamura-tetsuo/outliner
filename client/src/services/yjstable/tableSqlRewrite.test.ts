@@ -228,6 +228,22 @@ SELECT id, template_id, title, cadence, done FROM inserted`;
             .toBe("DELETE FROM tasks_2 WHERE id = '1'");
     });
 
+    it.each([
+        [
+            "WITH tasks AS (SELECT 1) UPDATE tasks SET done = true",
+            "WITH tasks AS (SELECT 1) UPDATE tasks_2 SET done = true",
+        ],
+        [
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks (id) SELECT id FROM tasks",
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks_2 (id) SELECT id FROM tasks",
+        ],
+        ["WITH tasks AS (SELECT 1) DELETE FROM tasks", "WITH tasks AS (SELECT 1) DELETE FROM tasks_2"],
+    ])("treats a DML target as physical when it shares a CTE name", (sql, expected) => {
+        const result = rewriteTableQuerySql(sql, { tasks: "tasks_2" });
+        expect(result.sql).toBe(expected);
+        expect(result.actualRelationDependencies).toEqual(["tasks"]);
+    });
+
     it("leaves UPDATE alone where it is a locking clause or a conflict action", () => {
         expect(rewriteTableQuerySql("SELECT * FROM tasks FOR UPDATE", { tasks: "tasks_2" }).sql)
             .toBe("SELECT * FROM tasks_2 FOR UPDATE");
@@ -355,6 +371,23 @@ describe("truthful physical dependency boundaries", () => {
     it("remaps only the physical own-name CTE body, including its qualifiers", () => {
         expect(rewriteTableQuerySql("WITH a AS (SELECT a.id FROM a) SELECT a.id FROM a", { a: "a_copy" }).sql)
             .toBe("WITH a AS (SELECT a_copy.id FROM a_copy) SELECT a.id FROM a");
+    });
+    it("preserves a joined-relation alias that shadows an outer mapped relation", () => {
+        const sql = "SELECT tasks.id FROM tasks WHERE EXISTS ("
+            + "SELECT 1 FROM (owners JOIN notes ON true) AS tasks WHERE tasks.id = 1)";
+        expect(rewriteTableQuerySql(sql, { tasks: "tasks_2", owners: "owners_2", notes: "notes_2" }).sql)
+            .toBe(
+                "SELECT tasks_2.id FROM tasks_2 WHERE EXISTS ("
+                    + "SELECT 1 FROM (owners_2 JOIN notes_2 ON true) AS tasks WHERE tasks.id = 1)",
+            );
+    });
+    it("discovers and rewrites subqueries in a set-operation tail", () => {
+        const sql = "SELECT id FROM a UNION ALL SELECT id FROM a LIMIT (SELECT count(*) FROM b)";
+        const result = rewriteTableQuerySql(sql, { a: "a_copy", b: "b_copy" });
+        expect(result.sql).toBe(
+            "SELECT id FROM a_copy UNION ALL SELECT id FROM a_copy LIMIT (SELECT count(*) FROM b_copy)",
+        );
+        expect(result.actualRelationDependencies).toEqual(["a", "b"]);
     });
     it.each(["TABLE public.a", "TABLE ONLY public.a", "TABLE ONLY (public.a)"])("refuses qualified operand %s", sql => {
         expect(() => rewriteTableQuerySql(sql, new Map())).toThrow(/Schema-qualified/);

@@ -479,6 +479,18 @@ export async function importTableStructures(
             }
         }
     }
+    // Grid definitions are required import artifacts. Validate every
+    // non-empty definition before any connected Table group is published;
+    // cleanup after a later parse failure cannot retract observer events.
+    const plannedNameMap = new Map(destinationNames);
+    for (const [sourceTableId, destinationTableId] of Object.entries(reusedTableIdMap)) {
+        const sourceName = snapshots[sourceTableId]?.sqlName;
+        const destinationName = getTableSqlName(destinationProjectDoc, destinationTableId);
+        if (sourceName && destinationName) plannedNameMap.set(sourceName, destinationName);
+    }
+    for (const grid of Object.values(grids)) {
+        if (grid.query) rewriteTableQuerySql(grid.query, plannedNameMap);
+    }
     const tableIdMap: Record<string, string> = {};
     const gridIdMap: Record<string, string> = {};
     const assertAdmission = () => {
