@@ -148,10 +148,9 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         try {
             expect(new Date(2026, 2, 5, 10).getTimezoneOffset()).toBe(-540);
             const doc = new Y.Doc({ guid: "grid-insert-timezone-temporal-defaults" });
-            const schema =
-                "CREATE TABLE target (id TEXT PRIMARY KEY, due DATE DEFAULT DATE '2026-03-05', "
-                    + "scheduled TIMESTAMP DEFAULT TIMESTAMP '2026-03-05 10:00:00.123456', "
-                    + "observed TIMESTAMPTZ DEFAULT TIMESTAMPTZ '2026-03-05 10:00:00.654321+09')";
+            const schema = "CREATE TABLE target (id TEXT PRIMARY KEY, due DATE DEFAULT DATE '2026-03-05', "
+                + "scheduled TIMESTAMP DEFAULT TIMESTAMP '2026-03-05 10:00:00.123456', "
+                + "observed TIMESTAMPTZ DEFAULT TIMESTAMPTZ '2026-03-05 10:00:00.654321+09')";
             const parsed = await parseCreateTable(schema);
             expect(parsed.columns.map(column => column.literalDefault)).toEqual([
                 undefined,
