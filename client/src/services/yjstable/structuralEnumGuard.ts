@@ -12,7 +12,6 @@ import {
 import * as Y from "yjs";
 import { getCalendar, listCalendars } from "../calendar/calendarService";
 import { getGridHandles, listGrids } from "./gridDocs";
-import { acquirePgliteCompilerLease } from "./pgliteService";
 import { getTableHandles, listTables } from "./tableDocs";
 
 export class StructuralEnumCompatibilityError extends Error {
@@ -149,9 +148,7 @@ export async function assertStructuralEnumCompatibility(
     relevantIds: ReadonlySet<string>,
 ): Promise<StructuralEnumAdmission> {
     const destination = captureStructuralSqlSnapshot(destinationDoc);
-    const sourceResult = await analyzeScopedSqlEnumDependencies(source as SqlEnvironmentInput, relevantIds, {
-        acquire: acquirePgliteCompilerLease,
-    });
+    const sourceResult = await analyzeScopedSqlEnumDependencies(source as SqlEnvironmentInput, relevantIds);
     if (sourceResult.status !== "complete") {
         throw new StructuralEnumCompatibilityError(
             sourceResult.diagnostics[0]?.message ?? "Structural transfer dependency evidence is unresolved or invalid.",
@@ -199,9 +196,7 @@ export async function assertPortableStructuralEnumCompatibility(
     relevantIds: ReadonlySet<string>,
 ): Promise<StructuralEnumAdmission> {
     const destination = captureStructuralSqlSnapshot(destinationDoc);
-    const sourceResult = await analyzeScopedSqlEnumDependencies(source as SqlEnvironmentInput, relevantIds, {
-        acquire: acquirePgliteCompilerLease,
-    });
+    const sourceResult = await analyzeScopedSqlEnumDependencies(source as SqlEnvironmentInput, relevantIds);
     if (sourceResult.status !== "complete") {
         throw new StructuralEnumCompatibilityError(
             sourceResult.diagnostics[0]?.message ?? "Structural transfer dependency evidence is unresolved or invalid.",

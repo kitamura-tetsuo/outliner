@@ -117,34 +117,6 @@ export function enqueueWrite<T>(op: (db: PGlite) => Promise<T>): Promise<T> {
 }
 
 /**
- * Exclusively lease the shared engine to a multi-step compiler operation.
- * The lease occupies the normal write queue until release, so compiler resets
- * cannot interleave with live Table materialization. Reusing this initialized
- * engine also avoids constructing multiple WASM PostgreSQL instances for one
- * structural admission.
- */
-export function acquirePgliteCompilerLease(): Promise<{
-    db: PGlite;
-    release(): void;
-}> {
-    let release!: () => void;
-    const held = new Promise<void>(resolve => {
-        release = resolve;
-    });
-    let publish!: (db: PGlite) => void;
-    const acquired = new Promise<PGlite>(resolve => {
-        publish = resolve;
-    });
-    const run = writeQueue.then(async () => {
-        const db = await getPglite();
-        publish(db);
-        await held;
-    });
-    writeQueue = run.then(() => undefined, () => undefined);
-    return acquired.then(db => ({ db, release }));
-}
-
-/**
  * Reset the module singleton. Test-only: unit tests must not leak the engine
  * (or a pending failed init) across test files.
  */

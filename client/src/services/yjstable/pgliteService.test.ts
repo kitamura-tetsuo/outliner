@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getLogger } from "../../lib/logger";
-import { acquirePgliteCompilerLease, enqueueWrite, resetPgliteForTests } from "./pgliteService";
+import { enqueueWrite, resetPgliteForTests } from "./pgliteService";
 
 vi.mock("../../lib/logger", () => ({
     getLogger: vi.fn(() => ({
@@ -33,18 +33,5 @@ describe("pgliteService", () => {
         // Next write should still work
         const nextWrite = enqueueWrite(async () => "success");
         await expect(nextWrite).resolves.toBe("success");
-
-        const lease = await acquirePgliteCompilerLease();
-        let ran = false;
-        const queued = enqueueWrite(async db => {
-            expect(db).toBe(lease.db);
-            ran = true;
-        });
-
-        await Promise.resolve();
-        expect(ran).toBe(false);
-        lease.release();
-        await queued;
-        expect(ran).toBe(true);
     });
 });
