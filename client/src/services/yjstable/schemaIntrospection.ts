@@ -368,19 +368,35 @@ export async function introspectTable(
             continue;
         }
         try {
-            const resolved = await db.query<{ value: unknown; }>(`SELECT (${row.column_default}) AS value`);
+            // PostgreSQL's text output preserves wall-clock TIMESTAMP values and
+            // microseconds without running them through PGlite's local-time Date decoder.
+            // For TIMESTAMPTZ, normalize the instant to UTC before formatting.
+            const expression = row.column_default;
+            const resolvedExpression = kind === "date"
+                ? `(${expression})::date::text`
+                : kind === "timestamp" && row.data_type === "timestamp with time zone"
+                ? `((${expression})::timestamptz AT TIME ZONE 'UTC')::text`
+                : kind === "timestamp"
+                ? `(${expression})::timestamp without time zone::text`
+                : `(${expression})`;
+            const resolved = await db.query<{ value: unknown; }>(`SELECT ${resolvedExpression} AS value`);
             const value = resolved.rows[0]?.value;
             let normalized: string | number | boolean | null | undefined;
             if (value === null) normalized = null;
-            else if (typeof value === "string" && (kind === "number" || kind === "integer")) {
+            else if (kind === "date") {
+                if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) normalized = value;
+            } else if (kind === "timestamp") {
+                if (typeof value === "string") {
+                    const wallClock = value.replace(" ", "T");
+                    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(wallClock)) {
+                        normalized = wallClock.includes(".") ? `${wallClock}Z` : `${wallClock}.000Z`;
+                    }
+                }
+            } else if (typeof value === "string" && (kind === "number" || kind === "integer")) {
                 const numeric = Number(value);
                 if (Number.isFinite(numeric) && (kind !== "integer" || Number.isInteger(numeric))) normalized = numeric;
             } else if (typeof value === "string" || typeof value === "boolean") normalized = value;
             else if (typeof value === "number" && Number.isFinite(value)) normalized = value;
-            else if (value instanceof Date && !Number.isNaN(value.valueOf())) {
-                const iso = value.toISOString();
-                normalized = kind === "date" ? iso.slice(0, 10) : iso;
-            }
             literalDefaults.set(
                 row.column_name,
                 normalized === undefined ? { status: "unsupported" } : { status: "literal", value: normalized },

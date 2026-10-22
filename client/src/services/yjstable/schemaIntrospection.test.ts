@@ -125,6 +125,20 @@ describe("parseCreateTable (PGlite introspection)", () => {
         ]);
     });
 
+    it("resolves DATE, TIMESTAMP and TIMESTAMPTZ literals without losing microseconds", async () => {
+        const parsed = await parseCreateTable(
+            "CREATE TABLE t (id TEXT, due DATE DEFAULT DATE '2026-03-05', "
+                + "scheduled TIMESTAMP DEFAULT TIMESTAMP '2026-03-05 10:00:00.123456', "
+                + "observed TIMESTAMPTZ DEFAULT TIMESTAMPTZ '2026-03-05 10:00:00.654321+09')",
+        );
+        expect(parsed.columns.map(column => column.literalDefault)).toEqual([
+            undefined,
+            { status: "literal", value: "2026-03-05" },
+            { status: "literal", value: "2026-03-05T10:00:00.123456Z" },
+            { status: "literal", value: "2026-03-05T01:00:00.654321Z" },
+        ]);
+    });
+
     it("does not issue value-evaluation queries for dynamic temporal casts", async () => {
         await enqueueWrite(async db => {
             const schema = "dynamic_temporal_default_test";

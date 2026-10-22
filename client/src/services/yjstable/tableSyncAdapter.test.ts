@@ -175,7 +175,10 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
 
             await expect(
                 adapter.prepareSchemaChange("CREATE TABLE tasks (id TEXT PRIMARY KEY, value NOSUCHTYPE)"),
-            ).rejects.toThrow();
+            ).rejects.toMatchObject({
+                kind: "schema",
+                message: expect.stringMatching(/type.*nosuchtype.*does not exist/i),
+            });
             expect(handles.schemaText.toString()).toBe(schemaBefore);
             expect(handles.data.toJSON()).toEqual(recordsBefore);
             expect(handles.data.get(recordId)?.get("title")).toBe("kept");

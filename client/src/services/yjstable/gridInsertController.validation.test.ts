@@ -142,6 +142,67 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         }
     });
 
+    it("preserves temporal defaults against PostgreSQL's own defaults in Asia/Tokyo", async () => {
+        const previousTimezone = process.env.TZ;
+        process.env.TZ = "Asia/Tokyo";
+        try {
+            expect(new Date(2026, 2, 5, 10).getTimezoneOffset()).toBe(-540);
+            const doc = new Y.Doc({ guid: "grid-insert-timezone-temporal-defaults" });
+            const schema =
+                "CREATE TABLE target (id TEXT PRIMARY KEY, due DATE DEFAULT DATE '2026-03-05', "
+                    + "scheduled TIMESTAMP DEFAULT TIMESTAMP '2026-03-05 10:00:00.123456', "
+                    + "observed TIMESTAMPTZ DEFAULT TIMESTAMPTZ '2026-03-05 10:00:00.654321+09')";
+            const parsed = await parseCreateTable(schema);
+            expect(parsed.columns.map(column => column.literalDefault)).toEqual([
+                undefined,
+                { status: "literal", value: "2026-03-05" },
+                { status: "literal", value: "2026-03-05T10:00:00.123456Z" },
+                { status: "literal", value: "2026-03-05T01:00:00.654321Z" },
+            ]);
+            const run = fixture(doc, schema, doc.guid);
+            run.table.undo.stopCapturing();
+            const history = run.table.undo.undoStack.length;
+            try {
+                expect(await run.controller.submit()).toMatchObject({ status: "inserted" });
+                expect(run.table.data.size).toBe(1);
+                expect([...run.table.data.values()][0]!.toJSON()).toMatchObject({
+                    due: "2026-03-05",
+                    scheduled: "2026-03-05T10:00:00.123456Z",
+                    observed: "2026-03-05T01:00:00.654321Z",
+                });
+                expect(run.table.undo.undoStack.length).toBeGreaterThan(history);
+                const insertedId = [...run.table.data.keys()][0]!;
+                const pgSchema = projectSchemaName(doc.guid);
+                await enqueueWrite(async db => {
+                    await db.query(`INSERT INTO "${pgSchema}".target (id) VALUES ($1)`, ["postgres-default-control"]);
+                });
+                const physical = await runSelect<{
+                    id: string;
+                    due: string;
+                    scheduled: string;
+                    observed: string;
+                }>(
+                    `SELECT id, due::text AS due, scheduled::text AS scheduled, `
+                        + `(observed AT TIME ZONE 'UTC')::text AS observed FROM "${pgSchema}".target`,
+                );
+                const inserted = physical.rows.find(row => row.id === insertedId);
+                const control = physical.rows.find(row => row.id === "postgres-default-control");
+                expect(control).toEqual({
+                    id: "postgres-default-control",
+                    due: "2026-03-05",
+                    scheduled: "2026-03-05 10:00:00.123456",
+                    observed: "2026-03-05 01:00:00.654321",
+                });
+                expect(inserted).toEqual({ ...control, id: insertedId });
+            } finally {
+                run.controller.dispose();
+            }
+        } finally {
+            if (previousTimezone === undefined) delete process.env.TZ;
+            else process.env.TZ = previousTimezone;
+        }
+    });
+
     it.each([
         ["timestamp", "scheduled TIMESTAMP DEFAULT ('now'::text)::timestamp"],
         ["date", "scheduled DATE DEFAULT ('today'::text)::date"],
