@@ -1389,7 +1389,12 @@ export class JobScheduler {
                 ) {
                     return { success: false, error: "stale-catalog/schema: Schedule inputs changed before write-back" };
                 }
-                if (!result.targetColumns?.length) {
+                const targetColumnNames = new Set(result.targetColumns?.map(column => column.name));
+                if (
+                    !result.targetColumns?.length
+                    || result.targetColumns.some(column => !column.name || !column.type)
+                    || result.rows.some(row => Object.keys(row).some(column => !targetColumnNames.has(column)))
+                ) {
                     return { success: false, error: "Schedule target column metadata is unavailable" };
                 }
 

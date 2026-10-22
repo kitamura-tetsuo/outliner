@@ -91,6 +91,32 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
         });
     }
 
+    for (const variant of ["incomplete", "missing-type"] as const) {
+        it(`refuses ${variant} target metadata before record effects`, async () => {
+            const projectId = `schedule-target-metadata-${variant}`;
+            await seedCatalogSchedule(value, projectId);
+            const before = await records(value, projectId);
+            const executor = (value.scheduler as unknown as {
+                executor: { executeJob: (job: JobData) => Promise<JobResult>; };
+            }).executor;
+            const execute = executor.executeJob.bind(executor);
+            executor.executeJob = async job => {
+                const completed = await execute(job);
+                const columns = completed.targetColumns ?? [];
+                return {
+                    ...completed,
+                    targetColumns: variant === "incomplete"
+                        ? columns.slice(0, 1)
+                        : columns.map((column, index) => index === 0 ? { ...column, type: "" } : column),
+                };
+            };
+
+            const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+            expect(run).to.deep.include({ success: false, error: "Schedule target column metadata is unavailable" });
+            expect(await records(value, projectId)).to.deep.equal(before);
+        });
+    }
+
     it("refuses a catalog changed after worker calculation and permits a later current run", async () => {
         const projectId = "schedule-catalog-stale";
         await seedCatalogSchedule(value, projectId);

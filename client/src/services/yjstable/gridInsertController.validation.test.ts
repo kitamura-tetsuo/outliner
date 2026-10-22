@@ -142,6 +142,30 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         }
     });
 
+    it.each([
+        ["timestamp", "scheduled TIMESTAMP DEFAULT ('now'::text)::timestamp"],
+        ["date", "scheduled DATE DEFAULT ('today'::text)::date"],
+    ])("refuses a dynamic %s cast before Grid effects", async (_label, column) => {
+        const schema = `CREATE TABLE target (id TEXT PRIMARY KEY, ${column})`;
+        const parsed = await parseCreateTable(schema);
+        expect(parsed.columns.find(candidate => candidate.name === "scheduled")?.literalDefault?.status).toBe(
+            "unsupported",
+        );
+        const doc = new Y.Doc({ guid: `grid-insert-dynamic-${_label}-cast` });
+        const run = fixture(doc, schema, doc.guid);
+        run.table.undo.stopCapturing();
+        const history = run.table.undo.undoStack.length;
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "refused", mode: "invalid-record" });
+            expect(run.table.data.size).toBe(0);
+            expect(run.table.undo.undoStack.length).toBe(history);
+            const physical = await runSelect(`SELECT * FROM "${projectSchemaName(doc.guid)}".target`);
+            expect(physical.rows).toEqual([]);
+        } finally {
+            run.controller.dispose();
+        }
+    });
+
     it("preserves a finite NUMERIC default as a number through the real Grid writer", async () => {
         const schema = "CREATE TABLE target (id TEXT PRIMARY KEY, v NUMERIC(5,2) DEFAULT 1.25)";
         const parsed = await parseCreateTable(schema);

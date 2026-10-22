@@ -170,11 +170,29 @@ export function extractCheckInOptions(
 
 function isStaticLiteralExpression(expression: string): boolean {
     try {
+        const stringLiteral = (value: unknown): string | undefined => {
+            const current = node(value);
+            const constant = node(current?.A_Const);
+            const literal = node(constant?.sval)?.sval;
+            if (typeof literal === "string") return literal;
+            const cast = node(current?.TypeCast);
+            return cast ? stringLiteral(cast.arg) : undefined;
+        };
         const visit = (value: unknown): boolean => {
             const current = node(value);
             if (current?.A_Const) return true;
             const cast = node(current?.TypeCast);
-            if (cast) return visit(cast.arg);
+            if (cast) {
+                const names = node(cast.typeName)?.names;
+                const target = Array.isArray(names) ? node(node(names.at(-1))?.String)?.sval : undefined;
+                if (target === "date" || target === "timestamp" || target === "timestamptz") {
+                    const literal = stringLiteral(cast.arg);
+                    if (literal === undefined) return false;
+                    if (target === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(literal)) return false;
+                    if (target !== "date" && !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(literal)) return false;
+                }
+                return visit(cast.arg);
+            }
             const op = node(current?.A_Expr);
             const names = op?.name;
             const operator = Array.isArray(names) ? node(node(names[0])?.String)?.sval : undefined;
