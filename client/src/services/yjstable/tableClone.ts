@@ -331,15 +331,18 @@ export async function importTableStructures(
         );
         const portableSnapshot = {
             catalog,
-            tables: Object.values(snapshots).map(snapshot => ({
-                id: snapshot.sourceTableId,
-                schema: snapshot.schemaSql,
-                records: sourceProjectId === destinationProjectDoc.guid
-                    ? [...(getTableHandles(destinationProjectDoc, snapshot.sourceTableId)?.data ?? [])].map(
-                        ([id, values]) => ({ id, values: Object.fromEntries(values) }),
-                    )
-                    : [],
-            })),
+            tables: [
+                ...Object.values(snapshots).map(snapshot => ({
+                    id: snapshot.sourceTableId,
+                    schema: snapshot.schemaSql,
+                    records: sourceProjectId === destinationProjectDoc.guid
+                        ? [...(getTableHandles(destinationProjectDoc, snapshot.sourceTableId)?.data ?? [])].map(
+                            ([id, values]) => ({ id, values: Object.fromEntries(values) }),
+                        )
+                        : [],
+                })),
+                { id: "__yjstable_outline_items_analysis__", schema: ITEMS_RELATION_CREATE_SQL, records: [] },
+            ],
             inspections: [
                 ...scopedGrids.map(snapshot => ({
                     id: snapshot.gridId,

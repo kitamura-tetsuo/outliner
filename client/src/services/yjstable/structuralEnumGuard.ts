@@ -12,7 +12,10 @@ import {
 import * as Y from "yjs";
 import { getCalendar, listCalendars } from "../calendar/calendarService";
 import { getGridHandles, listGrids } from "./gridDocs";
+import { ITEMS_RELATION_CREATE_SQL } from "./itemsRelation";
 import { getTableHandles, listTables } from "./tableDocs";
+
+const ITEMS_RELATION_ANALYSIS_ID = "__yjstable_outline_items_analysis__";
 
 export class StructuralEnumCompatibilityError extends Error {
     constructor(message: string) {
@@ -114,6 +117,7 @@ export function portableStructuralEnumsStillCompatible(
     }
     const currentById = new Map([
         ...Object.values(snapshots).map(snapshot => [snapshot.sourceTableId, snapshot.schemaSql] as const),
+        [ITEMS_RELATION_ANALYSIS_ID, ITEMS_RELATION_CREATE_SQL] as const,
         ...Object.values(grids).map(grid => [grid.gridId, grid.query] as const),
         ...additionalInspections.map(target => [target.id, target.sql] as const),
     ]);
@@ -160,13 +164,14 @@ export function captureStructuralSqlSnapshot(doc: Y.Doc): StructuralSqlSnapshot 
     if (catalog.status !== "ready") {
         throw new StructuralEnumCompatibilityError("SQL catalog dependency evidence is unavailable.");
     }
-    const tables = listTables(doc).map(entry => {
+    const tables: SqlTableSnapshot[] = listTables(doc).map(entry => {
         const handles = getTableHandles(doc, entry.tableId);
         if (!handles) {
             throw new StructuralEnumCompatibilityError(`Table "${entry.name}" dependency evidence is unavailable.`);
         }
         return { id: entry.tableId, schema: handles.schemaText.toString(), records: records(doc, entry.tableId) };
     });
+    tables.push({ id: ITEMS_RELATION_ANALYSIS_ID, schema: ITEMS_RELATION_CREATE_SQL, records: [] });
     const inspections: SqlInspectionTarget[] = listGrids(doc).flatMap(grid => {
         const sql = String(getGridHandles(doc, grid.gridId)?.entry.get("query") ?? "");
         return sql.trim() ? [{ id: grid.gridId, kind: "grid" as const, sql }] : [];

@@ -3210,7 +3210,7 @@ export class KeyEventHandler {
                     && Object.keys(structured.calendars ?? {}).length > 0;
                 const grids = structured.grids ?? {};
                 if (Object.keys(referencedSnapshots).length > 0 || Object.keys(grids).length > 0 || hasCalendars) {
-                    if (Object.keys(referencedSnapshots).length > 0 || Object.keys(grids).length > 0) {
+                    {
                         const { cloneGridTablesAcrossProjects } = await import(
                             "../services/clipboard/crossProjectGridPaste"
                         );
@@ -3271,8 +3271,6 @@ export class KeyEventHandler {
                         reusedTableIdMap = cloneResult.reusedTableIdMap;
                         pastedGridIdMap = cloneResult.gridIdMap;
                         reusedGridIdMap = cloneResult.reusedGridIdMap;
-                    } else {
-                        pastedTableIdMap = {};
                     }
 
                     const pastedCalendarIdMap: Record<string, string> = {};
