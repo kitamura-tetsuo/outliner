@@ -1392,6 +1392,7 @@ export class JobScheduler {
                 const targetColumnNames = new Set(result.targetColumns?.map(column => column.name));
                 if (
                     !result.targetColumns?.length
+                    || result.targetColumnCount !== result.targetColumns.length
                     || result.targetColumns.some(column => !column.name || !column.type)
                     || result.rows.some(row => Object.keys(row).some(column => !targetColumnNames.has(column)))
                 ) {

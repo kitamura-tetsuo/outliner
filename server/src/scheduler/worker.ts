@@ -178,6 +178,7 @@ async function executeJob(data: JobData) {
                 targetSchema: target?.schema,
                 enumColumns,
                 targetColumns,
+                targetColumnCount: targetColumns?.length,
             };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : String(error) };

@@ -166,6 +166,33 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         }
     });
 
+    it("resolves a fixed text-to-date-to-timestamp default through the real Grid writer", async () => {
+        const schema =
+            "CREATE TABLE target (id TEXT PRIMARY KEY, scheduled TIMESTAMP DEFAULT ('2026-03-05'::text)::date::timestamp)";
+        const parsed = await parseCreateTable(schema);
+        expect(parsed.columns.find(column => column.name === "scheduled")?.literalDefault).toEqual({
+            status: "literal",
+            value: "2026-03-05T00:00:00.000Z",
+        });
+        const doc = new Y.Doc({ guid: "grid-insert-fixed-temporal-cast" });
+        const run = fixture(doc, schema, doc.guid);
+        run.table.undo.stopCapturing();
+        const history = run.table.undo.undoStack.length;
+        try {
+            expect(await run.controller.submit()).toMatchObject({ status: "inserted" });
+            expect([...run.table.data.values()][0]!.toJSON()).toMatchObject({
+                scheduled: "2026-03-05T00:00:00.000Z",
+            });
+            expect(run.table.undo.undoStack.length).toBeGreaterThan(history);
+            const physical = await runSelect<{ scheduled: string; }>(
+                `SELECT scheduled::TEXT AS scheduled FROM "${projectSchemaName(doc.guid)}".target`,
+            );
+            expect(physical.rows).toEqual([{ scheduled: "2026-03-05 00:00:00" }]);
+        } finally {
+            run.controller.dispose();
+        }
+    });
+
     it("preserves a finite NUMERIC default as a number through the real Grid writer", async () => {
         const schema = "CREATE TABLE target (id TEXT PRIMARY KEY, v NUMERIC(5,2) DEFAULT 1.25)";
         const parsed = await parseCreateTable(schema);

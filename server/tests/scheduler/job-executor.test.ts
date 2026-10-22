@@ -89,6 +89,7 @@ describe("Job executor", function() {
             { name: "id", type: "text" },
             { name: "value", type: "int_like_state" },
         ]);
+        expect(second.targetColumnCount).to.equal(2);
     });
 
     it("fails the complete job when a captured catalog dependency is unavailable", async function() {

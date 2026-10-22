@@ -1,10 +1,11 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { resetPgliteForTests, TableSqlError } from "./pgliteService";
+import { enqueueWrite, resetPgliteForTests, TableSqlError } from "./pgliteService";
 import {
     assertSingleCreateTable,
     columnKindFromDataType,
     diffSchemas,
     extractCheckInOptions,
+    introspectTable,
     parseCreateTable,
 } from "./schemaIntrospection";
 
@@ -122,6 +123,38 @@ describe("parseCreateTable (PGlite introspection)", () => {
             { status: "literal", value: true },
             { status: "unsupported", diagnostic: "DEFAULT is not a supported scalar literal" },
         ]);
+    });
+
+    it("does not issue value-evaluation queries for dynamic temporal casts", async () => {
+        await enqueueWrite(async db => {
+            const schema = "dynamic_temporal_default_test";
+            const createSql =
+                "CREATE TABLE t (id TEXT, at TIMESTAMP DEFAULT ('now'::text)::timestamp, day DATE DEFAULT ('today'::text)::date)";
+            await db.exec(
+                `DROP SCHEMA IF EXISTS ${schema} CASCADE; CREATE SCHEMA ${schema}; SET search_path TO ${schema}; ${createSql}`,
+            );
+            const evaluations: string[] = [];
+            try {
+                const parsed = await introspectTable(
+                    {
+                        exec: sql => db.exec(sql),
+                        query: async <T>(sql: string, params?: unknown[]) => {
+                            if (/^SELECT \(/.test(sql) && /\) AS value$/.test(sql)) evaluations.push(sql);
+                            return await db.query<T>(sql, params);
+                        },
+                    },
+                    schema,
+                    createSql,
+                );
+                expect(parsed.columns.slice(1).map(column => column.literalDefault?.status)).toEqual([
+                    "unsupported",
+                    "unsupported",
+                ]);
+                expect(evaluations).toEqual([]);
+            } finally {
+                await db.exec(`DROP SCHEMA IF EXISTS ${schema} CASCADE; SET search_path TO public`);
+            }
+        });
     });
 
     it("rejects invalid SQL with a schema error", async () => {

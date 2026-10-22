@@ -30,4 +30,6 @@ export interface JobResult {
     enumColumns?: Record<string, readonly string[]>;
     /** Catalog facts for the exact compiled target relation. */
     targetColumns?: readonly { readonly name: string; readonly type: string; }[];
+    /** Independently captured cardinality used to reject truncated metadata handoffs. */
+    targetColumnCount?: number;
 }

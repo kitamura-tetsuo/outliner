@@ -178,6 +178,19 @@ function isStaticLiteralExpression(expression: string): boolean {
             const cast = node(current?.TypeCast);
             return cast ? stringLiteral(cast.arg) : undefined;
         };
+        const temporalLiteralKind = (value: unknown): "date" | "timestamp" | undefined => {
+            const cast = node(node(value)?.TypeCast);
+            if (!cast) return undefined;
+            const nested = temporalLiteralKind(cast.arg);
+            if (nested) return nested;
+            const names = node(cast.typeName)?.names;
+            const target = Array.isArray(names) ? node(node(names.at(-1))?.String)?.sval : undefined;
+            return target === "date"
+                ? "date"
+                : target === "timestamp" || target === "timestamptz"
+                ? "timestamp"
+                : undefined;
+        };
         const visit = (value: unknown): boolean => {
             const current = node(value);
             if (current?.A_Const) return true;
@@ -188,8 +201,9 @@ function isStaticLiteralExpression(expression: string): boolean {
                 if (target === "date" || target === "timestamp" || target === "timestamptz") {
                     const literal = stringLiteral(cast.arg);
                     if (literal === undefined) return false;
-                    if (target === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(literal)) return false;
-                    if (target !== "date" && !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(literal)) return false;
+                    const literalKind = temporalLiteralKind(cast.arg) ?? (target === "date" ? "date" : "timestamp");
+                    if (literalKind === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(literal)) return false;
+                    if (literalKind === "timestamp" && !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(literal)) return false;
                 }
                 return visit(cast.arg);
             }

@@ -95,6 +95,15 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
         it(`refuses ${variant} target metadata before record effects`, async () => {
             const projectId = `schedule-target-metadata-${variant}`;
             await seedCatalogSchedule(value, projectId);
+            if (variant === "incomplete") {
+                await configureTarget(
+                    value,
+                    projectId,
+                    "CREATE TABLE typed_output (id TEXT PRIMARY KEY, amount NUMERIC)",
+                    "INSERT INTO typed_output (id, amount) SELECT 'copy', amount FROM typed_output WHERE id='source' RETURNING id",
+                    { id: "source", amount: 12.5 },
+                );
+            }
             const before = await records(value, projectId);
             const executor = (value.scheduler as unknown as {
                 executor: { executeJob: (job: JobData) => Promise<JobResult>; };
