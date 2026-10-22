@@ -118,7 +118,9 @@ function selectExpression(expression: string): unknown {
     if (parsed.stmts?.length !== 1) return undefined;
     const select = node(parsed.stmts[0]?.stmt?.SelectStmt);
     const targets = select?.targetList;
-    if (!Array.isArray(targets) || targets.length !== 1 || select.fromClause || select.whereClause) return undefined;
+    if (!select || !Array.isArray(targets) || targets.length !== 1 || select.fromClause || select.whereClause) {
+        return undefined;
+    }
     return node(node(targets[0])?.ResTarget)?.val;
 }
 
@@ -168,36 +170,46 @@ export function extractCheckInOptions(
     }
 }
 
-function isSupportedCastType(typeName: unknown): boolean {
-    const type = node(typeName);
-    const names = type?.names;
-    if (!Array.isArray(names) || names.length !== 1 || type?.arrayBounds) return false;
-    const name = node(node(names[0])?.String)?.sval;
-    return typeof name === "string" && new Set([
-        "text",
-        "varchar",
-        "bpchar",
-        "char",
-        "int2",
-        "int4",
-        "int8",
-        "float4",
-        "float8",
-        "numeric",
-        "bool",
-        "date",
-        "timestamp",
-        "timestamptz",
-        "integer",
-        "bigint",
-        "smallint",
-        "boolean",
-        "real",
-        "decimal",
-    ]).has(name);
+interface CatalogScalarType {
+    data_type: string;
+    type_schema: string;
+    typtype: string;
+    typcategory: string;
 }
 
-function isStaticLiteralExpression(expression: string): boolean {
+function supportedScalarKind(type: CatalogScalarType): ColumnKind | undefined {
+    if (type.typtype === "e") return "enum";
+    if (type.typtype !== "b" || type.type_schema !== "pg_catalog" || type.typcategory === "A") return undefined;
+    const kind = columnKindFromDataType(type.data_type);
+    return kind === "other" ? undefined : kind;
+}
+
+function createCastTypeResolver(db: PgliteLike) {
+    const resolvedTypes = new Map<string, Promise<ColumnKind | undefined>>();
+    return async (typeName: unknown): Promise<ColumnKind | undefined> => {
+        const type = node(typeName);
+        const names = type?.names;
+        if (!Array.isArray(names) || names.length === 0 || type?.arrayBounds) return undefined;
+        const parts = names.map(part => node(node(part)?.String)?.sval);
+        if (!parts.every((part): part is string => typeof part === "string")) return undefined;
+        const identity = parts.map(part => `"${part.replaceAll('"', '""')}"`).join(".");
+        let pending = resolvedTypes.get(identity);
+        if (!pending) {
+            pending = db.query<CatalogScalarType>(
+                "SELECT format_type(t.oid, NULL) AS data_type, n.nspname AS type_schema, t.typtype, t.typcategory "
+                    + "FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace WHERE t.oid=to_regtype($1)",
+                [identity],
+            ).then(result => result.rows[0] && supportedScalarKind(result.rows[0]));
+            resolvedTypes.set(identity, pending);
+        }
+        return pending;
+    };
+}
+
+async function isStaticLiteralExpression(
+    expression: string,
+    resolveCastType: ReturnType<typeof createCastTypeResolver>,
+): Promise<boolean> {
     try {
         const stringLiteral = (value: unknown): string | undefined => {
             const current = node(value);
@@ -207,31 +219,31 @@ function isStaticLiteralExpression(expression: string): boolean {
             const cast = node(current?.TypeCast);
             return cast ? stringLiteral(cast.arg) : undefined;
         };
-        const temporalLiteralKind = (value: unknown): "date" | "timestamp" | undefined => {
+        const isNullLiteral = (value: unknown): boolean => {
+            const current = node(value);
+            if (node(current?.A_Const)?.isnull === true) return true;
+            const cast = node(current?.TypeCast);
+            return !!cast && isNullLiteral(cast.arg);
+        };
+        const temporalLiteralKind = async (value: unknown): Promise<"date" | "timestamp" | undefined> => {
             const cast = node(node(value)?.TypeCast);
             if (!cast) return undefined;
-            const nested = temporalLiteralKind(cast.arg);
+            const nested = await temporalLiteralKind(cast.arg);
             if (nested) return nested;
-            const names = node(cast.typeName)?.names;
-            const target = Array.isArray(names) ? node(node(names.at(-1))?.String)?.sval : undefined;
-            return target === "date"
-                ? "date"
-                : target === "timestamp" || target === "timestamptz"
-                ? "timestamp"
-                : undefined;
+            const kind = await resolveCastType(cast.typeName);
+            return kind === "date" || kind === "timestamp" ? kind : undefined;
         };
-        const visit = (value: unknown): boolean => {
+        const visit = async (value: unknown): Promise<boolean> => {
             const current = node(value);
             if (current?.A_Const) return true;
             const cast = node(current?.TypeCast);
             if (cast) {
-                if (!isSupportedCastType(cast.typeName)) return false;
-                const names = node(cast.typeName)?.names;
-                const target = Array.isArray(names) ? node(node(names.at(-1))?.String)?.sval : undefined;
-                if (target === "date" || target === "timestamp" || target === "timestamptz") {
+                const kind = await resolveCastType(cast.typeName);
+                if (kind === undefined) return false;
+                if ((kind === "date" || kind === "timestamp") && !isNullLiteral(cast.arg)) {
                     const literal = stringLiteral(cast.arg);
                     if (literal === undefined) return false;
-                    const literalKind = temporalLiteralKind(cast.arg) ?? (target === "date" ? "date" : "timestamp");
+                    const literalKind = await temporalLiteralKind(cast.arg) ?? kind;
                     if (literalKind === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(literal)) return false;
                     if (literalKind === "timestamp" && !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(literal)) return false;
                 }
@@ -241,9 +253,9 @@ function isStaticLiteralExpression(expression: string): boolean {
             const names = op?.name;
             const operator = Array.isArray(names) ? node(node(names[0])?.String)?.sval : undefined;
             return op?.kind === "AEXPR_OP" && Array.isArray(names) && names.length === 1
-                && (operator === "+" || operator === "-") && !op.lexpr && visit(op.rexpr);
+                && (operator === "+" || operator === "-") && !op.lexpr && await visit(op.rexpr);
         };
-        return visit(selectExpression(expression));
+        return await visit(selectExpression(expression));
     } catch {
         return false;
     }
@@ -319,20 +331,24 @@ export async function introspectTable(
     }
     const tableName = tables.rows[0].table_name;
 
-    const columns = await db.query<{
-        column_name: string;
-        data_type: string;
-        is_nullable: string;
-        typtype: string;
-        enum_labels: string[];
-        column_default: string | null;
-        character_maximum_length: number | null;
-        is_generated: string;
-    }>(
-        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, c.is_generated, t.typtype, "
+    const columns = await db.query<
+        CatalogScalarType & {
+            column_name: string;
+            data_type: string;
+            is_nullable: string;
+            enum_labels: string[];
+            column_default: string | null;
+            character_maximum_length: number | null;
+            is_generated: string;
+        }
+    >(
+        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, c.is_generated, "
+            + "t.typtype, t.typcategory, tn.nspname AS type_schema, "
             + "ARRAY(SELECT e.enumlabel FROM pg_enum e WHERE e.enumtypid=t.oid ORDER BY e.enumsortorder) AS enum_labels "
-            + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.udt_schema "
-            + "JOIN pg_type t ON t.typnamespace=n.oid AND t.typname=c.udt_name "
+            + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.table_schema "
+            + "JOIN pg_class relation ON relation.relnamespace=n.oid AND relation.relname=c.table_name "
+            + "JOIN pg_attribute a ON a.attrelid=relation.oid AND a.attname=c.column_name AND a.attnum>0 AND NOT a.attisdropped "
+            + "JOIN pg_type t ON t.oid=a.atttypid JOIN pg_namespace tn ON tn.oid=t.typnamespace "
             + "WHERE c.table_schema = $1 AND c.table_name = $2 ORDER BY c.ordinal_position",
         [schema, tableName],
     );
@@ -387,10 +403,11 @@ export async function introspectTable(
     }
 
     const literalDefaults = new Map<string, TableColumnSchema["literalDefault"]>();
+    const resolveCastType = createCastTypeResolver(db);
     for (const row of columns.rows) {
         if (row.column_default === null) continue;
-        const kind = row.typtype === "e" ? "enum" : columnKindFromDataType(row.data_type);
-        if (!isStaticLiteralExpression(row.column_default) || kind === "other") {
+        const kind = supportedScalarKind(row);
+        if (kind === undefined || !await isStaticLiteralExpression(row.column_default, resolveCastType)) {
             literalDefaults.set(row.column_name, {
                 status: "unsupported",
                 diagnostic: "DEFAULT is not a supported scalar literal",

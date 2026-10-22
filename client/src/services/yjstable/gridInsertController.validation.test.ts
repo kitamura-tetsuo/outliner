@@ -70,7 +70,7 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         );
         const run = fixture(
             doc,
-            `CREATE TABLE target (id ${idType} PRIMARY KEY, status TEXT DEFAULT 'Done' NOT NULL CHECK (status IN ('Open', 'Done')), state workflow_state DEFAULT 'Done' NOT NULL)`,
+            `CREATE TABLE target (id ${idType} PRIMARY KEY, status TEXT DEFAULT 'Done' NOT NULL CHECK (status IN ('Open', 'Done')), state workflow_state DEFAULT 'Done' NOT NULL, token UUID DEFAULT '550e8400-e29b-41d4-a716-446655440000'::uuid, count INTEGER DEFAULT ('12'::text)::pg_catalog.int4)`,
             doc.guid,
         );
         run.controller.dispose();
@@ -83,6 +83,8 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
             query: run.grid.entry.get("query") as string,
             connect,
         });
+        run.table.undo.stopCapturing();
+        const history = run.table.undo.undoStack.length;
         try {
             const outcome = await controller.submit();
             expect(outcome).toEqual({
@@ -93,7 +95,18 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
                 visibility: "outside",
             });
             expect(run.table.data.size).toBe(1);
-            expect([...run.table.data.values()][0]!.toJSON()).toMatchObject({ status: "Done", state: "Done" });
+            const expected = {
+                status: "Done",
+                state: "Done",
+                token: "550e8400-e29b-41d4-a716-446655440000",
+                count: 12,
+            };
+            expect([...run.table.data.values()][0]!.toJSON()).toMatchObject(expected);
+            expect(run.table.undo.undoStack.length).toBeGreaterThan(history);
+            const physical = await runSelect(
+                `SELECT status, state, token, count FROM "${projectSchemaName(doc.guid)}".target`,
+            );
+            expect(physical.rows).toEqual([expected]);
         } finally {
             controller.dispose();
             warm.dispose();
@@ -334,17 +347,26 @@ describe("Grid INSERT physical-value validation", { timeout: 60_000 }, () => {
         ["invalid numeric default", "CREATE TABLE target (id TEXT PRIMARY KEY, amount INTEGER NOT NULL DEFAULT NULL)"],
         ["required UUID", "CREATE TABLE target (id TEXT PRIMARY KEY, token UUID NOT NULL)"],
         [
+            "intermediate array default cast",
+            "CREATE TABLE target (id TEXT PRIMARY KEY, token TEXT DEFAULT ('{1,2}'::integer[])::text)",
+        ],
+        [
+            "intermediate range default cast",
+            "CREATE TABLE target (id TEXT PRIMARY KEY, token TEXT DEFAULT ('[1,3)'::int4range)::text)",
+        ],
+        [
             "checked required text",
             "CREATE TABLE target (id TEXT PRIMARY KEY, token TEXT NOT NULL CHECK (length(token) > 0))",
         ],
     ])("refuses an unsupported %s before Yjs mutation", async (_label, schema) => {
         const doc = new Y.Doc({ guid: `grid-insert-invalid-${_label}` });
-        const run = fixture(doc, schema);
+        const run = fixture(doc, schema, doc.guid);
         const history = run.table.undo.undoStack.length;
         try {
             expect(await run.controller.submit()).toMatchObject({ status: "refused", mode: "invalid-record" });
             expect(run.table.data.size).toBe(0);
             expect(run.table.undo.undoStack.length).toBe(history);
+            expect((await runSelect(`SELECT * FROM "${projectSchemaName(doc.guid)}".target`)).rows).toEqual([]);
         } finally {
             run.controller.dispose();
         }
