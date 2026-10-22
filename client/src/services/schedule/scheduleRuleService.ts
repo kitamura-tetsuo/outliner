@@ -1,12 +1,11 @@
 import type { Project } from "$shared/app-schema";
 import { EXPLICIT_SELECT_ALIAS_POLICY_VERSION } from "$shared/services/explicitSelectAlias";
-import { resolveScheduleTargetPlaceholder, validateScheduleRuleSql } from "$shared/services/scheduleRuleValidation";
+import { parseScheduleSqlIdentifiers, validateScheduleRuleSql } from "$shared/services/scheduleRuleValidation";
 import type { ScheduleRunStatusValue } from "$shared/services/scheduleStatus";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import { parseIdentifiers } from "../yjstable/queryAnalysis";
 import { listTables } from "../yjstable/tableDocs";
 
 /**
@@ -238,17 +237,6 @@ export interface ScheduleTableReference {
     enabled: boolean;
 }
 
-function scheduleReferenceSql(
-    sql: string,
-    targetTableId: unknown,
-    tables: ReturnType<typeof listTables>,
-): string {
-    const targetSqlName = typeof targetTableId === "string"
-        ? tables.find(table => table.tableId === targetTableId)?.sqlName
-        : undefined;
-    return targetSqlName ? resolveScheduleTargetPlaceholder(sql, targetSqlName) : sql;
-}
-
 /** Every Table id one Schedule references, write target and SQL alike. */
 export function scheduleTableReferences(
     project: Project | undefined,
@@ -269,7 +257,7 @@ export function scheduleTableReferences(
     const tables = listTables(project.ydoc);
     const sql = ruleMap.get("sql");
     if (typeof sql === "string" && sql) {
-        const identifiers = parseIdentifiers(scheduleReferenceSql(sql, targetTableId, tables));
+        const identifiers = parseScheduleSqlIdentifiers(sql);
         for (const table of tables) {
             if (!table.sqlName || seen.has(table.tableId)) continue;
             if (identifiers.has(table.sqlName.toLowerCase()) || identifiers.has(table.sqlName)) {
@@ -309,7 +297,7 @@ export function findSchedulesReferencingTable(
         if (!targetSqlName) return;
         const sql = ruleMap.get("sql") as string | undefined;
         if (!sql) return;
-        const identifiers = parseIdentifiers(scheduleReferenceSql(sql, ruleMap.get("targetTableId"), tables));
+        const identifiers = parseScheduleSqlIdentifiers(sql);
         if (identifiers.has(targetSqlName.toLowerCase()) || identifiers.has(targetSqlName)) {
             references.push({ ruleId, ruleName, kind: "sql-reference", enabled });
         }

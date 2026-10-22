@@ -30,6 +30,11 @@ describe("MCP Schedule diagnostics", function() {
         auditTable.set("sqlName", "audit");
         auditTable.set("doc", new Y.Doc());
         project.getMap("yjsTables").set("audit-table", auditTable);
+        const unrelatedTable = new Y.Map<unknown>();
+        unrelatedTable.set("name", "Unrelated");
+        unrelatedTable.set("sqlName", "unrelated");
+        unrelatedTable.set("doc", new Y.Doc());
+        project.getMap("yjsTables").set("unrelated-table", unrelatedTable);
         const tableConnection = await hocuspocus.openDirectConnection("projects/project-1/tables/table-1", {
             context: { uid: "user" },
         });
@@ -42,6 +47,11 @@ describe("MCP Schedule diagnostics", function() {
             context: { uid: "user" },
         });
         auditConnection.document.getText("schema").insert(0, "CREATE TABLE audit (id TEXT PRIMARY KEY)");
+        const unrelatedConnection = await hocuspocus.openDirectConnection(
+            "projects/project-1/tables/unrelated-table",
+            { context: { uid: "user" } },
+        );
+        unrelatedConnection.document.getText("schema").insert(0, "CREATE TABLE unrelated (id TEXT PRIMARY KEY)");
         const rule = new Y.Map<unknown>();
         rule.set("name", "Daily tasks");
         rule.set("targetTableId", "table-1");
@@ -136,6 +146,81 @@ describe("MCP Schedule diagnostics", function() {
         expect(tableConnection.document.getMap("data").size).to.equal(0);
         const placeholderRead = await service.getSchedule("user", "project-1", "rule-1");
         expect(placeholderRead.stored.sql).to.equal(placeholderSql);
+        const referenceSql = `/* 日本語 */ INSERT INTO {{table}} (id)
+SELECT id FROM U&"audit"
+RETURNING *`;
+        const referenceSave = await service.update(
+            "user",
+            "project-1",
+            "rule-1",
+            { sql: referenceSql },
+            placeholderRead.revision,
+        );
+        expect(referenceSave).to.include({ applied: true });
+        const sourceRow = new Y.Map<unknown>();
+        sourceRow.set("id", "source-row");
+        auditConnection.document.getMap("data").set("source-row", sourceRow);
+        const projectBeforeInspection = Y.encodeStateAsUpdate(project);
+        const targetBeforeInspection = Y.encodeStateAsUpdate(tableDocument);
+        const sourceBeforeInspection = Y.encodeStateAsUpdate(auditConnection.document);
+        const unrelatedBeforeInspection = Y.encodeStateAsUpdate(unrelatedConnection.document);
+        const inspectedTarget = await relations.getTable("user", "project-1", "table-1", true);
+        const inspectedSource = await relations.getTable("user", "project-1", "audit-table", true);
+        const inspectedUnrelated = await relations.getTable("user", "project-1", "unrelated-table", true);
+        expect(inspectedTarget.scheduleReferences[0]).to.deep.include({
+            ruleId: "rule-1",
+            referenceKinds: ["write-target"],
+            sql: referenceSql,
+        });
+        expect(inspectedSource.records[0]).to.deep.include({ recordId: "source-row", values: { id: "source-row" } });
+        expect(inspectedSource.scheduleReferences[0]).to.deep.include({
+            ruleId: "rule-1",
+            referenceKinds: ["sql-reference"],
+        });
+        expect(inspectedUnrelated.scheduleReferences).to.deep.equal([]);
+        expect(Y.encodeStateAsUpdate(project)).to.deep.equal(projectBeforeInspection);
+        expect(Y.encodeStateAsUpdate(tableDocument)).to.deep.equal(targetBeforeInspection);
+        expect(Y.encodeStateAsUpdate(auditConnection.document)).to.deep.equal(sourceBeforeInspection);
+        expect(Y.encodeStateAsUpdate(unrelatedConnection.document)).to.deep.equal(unrelatedBeforeInspection);
+
+        project.getMap("yjsTables").delete("table-1");
+        const retainedRead = await service.getSchedule("user", "project-1", "rule-1");
+        expect(retainedRead.stored.sql).to.equal(referenceSql);
+        expect(retainedRead.derived.validation.targetTable.error).to.include({ code: "missing_target" });
+        expect(retainedRead.derived.referencedTables.find(reference => reference.tableId === "audit-table"))
+            .to.deep.include({
+                tableId: "audit-table",
+                sqlName: "audit",
+                kind: "sql-reference",
+            });
+        const retainedList = await service.listSchedules("user", "project-1");
+        expect(retainedList.schedules[0]).to.deep.include({ ruleId: "rule-1" });
+        const retainedSourceList = await service.listSchedules(
+            "user",
+            "project-1",
+            "audit-table",
+            "sql-reference",
+        );
+        expect(retainedSourceList.schedules[0].referenceKinds).to.deep.equal(["sql-reference"]);
+        const retainedValidation = await service.validate(
+            "user",
+            "project-1",
+            retainedRead.stored as never,
+            "rule-1",
+        );
+        expect(retainedValidation).to.include({ accepted: false });
+        expect(retainedValidation.errors[0]).to.include({ code: "missing_target" });
+        expect(retainedValidation.candidateRows).to.deep.equal([]);
+        expect((await relations.getTable("user", "project-1", "audit-table", true)).records[0]).to.deep.include({
+            recordId: "source-row",
+        });
+        expect(rule.get("sql")).to.equal(referenceSql);
+        const replacementTarget = new Y.Map<unknown>();
+        replacementTarget.set("name", "Tasks");
+        replacementTarget.set("sqlName", "tasks");
+        replacementTarget.set("doc", new Y.Doc());
+        project.getMap("yjsTables").set("table-1", replacementTarget);
+        auditConnection.document.getMap("data").delete("source-row");
         rule.set("sql", read.stored.sql);
         const legacySql =
             "WITH source AS (SELECT 'legacy'::text AS id) INSERT INTO tasks (id) SELECT id value FROM source RETURNING *";
@@ -638,6 +723,7 @@ describe("MCP Schedule diagnostics", function() {
         expect(afterRejectedUpdate.revision).to.equal(beforeRejectedUpdate.revision);
         expect(afterRejectedUpdate.stored).to.deep.equal(beforeRejectedUpdate.stored);
         await auditConnection.disconnect();
+        await unrelatedConnection.disconnect();
         await tableConnection.disconnect();
         await connection.disconnect();
         hocuspocus.closeConnections();

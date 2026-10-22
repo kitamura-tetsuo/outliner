@@ -2,8 +2,8 @@ import type { Hocuspocus } from "@hocuspocus/server";
 import { loadModule, parseSync } from "libpg-query";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
-import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import {
+    parseScheduleSqlIdentifiers,
     resolveScheduleTargetPlaceholder,
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
@@ -286,11 +286,7 @@ export class OutlinerScheduleService {
         };
         add(candidate.targetTableId, "write-target");
         if (!analyzeSql) return [...output.values()];
-        const target = tables.get(candidate.targetTableId);
-        const targetSqlName = target ? String(target.get("sqlName") ?? "") : "";
-        const identifiers = parseSqlIdentifiers(
-            targetSqlName ? resolveScheduleTargetPlaceholder(candidate.sql, targetSqlName) : candidate.sql,
-        );
+        const identifiers = parseScheduleSqlIdentifiers(candidate.sql);
         tables.forEach((table, tableId) => {
             if (tableId === candidate.targetTableId) return;
             const name = String(table.get("sqlName") ?? "");

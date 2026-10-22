@@ -15,7 +15,10 @@ import {
     parseTopLevelInsertTarget,
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
-import { resolveScheduleTargetPlaceholder } from "../../../shared/src/services/scheduleRuleValidation.js";
+import {
+    parseScheduleSqlIdentifiers,
+    resolveScheduleTargetPlaceholder,
+} from "../../../shared/src/services/scheduleRuleValidation.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
 import { compileSqlEnvironment, type SqlEnumMetadata } from "../../../shared/src/services/sqlEnvironmentCompiler.js";
 import { describeViewSources, unavailableViewSources } from "../../../shared/src/services/viewSourceDiagnostics.js";
@@ -672,7 +675,7 @@ export class OutlinerRelationService {
                         .flatMap(([ruleId, rule]) => {
                             const kinds: ("write-target" | "sql-reference")[] = [];
                             if (rule.get("targetTableId") === tableId) kinds.push("write-target");
-                            const identifiers = parseSqlIdentifiers(String(rule.get("sql") ?? ""));
+                            const identifiers = parseScheduleSqlIdentifiers(String(rule.get("sql") ?? ""));
                             if (
                                 rule.get("targetTableId") !== tableId
                                 && table.relation

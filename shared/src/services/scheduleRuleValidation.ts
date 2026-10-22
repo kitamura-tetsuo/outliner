@@ -1,6 +1,7 @@
 import { parseSync, scanSync } from "libpg-query";
 import * as rruleImport from "rrule";
 import { validateExplicitSelectAliases } from "./explicitSelectAlias.js";
+import { parseSqlIdentifiers } from "./readOnlySql.js";
 
 const SCHEDULE_TARGET_PLACEHOLDER = "{{table}}";
 const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
@@ -33,6 +34,11 @@ function replaceScheduleTargetPlaceholder(sql: string, replacementText: string):
 
 function scheduleParserSql(sql: string): string {
     return replaceScheduleTargetPlaceholder(sql, PARSER_SCHEDULE_TARGET);
+}
+
+/** Discover Schedule source candidates without binding its product target placeholder. */
+export function parseScheduleSqlIdentifiers(sql: string): Set<string> {
+    return parseSqlIdentifiers(scheduleParserSql(sql), { excludeTopLevelInsertTarget: true });
 }
 
 /**

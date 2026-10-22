@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Project } from "../../../../shared/src/app-schema";
-import { createScheduleRule, scheduleTableReferences } from "../schedule/scheduleRuleService";
+import {
+    createScheduleRule,
+    findSchedulesReferencingTable,
+    scheduleTableReferences,
+} from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid, listGrids } from "./gridDocs";
 import { getTableDependencies, removeTableWithPolicy, removeTableWithPolicyUndoable } from "./tableDependencies";
@@ -56,6 +60,26 @@ describe("tableDependencies", () => {
         expect(nodeValue!.get("componentType")).toBe("yjstable");
         expect(nodeValue!.get("yjsGridId")).toBe(gridId);
         expect(listGrids(project.ydoc).map(g => g.gridId)).toContain(gridId);
+    });
+
+    it("keeps placeholder Schedule source references inspectable after deleting its target", () => {
+        const project = Project.createInstance("Test");
+        const targetId = createTable(project.ydoc, "Tasks", "tasks");
+        const sourceId = createTable(project.ydoc, "Audit", "audit");
+        const sql = "INSERT INTO {{table}} (id) SELECT id FROM audit RETURNING *";
+        const ruleId = createScheduleRule(project, { targetTableId: targetId, sql, rrule: "FREQ=DAILY" });
+
+        removeTableWithPolicy(project, targetId, "keep-references");
+
+        expect(getTableRegistry(project.ydoc).has(targetId)).toBe(false);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: targetId, kind: "write-target" },
+            { tableId: sourceId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, sourceId)).toEqual([
+            { ruleId, ruleName: "Untitled Schedule", kind: "sql-reference", enabled: true },
+        ]);
     });
 
     it("removes table removing direct references", () => {

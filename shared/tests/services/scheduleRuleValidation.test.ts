@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    parseScheduleSqlIdentifiers,
     resolveScheduleTargetPlaceholder,
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
@@ -76,6 +77,30 @@ describe("scheduleRuleValidation", () => {
 
             expect(resolveScheduleTargetPlaceholder(sql, 'Tasks "daily"')).toBe(
                 '/* {{table}} 日 */ INSERT INTO "Tasks ""daily""" (id) VALUES (\'{{table}}\') RETURNING *',
+            );
+            expect(sql).toContain("INSERT INTO {{table}}");
+        });
+
+        it("discovers sources without exposing or colliding with the parser-only target", () => {
+            const sql = `/* 日本語 {{table}} */ INSERT INTO {{table}} (id)
+                SELECT id FROM U&"d\\0061t\\0061" UESCAPE '\\'
+                UNION SELECT id FROM __outliner_schedule_target__
+                WHERE '{{table}}' = '{{table}}' RETURNING *`;
+
+            expect(parseScheduleSqlIdentifiers(sql)).toEqual(
+                new Set([
+                    "insert",
+                    "into",
+                    "id",
+                    "select",
+                    "from",
+                    "data",
+                    "uescape",
+                    "union",
+                    "where",
+                    "returning",
+                    "__outliner_schedule_target__",
+                ]),
             );
             expect(sql).toContain("INSERT INTO {{table}}");
         });
