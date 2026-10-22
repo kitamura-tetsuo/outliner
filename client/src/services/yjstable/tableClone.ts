@@ -23,7 +23,7 @@ import { enqueueWrite } from "./pgliteService";
 import { assertSelectQuery } from "./queryAnalysis";
 import { queryReadDependencies } from "./queryReadDependencies";
 import { deriveSqlName } from "./sqlNames";
-import { assertPortableStructuralEnumCompatibility } from "./structuralEnumGuard";
+import { assertPortableStructuralEnumCompatibility, type StructuralEnumAdmission } from "./structuralEnumGuard";
 import {
     createTable,
     getTableHandles,
@@ -59,6 +59,8 @@ export function copyTableData(source: TableHandles, destination: TableHandles): 
 }
 
 export interface TableCloneResult {
+    /** Immutable semantic dependency witness retained for replay admission. */
+    enumAdmission: StructuralEnumAdmission;
     bindings: TransferBindings;
     /** Source table id to fresh destination table id for successful clones. */
     tableIdMap: Record<string, string>;
@@ -278,18 +280,6 @@ async function validatePlansInPglite(plans: PlannedTable[], catalogSources: read
     });
 }
 
-function catalogSourcesReferencedBy(plans: readonly PlannedTable[]): string[] {
-    const sql = plans.flatMap(plan => [plan.schemaSql, plan.querySql]).join("\n").toLowerCase();
-    return (plans[0]?.snapshot.catalog?.objects ?? []).flatMap(object => {
-        const match = /^\s*CREATE\s+TYPE\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))\s+AS\s+ENUM\b/i
-            .exec(object.source);
-        const name = (match?.[1]?.replaceAll('""', '"') ?? match?.[2])?.toLowerCase();
-        if (!name) return [];
-        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        return new RegExp(`(^|[^a-z0-9_$])${escaped}([^a-z0-9_$]|$)`).test(sql) ? [object.source] : [];
-    });
-}
-
 function connectedGroups(plans: Map<string, PlannedTable>): string[][] {
     const adjacent = new Map<string, Set<string>>();
     for (const sourceTableId of plans.keys()) adjacent.set(sourceTableId, new Set());
@@ -340,7 +330,8 @@ export async function importTableStructures(
 ): Promise<TableCloneResult> {
     admit();
     if (!isGridSnapshotMap(grids)) throw new TableCloneError("Grid definitions are malformed");
-    let portableGuard: (() => Promise<void>) | undefined;
+    let enumAdmission: StructuralEnumAdmission;
+    let portableGuard: () => Promise<StructuralEnumAdmission>;
     const capturedCatalogs = Object.values(snapshots).map(snapshot => snapshot.catalog).filter(catalog =>
         catalog !== undefined
     );
@@ -370,7 +361,9 @@ export async function importTableStructures(
         const relevantIds = new Set([...Object.keys(snapshots), ...Object.keys(grids)]);
         portableGuard = () =>
             assertPortableStructuralEnumCompatibility(destinationProjectDoc, portableSnapshot, relevantIds);
-        await portableGuard();
+        enumAdmission = await portableGuard();
+    } else {
+        throw new TableCloneError("Clipboard SQL catalog dependency evidence is unavailable");
     }
     const failures: Record<string, string> = {};
     const failureGroups: string[][] = [];
@@ -501,7 +494,10 @@ export async function importTableStructures(
             }
 
             try {
-                await validatePlansInPglite(groupPlans, catalogSourcesReferencedBy(groupPlans));
+                const requiredIds = new Set(enumAdmission.requiredEnums.map(item => item.objectId));
+                const catalogSources = enumAdmission.sourceDescriptor.catalogObjects
+                    .filter(object => requiredIds.has(object.id)).map(object => object.source);
+                await validatePlansInPglite(groupPlans, catalogSources);
             } catch (err) {
                 const message = `Grid table structure failed SQL validation: ${cloneErrorMessage(err)}`;
                 for (const sourceTableId of group) failures[sourceTableId] = message;
@@ -509,7 +505,7 @@ export async function importTableStructures(
                 continue;
             }
 
-            await portableGuard?.();
+            enumAdmission = await portableGuard();
             assertAdmission();
             const currentSqlNames = new Set(listTables(destinationProjectDoc).map(table => table.sqlName));
             const occupiedName = groupPlans.find(plan => currentSqlNames.has(plan.destinationSqlName))
@@ -664,6 +660,7 @@ export async function importTableStructures(
         }
         assertAdmission();
         return {
+            enumAdmission,
             bindings: evidence,
             tableIdMap,
             gridIdMap,

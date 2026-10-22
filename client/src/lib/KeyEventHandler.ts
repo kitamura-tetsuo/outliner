@@ -3255,6 +3255,26 @@ export class KeyEventHandler {
                         });
                         pendingPaste = cloneResult;
                         if (cloneResult === undefined || !destinationCurrent()) return;
+                        if (generalStore.undoManager) {
+                            const { portableStructuralEnumsStillCompatible } = await import(
+                                "../services/yjstable/structuralEnumGuard"
+                            );
+                            const { getLoadedProjectDocById } = await import("./yjsService.svelte");
+                            const capturedCatalog = "catalog" in structured ? structured.catalog : undefined;
+                            const capturedCalendarQueries = "calendars" in structured
+                                ? Object.values(structured.calendars ?? {}).map(settings => settings.query)
+                                : [];
+                            authorizePasteRedo = () =>
+                                portableStructuralEnumsStillCompatible(
+                                    destinationDoc,
+                                    referencedSnapshots,
+                                    getLoadedProjectDocById(structured.sourceProjectId),
+                                    grids,
+                                    capturedCatalog,
+                                    capturedCalendarQueries,
+                                    cloneResult.enumAdmission,
+                                );
+                        }
                         pastedTableIdMap = cloneResult.tableIdMap;
                         reusedTableIdMap = cloneResult.reusedTableIdMap;
                         pastedGridIdMap = cloneResult.gridIdMap;

@@ -6,6 +6,7 @@ import { cloneScheduleRules } from "../schedule/scheduleRuleClone";
 import { getGridInsertTargetTableId, getGridRegistry } from "../yjstable/gridDocs";
 import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
 import { queryReadDependencies } from "../yjstable/queryReadDependencies";
+import type { StructuralEnumAdmission } from "../yjstable/structuralEnumGuard";
 import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
 import { destroyTableUndoManager, getTableHandles, getTableSqlName, removeTable } from "../yjstable/tableDocs";
 import {
@@ -170,6 +171,7 @@ export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): st
  * already been removed again (spec §9.6).
  */
 export interface PreparedGridPaste {
+    enumAdmission: StructuralEnumAdmission;
     bindings: TransferBindings;
     admit(): void;
     complete(): void;
@@ -432,6 +434,7 @@ export async function cloneGridTablesAcrossProjects(
         if (!options.deferCompletion) complete();
         else handedOff = true;
         return {
+            enumAdmission: cloneResult.enumAdmission,
             bindings,
             admit,
             complete,
@@ -804,7 +807,17 @@ export async function moveGridPlacementsAcrossProjects(
         }
         if (!permissions()) return refused("capability-denied");
         if (collision()) return refused("identity-collision");
-        if (!portableStructuralEnumsStillCompatible(destination.ydoc, snapshots, source.ydoc, grids)) {
+        if (
+            !portableStructuralEnumsStillCompatible(
+                destination.ydoc,
+                snapshots,
+                source.ydoc,
+                grids,
+                payload.catalog,
+                [],
+                preparation.enumAdmission,
+            )
+        ) {
             return refused("stale-transfer");
         }
         const copiedTables = new Map(
@@ -951,7 +964,15 @@ export async function moveGridPlacementsAcrossProjects(
             if (
                 !currentTransfer.ok || currentTransfer.project !== source
                 || JSON.stringify(currentTransfer.rootKeys) !== JSON.stringify(roots)
-                || !portableStructuralEnumsStillCompatible(destination.ydoc, snapshots, source.ydoc, grids)
+                || !portableStructuralEnumsStillCompatible(
+                    destination.ydoc,
+                    snapshots,
+                    source.ydoc,
+                    grids,
+                    payload.catalog,
+                    [],
+                    preparation.enumAdmission,
+                )
             ) {
                 throw new StaleGridTransferError("Pending move changed");
             }

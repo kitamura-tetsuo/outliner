@@ -209,7 +209,7 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
             });
             const destination = new Y.Doc({ guid: `unresolved-destination-${String(malformedCatalog)}` });
             await expect(duplicateObjects(source, destination, { type: "table", id: tableId }, "item-only"))
-                .rejects.toThrow('Required ENUM type "task_state" dependency evidence is unresolved');
+                .rejects.toThrow('type "task_state" does not exist');
             expect(listTables(destination)).toEqual([]);
         }
     });

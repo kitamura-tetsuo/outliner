@@ -22,11 +22,7 @@ import {
 } from "./gridDocs";
 import { queryReadDependencies } from "./queryReadDependencies";
 import { deriveSqlName } from "./sqlNames";
-import {
-    assertStructuralEnumCompatibility,
-    captureStructuralSqlSnapshot,
-    structuralSqlSnapshotRequiresGuard,
-} from "./structuralEnumGuard";
+import { assertStructuralEnumCompatibility, captureStructuralSqlSnapshot } from "./structuralEnumGuard";
 import {
     createTable,
     getTableHandles,
@@ -332,9 +328,7 @@ export async function materializeDuplicationPlan(
     }
     const idMap = new Map<string, string>(existingIdMap);
     try {
-        if (structuralSqlSnapshotRequiresGuard(sqlSnapshot, relevantSqlIds)) {
-            await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
-        }
+        await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
         assertCurrent();
         for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 
