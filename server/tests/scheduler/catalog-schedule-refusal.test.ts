@@ -106,7 +106,7 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
                     value,
                     projectId,
                     "CREATE TABLE typed_output (id TEXT PRIMARY KEY, amount NUMERIC)",
-                    "INSERT INTO typed_output (id, amount) SELECT 'copy', amount FROM typed_output WHERE id='source' RETURNING id",
+                    "INSERT INTO typed_output (id, amount) SELECT 'copy', amount FROM typed_output WHERE id='source' RETURNING *",
                     { id: "source", amount: 12.5 },
                 );
             }
