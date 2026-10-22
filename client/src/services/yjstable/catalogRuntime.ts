@@ -195,6 +195,11 @@ export class CatalogRuntime {
         const inputIdentity = JSON.stringify([snapshot.revision, tables]);
         let dependentTableIds = new Set<string>();
         try {
+            // A cold Page may register several Tables in one turn. Only the
+            // newest captured inputs should start an expensive SQL compile;
+            // superseded builds must still have invalidated their readers.
+            await Promise.resolve();
+            if (this.disposed || token !== this.buildGeneration) return this.state;
             if (snapshot.objects.length > 0) {
                 const compiled = await compileSqlEnvironment({ catalog: snapshot, tables, inspections: [] });
                 const dependencies = compiled.status === "ready"
