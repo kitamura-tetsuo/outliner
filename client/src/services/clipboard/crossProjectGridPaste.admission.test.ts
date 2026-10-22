@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid, getGridRegistry, removeGridWithPlacements } from "../yjstable/gridDocs";
-import { getPglite, resetPgliteForTests } from "../yjstable/pgliteService";
+import { resetPgliteForTests } from "../yjstable/pgliteService";
 import { exportGridSlice, exportTableStructures } from "../yjstable/tableClone";
 import { addRecord, createTable, getTableHandles, listTables } from "../yjstable/tableDocs";
 import { cloneGridTablesAcrossProjects } from "./crossProjectGridPaste";
@@ -84,7 +84,7 @@ function peerDelete(destination: Project, id: string, restore: boolean) {
 
 describe("cross-Project Copy final destination admission", { timeout: 60000 }, () => {
     for (const mutation of ["query", "incarnation", "dependency", "row", "unavailable"] as const) {
-        it(`no-data observes loaded identity before the actual SQL await: ${mutation}`, async () => {
+        it(`no-data rechecks loaded identity during admission: ${mutation}`, async () => {
             const f = fixture();
             const grid = Object.keys(f.options.grids)[0];
             if (mutation !== "unavailable") transport.loaded = f.source.ydoc;
@@ -92,29 +92,27 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
                 throw new Error("No-data must not acquire a source");
             });
             transport.acquire = acquire;
-            const db = await getPglite();
-            const original = db.exec.bind(db);
-            const entered = deferred();
-            const resume = deferred();
-            vi.spyOn(db, "exec").mockImplementation(async (...args: Parameters<typeof db.exec>) => {
-                if (String(args[0]).includes("__yjstable_clone_")) {
-                    entered.resolve();
-                    await resume.promise;
+            let admissionChecks = 0;
+            const mutate = () => {
+                if (mutation === "query") {
+                    getGridRegistry(f.source.ydoc).get(grid)!.set("query", "SELECT id FROM contacts");
+                } else if (mutation === "incarnation") peerDelete(f.source, grid, true);
+                else if (mutation === "dependency") {
+                    f.source.ydoc.getMap<Y.Map<unknown>>("yjsTables").get(f.table)!.set("doc", new Y.Doc());
+                } else if (mutation === "row") {
+                    addRecord(getTableHandles(f.source.ydoc, f.table)!, { id: "peer" }, "peer");
+                    getGridRegistry(f.source.ydoc).get(grid)!.set("name", "Peer presentation");
                 }
-                return original(...args);
+            };
+            const pending = cloneGridTablesAcrossProjects({
+                ...f.options,
+                copyData: false,
+                deferCompletion: true,
+                isDestinationCurrent: () => {
+                    if (++admissionChecks === 2) mutate();
+                    return true;
+                },
             });
-            const pending = cloneGridTablesAcrossProjects({ ...f.options, copyData: false, deferCompletion: true });
-            await entered.promise;
-            if (mutation === "query") getGridRegistry(f.source.ydoc).get(grid)!.set("query", "SELECT id FROM contacts");
-            if (mutation === "incarnation") peerDelete(f.source, grid, true);
-            if (mutation === "dependency") {
-                f.source.ydoc.getMap<Y.Map<unknown>>("yjsTables").get(f.table)!.set("doc", new Y.Doc());
-            }
-            if (mutation === "row") {
-                addRecord(getTableHandles(f.source.ydoc, f.table)!, { id: "peer" }, "peer");
-                getGridRegistry(f.source.ydoc).get(grid)!.set("name", "Peer presentation");
-            }
-            resume.resolve();
             if (mutation === "row" || mutation === "unavailable") {
                 const result = await pending;
                 expect(result).toBeDefined();

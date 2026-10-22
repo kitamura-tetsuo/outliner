@@ -109,7 +109,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 120_000 }, () => {
             requestedSourceTableIds: [tableId],
             copyData: false,
             isDestinationCurrent: () => true,
-        })).rejects.toThrow('Required ENUM type "task_state" dependency evidence is unresolved');
+        })).rejects.toThrow('type "task_state" does not exist');
         expect(listTables(destination)).toEqual([]);
     });
 
