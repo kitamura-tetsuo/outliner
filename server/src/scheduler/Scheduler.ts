@@ -3,11 +3,11 @@ import { Hocuspocus } from "@hocuspocus/server";
 import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
+import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import {
     resolveScheduleTargetPlaceholder,
     validateScheduleRuleSql,
 } from "../../../shared/src/services/scheduleRuleValidation.js";
-import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
 import { serializeSqlEnumValue } from "../../../shared/src/services/sqlEnumValue.js";
 import { serverLogger as logger } from "../utils/log-manager.js";
