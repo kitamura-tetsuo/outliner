@@ -33,14 +33,17 @@ function collectParsedRelationNames(value: unknown, identifiers: Set<string>): v
 /** Scanner-recognized SQL words; this is candidate discovery, not resolved dependency evidence. */
 export function parseSqlIdentifiers(sql: string): Set<string> {
     const identifiers = new Set<string>();
-    for (const token of scanSync(sql).tokens) {
+    const tokens = scanSync(sql).tokens;
+    for (const token of tokens) {
         if (token.tokenName === "IDENT" || token.keywordKind !== 0) identifiers.add(decodedIdentifier(token));
     }
     // PostgreSQL's scanner reports Unicode-escaped identifiers as an
     // implementation token rather than IDENT. The parsed RangeVar is the
     // library-authoritative decoded spelling, including UESCAPE handling.
-    const parsed = parseSync(sql);
-    for (const statement of parsed.stmts ?? []) collectParsedRelationNames(statement.stmt, identifiers);
+    if (tokens.some(token => token.tokenName === "UNKNOWN" && token.keywordKind === 0)) {
+        const parsed = parseSync(sql);
+        for (const statement of parsed.stmts ?? []) collectParsedRelationNames(statement.stmt, identifiers);
+    }
     return identifiers;
 }
 
