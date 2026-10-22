@@ -15,7 +15,6 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
 import { createGrid, getGridHandles, readGridComponents, setGridColumnWidth } from "../../services/yjstable/gridDocs";
-import { resolveBareIdMutationAuthority } from "../../services/yjstable/queryAnalysis";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTable, getTableHandles } from "../../services/yjstable/tableDocs";
@@ -55,7 +54,7 @@ function baseProps(handles: NonNullable<ReturnType<typeof getTableHandles>>) {
         schema,
         query: QUERY,
         result: twoRowResult(),
-        bareIdAuthority: resolveBareIdMutationAuthority(QUERY, "tasks", schema, twoRowResult().columns),
+        bareIdAuthority: { status: "compatible" as const, editableColumns: new Set(["title"]) },
         componentTypes: {},
         columnLabels: {},
         hiddenColumns: {},
