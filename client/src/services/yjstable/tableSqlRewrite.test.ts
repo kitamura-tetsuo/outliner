@@ -38,6 +38,35 @@ describe("rewriteCreateTableSql", () => {
 });
 
 describe("rewriteTableQuerySql", () => {
+    it("uses byte locations while preserving Unicode, comments, and dollar-quoted text", () => {
+        const sql = "-- 日本語 FROM tasks\nSELECT tasks.id, $$FROM tasks$$ AS note, 'tasks' AS source_kind FROM tasks";
+        expect(rewriteTableQuerySql(sql, { tasks: "tasks_2" }).sql).toBe(
+            "-- 日本語 FROM tasks\nSELECT tasks_2.id, $$FROM tasks$$ AS note, 'tasks_2' AS source_kind FROM tasks_2",
+        );
+    });
+
+    it("applies PostgreSQL non-recursive and recursive CTE visibility", () => {
+        expect(
+            rewriteTableQuerySql("WITH tasks AS (SELECT * FROM tasks) SELECT * FROM tasks", { tasks: "tasks_2" }).sql,
+        )
+            .toBe("WITH tasks AS (SELECT * FROM tasks_2) SELECT * FROM tasks");
+        expect(
+            rewriteTableQuerySql(
+                "WITH RECURSIVE tasks AS (SELECT 1 UNION ALL SELECT id FROM tasks) SELECT * FROM tasks",
+                { tasks: "tasks_2" },
+            ).actualRelationDependencies,
+        ).toEqual([]);
+    });
+
+    it("does not classify computed source_kind expressions as routing references", () => {
+        const result = rewriteTableQuerySql(
+            "SELECT upper('tasks') AS source_kind, 'tasks' AS label FROM actual",
+            { tasks: "tasks_2", actual: "actual_2" },
+        );
+        expect(result.sql).toBe("SELECT upper('tasks') AS source_kind, 'tasks' AS label FROM actual_2");
+        expect(result.relationDependencies).toEqual(["actual"]);
+    });
+
     it("reports reserved relations that rebind without treating them as clipboard dependencies", () => {
         const result = rewriteTableQuerySql("SELECT id, text FROM outline_items", new Map());
 
@@ -144,17 +173,19 @@ WHERE EXISTS (SELECT 1 FROM orders nested WHERE nested.customer_id = c.id)`;
         expect(result.relationDependencies).toEqual(["copied", "missing"]);
     });
 
-    it("rejects schema-qualified and ambiguous copied relation constructs", () => {
+    it("rejects schema-qualified, function, and multiple-statement constructs", () => {
         expect(() => rewriteTableQuerySql("SELECT * FROM public.sales", { sales: "sales_2" }))
             .toThrow(TableSqlRewriteError);
         expect(() => rewriteTableQuerySql("SELECT * FROM sales()", { sales: "sales_2" }))
             .toThrow(/ambiguous/);
-        expect(() => rewriteTableQuerySql("SELECT * FROM (sales JOIN customers ON true)", { sales: "sales_2" }))
-            .toThrow(/Parenthesized joined relation/);
-        expect(() => rewriteTableQuerySql("TABLE sales", { sales: "sales_2" }))
-            .toThrow(/not supported/);
         expect(() => rewriteTableQuerySql("SELECT * FROM sales; SELECT 1", { sales: "sales_2" }))
-            .toThrow(/Multiple SQL statements/);
+            .toThrow(/one SQL statement/);
+        expect(
+            rewriteTableQuerySql("SELECT * FROM (sales JOIN customers ON true)", {
+                sales: "sales_2",
+                customers: "customers_2",
+            }).sql,
+        ).toBe("SELECT * FROM (sales_2 JOIN customers_2 ON true)");
     });
 });
 
@@ -274,7 +305,6 @@ describe("truthful physical dependency boundaries", () => {
             sql: "TABLE a INTERSECT DISTINCT TABLE pg_class EXCEPT TABLE b",
             names: ["a", "pg_class", "b"],
         },
-        { name: "TABLE ONLY quoted", sql: 'TABLE ONLY "pg_class" *', names: ["pg_class"] },
         { name: "TABLE ONLY parentheses", sql: 'SELECT 1 WHERE EXISTS (TABLE ONLY ("pg_class"))', names: ["pg_class"] },
         { name: "TABLE of visible CTE", sql: "WITH q AS (SELECT 1) TABLE q", names: [] },
         { name: "reserved TABLE", sql: "TABLE outline_items", names: [], reserved: ["outline_items"] },
@@ -329,6 +359,9 @@ describe("truthful physical dependency boundaries", () => {
     it.each(["TABLE public.a", "TABLE ONLY public.a", "TABLE ONLY (public.a)"])("refuses qualified operand %s", sql => {
         expect(() => rewriteTableQuerySql(sql, new Map())).toThrow(/Schema-qualified/);
     });
+    it("rejects invalid TABLE syntax instead of returning partial dependencies", () => {
+        expect(() => rewriteTableQuerySql('TABLE ONLY "pg_class" *', new Map())).toThrow(/parsing failed/);
+    });
     it.each([
         "TABLE a",
         "SELECT 1 WHERE EXISTS (TABLE a)",
@@ -336,7 +369,9 @@ describe("truthful physical dependency boundaries", () => {
         "INSERT INTO target TABLE a",
         "INSERT INTO target (id) TABLE a",
         "INSERT INTO target AS t (id) OVERRIDING SYSTEM VALUE TABLE a",
-    ])("retains the mapped TABLE refusal in query and Schedule contexts: %s", sql => {
-        expect(() => rewriteTableQuerySql(sql, { a: "a_copy" })).toThrow(/TABLE query syntax.*not supported/);
+    ])("rewrites mapped TABLE operands in query and Schedule contexts: %s", sql => {
+        const result = rewriteTableQuerySql(sql, { a: "a_copy" });
+        expect(result.sql).toContain("TABLE a_copy");
+        expect(result.actualRelationDependencies).toContain("a");
     });
 });

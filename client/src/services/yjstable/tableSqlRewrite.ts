@@ -1,4 +1,7 @@
+import { loadModule, parseSync, scanSync, type ScanToken } from "libpg-query";
 import { RESERVED_RELATION_NAMES } from "./sqlNames";
+
+await loadModule();
 
 export class TableSqlRewriteError extends Error {
     constructor(message: string) {
@@ -9,522 +12,86 @@ export class TableSqlRewriteError extends Error {
 
 export interface TableSqlRewriteResult {
     sql: string;
-    /** Non-system relations actually read by FROM/JOIN/TABLE or projected as source_kind. */
+    /** User relations read or written, plus direct source_kind routing labels. */
     relationDependencies: string[];
-    /** Relations named by FROM/JOIN/TABLE or DML targets, excluding source_kind display literals. */
+    /** User relations actually read or written. */
     actualRelationDependencies: string[];
-    /** System relations named by FROM/JOIN/TABLE, excluding source_kind display literals. */
+    /** Reserved relations actually read or written. */
     actualReservedRelationDependencies: string[];
-    /** System-defined relations that intentionally rebind to the destination project. */
+    /** Reserved relations read/written or used as routing labels. */
     reservedRelationDependencies: string[];
 }
 
-type TokenKind = "word" | "quotedIdentifier" | "string" | "dollarString" | "space" | "comment" | "symbol";
+type Node = Record<string, unknown>;
+type Replacement = { startByte: number; endByte: number; text: string; };
+type Binding = { destination?: string; };
+type Scope = { parent?: Scope; ctes: Set<string>; bindings: Map<string, Binding>; };
 
-interface Token {
-    kind: TokenKind;
-    text: string;
-    start: number;
-    end: number;
-    value?: string;
+function fail(message: string, cause?: unknown): never {
+    const error = new TableSqlRewriteError(message);
+    if (cause !== undefined) error.cause = cause;
+    throw error;
 }
-
-interface CteScope {
-    start: number;
-    end: number;
-    names: Set<string>;
+function node(value: unknown): value is Node {
+    return typeof value === "object" && value !== null;
 }
-
-interface QualifierScope {
-    name: string;
-    start: number;
-    end: number;
-    destination?: string;
+function parseOne(sql: string): Node {
+    try {
+        const parsed = parseSync(sql) as { stmts?: { stmt?: Node; }[]; };
+        if (parsed.stmts?.length !== 1 || !parsed.stmts[0]?.stmt) fail("Exactly one SQL statement is required");
+        return parsed.stmts[0].stmt;
+    } catch (error) {
+        if (error instanceof TableSqlRewriteError) throw error;
+        fail("SQL parsing failed", error);
+    }
 }
-
-const RELATION_FOLLOW_KEYWORDS = new Set([
-    "where",
-    "join",
-    "left",
-    "right",
-    "full",
-    "inner",
-    "outer",
-    "cross",
-    "natural",
-    "on",
-    "using",
-    "group",
-    "having",
-    "order",
-    "limit",
-    "offset",
-    "fetch",
-    "union",
-    "intersect",
-    "except",
-    "returning",
-    "window",
-    "for",
-    "tablesample",
-]);
-
-/**
- * Words that open a query inside parentheses. A data-modifying CTE
- * (`WITH x AS (INSERT … RETURNING *)`) is a query too: treating it as a scalar
- * expression would hide its FROM clause from the relation scanner.
- */
-const QUERY_HEAD_KEYWORDS = new Set(["select", "table", "with", "values", "insert", "update", "delete"]);
-
-/**
- * Words that make a following UPDATE a locking clause or a conflict action
- * (`FOR UPDATE`, `FOR NO KEY UPDATE`, `DO UPDATE`) rather than the head of an
- * UPDATE statement, so no relation name follows.
- */
-const NON_STATEMENT_UPDATE_PREDECESSORS = new Set(["for", "no", "key", "do"]);
-
-/** Words that can follow an INSERT/UPDATE/DELETE target instead of an alias. */
-const DML_TARGET_FOLLOW_KEYWORDS = new Set([
-    "set",
-    "values",
-    "select",
-    "table",
-    "default",
-    "overriding",
-    "on",
-    "where",
-    "returning",
-    "from",
-    "using",
-    "with",
-]);
-
-const FROM_TERMINATORS = new Set([
-    "where",
-    "group",
-    "having",
-    "order",
-    "limit",
-    "offset",
-    "fetch",
-    "union",
-    "intersect",
-    "except",
-    "returning",
-    "window",
-    "for",
-]);
-
-function fail(message: string): never {
-    throw new TableSqlRewriteError(message);
+function quoteIdentifier(name: string): string {
+    const scanned = scanSync(name).tokens;
+    return scanned.length === 1 && scanned[0]!.tokenName === "IDENT" && scanned[0]!.text === name
+        ? name
+        : `"${name.replaceAll('"', '""')}"`;
 }
-
-function tokenize(sql: string): Token[] {
-    const tokens: Token[] = [];
-    let index = 0;
-    const push = (kind: TokenKind, start: number, end: number, value?: string) => {
-        tokens.push({ kind, text: sql.slice(start, end), start, end, value });
-        index = end;
-    };
-
-    while (index < sql.length) {
-        const start = index;
-        const char = sql[index];
-
-        if (/\s/.test(char)) {
-            index++;
-            while (index < sql.length && /\s/.test(sql[index])) index++;
-            push("space", start, index);
-            continue;
+function identifierReplacement(token: ScanToken, name: string): string {
+    return token.text.startsWith('"') ? `"${name.replaceAll('"', '""')}"` : quoteIdentifier(name);
+}
+function tokenAt(tokens: ScanToken[], location: unknown, description: string): ScanToken {
+    if (typeof location !== "number") fail(`${description} has no source location`);
+    const token = tokens.find(candidate => candidate.start === location);
+    if (!token) fail(`${description} has an invalid source location`);
+    return token;
+}
+function addReplacement(replacements: Replacement[], token: ScanToken, text: string): void {
+    replacements.push({ startByte: token.start, endByte: token.end, text });
+}
+function applyReplacements(sql: string, replacements: Replacement[]): string {
+    const bytes = new TextEncoder().encode(sql);
+    const ordered = [...replacements].sort((a, b) => a.startByte - b.startByte);
+    for (let index = 0; index < ordered.length; index++) {
+        const current = ordered[index]!;
+        if (current.startByte < 0 || current.endByte < current.startByte || current.endByte > bytes.length) {
+            fail("A parser source location falls outside the SQL text");
         }
-        if (sql.startsWith("--", index)) {
-            index += 2;
-            while (index < sql.length && sql[index] !== "\r" && sql[index] !== "\n") index++;
-            push("comment", start, index);
-            continue;
+        if (index > 0 && ordered[index - 1]!.endByte > current.startByte) fail("SQL replacement ranges overlap");
+    }
+    let result = "";
+    let cursor = 0;
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    try {
+        for (const replacement of ordered) {
+            result += decoder.decode(bytes.slice(cursor, replacement.startByte));
+            result += replacement.text;
+            cursor = replacement.endByte;
         }
-        if (sql.startsWith("/*", index)) {
-            let depth = 1;
-            index += 2;
-            while (index < sql.length && depth > 0) {
-                if (sql.startsWith("/*", index)) {
-                    depth++;
-                    index += 2;
-                } else if (sql.startsWith("*/", index)) {
-                    depth--;
-                    index += 2;
-                } else index++;
-            }
-            if (depth !== 0) fail("Unterminated SQL block comment");
-            push("comment", start, index);
-            continue;
-        }
-        if (char === "'") {
-            index++;
-            let value = "";
-            let closed = false;
-            while (index < sql.length) {
-                if (sql[index] === "'") {
-                    if (sql[index + 1] === "'") {
-                        value += "'";
-                        index += 2;
-                        continue;
-                    }
-                    index++;
-                    closed = true;
-                    break;
-                }
-                value += sql[index++];
-            }
-            if (!closed) fail("Unterminated SQL string literal");
-            push("string", start, index, value);
-            continue;
-        }
-        if (char === '"') {
-            index++;
-            let value = "";
-            let closed = false;
-            while (index < sql.length) {
-                if (sql[index] === '"') {
-                    if (sql[index + 1] === '"') {
-                        value += '"';
-                        index += 2;
-                        continue;
-                    }
-                    index++;
-                    closed = true;
-                    break;
-                }
-                value += sql[index++];
-            }
-            if (!closed) fail("Unterminated quoted SQL identifier");
-            push("quotedIdentifier", start, index, value);
-            continue;
-        }
-        if (char === "$") {
-            const delimiter = sql.slice(index).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)?.[0];
-            if (delimiter) {
-                const contentStart = index + delimiter.length;
-                const close = sql.indexOf(delimiter, contentStart);
-                if (close === -1) fail("Unterminated dollar-quoted SQL string");
-                push("dollarString", start, close + delimiter.length, sql.slice(contentStart, close));
-                continue;
-            }
-        }
-        if (/[A-Za-z_]/.test(char)) {
-            index++;
-            while (index < sql.length && /[A-Za-z0-9_$]/.test(sql[index])) index++;
-            push("word", start, index, sql.slice(start, index).toLowerCase());
-            continue;
-        }
-
-        push("symbol", start, start + 1, char);
+        result += decoder.decode(bytes.slice(cursor));
+    } catch (error) {
+        fail("A parser source location does not fall on a UTF-8 boundary", error);
     }
-    return tokens;
+    parseOne(result);
+    return result;
 }
-
-function isTrivia(token: Token): boolean {
-    return token.kind === "space" || token.kind === "comment";
-}
-
-function nextSignificant(tokens: Token[], index: number): number | undefined {
-    for (let i = index + 1; i < tokens.length; i++) {
-        if (!isTrivia(tokens[i])) return i;
-    }
-    return undefined;
-}
-
-function previousSignificant(tokens: Token[], index: number): number | undefined {
-    for (let i = index - 1; i >= 0; i--) {
-        if (!isTrivia(tokens[i])) return i;
-    }
-    return undefined;
-}
-
-function word(token: Token | undefined, expected?: string): boolean {
-    if (token?.kind !== "word") return false;
-    return expected === undefined || token.value === expected;
-}
-
-function identifierValue(token: Token | undefined): string | undefined {
-    if (token?.kind === "word" || token?.kind === "quotedIdentifier") return token.value;
-    return undefined;
-}
-
-function replacementIdentifier(token: Token, destination: string): string {
-    return token.kind === "quotedIdentifier" ? `"${destination.replaceAll('"', '""')}"` : destination;
-}
-
-function replacementString(destination: string): string {
-    return `'${destination.replaceAll("'", "''")}'`;
-}
-
-/**
- * The alias of an INSERT/UPDATE/DELETE target, or `undefined` when it has
- * none. A DML target is not followed by the same words a FROM relation is —
- * `SET`, `VALUES` and a bare column list all mean "no alias" — so it needs its
- * own reading. Postgres replaces the relation name with the alias when one is
- * given, which is why the two cases are handled differently by the caller.
- */
-function dmlTargetAlias(tokens: Token[], relationIndex: number): string | undefined {
-    let cursor = nextSignificant(tokens, relationIndex);
-    if (cursor === undefined) return undefined;
-    if (word(tokens[cursor], "as")) {
-        cursor = nextSignificant(tokens, cursor) ?? -1;
-        if (cursor < 0) return undefined;
-        return identifierValue(tokens[cursor]);
-    }
-    const alias = identifierValue(tokens[cursor]);
-    if (alias === undefined) return undefined;
-    if (tokens[cursor].kind === "word" && DML_TARGET_FOLLOW_KEYWORDS.has(alias)) return undefined;
-    return alias;
-}
-
-function relationAlias(tokens: Token[], relationIndex: number): string | undefined {
-    let cursor = nextSignificant(tokens, relationIndex);
-    if (cursor === undefined) return undefined;
-    if (word(tokens[cursor], "as")) cursor = nextSignificant(tokens, cursor) ?? -1;
-    if (cursor < 0) return undefined;
-    const alias = identifierValue(tokens[cursor]);
-    if (alias === undefined) return undefined;
-    if (tokens[cursor].kind === "word" && RELATION_FOLLOW_KEYWORDS.has(alias)) return undefined;
-    return alias;
-}
-
-function sourceKindAlias(tokens: Token[], literalIndex: number): number | undefined {
-    let cursor = nextSignificant(tokens, literalIndex);
-    if (cursor !== undefined && tokens[cursor].kind === "symbol" && tokens[cursor].value === ":") {
-        const secondColon = nextSignificant(tokens, cursor);
-        const castType = secondColon === undefined ? undefined : nextSignificant(tokens, secondColon);
-        if (
-            secondColon === undefined || tokens[secondColon].kind !== "symbol" || tokens[secondColon].value !== ":"
-            || castType === undefined || identifierValue(tokens[castType]) === undefined
-        ) {
-            return undefined;
-        }
-        cursor = nextSignificant(tokens, castType);
-    }
-    if (cursor !== undefined && word(tokens[cursor], "as")) cursor = nextSignificant(tokens, cursor);
-    return cursor !== undefined && identifierValue(tokens[cursor]) === "source_kind" ? cursor : undefined;
-}
-
-function parenMetadata(tokens: Token[]): {
-    matchingClose: Map<number, number>;
-    enclosingOpen: Array<number | undefined>;
-    enclosingClose: Array<number | undefined>;
-} {
-    const stack: number[] = [];
-    const matchingClose = new Map<number, number>();
-    const enclosingOpen: Array<number | undefined> = new Array(tokens.length);
-    const enclosingClose: Array<number | undefined> = new Array(tokens.length);
-    for (let i = 0; i < tokens.length; i++) {
-        enclosingOpen[i] = stack.length > 0 ? stack[stack.length - 1] : undefined;
-        enclosingClose[i] = enclosingOpen[i];
-        if (tokens[i].kind !== "symbol") continue;
-        if (tokens[i].value === "(") stack.push(i);
-        else if (tokens[i].value === ")") {
-            const open = stack.pop();
-            if (open === undefined) fail("Unbalanced SQL parentheses");
-            matchingClose.set(open, i);
-        }
-    }
-    if (stack.length > 0) fail("Unbalanced SQL parentheses");
-
-    const openToClose = matchingClose;
-    for (let i = 0; i < tokens.length; i++) {
-        const open = enclosingClose[i];
-        enclosingClose[i] = open === undefined ? undefined : openToClose.get(open);
-    }
-    return { matchingClose, enclosingOpen, enclosingClose };
-}
-
-function collectCteScopes(
-    tokens: Token[],
-    matchingClose: Map<number, number>,
-    enclosingClose: Array<number | undefined>,
-): { scopes: CteScope[]; queryStarts: Set<number>; } {
-    const scopes: CteScope[] = [];
-    const queryStarts = new Set<number>();
-    for (let i = 0; i < tokens.length; i++) {
-        if (!word(tokens[i], "with")) continue;
-        let cursor = nextSignificant(tokens, i);
-        const recursive = cursor !== undefined && word(tokens[cursor], "recursive");
-        if (recursive) cursor = nextSignificant(tokens, cursor!);
-        if (cursor === undefined || identifierValue(tokens[cursor]) === undefined) continue;
-
-        const definitions: { name: string; close: number; }[] = [];
-        while (cursor !== undefined) {
-            const name = identifierValue(tokens[cursor]);
-            if (name === undefined) break;
-            cursor = nextSignificant(tokens, cursor);
-
-            if (cursor !== undefined && tokens[cursor].kind === "symbol" && tokens[cursor].value === "(") {
-                const close = matchingClose.get(cursor);
-                if (close === undefined) fail("Unbalanced CTE column list");
-                cursor = nextSignificant(tokens, close);
-            }
-            if (cursor === undefined || !word(tokens[cursor], "as")) break;
-            cursor = nextSignificant(tokens, cursor);
-            if (cursor !== undefined && word(tokens[cursor], "not")) {
-                const materialized = nextSignificant(tokens, cursor);
-                if (materialized === undefined || !word(tokens[materialized], "materialized")) break;
-                cursor = nextSignificant(tokens, materialized);
-            } else if (cursor !== undefined && word(tokens[cursor], "materialized")) {
-                cursor = nextSignificant(tokens, cursor);
-            }
-            if (cursor === undefined || tokens[cursor].kind !== "symbol" || tokens[cursor].value !== "(") break;
-            const close = matchingClose.get(cursor);
-            if (close === undefined) fail("Unbalanced CTE query");
-            definitions.push({ name, close });
-            cursor = nextSignificant(tokens, close);
-            if (cursor === undefined || tokens[cursor].kind !== "symbol" || tokens[cursor].value !== ",") {
-                if (cursor !== undefined) queryStarts.add(cursor);
-                break;
-            }
-            cursor = nextSignificant(tokens, cursor);
-        }
-        const end = enclosingClose[i] ?? tokens.length;
-        if (recursive && definitions.length > 0) {
-            scopes.push({ start: i, end, names: new Set(definitions.map(definition => definition.name)) });
-        } else {
-            // A nonrecursive name enters the namespace only after its body.
-            // Earlier siblings and enclosing CTEs remain visible inside it.
-            for (const definition of definitions) {
-                scopes.push({ start: definition.close + 1, end, names: new Set([definition.name]) });
-            }
-        }
-    }
-    return { scopes, queryStarts };
-}
-
-function isCteReference(name: string, index: number, scopes: CteScope[]): boolean {
-    return scopes.some(scope => scope.start <= index && index < scope.end && scope.names.has(name));
-}
-
-/** The query following an INSERT target, optional alias/columns and OVERRIDING. */
-function insertQueryStart(tokens: Token[], target: number, matchingClose: Map<number, number>): number | undefined {
-    let cursor = nextSignificant(tokens, target);
-    if (cursor !== undefined && word(tokens[cursor], "as")) {
-        const alias = nextSignificant(tokens, cursor);
-        cursor = alias === undefined ? undefined : nextSignificant(tokens, alias);
-    }
-    if (cursor !== undefined && tokens[cursor].kind === "symbol" && tokens[cursor].value === "(") {
-        const close = matchingClose.get(cursor);
-        cursor = close === undefined ? undefined : nextSignificant(tokens, close);
-    }
-    if (cursor !== undefined && word(tokens[cursor], "overriding")) {
-        const kind = nextSignificant(tokens, cursor);
-        const value = kind === undefined ? undefined : nextSignificant(tokens, kind);
-        if (
-            kind === undefined || !(word(tokens[kind], "system") || word(tokens[kind], "user"))
-            || value === undefined || !word(tokens[value], "value")
-        ) return undefined;
-        cursor = nextSignificant(tokens, value);
-    }
-    return cursor;
-}
-
-function isTableQueryHead(
-    tokens: Token[],
-    index: number,
-    enclosingOpen: Array<number | undefined>,
-    queryStarts: Set<number>,
-): boolean {
-    if (queryStarts.has(index)) return true;
-    const previous = previousSignificant(tokens, index);
-    if (previous === undefined || previous === enclosingOpen[index]) return true;
-    const operator = word(tokens[previous], "all") || word(tokens[previous], "distinct")
-        ? previousSignificant(tokens, previous)
-        : previous;
-    if (
-        operator === undefined || enclosingOpen[operator] !== enclosingOpen[index]
-        || !(word(tokens[operator], "union") || word(tokens[operator], "intersect") || word(tokens[operator], "except"))
-    ) {
-        return false;
-    }
-    const beforeOperator = previousSignificant(tokens, operator);
-    return beforeOperator === undefined || tokens[beforeOperator].kind !== "symbol"
-        || tokens[beforeOperator].value !== ".";
-}
-
-/** Inspect a TABLE operand without consuming the outer scanner's parentheses. */
-function tableOperand(tokens: Token[], head: number, matchingClose: Map<number, number>): number {
-    let cursor = nextSignificant(tokens, head);
-    if (cursor !== undefined && word(tokens[cursor], "only")) {
-        cursor = nextSignificant(tokens, cursor);
-        if (cursor !== undefined && tokens[cursor].kind === "symbol" && tokens[cursor].value === "(") {
-            const open = cursor;
-            cursor = nextSignificant(tokens, open);
-            const after = cursor === undefined ? undefined : nextSignificant(tokens, cursor);
-            if (after !== undefined && tokens[after].kind === "symbol" && tokens[after].value === ".") {
-                fail("Schema-qualified TABLE relations are not supported");
-            }
-            if (after !== matchingClose.get(open)) fail("Unsupported TABLE ONLY operand");
-        }
-    }
-    if (cursor === undefined || identifierValue(tokens[cursor]) === undefined) {
-        fail("TABLE relation is missing or unsupported");
-    }
-    const after = nextSignificant(tokens, cursor);
-    if (after !== undefined && tokens[after].kind === "symbol" && tokens[after].value === ".") {
-        fail("Schema-qualified TABLE relations are not supported");
-    }
-    return cursor;
-}
-
-function assertSingleStatement(tokens: Token[]): void {
-    for (let i = 0; i < tokens.length; i++) {
-        if (tokens[i].kind !== "symbol" || tokens[i].value !== ";") continue;
-        if (nextSignificant(tokens, i) !== undefined) fail("Multiple SQL statements are not supported");
-    }
-}
-
-/** Rewrite the relation created by one CREATE TABLE statement without touching its body. */
-export function rewriteCreateTableSql(
-    sql: string,
-    sourceRelation: string,
-    destinationRelation: string,
-): TableSqlRewriteResult {
-    const tokens = tokenize(sql);
-    assertSingleStatement(tokens);
-    let cursor = tokens.findIndex(token => !isTrivia(token));
-    if (cursor < 0 || !word(tokens[cursor], "create")) fail("Expected a CREATE TABLE statement");
-    cursor = nextSignificant(tokens, cursor) ?? -1;
-    if (cursor < 0 || !word(tokens[cursor], "table")) fail("Only CREATE TABLE statements are supported");
-    cursor = nextSignificant(tokens, cursor) ?? -1;
-    if (cursor >= 0 && word(tokens[cursor], "if")) {
-        const not = nextSignificant(tokens, cursor);
-        const exists = not === undefined ? undefined : nextSignificant(tokens, not);
-        if (not === undefined || exists === undefined || !word(tokens[not], "not") || !word(tokens[exists], "exists")) {
-            fail("Unsupported CREATE TABLE modifier");
-        }
-        cursor = nextSignificant(tokens, exists) ?? -1;
-    }
-    const actual = cursor < 0 ? undefined : identifierValue(tokens[cursor]);
-    if (actual === undefined) fail("CREATE TABLE relation name is missing or unsupported");
-    const after = nextSignificant(tokens, cursor);
-    if (after !== undefined && tokens[after].kind === "symbol" && tokens[after].value === ".") {
-        fail("Schema-qualified table names are not supported");
-    }
-    if (actual !== sourceRelation) {
-        fail(`CREATE TABLE defines "${actual}", expected source relation "${sourceRelation}"`);
-    }
-    tokens[cursor].text = replacementIdentifier(tokens[cursor], destinationRelation);
-    for (let i = cursor + 1; i < tokens.length; i++) {
-        if (!word(tokens[i], "references")) continue;
-        const referencedIndex = nextSignificant(tokens, i);
-        const referenced = referencedIndex === undefined ? undefined : identifierValue(tokens[referencedIndex]);
-        if (referenced === undefined) fail("REFERENCES relation name is missing or unsupported");
-        const next = nextSignificant(tokens, referencedIndex!);
-        if (next !== undefined && tokens[next].kind === "symbol" && tokens[next].value === ".") {
-            fail("Schema-qualified REFERENCES relations are not supported");
-        }
-        if (referenced === sourceRelation) {
-            tokens[referencedIndex!].text = replacementIdentifier(tokens[referencedIndex!], destinationRelation);
-        }
-    }
+function emptyResult(sql: string): TableSqlRewriteResult {
     return {
-        sql: tokens.map(token => token.text).join(""),
+        sql,
         relationDependencies: [],
         actualRelationDependencies: [],
         actualReservedRelationDependencies: [],
@@ -532,242 +99,228 @@ export function rewriteCreateTableSql(
     };
 }
 
-/**
- * Rewrite actual relation references in a Grid query. The scanner deliberately
- * recognizes PostgreSQL FROM/JOIN/TABLE relations and direct source_kind string
- * projections; identifiers used as columns, aliases, or ordinary literals are
- * never changed.
- */
+/** Rewrite one parsed CREATE TABLE relation and only its self-referencing foreign keys. */
+export function rewriteCreateTableSql(
+    sql: string,
+    sourceRelation: string,
+    destinationRelation: string,
+): TableSqlRewriteResult {
+    const statement = parseOne(sql);
+    const create = statement.CreateStmt;
+    if (!node(create)) fail("Expected one CREATE TABLE statement");
+    const relation = create.relation;
+    if (!node(relation) || typeof relation.relname !== "string") fail("CREATE TABLE relation is missing");
+    if (relation.schemaname || relation.catalogname) fail("Schema-qualified table names are not supported");
+    if (relation.relname !== sourceRelation) {
+        fail(`CREATE TABLE defines "${relation.relname}", expected source relation "${sourceRelation}"`);
+    }
+    const tokens = scanSync(sql).tokens;
+    const replacements: Replacement[] = [];
+    const createdToken = tokenAt(tokens, relation.location, "CREATE TABLE relation");
+    addReplacement(replacements, createdToken, identifierReplacement(createdToken, destinationRelation));
+    const visit = (value: unknown): void => {
+        if (Array.isArray(value)) return value.forEach(visit);
+        if (!node(value)) return;
+        if (node(value.Constraint)) {
+            const constraint = value.Constraint;
+            const target = constraint.pktable;
+            if (constraint.contype === "CONSTR_FOREIGN" && node(target)) {
+                if (target.schemaname || target.catalogname) {
+                    fail("Schema-qualified REFERENCES relations are not supported");
+                }
+                if (target.relname === sourceRelation) {
+                    const targetToken = tokenAt(tokens, target.location, "REFERENCES relation");
+                    addReplacement(replacements, targetToken, identifierReplacement(targetToken, destinationRelation));
+                }
+            }
+        }
+        Object.values(value).forEach(visit);
+    };
+    visit(create.tableElts);
+    return emptyResult(applyReplacements(sql, replacements));
+}
+
+/** Analyze and rewrite relation-bearing SQL using PostgreSQL's AST as the sole syntax authority. */
 export function rewriteTableQuerySql(
     sql: string,
     relationMapping: ReadonlyMap<string, string> | Readonly<Record<string, string>>,
 ): TableSqlRewriteResult {
-    const mapping = relationMapping instanceof Map
-        ? relationMapping
-        : new Map(Object.entries(relationMapping));
-    const tokens = tokenize(sql);
-    assertSingleStatement(tokens);
-    const { matchingClose, enclosingOpen, enclosingClose } = parenMetadata(tokens);
-    const { scopes: cteScopes, queryStarts } = collectCteScopes(tokens, matchingClose, enclosingClose);
+    const mapping = relationMapping instanceof Map ? relationMapping : new Map(Object.entries(relationMapping));
+    const statement = parseOne(sql);
+    const tokens = scanSync(sql).tokens;
+    const replacements: Replacement[] = [];
     const dependencies = new Set<string>();
-    const actualDependencies = new Set<string>();
-    const actualReservedDependencies = new Set<string>();
-    const reservedDependencies = new Set<string>();
-    const fromActive = new Map<number, boolean>();
-    const expectRelation = new Map<number, boolean>();
-    // The relation an INSERT or UPDATE writes to. It is not a FROM/JOIN
-    // relation — it may be followed by a column list — so it is scanned
-    // separately. Schedule rules are the only queries that reach here with a
-    // DML statement in them (docs/schedule-sql-conventions.md).
-    const expectDmlTarget = new Map<number, boolean>();
-    const expressionDepths = new Set<number>();
-    const qualifierScopes: QualifierScope[] = [];
-    let depth = 0;
-
-    const recordDependency = (name: string) => {
-        if (RESERVED_RELATION_NAMES.has(name)) reservedDependencies.add(name);
-        else dependencies.add(name);
+    const actual = new Set<string>();
+    const actualReserved = new Set<string>();
+    const reserved = new Set<string>();
+    const recordRouting = (name: string) => (RESERVED_RELATION_NAMES.has(name) ? reserved : dependencies).add(name);
+    const recordActual = (name: string) => {
+        recordRouting(name);
+        (RESERVED_RELATION_NAMES.has(name) ? actualReserved : actual).add(name);
     };
-    const recordActualDependency = (name: string) => {
-        recordDependency(name);
-        if (RESERVED_RELATION_NAMES.has(name)) actualReservedDependencies.add(name);
-        else actualDependencies.add(name);
+    const findCte = (scope: Scope | undefined, name: string): boolean => {
+        for (let current = scope; current; current = current.parent) if (current.ctes.has(name)) return true;
+        return false;
     };
-
-    for (let i = 0; i < tokens.length; i++) {
-        const token = tokens[i];
-        if (isTrivia(token)) continue;
-        if (token.kind === "symbol" && token.value === "(") {
-            const firstInside = nextSignificant(tokens, i);
-            const beginsQuery = firstInside !== undefined
-                && QUERY_HEAD_KEYWORDS.has(tokens[firstInside].kind === "word" ? tokens[firstInside].value ?? "" : "");
-            if (expectRelation.get(depth)) {
-                if (!beginsQuery) fail("Parenthesized joined relation expressions are not supported");
-                expectRelation.set(depth, false);
-            }
-            depth++;
-            if (!beginsQuery) expressionDepths.add(depth);
-            continue;
+    const findBinding = (scope: Scope | undefined, name: string): Binding | undefined => {
+        for (let current = scope; current; current = current.parent) {
+            const binding = current.bindings.get(name);
+            if (binding) return binding;
         }
-        if (token.kind === "symbol" && token.value === ")") {
-            fromActive.delete(depth);
-            expectRelation.delete(depth);
-            expectDmlTarget.delete(depth);
-            expressionDepths.delete(depth);
-            depth--;
-            continue;
+        return undefined;
+    };
+    const rewriteRangeVar = (range: Node, scope: Scope): void => {
+        if (typeof range.relname !== "string") fail("Relation reference is missing a name");
+        if (range.schemaname || range.catalogname) {
+            fail(`Schema-qualified relation "${range.relname}" is not supported`);
         }
-
-        const keyword = token.kind === "word" ? token.value : undefined;
-        if (keyword && FROM_TERMINATORS.has(keyword)) {
-            fromActive.set(depth, false);
-            expectRelation.set(depth, false);
+        const name = range.relname;
+        const alias = node(range.alias) && typeof range.alias.aliasname === "string"
+            ? range.alias.aliasname
+            : undefined;
+        if (findCte(scope, name)) {
+            scope.bindings.set(alias ?? name, {});
+            return;
         }
-        if (keyword === "from") {
-            const previous = previousSignificant(tokens, i);
-            if (expressionDepths.has(depth) || (previous !== undefined && word(tokens[previous], "distinct"))) continue;
-            fromActive.set(depth, true);
-            expectRelation.set(depth, true);
-            continue;
+        recordActual(name);
+        const destination = RESERVED_RELATION_NAMES.has(name) ? undefined : mapping.get(name);
+        if (destination !== undefined) {
+            const token = tokenAt(tokens, range.location, `relation "${name}"`);
+            addReplacement(replacements, token, identifierReplacement(token, destination));
         }
-        if (keyword === "join") {
-            fromActive.set(depth, true);
-            expectRelation.set(depth, true);
-            continue;
-        }
-        if (keyword === "into") {
-            expectDmlTarget.set(depth, true);
-            continue;
-        }
-        if (keyword === "update") {
-            const previous = previousSignificant(tokens, i);
-            const previousWord = previous === undefined ? undefined : tokens[previous].value;
-            if (
-                tokens[previous ?? -1]?.kind !== "word" || previousWord === undefined
-                || !NON_STATEMENT_UPDATE_PREDECESSORS.has(previousWord)
-            ) {
-                expectDmlTarget.set(depth, true);
-            }
-            continue;
-        }
-
-        if (expectDmlTarget.get(depth)) {
-            if (keyword === "only") continue;
-            expectDmlTarget.set(depth, false);
-            const relation = identifierValue(token);
-            if (relation === undefined) fail("Unsupported relation expression after INSERT INTO or UPDATE");
-            const next = nextSignificant(tokens, i);
-            if (next !== undefined && tokens[next].kind === "symbol" && tokens[next].value === ".") {
-                fail(`Schema-qualified relation "${relation}" is not supported`);
-            }
-            const into = previousSignificant(tokens, i);
-            if (into !== undefined && word(tokens[into], "into")) {
-                const start = insertQueryStart(tokens, i, matchingClose);
-                if (start !== undefined) queryStarts.add(start);
-            }
-            // Visible CTE references denote query output rather than a Project relation.
-            if (isCteReference(relation, i, cteScopes)) continue;
-            recordActualDependency(relation);
-            const destination = mapping.get(relation);
-            if (destination !== undefined && !RESERVED_RELATION_NAMES.has(relation)) {
-                token.text = replacementIdentifier(token, destination);
-                // A renamed target is still spelled out in full by anything
-                // that qualifies a column with it — `ON CONFLICT … DO UPDATE
-                // SET v = tasks.v` is the common one — and leaving those behind
-                // produces SQL that passes validation and then fails on a
-                // missing relation. An aliased target needs no such rewrite:
-                // Postgres makes the alias the only usable qualifier.
-                if (dmlTargetAlias(tokens, i) === undefined && destination !== relation) {
-                    qualifierScopes.push({
-                        name: relation,
-                        destination,
-                        start: (enclosingOpen[i] ?? -1) + 1,
-                        end: enclosingClose[i] ?? tokens.length,
-                    });
-                }
-            }
-            continue;
-        }
-        if (token.kind === "symbol" && token.value === "," && fromActive.get(depth)) {
-            expectRelation.set(depth, true);
-            continue;
-        }
-
-        if (expectRelation.get(depth)) {
-            if (keyword === "only" || keyword === "lateral") continue;
-            if (keyword === "values") {
-                expectRelation.set(depth, false);
-                continue;
-            }
-            const relation = identifierValue(token);
-            if (relation === undefined) fail("Unsupported relation expression after FROM or JOIN");
-            expectRelation.set(depth, false);
-            const next = nextSignificant(tokens, i);
-            if (next !== undefined && tokens[next].kind === "symbol" && tokens[next].value === ".") {
-                fail(`Schema-qualified relation "${relation}" is not supported`);
-            }
-            if (next !== undefined && tokens[next].kind === "symbol" && tokens[next].value === "(") {
-                if (mapping.has(relation)) {
-                    fail(`Table-function syntax for copied relation "${relation}" is ambiguous`);
-                }
-                continue;
-            }
-            const scopeStart = (enclosingOpen[i] ?? -1) + 1;
-            const scopeEnd = enclosingClose[i] ?? tokens.length;
-            const alias = relationAlias(tokens, i);
-            if (alias !== undefined) qualifierScopes.push({ name: alias, start: scopeStart, end: scopeEnd });
-            if (isCteReference(relation, i, cteScopes)) {
-                if (alias === undefined) qualifierScopes.push({ name: relation, start: scopeStart, end: scopeEnd });
-                continue;
-            }
-            recordActualDependency(relation);
-            const destination = mapping.get(relation);
-            if (destination !== undefined && !RESERVED_RELATION_NAMES.has(relation)) {
-                token.text = replacementIdentifier(token, destination);
-                if (alias === undefined && destination !== relation) {
-                    qualifierScopes.push({ name: relation, destination, start: scopeStart, end: scopeEnd });
-                }
-            }
-            continue;
-        }
-
-        if (keyword === "table" && isTableQueryHead(tokens, i, enclosingOpen, queryStarts)) {
-            const operand = tableOperand(tokens, i, matchingClose);
-            const relation = identifierValue(tokens[operand])!;
-            if (!isCteReference(relation, operand, cteScopes)) {
-                recordActualDependency(relation);
-                if (mapping.has(relation)) {
-                    fail(`TABLE query syntax for copied relation "${relation}" is not supported`);
-                }
-            }
-        }
-
-        if (token.kind === "string" || token.kind === "dollarString") {
-            if (sourceKindAlias(tokens, i) === undefined) continue;
-            const prefix = previousSignificant(tokens, i);
-            if (
-                token.kind === "string" && prefix !== undefined && tokens[prefix].end === token.start
-                && word(tokens[prefix]) && (tokens[prefix].value === "e" || tokens[prefix].value === "b"
-                    || tokens[prefix].value === "x")
-            ) {
-                fail("Prefixed source_kind string literals are not supported");
-            }
-            const relation = token.value!;
-            recordDependency(relation);
-            const destination = mapping.get(relation);
-            if (destination !== undefined && !RESERVED_RELATION_NAMES.has(relation)) {
-                token.text = replacementString(destination);
-            }
-        }
-    }
-    if (depth !== 0) fail("Unbalanced SQL parentheses");
-
-    for (let i = 0; i < tokens.length; i++) {
-        const qualifier = identifierValue(tokens[i]);
-        if (qualifier === undefined) continue;
-        const dot = nextSignificant(tokens, i);
-        if (dot === undefined || tokens[dot].kind !== "symbol" || tokens[dot].value !== ".") continue;
-
-        const matchingScopes = qualifierScopes.filter(scope =>
-            scope.name === qualifier && scope.start <= i && i < scope.end
+        scope.bindings.set(
+            alias ?? name,
+            alias === undefined && destination !== undefined && destination !== name ? { destination } : {},
         );
-        if (matchingScopes.length === 0) continue;
-        const innermostStart = Math.max(...matchingScopes.map(scope => scope.start));
-        const innermostEnd = Math.min(
-            ...matchingScopes.filter(scope => scope.start === innermostStart).map(scope => scope.end),
+    };
+    let walkStatement: (wrapper: Node, outer?: Scope) => void;
+    const walkExpression = (value: unknown, scope: Scope): void => {
+        if (Array.isArray(value)) return value.forEach(item => walkExpression(item, scope));
+        if (!node(value)) return;
+        for (const kind of ["SelectStmt", "InsertStmt", "UpdateStmt", "DeleteStmt"]) {
+            if (node(value[kind])) {
+                walkStatement({ [kind]: value[kind] }, scope);
+                return;
+            }
+        }
+        if (node(value.ColumnRef)) {
+            const column = value.ColumnRef;
+            const fields = Array.isArray(column.fields) ? column.fields : [];
+            const first = fields[0];
+            const qualifier = node(first) && node(first.String) ? first.String.sval : undefined;
+            if (typeof qualifier === "string" && fields.length > 1) {
+                const binding = findBinding(scope, qualifier);
+                if (binding?.destination) {
+                    const token = tokenAt(tokens, column.location, `column qualifier "${qualifier}"`);
+                    addReplacement(replacements, token, identifierReplacement(token, binding.destination));
+                }
+            }
+            return;
+        }
+        Object.values(value).forEach(item => walkExpression(item, scope));
+    };
+    const prepareWith = (owner: Node, outer: Scope | undefined): Scope => {
+        const scope: Scope = { parent: outer, ctes: new Set(), bindings: new Map() };
+        const withClause = owner.withClause;
+        if (!node(withClause)) return scope;
+        const ctes = Array.isArray(withClause.ctes) ? withClause.ctes : [];
+        const definitions = ctes.map(wrapper =>
+            node(wrapper) && node(wrapper.CommonTableExpr) ? wrapper.CommonTableExpr : fail("Malformed CTE definition")
         );
-        const innermost = matchingScopes.filter(scope => scope.start === innermostStart && scope.end === innermostEnd);
-        if (innermost.some(scope => scope.destination === undefined)) continue;
-        const destinations = new Set(innermost.map(scope => scope.destination));
-        if (destinations.size !== 1) continue;
-        tokens[i].text = replacementIdentifier(tokens[i], [...destinations][0]!);
-    }
-
+        if (withClause.recursive) definitions.forEach(definition => scope.ctes.add(String(definition.ctename)));
+        for (const definition of definitions) {
+            if (!node(definition.ctequery)) fail("Malformed CTE query");
+            walkStatement(definition.ctequery, scope);
+            scope.ctes.add(String(definition.ctename));
+        }
+        return scope;
+    };
+    const walkFrom = (value: unknown, scope: Scope): void => {
+        if (Array.isArray(value)) return value.forEach(item => walkFrom(item, scope));
+        if (!node(value)) return;
+        if (node(value.RangeVar)) return rewriteRangeVar(value.RangeVar, scope);
+        if (node(value.RangeSubselect)) {
+            const subquery = value.RangeSubselect.subquery;
+            if (!node(subquery)) fail("Malformed subquery relation");
+            walkStatement(subquery, scope);
+            const alias = value.RangeSubselect.alias;
+            if (node(alias) && typeof alias.aliasname === "string") scope.bindings.set(alias.aliasname, {});
+            return;
+        }
+        if (node(value.JoinExpr)) {
+            walkFrom(value.JoinExpr.larg, scope);
+            walkFrom(value.JoinExpr.rarg, scope);
+            walkExpression(value.JoinExpr.quals, scope);
+            return;
+        }
+        if (value.RangeFunction || value.RangeTableFunc || value.RangeTableSample) {
+            fail("Function and TABLESAMPLE relation sources are ambiguous and not supported");
+        }
+        fail("Unsupported FROM/JOIN relation source");
+    };
+    const routingLiteral = (target: Node): Node | undefined => {
+        if (target.name !== "source_kind" || !node(target.val)) return undefined;
+        let expression = target.val;
+        if (node(expression.TypeCast) && node(expression.TypeCast.arg)) expression = expression.TypeCast.arg;
+        return node(expression.A_Const) && node(expression.A_Const.sval) ? expression.A_Const : undefined;
+    };
+    const walkSelect = (select: Node, outer?: Scope): void => {
+        if (select.op && select.op !== "SETOP_NONE") {
+            const scope = prepareWith(select, outer);
+            if (!node(select.larg) || !node(select.rarg)) fail("Malformed set-operation query");
+            walkSelect(select.larg, scope);
+            walkSelect(select.rarg, scope);
+            return;
+        }
+        const scope = prepareWith(select, outer);
+        const targets = Array.isArray(select.targetList) ? select.targetList : [];
+        for (const wrapper of targets) {
+            if (!node(wrapper) || !node(wrapper.ResTarget)) continue;
+            const literal = routingLiteral(wrapper.ResTarget);
+            if (literal) {
+                const value = literal.sval;
+                const name = node(value) ? value.sval : undefined;
+                if (typeof name !== "string") fail("Malformed source_kind literal");
+                recordRouting(name);
+                const destination = RESERVED_RELATION_NAMES.has(name) ? undefined : mapping.get(name);
+                if (destination !== undefined) {
+                    const token = tokenAt(tokens, literal.location, "source_kind literal");
+                    addReplacement(replacements, token, `'${destination.replaceAll("'", "''")}'`);
+                }
+            }
+        }
+        // Register routing labels in source order, then bind FROM relations
+        // before walking expressions whose qualifiers depend on those bindings.
+        walkFrom(select.fromClause ?? [], scope);
+        for (const [key, value] of Object.entries(select)) {
+            if (["withClause", "fromClause", "larg", "rarg"].includes(key)) continue;
+            walkExpression(value, scope);
+        }
+    };
+    const walkDml = (kind: string, dml: Node, outer?: Scope): void => {
+        const scope = prepareWith(dml, outer);
+        const relation = dml.relation;
+        if (!node(relation)) fail(`${kind} target relation is missing`);
+        rewriteRangeVar(relation, scope);
+        walkFrom(dml.fromClause ?? dml.usingClause ?? [], scope);
+        for (const [key, value] of Object.entries(dml)) {
+            if (["withClause", "relation", "fromClause", "usingClause"].includes(key)) continue;
+            walkExpression(value, scope);
+        }
+    };
+    walkStatement = (wrapper: Node, outer?: Scope): void => {
+        if (node(wrapper.SelectStmt)) return walkSelect(wrapper.SelectStmt, outer);
+        if (node(wrapper.InsertStmt)) return walkDml("INSERT", wrapper.InsertStmt, outer);
+        if (node(wrapper.UpdateStmt)) return walkDml("UPDATE", wrapper.UpdateStmt, outer);
+        if (node(wrapper.DeleteStmt)) return walkDml("DELETE", wrapper.DeleteStmt, outer);
+        fail("Unsupported SQL statement type");
+    };
+    walkStatement(statement);
     return {
-        sql: tokens.map(token => token.text).join(""),
+        sql: applyReplacements(sql, replacements),
         relationDependencies: [...dependencies],
-        actualRelationDependencies: [...actualDependencies],
-        actualReservedRelationDependencies: [...actualReservedDependencies],
-        reservedRelationDependencies: [...reservedDependencies],
+        actualRelationDependencies: [...actual],
+        actualReservedRelationDependencies: [...actualReserved],
+        reservedRelationDependencies: [...reserved],
     };
 }
