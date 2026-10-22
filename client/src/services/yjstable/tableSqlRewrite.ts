@@ -193,7 +193,13 @@ export function rewriteTableQuerySql(
             alias === undefined && destination !== undefined && destination !== name ? { destination } : {},
         );
     };
-    let walkStatement: (wrapper: Node, outer?: Scope) => void;
+    function walkStatement(wrapper: Node, outer?: Scope): void {
+        if (node(wrapper.SelectStmt)) return walkSelect(wrapper.SelectStmt, outer);
+        if (node(wrapper.InsertStmt)) return walkDml("INSERT", wrapper.InsertStmt, outer);
+        if (node(wrapper.UpdateStmt)) return walkDml("UPDATE", wrapper.UpdateStmt, outer);
+        if (node(wrapper.DeleteStmt)) return walkDml("DELETE", wrapper.DeleteStmt, outer);
+        fail("Unsupported SQL statement type");
+    }
     const walkExpression = (value: unknown, scope: Scope): void => {
         if (Array.isArray(value)) return value.forEach(item => walkExpression(item, scope));
         if (!node(value)) return;
@@ -307,13 +313,6 @@ export function rewriteTableQuerySql(
             if (["withClause", "relation", "fromClause", "usingClause"].includes(key)) continue;
             walkExpression(value, scope);
         }
-    };
-    walkStatement = (wrapper: Node, outer?: Scope): void => {
-        if (node(wrapper.SelectStmt)) return walkSelect(wrapper.SelectStmt, outer);
-        if (node(wrapper.InsertStmt)) return walkDml("INSERT", wrapper.InsertStmt, outer);
-        if (node(wrapper.UpdateStmt)) return walkDml("UPDATE", wrapper.UpdateStmt, outer);
-        if (node(wrapper.DeleteStmt)) return walkDml("DELETE", wrapper.DeleteStmt, outer);
-        fail("Unsupported SQL statement type");
     };
     walkStatement(statement);
     return {
