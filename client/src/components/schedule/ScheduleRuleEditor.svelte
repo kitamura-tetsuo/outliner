@@ -39,7 +39,7 @@ let isRawMode = $state(initialIsRaw);
 
 // Shared state
 let ruleName = $state(untrack(() => rule.name) || "");
-let sql = $state(untrack(() => rule.sql) || `INSERT INTO "${untrack(() => tableId)}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`);
+let sql = $state(untrack(() => rule.sql) || `INSERT INTO "${untrack(() => tableId)}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz) RETURNING *;`);
 let dtstart = $state(untrack(() => rule.dtstart) || "");
 let timezone = $state(untrack(() => rule.timezone) || Intl.DateTimeFormat().resolvedOptions().timeZone);
 let enabled = $state(untrack(() => rule.enabled) !== false);

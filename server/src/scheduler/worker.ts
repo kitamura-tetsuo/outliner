@@ -21,6 +21,24 @@ function createTableName(sql: string): string | undefined {
     }
 }
 
+const POSTGRES_DATE_OID = 1082;
+
+/** Keep DATE values JSON/Yjs-safe at the worker boundary. */
+function serializeResultDates(
+    rows: Record<string, unknown>[],
+    dateColumns: ReadonlySet<string>,
+): Record<string, unknown>[] {
+    if (dateColumns.size === 0) return rows;
+    return rows.map(row =>
+        Object.fromEntries(
+            Object.entries(row).map(([name, value]) => [
+                name,
+                dateColumns.has(name) && value instanceof Date ? value.toISOString().slice(0, 10) : value,
+            ]),
+        )
+    );
+}
+
 /**
  * One PGlite instance for the lifetime of the worker.
  *
@@ -146,15 +164,18 @@ async function executeJob(data: JobData) {
             const target = data.tableSnapshots.find(table => table.id === data.targetTableId);
             const enumColumns: Record<string, readonly string[]> = {};
             let targetColumns: { name: string; type: string; }[] | undefined;
+            const dateColumns = new Set<string>();
             if (target) {
                 const tableName = createTableName(target.schema);
                 if (tableName) {
                     const columns = await compiled.environment.query<{
                         column_name: string;
                         column_type: string;
+                        type_oid: number;
                         enum_labels: string[];
                     }>(
                         "SELECT a.attname AS column_name, format_type(a.atttypid, a.atttypmod) AS column_type, "
+                            + "a.atttypid AS type_oid, "
                             + "ARRAY(SELECT e.enumlabel FROM pg_enum e "
                             + "WHERE e.enumtypid=a.atttypid ORDER BY e.enumsortorder) AS enum_labels "
                             + "FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace "
@@ -167,13 +188,14 @@ async function executeJob(data: JobData) {
                     }));
                     for (const column of columns.rows) {
                         if (column.enum_labels.length) enumColumns[column.column_name] = column.enum_labels;
+                        if (column.type_oid === POSTGRES_DATE_OID) dateColumns.add(column.column_name);
                     }
                 }
             }
             const result = await compiled.environment.query<Record<string, unknown>>(ruleSql);
             return {
                 success: true,
-                rows: result.rows,
+                rows: serializeResultDates(result.rows, dateColumns),
                 catalogRevision: data.catalog.revision,
                 targetSchema: target?.schema,
                 enumColumns,
@@ -234,8 +256,11 @@ async function executeJob(data: JobData) {
 
         // The rows are read out of the transaction before it is discarded:
         // RETURNING gives them to us without anything being committed.
-        const result = await db.query(ruleSql);
-        return { success: true, rows: result.rows };
+        const result = await db.query<Record<string, unknown>>(ruleSql);
+        const dateColumns = new Set(
+            (result.fields ?? []).filter(field => field.dataTypeID === POSTGRES_DATE_OID).map(field => field.name),
+        );
+        return { success: true, rows: serializeResultDates(result.rows, dateColumns) };
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, error: errorMessage };

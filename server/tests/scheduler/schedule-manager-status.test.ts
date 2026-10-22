@@ -1135,7 +1135,7 @@ describe("Schedules Manager status (production path)", function() {
         expect(managerSnapshot(projectDoc).result).to.equal("running");
 
         // Execution B starts before any recovery tick, and fails.
-        ruleMapOf(projectDoc).set("sql", "INSERT INTO no_such_table (id) VALUES (1)");
+        ruleMapOf(projectDoc).set("sql", "INSERT INTO no_such_table (id) VALUES (1) RETURNING *");
         const b = await scheduler.runRuleNow(projectRoom, DEMO_DAILY_RULE_ID);
         expect(b.success, "execution B failed").to.equal(false);
 

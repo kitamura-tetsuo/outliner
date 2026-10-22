@@ -1,12 +1,11 @@
 import type { Project } from "$shared/app-schema";
 import { EXPLICIT_SELECT_ALIAS_POLICY_VERSION } from "$shared/services/explicitSelectAlias";
-import { validateScheduleRuleExplicitAliases } from "$shared/services/scheduleRuleValidation";
+import { parseScheduleSqlIdentifiers, validateScheduleRuleSql } from "$shared/services/scheduleRuleValidation";
 import type { ScheduleRunStatusValue } from "$shared/services/scheduleStatus";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
-import { parseIdentifiers } from "../yjstable/queryAnalysis";
 import { listTables } from "../yjstable/tableDocs";
 
 /**
@@ -63,9 +62,10 @@ export function createScheduleRule(
     project: Project,
     options: Partial<ScheduleRule> & { targetTableId: string; sql: string; rrule: string; ruleId?: string; },
 ): string {
-    if (options.sql.trim()) {
-        validateScheduleRuleExplicitAliases(options.sql);
-    }
+    // A target-less blank rule is the established inert representation used
+    // while authoring or after cross-project reference scrubbing. Any SQL that
+    // can execute still has to pass structural admission before persistence.
+    if (options.sql.trim() || options.targetTableId) assertValidScheduleSql(options.sql);
     const ruleId = options.ruleId ?? uuid();
     const schedulesMap = project.schedules;
     const ruleMap = new Y.Map<ScheduleRuleValueType>();
@@ -135,7 +135,7 @@ export function updateScheduleRule(
     }
     const sqlChanged = updates.sql !== undefined && updates.sql !== String(ruleMap.get("sql") ?? "");
     if (sqlChanged) {
-        validateScheduleRuleExplicitAliases(updates.sql!);
+        assertValidScheduleSql(updates.sql!);
     }
 
     // Apply updates
@@ -151,6 +151,11 @@ export function updateScheduleRule(
     if (updates.enabled !== undefined) ruleMap.set("enabled", updates.enabled);
     if (updates.catchUp !== undefined) ruleMap.set("catchUp", updates.catchUp);
     // Scheduler-owned fields are intentionally absent — see the note above.
+}
+
+function assertValidScheduleSql(sql: string): void {
+    const validation = validateScheduleRuleSql(sql);
+    if (!validation.valid) throw new Error(validation.error ?? "Invalid Schedule SQL");
 }
 
 /**
@@ -249,10 +254,11 @@ export function scheduleTableReferences(
         seen.add(targetTableId);
     }
 
+    const tables = listTables(project.ydoc);
     const sql = ruleMap.get("sql");
     if (typeof sql === "string" && sql) {
-        const identifiers = parseIdentifiers(sql);
-        for (const table of listTables(project.ydoc)) {
+        const identifiers = parseScheduleSqlIdentifiers(sql);
+        for (const table of tables) {
             if (!table.sqlName || seen.has(table.tableId)) continue;
             if (identifiers.has(table.sqlName.toLowerCase()) || identifiers.has(table.sqlName)) {
                 references.push({ tableId: table.tableId, kind: "sql-reference" });
@@ -275,7 +281,8 @@ export function findSchedulesReferencingTable(
 ): ScheduleTableReference[] {
     if (!project?.schedules) return [];
 
-    const targetSqlName = listTables(project.ydoc).find(t => t.tableId === tableId)?.sqlName;
+    const tables = listTables(project.ydoc);
+    const targetSqlName = tables.find(t => t.tableId === tableId)?.sqlName;
     const references: ScheduleTableReference[] = [];
 
     project.schedules.forEach((ruleMap, ruleId) => {
@@ -290,7 +297,7 @@ export function findSchedulesReferencingTable(
         if (!targetSqlName) return;
         const sql = ruleMap.get("sql") as string | undefined;
         if (!sql) return;
-        const identifiers = parseIdentifiers(sql);
+        const identifiers = parseScheduleSqlIdentifiers(sql);
         if (identifiers.has(targetSqlName.toLowerCase()) || identifiers.has(targetSqlName)) {
             references.push({ ruleId, ruleName, kind: "sql-reference", enabled });
         }

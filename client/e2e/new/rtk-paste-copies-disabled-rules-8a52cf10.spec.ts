@@ -11,14 +11,14 @@ import {
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-// The shape of the demo's routine rule: a data-modifying CTE writing into the
-// Grid it targets (docs/schedule-sql-conventions.md).
-const RULE_SQL = "WITH inserted AS (\n"
-    + "    INSERT INTO orders (id, title)\n"
+// The shape of the demo's routine rule: a read-only CTE feeding the outer
+// INSERT into the Grid it targets (docs/schedule-sql-conventions.md).
+const RULE_SQL = "WITH candidates AS (\n"
     + "    SELECT 'daily', 'Daily order'\n"
-    + "    ON CONFLICT (id) DO NOTHING\n"
-    + "    RETURNING *\n"
-    + ")\nSELECT id, title FROM inserted";
+    + ")\n"
+    + "INSERT INTO orders (id, title) SELECT * FROM candidates\n"
+    + "ON CONFLICT (id) DO NOTHING\n"
+    + "RETURNING *";
 
 async function addScheduleRule(page: Page, targetTableId: string): Promise<void> {
     await page.evaluate(({ tableId, sql }) => {

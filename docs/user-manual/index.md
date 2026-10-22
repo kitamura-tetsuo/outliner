@@ -158,7 +158,7 @@ Easily find content and execute actions within Outliner.
 
 - **Search pages:** Use the **Search pages** input in the top navigation bar to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find (Search and Replace):** Click the **Search** button on the page to open Find on this page. It searches outline text and every visible Grid result cell in one session. The search panel includes advanced options such as **Regex**, **Case Sensitive**, and **Whole Word**, as well as an option to **Include page titles**. Use the **Scope** dropdown to search across the entire **Project text**, the current **Page**, or choose **Selection** to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
-- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Kanban, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
+- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
@@ -299,13 +299,12 @@ On touch, tap a cell to activate it, double-tap to edit, or long-press for range
 
 Choose a destination Page when duplicating, or drag a Grid's outline handle to a Page in the sidebar. Hold Ctrl (Option on macOS) while dragging to copy instead of move.
 
-### Tables, Grids, Kanbans, Calendars and Schedules are separate
+### Tables, Grids, Calendars and Schedules are separate
 
-A table, a grid, a kanban, a calendar and a schedule are five independent things, and each has its own management page.
+A table, a grid, a calendar and a schedule are four independent things, and each has its own management page.
 
-- **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid or kanban exists over it. Below the data, the page lists the grids and kanbans that select from this table and the schedules that reference it, as links.
+- **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
 - **Grid** (`/-/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
-- **Kanban** (`/-/kanbans/<project>/<kanban>`) owns one SELECT and its presentation settings, such as grouping, title roles, and lane preferences. Several kanbans may present the same table, and each keeps its own settings; they all read and write the same table data. A kanban page links back to its source table rather than owning its schema.
 - **Calendar** (`/-/calendars/<project>/<calendar>`) owns a query and role assignments for its result columns (e.g., title, start date), but no data of its own. It dynamically visualizes the underlying table data based on its view settings. A calendar page links back to the tables its query reads.
 - **Schedule** (`/-/schedules/<project>`, one rule at `/-/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
 

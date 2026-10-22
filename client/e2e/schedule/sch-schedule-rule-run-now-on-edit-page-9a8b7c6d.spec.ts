@@ -63,7 +63,7 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         const sqlEditor = SqlEditorHelper.byTestId(page, "schedule-sql-editor");
         await sqlEditor.fillAndCommit(
             page,
-            "INSERT INTO {{table}} (title, id) VALUES ('run-now test', gen_random_uuid());",
+            "INSERT INTO {{table}} (title, id) VALUES ('run-now test', gen_random_uuid()) RETURNING *;",
         );
         await page.waitForTimeout(500);
 
@@ -135,35 +135,16 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
 
         // Fill SQL with INVALID syntax
         const sqlEditor = SqlEditorHelper.byTestId(page, "schedule-sql-editor");
-        await sqlEditor.fillAndCommit(page, "INVALID SQL SYNTAX");
+        await sqlEditor.fillAndCommit(page, "INSERT INTO");
         await page.waitForTimeout(500);
 
         // Save
         const saveBtn = page.locator("button:has-text('Save')");
         await saveBtn.click();
 
-        // Assert we stay on the page after saving
+        // Admission refuses the malformed statement before changing the saved rule.
         await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/);
-
-        const runNowBtn = page.locator("[data-testid='run-now-schedule']");
-        await expect(runNowBtn).toBeVisible({ timeout: 15000 });
-
-        // Mock the run-now endpoint to return an error specifically for this test
-        await page.route("**/api/schedules/run-now", async route => {
-            const req = route.request();
-            const body = req.postDataJSON();
-            expect(body.projectId).not.toBe("Test Project Name");
-            expect(body.projectId).toMatch(/^p[a-f0-9]+$/);
-            const json = { ok: false, error: "syntax error at or near INVALID SQL" };
-            await route.fulfill({ json });
-        });
-
-        await runNowBtn.click();
-
         const errorBox = page.locator(".bg-red-50", { hasText: "syntax error" });
         await expect(errorBox).toBeVisible({ timeout: 15000 });
-
-        // Assert we stay on the page
-        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/);
     });
 });

@@ -672,12 +672,11 @@ export const DEMO_WEEKLY_RULE_ID = "demo-rule-weekly-routines";
  * - the id is derived from the task's row id and that date, so re-running
  *   the same occurrence is a no-op (`ON CONFLICT DO NOTHING`) and a completed
  *   checkbox is never reset.
- * - the outer SELECT renders the date as text: values written back into Yjs
- *   must be JSON primitives, not Date objects.
+ * - the read-only CTE prepares candidates for the one outer INSERT required
+ *   by Schedule admission.
  */
 export function routineOccurrenceSql(cadence: "daily" | "weekly"): string {
-    return `WITH inserted AS (
-    INSERT INTO routine_occurrences (id, template_id, title, cadence, occurrence_date, done)
+    return `WITH candidates AS (
     SELECT
         t.id || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
         t.id,
@@ -687,17 +686,11 @@ export function routineOccurrenceSql(cadence: "daily" | "weekly"): string {
         false
     FROM routine_templates t
     WHERE t.cadence = '${cadence}'
-    ON CONFLICT (id) DO NOTHING
-    RETURNING *
 )
-SELECT
-    id,
-    template_id,
-    title,
-    cadence,
-    to_char(occurrence_date, 'YYYY-MM-DD') AS occurrence_date,
-    done
-FROM inserted`;
+INSERT INTO routine_occurrences (id, template_id, title, cadence, occurrence_date, done)
+SELECT * FROM candidates
+ON CONFLICT (id) DO NOTHING
+RETURNING *`;
 }
 
 /**

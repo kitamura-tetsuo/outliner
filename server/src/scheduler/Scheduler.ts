@@ -3,7 +3,10 @@ import { Hocuspocus } from "@hocuspocus/server";
 import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
-import { validateExplicitSelectAliases } from "../../../shared/src/services/explicitSelectAlias.js";
+import {
+    resolveScheduleTargetPlaceholder,
+    validateScheduleRuleSql,
+} from "../../../shared/src/services/scheduleRuleValidation.js";
 import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
 import { serializeSqlEnumValue } from "../../../shared/src/services/sqlEnumValue.js";
@@ -34,6 +37,7 @@ const MAX_CATCHUP_OCCURRENCES = 500;
 export function castValueForColumn(val: unknown, type: string): unknown {
     if (val === null || val === undefined) return val;
     const lowered = type?.toLowerCase() ?? "";
+    if (lowered === "date" && val instanceof Date) return val.toISOString().slice(0, 10);
     if (lowered.includes("bool")) {
         if (typeof val === "boolean") return val;
         if (val === "true" || val === "t" || val === 1) return true;
@@ -159,13 +163,8 @@ export class JobScheduler {
             if (!ruleSql || !targetTableId) {
                 return { success: false, error: "Missing required rule data (sql or targetTableId)" };
             }
-            if (strictAliases) {
-                try {
-                    validateExplicitSelectAliases(ruleSql);
-                } catch (error) {
-                    return { success: false, error: error instanceof Error ? error.message : String(error) };
-                }
-            }
+            const validation = validateScheduleRuleSql(ruleSql, strictAliases);
+            if (!validation.valid) return { success: false, error: validation.error };
 
             // The recurrence fields come from the index when the rule is
             // scheduled, and are left empty when it is not (a manual run reads
@@ -621,13 +620,10 @@ export class JobScheduler {
             await this.publishCursor(rule.room, rule.rule_id, { state: "orphaned", nextRunAt: null });
             return;
         }
-        if (strictAliases) {
-            try {
-                validateExplicitSelectAliases(ruleSql);
-            } catch (error) {
-                logger.warn({ ruleId: rule.rule_id, error }, "Strict Schedule SQL violates explicit-alias policy");
-                return;
-            }
+        const validation = validateScheduleRuleSql(ruleSql, strictAliases);
+        if (!validation.valid) {
+            logger.warn({ ruleId: rule.rule_id, error: validation.error }, "Schedule SQL is invalid");
+            return;
         }
 
         // The cursor this rule holds once every occurrence dispatched below has
@@ -1332,7 +1328,8 @@ export class JobScheduler {
 
             const catalog = await this.captureCatalog(rule);
             const targetBinding = await this.captureTargetBinding(rule.room, targetTableId);
-            const referenced = await this.loadReferencedTables(rule, ruleSql);
+            const executionSql = resolveScheduleTargetPlaceholder(ruleSql, targetBinding.sqlName);
+            const referenced = await this.loadReferencedTables(rule, executionSql);
             const tableSnapshots: JobTableSnapshot[] = [this.tableSnapshot(targetTableId, doc)];
             for (const [index, table] of referenced.entries()) {
                 tableSnapshots.push({
@@ -1349,7 +1346,7 @@ export class JobScheduler {
             const jobData = {
                 ruleId: rule.rule_id,
                 schemaSql: schemaSql,
-                ruleSql: ruleSql,
+                ruleSql: executionSql,
                 records: records,
                 // The target table first, then the tables the SQL reads from.
                 tables: [
