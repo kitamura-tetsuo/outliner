@@ -82,6 +82,28 @@ describe("MCP Schedule diagnostics", function() {
         rule.set("sql", "INSERT INTO tasks (id) SELECT id FROM audit RETURNING *");
         const realReference = await service.listSchedules("user", "project-1", "audit-table", "sql-reference");
         expect(realReference.schedules[0]?.referenceKinds).to.deep.equal(["sql-reference"]);
+        const unicodeSource = new Y.Map<unknown>();
+        unicodeSource.set("id", "source-row");
+        auditConnection.document.getMap("data").set("source-row", unicodeSource);
+        const unicodeSql = `INSERT INTO tasks (id) SELECT id FROM U&"audit" RETURNING *`;
+        const targetBeforeUnicodePreview = Y.encodeStateAsUpdate(tableConnection.document);
+        const sourceBeforeUnicodePreview = Y.encodeStateAsUpdate(auditConnection.document);
+        const unicodePreview = await service.validate(
+            "user",
+            "project-1",
+            {
+                ...(await service.getSchedule("user", "project-1", "rule-1")).stored,
+                sql: unicodeSql,
+            } as never,
+            "rule-1",
+            "2026-08-30T09:00:00Z",
+        );
+        expect(unicodePreview).to.include({ accepted: true, persisted: false });
+        expect(unicodePreview.candidateRows[0]).to.include({ id: "source-row" });
+        expect(Y.encodeStateAsUpdate(tableConnection.document)).to.deep.equal(targetBeforeUnicodePreview);
+        expect(Y.encodeStateAsUpdate(auditConnection.document)).to.deep.equal(sourceBeforeUnicodePreview);
+        expect(rule.get("sql")).to.equal("INSERT INTO tasks (id) SELECT id FROM audit RETURNING *");
+        auditConnection.document.getMap("data").delete("source-row");
         rule.set("sql", "INSERT INTO tasks (id) VALUES ('daily') RETURNING *");
         const read = await service.getSchedule("user", "project-1", "rule-1");
         expect(read.stored).to.include({ sql: rule.get("sql"), lastRunStatus: "error" });

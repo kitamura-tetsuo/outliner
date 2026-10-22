@@ -105,7 +105,7 @@ describe("ObjectManagerController — Duplicate selected", () => {
             const gridId = createGrid(project.ydoc, { name: "Board", query: "SELECT * FROM tasks" });
             const ruleId = createScheduleRule(project, {
                 targetTableId: tableId,
-                sql: "INSERT INTO {{table}} (id) VALUES ('1') RETURNING *",
+                sql: "INSERT INTO tasks (id) VALUES ('1') RETURNING *",
                 rrule: "RRULE:FREQ=DAILY",
             });
             const objects = getObjects(project);

@@ -157,6 +157,48 @@ describe("Job Scheduler - runRuleNow", () => {
         expect(ruleMap.get("sql")).to.equal(storedSql);
     });
 
+    it("materializes a Unicode-escaped source relation for execution", async () => {
+        const projectDoc = new Y.Doc();
+        const targetDoc = new Y.Doc();
+        const auditDoc = new Y.Doc();
+        targetDoc.getText("schema").insert(0, "CREATE TABLE tasks (id text primary key)");
+        auditDoc.getText("schema").insert(0, "CREATE TABLE audit (id text primary key)");
+        const source = new Y.Map<unknown>();
+        source.set("id", "source-row");
+        auditDoc.getMap("data").set("source-row", source);
+        for (const [id, name] of [["table1", "tasks"], ["audit-table", "audit"]] as const) {
+            const entry = new Y.Map<unknown>();
+            entry.set("name", name);
+            entry.set("sqlName", name);
+            projectDoc.getMap("yjsTables").set(id, entry);
+        }
+        const sql = `INSERT INTO tasks (id) SELECT id FROM U&"audit" RETURNING *`;
+        const rule = new Y.Map<unknown>();
+        rule.set("sql", sql);
+        rule.set("targetTableId", "table1");
+        projectDoc.getMap("schedules").set("rule1", rule);
+        const docs = new Map<string, Y.Doc>([
+            ["projects/proj1", projectDoc],
+            ["projects/proj1/tables/table1", targetDoc],
+            ["projects/proj1/tables/audit-table", auditDoc],
+        ]);
+        hocuspocus.openDirectConnection = async (roomName: string) => ({
+            document: docs.get(roomName),
+            disconnect: () => {},
+        });
+        const executeJob = sinon.stub((scheduler as any).executor, "executeJob").resolves({ success: true, rows: [] });
+
+        const result = await scheduler.runRuleNow("projects/proj1", "rule1");
+
+        expect(result.success, result.error).to.equal(true);
+        expect(executeJob.firstCall.args[0].ruleSql).to.equal(sql);
+        expect(executeJob.firstCall.args[0].tables).to.have.length(2);
+        expect(executeJob.firstCall.args[0].tables[1].records[0]).to.include({ id: "source-row" });
+        expect(rule.get("sql")).to.equal(sql);
+        expect(targetDoc.getMap("data").size).to.equal(0);
+        expect(auditDoc.getMap("data").get("source-row")).to.equal(source);
+    });
+
     it("should write lastRunStatus/lastRunError back into the schedules map on SQL failure", async () => {
         const ruleMap = seedRunnableRule();
 

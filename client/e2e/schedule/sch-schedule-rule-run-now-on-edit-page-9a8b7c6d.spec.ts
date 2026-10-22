@@ -135,7 +135,7 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
 
         // Fill SQL with INVALID syntax
         const sqlEditor = SqlEditorHelper.byTestId(page, "schedule-sql-editor");
-        await sqlEditor.fillAndCommit(page, "INVALID SQL SYNTAX");
+        await sqlEditor.fillAndCommit(page, "INSERT INTO");
         await page.waitForTimeout(500);
 
         // Save

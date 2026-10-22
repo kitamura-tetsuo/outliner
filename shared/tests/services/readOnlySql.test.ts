@@ -57,4 +57,11 @@ describe("readOnlySql PostgreSQL AST admission", () => {
             .toEqual(new Set(["select", "Mixed", "from", "tasks"]));
         expect(() => parseSqlIdentifiers("SELECT 'unterminated")).toThrow();
     });
+
+    it("uses parsed PostgreSQL names for Unicode-escaped relation identifiers", () => {
+        expect(parseSqlIdentifiers(`INSERT INTO tasks (id) SELECT id FROM U&"audit" RETURNING *`))
+            .toContain("audit");
+        expect(parseSqlIdentifiers(`SELECT id FROM U&"d\\0061t\\0061" UESCAPE '\\'`))
+            .toContain("data");
+    });
 });

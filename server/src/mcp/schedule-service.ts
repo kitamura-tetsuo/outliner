@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import * as Y from "yjs";
 import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
 import {
+    resolveScheduleTargetPlaceholder,
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
     validateScheduleRuleSql,
@@ -259,7 +260,7 @@ export class OutlinerScheduleService {
         };
     }
 
-    private references(doc: Y.Doc, candidate: ScheduleCandidate): Array<{
+    private references(doc: Y.Doc, candidate: ScheduleCandidate, analyzeSql = true): Array<{
         tableId: string;
         displayName: string;
         sqlName: string;
@@ -284,7 +285,12 @@ export class OutlinerScheduleService {
             output.set(`${kind}:${tableId}`, value);
         };
         add(candidate.targetTableId, "write-target");
-        const identifiers = parseSqlIdentifiers(candidate.sql);
+        if (!analyzeSql) return [...output.values()];
+        const target = tables.get(candidate.targetTableId);
+        const targetSqlName = target ? String(target.get("sqlName") ?? "") : "";
+        const identifiers = parseSqlIdentifiers(
+            targetSqlName ? resolveScheduleTargetPlaceholder(candidate.sql, targetSqlName) : candidate.sql,
+        );
         tables.forEach((table, tableId) => {
             if (tableId === candidate.targetTableId) return;
             const name = String(table.get("sqlName") ?? "");
@@ -371,7 +377,7 @@ export class OutlinerScheduleService {
                     error: { code: "missing_target", message: "Target Table not found" },
                 };
             }
-            const refs = this.references(doc, stored as unknown as ScheduleCandidate);
+            const refs = this.references(doc, stored as unknown as ScheduleCandidate, validation.sql.valid);
             const candidate = stored as unknown as ScheduleCandidate;
             const cursor = await this.cursorReader?.getScheduleCursor(projectId, ruleId);
             const occurrences = this.occurrences(candidate, 5, cursor?.nextRunAt);
@@ -483,7 +489,7 @@ export class OutlinerScheduleService {
         // into legacy-compatible validation only when SQL is unchanged.
         const fields = this.fieldValidation(candidate, requireExplicitAliases);
         const target = doc.getMap<Y.Map<unknown>>("yjsTables").get(candidate.targetTableId);
-        const references = this.references(doc, candidate);
+        const references = this.references(doc, candidate, fields.sql.valid);
         const missingTarget = !target;
         const defaultOccurrence =
             computeNextRunAt(candidate.rrule, candidate.dtstart, candidate.timezone, 0).next_run_at;

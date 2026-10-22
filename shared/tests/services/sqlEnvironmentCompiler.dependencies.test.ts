@@ -19,6 +19,25 @@ const catalog: SqlCatalogSnapshot = Object.freeze({
 });
 
 describe("SQL inspection ENUM dependencies", () => {
+    it("treats a CTE feeding an outer INSERT as a scoped relation", async () => {
+        const result = await compileSqlEnvironment({
+            catalog,
+            tables: [{
+                id: "tasks-table",
+                schema: "CREATE TABLE tasks (id text, priority priority_level)",
+                records: [],
+            }],
+            inspections: [{
+                id: "schedule",
+                kind: "schedule",
+                sql: "WITH candidates AS (SELECT 'one'::text AS id, 'high'::priority_level AS priority) "
+                    + "INSERT INTO tasks SELECT * FROM candidates RETURNING *",
+            }],
+        });
+        expect(result.status).toBe("ready");
+        if (result.status === "ready") await result.environment.dispose();
+    }, 30_000);
+
     it("rejects ENUM-array casts for Grid, Calendar and Schedule inspections", async () => {
         const kinds = ["grid", "calendar", "schedule"] as const;
         for (const kind of kinds) {

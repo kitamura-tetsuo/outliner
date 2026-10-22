@@ -63,7 +63,10 @@ export function createScheduleRule(
     project: Project,
     options: Partial<ScheduleRule> & { targetTableId: string; sql: string; rrule: string; ruleId?: string; },
 ): string {
-    assertValidScheduleSql(options.sql);
+    // A target-less blank rule is the established inert representation used
+    // while authoring or after cross-project reference scrubbing. Any SQL that
+    // can execute still has to pass structural admission before persistence.
+    if (options.sql.trim() || options.targetTableId) assertValidScheduleSql(options.sql);
     const ruleId = options.ruleId ?? uuid();
     const schedulesMap = project.schedules;
     const ruleMap = new Y.Map<ScheduleRuleValueType>();

@@ -18,12 +18,29 @@ function decodedIdentifier(token: ScanToken): string {
     return token.text.startsWith('"') ? token.text.slice(1, -1).replace(/""/g, '"') : token.text.toLowerCase();
 }
 
+function collectParsedRelationNames(value: unknown, identifiers: Set<string>): void {
+    if (Array.isArray(value)) {
+        value.forEach(child => collectParsedRelationNames(child, identifiers));
+        return;
+    }
+    const wrapper = node(value);
+    if (!wrapper) return;
+    const range = node(wrapper.RangeVar);
+    if (range && typeof range.relname === "string") identifiers.add(range.relname);
+    Object.values(wrapper).forEach(child => collectParsedRelationNames(child, identifiers));
+}
+
 /** Scanner-recognized SQL words; this is candidate discovery, not resolved dependency evidence. */
 export function parseSqlIdentifiers(sql: string): Set<string> {
     const identifiers = new Set<string>();
     for (const token of scanSync(sql).tokens) {
         if (token.tokenName === "IDENT" || token.keywordKind !== 0) identifiers.add(decodedIdentifier(token));
     }
+    // PostgreSQL's scanner reports Unicode-escaped identifiers as an
+    // implementation token rather than IDENT. The parsed RangeVar is the
+    // library-authoritative decoded spelling, including UESCAPE handling.
+    const parsed = parseSync(sql);
+    for (const statement of parsed.stmts ?? []) collectParsedRelationNames(statement.stmt, identifiers);
     return identifiers;
 }
 

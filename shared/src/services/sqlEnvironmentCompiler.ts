@@ -240,9 +240,17 @@ function collectReferencedTables(statement: AstNode): RelationReference[] {
             return;
         }
         if (!isNode(value)) return;
-        if (isNode(value.SelectStmt)) {
-            const select = value.SelectStmt;
-            const withClause = isNode(select.withClause) ? select.withClause : undefined;
+        const statementBody = isNode(value.SelectStmt)
+            ? value.SelectStmt
+            : isNode(value.InsertStmt)
+            ? value.InsertStmt
+            : isNode(value.UpdateStmt)
+            ? value.UpdateStmt
+            : isNode(value.DeleteStmt)
+            ? value.DeleteStmt
+            : undefined;
+        if (statementBody) {
+            const withClause = isNode(statementBody.withClause) ? statementBody.withClause : undefined;
             const ctes = withClause && Array.isArray(withClause.ctes) ? withClause.ctes : [];
             const allLocalNames = ctes.flatMap(cte =>
                 isNode(cte) && isNode(cte.CommonTableExpr) && typeof cte.CommonTableExpr.ctename === "string"
@@ -258,7 +266,7 @@ function collectReferencedTables(statement: AstNode): RelationReference[] {
                 walk(cte.CommonTableExpr.ctequery, scope);
                 if (typeof cte.CommonTableExpr.ctename === "string") localNames.add(cte.CommonTableExpr.ctename);
             }
-            for (const [key, child] of Object.entries(select)) {
+            for (const [key, child] of Object.entries(statementBody)) {
                 if (key !== "withClause") walk(child, localNames);
             }
             return;
