@@ -78,7 +78,7 @@ describe("project schedules route", () => {
         createScheduleRule(currentProject(), {
             name: "Nightly audit",
             targetTableId: auditId,
-            sql: "INSERT INTO audit (id) SELECT id FROM tasks",
+            sql: "INSERT INTO audit (id) SELECT id FROM tasks RETURNING *",
             rrule: "FREQ=DAILY",
         });
 
@@ -103,7 +103,7 @@ describe("project schedules route", () => {
         createScheduleRule(currentProject(), {
             name: "Nightly tasks",
             targetTableId: tasksId,
-            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid())",
+            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid()) RETURNING *",
             rrule: "FREQ=DAILY",
         });
         await waitFor(() => {
@@ -134,7 +134,7 @@ describe("project schedules route", () => {
         createScheduleRule(currentProject(), {
             name: "Nightly tasks",
             targetTableId: tasksId,
-            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid())",
+            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid()) RETURNING *",
             rrule: "FREQ=DAILY",
         });
 
@@ -174,7 +174,7 @@ describe("Schedules Manager route", () => {
         const ruleId = createScheduleRule(currentProject(), {
             name: "Nightly tasks",
             targetTableId: tasksId,
-            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid())",
+            sql: "INSERT INTO tasks (id) VALUES (gen_random_uuid()) RETURNING *",
             rrule: "FREQ=DAILY",
         });
         const ruleMap = currentProject().schedules.get(ruleId) as Y.Map<unknown>;

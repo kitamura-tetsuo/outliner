@@ -1,10 +1,12 @@
 import { Project } from "$shared/app-schema";
 import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { createTable } from "../yjstable/tableDocs";
 import {
     createScheduleRule,
     deleteScheduleRule,
     findSchedulesReferencingTable,
+    scheduleTableReferences,
     updateScheduleRule,
 } from "./scheduleRuleService";
 
@@ -47,15 +49,90 @@ describe("scheduleRuleService", () => {
 
     it("accepts and preserves the Schedule target placeholder", () => {
         const project = Project.createInstance("Test Project");
-        const sql = "INSERT INTO {{table}} (title, id) VALUES ('test', gen_random_uuid())";
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const auditId = createTable(project.ydoc, "Audit", "audit");
+        const sql = '/* 日 */ INSERT INTO {{table}} (id) SELECT id FROM U&"audit" RETURNING *';
 
         const ruleId = createScheduleRule(project, {
-            targetTableId: "table1",
+            targetTableId: tasksId,
             sql,
             rrule: "FREQ=DAILY",
         });
 
+        const beforeDiscovery = Y.encodeStateAsUpdate(project.ydoc);
         expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+            { tableId: auditId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, auditId)).toEqual([
+            { ruleId, ruleName: "Untitled Schedule", kind: "sql-reference", enabled: true },
+        ]);
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(beforeDiscovery);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+        expect(() => updateScheduleRule(project, ruleId, { sql: "INSERT INTO {{table}} VALUES ('unterminated" }))
+            .toThrow();
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+    });
+
+    it("does not expose qualified generated names as Schedule references", () => {
+        const project = Project.createInstance("Qualified references");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const unrelatedId = createTable(project.ydoc, "Unrelated", "__outliner_schedule_target__");
+        const sql = "INSERT INTO {{table}} (id) SELECT id || '-copy' AS id FROM public.{{table}} RETURNING *";
+        const ruleId = createScheduleRule(project, {
+            name: "Copy tasks",
+            targetTableId: tasksId,
+            sql,
+            rrule: "FREQ=DAILY",
+        });
+        const before = Y.encodeStateAsUpdate(project.ydoc);
+
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+        ]);
+        expect(findSchedulesReferencingTable(project, unrelatedId)).toEqual([]);
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(before);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+
+        updateScheduleRule(project, ruleId, {
+            sql: "INSERT INTO {{table}} (id) SELECT id FROM public.__outliner_schedule_target__ RETURNING *",
+        });
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+            { tableId: unrelatedId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, unrelatedId)).toEqual([
+            { ruleId, ruleName: "Copy tasks", kind: "sql-reference", enabled: true },
+        ]);
+    });
+
+    it("refuses non-INSERT Schedule SQL without changing saved rules", () => {
+        const project = Project.createInstance("Test Project");
+        const originalSql = "INSERT INTO tasks (id, title) VALUES ('old', 'Old') RETURNING *";
+        const ruleId = createScheduleRule(project, {
+            targetTableId: "tasks",
+            sql: originalSql,
+            rrule: "FREQ=DAILY",
+        });
+        const before = Y.encodeStateAsUpdate(project.ydoc);
+
+        expect(() =>
+            updateScheduleRule(project, ruleId, {
+                sql: "SELECT 'new-row'::text AS id, 'Injected'::text AS title",
+            })
+        ).toThrow("Query must be an INSERT statement");
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(before);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(originalSql);
+
+        expect(() =>
+            createScheduleRule(project, {
+                targetTableId: "tasks",
+                sql: "WITH changed AS (INSERT INTO tasks (id) VALUES ('nested') RETURNING *) SELECT * FROM changed",
+                rrule: "FREQ=DAILY",
+            })
+        ).toThrow("Query must be an INSERT statement");
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(before);
     });
 
     // Issue #5012: a Schedule belongs to the project. Its relationship to a
@@ -73,7 +150,7 @@ describe("scheduleRuleService", () => {
         const ruleId = createScheduleRule(project, {
             name: "Nightly audit",
             targetTableId: auditId,
-            sql: "INSERT INTO audit (id) SELECT id FROM tasks",
+            sql: "INSERT INTO audit (id) SELECT id FROM tasks RETURNING *",
             rrule: "FREQ=DAILY",
         });
 
@@ -88,7 +165,7 @@ describe("scheduleRuleService", () => {
         createScheduleRule(project, {
             name: "Unrelated",
             targetTableId: "some-other-table",
-            sql: "INSERT INTO elsewhere (id) VALUES (1)",
+            sql: "INSERT INTO elsewhere (id) VALUES (1) RETURNING *",
             rrule: "FREQ=DAILY",
         });
         expect(findSchedulesReferencingTable(project, tasksId)).toHaveLength(1);
@@ -108,7 +185,7 @@ describe("scheduleRuleService", () => {
         const tasksId = createTable(project.ydoc, "Tasks", "tasks");
         const ruleId = createScheduleRule(project, {
             targetTableId: tasksId,
-            sql: "INSERT INTO tasks (id) VALUES (1)",
+            sql: "INSERT INTO tasks (id) VALUES (1) RETURNING *",
             rrule: "FREQ=DAILY",
         });
 
@@ -171,5 +248,34 @@ describe("scheduleRuleService", () => {
         expect(ruleMap.get("completedAt")).toBeUndefined();
         expect(ruleMap.get("validationError")).toBeUndefined();
         expect(ruleMap.get("skippedOccurrences")).toBeUndefined();
+    });
+
+    it("retains concrete target table as sql-reference when Schedule is retargeted without changing SQL", () => {
+        const project = Project.createInstance("Test Project");
+        const auditId = createTable(project.ydoc, "Audit", "audit");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const concreteSql = "INSERT INTO audit (id) VALUES ('one') RETURNING *";
+
+        const ruleId = createScheduleRule(project, {
+            name: "Audit Rule",
+            targetTableId: auditId,
+            sql: concreteSql,
+            rrule: "FREQ=DAILY",
+        });
+
+        // Retarget to tasks without changing SQL
+        updateScheduleRule(project, ruleId, { targetTableId: tasksId });
+
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+            { tableId: auditId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, tasksId)).toEqual([
+            { ruleId, ruleName: "Audit Rule", kind: "write-target", enabled: true },
+        ]);
+        expect(findSchedulesReferencingTable(project, auditId)).toEqual([
+            { ruleId, ruleName: "Audit Rule", kind: "sql-reference", enabled: true },
+        ]);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(concreteSql);
     });
 });

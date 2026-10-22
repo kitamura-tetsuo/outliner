@@ -10,11 +10,15 @@ import {
     unambiguousRowSource,
 } from "../../../shared/src/services/projectQueryProvenance.js";
 import {
+    analyzeReadOnlySelect,
     parseSqlIdentifiers,
     parseTopLevelInsertTarget,
-    stripSqlNoise,
     validateReadOnlySelect,
 } from "../../../shared/src/services/readOnlySql.js";
+import {
+    parseScheduleSqlIdentifiers,
+    resolveScheduleTargetPlaceholder,
+} from "../../../shared/src/services/scheduleRuleValidation.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
 import { compileSqlEnvironment, type SqlEnumMetadata } from "../../../shared/src/services/sqlEnvironmentCompiler.js";
 import { describeViewSources, unavailableViewSources } from "../../../shared/src/services/viewSourceDiagnostics.js";
@@ -449,8 +453,9 @@ export class OutlinerRelationService {
                 };
             }
             const targetRelation = String(target.get("sqlName") ?? "");
-            const destination = parseTopLevelInsertTarget(candidate.sql);
-            if (!destination || destination !== targetRelation && destination !== targetRelation.toLowerCase()) {
+            const executionSql = resolveScheduleTargetPlaceholder(candidate.sql, targetRelation);
+            const destination = parseTopLevelInsertTarget(executionSql);
+            if (!destination || destination !== targetRelation) {
                 return {
                     accepted: false,
                     candidateRows: [],
@@ -470,7 +475,7 @@ export class OutlinerRelationService {
                 // compiler as execution. The lease was reset before this
                 // preview, so no type can be inherited from an earlier call.
                 const catalog = await materializeProjectCatalog(lease.db, projectId, doc);
-                const identifiers = parseSqlIdentifiers(candidate.sql);
+                const identifiers = parseSqlIdentifiers(executionSql);
                 const requiredTables = this.tables(doc).filter(table =>
                     table.tableId === candidate.targetTableId
                     || identifiers.has(table.relation)
@@ -516,7 +521,7 @@ export class OutlinerRelationService {
                 // every preview, preventing values from crossing requests.
                 await lease.db.query("SELECT set_config('TimeZone', $1, false)", [candidate.timezone]);
                 await lease.db.query("SELECT set_config('job.occurrence', $1, false)", [occurrence]);
-                const result = await lease.db.query<Record<string, unknown>>(candidate.sql);
+                const result = await lease.db.query<Record<string, unknown>>(executionSql);
                 const columns = (result.fields ?? []).map(field => field.name);
                 const targetColumns = await lease.db.query<{ column_name: string; }>(
                     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",
@@ -670,7 +675,7 @@ export class OutlinerRelationService {
                         .flatMap(([ruleId, rule]) => {
                             const kinds: ("write-target" | "sql-reference")[] = [];
                             if (rule.get("targetTableId") === tableId) kinds.push("write-target");
-                            const identifiers = parseSqlIdentifiers(String(rule.get("sql") ?? ""));
+                            const identifiers = parseScheduleSqlIdentifiers(String(rule.get("sql") ?? ""));
                             if (
                                 rule.get("targetTableId") !== tableId
                                 && table.relation
@@ -1471,7 +1476,7 @@ export class OutlinerRelationService {
                 && column !== "id"
                 && provenance.suppliers.some(source => !!unambiguousPhysicalColumn(provenance, source.sqlName, column))
             );
-            const analyzed = stripSqlNoise(normalizedQuery);
+            const analyzed = analyzeReadOnlySelect(normalizedQuery, false);
             return {
                 snapshot,
                 validation: {
@@ -1498,7 +1503,7 @@ export class OutlinerRelationService {
                             ? undefined
                             : provenance.reason ?? "No unambiguous physical columns",
                     },
-                    inferredOrdering: /\border\s+by\b/i.test(analyzed) ? "sql-order-by" : "incidental-source-order",
+                    inferredOrdering: analyzed.hasOuterOrderBy ? "sql-order-by" : "incidental-source-order",
                     warnings: materializationWarnings,
                     errors: [],
                 },
@@ -2154,7 +2159,10 @@ export class OutlinerRelationService {
                         hiddenColumns: columns.filter(column => !column.shown).map(column => column.name),
                         presentationColumnOrder: ordered,
                         presentationColumns,
-                        filtering: /\bwhere\b/i.test(stripSqlNoise(String(inspected.query))) ? "sql" : "none",
+                        filtering: validation.accepted
+                                && analyzeReadOnlySelect(String(inspected.query), false).hasOuterWhere
+                            ? "sql"
+                            : "none",
                         sorting: validation.inferredOrdering,
                     },
                     rowCount: validation.sampleRows?.length ?? 0,

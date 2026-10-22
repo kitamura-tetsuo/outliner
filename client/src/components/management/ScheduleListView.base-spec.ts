@@ -45,12 +45,14 @@ describe("ScheduleListView references under a nonempty base", () => {
     it("preserves encoded project and Table identities through the collection prop", async () => {
         const projectName = "Design / 50%?#";
         const tableId = "table / 50%?#";
+        const auditId = "audit / 50%?#";
         const project = AppProject.createInstance(projectName);
         createTable(project.ydoc, "Referenced Table", "referenced_table", { tableId });
+        createTable(project.ydoc, "Audit Table", "audit", { tableId: auditId });
         createScheduleRule(project, {
             name: "Nightly reference",
             targetTableId: tableId,
-            sql: "INSERT INTO referenced_table (id) VALUES (gen_random_uuid())",
+            sql: 'INSERT INTO {{table}} (id) SELECT id FROM U&"audit" RETURNING *',
             rrule: "FREQ=DAILY",
         });
         routeState.project = project;
@@ -63,5 +65,6 @@ describe("ScheduleListView references under a nonempty base", () => {
             "/test-base/Design%20%2F%2050%25%3F%23/-/tables/table%20%2F%2050%25%3F%23",
         );
         expect(occurrences(href, "/test-base")).toBe(1);
+        expect(screen.getByText("Audit Table")).toBeTruthy();
     });
 });

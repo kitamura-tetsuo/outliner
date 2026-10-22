@@ -43,7 +43,13 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
     it("records an unavailable target schema as a failed run", async () => {
         const projectId = "schedule-target-schema-unavailable";
         await seedCatalogSchedule(value, projectId);
-        await configureTarget(value, projectId, "", "SELECT 1", { id: "unrelated", state: "first" });
+        await configureTarget(
+            value,
+            projectId,
+            "",
+            "INSERT INTO typed_output (id, state) VALUES ('new', 'first') RETURNING *",
+            { id: "unrelated", state: "first" },
+        );
 
         const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
         expect(run).to.deep.include({ success: false, error: "Target Table schema is unavailable" });

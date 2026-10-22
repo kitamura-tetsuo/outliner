@@ -179,7 +179,7 @@ describe("Job scheduler run", function() {
     it("records a failing run with lastRunStatus 'error' but still advances the cursor", async function() {
         // Break the SQL so it fails execution
         const ruleMap = docs.get(projectRoom)!.getMap("schedules").get(dailyRule.ruleId) as Y.Map<unknown>;
-        ruleMap.set("sql", "SELECT * FROM no_such_table");
+        ruleMap.set("sql", "INSERT INTO no_such_table (id) VALUES ('missing') RETURNING *");
 
         await scheduler.tick();
 

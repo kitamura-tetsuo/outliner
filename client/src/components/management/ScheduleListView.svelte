@@ -211,7 +211,7 @@
         // does not make that Table its owner — it is just the first reference.
         const target = tables[0];
         const defaultSql = target?.sqlName
-            ? `INSERT INTO "${target.sqlName}" (id) VALUES (gen_random_uuid());`
+            ? `INSERT INTO "${target.sqlName}" (id) VALUES (gen_random_uuid()) RETURNING *;`
             : "";
         const ruleId = createScheduleRule(project, {
             targetTableId: target?.tableId ?? "",

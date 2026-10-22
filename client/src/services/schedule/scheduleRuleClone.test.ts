@@ -4,17 +4,17 @@ import * as Y from "yjs";
 import { cloneScheduleRules, rollbackClonedScheduleRules } from "./scheduleRuleClone";
 import { createScheduleRule } from "./scheduleRuleService";
 
-// The demo's daily routine rule, verbatim in shape: a data-modifying CTE that
-// writes into one table and reads another (docs/schedule-sql-conventions.md).
-const ROUTINE_RULE_SQL = `WITH inserted AS (
-    INSERT INTO routine_occurrences (id, template_id, title, cadence, done)
+// The demo's daily routine rule, verbatim in shape: a read-only CTE feeding
+// the one outer INSERT (docs/schedule-sql-conventions.md).
+const ROUTINE_RULE_SQL = `WITH candidates AS (
     SELECT t.id, t.id, t.title, t.cadence, false
     FROM routine_templates t
     WHERE t.cadence = 'daily'
-    ON CONFLICT (id) DO NOTHING
-    RETURNING *
 )
-SELECT id, template_id, title, cadence, done FROM inserted`;
+INSERT INTO routine_occurrences (id, template_id, title, cadence, done)
+SELECT * FROM candidates
+ON CONFLICT (id) DO NOTHING
+RETURNING *`;
 
 function project(guid: string): Project {
     return Project.fromDoc(new Y.Doc({ guid }));
@@ -103,12 +103,14 @@ describe("cloneScheduleRules", () => {
 
     it("reports a rewritten rule the destination would reject", () => {
         const source = project("source-invalid");
-        createScheduleRule(source, {
-            name: "Read only",
-            targetTableId: "source-occurrences",
-            sql: "SELECT * FROM routine_occurrences",
-            rrule: "RRULE:FREQ=DAILY",
-        });
+        // A legacy/corrupt document can still contain SQL that current admission
+        // refuses; cloning must not turn that stored state into a valid rule.
+        const invalidRule = new Y.Map<unknown>();
+        invalidRule.set("name", "Read only");
+        invalidRule.set("targetTableId", "source-occurrences");
+        invalidRule.set("sql", "SELECT * FROM routine_occurrences");
+        invalidRule.set("rrule", "RRULE:FREQ=DAILY");
+        source.schedules.set("legacy-invalid", invalidRule as never);
         const destination = project("destination-invalid");
 
         const result = cloneScheduleRules(

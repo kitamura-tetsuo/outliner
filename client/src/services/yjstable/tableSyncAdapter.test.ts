@@ -4,7 +4,7 @@ import { resetPgliteForTests } from "./pgliteService";
 import { parseCreateTable } from "./schemaIntrospection";
 import { projectSchemaName } from "./sqlNames";
 import { addRecord, createTable, deleteRecord, getTableHandles, setRecordValue, setSchemaText } from "./tableDocs";
-import { type RecordSyncError, TableSyncAdapter } from "./tableSyncAdapter";
+import { executeGridQuery, type RecordSyncError, TableSyncAdapter } from "./tableSyncAdapter";
 
 const SCHEMA = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, points INTEGER, "
     + "status TEXT CHECK (status IN ('open', 'done')))";
@@ -42,6 +42,13 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
             const result = await adapter.runQueryNow();
             expect(result?.columns).toEqual(["id", "title", "points"]);
             expect(result?.rows.map((r) => r.title)).toEqual(["a task", "b task"]);
+            const before = [...handles.data.entries()].map(([id, row]) => [id, Object.fromEntries(row.entries())]);
+            await expect(executeGridQuery(
+                "SELECT 1 AS value INTO copied UNION SELECT 2 AS value",
+                { pgSchema, requireExplicitAliases: false },
+            )).rejects.toThrow(/SELECT INTO/);
+            expect([...handles.data.entries()].map(([id, row]) => [id, Object.fromEntries(row.entries())]))
+                .toEqual(before);
         } finally {
             adapter.dispose();
         }

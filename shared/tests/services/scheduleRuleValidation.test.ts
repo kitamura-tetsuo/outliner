@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+    parseScheduleSqlIdentifiers,
+    resolveScheduleTargetPlaceholder,
     validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
     validateScheduleRuleSql,
@@ -29,10 +31,16 @@ describe("scheduleRuleValidation", () => {
             expect(sql).toContain("{{table}}");
         });
 
+        it("accepts a placeholder after multibyte SQL text without changing the source", () => {
+            const sql = "/* 日 */ INSERT INTO {{table}} (id) VALUES ('値') RETURNING *";
+            expect(validateScheduleRuleSql(sql)).toEqual({ valid: true });
+            expect(sql).toBe("/* 日 */ INSERT INTO {{table}} (id) VALUES ('値') RETURNING *");
+        });
+
         it("should reject SELECT", () => {
             const res = validateScheduleRuleSql("SELECT * FROM my_table");
             expect(res.valid).toBe(false);
-            expect(res.error).toMatch(/must start with INSERT or WITH/i);
+            expect(res.error).toMatch(/INSERT/i);
         });
 
         it("should reject multiple statements", () => {
@@ -47,6 +55,123 @@ describe("scheduleRuleValidation", () => {
             const res = validateScheduleRuleSql("INSERT INTO t VALUES (1)");
             expect(res.valid).toBe(false);
             expect(res.error).toMatch(/must end with RETURNING \*/i);
+        });
+
+        it("requires the outer INSERT and exactly its unqualified wildcard RETURNING", () => {
+            expect(
+                validateScheduleRuleSql(
+                    "WITH x AS (INSERT INTO other VALUES (1) RETURNING *) SELECT * FROM x",
+                ).valid,
+            ).toBe(false);
+            expect(validateScheduleRuleSql("INSERT INTO t VALUES (1) RETURNING t.*").valid).toBe(false);
+            expect(validateScheduleRuleSql("INSERT INTO t VALUES (1) RETURNING *, id").valid).toBe(false);
+        });
+
+        it("does not treat placeholders in strings or comments as a target", () => {
+            expect(validateScheduleRuleSql("INSERT INTO {{table}} VALUES ('{{table}}') RETURNING *").valid).toBe(true);
+            expect(validateScheduleRuleSql("SELECT '{{table}}' AS value -- {{table}}").valid).toBe(false);
+        });
+
+        it("resolves only scanner-visible target placeholders for transient execution", () => {
+            const sql = "/* {{table}} 日 */ INSERT INTO {{table}} (id) VALUES ('{{table}}') RETURNING *";
+
+            expect(resolveScheduleTargetPlaceholder(sql, 'Tasks "daily"')).toBe(
+                '/* {{table}} 日 */ INSERT INTO "Tasks ""daily""" (id) VALUES (\'{{table}}\') RETURNING *',
+            );
+            expect(sql).toContain("INSERT INTO {{table}}");
+        });
+
+        it("discovers sources without exposing or colliding with the parser-only target", () => {
+            const sql = `/* 日本語 {{table}} */ INSERT INTO {{table}} (id)
+                SELECT id FROM U&"d\\0061t\\0061" UESCAPE '\\'
+                UNION SELECT id FROM __outliner_schedule_target__
+                WHERE '{{table}}' = '{{table}}' RETURNING *`;
+
+            expect(parseScheduleSqlIdentifiers(sql)).toEqual(
+                new Set([
+                    "insert",
+                    "into",
+                    "id",
+                    "select",
+                    "from",
+                    "data",
+                    "uescape",
+                    "union",
+                    "where",
+                    "returning",
+                    "__outliner_schedule_target__",
+                ]),
+            );
+            expect(sql).toContain("INSERT INTO {{table}}");
+        });
+
+        it("does not turn a qualified source placeholder into a registered Table reference", () => {
+            const sql = "INSERT INTO {{table}} (id) SELECT id || '-copy' AS id FROM public.{{table}} RETURNING *";
+
+            expect(validateScheduleRuleSql(sql)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(sql)).not.toContain("__outliner_schedule_target__");
+            expect(sql).toContain("public.{{table}}");
+        });
+
+        it("retains actual parser-marker relations while suppressing qualified generated occurrences", () => {
+            const sql = `/* 日本語 */ INSERT INTO {{table}} (id)
+                SELECT id FROM "public" /* qualified */ . /* source */ {{table}}
+                UNION SELECT id FROM U&"__outliner_schedule_t\\0061rget__"
+                RETURNING *`;
+
+            expect(validateScheduleRuleSql(sql)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(sql)).toContain("__outliner_schedule_target__");
+
+            const generatedOnly = `/* 🧪 */ INSERT INTO {{table}} (id)
+                SELECT id FROM U&"pub!006cic" UESCAPE '!'.{{table}}
+                UNION SELECT id FROM public.{{table}} RETURNING *`;
+            expect(validateScheduleRuleSql(generatedOnly)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(generatedOnly)).not.toContain("__outliner_schedule_target__");
+
+            // A generated qualifier must not suppress a real decoded relname.
+            const generatedQualifier = `INSERT INTO tasks (id) SELECT id FROM {{table}}.U&"d\\0061t\\0061" RETURNING *`;
+            expect(validateScheduleRuleSql(generatedQualifier)).toEqual({ valid: true });
+            expect(parseScheduleSqlIdentifiers(generatedQualifier)).toContain("data");
+            expect(parseScheduleSqlIdentifiers(generatedQualifier)).not.toContain("__outliner_schedule_target__");
+        });
+
+        it("discovers lexical candidates from malformed concrete SQL without full parse admission", () => {
+            const malformedOrderSql = "INSERT INTO tasks (id, order) VALUES ('daily', 1) RETURNING *";
+            const identifiers = parseScheduleSqlIdentifiers(malformedOrderSql);
+            expect(identifiers).toContain("tasks");
+            expect(identifiers).toContain("order");
+            expect(validateScheduleRuleSql(malformedOrderSql)).toEqual({
+                valid: false,
+                error: 'syntax error at or near "order"',
+            });
+        });
+
+        it("does not require full AST admission to suppress generated {{table}} identifiers", () => {
+            const malformedTemplateSql = "INSERT INTO {{table}} (id, order) VALUES ('daily', 1) RETURNING *";
+            const identifiers = parseScheduleSqlIdentifiers(malformedTemplateSql);
+            expect(identifiers).not.toContain("__outliner_schedule_target__");
+            expect(identifiers).toContain("order");
+            expect(validateScheduleRuleSql(malformedTemplateSql)).toEqual({
+                valid: false,
+                error: 'syntax error at or near "order"',
+            });
+        });
+
+        it("retains concrete and Unicode-escaped INSERT targets", () => {
+            expect(parseScheduleSqlIdentifiers("INSERT INTO audit (id) VALUES ('one') RETURNING *")).toContain("audit");
+            expect(parseScheduleSqlIdentifiers("INSERT INTO U&\"audit\" (id) VALUES ('one') RETURNING *")).toContain(
+                "audit",
+            );
+            expect(parseScheduleSqlIdentifiers("INSERT INTO U&\"a\\0075dit\" (id) VALUES ('one') RETURNING *"))
+                .toContain(
+                    "audit",
+                );
+        });
+
+        it("fails explicitly when an input requires AST decoding but cannot be parsed", () => {
+            const malformedUnicodeSql =
+                "INSERT INTO {{table}} (id) SELECT id FROM U&\"d\\0061t\\0061\" UESCAPE '\\' WHERE";
+            expect(() => parseScheduleSqlIdentifiers(malformedUnicodeSql)).toThrow();
         });
     });
 
@@ -127,7 +252,7 @@ describe("validateScheduleRuleSql (edge cases)", () => {
     it("rejects SQL with no INSERT statement", () => {
         const res = validateScheduleRuleSql("WITH vars AS (SELECT 1 AS id) SELECT id FROM vars RETURNING *");
         expect(res.valid).toBe(false);
-        expect(res.error).toMatch(/must contain an INSERT statement/i);
+        expect(res.error).toMatch(/INSERT|syntax/i);
     });
 
     it("handles null SQL", () => {
