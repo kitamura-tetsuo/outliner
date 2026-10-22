@@ -109,7 +109,9 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
                 copyData: false,
                 deferCompletion: true,
                 isDestinationCurrent: () => {
-                    if (++admissionChecks === 2) mutate();
+                    // The fourth check is the importer's final admission after its
+                    // real compiler-backed analysis await and before publication.
+                    if (++admissionChecks === 4) mutate();
                     return true;
                 },
             });

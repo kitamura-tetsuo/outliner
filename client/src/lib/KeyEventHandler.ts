@@ -3278,29 +3278,11 @@ export class KeyEventHandler {
                         if (!("catalog" in structured) || !structured.catalog) {
                             throw new Error("Calendar SQL catalog dependency evidence is unavailable.");
                         }
-                        const { assertPortableStructuralEnumCompatibility } = await import(
-                            "../services/yjstable/structuralEnumGuard"
-                        );
-                        const calendarEntries = Object.entries(structured.calendars);
-                        await assertPortableStructuralEnumCompatibility(
-                            destinationDoc,
-                            {
-                                catalog: structured.catalog,
-                                tables: Object.values(referencedSnapshots).map(snapshot => ({
-                                    id: snapshot.sourceTableId,
-                                    schema: snapshot.schemaSql,
-                                    records: [],
-                                })),
-                                inspections: calendarEntries.map(([id, settings]) => ({
-                                    id,
-                                    kind: "calendar" as const,
-                                    sql: settings.query,
-                                })),
-                            },
-                            new Set(calendarEntries.map(([id]) => id)),
-                        );
                         if (!destinationCurrent()) return;
-                        pendingPaste?.admit();
+                        // Calendar SQL was included in the importer admission above. Reuse that
+                        // complete operation witness instead of constructing a divergent second
+                        // compiler input that could omit auxiliary relations such as outline_items.
+                        pendingPaste.admit();
                         const sqlNameMap = new Map<string, string>();
                         if (pastedTableIdMap) {
                             for (

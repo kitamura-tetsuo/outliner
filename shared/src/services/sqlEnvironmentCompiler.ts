@@ -325,6 +325,8 @@ async function resetDatabase(db: PGlite): Promise<void> {
     await db.exec("CREATE SCHEMA public; SET search_path TO public");
 }
 
+// Type resolution and compilation use distinct clean sessions. Once both are
+// warm, later analyses alternate between them without another WASM cold start.
 const MAX_DEFAULT_COMPILERS = 2;
 const idleDefaultCompilers: PGlite[] = [];
 const defaultCompilerWaiters: ((db: PGlite) => void)[] = [];
