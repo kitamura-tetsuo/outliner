@@ -311,6 +311,7 @@ export async function importTableStructures(
     grids: Readonly<Record<string, GridSnapshot>> = {},
     catalog?: import("$shared/services/sqlCatalog").SqlCatalogSnapshot,
     admit: () => void = () => {},
+    additionalInspections: readonly import("$shared/services/sqlEnvironmentCompiler").SqlInspectionTarget[] = [],
 ): Promise<TableCloneResult> {
     admit();
     if (!isGridSnapshotMap(grids)) throw new TableCloneError("Grid definitions are malformed");
@@ -325,6 +326,9 @@ export async function importTableStructures(
         if (capturedCatalogs.some(candidate => candidate.revision !== catalog.revision)) {
             throw new TableCloneError("Clipboard SQL catalog evidence is inconsistent");
         }
+        const scopedGrids = Object.values(grids).filter(snapshot =>
+            snapshot.query.trim() && snapshot.tableIds.every(id => snapshots[id] !== undefined)
+        );
         const portableSnapshot = {
             catalog,
             tables: Object.values(snapshots).map(snapshot => ({
@@ -336,15 +340,19 @@ export async function importTableStructures(
                     )
                     : [],
             })),
-            inspections: Object.values(grids).filter(snapshot => snapshot.query.trim()).map(snapshot => ({
-                id: snapshot.gridId,
-                kind: "grid" as const,
-                sql: snapshot.query,
-            })),
+            inspections: [
+                ...scopedGrids.map(snapshot => ({
+                    id: snapshot.gridId,
+                    kind: "grid" as const,
+                    sql: snapshot.query,
+                })),
+                ...additionalInspections.filter(target => target.sql.trim()),
+            ],
         };
         const relevantIds = new Set([
             ...Object.keys(snapshots),
-            ...Object.values(grids).filter(snapshot => snapshot.query.trim()).map(snapshot => snapshot.gridId),
+            ...scopedGrids.map(snapshot => snapshot.gridId),
+            ...additionalInspections.filter(target => target.sql.trim()).map(target => target.id),
         ]);
         portableGuard = () =>
             assertPortableStructuralEnumCompatibility(destinationProjectDoc, portableSnapshot, relevantIds);

@@ -3223,6 +3223,13 @@ export class KeyEventHandler {
                             snapshots: referencedSnapshots,
                             grids,
                             catalog: "catalog" in structured ? structured.catalog : undefined,
+                            additionalInspections: "calendars" in structured
+                                ? Object.entries(structured.calendars ?? {}).map(([id, settings]) => ({
+                                    id,
+                                    kind: "calendar" as const,
+                                    sql: settings.query,
+                                }))
+                                : [],
                             requestedSourceTableIds: [...referencedTableIds],
                             operation: structured.operation,
                             copyData: specialVariant !== "copy-without-data",
@@ -3243,7 +3250,11 @@ export class KeyEventHandler {
                             const { getLoadedProjectDocById } = await import("./yjsService.svelte");
                             const capturedCatalog = "catalog" in structured ? structured.catalog : undefined;
                             const capturedCalendarQueries = "calendars" in structured
-                                ? Object.values(structured.calendars ?? {}).map(settings => settings.query)
+                                ? Object.entries(structured.calendars ?? {}).map(([id, settings]) => ({
+                                    id,
+                                    kind: "calendar" as const,
+                                    sql: settings.query,
+                                }))
                                 : [];
                             authorizePasteRedo = () =>
                                 portableStructuralEnumsStillCompatible(

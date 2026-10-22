@@ -266,8 +266,15 @@ function collectReferencedTables(statement: AstNode): RelationReference[] {
                 walk(cte.CommonTableExpr.ctequery, scope);
                 if (typeof cte.CommonTableExpr.ctename === "string") localNames.add(cte.CommonTableExpr.ctename);
             }
+            const mutationTarget = isNode(statementBody.relation) ? statementBody.relation : undefined;
+            if (mutationTarget && typeof mutationTarget.relname === "string") {
+                const schema = typeof mutationTarget.schemaname === "string" ? mutationTarget.schemaname : undefined;
+                if (schema !== undefined || !localNames.has(mutationTarget.relname)) {
+                    tables.push({ schema, name: mutationTarget.relname });
+                }
+            }
             for (const [key, child] of Object.entries(statementBody)) {
-                if (key !== "withClause") walk(child, localNames);
+                if (key !== "withClause" && key !== "relation") walk(child, localNames);
             }
             return;
         }
@@ -318,8 +325,10 @@ async function resetDatabase(db: PGlite): Promise<void> {
     await db.exec("CREATE SCHEMA public; SET search_path TO public");
 }
 
-let defaultCompiler: Promise<PGlite> | undefined;
-let defaultCompilerQueue = Promise.resolve();
+const MAX_DEFAULT_COMPILERS = 2;
+const idleDefaultCompilers: PGlite[] = [];
+const defaultCompilerWaiters: ((db: PGlite) => void)[] = [];
+let defaultCompilerCount = 0;
 
 async function createDefaultCompiler(): Promise<PGlite> {
     const { PGlite } = await import("@electric-sql/pglite");
@@ -327,28 +336,31 @@ async function createDefaultCompiler(): Promise<PGlite> {
 }
 
 async function defaultLease(): Promise<SqlEnvironmentLease> {
-    let unlock!: () => void;
-    const next = new Promise<void>(resolve => {
-        unlock = resolve;
-    });
-    const previous = defaultCompilerQueue;
-    defaultCompilerQueue = next;
-    await previous;
-
+    let db: PGlite | undefined;
+    if (defaultCompilerCount < MAX_DEFAULT_COMPILERS) {
+        defaultCompilerCount++;
+        try {
+            db = await createDefaultCompiler();
+        } catch (error) {
+            defaultCompilerCount--;
+            throw error;
+        }
+    } else {
+        db = idleDefaultCompilers.shift();
+    }
+    db ??= await new Promise<PGlite>(resolve => defaultCompilerWaiters.push(resolve));
+    let released = false;
+    const release = () => {
+        if (released) return;
+        released = true;
+        const waiter = defaultCompilerWaiters.shift();
+        if (waiter) waiter(db);
+        else idleDefaultCompilers.push(db);
+    };
     try {
-        const db = await (defaultCompiler ??= createDefaultCompiler());
-        let released = false;
-        return {
-            db,
-            release: () => {
-                if (released) return;
-                released = true;
-                unlock();
-            },
-        };
+        return { db, release };
     } catch (error) {
-        defaultCompiler = undefined;
-        unlock();
+        release();
         throw error;
     }
 }

@@ -49,6 +49,7 @@ export interface CrossProjectGridPasteOptions {
     snapshots: Record<string, GridTableSnapshot>;
     grids?: Record<string, GridSnapshot>;
     catalog?: import("$shared/services/sqlCatalog").SqlCatalogSnapshot;
+    additionalInspections?: readonly import("$shared/services/sqlEnvironmentCompiler").SqlInspectionTarget[];
     /** Tables whose hosts the user selected; all other snapshots are closure additions. */
     requestedSourceTableIds: string[];
     operation?: "cut";
@@ -201,6 +202,7 @@ export async function cloneGridTablesAcrossProjects(
         snapshots,
         grids,
         catalog,
+        additionalInspections = [],
         requestedSourceTableIds,
         operation,
         copyData = true,
@@ -311,6 +313,7 @@ export async function cloneGridTablesAcrossProjects(
             grids,
             catalog,
             admit,
+            additionalInspections,
         );
         bindings = cloneResult.bindings;
         admit();
@@ -648,6 +651,11 @@ export async function moveGridPlacementsAcrossProjects(
         ),
     ];
     const calendarSources = new Map(calendarIds.map(id => [id, source.calendars.get(id)]));
+    const calendarInspections = [...calendarSources].map(([id, entry]) => ({
+        id,
+        kind: "calendar" as const,
+        sql: entry!.get("query") as string,
+    }));
     const calendarEvidence = JSON.stringify(
         [...calendarSources].map(([id, entry]) => [id, entry?._item?.id, entry?.get("query")]),
     );
@@ -788,6 +796,7 @@ export async function moveGridPlacementsAcrossProjects(
             snapshots,
             grids,
             catalog: sourceCatalog.snapshot,
+            additionalInspections: calendarInspections,
             requestedSourceTableIds: tableIds,
             copyData,
             allowProvenanceReuse: true,
@@ -814,7 +823,7 @@ export async function moveGridPlacementsAcrossProjects(
                 source.ydoc,
                 grids,
                 payload.catalog,
-                [],
+                calendarInspections,
                 preparation.enumAdmission,
             )
         ) {
@@ -970,7 +979,7 @@ export async function moveGridPlacementsAcrossProjects(
                     source.ydoc,
                     grids,
                     payload.catalog,
-                    [],
+                    calendarInspections,
                     preparation.enumAdmission,
                 )
             ) {
@@ -1036,7 +1045,7 @@ export async function moveGridPlacementsAcrossProjects(
                             source.ydoc,
                             grids,
                             payload.catalog,
-                            [],
+                            calendarInspections,
                             preparation.enumAdmission,
                         )
                     ) return { status: "refused", reason: "SQL ENUM admission changed" };

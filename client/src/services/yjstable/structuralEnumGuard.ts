@@ -102,7 +102,7 @@ export function portableStructuralEnumsStillCompatible(
     currentSourceDoc?: Y.Doc,
     grids: Readonly<Record<string, import("../clipboard/itemClipboard").GridSnapshot>> = {},
     capturedCatalog?: SqlCatalogSnapshot,
-    _additionalQueries: readonly string[] = [],
+    additionalInspections: readonly SqlInspectionTarget[] = [],
     admission?: StructuralEnumAdmission,
 ): boolean {
     // Query-only Grids can require types without carrying any Table snapshots.
@@ -115,6 +115,7 @@ export function portableStructuralEnumsStillCompatible(
     const currentById = new Map([
         ...Object.values(snapshots).map(snapshot => [snapshot.sourceTableId, snapshot.schemaSql] as const),
         ...Object.values(grids).map(grid => [grid.gridId, grid.query] as const),
+        ...additionalInspections.map(target => [target.id, target.sql] as const),
     ]);
     const capturedById = new Map([
         ...admission.sourceDescriptor.tables.map(table => [table.id, table.schema] as const),
@@ -125,7 +126,17 @@ export function portableStructuralEnumsStillCompatible(
     ) return false;
     if (currentSourceDoc) {
         const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
-        if (current.status !== "ready" || current.snapshot.revision !== catalog.revision) return false;
+        if (current.status !== "ready") return false;
+        const currentEnums = new Map(
+            current.snapshot.objects.map(object => [object.id, enumDeclaration(object.source)]),
+        );
+        if (
+            admission.requiredEnums.some(expected => {
+                const found = currentEnums.get(expected.objectId);
+                return found?.name !== expected.name || found.labels.length !== expected.labels.length
+                    || found.labels.some((label, index) => label !== expected.labels[index]);
+            })
+        ) return false;
     }
     const destination = readSqlCatalog(destinationDoc.guid, destinationDoc);
     if (destination.status !== "ready") return false;

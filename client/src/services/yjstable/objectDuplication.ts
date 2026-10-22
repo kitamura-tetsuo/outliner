@@ -26,6 +26,7 @@ import {
     assertStructuralEnumCompatibility,
     captureStructuralSqlSnapshot,
     type StructuralEnumAdmission,
+    structuralEnumAdmissionStillCompatible,
 } from "./structuralEnumGuard";
 import {
     createTable,
@@ -278,6 +279,7 @@ export async function materializeDuplicationPlan(
      * Every entry in `objects` must have a matching `objectGraphKey` here.
      */
     existingIdMap?: ReadonlyMap<string, string>,
+    replayAdmission?: StructuralEnumAdmission,
 ): Promise<MaterializedDuplication> {
     // Capture dependency authority before the first await. The guard compiles
     // actual schemas/queries and rechecks these snapshots immediately before
@@ -340,6 +342,9 @@ export async function materializeDuplicationPlan(
     try {
         enumAdmission = await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
         assertCurrent();
+        if (replayAdmission && !structuralEnumAdmissionStillCompatible(source, destination, replayAdmission)) {
+            throw new Error("SQL ENUM admission changed since duplication.");
+        }
         for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 
         for (const object of objects) {

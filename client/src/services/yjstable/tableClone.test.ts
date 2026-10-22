@@ -1,3 +1,4 @@
+import { readSqlCatalog } from "$shared/services/sqlCatalog";
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createGrid, getGridHandles, getGridRegistry } from "./gridDocs";
@@ -187,9 +188,17 @@ describe("independent portable Tables and Grids", () => {
         const doc = new Y.Doc();
         const destination = new Y.Doc();
         const id = createGrid(doc, { query: "SELECT 1 AS value" });
-        const result = await importTableStructures(destination, {}, doc.guid, undefined, false, {
-            [id]: exportGridSlice(doc, id),
-        });
+        const catalog = readSqlCatalog(doc.guid, doc);
+        expect(catalog.status).toBe("ready");
+        const result = await importTableStructures(
+            destination,
+            {},
+            doc.guid,
+            undefined,
+            false,
+            { [id]: exportGridSlice(doc, id) },
+            catalog.status === "ready" ? catalog.snapshot : undefined,
+        );
         expect(result.tableIdMap).toEqual({});
         expect(listTables(destination)).toEqual([]);
         expect(getGridHandles(destination, result.gridIdMap[id])?.entry.get("query")).toBe("SELECT 1 AS value");
@@ -203,13 +212,10 @@ describe("independent portable Tables and Grids", () => {
         const snapshots = exportTableStructures(f.doc, [f.a, f.b, f.c]);
         snapshots[f.b]!.schemaSql = "CREATE TABLE wrong_name (id TEXT)";
         const destination = new Y.Doc();
-        const result = await importTableStructures(destination, snapshots, f.doc.guid, undefined, false, {
+        await expect(importTableStructures(destination, snapshots, f.doc.guid, undefined, false, {
             [f.grid]: exportGridSlice(f.doc, f.grid),
-        });
-        expect(result.tableIdMap[f.a]).toBeUndefined();
-        expect(result.tableIdMap[f.b]).toBeUndefined();
-        expect(result.tableIdMap[f.c]).toBeDefined();
-        expect(result.failedSourceTableIds.sort()).toEqual([f.a, f.b].sort());
+        })).rejects.toThrow("Unresolved relation: b");
+        expect(listTables(destination)).toEqual([]);
     });
 
     it("copies live rows independently and clears destination rows for a successful empty source", () => {

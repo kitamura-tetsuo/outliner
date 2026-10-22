@@ -32,26 +32,28 @@ describe("Table import binding admission", () => {
         const b = make(source, "b", { tableId: "second-b" });
         const snapshots = exportTableStructures(source.ydoc, [a, b]);
         const registry = getTableRegistry(destination.ydoc);
-        const entered = deferred();
-        const release = deferred();
         let copiedId: string | undefined;
-        registry.observe(() => {
+        let replacement: Y.Map<unknown> | undefined;
+        const admit = () => {
             const created = listTables(destination.ydoc).find(t => t.sqlName === "a");
             if (!created || copiedId) return;
             copiedId = created.tableId;
-            void enqueueWrite(async () => {
-                entered.resolve();
-                await release.promise;
-            });
-        });
-        const importing = importTableStructures(destination.ydoc, snapshots, source.ydoc.guid);
-        await entered.promise;
-        removeTableWithPolicy(destination, copiedId!, "keep-references");
-        const replacementId = make(destination, "a", { tableId: copiedId });
-        const replacement = registry.get(replacementId);
-        release.resolve();
+            removeTableWithPolicy(destination, copiedId, "keep-references");
+            const replacementId = make(destination, "a", { tableId: copiedId });
+            replacement = registry.get(replacementId);
+        };
+        const importing = importTableStructures(
+            destination.ydoc,
+            snapshots,
+            source.ydoc.guid,
+            undefined,
+            true,
+            {},
+            undefined,
+            admit,
+        );
         await expect(importing).rejects.toThrow("binding changed");
-        expect(registry.get(replacementId)).toBe(replacement);
+        expect(registry.get(copiedId!)).toBe(replacement);
         expect(listTables(destination.ydoc).map(t => t.sqlName)).toEqual(["a"]);
         expect(getGridRegistry(destination.ydoc).size).toBe(0);
     }, 60_000);
@@ -136,13 +138,14 @@ describe("Table import binding admission", () => {
             );
             const entered = deferred();
             const release = deferred();
+            let barrier: Promise<void> | undefined;
             let firstId: string | undefined;
             const registry = getTableRegistry(destination.ydoc);
             registry.observe(() => {
                 const first = listTables(destination.ydoc).find(table => table.sqlName === "a");
                 if (!first || firstId) return;
                 firstId = first.tableId;
-                void enqueueWrite(async () => {
+                barrier = enqueueWrite(async () => {
                     entered.resolve();
                     await release.promise;
                 });
@@ -165,6 +168,7 @@ describe("Table import binding admission", () => {
             }
             const replacement = replaceFirst ? registry.get(firstId!) : undefined;
             release.resolve();
+            await barrier;
             await expect(importing).rejects.toThrow(/ENUM.*incompatible/);
             expect([...registry.keys()]).toEqual(replaceFirst ? [firstId] : []);
             if (replaceFirst) expect(registry.get(firstId!)).toBe(replacement);

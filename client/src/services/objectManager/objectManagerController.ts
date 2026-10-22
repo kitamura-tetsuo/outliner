@@ -421,6 +421,7 @@ export async function duplicateSelectedObjects(
                 created.sourceObjects,
                 { copyTableData: options.copyTableData, synchronizeTableSubdocs: options.synchronizeTableSubdocs },
                 created.idMap,
+                created.enumAdmission,
             );
             try {
                 options.assertDestination?.();

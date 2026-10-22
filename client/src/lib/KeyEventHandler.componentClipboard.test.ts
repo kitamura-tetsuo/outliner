@@ -205,6 +205,12 @@ function snapshot(sourceTableId: string, sqlName = "sales"): GridTableSnapshot {
         name: "Sales",
         sqlName,
         schemaSql: `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`,
+        catalog: {
+            projectId: "portable-test-source",
+            format: 1,
+            revision: "portable-test-empty-catalog",
+            objects: [],
+        },
     };
 }
 
