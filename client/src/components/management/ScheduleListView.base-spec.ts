@@ -50,7 +50,7 @@ describe("ScheduleListView references under a nonempty base", () => {
         createScheduleRule(project, {
             name: "Nightly reference",
             targetTableId: tableId,
-            sql: "INSERT INTO referenced_table (id) VALUES (gen_random_uuid())",
+            sql: "INSERT INTO referenced_table (id) VALUES (gen_random_uuid()) RETURNING *",
             rrule: "FREQ=DAILY",
         });
         routeState.project = project;
