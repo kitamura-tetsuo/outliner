@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { updateKanban } from "./kanbanDocs";
 import { bindExistingKanban, createKanbanOverExistingTable, createKanbanWithNewTable } from "./kanbanSetup";
-import { getTableRegistry, listTables, removeTable, setTableSqlName } from "./tableDocs";
+import { quoteIdent } from "./sqlNames";
+import { getTableRegistry, listTables, prepareTable, removeTable, setTableSqlName } from "./tableDocs";
 import { TABLE_PRESETS, TASKS_PRESET } from "./tablePresets";
 
 const allowed = () => ({ projectAccess: true, surfaceWritable: true });
@@ -71,7 +72,7 @@ describe("Kanban setup publication", () => {
         const b = createKanbanOverExistingTable(second.item, table.tableId, table.sqlName, allowed);
         expect(b).not.toBe(a);
         expect(readKanbanSettings(getKanbanRegistry(first.doc).get(b)!)).toMatchObject({
-            query: "SELECT * FROM source_a",
+            query: 'SELECT * FROM "source_a"',
         });
         expect(getKanbanRegistry(first.doc).get(b)?.has("groupField")).toBe(false);
         const beforeTables = getTableRegistry(first.doc).toJSON();
@@ -81,6 +82,33 @@ describe("Kanban setup publication", () => {
         expect(third.node.get("kanbanId")).toBe(second.node.get("kanbanId"));
         expect(getTableRegistry(first.doc).toJSON()).toEqual(beforeTables);
         expect(getKanbanRegistry(first.doc).size).toBe(2);
+    });
+    it("accepts Unicode and quoted SQL identifiers and escapes embedded quotes", () => {
+        const { doc } = setup();
+        const cases = [
+            { sqlName: "日本語", expectedQuery: 'SELECT * FROM "日本語"' },
+            { sqlName: "Case Tasks", expectedQuery: 'SELECT * FROM "Case Tasks"' },
+            { sqlName: 'a"b', expectedQuery: 'SELECT * FROM "a""b"' },
+        ];
+        for (const { sqlName, expectedQuery } of cases) {
+            const table = prepareTable(doc, "Custom", sqlName, handles => {
+                handles.schemaText.insert(0, `CREATE TABLE ${quoteIdent(sqlName)} (id TEXT PRIMARY KEY, title TEXT)`);
+            });
+            getTableRegistry(doc).set(table.tableId, table.entry);
+            const beforeTables = getTableRegistry(doc).toJSON();
+            const target = setup(doc);
+            const kanbanId = createKanbanOverExistingTable(target.item, table.tableId, sqlName, allowed);
+            expect(typeof kanbanId).toBe("string");
+            expect(target.node.get("kanbanId")).toBe(kanbanId);
+            const entry = getKanbanRegistry(doc).get(kanbanId)!;
+            expect(readKanbanSettings(entry).query).toBe(expectedQuery);
+            expect(entry.has("groupField")).toBe(false);
+            expect(entry.has("titleField")).toBe(false);
+            expect(entry.has("sourceTableId")).toBe(false);
+            expect(entry.has("insertTargetTableId")).toBe(false);
+            expect(getTableRegistry(doc).toJSON()).toEqual(beforeTables);
+            expect(doc.getMap("yjsGrids").size).toBe(0);
+        }
     });
     it("refuses stale sources and stale or denied targets with zero updates", () => {
         const first = setup();

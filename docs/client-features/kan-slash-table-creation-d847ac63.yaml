@@ -14,6 +14,7 @@ acceptance:
 - Slash selection replaces an empty non-title Text leaf or inserts a sibling preserving existing text and children; selection creates no definitions.
 - Tasks uses status/title roles, Habits uses kind/name, and Blank leaves grouping unassigned.
 tests:
+- client/e2e/new/kan-slash-existing-identifiers-d847ac63.spec.ts
 - client/e2e/new/kan-slash-existing-sources-d847ac63.spec.ts
 - client/e2e/new/kan-slash-preset-creation-d847ac63.spec.ts
 - client/e2e/new/kan-slash-query-source-change-d847ac63.spec.ts

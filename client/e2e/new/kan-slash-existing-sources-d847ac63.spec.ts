@@ -27,7 +27,7 @@ test("existing Table seeds an independent board and existing Kanban shares the e
     await expect(page.getByTestId("kanban-board")).toHaveCount(2);
     const after = await readSlashState(page);
     const added = after.boards.find(board => board.id !== original.boards[0].id)!;
-    expect(added.value.query).toBe("SELECT * FROM tasks");
+    expect(added.value.query).toBe('SELECT * FROM "tasks"');
     expect(added.value.groupField).toBeUndefined();
     expect(added.value.titleField).toBeUndefined();
     expect(after.tables).toEqual(original.tables);

@@ -3,7 +3,7 @@ import { KANBAN_COMPONENT_TYPE } from "$shared/services/outlineNodeKind";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import type { KanbanPlacementItem } from "./kanbanBinding";
-import { sqlNameError } from "./sqlNames";
+import { quoteIdent, sqlNameError } from "./sqlNames";
 import { getTableRegistry, listTables, prepareTable } from "./tableDocs";
 import type { TablePreset } from "./tablePresets";
 
@@ -88,10 +88,12 @@ export function createKanbanOverExistingTable(
     destination(item, authorize);
     const table = listTables(item.ydoc).find(table => table.tableId === tableId);
     if (!table) throw new Error("The selected Table is no longer available.");
+    if (!table.sqlName) throw new Error("The selected Table does not have a SQL name.");
     if (table.sqlName !== expectedSqlName) throw new Error("The selected Table changed. Select it again.");
-    const invalid = sqlNameError(table.sqlName);
-    if (invalid) throw new Error(invalid);
-    return publish(item, authorize, { name: table.name || "Kanban", query: `SELECT * FROM ${table.sqlName}` });
+    return publish(item, authorize, {
+        name: table.name || "Kanban",
+        query: `SELECT * FROM ${quoteIdent(table.sqlName)}`,
+    });
 }
 
 export function bindExistingKanban(item: KanbanSetupItem, id: string, authorize: KanbanSetupAuthorization): string {
