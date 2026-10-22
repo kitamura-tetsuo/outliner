@@ -168,6 +168,18 @@ export function extractCheckInOptions(
     }
 }
 
+function isSupportedCastType(typeName: unknown): boolean {
+    const type = node(typeName);
+    const names = type?.names;
+    if (!Array.isArray(names) || names.length !== 1 || type?.arrayBounds) return false;
+    const name = node(node(names[0])?.String)?.sval;
+    return typeof name === "string" && new Set([
+        "text", "varchar", "bpchar", "char", "int2", "int4", "int8",
+        "float4", "float8", "numeric", "bool", "date", "timestamp", "timestamptz",
+        "integer", "bigint", "smallint", "boolean", "real", "decimal",
+    ]).has(name);
+}
+
 function isStaticLiteralExpression(expression: string): boolean {
     try {
         const stringLiteral = (value: unknown): string | undefined => {
@@ -196,6 +208,7 @@ function isStaticLiteralExpression(expression: string): boolean {
             if (current?.A_Const) return true;
             const cast = node(current?.TypeCast);
             if (cast) {
+                if (!isSupportedCastType(cast.typeName)) return false;
                 const names = node(cast.typeName)?.names;
                 const target = Array.isArray(names) ? node(node(names.at(-1))?.String)?.sval : undefined;
                 if (target === "date" || target === "timestamp" || target === "timestamptz") {
