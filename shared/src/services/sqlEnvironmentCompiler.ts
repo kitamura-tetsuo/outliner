@@ -318,10 +318,39 @@ async function resetDatabase(db: PGlite): Promise<void> {
     await db.exec("CREATE SCHEMA public; SET search_path TO public");
 }
 
-async function defaultLease(): Promise<SqlEnvironmentLease> {
+let defaultCompiler: Promise<PGlite> | undefined;
+let defaultCompilerQueue = Promise.resolve();
+
+async function createDefaultCompiler(): Promise<PGlite> {
     const { PGlite } = await import("@electric-sql/pglite");
-    const db = new PGlite("memory://");
-    return { db, release: () => db.close() };
+    return new PGlite("memory://");
+}
+
+async function defaultLease(): Promise<SqlEnvironmentLease> {
+    let unlock!: () => void;
+    const next = new Promise<void>(resolve => {
+        unlock = resolve;
+    });
+    const previous = defaultCompilerQueue;
+    defaultCompilerQueue = next;
+    await previous;
+
+    try {
+        const db = await (defaultCompiler ??= createDefaultCompiler());
+        let released = false;
+        return {
+            db,
+            release: () => {
+                if (released) return;
+                released = true;
+                unlock();
+            },
+        };
+    } catch (error) {
+        defaultCompiler = undefined;
+        unlock();
+        throw error;
+    }
 }
 
 async function dependencyEvidence(
