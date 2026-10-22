@@ -174,9 +174,26 @@ function isSupportedCastType(typeName: unknown): boolean {
     if (!Array.isArray(names) || names.length !== 1 || type?.arrayBounds) return false;
     const name = node(node(names[0])?.String)?.sval;
     return typeof name === "string" && new Set([
-        "text", "varchar", "bpchar", "char", "int2", "int4", "int8",
-        "float4", "float8", "numeric", "bool", "date", "timestamp", "timestamptz",
-        "integer", "bigint", "smallint", "boolean", "real", "decimal",
+        "text",
+        "varchar",
+        "bpchar",
+        "char",
+        "int2",
+        "int4",
+        "int8",
+        "float4",
+        "float8",
+        "numeric",
+        "bool",
+        "date",
+        "timestamp",
+        "timestamptz",
+        "integer",
+        "bigint",
+        "smallint",
+        "boolean",
+        "real",
+        "decimal",
     ]).has(name);
 }
 
