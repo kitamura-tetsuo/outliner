@@ -168,6 +168,40 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         }
     });
 
+    it("recovers after an engine-invalid draft without changing persisted Table state", async () => {
+        const { handles, pgSchema } = makeTable();
+        setSchemaText(handles, SCHEMA);
+        const recordId = addRecord(handles, { title: "kept", points: 1, status: "open" });
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+        try {
+            await adapter.start();
+            handles.undo.stopCapturing();
+            const schemaBefore = handles.schemaText.toString();
+            const recordsBefore = handles.data.toJSON();
+            const historyBefore = handles.undo.undoStack.length;
+
+            await expect(
+                adapter.prepareSchemaChange("CREATE TABLE tasks (id TEXT PRIMARY KEY, value NOSUCHTYPE)"),
+            ).rejects.toMatchObject({
+                kind: "schema",
+                message: expect.stringMatching(/type.*nosuchtype.*does not exist/i),
+            });
+            expect(handles.schemaText.toString()).toBe(schemaBefore);
+            expect(handles.data.toJSON()).toEqual(recordsBefore);
+            expect(handles.data.get(recordId)?.get("title")).toBe("kept");
+            expect(handles.undo.undoStack.length).toBe(historyBefore);
+
+            const valid = `CREATE TABLE tasks (id TEXT PRIMARY KEY, "状態;/*" TEXT DEFAULT '--✓')`;
+            const prepared = await adapter.prepareSchemaChange(valid);
+            expect(prepared.parsed.columns.map(column => column.name)).toEqual(["id", "状態;/*"]);
+            expect(handles.schemaText.toString()).toBe(schemaBefore);
+            expect(handles.data.toJSON()).toEqual(recordsBefore);
+            expect(handles.undo.undoStack.length).toBe(historyBefore);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
     it("refuses a schema whose table name is the reserved items relation", async () => {
         const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);

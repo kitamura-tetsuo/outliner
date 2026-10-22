@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import type { JobData, JobResult } from "../../src/scheduler/worker-types.js";
 import {
     type CatalogScheduleFixture,
     closeFixture,
@@ -59,6 +60,52 @@ describe("Schedule catalog production path (#5535 REQ-007)", function() {
         expect(b.success, b.error).to.equal(true);
         expect((await records(value, "schedule-catalog-a")).label.state).to.equal("second");
         expect((await records(value, "schedule-catalog-b")).label.state).to.equal("second");
+    });
+
+    it("hands exact quoted column names and resolved types from the real worker through write-back", async () => {
+        const projectId = "schedule-catalog-quoted-columns";
+        await seedCatalogSchedule(value, projectId);
+        await configureTarget(
+            value,
+            projectId,
+            `CREATE TABLE "typed_output" (
+                id TEXT PRIMARY KEY,
+                "状態 値" ${TYPE_NAME},
+                "a""b" VARCHAR(36),
+                amount NUMERIC(10,2),
+                enabled BOOLEAN,
+                CONSTRAINT amount_nonnegative CHECK (amount >= 0)
+            )`,
+            `INSERT INTO typed_output (id, "状態 値", "a""b", amount, enabled)
+                VALUES ('quoted', 'second', 'Unicode ✓', 12.34, true) RETURNING *`,
+        );
+        const executor = (value.scheduler as unknown as {
+            executor: { executeJob: (job: JobData) => Promise<JobResult>; };
+        }).executor;
+        const execute = executor.executeJob.bind(executor);
+        let targetColumns: JobResult["targetColumns"];
+        executor.executeJob = async job => {
+            const completed = await execute(job);
+            targetColumns = completed.targetColumns;
+            return completed;
+        };
+
+        const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+        expect(run.success, run.error).to.equal(true);
+        expect(targetColumns).to.deep.equal([
+            { name: "id", type: "text" },
+            { name: "状態 値", type: TYPE_NAME },
+            { name: `a"b`, type: "character varying(36)" },
+            { name: "amount", type: "numeric(10,2)" },
+            { name: "enabled", type: "boolean" },
+        ]);
+        expect((await records(value, projectId)).quoted).to.deep.equal({
+            id: "quoted",
+            "状態 値": "second",
+            [`a"b`]: "Unicode ✓",
+            amount: 12.34,
+            enabled: true,
+        });
     });
 
     for (

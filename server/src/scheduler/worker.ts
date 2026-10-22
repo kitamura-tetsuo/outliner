@@ -1,24 +1,25 @@
 import { PGlite } from "@electric-sql/pglite";
+import { loadModule, parseSync } from "libpg-query";
 import { parentPort } from "node:worker_threads";
 import { compileSqlEnvironment } from "../../../shared/src/services/sqlEnvironmentCompiler.js";
 import { logger } from "../logger.js";
 import { materializeScheduleRecords } from "./table-materialization.js";
 import { JobData } from "./worker-types.js";
 
-/**
- * One PGlite instance for the lifetime of the worker.
- *
- * Every `new PGlite()` instantiates the Postgres WASM module and closing it
- * frees the JIT pages again. Doing that once per job crashed the process:
- * V8's thread-isolation bookkeeping fatals on a repeated
- * instantiate/free cycle in a worker thread
- * ("Check failed: jit_page_->allocations_.erase(addr) == 1" in
- * UnregisterWasmAllocation), which took the whole server test run down with
- * exit code 133. Reusing the instance also removes the ~1.7s startup each job
- * was paying. Isolation between jobs comes from resetSession, not from the
- * instance boundary.
- */
-let dbPromise: Promise<PGlite> | undefined;
+await loadModule();
+
+function createTableName(sql: string): string | undefined {
+    try {
+        const parsed = parseSync(sql) as any;
+        const create = parsed.stmts?.length === 1 && parsed.stmts[0]?.stmt?.CreateStmt;
+        return !create?.relation?.schemaname && create?.relation?.relpersistence === "p"
+                && typeof create.relation.relname === "string"
+            ? create.relation.relname
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
 
 const POSTGRES_DATE_OID = 1082;
 
@@ -37,6 +38,21 @@ function serializeResultDates(
         )
     );
 }
+
+/**
+ * One PGlite instance for the lifetime of the worker.
+ *
+ * Every `new PGlite()` instantiates the Postgres WASM module and closing it
+ * frees the JIT pages again. Doing that once per job crashed the process:
+ * V8's thread-isolation bookkeeping fatals on a repeated
+ * instantiate/free cycle in a worker thread
+ * ("Check failed: jit_page_->allocations_.erase(addr) == 1" in
+ * UnregisterWasmAllocation), which took the whole server test run down with
+ * exit code 133. Reusing the instance also removes the ~1.7s startup each job
+ * was paying. Isolation between jobs comes from resetSession, not from the
+ * instance boundary.
+ */
+let dbPromise: Promise<PGlite> | undefined;
 
 function getDb(): Promise<PGlite> {
     if (!dbPromise) {
@@ -147,24 +163,29 @@ async function executeJob(data: JobData) {
             }
             const target = data.tableSnapshots.find(table => table.id === data.targetTableId);
             const enumColumns: Record<string, readonly string[]> = {};
+            let targetColumns: { name: string; type: string; }[] | undefined;
             const dateColumns = new Set<string>();
             if (target) {
-                const relation = await compiled.environment.query<{ name: string; }>(
-                    "SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
-                        + "WHERE n.nspname='public' AND c.relkind='r' ORDER BY c.oid",
-                );
-                const targetIndex = data.tableSnapshots.indexOf(target);
-                const tableName = relation.rows[targetIndex]?.name;
+                const tableName = createTableName(target.schema);
                 if (tableName) {
-                    const columns = await compiled.environment.query<
-                        { column_name: string; type_oid: number; enum_labels: string[]; }
-                    >(
-                        "SELECT a.attname AS column_name, a.atttypid AS type_oid, ARRAY(SELECT e.enumlabel FROM pg_enum e "
+                    const columns = await compiled.environment.query<{
+                        column_name: string;
+                        column_type: string;
+                        type_oid: number;
+                        enum_labels: string[];
+                    }>(
+                        "SELECT a.attname AS column_name, format_type(a.atttypid, a.atttypmod) AS column_type, "
+                            + "a.atttypid AS type_oid, "
+                            + "ARRAY(SELECT e.enumlabel FROM pg_enum e "
                             + "WHERE e.enumtypid=a.atttypid ORDER BY e.enumsortorder) AS enum_labels "
                             + "FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace "
                             + "WHERE n.nspname='public' AND c.relname=$1 AND a.attnum>0 AND NOT a.attisdropped",
                         [tableName],
                     );
+                    targetColumns = columns.rows.map(column => ({
+                        name: column.column_name,
+                        type: column.column_type,
+                    }));
                     for (const column of columns.rows) {
                         if (column.enum_labels.length) enumColumns[column.column_name] = column.enum_labels;
                         if (column.type_oid === POSTGRES_DATE_OID) dateColumns.add(column.column_name);
@@ -178,6 +199,8 @@ async function executeJob(data: JobData) {
                 catalogRevision: data.catalog.revision,
                 targetSchema: target?.schema,
                 enumColumns,
+                targetColumns,
+                targetColumnCount: targetColumns?.length,
             };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : String(error) };

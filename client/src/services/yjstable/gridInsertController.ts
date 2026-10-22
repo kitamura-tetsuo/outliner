@@ -467,8 +467,9 @@ function buildInsertValues(columns: readonly TableColumnSchema[]): Record<string
         if (column.name === "id") continue;
         const choices = column.enumLabels ?? column.checkOptions;
         if (column.defaultExpression !== undefined) {
-            const value = parseDefault(column.defaultExpression, column.kind);
-            if (value === undefined || (choices?.length && !choices.includes(String(value)))) return undefined;
+            if (column.literalDefault?.status !== "literal") return undefined;
+            const value = column.literalDefault.value;
+            if (choices?.length && value !== null && !choices.includes(String(value))) return undefined;
             values[column.name] = value;
         } else if (choices?.length) values[column.name] = choices[0]!;
         else if (column.isNullable) continue;
@@ -497,16 +498,6 @@ function buildInsertValues(columns: readonly TableColumnSchema[]): Record<string
         return undefined;
     }
     return values;
-}
-
-function parseDefault(expression: string, kind: TableColumnSchema["kind"]): RelationValue | undefined {
-    const quoted = expression.trim().match(/^'((?:[^']|'')*)'(?:\s*::[\s\S]+)?$/);
-    if (quoted) return quoted[1]!.replace(/''/g, "'");
-    const value = expression.replace(/::[\s\S]+$/u, "").trim();
-    if (/^null$/i.test(value)) return null;
-    if (/^(true|false)$/i.test(value)) return value.toLowerCase() === "true";
-    if ((kind === "integer" || kind === "number") && /^-?\d+(?:\.\d+)?$/.test(value)) return Number(value);
-    return undefined;
 }
 
 function refused(mode: InsertTargetMode | "invalid-record" | "stale", message: string): GridInsertOutcome {

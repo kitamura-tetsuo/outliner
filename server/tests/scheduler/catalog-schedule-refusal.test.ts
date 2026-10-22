@@ -81,6 +81,73 @@ describe("Schedule catalog refusal boundaries (#5535 REQ-007)", function() {
         expect(await records(value, projectId)).to.deep.equal({});
     });
 
+    for (const targetColumns of [undefined, []] as const) {
+        it(`refuses ${targetColumns ? "empty" : "missing"} target metadata before record effects`, async () => {
+            const projectId = `schedule-target-metadata-${targetColumns ? "empty" : "missing"}`;
+            await seedCatalogSchedule(value, projectId);
+            const executor = (value.scheduler as unknown as {
+                executor: { executeJob: (job: JobData) => Promise<JobResult>; };
+            }).executor;
+            const execute = executor.executeJob.bind(executor);
+            executor.executeJob = async job => ({ ...await execute(job), targetColumns });
+
+            const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+            expect(run).to.deep.include({ success: false, error: "Schedule target column metadata is unavailable" });
+            expect(await records(value, projectId)).to.deep.equal({});
+        });
+    }
+
+    for (const variant of ["incomplete", "missing-type"] as const) {
+        it(`refuses ${variant} target metadata before record effects`, async () => {
+            const projectId = `schedule-target-metadata-${variant}`;
+            await seedCatalogSchedule(value, projectId);
+            if (variant === "incomplete") {
+                await configureTarget(
+                    value,
+                    projectId,
+                    "CREATE TABLE typed_output (id TEXT PRIMARY KEY, amount NUMERIC)",
+                    "INSERT INTO typed_output (id, amount) SELECT 'copy' AS id, amount AS amount FROM typed_output WHERE id='source' RETURNING *",
+                    { id: "source", amount: 12.5 },
+                );
+            }
+            const before = await records(value, projectId);
+            const executor = (value.scheduler as unknown as {
+                executor: { executeJob: (job: JobData) => Promise<JobResult>; };
+            }).executor;
+            const execute = executor.executeJob.bind(executor);
+            let interventions = 0;
+            executor.executeJob = async job => {
+                const completed = await execute(job);
+                expect(completed.success, completed.error).to.equal(true);
+                const columns = completed.targetColumns ?? [];
+                expect(columns).to.have.lengthOf(2);
+                expect(completed.targetColumnCount).to.equal(2);
+                if (variant === "incomplete") {
+                    expect(columns).to.have.deep.members([
+                        { name: "id", type: "text" },
+                        { name: "amount", type: "numeric" },
+                    ]);
+                    expect(completed.rows).to.deep.equal([{ id: "copy", amount: "12.5" }]);
+                }
+                interventions++;
+                return {
+                    ...completed,
+                    // Project the actual result only after the successful worker run.
+                    // Returned-field coverage must not hide a missing cardinality guard.
+                    rows: variant === "incomplete" ? completed.rows?.map(({ id }) => ({ id })) : completed.rows,
+                    targetColumns: variant === "incomplete"
+                        ? columns.filter(column => column.name === "id")
+                        : columns.map((column, index) => index === 0 ? { ...column, type: "" } : column),
+                };
+            };
+
+            const run = await value.scheduler.runRuleNow(`projects/${projectId}`, "typed-rule");
+            expect(interventions, "successful worker result was intercepted").to.equal(1);
+            expect(run).to.deep.include({ success: false, error: "Schedule target column metadata is unavailable" });
+            expect(await records(value, projectId)).to.deep.equal(before);
+        });
+    }
+
     it("refuses a catalog changed after worker calculation and permits a later current run", async () => {
         const projectId = "schedule-catalog-stale";
         await seedCatalogSchedule(value, projectId);

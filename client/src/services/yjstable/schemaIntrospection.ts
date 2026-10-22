@@ -6,7 +6,10 @@
 // are read back from information_schema and pg_catalog, so the accepted
 // grammar is exactly what Postgres accepts.
 
+import { loadModule, parseSync } from "libpg-query";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
+
+await loadModule();
 
 /** Normalized column value kind used for strict casting of Yjs record values. */
 export type ColumnKind =
@@ -31,6 +34,10 @@ export interface TableColumnSchema {
     characterMaximumLength?: number;
     /** PostgreSQL's normalized DEFAULT expression, when the field has one. */
     defaultExpression?: string;
+    /** Engine-resolved value for a statically proved scalar DEFAULT. */
+    literalDefault?:
+        | { status: "literal"; value: string | number | boolean | null; }
+        | { status: "unsupported"; diagnostic?: string; };
     /** True when PostgreSQL applies at least one CHECK constraint to this field. */
     hasCheckConstraint?: boolean;
     /**
@@ -77,30 +84,44 @@ export function columnKindFromDataType(dataType: string): ColumnKind {
 
 /**
  * Reject anything that is not a single CREATE TABLE statement before it ever
- * reaches the engine. Comments and string/identifier literals are stripped
- * first so semicolons inside them do not count as statement separators.
+ * reaches the engine. PostgreSQL's AST owns grammar and statement boundaries,
+ * including comments and punctuation inside literals.
  */
 export function assertSingleCreateTable(sql: string): string {
     const trimmed = (sql ?? "").trim();
-    if (!trimmed) {
-        throw new TableSqlError("schema", "Schema definition is empty");
-    }
-    const stripped = trimmed
-        .replace(/--[^\n]*/g, "")
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .replace(/'(?:[^']|'')*'/g, "''")
-        .replace(/"(?:[^"]|"")*"/g, '""');
-    if (!/^\s*create\s+table\b/i.test(stripped)) {
-        throw new TableSqlError("schema", "Schema definition must be a single CREATE TABLE statement");
-    }
-    const withoutTrailing = stripped.replace(/;\s*$/, "");
-    if (withoutTrailing.includes(";")) {
-        throw new TableSqlError("schema", "Schema definition must contain exactly one statement");
-    }
-    if (/^\s*create\s+table\s+[^(\s]+\./i.test(stripped)) {
-        throw new TableSqlError("schema", "Schema-qualified table names are not supported");
+    if (!trimmed) throw new TableSqlError("schema", "Schema definition is empty");
+    try {
+        const parsed = parseSync(trimmed) as { stmts?: { stmt?: Record<string, unknown>; }[]; };
+        if (parsed.stmts?.length !== 1) throw new Error("Schema definition must contain exactly one statement");
+        const create = parsed.stmts[0]?.stmt?.CreateStmt as Record<string, unknown> | undefined;
+        const relation = create?.relation as Record<string, unknown> | undefined;
+        if (!create || !relation) throw new Error("Schema definition must be a single ordinary CREATE TABLE statement");
+        if (create.if_not_exists === true) throw new Error("CREATE TABLE IF NOT EXISTS is not supported");
+        if (relation.schemaname || relation.catalogname) {
+            throw new Error("Schema-qualified table names are not supported");
+        }
+        if (relation.relpersistence !== "p") throw new Error("Temporary and unlogged tables are not supported");
+    } catch (error) {
+        throw new TableSqlError("schema", error instanceof Error ? error.message : "Invalid CREATE TABLE statement");
     }
     return trimmed;
+}
+
+function node(value: unknown): Record<string, unknown> | undefined {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : undefined;
+}
+
+function selectExpression(expression: string): unknown {
+    const parsed = parseSync(`SELECT ${expression}`) as { stmts?: { stmt?: Record<string, unknown>; }[]; };
+    if (parsed.stmts?.length !== 1) return undefined;
+    const select = node(parsed.stmts[0]?.stmt?.SelectStmt);
+    const targets = select?.targetList;
+    if (!select || !Array.isArray(targets) || targets.length !== 1 || select.fromClause || select.whereClause) {
+        return undefined;
+    }
+    return node(node(targets[0])?.ResTarget)?.val;
 }
 
 /**
@@ -111,21 +132,133 @@ export function assertSingleCreateTable(sql: string): string {
  * other kind of CHECK expression.
  */
 export function extractCheckInOptions(
-    constraintDef: string,
+    expression: string,
 ): { column: string; options: string[]; } | undefined {
-    if (!/=\s*ANY\s*\(/i.test(constraintDef)) return undefined;
-    const columnMatch = constraintDef.match(/CHECK\s*\(+\s*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))/i);
-    const column = columnMatch?.[1] ?? columnMatch?.[2];
-    if (!column) return undefined;
-    const arrayMatch = constraintDef.match(/ARRAY\s*\[([\s\S]*?)\]/i);
-    if (!arrayMatch) return undefined;
-    const options: string[] = [];
-    const literalRe = /'((?:[^']|'')*)'/g;
-    let m: RegExpExecArray | null;
-    while ((m = literalRe.exec(arrayMatch[1])) !== null) {
-        options.push(m[1].replace(/''/g, "'"));
+    try {
+        const expr = node(node(selectExpression(expression))?.A_Expr);
+        const names = expr?.name;
+        if (
+            (expr?.kind !== "AEXPR_OP_ANY" && expr?.kind !== "AEXPR_OP")
+            || !Array.isArray(names) || names.length !== 1
+            || node(node(names[0])?.String)?.sval !== "="
+        ) {
+            return undefined;
+        }
+        const fields = node(node(expr.lexpr)?.ColumnRef)?.fields;
+        if (!Array.isArray(fields) || fields.length !== 1) return undefined;
+        const column = node(node(fields[0])?.String)?.sval;
+        if (typeof column !== "string") return undefined;
+        const elements = expr.kind === "AEXPR_OP"
+            ? [expr.rexpr]
+            : node(node(expr.rexpr)?.A_ArrayExpr)?.elements;
+        if (!Array.isArray(elements) || elements.length === 0) return undefined;
+        const options: string[] = [];
+        for (const element of elements) {
+            const cast = node(node(element)?.TypeCast);
+            const typeNames = node(cast?.typeName)?.names;
+            const lastTypeName = Array.isArray(typeNames) ? node(node(typeNames.at(-1))?.String)?.sval : undefined;
+            const constant = node(node(cast?.arg)?.A_Const);
+            const value = node(constant?.sval)?.sval;
+            if (!constant || constant.isnull || lastTypeName !== "text" || typeof value !== "string") {
+                return undefined;
+            }
+            options.push(value);
+        }
+        return { column, options };
+    } catch {
+        return undefined;
     }
-    return options.length > 0 ? { column, options } : undefined;
+}
+
+interface CatalogScalarType {
+    data_type: string;
+    type_schema: string;
+    typtype: string;
+    typcategory: string;
+}
+
+function supportedScalarKind(type: CatalogScalarType): ColumnKind | undefined {
+    if (type.typtype === "e") return "enum";
+    if (type.typtype !== "b" || type.type_schema !== "pg_catalog" || type.typcategory === "A") return undefined;
+    const kind = columnKindFromDataType(type.data_type);
+    return kind === "other" ? undefined : kind;
+}
+
+function createCastTypeResolver(db: PgliteLike) {
+    const resolvedTypes = new Map<string, Promise<ColumnKind | undefined>>();
+    return async (typeName: unknown): Promise<ColumnKind | undefined> => {
+        const type = node(typeName);
+        const names = type?.names;
+        if (!Array.isArray(names) || names.length === 0 || type?.arrayBounds) return undefined;
+        const parts = names.map(part => node(node(part)?.String)?.sval);
+        if (!parts.every((part): part is string => typeof part === "string")) return undefined;
+        const identity = parts.map(part => `"${part.replaceAll('"', '""')}"`).join(".");
+        let pending = resolvedTypes.get(identity);
+        if (!pending) {
+            pending = db.query<CatalogScalarType>(
+                "SELECT format_type(t.oid, NULL) AS data_type, n.nspname AS type_schema, t.typtype, t.typcategory "
+                    + "FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace WHERE t.oid=to_regtype($1)",
+                [identity],
+            ).then(result => result.rows[0] && supportedScalarKind(result.rows[0]));
+            resolvedTypes.set(identity, pending);
+        }
+        return pending;
+    };
+}
+
+async function isStaticLiteralExpression(
+    expression: string,
+    resolveCastType: ReturnType<typeof createCastTypeResolver>,
+): Promise<boolean> {
+    try {
+        const stringLiteral = (value: unknown): string | undefined => {
+            const current = node(value);
+            const constant = node(current?.A_Const);
+            const literal = node(constant?.sval)?.sval;
+            if (typeof literal === "string") return literal;
+            const cast = node(current?.TypeCast);
+            return cast ? stringLiteral(cast.arg) : undefined;
+        };
+        const isNullLiteral = (value: unknown): boolean => {
+            const current = node(value);
+            if (node(current?.A_Const)?.isnull === true) return true;
+            const cast = node(current?.TypeCast);
+            return !!cast && isNullLiteral(cast.arg);
+        };
+        const temporalLiteralKind = async (value: unknown): Promise<"date" | "timestamp" | undefined> => {
+            const cast = node(node(value)?.TypeCast);
+            if (!cast) return undefined;
+            const nested = await temporalLiteralKind(cast.arg);
+            if (nested) return nested;
+            const kind = await resolveCastType(cast.typeName);
+            return kind === "date" || kind === "timestamp" ? kind : undefined;
+        };
+        const visit = async (value: unknown): Promise<boolean> => {
+            const current = node(value);
+            if (current?.A_Const) return true;
+            const cast = node(current?.TypeCast);
+            if (cast) {
+                const kind = await resolveCastType(cast.typeName);
+                if (kind === undefined) return false;
+                if ((kind === "date" || kind === "timestamp") && !isNullLiteral(cast.arg)) {
+                    const literal = stringLiteral(cast.arg);
+                    if (literal === undefined) return false;
+                    const literalKind = await temporalLiteralKind(cast.arg) ?? kind;
+                    if (literalKind === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(literal)) return false;
+                    if (literalKind === "timestamp" && !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(literal)) return false;
+                }
+                return visit(cast.arg);
+            }
+            const op = node(current?.A_Expr);
+            const names = op?.name;
+            const operator = Array.isArray(names) ? node(node(names[0])?.String)?.sval : undefined;
+            return op?.kind === "AEXPR_OP" && Array.isArray(names) && names.length === 1
+                && (operator === "+" || operator === "-") && !op.lexpr && await visit(op.rexpr);
+        };
+        return await visit(selectExpression(expression));
+    } catch {
+        return false;
+    }
 }
 
 let validationCounter = 0;
@@ -198,20 +331,24 @@ export async function introspectTable(
     }
     const tableName = tables.rows[0].table_name;
 
-    const columns = await db.query<{
-        column_name: string;
-        data_type: string;
-        is_nullable: string;
-        typtype: string;
-        enum_labels: string[];
-        column_default: string | null;
-        character_maximum_length: number | null;
-        is_generated: string;
-    }>(
-        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, c.is_generated, t.typtype, "
+    const columns = await db.query<
+        CatalogScalarType & {
+            column_name: string;
+            data_type: string;
+            is_nullable: string;
+            enum_labels: string[];
+            column_default: string | null;
+            character_maximum_length: number | null;
+            is_generated: string;
+        }
+    >(
+        "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, c.character_maximum_length, c.is_generated, "
+            + "t.typtype, t.typcategory, tn.nspname AS type_schema, "
             + "ARRAY(SELECT e.enumlabel FROM pg_enum e WHERE e.enumtypid=t.oid ORDER BY e.enumsortorder) AS enum_labels "
-            + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.udt_schema "
-            + "JOIN pg_type t ON t.typnamespace=n.oid AND t.typname=c.udt_name "
+            + "FROM information_schema.columns c JOIN pg_namespace n ON n.nspname=c.table_schema "
+            + "JOIN pg_class relation ON relation.relnamespace=n.oid AND relation.relname=c.table_name "
+            + "JOIN pg_attribute a ON a.attrelid=relation.oid AND a.attname=c.column_name AND a.attnum>0 AND NOT a.attisdropped "
+            + "JOIN pg_type t ON t.oid=a.atttypid JOIN pg_namespace tn ON tn.oid=t.typnamespace "
             + "WHERE c.table_schema = $1 AND c.table_name = $2 ORDER BY c.ordinal_position",
         [schema, tableName],
     );
@@ -233,8 +370,8 @@ export async function introspectTable(
         [schema, tableName],
     );
 
-    const checks = await db.query<{ def: string; columns: string[]; }>(
-        "SELECT pg_get_constraintdef(c.oid) AS def, "
+    const checks = await db.query<{ expression: string; columns: string[]; }>(
+        "SELECT pg_get_expr(c.conbin, c.conrelid) AS expression, "
             + "ARRAY(SELECT a.attname FROM pg_attribute a WHERE a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)) AS columns "
             + "FROM pg_constraint c "
             + "JOIN pg_class t ON t.oid = c.conrelid "
@@ -244,21 +381,76 @@ export async function introspectTable(
     );
     const optionsByColumn = new Map<string, string[]>();
     const checkedColumns = new Set<string>();
+    const unsupportedColumns = new Set<string>();
     let hasUnsupportedInsertCheck = false;
     for (const row of checks.rows) {
         for (const column of row.columns) checkedColumns.add(column);
-        const parsed = extractCheckInOptions(row.def);
-        // Only a complete scalar text IN expression is supported. An IN
-        // nested inside AND/OR, another CHECK, or a constant CHECK is not
-        // proved by the choices extracted for the cell editor.
-        const literal = "'(?:[^']|'')*'::text";
-        const completeIn = new RegExp(
-            `^CHECK \\(\\((?:"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_]*) = ANY \\(ARRAY\\[${literal}(?:, ${literal})*\\]\\)\\)\\)$`,
-        );
-        if (!parsed || !completeIn.test(row.def) || optionsByColumn.has(parsed.column)) {
+        const parsed = extractCheckInOptions(row.expression);
+        const catalogColumn = parsed && columns.rows.find(column => column.column_name === parsed.column);
+        if (
+            !parsed || row.columns.length !== 1 || row.columns[0] !== parsed.column
+            || catalogColumn?.data_type !== "text"
+            || optionsByColumn.has(parsed.column) || unsupportedColumns.has(parsed.column)
+        ) {
             hasUnsupportedInsertCheck = true;
+            for (const column of row.columns) {
+                optionsByColumn.delete(column);
+                unsupportedColumns.add(column);
+            }
+            continue;
         }
-        if (parsed) optionsByColumn.set(parsed.column, parsed.options);
+        optionsByColumn.set(parsed.column, parsed.options);
+    }
+
+    const literalDefaults = new Map<string, TableColumnSchema["literalDefault"]>();
+    const resolveCastType = createCastTypeResolver(db);
+    for (const row of columns.rows) {
+        if (row.column_default === null) continue;
+        const kind = supportedScalarKind(row);
+        if (kind === undefined || !await isStaticLiteralExpression(row.column_default, resolveCastType)) {
+            literalDefaults.set(row.column_name, {
+                status: "unsupported",
+                diagnostic: "DEFAULT is not a supported scalar literal",
+            });
+            continue;
+        }
+        try {
+            // PostgreSQL's text output preserves wall-clock TIMESTAMP values and
+            // microseconds without running them through PGlite's local-time Date decoder.
+            // For TIMESTAMPTZ, normalize the instant to UTC before formatting.
+            const expression = row.column_default;
+            const resolvedExpression = kind === "date"
+                ? `(${expression})::date::text`
+                : kind === "timestamp" && row.data_type === "timestamp with time zone"
+                ? `((${expression})::timestamptz AT TIME ZONE 'UTC')::text`
+                : kind === "timestamp"
+                ? `(${expression})::timestamp without time zone::text`
+                : `(${expression})`;
+            const resolved = await db.query<{ value: unknown; }>(`SELECT ${resolvedExpression} AS value`);
+            const value = resolved.rows[0]?.value;
+            let normalized: string | number | boolean | null | undefined;
+            if (value === null) normalized = null;
+            else if (kind === "date") {
+                if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) normalized = value;
+            } else if (kind === "timestamp") {
+                if (typeof value === "string") {
+                    const wallClock = value.replace(" ", "T");
+                    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(wallClock)) {
+                        normalized = wallClock.includes(".") ? `${wallClock}Z` : `${wallClock}.000Z`;
+                    }
+                }
+            } else if (typeof value === "string" && (kind === "number" || kind === "integer")) {
+                const numeric = Number(value);
+                if (Number.isFinite(numeric) && (kind !== "integer" || Number.isInteger(numeric))) normalized = numeric;
+            } else if (typeof value === "string" || typeof value === "boolean") normalized = value;
+            else if (typeof value === "number" && Number.isFinite(value)) normalized = value;
+            literalDefaults.set(
+                row.column_name,
+                normalized === undefined ? { status: "unsupported" } : { status: "literal", value: normalized },
+            );
+        } catch (error) {
+            literalDefaults.set(row.column_name, { status: "unsupported", diagnostic: String(error) });
+        }
     }
 
     return {
@@ -275,6 +467,7 @@ export async function introspectTable(
             isPrimaryKey: pkColumns.has(row.column_name),
             ...(row.character_maximum_length !== null ? { characterMaximumLength: row.character_maximum_length } : {}),
             defaultExpression: row.column_default ?? undefined,
+            literalDefault: literalDefaults.get(row.column_name),
             hasCheckConstraint: checkedColumns.has(row.column_name),
             checkOptions: optionsByColumn.get(row.column_name),
             enumLabels: row.typtype === "e" ? row.enum_labels : undefined,
