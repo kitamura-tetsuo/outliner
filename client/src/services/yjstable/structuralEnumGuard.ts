@@ -42,6 +42,45 @@ export interface StructuralEnumAdmission {
     readonly destinationCatalogRevision: string;
 }
 
+/** Compare replay inputs with the immutable evidence admitted initially. */
+export function structuralEnumAdmissionStillCompatible(
+    sourceDoc: Y.Doc,
+    destinationDoc: Y.Doc,
+    admission: StructuralEnumAdmission,
+): boolean {
+    let source: StructuralSqlSnapshot;
+    let destination: StructuralSqlSnapshot;
+    try {
+        source = captureStructuralSqlSnapshot(sourceDoc);
+        destination = captureStructuralSqlSnapshot(destinationDoc);
+    } catch {
+        return false;
+    }
+    const currentTables = new Map(source.tables.map(table => [table.id, table]));
+    const currentInspections = new Map(source.inspections.map(target => [target.id, target]));
+    if (
+        admission.sourceDescriptor.tables.some(expected =>
+            JSON.stringify(currentTables.get(expected.id)) !== JSON.stringify(expected)
+        )
+        || admission.sourceDescriptor.inspections.some(expected =>
+            JSON.stringify(currentInspections.get(expected.id)) !== JSON.stringify(expected)
+        )
+    ) return false;
+
+    const sourceEnums = new Map(source.catalog.objects.map(object => [object.id, enumDeclaration(object.source)]));
+    const destinationEnums = destination.catalog.objects.map(object => enumDeclaration(object.source));
+    return admission.requiredEnums.every(expected => {
+        const original = sourceEnums.get(expected.objectId);
+        const target = destinationEnums.find(candidate => candidate?.name === expected.name);
+        return original?.name === expected.name
+            && original.labels.length === expected.labels.length
+            && original.labels.every((label, index) => label === expected.labels[index])
+            && target !== undefined
+            && target.labels.length === expected.labels.length
+            && target.labels.every((label, index) => label === expected.labels[index]);
+    });
+}
+
 function scopedDescriptor(
     analysis: Extract<Awaited<ReturnType<typeof analyzeScopedSqlEnumDependencies>>, {
         status: "complete";

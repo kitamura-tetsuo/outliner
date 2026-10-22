@@ -1029,6 +1029,17 @@ export async function moveGridPlacementsAcrossProjects(
                     if (sourceNodeState() !== expectedSource || collision() || !namesCurrent() || !locationCurrent()) {
                         return { status: "conflict", reason: "The destination or source placement changed" };
                     }
+                    if (
+                        !portableStructuralEnumsStillCompatible(
+                            destination.ydoc,
+                            snapshots,
+                            source.ydoc,
+                            grids,
+                            payload.catalog,
+                            [],
+                            preparation.enumAdmission,
+                        )
+                    ) return { status: "refused", reason: "SQL ENUM admission changed" };
                     both(install);
                     expectedDestination = ownedState();
                 }

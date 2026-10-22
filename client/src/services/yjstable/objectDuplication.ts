@@ -22,7 +22,11 @@ import {
 } from "./gridDocs";
 import { queryReadDependencies } from "./queryReadDependencies";
 import { deriveSqlName } from "./sqlNames";
-import { assertStructuralEnumCompatibility, captureStructuralSqlSnapshot } from "./structuralEnumGuard";
+import {
+    assertStructuralEnumCompatibility,
+    captureStructuralSqlSnapshot,
+    type StructuralEnumAdmission,
+} from "./structuralEnumGuard";
 import {
     createTable,
     getTableHandles,
@@ -61,6 +65,7 @@ interface MaterializedDuplication {
     createdObjects: DuplicableObject[];
     diagnostics: string[];
     ownership: ObjectOwnership[];
+    enumAdmission: StructuralEnumAdmission;
 }
 
 export interface DuplicationResult extends MaterializedDuplication {
@@ -319,7 +324,11 @@ export async function materializeDuplicationPlan(
     // Always admit the captured SQL, even when the catalog is empty: a typed
     // schema with unavailable declarations is unresolved evidence, not proof
     // that the transfer is catalog-independent.
-    const relevantSqlIds = new Set(objects.map(object => object.id));
+    const availableSqlIds = new Set([
+        ...sqlSnapshot.tables.map(table => table.id),
+        ...sqlSnapshot.inspections.map(inspection => inspection.id),
+    ]);
+    const relevantSqlIds = new Set(objects.map(object => object.id).filter(id => availableSqlIds.has(id)));
     // Table room synchronization can reveal schema and records that were not
     // present in the registry-attached subdoc. Admission must use that hydrated
     // state, never the pre-load shell.
@@ -327,8 +336,9 @@ export async function materializeDuplicationPlan(
         sqlSnapshot = captureStructuralSqlSnapshot(source);
     }
     const idMap = new Map<string, string>(existingIdMap);
+    let enumAdmission!: StructuralEnumAdmission;
     try {
-        await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
+        enumAdmission = await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
         assertCurrent();
         for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 
@@ -584,6 +594,7 @@ export async function materializeDuplicationPlan(
     }
     return {
         ownership,
+        enumAdmission,
         idMap,
         removedReferenceCount,
         diagnostics,

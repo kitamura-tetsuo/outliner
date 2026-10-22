@@ -358,7 +358,10 @@ export async function importTableStructures(
                 sql: snapshot.query,
             })),
         };
-        const relevantIds = new Set([...Object.keys(snapshots), ...Object.keys(grids)]);
+        const relevantIds = new Set([
+            ...Object.keys(snapshots),
+            ...Object.values(grids).filter(snapshot => snapshot.query.trim()).map(snapshot => snapshot.gridId),
+        ]);
         portableGuard = () =>
             assertPortableStructuralEnumCompatibility(destinationProjectDoc, portableSnapshot, relevantIds);
         enumAdmission = await portableGuard();
