@@ -54,7 +54,7 @@ function baseProps(handles: NonNullable<ReturnType<typeof getTableHandles>>) {
         schema,
         query: QUERY,
         result: twoRowResult(),
-        bareIdAuthority: { status: "compatible", editableColumns: new Set(["title"]) },
+        bareIdAuthority: { status: "compatible" as const, editableColumns: new Set(["title"]) },
         componentTypes: {},
         columnLabels: {},
         hiddenColumns: {},
