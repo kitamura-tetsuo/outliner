@@ -132,13 +132,20 @@ export function acquirePgliteCompilerLease(): Promise<{
         release = resolve;
     });
     let publish!: (db: PGlite) => void;
-    const acquired = new Promise<PGlite>(resolve => {
+    let rejectAcquisition!: (reason: unknown) => void;
+    const acquired = new Promise<PGlite>((resolve, reject) => {
         publish = resolve;
+        rejectAcquisition = reject;
     });
     const run = writeQueue.then(async () => {
-        const db = await getPglite();
-        publish(db);
-        await held;
+        try {
+            const db = await getPglite();
+            publish(db);
+            await held;
+        } catch (error) {
+            rejectAcquisition(error);
+            throw error;
+        }
     });
     writeQueue = run.then(() => undefined, () => undefined);
     return acquired.then(db => ({ db, release }));
