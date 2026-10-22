@@ -63,5 +63,10 @@ describe("readOnlySql PostgreSQL AST admission", () => {
             .toContain("audit");
         expect(parseSqlIdentifiers(`SELECT id FROM U&"d\\0061t\\0061" UESCAPE '\\'`))
             .toContain("data");
+        expect(parseSqlIdentifiers(`INSERT INTO U&"audit" (id) VALUES ('one') RETURNING *`))
+            .toContain("audit");
+        expect(parseSqlIdentifiers(`INSERT INTO U&"a\\0075dit" (id) VALUES ('one') RETURNING *`))
+            .toContain("audit");
+        expect(() => parseSqlIdentifiers(`SELECT id FROM U&"d\\0061t\\0061" UESCAPE '\\' WHERE`)).toThrow();
     });
 });

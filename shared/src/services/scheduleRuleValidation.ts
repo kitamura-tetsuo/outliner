@@ -6,8 +6,13 @@ import { parseSqlIdentifiers } from "./readOnlySql.js";
 const SCHEDULE_TARGET_PLACEHOLDER = "{{table}}";
 const PARSER_SCHEDULE_TARGET = "__outliner_schedule_target__";
 
-/** Replace scanner-visible placeholder tokens, never occurrences inside literals or comments. */
-function replaceScheduleTargetPlaceholder(sql: string, replacementText: string): string {
+export interface PreparedScheduleSql {
+    sql: string;
+    syntheticIdentifierSpans: readonly { start: number; end: number; }[];
+}
+
+/** Replace scanner-visible placeholder tokens, recording byte spans of inserted identifiers. */
+export function prepareScheduleTargetPlaceholder(sql: string, replacementText: string): PreparedScheduleSql {
     const tokens = scanSync(sql).tokens;
     const replacements: Array<{ start: number; end: number; }> = [];
     for (let index = 0; index <= tokens.length - 5; index++) {
@@ -22,23 +27,37 @@ function replaceScheduleTargetPlaceholder(sql: string, replacementText: string):
     // placeholder cannot shift or corrupt the parser-only copy.
     let result = new TextEncoder().encode(sql);
     const replacementBytes = new TextEncoder().encode(replacementText);
-    for (const replacement of replacements.reverse()) {
+    const syntheticIdentifierSpans: Array<{ start: number; end: number; }> = [];
+    let byteOffsetDelta = 0;
+    for (const replacement of replacements) {
+        const newStart = replacement.start + byteOffsetDelta;
+        const newEnd = newStart + replacementBytes.length;
+        syntheticIdentifierSpans.push({ start: newStart, end: newEnd });
+        byteOffsetDelta += replacementBytes.length - (replacement.end - replacement.start);
+    }
+    for (const replacement of [...replacements].reverse()) {
         const next = new Uint8Array(result.length - (replacement.end - replacement.start) + replacementBytes.length);
         next.set(result.slice(0, replacement.start));
         next.set(replacementBytes, replacement.start);
         next.set(result.slice(replacement.end), replacement.start + replacementBytes.length);
         result = next;
     }
-    return new TextDecoder().decode(result);
+    return {
+        sql: new TextDecoder().decode(result),
+        syntheticIdentifierSpans,
+    };
 }
 
 function scheduleParserSql(sql: string): string {
-    return replaceScheduleTargetPlaceholder(sql, PARSER_SCHEDULE_TARGET);
+    return prepareScheduleTargetPlaceholder(sql, PARSER_SCHEDULE_TARGET).sql;
 }
 
 /** Discover Schedule source candidates without binding its product target placeholder. */
 export function parseScheduleSqlIdentifiers(sql: string): Set<string> {
-    return parseSqlIdentifiers(scheduleParserSql(sql), { excludeTopLevelInsertTarget: true });
+    const prepared = prepareScheduleTargetPlaceholder(sql, PARSER_SCHEDULE_TARGET);
+    return parseSqlIdentifiers(prepared.sql, {
+        suppressedSpans: prepared.syntheticIdentifierSpans,
+    });
 }
 
 /**
@@ -47,7 +66,7 @@ export function parseScheduleSqlIdentifiers(sql: string): Set<string> {
  */
 export function resolveScheduleTargetPlaceholder(sql: string, targetRelation: string): string {
     const quotedTarget = `"${targetRelation.split('"').join('""')}"`;
-    return replaceScheduleTargetPlaceholder(sql, quotedTarget);
+    return prepareScheduleTargetPlaceholder(sql, quotedTarget).sql;
 }
 
 /** Validate aliases after replacing the Schedule-only target placeholder in parser input. */

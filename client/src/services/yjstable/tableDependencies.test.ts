@@ -82,6 +82,40 @@ describe("tableDependencies", () => {
         ]);
     });
 
+    it("retains Schedule reference and indirect warning when concrete target is changed without changing SQL", () => {
+        const project = Project.createInstance("Test");
+        const auditId = createTable(project.ydoc, "Audit", "audit");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const concreteSql = "INSERT INTO audit (id) VALUES ('one') RETURNING *";
+        const ruleId = createScheduleRule(project, {
+            name: "Audit Rule",
+            targetTableId: auditId,
+            sql: concreteSql,
+            rrule: "FREQ=DAILY",
+        });
+
+        // Retarget without changing SQL
+        project.schedules.get(ruleId)?.set("targetTableId", tasksId);
+
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+            { tableId: auditId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, auditId)).toEqual([
+            { ruleId, ruleName: "Audit Rule", kind: "sql-reference", enabled: true },
+        ]);
+
+        const auditDeps = getTableDependencies(project, auditId);
+        expect(auditDeps.scheduleReferences).toEqual([
+            { ruleId, ruleName: "Audit Rule", kind: "sql-reference" },
+        ]);
+        expect(auditDeps.indirectSqlReferences).toContainEqual({
+            type: "schedule",
+            name: "Audit Rule",
+        });
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(concreteSql);
+    });
+
     it("removes table removing direct references", () => {
         const project = Project.createInstance("Test");
         const tableId = createTable(project.ydoc, "T", "t");

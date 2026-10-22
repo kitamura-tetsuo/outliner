@@ -110,7 +110,7 @@ describe("cloneScheduleRules", () => {
         invalidRule.set("targetTableId", "source-occurrences");
         invalidRule.set("sql", "SELECT * FROM routine_occurrences");
         invalidRule.set("rrule", "RRULE:FREQ=DAILY");
-        source.schedules.set("legacy-invalid", invalidRule);
+        source.schedules.set("legacy-invalid", invalidRule as never);
         const destination = project("destination-invalid");
 
         const result = cloneScheduleRules(

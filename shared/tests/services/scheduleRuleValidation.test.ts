@@ -104,6 +104,45 @@ describe("scheduleRuleValidation", () => {
             );
             expect(sql).toContain("INSERT INTO {{table}}");
         });
+
+        it("discovers lexical candidates from malformed concrete SQL without full parse admission", () => {
+            const malformedOrderSql = "INSERT INTO tasks (id, order) VALUES ('daily', 1) RETURNING *";
+            const identifiers = parseScheduleSqlIdentifiers(malformedOrderSql);
+            expect(identifiers).toContain("tasks");
+            expect(identifiers).toContain("order");
+            expect(validateScheduleRuleSql(malformedOrderSql)).toEqual({
+                valid: false,
+                error: 'syntax error at or near "order"',
+            });
+        });
+
+        it("does not require full AST admission to suppress generated {{table}} identifiers", () => {
+            const malformedTemplateSql = "INSERT INTO {{table}} (id, order) VALUES ('daily', 1) RETURNING *";
+            const identifiers = parseScheduleSqlIdentifiers(malformedTemplateSql);
+            expect(identifiers).not.toContain("__outliner_schedule_target__");
+            expect(identifiers).toContain("order");
+            expect(validateScheduleRuleSql(malformedTemplateSql)).toEqual({
+                valid: false,
+                error: 'syntax error at or near "order"',
+            });
+        });
+
+        it("retains concrete and Unicode-escaped INSERT targets", () => {
+            expect(parseScheduleSqlIdentifiers("INSERT INTO audit (id) VALUES ('one') RETURNING *")).toContain("audit");
+            expect(parseScheduleSqlIdentifiers("INSERT INTO U&\"audit\" (id) VALUES ('one') RETURNING *")).toContain(
+                "audit",
+            );
+            expect(parseScheduleSqlIdentifiers("INSERT INTO U&\"a\\0075dit\" (id) VALUES ('one') RETURNING *"))
+                .toContain(
+                    "audit",
+                );
+        });
+
+        it("fails explicitly when an input requires AST decoding but cannot be parsed", () => {
+            const malformedUnicodeSql =
+                "INSERT INTO {{table}} (id) SELECT id FROM U&\"d\\0061t\\0061\" UESCAPE '\\' WHERE";
+            expect(() => parseScheduleSqlIdentifiers(malformedUnicodeSql)).toThrow();
+        });
     });
 
     describe("validateScheduleRuleRRule", () => {

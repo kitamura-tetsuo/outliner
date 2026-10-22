@@ -18,44 +18,49 @@ function decodedIdentifier(token: ScanToken): string {
     return token.text.startsWith('"') ? token.text.slice(1, -1).replace(/""/g, '"') : token.text.toLowerCase();
 }
 
-function collectParsedRelationNames(value: unknown, identifiers: Set<string>, excludedRange?: AstNode): void {
+function collectParsedRelationNames(
+    value: unknown,
+    identifiers: Set<string>,
+    suppressedSpans?: readonly { start: number; end: number; }[],
+): void {
     if (Array.isArray(value)) {
-        value.forEach(child => collectParsedRelationNames(child, identifiers, excludedRange));
+        value.forEach(child => collectParsedRelationNames(child, identifiers, suppressedSpans));
         return;
     }
     const wrapper = node(value);
     if (!wrapper) return;
-    const range = node(wrapper.RangeVar);
-    if (range && range !== excludedRange && typeof range.relname === "string") identifiers.add(range.relname);
-    Object.values(wrapper).forEach(child => collectParsedRelationNames(child, identifiers, excludedRange));
+    const range = node(wrapper.RangeVar) ?? node(wrapper.relation);
+    if (range && typeof range.relname === "string") {
+        const loc = typeof range.location === "number" ? range.location : undefined;
+        const isSuppressed = loc !== undefined
+            && suppressedSpans?.some(span => loc >= span.start && loc < span.end);
+        if (!isSuppressed) identifiers.add(range.relname);
+    }
+    Object.values(wrapper).forEach(child => collectParsedRelationNames(child, identifiers, suppressedSpans));
 }
 
-interface IdentifierAnalysisOptions {
-    /** Omit only the outer INSERT target while retaining same-named source occurrences. */
-    excludeTopLevelInsertTarget?: boolean;
+export interface IdentifierAnalysisOptions {
+    /** Spans in the input SQL to suppress from candidate discovery. */
+    suppressedSpans?: readonly { start: number; end: number; }[];
 }
 
 /** Scanner-recognized SQL words; this is candidate discovery, not resolved dependency evidence. */
 export function parseSqlIdentifiers(sql: string, options: IdentifierAnalysisOptions = {}): Set<string> {
     const identifiers = new Set<string>();
     const tokens = scanSync(sql).tokens;
+    const suppressedSpans = options.suppressedSpans ?? [];
     for (const token of tokens) {
+        const isSuppressed = suppressedSpans.some(span => token.start >= span.start && token.end <= span.end);
+        if (isSuppressed) continue;
         if (token.tokenName === "IDENT" || token.keywordKind !== 0) identifiers.add(decodedIdentifier(token));
     }
     // PostgreSQL's scanner reports Unicode-escaped identifiers as an
     // implementation token rather than IDENT. The parsed RangeVar is the
     // library-authoritative decoded spelling, including UESCAPE handling.
-    if (
-        options.excludeTopLevelInsertTarget
-        || tokens.some(token => token.tokenName === "UNKNOWN" && token.keywordKind === 0)
-    ) {
+    if (tokens.some(token => token.tokenName === "UNKNOWN" && token.keywordKind === 0)) {
         const parsed = parseSync(sql);
         for (const statement of parsed.stmts ?? []) {
-            const root = node(statement.stmt);
-            const insert = node(root?.InsertStmt);
-            const target = options.excludeTopLevelInsertTarget ? node(insert?.relation) : undefined;
-            if (target && typeof target.relname === "string") identifiers.delete(target.relname);
-            collectParsedRelationNames(statement.stmt, identifiers, target);
+            collectParsedRelationNames(statement.stmt, identifiers, suppressedSpans);
         }
     }
     return identifiers;

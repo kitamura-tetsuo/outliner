@@ -221,6 +221,59 @@ RETURNING *`;
         replacementTarget.set("doc", new Y.Doc());
         project.getMap("yjsTables").set("table-1", replacementTarget);
         auditConnection.document.getMap("data").delete("source-row");
+
+        // Stored malformed order rule is discoverable by its configured target and in unfiltered listing,
+        // and does not crash inspection of another table.
+        const malformedOrderSql = "INSERT INTO tasks (id, order) VALUES ('daily', 1) RETURNING *";
+        rule.set("sql", malformedOrderSql);
+        const malformedList = await service.listSchedules("user", "project-1");
+        expect(malformedList.schedules.some(s => s.ruleId === "rule-1")).to.be.true;
+        const malformedTargetList = await service.listSchedules("user", "project-1", "table-1");
+        expect(malformedTargetList.schedules[0]).to.deep.include({
+            ruleId: "rule-1",
+            referenceKinds: ["write-target"],
+        });
+        const tableWithMalformedRule = await relations.getTable("user", "project-1", "table-1", false);
+        expect(tableWithMalformedRule.scheduleReferences[0]).to.deep.include({
+            ruleId: "rule-1",
+            referenceKinds: ["write-target"],
+            sql: malformedOrderSql,
+        });
+        const auditDuringMalformed = await relations.getTable("user", "project-1", "audit-table", false);
+        expect(auditDuringMalformed.tableId).to.equal("audit-table");
+
+        // Supported concrete retarget state:
+        // Schedule targets audit table with concrete INSERT INTO audit, then only targetTableId is changed to table-1 (tasks).
+        const retargetConcreteSql = "INSERT INTO audit (id) VALUES ('one') RETURNING *";
+        rule.set("sql", retargetConcreteSql);
+        rule.set("targetTableId", "table-1");
+        const retargetRead = await service.getSchedule("user", "project-1", "rule-1");
+        expect(retargetRead.stored.sql).to.equal(retargetConcreteSql);
+        expect(retargetRead.stored.targetTableId).to.equal("table-1");
+        expect(retargetRead.derived.referencedTables.find(r => r.tableId === "table-1")).to.include({
+            tableId: "table-1",
+            sqlName: "tasks",
+            kind: "write-target",
+        });
+        expect(retargetRead.derived.referencedTables.find(r => r.tableId === "audit-table")).to.include({
+            tableId: "audit-table",
+            sqlName: "audit",
+            kind: "sql-reference",
+        });
+        const auditAfterRetarget = await relations.getTable("user", "project-1", "audit-table", false);
+        expect(
+            auditAfterRetarget.scheduleReferences.some(ref =>
+                ref.ruleId === "rule-1" && ref.referenceKinds.includes("sql-reference")
+            ),
+        ).to.be.true;
+        const auditFilteredList = await service.listSchedules("user", "project-1", "audit-table", "sql-reference");
+        expect(auditFilteredList.schedules[0]).to.deep.include({
+            ruleId: "rule-1",
+            referenceKinds: ["sql-reference"],
+        });
+        expect(rule.get("sql")).to.equal(retargetConcreteSql);
+        expect(rule.get("targetTableId")).to.equal("table-1");
+
         rule.set("sql", read.stored.sql);
         const legacySql =
             "WITH source AS (SELECT 'legacy'::text AS id) INSERT INTO tasks (id) SELECT id value FROM source RETURNING *";

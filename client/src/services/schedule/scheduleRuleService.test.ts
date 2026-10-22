@@ -217,4 +217,33 @@ describe("scheduleRuleService", () => {
         expect(ruleMap.get("validationError")).toBeUndefined();
         expect(ruleMap.get("skippedOccurrences")).toBeUndefined();
     });
+
+    it("retains concrete target table as sql-reference when Schedule is retargeted without changing SQL", () => {
+        const project = Project.createInstance("Test Project");
+        const auditId = createTable(project.ydoc, "Audit", "audit");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const concreteSql = "INSERT INTO audit (id) VALUES ('one') RETURNING *";
+
+        const ruleId = createScheduleRule(project, {
+            name: "Audit Rule",
+            targetTableId: auditId,
+            sql: concreteSql,
+            rrule: "FREQ=DAILY",
+        });
+
+        // Retarget to tasks without changing SQL
+        updateScheduleRule(project, ruleId, { targetTableId: tasksId });
+
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+            { tableId: auditId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, tasksId)).toEqual([
+            { ruleId, ruleName: "Audit Rule", kind: "write-target", enabled: true },
+        ]);
+        expect(findSchedulesReferencingTable(project, auditId)).toEqual([
+            { ruleId, ruleName: "Audit Rule", kind: "sql-reference", enabled: true },
+        ]);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(concreteSql);
+    });
 });
