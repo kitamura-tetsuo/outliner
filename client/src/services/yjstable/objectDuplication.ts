@@ -438,13 +438,15 @@ export async function materializeDuplicationPlan(
             });
             const destinationId = idMap.get(key(object))!;
             const sourceQuery = String(handles.entry.get("query") ?? "");
-            const queryRewrite = rewriteTableQuerySql(sourceQuery, sqlNameMap);
+            // An empty query is an intentionally unconfigured Grid, not SQL
+            // to admit. Non-empty definitions must still parse successfully.
+            const rewrittenQuery = sourceQuery ? rewriteTableQuerySql(sourceQuery, sqlNameMap).sql : "";
             const reads = queryReadDependencies(source, sourceQuery);
             const omittedQueryReferences = reads.relationNames
                 .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
             const targetQuery = !sameProject && (omittedQueryReferences.length > 0 || reads.status === "unknown")
                 ? ""
-                : queryRewrite.sql;
+                : rewrittenQuery;
             if (!sameProject) removedReferenceCount += omittedQueryReferences.length;
             const preference = getGridInsertTargetTableId(handles);
             const mappedPreference = preference
@@ -490,10 +492,12 @@ export async function materializeDuplicationPlan(
             if (!targetTableId && sourceTargetTableId) removedReferenceCount++;
 
             const sourceSql = String(ruleMap.get("sql") ?? "");
-            const sqlRewrite = rewriteTableQuerySql(sourceSql, sqlNameMap);
-            const omittedSqlReferences = sqlRewrite.relationDependencies
+            // Empty SQL denotes an unconfigured Schedule. Once SQL is
+            // present, parsing and rewriting remain a required preflight.
+            const sqlRewrite = sourceSql ? rewriteTableQuerySql(sourceSql, sqlNameMap) : undefined;
+            const omittedSqlReferences = (sqlRewrite?.relationDependencies ?? [])
                 .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
-            const targetSql = !sameProject && omittedSqlReferences.length > 0 ? "" : sqlRewrite.sql;
+            const targetSql = !sameProject && omittedSqlReferences.length > 0 ? "" : sqlRewrite?.sql ?? "";
             if (!sameProject) removedReferenceCount += omittedSqlReferences.length;
 
             const sourceName = (ruleMap.get("name") as string | undefined) || "Untitled Schedule";
@@ -531,11 +535,15 @@ export async function materializeDuplicationPlan(
             const sourceSettings = getCalendar(sourceProject, object.id);
             if (!sourceSettings) throw new Error(`Calendar "${object.id}" no longer exists`);
             const destinationId = idMap.get(key(object))!;
-            const queryRewrite = rewriteTableQuerySql(sourceSettings.query, sqlNameMap);
+            // Empty query is a valid unconfigured Calendar state. Any actual
+            // query must pass the same parser preflight as Grid definitions.
+            const rewrittenQuery = sourceSettings.query
+                ? rewriteTableQuerySql(sourceSettings.query, sqlNameMap).sql
+                : "";
             const reads = queryReadDependencies(source, sourceSettings.query);
             const omittedQueryReferences = reads.relationNames
                 .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
-            const targetQuery = !sameProject && omittedQueryReferences.length > 0 ? "" : queryRewrite.sql;
+            const targetQuery = !sameProject && omittedQueryReferences.length > 0 ? "" : rewrittenQuery;
             if (!sameProject) removedReferenceCount += omittedQueryReferences.length;
             createCalendar(destinationProject, {
                 ...sourceSettings,
