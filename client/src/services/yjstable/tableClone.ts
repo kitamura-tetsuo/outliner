@@ -1,6 +1,6 @@
 import { isValidGridColumnWidth } from "$shared/services/gridDefinition";
 import { readSqlCatalog } from "$shared/services/sqlCatalog";
-import type { PGlite } from "@electric-sql/pglite";
+import { compileSqlEnvironment } from "$shared/services/sqlEnvironmentCompiler";
 import * as Y from "yjs";
 import {
     type GridSnapshot,
@@ -19,8 +19,6 @@ import {
     getGridShowAddRowButton,
 } from "./gridDocs";
 import { ITEMS_RELATION_CREATE_SQL } from "./itemsRelation";
-import { enqueueWrite } from "./pgliteService";
-import { assertSelectQuery } from "./queryAnalysis";
 import { queryReadDependencies } from "./queryReadDependencies";
 import { deriveSqlName } from "./sqlNames";
 import { assertPortableStructuralEnumCompatibility, type StructuralEnumAdmission } from "./structuralEnumGuard";
@@ -120,7 +118,6 @@ interface PlannedTable {
 // `createGrid`, which is the only writer of its shape. Per-column component
 // settings still travel as free-form maps, so those keys stay checked.
 const COMPONENT_KEYS = new Set(["type", "label", "hidden", "widthPx"]);
-let scratchCounter = 0;
 
 function cloneErrorMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
@@ -246,38 +243,25 @@ function materializeSchema(handles: { schemaText: Y.Text; }, snapshot: GridTable
 }
 
 async function validatePlansInPglite(plans: PlannedTable[], catalogSources: readonly string[]): Promise<void> {
-    const scratchSchema = `__yjstable_clone_${++scratchCounter}__`;
-    await enqueueWrite(async (db) => {
-        try {
-            await db.exec(`DROP SCHEMA IF EXISTS "${scratchSchema}" CASCADE; CREATE SCHEMA "${scratchSchema}";`);
-            try {
-                await db.exec(`BEGIN; SET LOCAL search_path TO "${scratchSchema}";`);
-                await db.exec(`${ITEMS_RELATION_CREATE_SQL};`);
-                for (const source of catalogSources) await db.exec(`${source};`);
-                for (const plan of plans) await db.exec(`${plan.schemaSql};`);
-                for (const plan of plans) {
-                    const query = plan.querySql.trim();
-                    if (!query) continue;
-                    const select = assertSelectQuery(query).replace(/;\s*$/, "");
-                    await (db as PGlite).query(`EXPLAIN ${select}`);
-                }
-                await db.exec("COMMIT;");
-            } catch (err) {
-                try {
-                    await db.exec("ROLLBACK;");
-                } catch {
-                    // no transaction to roll back
-                }
-                throw err;
-            }
-        } finally {
-            try {
-                await db.exec(`DROP SCHEMA IF EXISTS "${scratchSchema}" CASCADE;`);
-            } catch {
-                // scratch cleanup is best-effort
-            }
-        }
+    const result = await compileSqlEnvironment({
+        catalog: {
+            projectId: "portable-import-validation",
+            format: 1,
+            revision: catalogSources.join("\n"),
+            objects: catalogSources.map((source, index) => ({ id: `enum-${index}`, kind: "enum", source })),
+        },
+        tables: [
+            { id: "outline-items", schema: ITEMS_RELATION_CREATE_SQL, records: [] },
+            ...plans.map(plan => ({ id: plan.snapshot.sourceTableId, schema: plan.schemaSql, records: [] })),
+        ],
+        inspections: plans.filter(plan => plan.querySql.trim()).map(plan => ({
+            id: `query-${plan.snapshot.sourceTableId}`,
+            kind: "grid" as const,
+            sql: plan.querySql,
+        })),
     });
+    if (result.status === "failed") throw new Error(result.diagnostics[0]?.message ?? "SQL validation failed");
+    await result.environment.dispose();
 }
 
 function connectedGroups(plans: Map<string, PlannedTable>): string[][] {
