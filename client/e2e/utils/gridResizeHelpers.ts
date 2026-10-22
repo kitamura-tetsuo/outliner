@@ -23,12 +23,12 @@ export function gridHeader(page: Page, placement: number, column: string): Locat
         .locator(`th[data-col="${column}"]`);
 }
 
-/** Press the primary mouse button on a column's resize handle; returns the press point. */
+/** Press the primary mouse button on a column's resize handle; returns its point and the positioned header width. */
 export async function pressResizeHandle(
     page: Page,
     placement: number,
     column: string,
-): Promise<{ x: number; y: number; }> {
+): Promise<{ x: number; y: number; startWidth: number; }> {
     const handle = resizeHandle(page, placement, column);
     // Center vertically: `scrollIntoViewIfNeeded` can park the header under
     // the sticky main toolbar, where a press would hit the toolbar instead.
@@ -39,8 +39,9 @@ export async function pressResizeHandle(
     const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.getAttribute("data-testid"), point);
     if (hit !== "yjs-table-column-resize-handle") throw new Error(`resize press for ${column} would hit ${hit}`);
     await page.mouse.move(point.x, point.y);
+    const startWidth = await headerWidth(page, placement, column);
     await page.mouse.down();
-    return point;
+    return { ...point, startWidth };
 }
 
 /** Measured border-box width of the header in one placement. */

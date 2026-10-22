@@ -7,10 +7,10 @@ import {
     createBlankGrid,
     readGridProjectState,
 } from "../utils/crossProjectGridHelpers";
+import { observeResizeGesture } from "../utils/gridResizeDiagnostics";
 import {
     expectColumnGeometry,
     gridRevisions,
-    headerWidth,
     installWriteProbe,
     pressResizeHandle,
     readWriteProbe,
@@ -74,14 +74,20 @@ test.describe("Grid header drag resize commits once on release", () => {
         await installWriteProbe(page);
         const probeStart = await readWriteProbe(page);
 
-        // Real drag from the measured auto width through several candidates.
-        const start = await headerWidth(page, 0, "title");
-        const dx = Math.round(217 - start);
+        const diagnostic = await observeResizeGesture(page, testInfo);
+        // Measure after positioning; guarantee an effective rounded preview.
         const press = await pressResizeHandle(page, 0, "title");
-        for (const step of [12, Math.round(dx / 2) + 30, Math.round(dx / 2)]) {
+        const roundedStart = Math.round(press.startWidth);
+        const target = Math.abs(217 - roundedStart) >= 80 ? 217 : 377;
+        const dx = target - roundedStart;
+        const previewDelta = Math.round(dx / 2);
+        const mid = roundedStart + previewDelta;
+        expect(Math.abs(previewDelta)).toBeGreaterThan(0);
+        expect(mid).not.toBe(roundedStart);
+        for (const step of [12, previewDelta + 30, previewDelta]) {
             await page.mouse.move(press.x + step, press.y, { steps: 3 });
         }
-        const mid = Math.round(start + Math.round(dx / 2));
+        await diagnostic("midpoint", { press, roundedStart, target, dx, previewDelta, mid });
         await expectColumnGeometry(page, 0, "title", mid);
         await expect(widthInput).toHaveValue(String(mid));
         await expect(widthInput).toHaveAttribute("data-width-preview", "unsaved");
@@ -99,17 +105,18 @@ test.describe("Grid header drag resize commits once on release", () => {
         // Release away from the original header (below the Grid).
         await page.mouse.move(press.x + dx, press.y + 260, { steps: 4 });
         await page.mouse.up();
+        await diagnostic("released", { target, dx });
 
         await expect.poll(async () =>
             (await readWidthGridRegistry(page)).find((g) => g.gridId === gridIdA)?.components["title"]?.["widthPx"]
-        ).toBe(217);
+        ).toBe(target);
         const after = await readWriteProbe(page);
         expect(after.registry).toBe(1);
         expect(after.undoDepth).toBe(probeStart.undoDepth + 1);
-        await expectColumnGeometry(page, 0, "title", 217);
-        await expectColumnGeometry(page, 1, "title", 217);
+        await expectColumnGeometry(page, 0, "title", target);
+        await expectColumnGeometry(page, 1, "title", target);
         await expectAutoColumn(page, 2, "title");
-        await expect(widthInput).toHaveValue("217");
+        await expect(widthInput).toHaveValue(String(target));
         await expect(widthInput).not.toHaveAttribute("data-width-preview", "unsaved");
         await expect(view.getByTestId("yjs-table-width-preview-title")).toBeHidden();
         // Release selected nothing.
@@ -125,23 +132,23 @@ test.describe("Grid header drag resize commits once on release", () => {
         // The second placement's numeric settings show the saved width.
         const view1 = page.getByTestId("yjs-table-view").nth(1);
         await view1.getByTestId("yjs-table-toggle-ui").click();
-        await expect(view1.getByTestId("yjs-table-width-title")).toHaveValue("217");
+        await expect(view1.getByTestId("yjs-table-width-title")).toHaveValue(String(target));
 
-        // One toolbar Undo restores auto (absent), Redo reapplies 217.
+        // One toolbar Undo restores auto (absent), Redo reapplies the chosen width.
         await page.getByTestId("toolbar-undo").click();
         await expect(widthInput).toHaveValue("");
         await expectAutoColumn(page, 0, "title");
         await expectAutoColumn(page, 1, "title");
         expect((await gridRevisions(page, PROJECT, gridIdA)).presentation).toBe(before.presentation);
         await page.getByTestId("toolbar-redo").click();
-        await expect(widthInput).toHaveValue("217");
-        await expectColumnGeometry(page, 0, "title", 217);
+        await expect(widthInput).toHaveValue(String(target));
+        await expectColumnGeometry(page, 0, "title", target);
 
         // Normal reload keeps the committed width, not any transient state.
         await page.reload();
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(3, { timeout: 60000 });
-        await expectColumnGeometry(page, 0, "title", 217);
-        await expectColumnGeometry(page, 1, "title", 217);
+        await expectColumnGeometry(page, 0, "title", target);
+        await expectColumnGeometry(page, 1, "title", target);
         await expectAutoColumn(page, 2, "title");
         expect((await readGridProjectState(page)).tables[0].data).toEqual(baselineData);
         expect((await gridRevisions(page, PROJECT, gridIdA)).presentation).toBe(revised.presentation);

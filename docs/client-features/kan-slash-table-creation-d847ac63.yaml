@@ -17,6 +17,7 @@ tests:
 - client/e2e/new/kan-slash-existing-sources-d847ac63.spec.ts
 - client/e2e/new/kan-slash-preset-creation-d847ac63.spec.ts
 - client/e2e/new/kan-slash-query-source-change-d847ac63.spec.ts
+- client/e2e/new/kan-slash-rebound-target-d847ac63.spec.ts
 - client/e2e/new/kan-slash-setup-refusals-d847ac63.spec.ts
 - client/src/components/kanban/KanbanBlock.test.ts
 - client/src/services/yjstable/kanbanSetup.test.ts
