@@ -65,7 +65,9 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
         }, page1Id!);
 
         await dialog.getByTestId("object-manager-duplicate-apply").click();
-        await expect(dialog).toBeHidden({ timeout: 15000 });
+        // The first structural operation initializes the real PGlite-backed
+        // ENUM analyzer before it can publish the duplicate.
+        await expect(dialog).toBeHidden({ timeout: 30000 });
 
         await page.goto(`/${encodeURIComponent(projectName!)}/test-page-${projectName?.split(" ").pop()}`);
 

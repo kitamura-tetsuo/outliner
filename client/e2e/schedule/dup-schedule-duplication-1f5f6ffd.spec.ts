@@ -55,7 +55,9 @@ test.describe("Schedule duplication", () => {
         const dialog = page.getByTestId("object-manager-duplicate-dialog");
         await expect(dialog).toBeVisible();
         await dialog.getByTestId("object-manager-duplicate-apply").click();
-        await expect(dialog).toBeHidden({ timeout: 15000 });
+        // The first structural operation initializes the real PGlite-backed
+        // ENUM analyzer before it can publish the duplicate.
+        await expect(dialog).toBeHidden({ timeout: 30000 });
 
         // The copy carries the collision-safe "copy" name and appears alongside the original.
         const copyRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Daily import copy" })
