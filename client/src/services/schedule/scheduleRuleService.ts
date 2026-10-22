@@ -1,6 +1,6 @@
 import type { Project } from "$shared/app-schema";
 import { EXPLICIT_SELECT_ALIAS_POLICY_VERSION } from "$shared/services/explicitSelectAlias";
-import { validateScheduleRuleSql } from "$shared/services/scheduleRuleValidation";
+import { resolveScheduleTargetPlaceholder, validateScheduleRuleSql } from "$shared/services/scheduleRuleValidation";
 import type { ScheduleRunStatusValue } from "$shared/services/scheduleStatus";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
@@ -238,6 +238,17 @@ export interface ScheduleTableReference {
     enabled: boolean;
 }
 
+function scheduleReferenceSql(
+    sql: string,
+    targetTableId: unknown,
+    tables: ReturnType<typeof listTables>,
+): string {
+    const targetSqlName = typeof targetTableId === "string"
+        ? tables.find(table => table.tableId === targetTableId)?.sqlName
+        : undefined;
+    return targetSqlName ? resolveScheduleTargetPlaceholder(sql, targetSqlName) : sql;
+}
+
 /** Every Table id one Schedule references, write target and SQL alike. */
 export function scheduleTableReferences(
     project: Project | undefined,
@@ -255,10 +266,11 @@ export function scheduleTableReferences(
         seen.add(targetTableId);
     }
 
+    const tables = listTables(project.ydoc);
     const sql = ruleMap.get("sql");
     if (typeof sql === "string" && sql) {
-        const identifiers = parseIdentifiers(sql);
-        for (const table of listTables(project.ydoc)) {
+        const identifiers = parseIdentifiers(scheduleReferenceSql(sql, targetTableId, tables));
+        for (const table of tables) {
             if (!table.sqlName || seen.has(table.tableId)) continue;
             if (identifiers.has(table.sqlName.toLowerCase()) || identifiers.has(table.sqlName)) {
                 references.push({ tableId: table.tableId, kind: "sql-reference" });
@@ -281,7 +293,8 @@ export function findSchedulesReferencingTable(
 ): ScheduleTableReference[] {
     if (!project?.schedules) return [];
 
-    const targetSqlName = listTables(project.ydoc).find(t => t.tableId === tableId)?.sqlName;
+    const tables = listTables(project.ydoc);
+    const targetSqlName = tables.find(t => t.tableId === tableId)?.sqlName;
     const references: ScheduleTableReference[] = [];
 
     project.schedules.forEach((ruleMap, ruleId) => {
@@ -296,7 +309,7 @@ export function findSchedulesReferencingTable(
         if (!targetSqlName) return;
         const sql = ruleMap.get("sql") as string | undefined;
         if (!sql) return;
-        const identifiers = parseIdentifiers(sql);
+        const identifiers = parseIdentifiers(scheduleReferenceSql(sql, ruleMap.get("targetTableId"), tables));
         if (identifiers.has(targetSqlName.toLowerCase()) || identifiers.has(targetSqlName)) {
             references.push({ ruleId, ruleName, kind: "sql-reference", enabled });
         }

@@ -6,6 +6,7 @@ import {
     createScheduleRule,
     deleteScheduleRule,
     findSchedulesReferencingTable,
+    scheduleTableReferences,
     updateScheduleRule,
 } from "./scheduleRuleService";
 
@@ -48,14 +49,26 @@ describe("scheduleRuleService", () => {
 
     it("accepts and preserves the Schedule target placeholder", () => {
         const project = Project.createInstance("Test Project");
-        const sql = "/* 日 */ INSERT INTO {{table}} (title, id) VALUES ('値', gen_random_uuid()) RETURNING *";
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const auditId = createTable(project.ydoc, "Audit", "audit");
+        const sql = '/* 日 */ INSERT INTO {{table}} (id) SELECT id FROM U&"audit" RETURNING *';
 
         const ruleId = createScheduleRule(project, {
-            targetTableId: "table1",
+            targetTableId: tasksId,
             sql,
             rrule: "FREQ=DAILY",
         });
 
+        const beforeDiscovery = Y.encodeStateAsUpdate(project.ydoc);
+        expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
+        expect(scheduleTableReferences(project, ruleId)).toEqual([
+            { tableId: tasksId, kind: "write-target" },
+            { tableId: auditId, kind: "sql-reference" },
+        ]);
+        expect(findSchedulesReferencingTable(project, auditId)).toEqual([
+            { ruleId, ruleName: "Untitled Schedule", kind: "sql-reference", enabled: true },
+        ]);
+        expect(Y.encodeStateAsUpdate(project.ydoc)).toEqual(beforeDiscovery);
         expect(project.schedules.get(ruleId)?.get("sql")).toBe(sql);
         expect(() => updateScheduleRule(project, ruleId, { sql: "INSERT INTO {{table}} VALUES ('unterminated" }))
             .toThrow();
