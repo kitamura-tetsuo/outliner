@@ -19,7 +19,7 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
     onmousedown={(e) => { e.stopPropagation(); }}
     onmouseup={(e) => { e.stopPropagation(); }}
     aria-label={isVisible ? "Close comments" : `Open comments (${commentCount})`}
-    aria-expanded={isVisible}
+    aria-expanded={isVisible ? "true" : "false"}
 >
     <span class="comment-icon">💬</span>
     <span class="comment-count">{commentCount}</span>

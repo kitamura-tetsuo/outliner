@@ -257,7 +257,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     data-testid="search-toggle-button"
                     aria-label="Toggle Search Panel"
-                    aria-expanded={isSearchPanelVisible}
+                    aria-expanded={isSearchPanelVisible ? "true" : "false"}
                 >
                     Search
                 </button>

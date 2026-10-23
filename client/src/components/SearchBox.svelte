@@ -305,7 +305,7 @@ const logger = getLogger("SearchBox");
         type="text"
         role="combobox"
         aria-autocomplete="list"
-        aria-expanded={query.length > 0 && results.length > 0}
+        aria-expanded={query.length > 0 && results.length > 0 ? "true" : "false"}
         aria-controls={`search-results-listbox-${componentId}`}
         aria-activedescendant={selected >= 0 ? `search-result-item-${componentId}-${selected}` : undefined}
         aria-hidden="false"

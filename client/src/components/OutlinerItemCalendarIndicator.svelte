@@ -53,7 +53,7 @@ function onKeyDown(e: KeyboardEvent) {
             draggable="false"
             aria-label={summary}
             aria-describedby={isOpen ? tooltipId : undefined}
-            aria-expanded={isOpen}
+            aria-expanded={isOpen ? "true" : "false"}
             onclick={(e) => {
                 e.stopPropagation();
                 isPinned = !isPinned;
