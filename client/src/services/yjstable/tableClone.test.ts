@@ -53,6 +53,28 @@ function fixture() {
 afterAll(resetPgliteForTests);
 
 describe("independent portable Tables and Grids", () => {
+    it("rejects invalid imported Grid SQL before publishing its valid Table", async () => {
+        const f = fixture();
+        const destination = new Y.Doc({ guid: "invalid-grid-destination" });
+        let tableEvents = 0;
+        let gridEvents = 0;
+        let updates = 0;
+        destination.getMap("yjsTables").observe(() => tableEvents++);
+        destination.getMap("yjsGrids").observe(() => gridEvents++);
+        destination.on("update", () => updates++);
+        const grid = { ...exportGridSlice(f.doc, f.grid), query: "SELECT FROM" };
+
+        await expect(importTableStructures(
+            destination,
+            exportTableStructures(f.doc, [f.a, f.b]),
+            f.doc.guid,
+            new Set([f.a, f.b]),
+            false,
+            { [f.grid]: grid },
+        )).rejects.toThrow(/parsing failed/);
+        expect({ tableEvents, gridEvents, updates }).toEqual({ tableEvents: 0, gridEvents: 0, updates: 0 });
+    });
+
     it("exports independent definitions and exact SQL read identities, never records or primary fields", () => {
         const f = fixture();
         const table = exportTableStructure(f.doc, f.a);
