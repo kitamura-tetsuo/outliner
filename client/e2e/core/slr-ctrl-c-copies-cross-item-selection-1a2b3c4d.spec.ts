@@ -65,13 +65,17 @@ async function expectTitleEndCaret(
     titleLength: number,
     timeout = 10_000,
 ) {
-    await expect.poll(() => localEditorState(page), { timeout }).toEqual({
+    await expect.poll(() => localEditorState(page), { timeout }).toEqual(titleEndCaretState(titleId, titleLength));
+}
+
+function titleEndCaretState(titleId: string, titleLength: number) {
+    return {
         cursors: [{ itemId: titleId, offset: titleLength, isActive: true }],
         selections: [],
         activeItemId: titleId,
         editorFocused: true,
         selectedText: "",
-    });
+    };
 }
 
 async function selectThreeBodyLines(
@@ -146,7 +150,11 @@ test.describe("Ctrl+C copies cross-item selection", () => {
 
         await page.locator(`[data-item-id="${titleId}"] .item-text.title-text`).click();
         await page.keyboard.press("Home");
-        await expect(expectTitleEndCaret(page, titleId, pageName.length, 1_000)).rejects.toThrow();
+        await expect.poll(() => localEditorState(page), { timeout: 10_000 })
+            .toEqual(titleEndCaretState(titleId, 0));
+        const wrongOrigin = await localEditorState(page);
+        expect(wrongOrigin).toEqual(titleEndCaretState(titleId, 0));
+        expect(() => expect(wrongOrigin).toEqual(titleEndCaretState(titleId, pageName.length))).toThrow();
         expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sentinel);
     });
 
@@ -161,7 +169,8 @@ test.describe("Ctrl+C copies cross-item selection", () => {
 
         const sentinel = `no-op-copy-${crypto.randomUUID()}`;
         await page.evaluate(value => navigator.clipboard.writeText(value), sentinel);
-        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sentinel);
-        await expect(expectActualClipboard(page, 1_000)).rejects.toThrow();
+        const actualClipboard = await page.evaluate(() => navigator.clipboard.readText());
+        expect(actualClipboard).toBe(sentinel);
+        expect(() => expect(actualClipboard).toBe(EXPECTED_CLIPBOARD)).toThrow();
     });
 });
