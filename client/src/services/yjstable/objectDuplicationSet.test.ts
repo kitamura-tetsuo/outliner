@@ -92,6 +92,27 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         expect(getGridHandles(doc, copiedGridId)?.entry.get("query")).toBe("SELECT * FROM tasks_2");
     });
 
+    it("keeps a joined-result alias while remapping its input qualifiers", async () => {
+        const doc = new Y.Doc();
+        const tasks = table(doc, "Tasks", "tasks");
+        const notes = createTable(doc, "Notes", "notes", handles => {
+            handles.schemaText.insert(0, "CREATE TABLE notes (id TEXT PRIMARY KEY, task_id TEXT)");
+        });
+        const query = "SELECT tasks.id AS id FROM (tasks JOIN notes ON tasks.id = notes.task_id) AS tasks";
+        const gridId = createGrid(doc, { name: "Joined", query });
+
+        const result = await duplicateObjectSet(doc, doc, [
+            { type: "grid", id: gridId },
+            { type: "table", id: tasks },
+            { type: "table", id: notes },
+        ]);
+
+        const copiedGridId = result.idMap.get(`grid:${gridId}`)!;
+        expect(getGridHandles(doc, copiedGridId)?.entry.get("query")).toBe(
+            "SELECT tasks.id AS id FROM (tasks_2 JOIN notes_2 ON tasks_2.id = notes_2.task_id) AS tasks",
+        );
+    });
+
     it("rewrites a selected Schedule's target and SQL references to the copied Table", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");

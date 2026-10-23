@@ -256,11 +256,17 @@ export function rewriteTableQuerySql(
             return;
         }
         if (node(value.JoinExpr)) {
-            walkFrom(value.JoinExpr.larg, scope);
-            walkFrom(value.JoinExpr.rarg, scope);
             const alias = value.JoinExpr.alias;
-            if (node(alias) && typeof alias.aliasname === "string") scope.bindings.set(alias.aliasname, {});
-            walkExpression(value.JoinExpr.quals, scope);
+            const aliasName = node(alias) && typeof alias.aliasname === "string" ? alias.aliasname : undefined;
+            // A joined-table alias hides its inputs from the surrounding query,
+            // but PostgreSQL resolves ON before that result alias exists.
+            const inputScope: Scope = aliasName === undefined
+                ? scope
+                : { parent: scope, ctes: new Set(), bindings: new Map() };
+            walkFrom(value.JoinExpr.larg, inputScope);
+            walkFrom(value.JoinExpr.rarg, inputScope);
+            walkExpression(value.JoinExpr.quals, inputScope);
+            if (aliasName !== undefined) scope.bindings.set(aliasName, {});
             return;
         }
         if (value.RangeFunction || value.RangeTableFunc || value.RangeTableSample) {

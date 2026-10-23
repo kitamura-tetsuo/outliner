@@ -381,6 +381,12 @@ describe("truthful physical dependency boundaries", () => {
                     + "SELECT 1 FROM (owners_2 JOIN notes_2 ON true) AS tasks WHERE tasks.id = 1)",
             );
     });
+    it("resolves join conditions before exposing the joined-relation alias", () => {
+        const sql = "SELECT tasks.id AS id FROM (tasks JOIN notes ON tasks.id = notes.task_id) AS tasks";
+        expect(rewriteTableQuerySql(sql, { tasks: "tasks_2", notes: "notes_2" }).sql).toBe(
+            "SELECT tasks.id AS id FROM (tasks_2 JOIN notes_2 ON tasks_2.id = notes_2.task_id) AS tasks",
+        );
+    });
     it("discovers and rewrites subqueries in a set-operation tail", () => {
         const sql = "SELECT id FROM a UNION ALL SELECT id FROM a LIMIT (SELECT count(*) FROM b)";
         const result = rewriteTableQuerySql(sql, { a: "a_copy", b: "b_copy" });
