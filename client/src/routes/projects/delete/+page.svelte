@@ -3,10 +3,13 @@
     import { SvelteSet } from "svelte/reactivity";
     import * as yjsService from "../../../lib/yjsService.svelte";
     import { isOnPrem } from "../../../lib/deployment";
+    import { getLogger } from "../../../lib/logger";
     import {
         projectStore,
         type ProjectInfo,
     } from "../../../stores/projectStore.svelte";
+
+    const logger = getLogger("DeleteProjectsPage");
 
     let selectedProjects = new SvelteSet<string>();
 
@@ -50,6 +53,9 @@
 
     async function deleteSelected() {
         const targets = projects.filter((p) => selectedProjects.has(p.id));
+        logger.info(
+            `[deleteSelected] targets=${targets.map((p) => p.id).join(",")} selected=${[...selectedProjects].join(",")}`,
+        );
         if (targets.length === 0) return;
         loading = true;
         error = undefined;
@@ -58,7 +64,9 @@
         let deletedCount = 0;
         for (const p of targets) {
             try {
+                logger.info(`[deleteSelected] deleting project id=${p.id} name=${p.name}`);
                 const ok = await yjsService.deleteProject(p.id);
+                logger.info(`[deleteSelected] result for id=${p.id}: ${ok}`);
                 if (ok) {
                     selectedProjects.delete(p.id);
                     deletedCount++;
@@ -68,6 +76,7 @@
                 }
             } catch (err) {
                 error = `Delete error: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
+                logger.error({ error: err }, `[deleteSelected] exception for id=${p.id}`);
                 break;
             }
         }
@@ -96,13 +105,13 @@
     <h1 class="text-2xl font-bold mb-4">Delete Projects</h1>
 
     {#if error}
-        <div class="mb-2 text-red-600">{error}</div>
+        <div class="mb-2 text-red-600" data-testid="delete-error">{error}</div>
     {/if}
     {#if success}
-        <div class="mb-2 text-green-600">{success}</div>
+        <div class="mb-2 text-green-600" data-testid="delete-success">{success}</div>
     {/if}
     {#if loading}
-        <p>Loading...</p>
+        <p data-testid="delete-loading">Loading...</p>
     {/if}
     {#if projects.length > 0}
         <table class="min-w-full border mb-4">
@@ -115,10 +124,11 @@
             </thead>
             <tbody>
                 {#each projects as project (project.id)}
-                    <tr>
+                    <tr data-testid={`delete-row-${project.id}`} data-project-id={project.id}>
                         <td class="px-2 text-center">
                             <input
                                 type="checkbox"
+                                data-testid={`delete-checkbox-${project.id}`}
                                 checked={selectedProjects.has(project.id)}
                                 onchange={(e) => {
                                     const target = e.target as HTMLInputElement;
@@ -139,6 +149,7 @@
             </tbody>
         </table>
         <button type="button"
+            data-testid="delete-selected-button"
             onclick={deleteSelected}
             disabled={loading || selectedProjects.size === 0}
             class="bg-red-500 text-white px-4 py-2 rounded">Delete</button

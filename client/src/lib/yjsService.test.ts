@@ -190,5 +190,79 @@ describe("yjsService", () => {
                 "Failed to delete project: Internal Server Error",
             );
         });
+
+        it("does not retry an explicit access denial", async () => {
+            (global.fetch as Mock).mockResolvedValue({
+                ok: false,
+                status: 403,
+                statusText: "Forbidden",
+                text: async () => "Access to the project is denied",
+            });
+
+            await expect(deleteProject("project-123")).rejects.toThrow(
+                "Failed to delete project: Forbidden",
+            );
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+        });
+
+        it("bounds a stalled deletion request instead of hanging", async () => {
+            vi.useFakeTimers();
+            try {
+                (global.fetch as Mock).mockImplementation(
+                    (_url: unknown, init?: { signal?: AbortSignal; }) =>
+                        new Promise((_resolve, reject) => {
+                            init?.signal?.addEventListener("abort", () => {
+                                reject(new DOMException("The operation was aborted.", "AbortError"));
+                            });
+                        }),
+                );
+
+                const pending = deleteProject("project-stalled");
+                const assertion = expect(pending).rejects.toThrow();
+                // Two bounded attempts (30s each) settle instead of hanging
+                // for the 120s test budget.
+                await vi.advanceTimersByTimeAsync(30000);
+                await vi.advanceTimersByTimeAsync(30000);
+                await assertion;
+                expect(global.fetch).toHaveBeenCalledTimes(2);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it("retries a transient abort and reports success", async () => {
+            (global.fetch as Mock)
+                .mockRejectedValueOnce(new DOMException("The operation was aborted.", "AbortError"))
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => ({ success: true }),
+                });
+
+            const result = await deleteProject("project-123");
+
+            expect(result).toBe(true);
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+        });
+
+        it("bounds a stalled token acquisition instead of hanging", async () => {
+            const { userManager } = await import("../auth/UserManager");
+            const getIdToken = userManager.auth.currentUser?.getIdToken as Mock;
+            getIdToken.mockImplementation(() => new Promise<string>(() => {}));
+            vi.useFakeTimers();
+            try {
+                const pending = deleteProject("project-token-stall");
+                const assertion = expect(pending).rejects.toThrow(
+                    "Timed out acquiring Firebase ID token",
+                );
+                // Two bounded token attempts (15s each) settle instead of hanging.
+                await vi.advanceTimersByTimeAsync(15000);
+                await vi.advanceTimersByTimeAsync(15000);
+                await assertion;
+                expect(global.fetch).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+                getIdToken.mockResolvedValue("mock-token");
+            }
+        });
     });
 });

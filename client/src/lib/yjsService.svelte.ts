@@ -605,6 +605,43 @@ export function resetDemoClientState(project?: string): void {
     demoAcquirePromises.delete(project);
 }
 
+const DELETE_PROJECT_TOKEN_TIMEOUT_MS = 15000;
+const DELETE_PROJECT_REQUEST_TIMEOUT_MS = 30000;
+const DELETE_PROJECT_MAX_ATTEMPTS = 2;
+
+function isTransientDeleteError(error: unknown): boolean {
+    if (error instanceof DOMException && error.name === "AbortError") return true;
+    if (error instanceof Error) {
+        if (error.message.includes("Timed out acquiring Firebase ID token")) return true;
+        if (error.message.includes("Delete request timed out")) return true;
+        if (error.message.includes("Failed to fetch")) return true;
+        if (error.message.includes("NetworkError")) return true;
+        if (error.message.includes("network")) return true;
+    }
+    return false;
+}
+
+async function getDeleteIdToken(
+    currentUser: { getIdToken: () => Promise<string>; },
+    projectId: string,
+): Promise<string> {
+    logger.info(`[yjsService] deleteProject acquiring token for: ${projectId}`);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        const timeout = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+                () => reject(new Error("Timed out acquiring Firebase ID token")),
+                DELETE_PROJECT_TOKEN_TIMEOUT_MS,
+            );
+        });
+        const idToken = await Promise.race([currentUser.getIdToken(), timeout]);
+        logger.info(`[yjsService] deleteProject token acquired for: ${projectId}`);
+        return idToken;
+    } finally {
+        if (timer !== undefined) clearTimeout(timer);
+    }
+}
+
 export async function deleteProject(projectId: string): Promise<boolean> {
     logger.info(`[yjsService] deleteProject called for: ${projectId}`);
 
@@ -614,39 +651,66 @@ export async function deleteProject(projectId: string): Promise<boolean> {
         throw new Error("User not logged in");
     }
 
-    try {
-        const idToken = await currentUser.getIdToken();
-        const url = getFirebaseFunctionUrl("deleteProject");
+    const url = getFirebaseFunctionUrl("deleteProject");
+    let lastError: unknown;
 
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                idToken,
-                projectId,
-            }),
-        });
+    for (let attempt = 1; attempt <= DELETE_PROJECT_MAX_ATTEMPTS; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), DELETE_PROJECT_REQUEST_TIMEOUT_MS);
+        try {
+            const idToken = await getDeleteIdToken(currentUser, projectId);
+            logger.info(`[yjsService] deleteProject sending request for: ${projectId} (attempt ${attempt})`);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            logger.error({ errorText }, `[yjsService] deleteProject failed: ${response.status} ${response.statusText}`);
-            throw new Error(`Failed to delete project: ${response.statusText}`);
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    idToken,
+                    projectId,
+                }),
+                signal: controller.signal,
+            });
+            clearTimeout(timer);
+
+            logger.info(
+                `[yjsService] deleteProject response for: ${projectId} (attempt ${attempt}): ${response.status}`,
+            );
+            if (!response.ok) {
+                const errorText = await response.text();
+                logger.error(
+                    { errorText },
+                    `[yjsService] deleteProject failed: ${response.status} ${response.statusText}`,
+                );
+                throw new Error(`Failed to delete project: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                logger.info(`[yjsService] deleteProject success for ${projectId}`);
+                return true;
+            } else {
+                logger.error({ data }, `[yjsService] deleteProject returned failure`);
+                return false;
+            }
+        } catch (error) {
+            clearTimeout(timer);
+            lastError = error;
+            const aborted = error instanceof DOMException && error.name === "AbortError";
+            logger.error(
+                { error },
+                `[yjsService] deleteProject attempt ${attempt} ${aborted ? "timed out" : "exception"} for ${projectId}`,
+            );
+            if (attempt < DELETE_PROJECT_MAX_ATTEMPTS && (aborted || isTransientDeleteError(error))) {
+                logger.info(`[yjsService] deleteProject retrying for: ${projectId} (attempt ${attempt + 1})`);
+                continue;
+            }
+            throw error;
         }
-
-        const data = await response.json();
-        if (data.success) {
-            logger.info(`[yjsService] deleteProject success for ${projectId}`);
-            return true;
-        } else {
-            logger.error({ data }, `[yjsService] deleteProject returned failure`);
-            return false;
-        }
-    } catch (error) {
-        logger.error({ error }, `[yjsService] deleteProject exception`);
-        throw error;
     }
+
+    throw lastError instanceof Error ? lastError : new Error("Failed to delete project");
 }
 
 export async function getUserContainers(): Promise<{
