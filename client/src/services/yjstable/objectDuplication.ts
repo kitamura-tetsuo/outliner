@@ -290,30 +290,47 @@ export async function materializeDuplicationPlan(
     const assertCurrent = captureDuplicationAdmission(source, objects);
     let sqlSnapshot = captureStructuralSqlSnapshot(source);
     const tableObjects = objects.filter(object => object.type === "table");
+    const hydrationTableIds = new Set(tableObjects.map(object => object.id));
+    for (const object of objects) {
+        let sql: string | undefined;
+        if (object.type === "grid") sql = String(getGridHandles(source, object.id)?.entry.get("query") ?? "");
+        else if (object.type === "calendar") sql = getCalendar(Project.fromDoc(source), object.id)?.query;
+        else if (object.type === "schedule") {
+            const rule = schedulesMapOf(source).get(object.id);
+            sql = String(rule?.get("sql") ?? "");
+            const targetTableId = rule?.get("targetTableId");
+            if (typeof targetTableId === "string" && targetTableId) hydrationTableIds.add(targetTableId);
+            const relationNames = rewriteTableQuerySql(sql, new Map()).relationDependencies;
+            for (const table of listTables(source)) {
+                if (relationNames.includes(table.sqlName)) hydrationTableIds.add(table.tableId);
+            }
+        }
+        if (sql) { for (const tableId of queryReadDependencies(source, sql).tableIds) hydrationTableIds.add(tableId); }
+    }
     const connections: TableDocConnection[] = [];
 
     // Discovery is deliberately complete before any connection or destination
     // mutation. A registry entry can expose its subdoc before that subdoc's
     // contents have arrived, so every Table in the completed graph must be
     // synchronized before schema rewriting or row copying starts.
-    if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
+    if (options.synchronizeTableSubdocs && hydrationTableIds.size > 0) {
         const { connectTableDoc } = await import("../../lib/yjs/connection");
         try {
-            for (const object of tableObjects) {
-                const entry = listTables(source).find(table => table.tableId === object.id);
-                const handles = getTableHandles(source, object.id);
-                if (!entry || !handles) throw new Error(`Table "${object.id}" no longer exists`);
+            for (const tableId of hydrationTableIds) {
+                const entry = listTables(source).find(table => table.tableId === tableId);
+                const handles = getTableHandles(source, tableId);
+                if (!entry || !handles) throw new Error(`Table "${tableId}" no longer exists`);
                 try {
                     // The project document GUID is the room id. The route's
                     // `sourceProject` value is only its human-readable title
                     // and cannot authorize a Table room connection.
-                    const connection = await connectTableDoc(source.guid, object.id, handles.doc);
+                    const connection = await connectTableDoc(source.guid, tableId, handles.doc);
                     connections.push(connection);
                     const { synced } = await connection.waitForInitialSync();
                     if (!synced) throw new Error("initial synchronization timed out");
                 } catch (error) {
                     throw new Error(
-                        `Table "${entry.name || entry.sqlName || object.id}" could not be synchronized.`,
+                        `Table "${entry.name || entry.sqlName || tableId}" could not be synchronized.`,
                         { cause: error },
                     );
                 }
@@ -334,7 +351,7 @@ export async function materializeDuplicationPlan(
     // Table room synchronization can reveal schema and records that were not
     // present in the registry-attached subdoc. Admission must use that hydrated
     // state, never the pre-load shell.
-    if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
+    if (options.synchronizeTableSubdocs && hydrationTableIds.size > 0) {
         sqlSnapshot = captureStructuralSqlSnapshot(source);
     }
     const idMap = new Map<string, string>(existingIdMap);
