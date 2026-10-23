@@ -197,8 +197,7 @@ describe("Object Manager retained ENUM evidence through Redo hydration", { timeo
 
     it.each([
         "SELECT id AS id, state AS state FROM tasks",
-        "SELECT id AS id, state AS state FROM public.tasks",
-        "WITH renamed AS (SELECT id AS id, state AS state FROM public.tasks) SELECT id AS id, state AS state FROM renamed",
+        "WITH renamed AS (SELECT id AS id, state AS state FROM tasks) SELECT id AS id, state AS state FROM renamed",
     ])("hydrates a cold read dependency without expanding the Grid selection: %s", async query => {
         const source = project("cold-table-dependency");
         const tableId = createTable(source.value.ydoc, "Tasks", "tasks");
@@ -226,6 +225,47 @@ describe("Object Manager retained ENUM evidence through Redo hydration", { timeo
         expect(result!.createdObjects[0].id).not.toBe(gridId);
         expect(listTables(source.value.ydoc).map(table => table.tableId)).toEqual([tableId]);
         expect(getGridRegistry(source.value.ydoc).get(result!.createdObjects[0].id)!.get("query")).toBe(query);
+    });
+
+    it.each([
+        "SELECT id AS id, state AS state FROM public.tasks",
+        "WITH renamed AS (SELECT id AS id, state AS state FROM public.tasks) SELECT id AS id, state AS state FROM renamed",
+    ])("refuses a schema-qualified Grid before publication: %s", async query => {
+        const source = project("unsupported-qualified-grid");
+        const tableId = createTable(source.value.ydoc, "Tasks", "tasks", handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state mood)");
+        });
+        const table = getTableHandles(source.value.ydoc, tableId)!;
+        const gridId = createGrid(source.value.ydoc, { query });
+        const tableRegistry = getTableRegistry(source.value.ydoc);
+        const gridRegistry = getGridRegistry(source.value.ydoc);
+        const placements = source.value.ydoc.getMap("orderedTree");
+        const manager = new Y.UndoManager([tableRegistry, gridRegistry, placements]);
+        globalUndoRouter.register(manager);
+        table.undo.clear();
+        managers.push(manager, table.undo);
+        globalUndoRouter.clear();
+        const selected = getObjects(source.value).filter(object => object.id === gridId);
+        const before = snapshot(source.value);
+        const beforeHistory = history();
+        const publications: string[] = [];
+        tableRegistry.observe(() => publications.push("Table"));
+        gridRegistry.observe(() => publications.push("Grid"));
+        placements.observeDeep(() => publications.push("placement"));
+        source.value.ydoc.on("update", () => publications.push("Project"));
+        table.doc.on("update", () => publications.push("schema or row"));
+
+        await expect(duplicateSelectedObjects(
+            source.value.ydoc,
+            source.value.ydoc,
+            selected,
+            { synchronizeTableSubdocs: true },
+        )).rejects.toThrow(/Schema-qualified relation/);
+
+        expect(publications).toEqual([]);
+        expect(snapshot(source.value)).toEqual(before);
+        expect(history()).toEqual(beforeHistory);
+        expect(transport.disposed).toBe(transport.acquired.length);
     });
 
     it("hydrates cold foreign-key dependencies without adding Tables to the selection", async () => {

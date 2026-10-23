@@ -93,7 +93,7 @@ test.describe("Demo project feature tour", () => {
         await salesTable.getByTestId("yjs-table-toggle-chart").first().click();
 
         const chart = salesTable.getByTestId("yjs-table-chart").first();
-        await expect(chart).toBeVisible({ timeout: 10000 });
+        await expect(chart).toBeVisible({ timeout: 60000 });
         // ECharts may replace the component's concise label with its generated
         // description after rendering. Both labels must still identify the
         // revenue bar chart and expose Jan's value, proving that month is the

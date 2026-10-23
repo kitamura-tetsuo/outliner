@@ -876,7 +876,7 @@ export async function moveGridPlacementsAcrossProjects(
                 id,
                 createCalendar(Project.fromDoc(scratch), {
                     ...settings,
-                    query: rewriteTableQuerySql(settings.query, sqlNames).sql,
+                    query: settings.query.trim() ? rewriteTableQuerySql(settings.query, sqlNames).sql : settings.query,
                 }),
             ];
         }));

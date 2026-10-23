@@ -38,6 +38,35 @@ describe("rewriteCreateTableSql", () => {
 });
 
 describe("rewriteTableQuerySql", () => {
+    it("uses byte locations while preserving Unicode, comments, and dollar-quoted text", () => {
+        const sql = "-- 日本語 FROM tasks\nSELECT tasks.id, $$FROM tasks$$ AS note, 'tasks' AS source_kind FROM tasks";
+        expect(rewriteTableQuerySql(sql, { tasks: "tasks_2" }).sql).toBe(
+            "-- 日本語 FROM tasks\nSELECT tasks_2.id, $$FROM tasks$$ AS note, 'tasks_2' AS source_kind FROM tasks_2",
+        );
+    });
+
+    it("applies PostgreSQL non-recursive and recursive CTE visibility", () => {
+        expect(
+            rewriteTableQuerySql("WITH tasks AS (SELECT * FROM tasks) SELECT * FROM tasks", { tasks: "tasks_2" }).sql,
+        )
+            .toBe("WITH tasks AS (SELECT * FROM tasks_2) SELECT * FROM tasks");
+        expect(
+            rewriteTableQuerySql(
+                "WITH RECURSIVE tasks AS (SELECT 1 UNION ALL SELECT id FROM tasks) SELECT * FROM tasks",
+                { tasks: "tasks_2" },
+            ).actualRelationDependencies,
+        ).toEqual([]);
+    });
+
+    it("does not classify computed source_kind expressions as routing references", () => {
+        const result = rewriteTableQuerySql(
+            "SELECT upper('tasks') AS source_kind, 'tasks' AS label FROM actual",
+            { tasks: "tasks_2", actual: "actual_2" },
+        );
+        expect(result.sql).toBe("SELECT upper('tasks') AS source_kind, 'tasks' AS label FROM actual_2");
+        expect(result.relationDependencies).toEqual(["actual"]);
+    });
+
     it("reports reserved relations that rebind without treating them as clipboard dependencies", () => {
         const result = rewriteTableQuerySql("SELECT id, text FROM outline_items", new Map());
 
@@ -144,17 +173,19 @@ WHERE EXISTS (SELECT 1 FROM orders nested WHERE nested.customer_id = c.id)`;
         expect(result.relationDependencies).toEqual(["copied", "missing"]);
     });
 
-    it("rejects schema-qualified and ambiguous copied relation constructs", () => {
+    it("rejects schema-qualified, function, and multiple-statement constructs", () => {
         expect(() => rewriteTableQuerySql("SELECT * FROM public.sales", { sales: "sales_2" }))
             .toThrow(TableSqlRewriteError);
         expect(() => rewriteTableQuerySql("SELECT * FROM sales()", { sales: "sales_2" }))
             .toThrow(/ambiguous/);
-        expect(() => rewriteTableQuerySql("SELECT * FROM (sales JOIN customers ON true)", { sales: "sales_2" }))
-            .toThrow(/Parenthesized joined relation/);
-        expect(() => rewriteTableQuerySql("TABLE sales", { sales: "sales_2" }))
-            .toThrow(/not supported/);
         expect(() => rewriteTableQuerySql("SELECT * FROM sales; SELECT 1", { sales: "sales_2" }))
-            .toThrow(/Multiple SQL statements/);
+            .toThrow(/one SQL statement/);
+        expect(
+            rewriteTableQuerySql("SELECT * FROM (sales JOIN customers ON true)", {
+                sales: "sales_2",
+                customers: "customers_2",
+            }).sql,
+        ).toBe("SELECT * FROM (sales_2 JOIN customers_2 ON true)");
     });
 });
 
@@ -195,6 +226,22 @@ SELECT id, template_id, title, cadence, done FROM inserted`;
             .toBe("UPDATE tasks_2 SET done = true WHERE id = '1'");
         expect(rewriteTableQuerySql("DELETE FROM tasks WHERE id = '1'", { tasks: "tasks_2" }).sql)
             .toBe("DELETE FROM tasks_2 WHERE id = '1'");
+    });
+
+    it.each([
+        [
+            "WITH tasks AS (SELECT 1) UPDATE tasks SET done = true",
+            "WITH tasks AS (SELECT 1) UPDATE tasks_2 SET done = true",
+        ],
+        [
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks (id) SELECT id FROM tasks",
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks_2 (id) SELECT id FROM tasks",
+        ],
+        ["WITH tasks AS (SELECT 1) DELETE FROM tasks", "WITH tasks AS (SELECT 1) DELETE FROM tasks_2"],
+    ])("treats a DML target as physical when it shares a CTE name", (sql, expected) => {
+        const result = rewriteTableQuerySql(sql, { tasks: "tasks_2" });
+        expect(result.sql).toBe(expected);
+        expect(result.actualRelationDependencies).toEqual(["tasks"]);
     });
 
     it("leaves UPDATE alone where it is a locking clause or a conflict action", () => {
@@ -274,7 +321,6 @@ describe("truthful physical dependency boundaries", () => {
             sql: "TABLE a INTERSECT DISTINCT TABLE pg_class EXCEPT TABLE b",
             names: ["a", "pg_class", "b"],
         },
-        { name: "TABLE ONLY quoted", sql: 'TABLE ONLY "pg_class" *', names: ["pg_class"] },
         { name: "TABLE ONLY parentheses", sql: 'SELECT 1 WHERE EXISTS (TABLE ONLY ("pg_class"))', names: ["pg_class"] },
         { name: "TABLE of visible CTE", sql: "WITH q AS (SELECT 1) TABLE q", names: [] },
         { name: "reserved TABLE", sql: "TABLE outline_items", names: [], reserved: ["outline_items"] },
@@ -326,8 +372,42 @@ describe("truthful physical dependency boundaries", () => {
         expect(rewriteTableQuerySql("WITH a AS (SELECT a.id FROM a) SELECT a.id FROM a", { a: "a_copy" }).sql)
             .toBe("WITH a AS (SELECT a_copy.id FROM a_copy) SELECT a.id FROM a");
     });
+    it("preserves a joined-relation alias that shadows an outer mapped relation", () => {
+        const sql = "SELECT tasks.id FROM tasks WHERE EXISTS ("
+            + "SELECT 1 FROM (owners JOIN notes ON true) AS tasks WHERE tasks.id = 1)";
+        expect(rewriteTableQuerySql(sql, { tasks: "tasks_2", owners: "owners_2", notes: "notes_2" }).sql)
+            .toBe(
+                "SELECT tasks_2.id FROM tasks_2 WHERE EXISTS ("
+                    + "SELECT 1 FROM (owners_2 JOIN notes_2 ON true) AS tasks WHERE tasks.id = 1)",
+            );
+    });
+    it("resolves join conditions before exposing the joined-relation alias", () => {
+        const sql = "SELECT tasks.id AS id FROM (tasks JOIN notes ON tasks.id = notes.task_id) AS tasks";
+        expect(rewriteTableQuerySql(sql, { tasks: "tasks_2", notes: "notes_2" }).sql).toBe(
+            "SELECT tasks.id AS id FROM (tasks_2 JOIN notes_2 ON tasks_2.id = notes_2.task_id) AS tasks",
+        );
+    });
+    it("preserves a JOIN USING alias without hiding its input relations", () => {
+        const sql = "SELECT tasks.id AS id FROM tasks WHERE EXISTS ("
+            + "SELECT tasks.id AS id FROM a JOIN b USING (id) AS tasks WHERE tasks.id = 1)";
+        expect(rewriteTableQuerySql(sql, { tasks: "tasks_2", a: "a_2", b: "b_2" }).sql).toBe(
+            "SELECT tasks_2.id AS id FROM tasks_2 WHERE EXISTS ("
+                + "SELECT tasks.id AS id FROM a_2 JOIN b_2 USING (id) AS tasks WHERE tasks.id = 1)",
+        );
+    });
+    it("discovers and rewrites subqueries in a set-operation tail", () => {
+        const sql = "SELECT id FROM a UNION ALL SELECT id FROM a LIMIT (SELECT count(*) FROM b)";
+        const result = rewriteTableQuerySql(sql, { a: "a_copy", b: "b_copy" });
+        expect(result.sql).toBe(
+            "SELECT id FROM a_copy UNION ALL SELECT id FROM a_copy LIMIT (SELECT count(*) FROM b_copy)",
+        );
+        expect(result.actualRelationDependencies).toEqual(["a", "b"]);
+    });
     it.each(["TABLE public.a", "TABLE ONLY public.a", "TABLE ONLY (public.a)"])("refuses qualified operand %s", sql => {
         expect(() => rewriteTableQuerySql(sql, new Map())).toThrow(/Schema-qualified/);
+    });
+    it("rejects invalid TABLE syntax instead of returning partial dependencies", () => {
+        expect(() => rewriteTableQuerySql('TABLE ONLY "pg_class" *', new Map())).toThrow(/parsing failed/);
     });
     it.each([
         "TABLE a",
@@ -336,7 +416,9 @@ describe("truthful physical dependency boundaries", () => {
         "INSERT INTO target TABLE a",
         "INSERT INTO target (id) TABLE a",
         "INSERT INTO target AS t (id) OVERRIDING SYSTEM VALUE TABLE a",
-    ])("retains the mapped TABLE refusal in query and Schedule contexts: %s", sql => {
-        expect(() => rewriteTableQuerySql(sql, { a: "a_copy" })).toThrow(/TABLE query syntax.*not supported/);
+    ])("rewrites mapped TABLE operands in query and Schedule contexts: %s", sql => {
+        const result = rewriteTableQuerySql(sql, { a: "a_copy" });
+        expect(result.sql).toContain("TABLE a_copy");
+        expect(result.actualRelationDependencies).toContain("a");
     });
 });

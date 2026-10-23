@@ -8,6 +8,8 @@ const cursor = {
     formatUnderline: vi.fn(),
     formatStrikethrough: vi.fn(),
     formatCode: vi.fn(),
+    expandSelection: vi.fn(),
+    shrinkSelection: vi.fn(),
     onKeyDown: vi.fn(),
     isActive: true,
     itemId: "1",
@@ -44,11 +46,18 @@ describe("KeyEventHandler key map", () => {
         expect(mockStore.addCursorRelativeToActive).toHaveBeenCalledWith("down");
     });
 
-    it("calls box selection for Alt+Shift+ArrowRight", () => {
-        const spy = vi.spyOn(KeyEventHandler, "handleBoxSelection");
+    it("expands selection for Alt+Shift+ArrowRight", () => {
+        const cursors = mockStore.getLocalCursorInstances();
         const event = new KeyboardEvent("keydown", { key: "ArrowRight", altKey: true, shiftKey: true });
         KeyEventHandler.handleKeyDown(event);
-        expect(spy).toHaveBeenCalled();
+        expect(cursors[0].expandSelection).toHaveBeenCalled();
+    });
+
+    it("shrinks selection for Alt+Shift+ArrowLeft", () => {
+        const cursors = mockStore.getLocalCursorInstances();
+        const event = new KeyboardEvent("keydown", { key: "ArrowLeft", altKey: true, shiftKey: true });
+        KeyEventHandler.handleKeyDown(event);
+        expect(cursors[0].shrinkSelection).toHaveBeenCalled();
     });
 
     it("formats bold with Ctrl+B", () => {

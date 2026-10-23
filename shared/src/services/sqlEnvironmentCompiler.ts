@@ -274,9 +274,9 @@ function collectReferencedTables(statement: AstNode): RelationReference[] {
             const mutationTarget = isNode(statementBody.relation) ? statementBody.relation : undefined;
             if (mutationTarget && typeof mutationTarget.relname === "string") {
                 const schema = typeof mutationTarget.schemaname === "string" ? mutationTarget.schemaname : undefined;
-                if (schema !== undefined || !localNames.has(mutationTarget.relname)) {
-                    tables.push({ schema, name: mutationTarget.relname });
-                }
+                // CTEs shadow read sources, never the physical target of an
+                // INSERT, UPDATE or DELETE statement.
+                tables.push({ schema, name: mutationTarget.relname });
             }
             for (const [key, child] of Object.entries(statementBody)) {
                 if (key !== "withClause" && key !== "relation") walk(child, localNames);

@@ -601,11 +601,25 @@ export class KeyEventHandler {
             }
         });
 
-        // Alt+Shift+Arrow for box selection
-        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].forEach(k => {
+        // Alt+Shift+Arrow for box selection (ArrowUp/ArrowDown)
+        ["ArrowUp", "ArrowDown"].forEach(k => {
             add(k, false, true, true, event => {
                 KeyEventHandler.handleBoxSelection(event);
             });
+        });
+
+        // Alt+Shift+Left/Right to shrink/expand selection
+        add("ArrowRight", false, true, true, (event, cursors) => {
+            const activeCursor = cursors.find(c => c.isActive) || cursors[0];
+            if (activeCursor) {
+                activeCursor.expandSelection();
+            }
+        });
+        add("ArrowLeft", false, true, true, (event, cursors) => {
+            const activeCursor = cursors.find(c => c.isActive) || cursors[0];
+            if (activeCursor) {
+                activeCursor.shrinkSelection();
+            }
         });
 
         // Ctrl+Shift+Alt+Arrow/PageUp/PageDown adds cursors
@@ -3312,7 +3326,9 @@ export class KeyEventHandler {
                                 >,
                             )
                         ) {
-                            const rewrittenQuery = rewriteTableQuerySql(settings.query, sqlNameMap).sql;
+                            const rewrittenQuery = settings.query.trim()
+                                ? rewriteTableQuerySql(settings.query, sqlNameMap).sql
+                                : settings.query;
                             // A mixed transfer owns its Calendar effects in the outline composite.
                             // A scoped origin leaves standalone Calendar history unchanged and
                             // cannot truncate unrelated activity during asynchronous preparation.

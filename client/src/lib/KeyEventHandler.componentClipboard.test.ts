@@ -1643,7 +1643,7 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         });
     }
 
-    for (const queryKind of ["constant-enum", "outline-items"] as const) {
+    for (const queryKind of ["constant-enum", "outline-items", "empty", "whitespace"] as const) {
         it(`Calendar-only Copy retains definition replay authority: ${queryKind}`, async () => {
             const source = Project.createInstance(`calendar-only-${queryKind}`);
             const enumSql = "CREATE TYPE calendar_state AS ENUM ('Open', 'Closed')";
@@ -1651,9 +1651,12 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
                 ? createSqlCatalogObject(state.doc, "enum", enumSql)
                 : undefined;
             if (destinationEnum) createSqlCatalogObject(source.ydoc, "enum", enumSql);
-            const query = destinationEnum
-                ? "SELECT 'event' AS id, CAST('Open' AS calendar_state) AS title"
-                : "SELECT id AS id, text AS title FROM outline_items";
+            const query = {
+                "constant-enum": "SELECT 'event' AS id, CAST('Open' AS calendar_state) AS title",
+                "outline-items": "SELECT id AS id, text AS title FROM outline_items",
+                "empty": "",
+                "whitespace": " \t\n ",
+            }[queryKind];
             const sourceCalendar = createCalendar(source, { name: "Only Calendar", query, roleTitle: "title" });
             const copied = copySingleComponent(source.ydoc, undefined, sourceCalendar);
             const payload = deserializeClipboardItems(copied.encoded);

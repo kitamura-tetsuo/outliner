@@ -106,11 +106,15 @@ describe("cross-Project staged Grid moves", () => {
         vi.restoreAllMocks();
     });
 
-    it("preserves mixed Calendar transfer behavior alongside a Grid move", async () => {
+    it.each([
+        { queryKind: "table", query: "SELECT id AS title FROM tasks" },
+        { queryKind: "empty", query: "" },
+        { queryKind: "whitespace", query: " \t\n " },
+    ])("preserves mixed Calendar transfer behavior alongside a Grid move: $queryKind", async ({ queryKind, query }) => {
         const f = setup(1);
         const calendarId = createCalendar(f.source, {
             name: "Calendar",
-            query: "SELECT id AS title FROM tasks",
+            query,
             roleTitle: "title",
         });
         const calendarPlacement = f.page.items.addNode("author");
@@ -141,9 +145,9 @@ describe("cross-Project staged Grid moves", () => {
             "calendarId",
         ) as string;
         expect(copiedCalendarId).not.toBe(calendarId);
-        expect(getCalendar(f.destination, copiedCalendarId)?.query).toContain(
-            listTables(f.destination.ydoc)[0].sqlName,
-        );
+        const copiedQuery = getCalendar(f.destination, copiedCalendarId)?.query;
+        if (queryKind === "table") expect(copiedQuery).toContain(listTables(f.destination.ydoc)[0].sqlName);
+        else expect(copiedQuery).toBe(query);
         expect(getCalendar(f.source, calendarId)?.name).toBe("Calendar");
         f.source.ydoc.transact(() => f.source.calendars.get(calendarId)!.set("name", "Peer Calendar"), "peer");
         globalUndoRouter.undo();
@@ -157,6 +161,7 @@ describe("cross-Project staged Grid moves", () => {
         await vi.waitFor(() => expect(globalUndoRouter.isPending).toBe(false));
         expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("applied");
         expect(f.destination.calendars.has(copiedCalendarId)).toBe(true);
+        expect(getCalendar(f.destination, copiedCalendarId)?.query).toBe(copiedQuery);
         f.source.ydoc.transact(() => f.source.calendars.delete(calendarId), "peer");
         const depth = globalUndoRouter.undoDepth;
         globalUndoRouter.undo();

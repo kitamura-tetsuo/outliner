@@ -315,6 +315,16 @@ export async function importTableStructures(
 ): Promise<TableCloneResult> {
     admit();
     if (!isGridSnapshotMap(grids)) throw new TableCloneError("Grid definitions are malformed");
+    // Required Grid definitions must first satisfy the transfer rewriter's
+    // syntax contract, before semantic admission or destination reads.
+    for (const grid of Object.values(grids)) {
+        if (grid.query.trim()) rewriteTableQuerySql(grid.query, new Map());
+    }
+    // These inspections are required selected artifacts, such as Calendars;
+    // optional companion Schedule rules are admitted by their own clone path.
+    for (const inspection of additionalInspections) {
+        if (inspection.sql.trim()) rewriteTableQuerySql(inspection.sql, new Map());
+    }
     let enumAdmission: StructuralEnumAdmission;
     let portableGuard: () => Promise<StructuralEnumAdmission>;
     const capturedCatalogs = Object.values(snapshots).map(snapshot => snapshot.catalog).filter(catalog =>
@@ -470,6 +480,21 @@ export async function importTableStructures(
             }
         }
     }
+    // Grid definitions are required import artifacts. Validate every
+    // non-empty definition before any connected Table group is published;
+    // cleanup after a later parse failure cannot retract observer events.
+    const plannedNameMap = new Map(destinationNames);
+    for (const [sourceTableId, destinationTableId] of Object.entries(reusedTableIdMap)) {
+        const sourceName = snapshots[sourceTableId]?.sqlName;
+        const destinationName = getTableSqlName(destinationProjectDoc, destinationTableId);
+        if (sourceName && destinationName) plannedNameMap.set(sourceName, destinationName);
+    }
+    for (const grid of Object.values(grids)) {
+        if (grid.query.trim()) rewriteTableQuerySql(grid.query, plannedNameMap);
+    }
+    for (const inspection of additionalInspections) {
+        if (inspection.sql.trim()) rewriteTableQuerySql(inspection.sql, plannedNameMap);
+    }
     const tableIdMap: Record<string, string> = {};
     const gridIdMap: Record<string, string> = {};
     const assertAdmission = () => {
@@ -623,7 +648,9 @@ export async function importTableStructures(
                 const mappedPreference = preference
                     ? allTableIds[preference] ?? (sameProject ? preference : undefined)
                     : undefined;
-                const query = omitted.length ? "" : rewriteTableQuerySql(grid.query, nameMap).sql;
+                const query = omitted.length ? "" : grid.query.trim()
+                    ? rewriteTableQuerySql(grid.query, nameMap).sql
+                    : grid.query;
                 if (omitted.length) {
                     outcomes.push({
                         type: "view-omission",

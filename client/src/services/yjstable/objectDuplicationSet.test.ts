@@ -4,13 +4,24 @@
 // unlike `duplicateObjects`/`previewObjectDuplication`, which this file does
 // not re-test (see objectDuplication.test.ts / objectDuplication.calendar.test.ts).
 import { Project } from "$shared/app-schema";
-import { describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { type CalendarSettings, createCalendar, getCalendar } from "../calendar/calendarService";
 import { createScheduleRule, type ScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { duplicateObjectSet, previewObjectSetDuplication } from "./objectDuplication";
+import { resetPgliteForTests } from "./pgliteService";
+import { createProjectSelectSession } from "./projectSelectSession";
 import { addRecord, createTable, getTableHandles, listTables } from "./tableDocs";
+import { resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
+
+const localConnector: TableDocConnector = async () => ({
+    waitForInitialSync: async () => ({ synced: true }),
+    dispose: () => {},
+});
+
+afterEach(async () => await resetTableEngineForTests());
+afterAll(async () => await resetPgliteForTests());
 
 function table(doc: Y.Doc, name: string, sqlName: string): string {
     return createTable(doc, name, sqlName, handles => {
@@ -31,6 +42,50 @@ function scheduleRuleMap(doc: Y.Doc, ruleId: string): Y.Map<unknown> {
 }
 
 describe("explicit-selection duplication (Duplicate selected)", () => {
+    it.each([
+        { sql: "", sameProject: true },
+        { sql: " \n\t ", sameProject: true },
+        { sql: "", sameProject: false },
+        { sql: " \n\t ", sameProject: false },
+    ])("duplicates unconfigured SQL definitions with complete-empty evidence: %j", async ({ sql, sameProject }) => {
+        const source = new Y.Doc();
+        const destination = sameProject ? source : new Y.Doc();
+        const gridId = createGrid(source, { name: "Unconfigured Grid", query: sql });
+        const calendarId = calendar(source, "Unconfigured Calendar", sql);
+        const scheduleId = schedule(source, "", sql);
+        const selected = [
+            { type: "grid" as const, id: gridId },
+            { type: "calendar" as const, id: calendarId },
+            { type: "schedule" as const, id: scheduleId },
+        ];
+
+        const result = await duplicateObjectSet(source, destination, selected);
+        const copiedGridId = result.idMap.get(`grid:${gridId}`)!;
+        const copiedCalendarId = result.idMap.get(`calendar:${calendarId}`)!;
+        const copiedScheduleId = result.idMap.get(`schedule:${scheduleId}`)!;
+
+        expect(result.sourceObjects).toEqual(selected);
+        expect(result.createdObjects).toEqual([
+            { type: "grid", id: copiedGridId },
+            { type: "schedule", id: copiedScheduleId },
+            { type: "calendar", id: copiedCalendarId },
+        ]);
+        for (const { type, id } of selected) expect(result.idMap.get(`${type}:${id}`)).not.toBe(id);
+        expect(new Set(result.createdObjects.map(object => object.id)).size).toBe(3);
+        expect(getGridHandles(destination, copiedGridId)?.entry.get("query")).toBe(sql);
+        expect(getCalendar(Project.fromDoc(destination), copiedCalendarId)?.query).toBe(sql);
+        expect(scheduleRuleMap(destination, copiedScheduleId).get("sql")).toBe(sql);
+        expect(scheduleRuleMap(destination, copiedScheduleId).get("targetTableId")).toBe("");
+        expect(result.enumAdmission.requiredEnums).toEqual([]);
+        expect(result.enumAdmission.relevantSqlIds).toEqual([]);
+        expect(result.enumAdmission.sourceDescriptor.tables).toEqual([]);
+        expect(result.enumAdmission.sourceDescriptor.inspections).toEqual([]);
+        expect(result.diagnostics).toEqual([]);
+        expect(result.removedReferenceCount).toBe(0);
+        expect(listTables(source)).toEqual([]);
+        expect(listTables(destination)).toEqual([]);
+    });
+
     it("duplicates exactly one selected object and nothing else", async () => {
         const doc = new Y.Doc();
         table(doc, "Tasks", "tasks");
@@ -92,6 +147,61 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         expect(getGridHandles(doc, copiedGridId)?.entry.get("query")).toBe("SELECT * FROM tasks_2");
     });
 
+    it("keeps a joined-result alias while remapping its input qualifiers", async () => {
+        const doc = new Y.Doc();
+        const tasks = table(doc, "Tasks", "tasks");
+        const notes = createTable(doc, "Notes", "notes", handles => {
+            // Distinct column names keep tasks.id unambiguous on the joined
+            // result while the alias still shadows the input Table name.
+            handles.schemaText.insert(0, "CREATE TABLE notes (note_id TEXT PRIMARY KEY, task_id TEXT)");
+        });
+        const query = "SELECT tasks.id AS id FROM (tasks JOIN notes ON tasks.id = notes.task_id) AS tasks";
+        const gridId = createGrid(doc, { name: "Joined", query });
+
+        const result = await duplicateObjectSet(doc, doc, [
+            { type: "grid", id: gridId },
+            { type: "table", id: tasks },
+            { type: "table", id: notes },
+        ]);
+
+        const copiedGridId = result.idMap.get(`grid:${gridId}`)!;
+        expect(getGridHandles(doc, copiedGridId)?.entry.get("query")).toBe(
+            "SELECT tasks.id AS id FROM (tasks_2 JOIN notes_2 ON tasks_2.id = notes_2.task_id) AS tasks",
+        );
+    });
+
+    it("preserves a JOIN USING alias through duplication and copied query execution", async () => {
+        const doc = new Y.Doc({ guid: "join-using-alias-duplication" });
+        const tasks = table(doc, "Tasks", "tasks");
+        const a = table(doc, "A", "a");
+        const b = table(doc, "B", "b");
+        addRecord(getTableHandles(doc, tasks)!, {}, "2");
+        addRecord(getTableHandles(doc, a)!, {}, "1");
+        addRecord(getTableHandles(doc, b)!, {}, "1");
+        const query = "SELECT tasks.id AS id FROM tasks WHERE EXISTS ("
+            + "SELECT tasks.id AS id FROM a JOIN b USING (id) AS tasks WHERE tasks.id = '1')";
+        const gridId = createGrid(doc, { name: "Using alias", query });
+
+        const result = await duplicateObjectSet(doc, doc, [
+            { type: "grid", id: gridId },
+            { type: "table", id: tasks },
+            { type: "table", id: a },
+            { type: "table", id: b },
+        ], { copyTableData: true });
+        const copiedQuery = String(getGridHandles(doc, result.idMap.get(`grid:${gridId}`)!)?.entry.get("query"));
+        expect(copiedQuery).toBe(
+            "SELECT tasks_2.id AS id FROM tasks_2 WHERE EXISTS ("
+                + "SELECT tasks.id AS id FROM a_2 JOIN b_2 USING (id) AS tasks WHERE tasks.id = '1')",
+        );
+
+        const session = createProjectSelectSession({ projectDoc: doc, query: copiedQuery, connect: localConnector });
+        try {
+            expect((await session.runNow())?.rows).toEqual([{ id: "2" }]);
+        } finally {
+            await session.dispose();
+        }
+    });
+
     it("rewrites a selected Schedule's target and SQL references to the copied Table", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
@@ -107,6 +217,40 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         const copiedRule = scheduleRuleMap(doc, copiedRuleId);
         expect(copiedRule.get("targetTableId")).toBe(copiedTableId);
         expect(copiedRule.get("sql")).toBe(`INSERT INTO ${copiedSqlName} (id) SELECT 1 RETURNING *`);
+    });
+
+    it("rewrites a Schedule DML target even when a CTE has the same name", async () => {
+        const doc = new Y.Doc();
+        const tasks = table(doc, "Tasks", "tasks");
+        const ruleId = schedule(
+            doc,
+            tasks,
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks (id) SELECT id FROM tasks RETURNING *",
+        );
+        const result = await duplicateObjectSet(doc, doc, [
+            { type: "schedule", id: ruleId },
+            { type: "table", id: tasks },
+        ]);
+        const copiedRule = scheduleRuleMap(doc, result.idMap.get(`schedule:${ruleId}`)!);
+        expect(copiedRule.get("sql")).toBe(
+            "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks_2 (id) SELECT id FROM tasks RETURNING *",
+        );
+    });
+
+    it("admits a Schedule-only copy whose physical target shares a CTE name", async () => {
+        const doc = new Y.Doc();
+        const tasks = table(doc, "Tasks", "tasks");
+        const sql = "WITH tasks AS (SELECT 'new' AS id) INSERT INTO tasks (id) SELECT id FROM tasks RETURNING *";
+        const ruleId = schedule(doc, tasks, sql);
+
+        const result = await duplicateObjectSet(doc, doc, [{ type: "schedule", id: ruleId }]);
+        const copiedRuleId = result.idMap.get(`schedule:${ruleId}`)!;
+
+        expect(result.createdObjects).toEqual([{ type: "schedule", id: copiedRuleId }]);
+        expect(listTables(doc).map(entry => entry.tableId)).toEqual([tasks]);
+        expect(scheduleRuleMap(doc, copiedRuleId).get("targetTableId")).toBe(tasks);
+        expect(scheduleRuleMap(doc, copiedRuleId).get("sql")).toBe(sql);
+        expect(result.enumAdmission.sourceDescriptor.tables.map(entry => entry.id)).toEqual([tasks]);
     });
 
     it("rewrites a selected Calendar's query to the copied Table", async () => {
@@ -207,5 +351,27 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         // The Table created before the failing Grid must not survive either.
         expect(listTables(doc)).toHaveLength(1);
         expect(listGrids(doc)).toHaveLength(1);
+    });
+
+    it("rejects invalid required Schedule SQL before publishing a selected Table", async () => {
+        const source = new Y.Doc();
+        const tasks = table(source, "Tasks", "tasks");
+        const ruleId = schedule(source, tasks, "INSERT INTO tasks (id) VALUES ('1') RETURNING *");
+        // A remote/legacy Yjs update can bypass the local creation validator;
+        // duplication must therefore re-admit the persisted definition.
+        scheduleRuleMap(source, ruleId).set("sql", "SELECT FROM");
+        const destination = new Y.Doc();
+        let tableEvents = 0;
+        let scheduleEvents = 0;
+        let updates = 0;
+        destination.getMap("yjsTables").observe(() => tableEvents++);
+        destination.getMap("schedules").observe(() => scheduleEvents++);
+        destination.on("update", () => updates++);
+
+        await expect(duplicateObjectSet(source, destination, [
+            { type: "table", id: tasks },
+            { type: "schedule", id: ruleId },
+        ])).rejects.toThrow(/parsing failed/);
+        expect({ tableEvents, scheduleEvents, updates }).toEqual({ tableEvents: 0, scheduleEvents: 0, updates: 0 });
     });
 });

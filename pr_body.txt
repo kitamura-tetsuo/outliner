@@ -1,6 +1,0 @@
-[Issues]
-The existing documentation omitted the "Pages" section in the sidebar navigation list and did not mention the ability to create new pages directly from the sidebar.
-
-[Changes]
-- Updated docs/user-manual/index.md and docs/ja/user-manual/index.md to include the "Pages" section in the Sidebar Navigation.
-- Updated the page creation instructions in both files to mention the `+` button in the Pages section of the sidebar.
