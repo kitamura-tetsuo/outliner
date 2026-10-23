@@ -552,7 +552,7 @@ function focusNode(node: HTMLElement) {
                     onclick={() => { relatedMenuOpen = !relatedMenuOpen; }}
                     disabled={selectedObjectIds.size === 0}
                     aria-haspopup="menu"
-                    aria-expanded={relatedMenuOpen}
+                    aria-expanded={relatedMenuOpen ? "true" : "false"}
                     data-testid="object-manager-select-related"
                 >
                     Select related ▾

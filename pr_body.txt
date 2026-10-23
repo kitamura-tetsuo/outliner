@@ -1,0 +1,9 @@
+[Issues]
+The `aria-expanded` attribute in several components (e.g. `SearchBox.svelte`, `OutlinerItem.svelte`, `Sidebar.svelte`) was being bound directly to boolean values (e.g. `aria-expanded={isOpen}`). While functionally acceptable in some contexts, the W3C spec requires these to be explicitly `"true"` or `"false"` string values.
+
+[Changes]
+Converted all boolean template bindings for the `aria-expanded` attribute across the Svelte components in `client/src/` to explicitly evaluate to `"true"` or `"false"` (e.g. `aria-expanded={isOpen ? "true" : "false"}`).
+
+[Verification Results]
+- Checked typescript compilation and svelte warnings with `cd client && npm run check`. No issues found.
+- Ran unit tests across the modified component paths (`cd client && npx vitest run src/components/`) to ensure no functional regressions were introduced.
