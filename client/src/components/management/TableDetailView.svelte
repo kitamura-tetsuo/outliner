@@ -48,7 +48,7 @@
         if (deleteDialog) {
             if (!deleteDialog.showModal || !deleteDialog.close) return;
             if (showDeleteDialog && dependencies) {
-                if (!deleteDialog.open && typeof deleteDialog.showModal === 'function') {
+                if (!deleteDialog.open && typeof HTMLDialogElement.prototype.showModal === 'function') {
                     deleteDialog.showModal();
                 }
             } else {

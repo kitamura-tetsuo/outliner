@@ -11,7 +11,7 @@
 let dialog: HTMLDialogElement | undefined = $state();
 
 onMount(() => {
-    if (dialog && !dialog.open && typeof dialog.showModal === 'function') {
+    if (dialog && !dialog.open && typeof HTMLDialogElement.prototype.showModal === 'function') {
         dialog.showModal();
     }
     dialog?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();

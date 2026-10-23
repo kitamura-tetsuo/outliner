@@ -428,7 +428,7 @@ function openKanbanDialog() {
 $effect(() => {
     if (kanbanDialogElement) {
         if (kanbanDialogOpen) {
-            if (!kanbanDialogElement.open && typeof kanbanDialogElement.showModal === 'function') {
+            if (!kanbanDialogElement.open && typeof HTMLDialogElement.prototype.showModal === 'function') {
                 kanbanDialogElement.showModal();
             }
         } else {

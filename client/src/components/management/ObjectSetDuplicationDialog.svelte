@@ -69,7 +69,7 @@
 
     $effect(() => {
         if (dialogElement) {
-            if (!dialogElement.open && typeof dialogElement.showModal === 'function') {
+            if (!dialogElement.open && typeof HTMLDialogElement.prototype.showModal === 'function') {
                 dialogElement.showModal();
             }
         }
