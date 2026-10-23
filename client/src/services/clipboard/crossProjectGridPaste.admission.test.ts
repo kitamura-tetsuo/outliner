@@ -1,4 +1,5 @@
 import { Project } from "$shared/app-schema";
+import { createSqlCatalogObject, readSqlCatalog, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
@@ -93,6 +94,18 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
             });
             transport.acquire = acquire;
             let admissionChecks = 0;
+            let tablePublications = 0;
+            let gridPublications = 0;
+            const tableRegistry = f.destination.ydoc.getMap("yjsTables");
+            const gridRegistry = getGridRegistry(f.destination.ydoc);
+            const observeTables = (event: Y.YMapEvent<unknown>) => {
+                tablePublications += [...event.changes.keys.values()].filter(change => change.action === "add").length;
+            };
+            const observeGrids = (event: Y.YMapEvent<unknown>) => {
+                gridPublications += [...event.changes.keys.values()].filter(change => change.action === "add").length;
+            };
+            tableRegistry.observe(observeTables);
+            gridRegistry.observe(observeGrids);
             const mutate = () => {
                 if (mutation === "query") {
                     getGridRegistry(f.source.ydoc).get(grid)!.set("query", "SELECT id FROM contacts");
@@ -115,16 +128,24 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
                     return true;
                 },
             });
-            if (mutation === "row" || mutation === "unavailable") {
-                const result = await pending;
-                expect(result).toBeDefined();
-                result!.admit();
-                expect(getTableHandles(f.destination.ydoc, result!.tableIdMap[f.table])!.data.size).toBe(0);
-                result!.complete();
-            } else {
-                await expect(pending).rejects.toThrow("changed");
-                expect(listTables(f.destination.ydoc)).toEqual([]);
-                expect(getGridRegistry(f.destination.ydoc).size).toBe(0);
+            try {
+                if (mutation === "row" || mutation === "unavailable") {
+                    const result = await pending;
+                    expect(result).toBeDefined();
+                    result!.admit();
+                    expect(getTableHandles(f.destination.ydoc, result!.tableIdMap[f.table])!.data.size).toBe(0);
+                    result!.complete();
+                } else {
+                    await expect(pending).rejects.toThrow("changed");
+                    expect(admissionChecks).toBeGreaterThanOrEqual(4);
+                    expect(tablePublications).toBe(0);
+                    expect(gridPublications).toBe(0);
+                    expect(listTables(f.destination.ydoc)).toEqual([]);
+                    expect(getGridRegistry(f.destination.ydoc).size).toBe(0);
+                }
+            } finally {
+                tableRegistry.unobserve(observeTables);
+                gridRegistry.unobserve(observeGrids);
             }
             expect(acquire).not.toHaveBeenCalled();
         });
@@ -443,5 +464,39 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
             expect([...copied.data.keys()]).toEqual(available ? ["source"] : []);
             expect(getGridRegistry(f.destination.ydoc).size).toBe(1);
         }
+    });
+
+    it("rechecks retained query-only ENUM evidence at final admission", async () => {
+        const source = new Y.Doc({ guid: "query-only-enum-source" });
+        const enumSql = "CREATE TYPE task_state AS ENUM ('Open', 'Closed')";
+        createSqlCatalogObject(source, "enum", enumSql);
+        const destination = Project.createInstance("query-only-enum-destination");
+        const destinationEnum = createSqlCatalogObject(destination.ydoc, "enum", enumSql);
+        const catalog = readSqlCatalog(source.guid, source);
+        if (catalog.status !== "ready") throw new Error("catalog fixture unavailable");
+
+        const result = await cloneGridTablesAcrossProjects({
+            destinationDoc: destination.ydoc,
+            destinationProject: destination,
+            sourceProjectId: source.guid,
+            snapshots: {},
+            requestedSourceTableIds: [],
+            catalog: catalog.snapshot,
+            additionalInspections: [{ id: "calendar", sql: "SELECT 'Open'::task_state AS state" }],
+            copyData: false,
+            deferCompletion: true,
+            isDestinationCurrent: () => true,
+        });
+        expect(result).toBeDefined();
+
+        replaceSqlCatalogSource(
+            destination.ydoc,
+            destinationEnum,
+            "CREATE TYPE task_state AS ENUM ('Closed', 'Open')",
+        );
+
+        expect(() => result!.admit()).toThrow("SQL environment changed");
+        expect(listTables(destination.ydoc)).toEqual([]);
+        result!.discard();
     });
 });

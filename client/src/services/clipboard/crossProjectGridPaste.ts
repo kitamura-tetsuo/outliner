@@ -6,7 +6,7 @@ import { cloneScheduleRules } from "../schedule/scheduleRuleClone";
 import { getGridInsertTargetTableId, getGridRegistry } from "../yjstable/gridDocs";
 import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
 import { queryReadDependencies } from "../yjstable/queryReadDependencies";
-import type { StructuralEnumAdmission } from "../yjstable/structuralEnumGuard";
+import { portableStructuralEnumsStillCompatible, type StructuralEnumAdmission } from "../yjstable/structuralEnumGuard";
 import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
 import { destroyTableUndoManager, getTableHandles, getTableSqlName, removeTable } from "../yjstable/tableDocs";
 import {
@@ -282,9 +282,24 @@ export async function cloneGridTablesAcrossProjects(
     const releaseCancel = () => {
         if (typeof window !== "undefined") window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
     };
+    let enumAdmission: StructuralEnumAdmission | undefined;
     const admit = () => {
         if (cancelled() || !destinationAcceptsWrites()) {
             throw new StaleGridTransferError("The destination changed or no longer accepts writes.");
+        }
+        if (
+            enumAdmission
+            && !portableStructuralEnumsStillCompatible(
+                destinationDoc,
+                snapshots,
+                getLoadedProjectDocById(sourceProjectId),
+                grids,
+                catalog,
+                additionalInspections,
+                enumAdmission,
+            )
+        ) {
+            throw new StaleGridTransferError("The structural SQL environment changed during paste preparation.");
         }
         bindings?.assertCurrent();
         assertSource();
@@ -315,6 +330,7 @@ export async function cloneGridTablesAcrossProjects(
             admit,
             additionalInspections,
         );
+        enumAdmission = cloneResult.enumAdmission;
         bindings = cloneResult.bindings;
         admit();
         tableIdMap = cloneResult.tableIdMap;
