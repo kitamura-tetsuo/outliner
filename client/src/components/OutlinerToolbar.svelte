@@ -57,7 +57,7 @@
     $effect(() => {
         if (a11yDialog) {
             if (showA11yHelp) {
-                if (!a11yDialog.open && typeof a11yDialog.showModal === 'function') {
+                if (!a11yDialog.open && typeof HTMLDialogElement.prototype.showModal === 'function') {
                     a11yDialog.showModal();
                 }
             } else {

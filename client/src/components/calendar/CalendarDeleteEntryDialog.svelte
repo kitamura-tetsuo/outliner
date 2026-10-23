@@ -33,7 +33,7 @@ let dialogEl: HTMLDialogElement | undefined = $state();
 
 $effect(() => {
     if (dialogEl) {
-        if (!dialogEl.open && typeof dialogEl.showModal === 'function') {
+        if (!dialogEl.open && typeof HTMLDialogElement.prototype.showModal === 'function') {
             dialogEl.showModal();
         }
     }
