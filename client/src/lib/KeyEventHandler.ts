@@ -3224,29 +3224,10 @@ export class KeyEventHandler {
                     && Object.keys(structured.calendars ?? {}).length > 0;
                 const grids = structured.grids ?? {};
                 if (Object.keys(referencedSnapshots).length > 0 || Object.keys(grids).length > 0 || hasCalendars) {
-                    if (Object.keys(referencedSnapshots).length > 0 || Object.keys(grids).length > 0) {
+                    {
                         const { cloneGridTablesAcrossProjects } = await import(
                             "../services/clipboard/crossProjectGridPaste"
                         );
-                        if (generalStore.undoManager) {
-                            const { portableStructuralEnumsStillCompatible } = await import(
-                                "../services/yjstable/structuralEnumGuard"
-                            );
-                            const { getLoadedProjectDocById } = await import("./yjsService.svelte");
-                            const capturedCatalog = "catalog" in structured ? structured.catalog : undefined;
-                            const capturedCalendarQueries = "calendars" in structured
-                                ? Object.values(structured.calendars ?? {}).map(settings => settings.query)
-                                : [];
-                            authorizePasteRedo = () =>
-                                portableStructuralEnumsStillCompatible(
-                                    destinationDoc,
-                                    referencedSnapshots,
-                                    getLoadedProjectDocById(structured.sourceProjectId),
-                                    grids,
-                                    capturedCatalog,
-                                    capturedCalendarQueries,
-                                );
-                        }
                         if (!destinationCurrent()) return;
                         const cloneResult = await cloneGridTablesAcrossProjects({
                             destinationDoc,
@@ -3256,6 +3237,13 @@ export class KeyEventHandler {
                             snapshots: referencedSnapshots,
                             grids,
                             catalog: "catalog" in structured ? structured.catalog : undefined,
+                            additionalInspections: "calendars" in structured
+                                ? Object.entries(structured.calendars ?? {}).map(([id, settings]) => ({
+                                    id,
+                                    kind: "calendar" as const,
+                                    sql: settings.query,
+                                }))
+                                : [],
                             requestedSourceTableIds: [...referencedTableIds],
                             operation: structured.operation,
                             copyData: specialVariant !== "copy-without-data",
@@ -3267,14 +3255,37 @@ export class KeyEventHandler {
                             isDestinationCurrent: () =>
                                 destinationCurrent() && generalStore.project?.ydoc === destinationDoc,
                         });
+                        if (cloneResult === undefined) return;
                         pendingPaste = cloneResult;
-                        if (cloneResult === undefined || !destinationCurrent()) return;
+                        if (!destinationCurrent()) return;
+                        if (generalStore.undoManager) {
+                            const { portableStructuralEnumsStillCompatible } = await import(
+                                "../services/yjstable/structuralEnumGuard"
+                            );
+                            const { getLoadedProjectDocById } = await import("./yjsService.svelte");
+                            const capturedCatalog = "catalog" in structured ? structured.catalog : undefined;
+                            const capturedCalendarQueries = "calendars" in structured
+                                ? Object.entries(structured.calendars ?? {}).map(([id, settings]) => ({
+                                    id,
+                                    kind: "calendar" as const,
+                                    sql: settings.query,
+                                }))
+                                : [];
+                            authorizePasteRedo = () =>
+                                portableStructuralEnumsStillCompatible(
+                                    destinationDoc,
+                                    referencedSnapshots,
+                                    getLoadedProjectDocById(structured.sourceProjectId),
+                                    grids,
+                                    capturedCatalog,
+                                    capturedCalendarQueries,
+                                    cloneResult.enumAdmission,
+                                );
+                        }
                         pastedTableIdMap = cloneResult.tableIdMap;
                         reusedTableIdMap = cloneResult.reusedTableIdMap;
                         pastedGridIdMap = cloneResult.gridIdMap;
                         reusedGridIdMap = cloneResult.reusedGridIdMap;
-                    } else {
-                        pastedTableIdMap = {};
                     }
 
                     const pastedCalendarIdMap: Record<string, string> = {};
@@ -3282,29 +3293,11 @@ export class KeyEventHandler {
                         if (!("catalog" in structured) || !structured.catalog) {
                             throw new Error("Calendar SQL catalog dependency evidence is unavailable.");
                         }
-                        const { assertPortableStructuralEnumCompatibility } = await import(
-                            "../services/yjstable/structuralEnumGuard"
-                        );
-                        const calendarEntries = Object.entries(structured.calendars);
-                        await assertPortableStructuralEnumCompatibility(
-                            destinationDoc,
-                            {
-                                catalog: structured.catalog,
-                                tables: Object.values(referencedSnapshots).map(snapshot => ({
-                                    id: snapshot.sourceTableId,
-                                    schema: snapshot.schemaSql,
-                                    records: [],
-                                })),
-                                inspections: calendarEntries.map(([id, settings]) => ({
-                                    id,
-                                    kind: "calendar" as const,
-                                    sql: settings.query,
-                                })),
-                            },
-                            new Set(calendarEntries.map(([id]) => id)),
-                        );
                         if (!destinationCurrent()) return;
-                        pendingPaste?.admit();
+                        // Calendar SQL was included in the importer admission above. Reuse that
+                        // complete operation witness instead of constructing a divergent second
+                        // compiler input that could omit auxiliary relations such as outline_items.
+                        pendingPaste.admit();
                         const sqlNameMap = new Map<string, string>();
                         if (pastedTableIdMap) {
                             for (
@@ -3333,7 +3326,9 @@ export class KeyEventHandler {
                                 >,
                             )
                         ) {
-                            const rewrittenQuery = rewriteTableQuerySql(settings.query, sqlNameMap).sql;
+                            const rewrittenQuery = settings.query.trim()
+                                ? rewriteTableQuerySql(settings.query, sqlNameMap).sql
+                                : settings.query;
                             // A mixed transfer owns its Calendar effects in the outline composite.
                             // A scoped origin leaves standalone Calendar history unchanged and
                             // cannot truncate unrelated activity during asynchronous preparation.

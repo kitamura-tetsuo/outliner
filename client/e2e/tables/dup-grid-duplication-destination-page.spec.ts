@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import { expect, test } from "../fixtures/grid-render-trace";
-import { createBlankGrid } from "../utils/crossProjectGridHelpers";
+import { createBlankGrid, readGridProjectState } from "../utils/crossProjectGridHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-5090: Grid duplication to a destination Page", () => {
@@ -12,6 +12,9 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
     });
 
     test("duplicates Grid and attaches it to the selected destination Page", async ({ page }) => {
+        const sourcePagePath = new URL(page.url()).pathname;
+        const sourceTable = (await readGridProjectState(page)).tables[0];
+        expect(sourceTable.schema).toContain("CREATE TABLE test_table");
         const { gridId, projectName, page1Id } = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             const client = (window as any).__YJS_STORE__?.yjsClient;
@@ -38,7 +41,14 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
         expect(gridId).toBeTruthy();
         expect(projectName).toBeTruthy();
 
-        await page.goto(`/${encodeURIComponent(projectName!)}/-/grids/${gridId}`);
+        // Follow the mounted Grid's resolved source through real navigation;
+        // reloading immediately after creation can discard its pending Table schema.
+        const sourceLink = page.getByTestId("yjs-grid-source-table-link");
+        await expect(sourceLink).toBeVisible({ timeout: 30000 });
+        await sourceLink.click();
+        await page.getByTestId("table-grid-references").locator(`a[data-grid-id="${gridId}"]`).click();
+        expect((await readGridProjectState(page)).tables.find(table => table.id === sourceTable.id)?.schema)
+            .toBe(sourceTable.schema);
 
         await expect(page.getByRole("button", { name: "Duplicate Grid" })).toBeVisible({ timeout: 15000 });
 
@@ -65,9 +75,12 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
         }, page1Id!);
 
         await dialog.getByTestId("object-manager-duplicate-apply").click();
-        await expect(dialog).toBeHidden({ timeout: 15000 });
+        // The first structural operation initializes the real PGlite-backed
+        // ENUM analyzer before it can publish the duplicate.
+        await expect(dialog).toBeHidden({ timeout: 30000 });
 
-        await page.goto(`/${encodeURIComponent(projectName!)}/test-page-${projectName?.split(" ").pop()}`);
+        await page.getByTestId("toolbar-project-name").click();
+        await page.locator("main").locator(`a[href="${sourcePagePath}"]`).click();
 
         // Wait for items to be visible, wait specifically for the grid view.
         // We use .first() because createBlankGrid and the duplication both attach grids to the page.

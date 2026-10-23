@@ -1,6 +1,6 @@
 import { isValidGridColumnWidth } from "$shared/services/gridDefinition";
 import { readSqlCatalog } from "$shared/services/sqlCatalog";
-import type { PGlite } from "@electric-sql/pglite";
+import { compileSqlEnvironment } from "$shared/services/sqlEnvironmentCompiler";
 import * as Y from "yjs";
 import {
     type GridSnapshot,
@@ -19,11 +19,9 @@ import {
     getGridShowAddRowButton,
 } from "./gridDocs";
 import { ITEMS_RELATION_CREATE_SQL } from "./itemsRelation";
-import { enqueueWrite } from "./pgliteService";
-import { assertSelectQuery } from "./queryAnalysis";
 import { queryReadDependencies } from "./queryReadDependencies";
 import { deriveSqlName } from "./sqlNames";
-import { assertPortableStructuralEnumCompatibility } from "./structuralEnumGuard";
+import { assertPortableStructuralEnumCompatibility, type StructuralEnumAdmission } from "./structuralEnumGuard";
 import {
     createTable,
     getTableHandles,
@@ -59,6 +57,8 @@ export function copyTableData(source: TableHandles, destination: TableHandles): 
 }
 
 export interface TableCloneResult {
+    /** Immutable semantic dependency witness retained for replay admission. */
+    enumAdmission: StructuralEnumAdmission;
     bindings: TransferBindings;
     /** Source table id to fresh destination table id for successful clones. */
     tableIdMap: Record<string, string>;
@@ -118,7 +118,6 @@ interface PlannedTable {
 // `createGrid`, which is the only writer of its shape. Per-column component
 // settings still travel as free-form maps, so those keys stay checked.
 const COMPONENT_KEYS = new Set(["type", "label", "hidden", "widthPx"]);
-let scratchCounter = 0;
 
 function cloneErrorMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
@@ -244,50 +243,25 @@ function materializeSchema(handles: { schemaText: Y.Text; }, snapshot: GridTable
 }
 
 async function validatePlansInPglite(plans: PlannedTable[], catalogSources: readonly string[]): Promise<void> {
-    const scratchSchema = `__yjstable_clone_${++scratchCounter}__`;
-    await enqueueWrite(async (db) => {
-        try {
-            await db.exec(`DROP SCHEMA IF EXISTS "${scratchSchema}" CASCADE; CREATE SCHEMA "${scratchSchema}";`);
-            try {
-                await db.exec(`BEGIN; SET LOCAL search_path TO "${scratchSchema}";`);
-                await db.exec(`${ITEMS_RELATION_CREATE_SQL};`);
-                for (const source of catalogSources) await db.exec(`${source};`);
-                for (const plan of plans) await db.exec(`${plan.schemaSql};`);
-                for (const plan of plans) {
-                    const query = plan.querySql.trim();
-                    if (!query) continue;
-                    const select = assertSelectQuery(query).replace(/;\s*$/, "");
-                    await (db as PGlite).query(`EXPLAIN ${select}`);
-                }
-                await db.exec("COMMIT;");
-            } catch (err) {
-                try {
-                    await db.exec("ROLLBACK;");
-                } catch {
-                    // no transaction to roll back
-                }
-                throw err;
-            }
-        } finally {
-            try {
-                await db.exec(`DROP SCHEMA IF EXISTS "${scratchSchema}" CASCADE;`);
-            } catch {
-                // scratch cleanup is best-effort
-            }
-        }
+    const result = await compileSqlEnvironment({
+        catalog: {
+            projectId: "portable-import-validation",
+            format: 1,
+            revision: catalogSources.join("\n"),
+            objects: catalogSources.map((source, index) => ({ id: `enum-${index}`, kind: "enum", source })),
+        },
+        tables: [
+            { id: "outline-items", schema: ITEMS_RELATION_CREATE_SQL, records: [] },
+            ...plans.map(plan => ({ id: plan.snapshot.sourceTableId, schema: plan.schemaSql, records: [] })),
+        ],
+        inspections: plans.filter(plan => plan.querySql.trim()).map(plan => ({
+            id: `query-${plan.snapshot.sourceTableId}`,
+            kind: "grid" as const,
+            sql: plan.querySql,
+        })),
     });
-}
-
-function catalogSourcesReferencedBy(plans: readonly PlannedTable[]): string[] {
-    const sql = plans.flatMap(plan => [plan.schemaSql, plan.querySql]).join("\n").toLowerCase();
-    return (plans[0]?.snapshot.catalog?.objects ?? []).flatMap(object => {
-        const match = /^\s*CREATE\s+TYPE\s+(?:"((?:[^"]|"")+)"|([A-Za-z_][A-Za-z0-9_$]*))\s+AS\s+ENUM\b/i
-            .exec(object.source);
-        const name = (match?.[1]?.replaceAll('""', '"') ?? match?.[2])?.toLowerCase();
-        if (!name) return [];
-        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        return new RegExp(`(^|[^a-z0-9_$])${escaped}([^a-z0-9_$]|$)`).test(sql) ? [object.source] : [];
-    });
+    if (result.status === "failed") throw new Error(result.diagnostics[0]?.message ?? "SQL validation failed");
+    await result.environment.dispose();
 }
 
 function connectedGroups(plans: Map<string, PlannedTable>): string[][] {
@@ -337,10 +311,22 @@ export async function importTableStructures(
     grids: Readonly<Record<string, GridSnapshot>> = {},
     catalog?: import("$shared/services/sqlCatalog").SqlCatalogSnapshot,
     admit: () => void = () => {},
+    additionalInspections: readonly import("$shared/services/sqlEnvironmentCompiler").SqlInspectionTarget[] = [],
 ): Promise<TableCloneResult> {
     admit();
     if (!isGridSnapshotMap(grids)) throw new TableCloneError("Grid definitions are malformed");
-    let portableGuard: (() => Promise<void>) | undefined;
+    // Required Grid definitions must first satisfy the transfer rewriter's
+    // syntax contract, before semantic admission or destination reads.
+    for (const grid of Object.values(grids)) {
+        if (grid.query.trim()) rewriteTableQuerySql(grid.query, new Map());
+    }
+    // These inspections are required selected artifacts, such as Calendars;
+    // optional companion Schedule rules are admitted by their own clone path.
+    for (const inspection of additionalInspections) {
+        if (inspection.sql.trim()) rewriteTableQuerySql(inspection.sql, new Map());
+    }
+    let enumAdmission: StructuralEnumAdmission;
+    let portableGuard: () => Promise<StructuralEnumAdmission>;
     const capturedCatalogs = Object.values(snapshots).map(snapshot => snapshot.catalog).filter(catalog =>
         catalog !== undefined
     );
@@ -350,27 +336,42 @@ export async function importTableStructures(
         if (capturedCatalogs.some(candidate => candidate.revision !== catalog.revision)) {
             throw new TableCloneError("Clipboard SQL catalog evidence is inconsistent");
         }
+        const scopedGrids = Object.values(grids).filter(snapshot =>
+            snapshot.query.trim() && snapshot.tableIds.every(id => snapshots[id] !== undefined)
+        );
         const portableSnapshot = {
             catalog,
-            tables: Object.values(snapshots).map(snapshot => ({
-                id: snapshot.sourceTableId,
-                schema: snapshot.schemaSql,
-                records: sourceProjectId === destinationProjectDoc.guid
-                    ? [...(getTableHandles(destinationProjectDoc, snapshot.sourceTableId)?.data ?? [])].map(
-                        ([id, values]) => ({ id, values: Object.fromEntries(values) }),
-                    )
-                    : [],
-            })),
-            inspections: Object.values(grids).filter(snapshot => snapshot.query.trim()).map(snapshot => ({
-                id: snapshot.gridId,
-                kind: "grid" as const,
-                sql: snapshot.query,
-            })),
+            tables: [
+                ...Object.values(snapshots).map(snapshot => ({
+                    id: snapshot.sourceTableId,
+                    schema: snapshot.schemaSql,
+                    records: sourceProjectId === destinationProjectDoc.guid
+                        ? [...(getTableHandles(destinationProjectDoc, snapshot.sourceTableId)?.data ?? [])].map(
+                            ([id, values]) => ({ id, values: Object.fromEntries(values) }),
+                        )
+                        : [],
+                })),
+                { id: "__yjstable_outline_items_analysis__", schema: ITEMS_RELATION_CREATE_SQL, records: [] },
+            ],
+            inspections: [
+                ...scopedGrids.map(snapshot => ({
+                    id: snapshot.gridId,
+                    kind: "grid" as const,
+                    sql: snapshot.query,
+                })),
+                ...additionalInspections.filter(target => target.sql.trim()),
+            ],
         };
-        const relevantIds = new Set([...Object.keys(snapshots), ...Object.keys(grids)]);
+        const relevantIds = new Set([
+            ...Object.keys(snapshots),
+            ...scopedGrids.map(snapshot => snapshot.gridId),
+            ...additionalInspections.filter(target => target.sql.trim()).map(target => target.id),
+        ]);
         portableGuard = () =>
             assertPortableStructuralEnumCompatibility(destinationProjectDoc, portableSnapshot, relevantIds);
-        await portableGuard();
+        enumAdmission = await portableGuard();
+    } else {
+        throw new TableCloneError("Clipboard SQL catalog dependency evidence is unavailable");
     }
     const failures: Record<string, string> = {};
     const failureGroups: string[][] = [];
@@ -489,7 +490,10 @@ export async function importTableStructures(
         if (sourceName && destinationName) plannedNameMap.set(sourceName, destinationName);
     }
     for (const grid of Object.values(grids)) {
-        if (grid.query) rewriteTableQuerySql(grid.query, plannedNameMap);
+        if (grid.query.trim()) rewriteTableQuerySql(grid.query, plannedNameMap);
+    }
+    for (const inspection of additionalInspections) {
+        if (inspection.sql.trim()) rewriteTableQuerySql(inspection.sql, plannedNameMap);
     }
     const tableIdMap: Record<string, string> = {};
     const gridIdMap: Record<string, string> = {};
@@ -513,7 +517,10 @@ export async function importTableStructures(
             }
 
             try {
-                await validatePlansInPglite(groupPlans, catalogSourcesReferencedBy(groupPlans));
+                const requiredIds = new Set(enumAdmission.requiredEnums.map(item => item.objectId));
+                const catalogSources = enumAdmission.sourceDescriptor.catalogObjects
+                    .filter(object => requiredIds.has(object.id)).map(object => object.source);
+                await validatePlansInPglite(groupPlans, catalogSources);
             } catch (err) {
                 const message = `Grid table structure failed SQL validation: ${cloneErrorMessage(err)}`;
                 for (const sourceTableId of group) failures[sourceTableId] = message;
@@ -521,7 +528,7 @@ export async function importTableStructures(
                 continue;
             }
 
-            await portableGuard?.();
+            enumAdmission = await portableGuard();
             assertAdmission();
             const currentSqlNames = new Set(listTables(destinationProjectDoc).map(table => table.sqlName));
             const occupiedName = groupPlans.find(plan => currentSqlNames.has(plan.destinationSqlName))
@@ -641,7 +648,9 @@ export async function importTableStructures(
                 const mappedPreference = preference
                     ? allTableIds[preference] ?? (sameProject ? preference : undefined)
                     : undefined;
-                const query = omitted.length ? "" : rewriteTableQuerySql(grid.query, nameMap).sql;
+                const query = omitted.length ? "" : grid.query.trim()
+                    ? rewriteTableQuerySql(grid.query, nameMap).sql
+                    : grid.query;
                 if (omitted.length) {
                     outcomes.push({
                         type: "view-omission",
@@ -676,6 +685,7 @@ export async function importTableStructures(
         }
         assertAdmission();
         return {
+            enumAdmission,
             bindings: evidence,
             tableIdMap,
             gridIdMap,

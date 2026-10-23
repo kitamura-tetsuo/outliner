@@ -1,10 +1,11 @@
 import { Project } from "$shared/app-schema";
+import { createSqlCatalogObject, readSqlCatalog, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid, getGridRegistry, removeGridWithPlacements } from "../yjstable/gridDocs";
-import { getPglite, resetPgliteForTests } from "../yjstable/pgliteService";
+import { resetPgliteForTests } from "../yjstable/pgliteService";
 import { exportGridSlice, exportTableStructures } from "../yjstable/tableClone";
 import { addRecord, createTable, getTableHandles, listTables } from "../yjstable/tableDocs";
 import { cloneGridTablesAcrossProjects } from "./crossProjectGridPaste";
@@ -84,7 +85,7 @@ function peerDelete(destination: Project, id: string, restore: boolean) {
 
 describe("cross-Project Copy final destination admission", { timeout: 60000 }, () => {
     for (const mutation of ["query", "incarnation", "dependency", "row", "unavailable"] as const) {
-        it(`no-data observes loaded identity before the actual SQL await: ${mutation}`, async () => {
+        it(`no-data rechecks loaded identity during admission: ${mutation}`, async () => {
             const f = fixture();
             const grid = Object.keys(f.options.grids)[0];
             if (mutation !== "unavailable") transport.loaded = f.source.ydoc;
@@ -92,39 +93,59 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
                 throw new Error("No-data must not acquire a source");
             });
             transport.acquire = acquire;
-            const db = await getPglite();
-            const original = db.exec.bind(db);
-            const entered = deferred();
-            const resume = deferred();
-            vi.spyOn(db, "exec").mockImplementation(async (...args: Parameters<typeof db.exec>) => {
-                if (String(args[0]).includes("__yjstable_clone_")) {
-                    entered.resolve();
-                    await resume.promise;
+            let admissionChecks = 0;
+            let tablePublications = 0;
+            let gridPublications = 0;
+            const tableRegistry = f.destination.ydoc.getMap("yjsTables");
+            const gridRegistry = getGridRegistry(f.destination.ydoc);
+            const observeTables = (event: Y.YMapEvent<unknown>) => {
+                tablePublications += [...event.changes.keys.values()].filter(change => change.action === "add").length;
+            };
+            const observeGrids = (event: Y.YMapEvent<Y.Map<unknown>>) => {
+                gridPublications += [...event.changes.keys.values()].filter(change => change.action === "add").length;
+            };
+            tableRegistry.observe(observeTables);
+            gridRegistry.observe(observeGrids);
+            const mutate = () => {
+                if (mutation === "query") {
+                    getGridRegistry(f.source.ydoc).get(grid)!.set("query", "SELECT id FROM contacts");
+                } else if (mutation === "incarnation") peerDelete(f.source, grid, true);
+                else if (mutation === "dependency") {
+                    f.source.ydoc.getMap<Y.Map<unknown>>("yjsTables").get(f.table)!.set("doc", new Y.Doc());
+                } else if (mutation === "row") {
+                    addRecord(getTableHandles(f.source.ydoc, f.table)!, { id: "peer" }, "peer");
+                    getGridRegistry(f.source.ydoc).get(grid)!.set("name", "Peer presentation");
                 }
-                return original(...args);
+            };
+            const pending = cloneGridTablesAcrossProjects({
+                ...f.options,
+                copyData: false,
+                deferCompletion: true,
+                isDestinationCurrent: () => {
+                    // The fourth check is the importer's final admission after its
+                    // real compiler-backed analysis await and before publication.
+                    if (++admissionChecks === 4) mutate();
+                    return true;
+                },
             });
-            const pending = cloneGridTablesAcrossProjects({ ...f.options, copyData: false, deferCompletion: true });
-            await entered.promise;
-            if (mutation === "query") getGridRegistry(f.source.ydoc).get(grid)!.set("query", "SELECT id FROM contacts");
-            if (mutation === "incarnation") peerDelete(f.source, grid, true);
-            if (mutation === "dependency") {
-                f.source.ydoc.getMap<Y.Map<unknown>>("yjsTables").get(f.table)!.set("doc", new Y.Doc());
-            }
-            if (mutation === "row") {
-                addRecord(getTableHandles(f.source.ydoc, f.table)!, { id: "peer" }, "peer");
-                getGridRegistry(f.source.ydoc).get(grid)!.set("name", "Peer presentation");
-            }
-            resume.resolve();
-            if (mutation === "row" || mutation === "unavailable") {
-                const result = await pending;
-                expect(result).toBeDefined();
-                result!.admit();
-                expect(getTableHandles(f.destination.ydoc, result!.tableIdMap[f.table])!.data.size).toBe(0);
-                result!.complete();
-            } else {
-                await expect(pending).rejects.toThrow("changed");
-                expect(listTables(f.destination.ydoc)).toEqual([]);
-                expect(getGridRegistry(f.destination.ydoc).size).toBe(0);
+            try {
+                if (mutation === "row" || mutation === "unavailable") {
+                    const result = await pending;
+                    expect(result).toBeDefined();
+                    result!.admit();
+                    expect(getTableHandles(f.destination.ydoc, result!.tableIdMap[f.table])!.data.size).toBe(0);
+                    result!.complete();
+                } else {
+                    await expect(pending).rejects.toThrow("changed");
+                    expect(admissionChecks).toBeGreaterThanOrEqual(4);
+                    expect(tablePublications).toBe(0);
+                    expect(gridPublications).toBe(0);
+                    expect(listTables(f.destination.ydoc)).toEqual([]);
+                    expect(getGridRegistry(f.destination.ydoc).size).toBe(0);
+                }
+            } finally {
+                tableRegistry.unobserve(observeTables);
+                gridRegistry.unobserve(observeGrids);
             }
             expect(acquire).not.toHaveBeenCalled();
         });
@@ -443,5 +464,39 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
             expect([...copied.data.keys()]).toEqual(available ? ["source"] : []);
             expect(getGridRegistry(f.destination.ydoc).size).toBe(1);
         }
+    });
+
+    it("rechecks retained query-only ENUM evidence at final admission", async () => {
+        const source = new Y.Doc({ guid: "query-only-enum-source" });
+        const enumSql = "CREATE TYPE task_state AS ENUM ('Open', 'Closed')";
+        createSqlCatalogObject(source, "enum", enumSql);
+        const destination = Project.createInstance("query-only-enum-destination");
+        const destinationEnum = createSqlCatalogObject(destination.ydoc, "enum", enumSql);
+        const catalog = readSqlCatalog(source.guid, source);
+        if (catalog.status !== "ready") throw new Error("catalog fixture unavailable");
+
+        const result = await cloneGridTablesAcrossProjects({
+            destinationDoc: destination.ydoc,
+            destinationProject: destination,
+            sourceProjectId: source.guid,
+            snapshots: {},
+            requestedSourceTableIds: [],
+            catalog: catalog.snapshot,
+            additionalInspections: [{ id: "calendar", kind: "calendar", sql: "SELECT 'Open'::task_state AS state" }],
+            copyData: false,
+            deferCompletion: true,
+            isDestinationCurrent: () => true,
+        });
+        expect(result).toBeDefined();
+
+        replaceSqlCatalogSource(
+            destination.ydoc,
+            destinationEnum,
+            "CREATE TYPE task_state AS ENUM ('Closed', 'Open')",
+        );
+
+        expect(() => result!.admit()).toThrow("SQL environment changed");
+        expect(listTables(destination.ydoc)).toEqual([]);
+        result!.discard();
     });
 });

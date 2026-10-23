@@ -180,6 +180,19 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
         expect(listTables(destination)).toEqual([]);
     });
 
+    it("admits the supported outline_items relation without synthesizing a transferred Table", async () => {
+        const source = new Y.Doc({ guid: "outline-items-calendar-source" });
+        const calendarId = createCalendar(Project.fromDoc(source), {
+            name: "Outline calendar",
+            query: "SELECT id, text AS title FROM outline_items",
+        });
+        const destination = new Y.Doc({ guid: "outline-items-calendar-destination" });
+
+        await expect(duplicateObjects(source, destination, { type: "calendar", id: calendarId }, "item-only"))
+            .resolves.toBeDefined();
+        expect(listTables(destination)).toEqual([]);
+    });
+
     it("keeps ordinary text, HTML, TSV, Markdown and OPML exports catalog-independent", () => {
         const doc = new Y.Doc({ guid: "representation-exports" });
         createSqlCatalogObject(doc, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
@@ -209,7 +222,7 @@ describe("structural ENUM compatibility guard", { timeout: 60_000 }, () => {
             });
             const destination = new Y.Doc({ guid: `unresolved-destination-${String(malformedCatalog)}` });
             await expect(duplicateObjects(source, destination, { type: "table", id: tableId }, "item-only"))
-                .rejects.toThrow('Required ENUM type "task_state" dependency evidence is unresolved');
+                .rejects.toThrow('type "task_state" does not exist');
             expect(listTables(destination)).toEqual([]);
         }
     });

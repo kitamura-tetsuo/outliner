@@ -66,7 +66,10 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
                     }))),
                 };
             });
-        // Hold the actual scratch-schema SQL call, not an admission verdict or timer.
+        // Record the loaded source identity used by structure-only admission.
+        // The focused production-service regression deterministically mutates at
+        // the post-analysis admission boundary; this browser case verifies the
+        // same observable paste outcomes without intercepting an obsolete live DB.
         await page.evaluate(async ({ sourceId, unavailable }) => {
             const servicePath = "/src/lib/yjsService.svelte.ts";
             const { getLoadedProjectDocById } = await import(/* @vite-ignore */ servicePath);
@@ -75,31 +78,12 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
             if (unavailable ? !!g.__loadedSource : !g.__loadedSource) {
                 throw new Error("Unexpected loaded-source authority");
             }
-            const sqlPath = "/src/services/yjstable/pgliteService.ts";
-            const { getPglite } = await import(/* @vite-ignore */ sqlPath);
-            const db = await getPglite();
-            const original = db.exec;
-            let release!: () => void;
-            const barrier = new Promise<void>(done => release = done);
-            g.__releasePreparation = () => {
-                db.exec = original;
-                release();
-            };
-            g.__sqlPreparationHeld = false;
-            db.exec = async function(sql: string, ...args: unknown[]) {
-                if (sql.includes("__yjstable_clone_")) {
-                    g.__sqlPreparationHeld = true;
-                    await barrier;
-                }
-                return original.call(this, sql, ...args);
-            };
         }, { sourceId: fixture.sourceProjectId, unavailable: mutation === "unavailable" });
         const before = await readGridProjectState(page);
         const boundary = await snapshot();
         try {
             await openPasteSpecialAtAnchor(page);
             await page.getByTestId("paste-special-copy-without-data").click();
-            await expect.poll(() => page.evaluate(() => (globalThis as any).__sqlPreparationHeld)).toBe(true);
             if (mutation === "delete") {
                 const show = peer.getByRole("button", { name: "Show sidebar" });
                 if (await show.isVisible()) await show.click();
@@ -122,7 +106,6 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
                         : !!entry;
                 }, { id: source.grids[0].id, mutation })
             ).toBe(true);
-            await page.evaluate(() => (globalThis as any).__releasePreparation());
             if (mutation === "unchanged" || mutation === "unavailable") {
                 await expect(page.getByTestId("yjs-table-view")).toHaveCount(2);
                 const result = await readGridProjectState(page);
@@ -136,7 +119,6 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
             expect((await readGridProjectState(peer)).tables).toEqual(source.tables);
             expect(sourceConnections).toEqual([]);
         } finally {
-            await page.evaluate(() => (globalThis as any).__releasePreparation());
             await peer.close();
         }
     });

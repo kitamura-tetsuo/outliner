@@ -6,6 +6,7 @@ import { cloneScheduleRules } from "../schedule/scheduleRuleClone";
 import { getGridInsertTargetTableId, getGridRegistry } from "../yjstable/gridDocs";
 import { captureDuplicationAdmission } from "../yjstable/objectDuplication";
 import { queryReadDependencies } from "../yjstable/queryReadDependencies";
+import { portableStructuralEnumsStillCompatible, type StructuralEnumAdmission } from "../yjstable/structuralEnumGuard";
 import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
 import { destroyTableUndoManager, getTableHandles, getTableSqlName, removeTable } from "../yjstable/tableDocs";
 import {
@@ -48,6 +49,7 @@ export interface CrossProjectGridPasteOptions {
     snapshots: Record<string, GridTableSnapshot>;
     grids?: Record<string, GridSnapshot>;
     catalog?: import("$shared/services/sqlCatalog").SqlCatalogSnapshot;
+    additionalInspections?: readonly import("$shared/services/sqlEnvironmentCompiler").SqlInspectionTarget[];
     /** Tables whose hosts the user selected; all other snapshots are closure additions. */
     requestedSourceTableIds: string[];
     operation?: "cut";
@@ -170,6 +172,7 @@ export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): st
  * already been removed again (spec §9.6).
  */
 export interface PreparedGridPaste {
+    enumAdmission: StructuralEnumAdmission;
     bindings: TransferBindings;
     admit(): void;
     complete(): void;
@@ -199,6 +202,7 @@ export async function cloneGridTablesAcrossProjects(
         snapshots,
         grids,
         catalog,
+        additionalInspections = [],
         requestedSourceTableIds,
         operation,
         copyData = true,
@@ -278,9 +282,24 @@ export async function cloneGridTablesAcrossProjects(
     const releaseCancel = () => {
         if (typeof window !== "undefined") window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
     };
+    let enumAdmission: StructuralEnumAdmission | undefined;
     const admit = () => {
         if (cancelled() || !destinationAcceptsWrites()) {
             throw new StaleGridTransferError("The destination changed or no longer accepts writes.");
+        }
+        if (
+            enumAdmission
+            && !portableStructuralEnumsStillCompatible(
+                destinationDoc,
+                snapshots,
+                getLoadedProjectDocById(sourceProjectId),
+                grids,
+                catalog,
+                additionalInspections,
+                enumAdmission,
+            )
+        ) {
+            throw new StaleGridTransferError("The structural SQL environment changed during paste preparation.");
         }
         bindings?.assertCurrent();
         assertSource();
@@ -309,7 +328,9 @@ export async function cloneGridTablesAcrossProjects(
             grids,
             catalog,
             admit,
+            additionalInspections,
         );
+        enumAdmission = cloneResult.enumAdmission;
         bindings = cloneResult.bindings;
         admit();
         tableIdMap = cloneResult.tableIdMap;
@@ -432,6 +453,7 @@ export async function cloneGridTablesAcrossProjects(
         if (!options.deferCompletion) complete();
         else handedOff = true;
         return {
+            enumAdmission: cloneResult.enumAdmission,
             bindings,
             admit,
             complete,
@@ -645,6 +667,11 @@ export async function moveGridPlacementsAcrossProjects(
         ),
     ];
     const calendarSources = new Map(calendarIds.map(id => [id, source.calendars.get(id)]));
+    const calendarInspections = [...calendarSources].map(([id, entry]) => ({
+        id,
+        kind: "calendar" as const,
+        sql: entry!.get("query") as string,
+    }));
     const calendarEvidence = JSON.stringify(
         [...calendarSources].map(([id, entry]) => [id, entry?._item?.id, entry?.get("query")]),
     );
@@ -776,15 +803,15 @@ export async function moveGridPlacementsAcrossProjects(
             }],
         ),
     );
-    let preparation: Awaited<ReturnType<typeof cloneGridTablesAcrossProjects>>;
     try {
-        preparation = await cloneGridTablesAcrossProjects({
+        const preparation = await cloneGridTablesAcrossProjects({
             destinationDoc: scratch,
             destinationProject: Project.fromDoc(scratch),
             sourceProjectId: source.ydoc.guid,
             snapshots,
             grids,
             catalog: sourceCatalog.snapshot,
+            additionalInspections: calendarInspections,
             requestedSourceTableIds: tableIds,
             copyData,
             allowProvenanceReuse: true,
@@ -804,7 +831,17 @@ export async function moveGridPlacementsAcrossProjects(
         }
         if (!permissions()) return refused("capability-denied");
         if (collision()) return refused("identity-collision");
-        if (!portableStructuralEnumsStillCompatible(destination.ydoc, snapshots, source.ydoc, grids)) {
+        if (
+            !portableStructuralEnumsStillCompatible(
+                destination.ydoc,
+                snapshots,
+                source.ydoc,
+                grids,
+                payload.catalog,
+                calendarInspections,
+                preparation.enumAdmission,
+            )
+        ) {
             return refused("stale-transfer");
         }
         const copiedTables = new Map(
@@ -819,7 +856,7 @@ export async function moveGridPlacementsAcrossProjects(
             return [id, { guid: doc.guid, update: Y.encodeStateAsUpdate(doc) }] as const;
         }));
         const copiedGrids = new Map(
-            gridIds.map(id => [id, getGridRegistry(scratch).get(preparation!.gridIdMap[id])!]),
+            gridIds.map(id => [id, getGridRegistry(scratch).get(preparation.gridIdMap[id])!]),
         );
         const copiedRules = new Map(
             preparation.createdRuleIds.map(id => [id, scratch.getMap<Y.Map<unknown>>("schedules").get(id)!]),
@@ -839,7 +876,7 @@ export async function moveGridPlacementsAcrossProjects(
                 id,
                 createCalendar(Project.fromDoc(scratch), {
                     ...settings,
-                    query: rewriteTableQuerySql(settings.query, sqlNames).sql,
+                    query: settings.query.trim() ? rewriteTableQuerySql(settings.query, sqlNames).sql : settings.query,
                 }),
             ];
         }));
@@ -951,7 +988,15 @@ export async function moveGridPlacementsAcrossProjects(
             if (
                 !currentTransfer.ok || currentTransfer.project !== source
                 || JSON.stringify(currentTransfer.rootKeys) !== JSON.stringify(roots)
-                || !portableStructuralEnumsStillCompatible(destination.ydoc, snapshots, source.ydoc, grids)
+                || !portableStructuralEnumsStillCompatible(
+                    destination.ydoc,
+                    snapshots,
+                    source.ydoc,
+                    grids,
+                    payload.catalog,
+                    calendarInspections,
+                    preparation.enumAdmission,
+                )
             ) {
                 throw new StaleGridTransferError("Pending move changed");
             }
@@ -1008,6 +1053,17 @@ export async function moveGridPlacementsAcrossProjects(
                     if (sourceNodeState() !== expectedSource || collision() || !namesCurrent() || !locationCurrent()) {
                         return { status: "conflict", reason: "The destination or source placement changed" };
                     }
+                    if (
+                        !portableStructuralEnumsStillCompatible(
+                            destination.ydoc,
+                            snapshots,
+                            source.ydoc,
+                            grids,
+                            payload.catalog,
+                            calendarInspections,
+                            preparation.enumAdmission,
+                        )
+                    ) return { status: "refused", reason: "SQL ENUM admission changed" };
                     both(install);
                     expectedDestination = ownedState();
                 }

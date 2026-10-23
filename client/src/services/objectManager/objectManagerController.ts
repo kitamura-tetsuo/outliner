@@ -15,6 +15,7 @@ import {
     previewObjectSetDuplication,
     rollbackObjectDuplication,
 } from "../yjstable/objectDuplication";
+import { structuralEnumAdmissionStillCompatible } from "../yjstable/structuralEnumGuard";
 import {
     getTableDependencies,
     removeTableWithPolicyUndoable,
@@ -411,12 +412,16 @@ export async function duplicateSelectedObjects(
         await globalUndoRouter.runAsyncWithoutAutoCapture(async () => {
             options.assertDestination?.();
             sideEffect?.assertRedo?.();
+            if (!structuralEnumAdmissionStillCompatible(sourceDoc, destinationDoc, created.enumAdmission)) {
+                throw new Error("SQL ENUM admission changed since duplication.");
+            }
             const replayed = await materializeDuplicationPlan(
                 sourceDoc,
                 destinationDoc,
                 created.sourceObjects,
                 { copyTableData: options.copyTableData, synchronizeTableSubdocs: options.synchronizeTableSubdocs },
                 created.idMap,
+                created.enumAdmission,
             );
             try {
                 options.assertDestination?.();
