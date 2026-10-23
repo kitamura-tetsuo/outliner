@@ -104,6 +104,7 @@ def windows(directory):
 def main():
     platform, directory = sys.argv[1], Path(sys.argv[2])
     ok, verdict, lines = (ubuntu if platform == "ubuntu" else windows)(directory)
+    directory.mkdir(parents=True, exist_ok=True)
     (directory / "verdict.json").write_text(json.dumps(verdict, ensure_ascii=False, indent=2), encoding="utf-8")
     report = "\n".join(lines) + "\n"
     (directory / "report.md").write_text(report, encoding="utf-8")
