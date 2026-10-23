@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test, type TestInfo } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
@@ -59,13 +59,28 @@ async function localEditorState(page: Page) {
     });
 }
 
+async function attachJson(testInfo: TestInfo, name: string, value: unknown) {
+    await testInfo.attach(`${name}.json`, {
+        body: Buffer.from(JSON.stringify(value, undefined, 2)),
+        contentType: "application/json",
+    });
+}
+
 async function expectTitleEndCaret(
     page: Page,
     titleId: string,
     titleLength: number,
+    testInfo: TestInfo,
+    evidenceName: string,
     timeout = 10_000,
 ) {
-    await expect.poll(() => localEditorState(page), { timeout }).toEqual(titleEndCaretState(titleId, titleLength));
+    let observation: Awaited<ReturnType<typeof localEditorState>> | undefined;
+    try {
+        await expect.poll(async () => observation = await localEditorState(page), { timeout })
+            .toEqual(titleEndCaretState(titleId, titleLength));
+    } finally {
+        await attachJson(testInfo, evidenceName, observation);
+    }
 }
 
 function titleEndCaretState(titleId: string, titleLength: number) {
@@ -83,28 +98,38 @@ async function selectThreeBodyLines(
     titleId: string,
     titleLength: number,
     thirdBodyId: string,
+    testInfo: TestInfo,
 ) {
     for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowDown");
-    await expect.poll(() => localEditorState(page), { timeout: 10_000 }).toMatchObject({
-        selections: [{
-            startItemId: titleId,
-            startOffset: titleLength,
-            endItemId: thirdBodyId,
-            endOffset: BODY_LINES[2].length,
-            isReversed: false,
-        }],
-        editorFocused: true,
-        selectedText: EXPECTED_CLIPBOARD,
-    });
+    let observation: Awaited<ReturnType<typeof localEditorState>> | undefined;
+    try {
+        await expect.poll(async () => observation = await localEditorState(page), { timeout: 10_000 }).toMatchObject({
+            selections: [{
+                startItemId: titleId,
+                startOffset: titleLength,
+                endItemId: thirdBodyId,
+                endOffset: BODY_LINES[2].length,
+                isReversed: false,
+            }],
+            editorFocused: true,
+            selectedText: EXPECTED_CLIPBOARD,
+        });
+    } finally {
+        await attachJson(testInfo, "final-selection", observation);
+    }
 }
 
 async function expectActualClipboard(
     page: Page,
-    timeout = 10_000,
+    testInfo: TestInfo,
+    evidenceName: string,
 ) {
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout })
-        .toBe(EXPECTED_CLIPBOARD);
+    const actualClipboard = await page.evaluate(() => navigator.clipboard.readText());
+    await attachJson(testInfo, evidenceName, { actualClipboard });
+    expect(actualClipboard).toBe(EXPECTED_CLIPBOARD);
 }
+
+test.use({ trace: "retain-on-failure", screenshot: "only-on-failure" });
 
 test.describe("Ctrl+C copies cross-item selection", () => {
     test("copies exact selected text via mouse drag", async ({ page }) => {
@@ -125,6 +150,7 @@ test.describe("Ctrl+C copies cross-item selection", () => {
     });
 
     test("copies exact selected text via Shift+ArrowDown", async ({ page }) => {
+        const testInfo = test.info();
         const { pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info(), BODY_LINES);
         const titleId = await seededItemId(page, pageName, true);
         const bodyIds = await Promise.all(BODY_LINES.map(line => seededItemId(page, line)));
@@ -132,14 +158,14 @@ test.describe("Ctrl+C copies cross-item selection", () => {
 
         await title.click();
         await page.keyboard.press("End");
-        await expectTitleEndCaret(page, titleId, pageName.length);
-        await selectThreeBodyLines(page, titleId, pageName.length, bodyIds[2]);
+        await expectTitleEndCaret(page, titleId, pageName.length, testInfo, "initial-caret");
+        await selectThreeBodyLines(page, titleId, pageName.length, bodyIds[2], testInfo);
 
         const sentinel = `uncopied-${crypto.randomUUID()}`;
         await page.evaluate(value => navigator.clipboard.writeText(value), sentinel);
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(sentinel);
         await page.keyboard.press("Control+c");
-        await expectActualClipboard(page);
+        await expectActualClipboard(page, testInfo, "actual-clipboard");
     });
 
     test("rejects a title-start origin before copy", async ({ page }) => {
@@ -152,10 +178,12 @@ test.describe("Ctrl+C copies cross-item selection", () => {
         await page.keyboard.press("Home");
         await expect.poll(() => localEditorState(page), { timeout: 10_000 })
             .toEqual(titleEndCaretState(titleId, 0));
-        const wrongOrigin = await localEditorState(page);
-        expect(wrongOrigin).toEqual(titleEndCaretState(titleId, 0));
-        expect(() => expect(wrongOrigin).toEqual(titleEndCaretState(titleId, pageName.length))).toThrow();
-        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sentinel);
+        await expect(
+            expectTitleEndCaret(page, titleId, pageName.length, test.info(), "rejected-wrong-origin", 1_000),
+        ).rejects.toThrow();
+        const actualClipboard = await page.evaluate(() => navigator.clipboard.readText());
+        await attachJson(test.info(), "wrong-origin-clipboard", { actualClipboard });
+        expect(actualClipboard).toBe(sentinel);
     });
 
     test("does not accept a stale clipboard when copy is a no-op", async ({ page }) => {
@@ -164,13 +192,12 @@ test.describe("Ctrl+C copies cross-item selection", () => {
         const thirdBodyId = await seededItemId(page, BODY_LINES[2]);
         await page.locator(`[data-item-id="${titleId}"] .item-text.title-text`).click();
         await page.keyboard.press("End");
-        await expectTitleEndCaret(page, titleId, pageName.length);
-        await selectThreeBodyLines(page, titleId, pageName.length, thirdBodyId);
+        await expectTitleEndCaret(page, titleId, pageName.length, test.info(), "initial-caret");
+        await selectThreeBodyLines(page, titleId, pageName.length, thirdBodyId, test.info());
 
         const sentinel = `no-op-copy-${crypto.randomUUID()}`;
         await page.evaluate(value => navigator.clipboard.writeText(value), sentinel);
-        const actualClipboard = await page.evaluate(() => navigator.clipboard.readText());
-        expect(actualClipboard).toBe(sentinel);
-        expect(() => expect(actualClipboard).toBe(EXPECTED_CLIPBOARD)).toThrow();
+        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sentinel);
+        await expect(expectActualClipboard(page, test.info(), "rejected-no-op-clipboard")).rejects.toThrow();
     });
 });
