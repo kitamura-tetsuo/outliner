@@ -52,9 +52,17 @@ class WindowsReportCliOutputDirectory(unittest.TestCase):
             self.assertEqual(verdict["platform"], "windows")
             report = (directory / "report.md").read_text(encoding="utf-8")
             self.assertIn("FAILED", report)
-            self.assertNotIn("PROVEN`", report.replace("NOT RUN", ""))
+            self.assertEqual(verdict.get("scenarios"), {})
+            self.assertEqual(verdict.get("capabilities"), {})
+            self.assertEqual(verdict.get("controls"), {})
+            self.assertNotIn("| PROVEN |", report)
+            for action, count in CONTROL_COUNTS.items():
+                self.assertIn(f"| {action} | NOT RUN | 0/{count} |", report)
             summary_text = summary.read_text(encoding="utf-8")
             self.assertIn("FAILED", summary_text)
+            self.assertNotIn("| PROVEN |", summary_text)
+            for action, count in CONTROL_COUNTS.items():
+                self.assertIn(f"| {action} | NOT RUN | 0/{count} |", summary_text)
 
     def test_existing_directory_with_partial_evidence_stays_failed_and_untouched(self):
         with tempfile.TemporaryDirectory() as temporary:
