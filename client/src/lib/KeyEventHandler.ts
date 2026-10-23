@@ -601,11 +601,25 @@ export class KeyEventHandler {
             }
         });
 
-        // Alt+Shift+Arrow for box selection
-        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].forEach(k => {
+        // Alt+Shift+Arrow for box selection (ArrowUp/ArrowDown)
+        ["ArrowUp", "ArrowDown"].forEach(k => {
             add(k, false, true, true, event => {
                 KeyEventHandler.handleBoxSelection(event);
             });
+        });
+
+        // Alt+Shift+Left/Right to shrink/expand selection
+        add("ArrowRight", false, true, true, (event, cursors) => {
+            const activeCursor = cursors.find(c => c.isActive) || cursors[0];
+            if (activeCursor) {
+                activeCursor.expandSelection();
+            }
+        });
+        add("ArrowLeft", false, true, true, (event, cursors) => {
+            const activeCursor = cursors.find(c => c.isActive) || cursors[0];
+            if (activeCursor) {
+                activeCursor.shrinkSelection();
+            }
         });
 
         // Ctrl+Shift+Alt+Arrow/PageUp/PageDown adds cursors

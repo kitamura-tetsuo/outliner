@@ -50,7 +50,7 @@ test.describe("Mobile touch caret placement", () => {
         const { itemId, box } = await seedAndLocateItem(page, testInfo);
 
         // Tap past the trailing edge of the text: the caret belongs at the end.
-        await tapOnText(page, TouchGestures.pointInBox(box, 0.99));
+        await tapOnText(page, TouchGestures.pointInBox(box, 0.95));
 
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.activeItemId).toBe(itemId);
@@ -78,7 +78,7 @@ test.describe("Mobile touch caret placement", () => {
     test("a tap produces exactly one cursor and no selection", async ({ page }, testInfo) => {
         const { box } = await seedAndLocateItem(page, testInfo);
 
-        await tapOnText(page, TouchGestures.pointInBox(box, 0.99));
+        await tapOnText(page, TouchGestures.pointInBox(box, 0.95));
 
         // The browser's compatibility mouse events must not add a second cursor or
         // re-run the caret placement as a zero-length drag selection.
@@ -90,7 +90,7 @@ test.describe("Mobile touch caret placement", () => {
     test("typing after a tap inserts at the tapped position", async ({ page }, testInfo) => {
         const { item, box } = await seedAndLocateItem(page, testInfo);
 
-        await tapOnText(page, TouchGestures.pointInBox(box, 0.99));
+        await tapOnText(page, TouchGestures.pointInBox(box, 0.95));
 
         await page.keyboard.type("!");
         await page.waitForTimeout(500);
