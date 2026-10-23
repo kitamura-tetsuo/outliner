@@ -86,6 +86,7 @@ describe("compileSqlEnvironment", () => {
             { id: "null", priority: null },
         ]);
         await built.environment.dispose();
+        expect(built.environment.db.closed).toBe(true);
 
         const rebuilt = await compileSqlEnvironment(captured);
         expect(rebuilt.status).toBe("ready");

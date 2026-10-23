@@ -803,9 +803,8 @@ export async function moveGridPlacementsAcrossProjects(
             }],
         ),
     );
-    let preparation: Awaited<ReturnType<typeof cloneGridTablesAcrossProjects>>;
     try {
-        preparation = await cloneGridTablesAcrossProjects({
+        const preparation = await cloneGridTablesAcrossProjects({
             destinationDoc: scratch,
             destinationProject: Project.fromDoc(scratch),
             sourceProjectId: source.ydoc.guid,
@@ -857,7 +856,7 @@ export async function moveGridPlacementsAcrossProjects(
             return [id, { guid: doc.guid, update: Y.encodeStateAsUpdate(doc) }] as const;
         }));
         const copiedGrids = new Map(
-            gridIds.map(id => [id, getGridRegistry(scratch).get(preparation!.gridIdMap[id])!]),
+            gridIds.map(id => [id, getGridRegistry(scratch).get(preparation.gridIdMap[id])!]),
         );
         const copiedRules = new Map(
             preparation.createdRuleIds.map(id => [id, scratch.getMap<Y.Map<unknown>>("schedules").get(id)!]),

@@ -1,4 +1,5 @@
 import { Project } from "$shared/app-schema";
+import { structuralSqlRelationReferences } from "$shared/services/sqlEnvironmentCompiler";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
@@ -291,6 +292,21 @@ export async function materializeDuplicationPlan(
     let sqlSnapshot = captureStructuralSqlSnapshot(source);
     const tableObjects = objects.filter(object => object.type === "table");
     const hydrationTableIds = new Set(tableObjects.map(object => object.id));
+    const addHydrationInputs = (sql: string) => {
+        if (!sql.trim()) return;
+        // Use the analyzer's scoped AST inventory for physical relations.
+        // CTE aliases are not Tables, while public-qualified references
+        // still need their real subdocuments hydrated before admission.
+        const relations = structuralSqlRelationReferences(sql);
+        for (const table of listTables(source)) {
+            if (
+                relations.some(relation =>
+                    (relation.schema === undefined || relation.schema === "public")
+                    && relation.name === table.sqlName
+                )
+            ) hydrationTableIds.add(table.tableId);
+        }
+    };
     for (const object of objects) {
         let sql: string | undefined;
         if (object.type === "grid") sql = String(getGridHandles(source, object.id)?.entry.get("query") ?? "");
@@ -300,19 +316,14 @@ export async function materializeDuplicationPlan(
             sql = String(rule?.get("sql") ?? "");
             const targetTableId = rule?.get("targetTableId");
             if (typeof targetTableId === "string" && targetTableId) hydrationTableIds.add(targetTableId);
-            const relationNames = rewriteTableQuerySql(sql, new Map()).relationDependencies;
-            for (const table of listTables(source)) {
-                if (relationNames.includes(table.sqlName)) hydrationTableIds.add(table.tableId);
-            }
         }
-        if (sql) { for (const tableId of queryReadDependencies(source, sql).tableIds) hydrationTableIds.add(tableId); }
+        if (sql) addHydrationInputs(sql);
     }
     const connections: TableDocConnection[] = [];
 
-    // Discovery is deliberately complete before any connection or destination
-    // mutation. A registry entry can expose its subdoc before that subdoc's
-    // contents have arrived, so every Table in the completed graph must be
-    // synchronized before schema rewriting or row copying starts.
+    // The selected object graph is fixed, but cold schemas may reveal further
+    // inputs such as foreign-key targets. Hydrate that closure without adding
+    // objects to the transfer, before schema rewriting or row copying starts.
     if (options.synchronizeTableSubdocs && hydrationTableIds.size > 0) {
         const { connectTableDoc } = await import("../../lib/yjs/connection");
         try {
@@ -334,6 +345,9 @@ export async function materializeDuplicationPlan(
                         { cause: error },
                     );
                 }
+                // Set iteration visits newly discovered inputs and deduplicates
+                // cycles, including a self-referencing foreign key.
+                addHydrationInputs(handles.schemaText.toString());
             }
         } catch (error) {
             await Promise.allSettled(connections.map(connection => connection.dispose()));
@@ -348,15 +362,15 @@ export async function materializeDuplicationPlan(
         ...sqlSnapshot.inspections.map(inspection => inspection.id),
     ]);
     const relevantSqlIds = new Set(objects.map(object => object.id).filter(id => availableSqlIds.has(id)));
-    // Table room synchronization can reveal schema and records that were not
-    // present in the registry-attached subdoc. Admission must use that hydrated
-    // state, never the pre-load shell.
-    if (options.synchronizeTableSubdocs && hydrationTableIds.size > 0) {
-        sqlSnapshot = captureStructuralSqlSnapshot(source);
-    }
     const idMap = new Map<string, string>(existingIdMap);
     let enumAdmission!: StructuralEnumAdmission;
     try {
+        // Table room synchronization can reveal schema and records that were
+        // absent from the registry-attached shell. Recapture inside this
+        // cleanup boundary so unavailable evidence also releases Table rooms.
+        if (options.synchronizeTableSubdocs && hydrationTableIds.size > 0) {
+            sqlSnapshot = captureStructuralSqlSnapshot(source);
+        }
         enumAdmission = await assertStructuralEnumCompatibility(source, destination, sqlSnapshot, relevantSqlIds);
         assertCurrent();
         if (replayAdmission && !structuralEnumAdmissionStillCompatible(source, destination, replayAdmission)) {
@@ -464,7 +478,9 @@ export async function materializeDuplicationPlan(
             });
             const destinationId = idMap.get(key(object))!;
             const sourceQuery = String(handles.entry.get("query") ?? "");
-            const queryRewrite = rewriteTableQuerySql(sourceQuery, sqlNameMap);
+            const queryRewrite = sameProject && sqlNameMap.size === 0
+                ? { sql: sourceQuery }
+                : rewriteTableQuerySql(sourceQuery, sqlNameMap);
             const reads = queryReadDependencies(source, sourceQuery);
             const omittedQueryReferences = reads.relationNames
                 .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
@@ -516,7 +532,9 @@ export async function materializeDuplicationPlan(
             if (!targetTableId && sourceTargetTableId) removedReferenceCount++;
 
             const sourceSql = String(ruleMap.get("sql") ?? "");
-            const sqlRewrite = rewriteTableQuerySql(sourceSql, sqlNameMap);
+            const sqlRewrite = sameProject && sqlNameMap.size === 0
+                ? { sql: sourceSql, relationDependencies: [] }
+                : rewriteTableQuerySql(sourceSql, sqlNameMap);
             const omittedSqlReferences = sqlRewrite.relationDependencies
                 .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));
             const targetSql = !sameProject && omittedSqlReferences.length > 0 ? "" : sqlRewrite.sql;
@@ -557,7 +575,9 @@ export async function materializeDuplicationPlan(
             const sourceSettings = getCalendar(sourceProject, object.id);
             if (!sourceSettings) throw new Error(`Calendar "${object.id}" no longer exists`);
             const destinationId = idMap.get(key(object))!;
-            const queryRewrite = rewriteTableQuerySql(sourceSettings.query, sqlNameMap);
+            const queryRewrite = sameProject && sqlNameMap.size === 0
+                ? { sql: sourceSettings.query }
+                : rewriteTableQuerySql(sourceSettings.query, sqlNameMap);
             const reads = queryReadDependencies(source, sourceSettings.query);
             const omittedQueryReferences = reads.relationNames
                 .filter(sqlName => sqlName !== "outline_items" && !sqlNameMap.has(sqlName));

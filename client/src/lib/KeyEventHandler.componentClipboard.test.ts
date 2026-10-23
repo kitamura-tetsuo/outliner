@@ -46,14 +46,17 @@ vi.mock("../stores/AliasPickerStore.svelte", () => ({
     aliasPickerStore: { isVisible: false, hide: vi.fn() },
 }));
 
-// This file exercises clipboard serialization and the structure-only fallback.
-// Reaching the live source room belongs to the cross-project E2E coverage, so
-// the project registry reports the source as unavailable here instead of
-// opening a WebSocket out of JSDOM.
-const sourceTransport = vi.hoisted(() => ({ acquire: () => Promise.resolve(undefined) as Promise<unknown> }));
+// Control only the source registry and transport boundary instead of opening a
+// WebSocket out of JSDOM. Cases can keep a real source Y.Doc loaded or hold source
+// acquisition; SQL analysis, binding validation and history execute unchanged.
+const sourceTransport = vi.hoisted(() => ({
+    acquire: () => Promise.resolve(undefined) as Promise<unknown>,
+    loaded: undefined as Y.Doc | undefined,
+}));
 vi.mock("./yjsService.svelte", () => ({
     acquireClientByProjectId: () => sourceTransport.acquire(),
-    getLoadedProjectDocById: () => undefined,
+    getLoadedProjectDocById: (projectId: string) =>
+        sourceTransport.loaded?.guid === projectId ? sourceTransport.loaded : undefined,
 }));
 
 // Controlled Table transport; real admission, copying and history remain authoritative.
@@ -83,6 +86,7 @@ let stopSurface: (() => void) | undefined;
 beforeEach(() => {
     stopSurface = registerEditorSurface(() => true);
     sourceTransport.acquire = () => Promise.resolve(undefined);
+    sourceTransport.loaded = undefined;
     state.undoManager = undefined;
 });
 afterEach(() => stopSurface?.());
@@ -249,6 +253,79 @@ async function pasteAndCapture(encoded: string, text: string, vscodeMetadata = "
     } finally {
         window.removeEventListener("paste-multi-item", listener);
     }
+}
+
+function copySingleComponent(source: Y.Doc, tableId?: string, calendarId?: string) {
+    const destination = state.doc;
+    try {
+        state.doc = source;
+        const item = makeItem("copied-component", "", tableId, calendarId);
+        state.visible = [{ model: { id: item.id, original: item }, depth: 0 }];
+        state.selection = {
+            startItemId: item.id,
+            startOffset: 0,
+            endItemId: item.id,
+            endOffset: 0,
+            userId: "local",
+            start: { kind: "node-boundary", itemId: item.id, side: "before" },
+            end: { kind: "node-boundary", itemId: item.id, side: "after" },
+        };
+        const { event, data } = copyEvent();
+        KeyEventHandler.handleCopy(event);
+        const encoded = data.get(OUTLINER_ITEMS_MIME);
+        expect(encoded).toBeTruthy();
+        return { encoded: encoded!, text: data.get("text/plain") ?? "" };
+    } finally {
+        state.doc = destination;
+        state.selection = undefined;
+        state.visible = [];
+    }
+}
+
+function captureComponentPasteHistory() {
+    const project = Project.fromDoc(state.doc);
+    const page = project.addPage("Destination", "fixture");
+    const manager = new Y.UndoManager(state.doc.getMap("orderedTree"));
+    const calendarManager = ensureCalendarUndoManager(project);
+    state.undoManager = manager;
+    globalUndoRouter.register(manager);
+    globalUndoRouter.clear();
+    const positions = () => [
+        globalUndoRouter.undoDepth,
+        globalUndoRouter.redoDepth,
+        manager.undoStack.length,
+        manager.redoStack.length,
+        calendarManager.undoStack.length,
+        calendarManager.redoStack.length,
+    ];
+    const insert = (event: Event) =>
+        project.ydoc.transact(() => {
+            const items = (event as CustomEvent<{
+                structuredItems: Array<{
+                    componentType: string;
+                    yjsGridId?: string;
+                    calendarId?: string;
+                }>;
+            }>).detail.structuredItems;
+            for (const item of items) {
+                const node = page.items.addNode("local");
+                const value = project.tree.getNodeValueFromKey(node.key) as Y.Map<unknown>;
+                value.set("componentType", item.componentType);
+                if (item.yjsGridId) value.set("yjsGridId", item.yjsGridId);
+                if (item.calendarId) value.set("calendarId", item.calendarId);
+            }
+        });
+    window.addEventListener("paste-multi-item", insert);
+    return {
+        project,
+        page,
+        positions,
+        dispose: () => {
+            window.removeEventListener("paste-multi-item", insert);
+            globalUndoRouter.unregister(manager);
+            manager.destroy();
+        },
+    };
 }
 
 describe("KeyEventHandler.handleCopy component bindings", () => {
@@ -1562,6 +1639,215 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
                 window.removeEventListener("paste-multi-item", insert);
                 globalUndoRouter.unregister(manager);
                 manager.destroy();
+            }
+        });
+    }
+
+    for (const queryKind of ["constant-enum", "outline-items"] as const) {
+        it(`Calendar-only Copy retains definition replay authority: ${queryKind}`, async () => {
+            const source = Project.createInstance(`calendar-only-${queryKind}`);
+            const enumSql = "CREATE TYPE calendar_state AS ENUM ('Open', 'Closed')";
+            const destinationEnum = queryKind === "constant-enum"
+                ? createSqlCatalogObject(state.doc, "enum", enumSql)
+                : undefined;
+            if (destinationEnum) createSqlCatalogObject(source.ydoc, "enum", enumSql);
+            const query = destinationEnum
+                ? "SELECT 'event' AS id, CAST('Open' AS calendar_state) AS title"
+                : "SELECT id AS id, text AS title FROM outline_items";
+            const sourceCalendar = createCalendar(source, { name: "Only Calendar", query, roleTitle: "title" });
+            const copied = copySingleComponent(source.ydoc, undefined, sourceCalendar);
+            const payload = deserializeClipboardItems(copied.encoded);
+            expect(payload?.version).toBe(3);
+            if (!payload || payload.version !== 3) throw new Error("Expected current clipboard payload");
+            expect(Object.keys(payload.tables ?? {})).toEqual([]);
+            expect(Object.keys(payload.grids ?? {})).toEqual([]);
+            if (!destinationEnum) expect(payload.catalog?.objects).toEqual([]);
+            const history = captureComponentPasteHistory();
+            try {
+                expect(await pasteAndCapture(copied.encoded, copied.text)).toBeDefined();
+                expect(history.project.calendars.size).toBe(1);
+                const [id] = history.project.calendars.keys();
+                expect(id).not.toBe(sourceCalendar);
+                expect(history.project.calendars.get(id)?.get("query")).toBe(query);
+                expect(history.page.items.length).toBe(1);
+                expect(listTables(state.doc)).toEqual([]);
+                expect(getGridRegistry(state.doc).size).toBe(0);
+                const saved = history.project.calendars.toJSON();
+                const placement = history.page.items.at(0)!.id;
+                expect(history.positions()).toEqual([1, 0, 1, 0, 0, 0]);
+                globalUndoRouter.undo();
+                expect(history.project.calendars.size).toBe(0);
+                expect(history.page.items.length).toBe(0);
+                globalUndoRouter.redo();
+                expect(history.project.calendars.toJSON()).toEqual(saved);
+                expect(history.page.items.at(0)!.id).toBe(placement);
+                expect(history.positions()).toEqual([1, 0, 1, 0, 0, 0]);
+                if (destinationEnum) {
+                    globalUndoRouter.undo();
+                    replaceSqlCatalogSource(
+                        state.doc,
+                        destinationEnum,
+                        "CREATE TYPE calendar_state AS ENUM ('Closed', 'Open')",
+                    );
+                    const before = Y.encodeStateAsUpdate(state.doc);
+                    const positions = history.positions();
+                    const additions: string[] = [];
+                    const observe: Parameters<typeof history.project.calendars.observe>[0] = event => {
+                        for (const [key, change] of event.changes.keys) {
+                            if (change.action === "add") additions.push(key);
+                        }
+                    };
+                    history.project.calendars.observe(observe);
+                    try {
+                        globalUndoRouter.redo();
+                        expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("refused");
+                        expect(Y.encodeStateAsUpdate(state.doc)).toEqual(before);
+                        expect(history.positions()).toEqual(positions);
+                        expect(additions).toEqual([]);
+                        expect(history.project.calendars.size).toBe(0);
+                        expect(history.page.items.length).toBe(0);
+                    } finally {
+                        history.project.calendars.unobserve(observe);
+                    }
+                    replaceSqlCatalogSource(state.doc, destinationEnum, enumSql);
+                    globalUndoRouter.redo();
+                    expect(history.project.calendars.toJSON()).toEqual(saved);
+                    expect(history.page.items.at(0)!.id).toBe(placement);
+                }
+                expect(listTables(state.doc)).toEqual([]);
+                expect(getGridRegistry(state.doc).size).toBe(0);
+                expect(history.positions()).toEqual([1, 0, 1, 0, 0, 0]);
+            } finally {
+                history.dispose();
+            }
+        });
+    }
+
+    for (const requiredType of [false, true]) {
+        it(`loaded-source Copy replay checks only required ENUM edits: required=${requiredType}`, async () => {
+            const source = Project.createInstance(`loaded-catalog-${requiredType}`);
+            const enumSql = "CREATE TYPE task_state AS ENUM ('Open', 'Closed')";
+            const sourceEnum = requiredType ? createSqlCatalogObject(source.ydoc, "enum", enumSql) : undefined;
+            if (sourceEnum) createSqlCatalogObject(state.doc, "enum", enumSql);
+            const table = createPortableTable(source.ydoc);
+            if (requiredType) {
+                const schema = getTableHandles(source.ydoc, table)!.schemaText;
+                schema.delete(0, schema.length);
+                schema.insert(0, "CREATE TABLE sales (id TEXT PRIMARY KEY, state task_state)");
+                getGridRegistry(source.ydoc).get(fixtureGridId(table))!.set("query", "SELECT id, state FROM sales");
+            }
+            const copied = copySingleComponent(source.ydoc, table);
+            sourceTransport.loaded = source.ydoc;
+            sourceTransport.acquire = async () => ({ client: { project: source }, release: () => {} });
+            const history = captureComponentPasteHistory();
+            try {
+                expect(await pasteAndCapture(copied.encoded, copied.text)).toBeDefined();
+                const [destinationTable] = listTables(state.doc);
+                const [destinationGrid] = getGridRegistry(state.doc).keys();
+                const placement = history.page.items.at(0)!.id;
+                const savedGrid = getGridRegistry(state.doc).get(destinationGrid)!.toJSON();
+                globalUndoRouter.undo();
+                expect(listTables(state.doc)).toEqual([]);
+                expect(getGridRegistry(state.doc).size).toBe(0);
+                const peer = new Y.Doc();
+                Y.applyUpdate(peer, Y.encodeStateAsUpdate(source.ydoc));
+                if (sourceEnum) {
+                    replaceSqlCatalogSource(peer, sourceEnum, "CREATE TYPE task_state AS ENUM ('Closed', 'Open')");
+                } else createSqlCatalogObject(peer, "enum", "CREATE TYPE unrelated_state AS ENUM ('A', 'B')");
+                Y.applyUpdate(source.ydoc, Y.encodeStateAsUpdate(peer), "peer");
+                expect(sourceTransport.loaded).toBe(source.ydoc);
+                const before = Y.encodeStateAsUpdate(state.doc);
+                const sourceBefore = Y.encodeStateAsUpdate(source.ydoc);
+                const positions = history.positions();
+                globalUndoRouter.redo();
+                if (requiredType) {
+                    expect(globalUndoRouter.lastAsyncOutcome?.status).toBe("refused");
+                    expect(Y.encodeStateAsUpdate(state.doc)).toEqual(before);
+                    expect(history.positions()).toEqual(positions);
+                    expect(history.page.items.length).toBe(0);
+                    expect(listTables(state.doc)).toEqual([]);
+                    expect(getGridRegistry(state.doc).size).toBe(0);
+                } else {
+                    expect(history.positions()).toEqual([1, 0, 1, 0, 0, 0]);
+                    expect(listTables(state.doc).map(entry => entry.tableId)).toEqual([destinationTable.tableId]);
+                    expect(getGridRegistry(state.doc).get(destinationGrid)?.toJSON()).toEqual(savedGrid);
+                    expect(history.page.items.at(0)!.id).toBe(placement);
+                }
+                expect(Y.encodeStateAsUpdate(source.ydoc)).toEqual(sourceBefore);
+            } finally {
+                history.dispose();
+            }
+        });
+    }
+
+    for (const changeCatalog of [false, true]) {
+        it(`Calendar allocation revalidates after source acquisition: changed=${changeCatalog}`, async () => {
+            const source = Project.createInstance(`calendar-acquisition-${changeCatalog}`);
+            const enumSql = "CREATE TYPE calendar_state AS ENUM ('Open', 'Closed')";
+            createSqlCatalogObject(source.ydoc, "enum", enumSql);
+            const destinationEnum = createSqlCatalogObject(state.doc, "enum", enumSql);
+            const calendar = createCalendar(source, {
+                name: "Delayed Calendar",
+                query: "SELECT 'event' AS id, CAST('Open' AS calendar_state) AS title",
+                roleTitle: "title",
+            });
+            const copied = copySingleComponent(source.ydoc, undefined, calendar);
+            const history = captureComponentPasteHistory();
+            let entered!: () => void;
+            let release!: () => void;
+            const acquired = new Promise<void>(resolve => entered = resolve);
+            const gate = new Promise<void>(resolve => release = resolve);
+            sourceTransport.acquire = async () => {
+                entered();
+                await gate;
+                return undefined;
+            };
+            const additions: string[] = [];
+            const observe: Parameters<typeof history.project.calendars.observe>[0] = event => {
+                for (const [key, change] of event.changes.keys) {
+                    if (change.action === "add") additions.push(key);
+                }
+            };
+            history.project.calendars.observe(observe);
+            const pasting = pasteAndCapture(copied.encoded, copied.text);
+            try {
+                // This resolves only after the actual importer completed and the
+                // handler entered the awaited source-acquisition operation.
+                await acquired;
+                expect(history.project.calendars.size).toBe(0);
+                expect(history.page.items.length).toBe(0);
+                if (changeCatalog) {
+                    replaceSqlCatalogSource(
+                        state.doc,
+                        destinationEnum,
+                        "CREATE TYPE calendar_state AS ENUM ('Closed', 'Open')",
+                    );
+                }
+                const before = Y.encodeStateAsUpdate(state.doc);
+                const positions = history.positions();
+                release();
+                const detail = await pasting;
+                if (changeCatalog) {
+                    expect(detail).toBeUndefined();
+                    expect(additions).toEqual([]);
+                    expect(Y.encodeStateAsUpdate(state.doc)).toEqual(before);
+                    expect(history.positions()).toEqual(positions);
+                    expect(history.project.calendars.size).toBe(0);
+                    expect(history.page.items.length).toBe(0);
+                } else {
+                    expect(detail).toBeDefined();
+                    expect(additions).toHaveLength(1);
+                    expect(history.project.calendars.size).toBe(1);
+                    expect(history.page.items.length).toBe(1);
+                    expect(history.positions()).toEqual([1, 0, 1, 0, 0, 0]);
+                }
+                expect(listTables(state.doc)).toEqual([]);
+                expect(getGridRegistry(state.doc).size).toBe(0);
+            } finally {
+                release();
+                await pasting;
+                history.project.calendars.unobserve(observe);
+                history.dispose();
             }
         });
     }

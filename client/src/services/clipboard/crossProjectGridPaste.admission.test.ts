@@ -101,7 +101,7 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
             const observeTables = (event: Y.YMapEvent<unknown>) => {
                 tablePublications += [...event.changes.keys.values()].filter(change => change.action === "add").length;
             };
-            const observeGrids = (event: Y.YMapEvent<unknown>) => {
+            const observeGrids = (event: Y.YMapEvent<Y.Map<unknown>>) => {
                 gridPublications += [...event.changes.keys.values()].filter(change => change.action === "add").length;
             };
             tableRegistry.observe(observeTables);
@@ -482,7 +482,7 @@ describe("cross-Project Copy final destination admission", { timeout: 60000 }, (
             snapshots: {},
             requestedSourceTableIds: [],
             catalog: catalog.snapshot,
-            additionalInspections: [{ id: "calendar", sql: "SELECT 'Open'::task_state AS state" }],
+            additionalInspections: [{ id: "calendar", kind: "calendar", sql: "SELECT 'Open'::task_state AS state" }],
             copyData: false,
             deferCompletion: true,
             isDestinationCurrent: () => true,

@@ -38,6 +38,45 @@ function enumDeclaration(source: string): { name: string; labels: string[]; } | 
     }
 }
 
+interface CatalogEnumDeclaration {
+    objectId: string;
+    name: string;
+    labels: string[];
+}
+
+/** A duplicated SQL name cannot provide an unambiguous required type. */
+function uniqueEnumDeclarations(catalog: SqlCatalogSnapshot): Map<string, CatalogEnumDeclaration | undefined> {
+    const declarations = new Map<string, CatalogEnumDeclaration | undefined>();
+    for (const object of catalog.objects) {
+        const declaration = enumDeclaration(object.source);
+        if (!declaration) continue;
+        declarations.set(
+            declaration.name,
+            declarations.has(declaration.name) ? undefined : { objectId: object.id, ...declaration },
+        );
+    }
+    return declarations;
+}
+
+function matchesEnum(declaration: CatalogEnumDeclaration | undefined, expected: SqlEnumMetadata): boolean {
+    return declaration?.name === expected.name
+        && declaration.labels.length === expected.labels.length
+        && declaration.labels.every((label, index) => label === expected.labels[index]);
+}
+
+function assertRequiredEnums(catalog: SqlCatalogSnapshot, required: readonly SqlEnumMetadata[]): void {
+    const actual = uniqueEnumDeclarations(catalog);
+    for (const expected of required) {
+        if (matchesEnum(actual.get(expected.name), expected)) continue;
+        const reason = actual.has(expected.name) && actual.get(expected.name) === undefined
+            ? "ambiguous"
+            : "missing or incompatible";
+        throw new StructuralEnumCompatibilityError(
+            `Required ENUM type "${expected.name}" is ${reason} in the destination Project.`,
+        );
+    }
+}
+
 export interface StructuralEnumAdmission {
     readonly sourceDescriptor: SqlEnvironmentDescriptor;
     readonly requiredEnums: readonly SqlEnumMetadata[];
@@ -70,17 +109,13 @@ export function structuralEnumAdmissionStillCompatible(
         )
     ) return false;
 
-    const sourceEnums = new Map(source.catalog.objects.map(object => [object.id, enumDeclaration(object.source)]));
-    const destinationEnums = destination.catalog.objects.map(object => enumDeclaration(object.source));
+    const sourceEnums = uniqueEnumDeclarations(source.catalog);
+    const destinationEnums = uniqueEnumDeclarations(destination.catalog);
     return admission.requiredEnums.every(expected => {
-        const original = sourceEnums.get(expected.objectId);
-        const target = destinationEnums.find(candidate => candidate?.name === expected.name);
-        return original?.name === expected.name
-            && original.labels.length === expected.labels.length
-            && original.labels.every((label, index) => label === expected.labels[index])
-            && target !== undefined
-            && target.labels.length === expected.labels.length
-            && target.labels.every((label, index) => label === expected.labels[index]);
+        const original = sourceEnums.get(expected.name);
+        return original?.objectId === expected.objectId
+            && matchesEnum(original, expected)
+            && matchesEnum(destinationEnums.get(expected.name), expected);
     });
 }
 
@@ -131,25 +166,18 @@ export function portableStructuralEnumsStillCompatible(
     if (currentSourceDoc) {
         const current = readSqlCatalog(currentSourceDoc.guid, currentSourceDoc);
         if (current.status !== "ready") return false;
-        const currentEnums = new Map(
-            current.snapshot.objects.map(object => [object.id, enumDeclaration(object.source)]),
-        );
+        const currentEnums = uniqueEnumDeclarations(current.snapshot);
         if (
             admission.requiredEnums.some(expected => {
-                const found = currentEnums.get(expected.objectId);
-                return found?.name !== expected.name || found.labels.length !== expected.labels.length
-                    || found.labels.some((label, index) => label !== expected.labels[index]);
+                const found = currentEnums.get(expected.name);
+                return found?.objectId !== expected.objectId || !matchesEnum(found, expected);
             })
         ) return false;
     }
     const destination = readSqlCatalog(destinationDoc.guid, destinationDoc);
     if (destination.status !== "ready") return false;
-    const actual = destination.snapshot.objects.map(object => enumDeclaration(object.source));
-    return admission.requiredEnums.every(expected => {
-        const found = actual.find(candidate => candidate?.name === expected.name);
-        return found !== undefined && found.labels.length === expected.labels.length
-            && found.labels.every((label, index) => label === expected.labels[index]);
-    });
+    const actual = uniqueEnumDeclarations(destination.snapshot);
+    return admission.requiredEnums.every(expected => matchesEnum(actual.get(expected.name), expected));
 }
 
 function records(doc: Y.Doc, tableId: string): SqlTableSnapshot["records"] {
@@ -211,18 +239,7 @@ export async function assertStructuralEnumCompatibility(
     }
     const required = sourceResult.requiredEnums;
     if (sourceDoc !== destinationDoc) {
-        const actual = destination.catalog.objects.map(object => enumDeclaration(object.source));
-        for (const expected of required) {
-            const found = actual.find(item => item?.name === expected.name);
-            if (
-                !found || found.labels.length !== expected.labels.length
-                || found.labels.some((label, index) => label !== expected.labels[index])
-            ) {
-                throw new StructuralEnumCompatibilityError(
-                    `Required ENUM type "${expected.name}" is missing or incompatible in the destination Project.`,
-                );
-            }
-        }
+        assertRequiredEnums(destination.catalog, required);
     }
     const latestSource = captureStructuralSqlSnapshot(sourceDoc);
     const latestDestination = captureStructuralSqlSnapshot(destinationDoc);
@@ -257,18 +274,7 @@ export async function assertPortableStructuralEnumCompatibility(
             sourceResult.diagnostics[0]?.message ?? "Structural transfer dependency evidence is unresolved or invalid.",
         );
     }
-    const actual = destination.catalog.objects.map(object => enumDeclaration(object.source));
-    for (const expected of sourceResult.requiredEnums) {
-        const found = actual.find(item => item?.name === expected.name);
-        if (
-            !found || found.labels.length !== expected.labels.length
-            || found.labels.some((label, index) => label !== expected.labels[index])
-        ) {
-            throw new StructuralEnumCompatibilityError(
-                `Required ENUM type "${expected.name}" is missing or incompatible in the destination Project.`,
-            );
-        }
-    }
+    assertRequiredEnums(destination.catalog, sourceResult.requiredEnums);
     const latestDestination = captureStructuralSqlSnapshot(destinationDoc);
     if (latestDestination.catalog.revision !== destination.catalog.revision) {
         throw new StructuralEnumCompatibilityError(

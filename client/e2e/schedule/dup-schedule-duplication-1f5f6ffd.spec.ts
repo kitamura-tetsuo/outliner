@@ -3,6 +3,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import { expect, test } from "@playwright/test";
+import { readGridProjectState } from "../utils/crossProjectGridHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 // Schedule duplication (issue #5102) extends the Grid/Table dependency-aware
@@ -31,9 +32,18 @@ test.describe("Schedule duplication", () => {
         await expect(tableBlock.locator("[data-testid='yjs-table-toggle-grid']")).toBeVisible();
 
         const projectSegment = new URL(page.url()).pathname.split("/")[1];
+        const sourceTable = (await readGridProjectState(page)).tables[0];
+        expect(sourceTable.schema).toContain("CREATE TABLE tasks");
 
         // Create a Schedule rule targeting that table, from the project schedules page.
-        await page.goto(`/${projectSegment}/-/schedules`);
+        // Keep the Table's live subdocument while its initial persistence settles;
+        // a hard reload immediately after creation can leave only its registry shell.
+        const sourceLink = tableBlock.getByTestId("yjs-grid-source-table-link");
+        await expect(sourceLink).toBeVisible({ timeout: 30000 });
+        await sourceLink.click();
+        await page.getByRole("link", { name: "All schedules in this project" }).click();
+        expect((await readGridProjectState(page)).tables.find(table => table.id === sourceTable.id)?.schema)
+            .toBe(sourceTable.schema);
         await page.getByTestId("project-schedule-create").click();
         await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
 
@@ -66,7 +76,8 @@ test.describe("Schedule duplication", () => {
 
         // The original rule is untouched and still lists alongside its copy:
         // one Schedules Manager row each.
-        await page.goto(`/${projectSegment}/-/schedules`);
+        await page.getByTestId(`object-open-${sourceTable.id}`).click();
+        await page.getByRole("link", { name: "All schedules in this project" }).click();
         const list = page.getByTestId("project-schedule-list");
         await expect(list).toBeVisible({ timeout: 30000 });
         await expect(list.locator("[data-testid='schedule-row']")).toHaveCount(2);

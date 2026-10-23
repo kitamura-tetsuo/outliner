@@ -228,6 +228,11 @@ interface RelationReference {
     readonly name: string;
 }
 
+/** Inventory physical inputs for hydration; semantic admission still compiles them. */
+export function structuralSqlRelationReferences(sql: string): readonly RelationReference[] {
+    return collectReferencedTables(parseOne(sql));
+}
+
 /** Collect physical relations while respecting names introduced by WITH. */
 function collectReferencedTables(statement: AstNode): RelationReference[] {
     const tables: RelationReference[] = [];
@@ -278,6 +283,15 @@ function collectReferencedTables(statement: AstNode): RelationReference[] {
             }
             return;
         }
+        const foreignTarget = isNode(value.Constraint) && isNode(value.Constraint.pktable)
+            ? value.Constraint.pktable
+            : undefined;
+        if (foreignTarget && typeof foreignTarget.relname === "string") {
+            tables.push({
+                schema: typeof foreignTarget.schemaname === "string" ? foreignTarget.schemaname : undefined,
+                name: foreignTarget.relname,
+            });
+        }
         if (isNode(value.RangeVar) && typeof value.RangeVar.relname === "string") {
             if (value.RangeVar === createTarget) {
                 Object.values(value).forEach(child => walk(child, visibleCtes));
@@ -325,12 +339,13 @@ async function resetDatabase(db: PGlite): Promise<void> {
     await db.exec("CREATE SCHEMA public; SET search_path TO public");
 }
 
-// Type resolution and compilation use distinct clean sessions. Once both are
-// warm, later analyses alternate between them without another WASM cold start.
-const MAX_DEFAULT_COMPILERS = 2;
-const idleDefaultCompilers: PGlite[] = [];
-const defaultCompilerWaiters: ((db: PGlite) => void)[] = [];
-let defaultCompilerCount = 0;
+// Scoped analysis releases every lease before returning. Keep its short-lived
+// sessions warm without pooling executable environments whose callers may
+// retain them indefinitely (for example, independent query sessions).
+const MAX_ANALYSIS_COMPILERS = 2;
+const idleAnalysisCompilers: PGlite[] = [];
+const analysisCompilerWaiters: ((db: PGlite) => void)[] = [];
+let analysisCompilerCount = 0;
 
 async function createDefaultCompiler(): Promise<PGlite> {
     const { PGlite } = await import("@electric-sql/pglite");
@@ -338,26 +353,31 @@ async function createDefaultCompiler(): Promise<PGlite> {
 }
 
 async function defaultLease(): Promise<SqlEnvironmentLease> {
+    const db = await createDefaultCompiler();
+    return { db, release: () => db.close() };
+}
+
+async function analysisLease(): Promise<SqlEnvironmentLease> {
     let db: PGlite | undefined;
-    if (defaultCompilerCount < MAX_DEFAULT_COMPILERS) {
-        defaultCompilerCount++;
+    if (analysisCompilerCount < MAX_ANALYSIS_COMPILERS) {
+        analysisCompilerCount++;
         try {
             db = await createDefaultCompiler();
         } catch (error) {
-            defaultCompilerCount--;
+            analysisCompilerCount--;
             throw error;
         }
     } else {
-        db = idleDefaultCompilers.shift();
+        db = idleAnalysisCompilers.shift();
     }
-    db ??= await new Promise<PGlite>(resolve => defaultCompilerWaiters.push(resolve));
+    db ??= await new Promise<PGlite>(resolve => analysisCompilerWaiters.push(resolve));
     let released = false;
     const release = () => {
         if (released) return;
         released = true;
-        const waiter = defaultCompilerWaiters.shift();
+        const waiter = analysisCompilerWaiters.shift();
         if (waiter) waiter(db);
-        else idleDefaultCompilers.push(db);
+        else idleAnalysisCompilers.push(db);
     };
     try {
         return { db, release };
@@ -680,6 +700,7 @@ export async function compileSqlEnvironment(
         { objectId, identity: `"public".${quotedIdentifier(name)}` },
     ]));
     const tableOwnerByName = new Map<string, string>();
+    const tableDependencies = new Map<string, readonly RelationReference[]>();
     for (const table of captured.tables) {
         try {
             const statement = parseOne(table.schema);
@@ -692,8 +713,37 @@ export async function compileSqlEnvironment(
             if (owner) throw new Error(`Duplicate requested Table SQL name "${tableName}" (${owner}, ${table.id})`);
             if (create.if_not_exists === true) throw new Error("CREATE TABLE IF NOT EXISTS is not supported");
             tableOwnerByName.set(tableName, table.id);
+            tableDependencies.set(table.id, collectReferencedTables(statement));
         } catch (error) {
             diagnostics.push({ kind: "schema", objectId: table.id, message: messageOf(error) });
+        }
+    }
+    // A scoped query discovers the child before its foreign-key target. Keep
+    // descriptor order intact while creating and filling physical inputs in
+    // dependency order, so PostgreSQL can validate their real constraints.
+    const tablesById = new Map(captured.tables.map(table => [table.id, table]));
+    const orderedTables: SqlTableSnapshot[] = [];
+    const completedTables = new Set<string>();
+    const visitingTables = new Set<string>();
+    const orderTable = (table: SqlTableSnapshot): void => {
+        if (completedTables.has(table.id)) return;
+        if (visitingTables.has(table.id)) throw new Error("Cyclic Table schema dependencies are not supported");
+        visitingTables.add(table.id);
+        for (const relation of tableDependencies.get(table.id) ?? []) {
+            if (relation.schema !== undefined && relation.schema !== "public") continue;
+            const dependencyId = tableOwnerByName.get(relation.name);
+            if (dependencyId && dependencyId !== table.id) orderTable(tablesById.get(dependencyId)!);
+        }
+        visitingTables.delete(table.id);
+        completedTables.add(table.id);
+        orderedTables.push(table);
+    };
+    for (const table of captured.tables) {
+        try {
+            orderTable(table);
+        } catch (error) {
+            diagnostics.push({ kind: "schema", objectId: table.id, message: messageOf(error) });
+            break;
         }
     }
     if (diagnostics.length > 0) {
@@ -730,7 +780,7 @@ export async function compileSqlEnvironment(
             }
         }
 
-        for (const table of captured.tables) {
+        for (const table of orderedTables) {
             let tableName: string | undefined;
             try {
                 const statement = parseOne(table.schema);
@@ -849,6 +899,7 @@ export async function analyzeScopedSqlEnumDependencies(
     relevantIds: ReadonlySet<string>,
     options: SqlEnvironmentCompilerOptions = {},
 ): Promise<ScopedSqlEnumAnalysis> {
+    const analysisOptions = { acquire: options.acquire ?? analysisLease };
     const captured = captureInput(input);
     const descriptor = descriptorFor(captured);
     const diagnostics: SqlEnvironmentDiagnostic[] = [];
@@ -931,7 +982,7 @@ export async function analyzeScopedSqlEnumDependencies(
         }
     }
     const selectedCatalog = new Map<string, typeof captured.catalog.objects[number]>();
-    const lease = await (options.acquire ?? defaultLease)();
+    const lease = await analysisOptions.acquire();
     try {
         await resetDatabase(lease.db);
         for (const reference of typeReferences) {
@@ -969,7 +1020,7 @@ export async function analyzeScopedSqlEnumDependencies(
         tables: Object.freeze([...selectedTables.values()]),
         inspections: Object.freeze(selectedInspections),
     });
-    const result = await compileSqlEnvironment(scopedInput, options);
+    const result = await compileSqlEnvironment(scopedInput, analysisOptions);
     if (result.status === "failed") {
         return { status: "incomplete", descriptor, diagnostics: result.diagnostics };
     }

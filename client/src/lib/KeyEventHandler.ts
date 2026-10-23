@@ -3241,8 +3241,9 @@ export class KeyEventHandler {
                             isDestinationCurrent: () =>
                                 destinationCurrent() && generalStore.project?.ydoc === destinationDoc,
                         });
+                        if (cloneResult === undefined) return;
                         pendingPaste = cloneResult;
-                        if (cloneResult === undefined || !destinationCurrent()) return;
+                        if (!destinationCurrent()) return;
                         if (generalStore.undoManager) {
                             const { portableStructuralEnumsStillCompatible } = await import(
                                 "../services/yjstable/structuralEnumGuard"

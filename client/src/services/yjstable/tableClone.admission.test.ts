@@ -133,17 +133,18 @@ describe("Table import binding admission", () => {
             registry.observe(() => {
                 const first = listTables(destination.ydoc).find(table => table.sqlName === "a");
                 if (!first || firstId) return;
-                firstId = first.tableId;
+                const tableId = first.tableId;
+                firstId = tableId;
                 queueMicrotask(() => {
                     Y.applyUpdate(peer, Y.encodeStateAsUpdate(destination.ydoc));
                     replaceSqlCatalogSource(peer, enumId, "CREATE TYPE choice AS ENUM ('b', 'a')");
                     Y.applyUpdate(destination.ydoc, Y.encodeStateAsUpdate(peer), "peer");
                     if (replaceFirst) {
-                        removeTableWithPolicy(destination, firstId!, "keep-references");
-                        createTable(destination.ydoc, "Peer a", "a", { tableId: firstId }, h => {
+                        removeTableWithPolicy(destination, tableId, "keep-references");
+                        createTable(destination.ydoc, "Peer a", "a", { tableId }, h => {
                             h.schemaText.insert(0, "CREATE TABLE a (id TEXT PRIMARY KEY)");
                         });
-                        replacement = registry.get(firstId);
+                        replacement = registry.get(tableId);
                     }
                 });
             });
