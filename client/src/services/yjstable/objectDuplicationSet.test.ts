@@ -4,13 +4,24 @@
 // unlike `duplicateObjects`/`previewObjectDuplication`, which this file does
 // not re-test (see objectDuplication.test.ts / objectDuplication.calendar.test.ts).
 import { Project } from "$shared/app-schema";
-import { describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { type CalendarSettings, createCalendar, getCalendar } from "../calendar/calendarService";
 import { createScheduleRule, type ScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { duplicateObjectSet, previewObjectSetDuplication } from "./objectDuplication";
+import { resetPgliteForTests } from "./pgliteService";
+import { createProjectSelectSession } from "./projectSelectSession";
 import { addRecord, createTable, getTableHandles, listTables } from "./tableDocs";
+import { resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
+
+const localConnector: TableDocConnector = async () => ({
+    waitForInitialSync: async () => ({ synced: true }),
+    dispose: () => {},
+});
+
+afterEach(async () => await resetTableEngineForTests());
+afterAll(async () => await resetPgliteForTests());
 
 function table(doc: Y.Doc, name: string, sqlName: string): string {
     return createTable(doc, name, sqlName, handles => {
@@ -111,6 +122,38 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         expect(getGridHandles(doc, copiedGridId)?.entry.get("query")).toBe(
             "SELECT tasks.id AS id FROM (tasks_2 JOIN notes_2 ON tasks_2.id = notes_2.task_id) AS tasks",
         );
+    });
+
+    it("preserves a JOIN USING alias through duplication and copied query execution", async () => {
+        const doc = new Y.Doc({ guid: "join-using-alias-duplication" });
+        const tasks = table(doc, "Tasks", "tasks");
+        const a = table(doc, "A", "a");
+        const b = table(doc, "B", "b");
+        addRecord(getTableHandles(doc, tasks)!, {}, "2");
+        addRecord(getTableHandles(doc, a)!, {}, "1");
+        addRecord(getTableHandles(doc, b)!, {}, "1");
+        const query = "SELECT tasks.id AS id FROM tasks WHERE EXISTS ("
+            + "SELECT tasks.id AS id FROM a JOIN b USING (id) AS tasks WHERE tasks.id = '1')";
+        const gridId = createGrid(doc, { name: "Using alias", query });
+
+        const result = await duplicateObjectSet(doc, doc, [
+            { type: "grid", id: gridId },
+            { type: "table", id: tasks },
+            { type: "table", id: a },
+            { type: "table", id: b },
+        ], { copyTableData: true });
+        const copiedQuery = String(getGridHandles(doc, result.idMap.get(`grid:${gridId}`)!)?.entry.get("query"));
+        expect(copiedQuery).toBe(
+            "SELECT tasks_2.id AS id FROM tasks_2 WHERE EXISTS ("
+                + "SELECT tasks.id AS id FROM a_2 JOIN b_2 USING (id) AS tasks WHERE tasks.id = '1')",
+        );
+
+        const session = createProjectSelectSession({ projectDoc: doc, query: copiedQuery, connect: localConnector });
+        try {
+            expect((await session.runNow())?.rows).toEqual([{ id: "2" }]);
+        } finally {
+            await session.dispose();
+        }
     });
 
     it("rewrites a selected Schedule's target and SQL references to the copied Table", async () => {

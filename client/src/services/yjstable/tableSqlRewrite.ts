@@ -267,6 +267,12 @@ export function rewriteTableQuerySql(
             walkFrom(value.JoinExpr.rarg, inputScope);
             walkExpression(value.JoinExpr.quals, inputScope);
             if (aliasName !== undefined) scope.bindings.set(aliasName, {});
+            const usingAlias = value.JoinExpr.join_using_alias;
+            if (node(usingAlias) && typeof usingAlias.aliasname === "string") {
+                // USING aliases name only the merged columns and do not hide
+                // either join input from enclosing expressions.
+                scope.bindings.set(usingAlias.aliasname, {});
+            }
             return;
         }
         if (value.RangeFunction || value.RangeTableFunc || value.RangeTableSample) {
