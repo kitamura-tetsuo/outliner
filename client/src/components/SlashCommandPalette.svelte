@@ -1,5 +1,20 @@
 <script lang="ts">
+import { onMount } from "svelte";
 import { commandPaletteStore, type CommandType } from "../stores/CommandPaletteStore.svelte";
+import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
+
+onMount(() => {
+    const refresh = () => commandPaletteStore.schedulePositionUpdate();
+    const unsubscribe = editorOverlayStore.subscribe(refresh);
+    window.addEventListener("resize", refresh);
+    document.addEventListener("scroll", refresh, true);
+    return () => {
+        unsubscribe();
+        window.removeEventListener("resize", refresh);
+        document.removeEventListener("scroll", refresh, true);
+        if (commandPaletteStore.isVisible) commandPaletteStore.hide();
+    };
+});
 
 function handleClick(type: CommandType) {
     commandPaletteStore.insert(type);
@@ -13,7 +28,7 @@ function handleClick(type: CommandType) {
     data-is-visible={commandPaletteStore.isVisible}
     data-query={commandPaletteStore.query}
     data-visible-count={commandPaletteStore.visible.length}
-    style={`position:absolute;top:${commandPaletteStore.position.top}px;left:${commandPaletteStore.position.left}px;z-index:1000;display:${commandPaletteStore.isVisible ? 'block' : 'none'};`}
+    style={`position:absolute;top:${commandPaletteStore.position.top}px;left:${commandPaletteStore.position.left}px;z-index:1000;display:${commandPaletteStore.isVisible && commandPaletteStore.hasValidPosition ? 'block' : 'none'};`}
 >
     <ul id="slash-command-listbox" role="listbox" aria-label="Command suggestions">
         {#each commandPaletteStore.visible as cmd, i (cmd.type)}

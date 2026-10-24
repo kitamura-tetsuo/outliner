@@ -880,8 +880,7 @@ export class KeyEventHandler {
 
             if (shouldShow && !commandPaletteStore.isVisible) {
                 try {
-                    const pos = commandPaletteStore.getCursorScreenPosition();
-                    commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
+                    commandPaletteStore.show(false);
                 } catch (_e) {
                     logger.error(_e);
                 }
@@ -1009,8 +1008,7 @@ export class KeyEventHandler {
                 }
 
                 if (!preventPalette) {
-                    const pos = commandPaletteStore.getCursorScreenPosition();
-                    commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
+                    commandPaletteStore.show(false);
                     // Let Slash input process normally (query accumulates in subsequent Input)
                 }
             } catch (e) {
@@ -1599,14 +1597,12 @@ export class KeyEventHandler {
                         // another item would otherwise keep offsets that do not belong to this
                         // slash. When handleKeyDown did run it recorded the same values, so
                         // re-showing is a no-op.
-                        const pos = commandPaletteStore.getCursorScreenPosition();
-                        commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
+                        commandPaletteStore.show(false);
                     }
                 }
             } else {
                 // Show command palette if no cursor
-                const pos = commandPaletteStore.getCursorScreenPosition();
-                commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
+                commandPaletteStore.show(false);
             }
         } else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
             // Hide command palette if [ is entered (start of internal link)
