@@ -60,10 +60,50 @@ async function localEditorState(page: Page) {
 }
 
 async function attachJson(testInfo: TestInfo, name: string, value: unknown) {
+    const serializableValue = value === undefined ? { status: "unavailable" } : value;
     await testInfo.attach(`${name}.json`, {
-        body: Buffer.from(JSON.stringify(value, undefined, 2)),
+        body: Buffer.from(JSON.stringify(serializableValue, undefined, 2)),
         contentType: "application/json",
     });
+}
+
+function errorEvidence(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : { name: "NonError", message: String(error) };
+}
+
+function rethrowWithEvidenceFailure(primaryError: unknown, attachmentError: unknown): never {
+    if (primaryError instanceof Error) {
+        Object.defineProperty(primaryError, "evidenceAttachmentError", {
+            configurable: true,
+            enumerable: true,
+            value: errorEvidence(attachmentError),
+        });
+        throw primaryError;
+    }
+    throw new AggregateError(
+        [primaryError, attachmentError],
+        "The primary failure was not an Error and its evidence could not be attached",
+    );
+}
+
+class CaretStateMismatchError extends Error {
+    constructor(
+        readonly actual: Awaited<ReturnType<typeof localEditorState>>,
+        readonly expected: ReturnType<typeof titleEndCaretState>,
+        options: ErrorOptions,
+    ) {
+        super("The observed caret state does not match the required title-end prerequisite", options);
+        this.name = "CaretStateMismatchError";
+    }
+}
+
+class ClipboardMismatchError extends Error {
+    constructor(readonly actual: string, readonly expected: string, options?: ErrorOptions) {
+        super(`The actual clipboard does not equal the required clipboard text`, options);
+        this.name = "ClipboardMismatchError";
+    }
 }
 
 async function expectTitleEndCaret(
@@ -75,12 +115,47 @@ async function expectTitleEndCaret(
     timeout = 10_000,
 ) {
     let observation: Awaited<ReturnType<typeof localEditorState>> | undefined;
+    let observationError: unknown;
+    let assertionError: unknown;
     try {
-        await expect.poll(async () => observation = await localEditorState(page), { timeout })
+        await expect.poll(async () => {
+            try {
+                observation = await localEditorState(page);
+                observationError = undefined;
+                return observation;
+            } catch (error) {
+                observation = undefined;
+                observationError = error;
+                throw error;
+            }
+        }, { timeout })
             .toEqual(titleEndCaretState(titleId, titleLength));
-    } finally {
-        await attachJson(testInfo, evidenceName, observation);
+    } catch (error) {
+        assertionError = error;
     }
+
+    const evidence = observation === undefined
+        ? { status: "unavailable", error: errorEvidence(observationError ?? assertionError) }
+        : { status: "observed", observation };
+    try {
+        await attachJson(testInfo, evidenceName, evidence);
+    } catch (attachmentError) {
+        if (assertionError !== undefined) {
+            rethrowWithEvidenceFailure(assertionError, attachmentError);
+        }
+        throw attachmentError;
+    }
+
+    if (assertionError !== undefined) {
+        if (observation === undefined || observationError !== undefined) throw assertionError;
+        throw new CaretStateMismatchError(
+            observation,
+            titleEndCaretState(titleId, titleLength),
+            { cause: assertionError },
+        );
+    }
+
+    return observation!;
 }
 
 function titleEndCaretState(titleId: string, titleLength: number) {
@@ -102,8 +177,20 @@ async function selectThreeBodyLines(
 ) {
     for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowDown");
     let observation: Awaited<ReturnType<typeof localEditorState>> | undefined;
+    let observationError: unknown;
+    let assertionError: unknown;
     try {
-        await expect.poll(async () => observation = await localEditorState(page), { timeout: 10_000 }).toMatchObject({
+        await expect.poll(async () => {
+            try {
+                observation = await localEditorState(page);
+                observationError = undefined;
+                return observation;
+            } catch (error) {
+                observation = undefined;
+                observationError = error;
+                throw error;
+            }
+        }, { timeout: 10_000 }).toMatchObject({
             selections: [{
                 startItemId: titleId,
                 startOffset: titleLength,
@@ -114,9 +201,24 @@ async function selectThreeBodyLines(
             editorFocused: true,
             selectedText: EXPECTED_CLIPBOARD,
         });
-    } finally {
-        await attachJson(testInfo, "final-selection", observation);
+    } catch (error) {
+        assertionError = error;
     }
+
+    const evidence = observation === undefined
+        ? { status: "unavailable", error: errorEvidence(observationError ?? assertionError) }
+        : { status: "observed", observation };
+    try {
+        await attachJson(testInfo, "final-selection", evidence);
+    } catch (attachmentError) {
+        if (assertionError !== undefined) {
+            rethrowWithEvidenceFailure(assertionError, attachmentError);
+        }
+        throw attachmentError;
+    }
+
+    if (assertionError !== undefined) throw assertionError;
+    return observation!;
 }
 
 async function expectActualClipboard(
@@ -124,9 +226,25 @@ async function expectActualClipboard(
     testInfo: TestInfo,
     evidenceName: string,
 ) {
-    const actualClipboard = await page.evaluate(() => navigator.clipboard.readText());
-    await attachJson(testInfo, evidenceName, { actualClipboard });
-    expect(actualClipboard).toBe(EXPECTED_CLIPBOARD);
+    let actualClipboard: string;
+    try {
+        actualClipboard = await page.evaluate(() => navigator.clipboard.readText());
+    } catch (readError) {
+        try {
+            await attachJson(testInfo, evidenceName, { status: "unavailable", error: errorEvidence(readError) });
+        } catch (attachmentError) {
+            rethrowWithEvidenceFailure(readError, attachmentError);
+        }
+        throw readError;
+    }
+
+    await attachJson(testInfo, evidenceName, { status: "observed", actualClipboard });
+    try {
+        expect(actualClipboard).toBe(EXPECTED_CLIPBOARD);
+    } catch (error) {
+        throw new ClipboardMismatchError(actualClipboard, EXPECTED_CLIPBOARD, { cause: error });
+    }
+    return actualClipboard;
 }
 
 test.use({ trace: "retain-on-failure", screenshot: "only-on-failure" });
@@ -178,9 +296,15 @@ test.describe("Ctrl+C copies cross-item selection", () => {
         await page.keyboard.press("Home");
         await expect.poll(() => localEditorState(page), { timeout: 10_000 })
             .toEqual(titleEndCaretState(titleId, 0));
-        await expect(
-            expectTitleEndCaret(page, titleId, pageName.length, test.info(), "rejected-wrong-origin", 1_000),
-        ).rejects.toThrow();
+        let rejection: unknown;
+        try {
+            await expectTitleEndCaret(page, titleId, pageName.length, test.info(), "rejected-wrong-origin", 1_000);
+        } catch (error) {
+            rejection = error;
+        }
+        expect(rejection).toBeInstanceOf(CaretStateMismatchError);
+        expect((rejection as CaretStateMismatchError).actual).toEqual(titleEndCaretState(titleId, 0));
+        expect((rejection as CaretStateMismatchError).expected).toEqual(titleEndCaretState(titleId, pageName.length));
         const actualClipboard = await page.evaluate(() => navigator.clipboard.readText());
         await attachJson(test.info(), "wrong-origin-clipboard", { actualClipboard });
         expect(actualClipboard).toBe(sentinel);
@@ -198,6 +322,45 @@ test.describe("Ctrl+C copies cross-item selection", () => {
         const sentinel = `no-op-copy-${crypto.randomUUID()}`;
         await page.evaluate(value => navigator.clipboard.writeText(value), sentinel);
         expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sentinel);
-        await expect(expectActualClipboard(page, test.info(), "rejected-no-op-clipboard")).rejects.toThrow();
+        let rejection: unknown;
+        try {
+            await expectActualClipboard(page, test.info(), "rejected-no-op-clipboard");
+        } catch (error) {
+            rejection = error;
+        }
+        expect(rejection).toBeInstanceOf(ClipboardMismatchError);
+        expect((rejection as ClipboardMismatchError).actual).toBe(sentinel);
+        expect((rejection as ClipboardMismatchError).expected).toBe(EXPECTED_CLIPBOARD);
+    });
+
+    test("does not classify unavailable observations as expected control mismatches", async ({ page }) => {
+        const testInfo = test.info();
+        await page.close();
+
+        let caretFailure: unknown;
+        try {
+            await expectTitleEndCaret(page, "unavailable-title", 1, testInfo, "unavailable-caret", 100);
+        } catch (error) {
+            caretFailure = error;
+        }
+        expect(caretFailure).toBeInstanceOf(Error);
+        expect(caretFailure).not.toBeInstanceOf(CaretStateMismatchError);
+
+        let clipboardFailure: unknown;
+        try {
+            await expectActualClipboard(page, testInfo, "unavailable-clipboard");
+        } catch (error) {
+            clipboardFailure = error;
+        }
+        expect(clipboardFailure).toBeInstanceOf(Error);
+        expect(clipboardFailure).not.toBeInstanceOf(ClipboardMismatchError);
+
+        for (const name of ["unavailable-caret.json", "unavailable-clipboard.json"]) {
+            const attachment = testInfo.attachments.find(candidate => candidate.name === name);
+            expect(attachment?.body).toBeTruthy();
+            const evidence = JSON.parse(attachment!.body!.toString()) as { status: string; error?: unknown; };
+            expect(evidence.status).toBe("unavailable");
+            expect(evidence.error).toBeTruthy();
+        }
     });
 });
