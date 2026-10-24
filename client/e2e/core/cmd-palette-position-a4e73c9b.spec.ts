@@ -54,7 +54,7 @@ test.describe("slash command palette caret position", () => {
         await expectPaletteAtCaret(itemText);
     });
 
-    test("does not revive a palette closed while measurement is pending", async ({ page }, testInfo) => {
+    test("rejects a queued refresh after close and reopening on another target", async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["first", "second"]);
         const firstId = await TestHelpers.getItemIdByIndex(page, 1);
         const secondId = await TestHelpers.getItemIdByIndex(page, 2);
@@ -64,7 +64,19 @@ test.describe("slash command palette caret position", () => {
         await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${firstId}"] .item-text`);
         await page.keyboard.press("End");
         await page.keyboard.type("/");
-        await page.keyboard.press("Escape");
+        await expectPaletteAtCaret(firstText);
+
+        // The scroll listener starts an async refresh which cannot pass its
+        // Svelte tick until this browser task ends. Escape therefore closes
+        // the session while that production refresh is observably outstanding.
+        await page.evaluate(() => {
+            document.dispatchEvent(new Event("scroll"));
+            const textarea = document.activeElement;
+            if (!(textarea instanceof HTMLTextAreaElement)) {
+                throw new Error("Editor textarea is not focused");
+            }
+            textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        });
         await expect(page.locator(".slash-command-palette")).toBeHidden();
         await page.keyboard.type("x");
         await expect(firstText).toHaveText("first/x");
@@ -75,5 +87,30 @@ test.describe("slash command palette caret position", () => {
         await page.keyboard.type("/");
         await expectPaletteAtCaret(secondText);
         await expect(firstText).toHaveText("first/x");
+        await expect(secondText).toHaveText("second/");
+    });
+
+    test("settled unavailable target closes the session and releases input", async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["old target", "new target"]);
+        const firstId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondId = await TestHelpers.getItemIdByIndex(page, 2);
+        if (!firstId || !secondId) throw new Error("Seeded items not found");
+        const firstText = page.locator(`.outliner-item[data-item-id="${firstId}"] .item-text`);
+        const secondText = page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`);
+
+        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${firstId}"] .item-text`);
+        await page.keyboard.press("End");
+        await page.keyboard.type("/");
+        await expectPaletteAtCaret(firstText);
+
+        // Moving the sole local caret makes the recorded command target
+        // unavailable. The settled production refresh must end the session,
+        // rather than merely hiding its DOM while retaining interception.
+        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${secondId}"] .item-text`);
+        await expect(page.locator(".slash-command-palette")).toBeHidden();
+        await page.keyboard.press("End");
+        await page.keyboard.type("x");
+        await expect(secondText).toHaveText("new targetx");
+        await expect(firstText).toHaveText("old target/");
     });
 });
