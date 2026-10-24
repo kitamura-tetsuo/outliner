@@ -6,10 +6,13 @@ import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 onMount(() => {
     const refresh = () => commandPaletteStore.schedulePositionUpdate();
     const unsubscribe = editorOverlayStore.subscribe(refresh);
+    const resizeObserver = new ResizeObserver(refresh);
+    resizeObserver.observe(document.documentElement);
     window.addEventListener("resize", refresh);
     document.addEventListener("scroll", refresh, true);
     return () => {
         unsubscribe();
+        resizeObserver.disconnect();
         window.removeEventListener("resize", refresh);
         document.removeEventListener("scroll", refresh, true);
         if (commandPaletteStore.isVisible) commandPaletteStore.hide();
