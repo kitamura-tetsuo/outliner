@@ -68,7 +68,7 @@ test("pending palette refresh is rejected when Svelte navigation unmounts its ta
     ).toBe(false);
     await expect(page.locator(".slash-command-palette")).toHaveCount(0);
 
-    const returnLink = page.locator(`a[href="${outlinePath}"]`).first();
+    const returnLink = page.locator(`main a[href="${outlinePath}"]`);
     await expect(returnLink).toBeVisible();
     await returnLink.click();
     await expect(page).toHaveURL(new RegExp(`${outlinePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
