@@ -5,7 +5,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-async function caretTop(itemText: Locator) {
+async function caretLineTop(itemText: Locator) {
     return await itemText.evaluate((element) => {
         const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
         let last: Text | undefined;
@@ -16,7 +16,7 @@ async function caretTop(itemText: Locator) {
         range.collapse(true);
         const rect = range.getClientRects()[0];
         if (!rect) throw new Error("Caret rectangle not rendered");
-        return rect.top;
+        return rect.top - element.getBoundingClientRect().top;
     });
 }
 
@@ -65,21 +65,21 @@ test("tracks query wrapping and its Backspace reversal", async ({ page }, testIn
     await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${itemId}"] .item-text`);
     await page.keyboard.press("End");
     await page.keyboard.type("/");
-    const initialTop = await caretTop(itemText);
+    const initialTop = await caretLineTop(itemText);
 
     let typed = 0;
-    for (; typed < 80 && await caretTop(itemText) === initialTop; typed++) {
+    for (; typed < 80 && await caretLineTop(itemText) === initialTop; typed++) {
         await page.keyboard.type("m");
     }
     expect(typed).toBeGreaterThan(0);
-    expect(await caretTop(itemText)).toBeGreaterThan(initialTop);
+    expect(await caretLineTop(itemText)).toBeGreaterThan(initialTop);
     await expectPaletteAtCaret(itemText);
 
-    while (await caretTop(itemText) !== initialTop && typed > 0) {
+    while (await caretLineTop(itemText) !== initialTop && typed > 0) {
         await page.keyboard.press("Backspace");
         typed--;
     }
-    expect(await caretTop(itemText)).toBe(initialTop);
+    expect(await caretLineTop(itemText)).toBe(initialTop);
     await expectPaletteAtCaret(itemText);
     await expect(itemText).toHaveText(`${prefix}/${"m".repeat(typed)}`);
 });
@@ -100,12 +100,12 @@ test("tracks resize reflow and document scrolling without changing editing state
     await page.keyboard.type("/mer");
     await expectPaletteAtCaret(itemText);
     const before = await editingSnapshot(page, itemText);
-    const initialTop = await caretTop(itemText);
+    const initialTop = await caretLineTop(itemText);
 
     let resizedTop = initialTop;
-    for (const width of [800, 650, 500, 400]) {
+    for (const width of [950, 900, 850, 800]) {
         await page.setViewportSize({ width, height: 700 });
-        resizedTop = await caretTop(itemText);
+        resizedTop = await caretLineTop(itemText);
         if (resizedTop !== initialTop) break;
     }
     expect(resizedTop).not.toBe(initialTop);

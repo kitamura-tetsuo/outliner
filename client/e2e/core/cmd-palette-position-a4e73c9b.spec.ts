@@ -67,27 +67,43 @@ test.describe("slash command palette caret position", () => {
         await expectPaletteAtCaret(firstText);
 
         // The scroll listener starts an async refresh which cannot pass its
-        // Svelte tick until this browser task ends. Escape therefore closes
-        // the session while that production refresh is observably outstanding.
-        await page.evaluate(() => {
+        // Svelte tick until this browser task ends. Close A and open B through
+        // the editor's real DOM input handlers before that task releases it.
+        const overlap = await page.evaluate((newItemId) => {
             document.dispatchEvent(new Event("scroll"));
-            const textarea = document.activeElement;
-            if (!(textarea instanceof HTMLTextAreaElement)) {
+            const oldTextarea = document.activeElement;
+            if (!(oldTextarea instanceof HTMLTextAreaElement)) {
                 throw new Error("Editor textarea is not focused");
             }
-            textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-        });
-        await expect(page.locator(".slash-command-palette")).toBeHidden();
-        await page.keyboard.type("x");
-        await expect(firstText).toHaveText("first/x");
+            oldTextarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+            const target = document.querySelector(`.outliner-item[data-item-id="${newItemId}"] .item-text`);
+            if (!(target instanceof HTMLElement)) throw new Error("New command target not rendered");
+            target.click();
+            const textarea = document.activeElement;
+            if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("New editor did not receive focus");
+            textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
+            textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true }));
+            textarea.dispatchEvent(
+                new InputEvent("input", {
+                    data: "/",
+                    inputType: "insertText",
+                    bubbles: true,
+                }),
+            );
+            return globalThis.editorOverlayStore?.getLocalCursorInstances().map(cursor => cursor.itemId);
+        }, secondId);
+        expect(overlap).toEqual([secondId]);
 
         const secondText = page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`);
-        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${secondId}"] .item-text`);
-        await page.keyboard.press("End");
-        await page.keyboard.type("/");
-        await expectPaletteAtCaret(secondText);
-        await expect(firstText).toHaveText("first/x");
         await expect(secondText).toHaveText("second/");
+        await expectPaletteAtCaret(secondText);
+        await expect(firstText).toHaveText("first/");
+        await expect(secondText).toHaveText("second/");
+
+        await page.keyboard.press("Escape");
+        await page.keyboard.type("x");
+        await expect(secondText).toHaveText("second/x");
     });
 
     test("settled unavailable target closes the session and releases input", async ({ page }, testInfo) => {
@@ -112,5 +128,27 @@ test.describe("slash command palette caret position", () => {
         await page.keyboard.type("x");
         await expect(secondText).toHaveText("new targetx");
         await expect(firstText).toHaveText("old target/");
+    });
+
+    test("pending refresh cannot survive Svelte navigation that unmounts its target", async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["navigation target"]);
+        const itemId = await TestHelpers.getItemIdByIndex(page, 1);
+        if (!itemId) throw new Error("Navigation target not found");
+        const itemText = page.locator(`.outliner-item[data-item-id="${itemId}"] .item-text`);
+        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${itemId}"] .item-text`);
+        await page.keyboard.press("End");
+        await page.keyboard.type("/");
+        await expectPaletteAtCaret(itemText);
+        await expect(itemText).toHaveText("navigation target/");
+
+        await page.evaluate(() => {
+            document.dispatchEvent(new Event("scroll"));
+            const graphLink = document.querySelector<HTMLAnchorElement>('a[href$="/-/graph"]');
+            if (!graphLink) throw new Error("Svelte graph navigation link not rendered");
+            graphLink.click();
+        });
+        await expect(page).toHaveURL(/\/-\/graph$/);
+        await expect(page.locator(".slash-command-palette")).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Graph View" })).toBeVisible();
     });
 });
