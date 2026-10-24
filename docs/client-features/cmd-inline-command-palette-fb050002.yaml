@@ -10,6 +10,10 @@ tests:
 - client/e2e/basic/cmd-inline-command-palette-fb050002.spec.ts
 - client/e2e/core/cmd-palette-insert-at-cursor-3f2a91c6.spec.ts
 - client/e2e/core/cmd-palette-keeps-text-before-slash-8c6d40b1.spec.ts
+- client/e2e/core/cmd-palette-live-position-a4e73c9c.spec.ts
+- client/e2e/core/cmd-palette-navigation-position-a4e73c9d.spec.ts
+- client/e2e/core/cmd-palette-pending-position-a4e73c9e.spec.ts
+- client/e2e/core/cmd-palette-position-a4e73c9b.spec.ts
 - client/e2e/core/slr-slash-command-palette-visibility.spec.ts
 - client/src/lib/KeyEventHandler.slashPalette.test.ts
 acceptance:
@@ -18,6 +22,7 @@ acceptance:
 - Pressing Enter on the filtered command inserts that component
 - Pressing Escape closes the palette without modifying the item text
 - The inserted component becomes the next sibling of the item the command was typed in
+- The palette remains adjacent to the current caret after query wrapping, resizing, scrolling, and across formatted text
 - Typing '/' and a command leaves the existing item text unchanged, including the character immediately before the slash
 - Typing '/' immediately after '[' does not open the palette
 - Typing '/' with focus on an item shows the command palette

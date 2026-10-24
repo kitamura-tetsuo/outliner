@@ -1,5 +1,7 @@
 import { isTextNode, KANBAN_COMPONENT_TYPE } from "$shared/services/outlineNodeKind";
+import { tick } from "svelte";
 import { getLogger } from "../lib/logger";
+import { findTextPositionInElement } from "../lib/selectionGeometry";
 import { invokingSurfaceWritable } from "../services/editorSurface";
 import { yjsStore } from "./yjsStore.svelte";
 const logger = getLogger("Store");
@@ -38,6 +40,7 @@ interface Position {
 class CommandPaletteStore {
     isVisible = $state(false);
     position: Position = $state({ top: 0, left: 0 });
+    hasValidPosition = $state(false);
     query = $state("");
     selectedIndex = $state(0);
 
@@ -45,6 +48,9 @@ class CommandPaletteStore {
     private commandCursorItemId: string | null = null;
     private commandCursorOffset: number = 0;
     private commandStartOffset: number = 0; // Position of slash
+    private sessionGeneration = 0;
+    private positionRequest = 0;
+    private positionRefreshScheduled = false;
 
     /**
      * Each visual node kind has its own creation command (#5015): kinds cannot
@@ -76,24 +82,30 @@ class CommandPaletteStore {
         );
     });
 
-    show(pos: Position, isPostInsert: boolean = false) {
-        this.position = pos;
+    show(isPostInsert: boolean = false) {
+        this.sessionGeneration++;
+        this.positionRequest++;
+        this.hasValidPosition = false;
         this.query = "";
         this.selectedIndex = 0;
         this.isVisible = true;
 
         // Record current cursor position
-        const cursors = editorOverlayStore.getCursorInstances();
-        if (cursors.length > 0) {
+        const cursors = editorOverlayStore.getLocalCursorInstances();
+        if (cursors.length === 1) {
             const cursor = cursors[0];
             this.commandCursorItemId = cursor.itemId;
             this.commandCursorOffset = cursor.offset;
             this.commandStartOffset = isPostInsert ? Math.max(0, cursor.offset - 1) : cursor.offset; // Position of slash
         }
+        this.schedulePositionUpdate();
     }
 
     hide() {
+        this.sessionGeneration++;
+        this.positionRequest++;
         this.isVisible = false;
+        this.hasValidPosition = false;
         this.commandCursorItemId = null;
         this.commandCursorOffset = 0;
         this.commandStartOffset = 0;
@@ -177,9 +189,7 @@ class CommandPaletteStore {
         // Apply cursor
         cursor.applyToStore();
 
-        // Update position
-        const pos = this.getCursorScreenPosition();
-        if (pos) this.updatePosition(pos);
+        this.schedulePositionUpdate();
     }
 
     /**
@@ -246,9 +256,7 @@ class CommandPaletteStore {
         // Apply cursor
         cursor.applyToStore();
 
-        // Update position
-        const pos = this.getCursorScreenPosition();
-        if (pos) this.updatePosition(pos);
+        this.schedulePositionUpdate();
     }
 
     move(delta: number) {
@@ -293,25 +301,70 @@ class CommandPaletteStore {
 
     updatePosition(pos: Position) {
         this.position = pos;
+        this.hasValidPosition = true;
     }
 
-    getCursorScreenPosition(): Position | null {
-        const cursors = editorOverlayStore.getCursorInstances();
-        if (cursors.length === 0) return null;
+    /** Schedule a caret measurement after Svelte has rendered the latest model state. */
+    schedulePositionUpdate() {
+        if (!this.isVisible) return;
+        this.positionRequest++;
+        if (this.positionRefreshScheduled) return;
+        this.positionRefreshScheduled = true;
+        void this.flushPositionUpdate();
+    }
+
+    private async flushPositionUpdate() {
+        const generation = this.sessionGeneration;
+        const request = this.positionRequest;
+        await tick();
+        // A resize can settle Svelte state before the browser has completed
+        // the corresponding layout. Measure in the next rendered frame so a
+        // wrapped caret uses the new viewport geometry.
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+        this.positionRefreshScheduled = false;
+
+        if (!this.isVisible) return;
+        if (generation !== this.sessionGeneration) {
+            // A later command session may have reused the coalesced scheduler
+            // while this callback belonged to the old one. Start fresh for
+            // that session rather than either committing stale geometry or
+            // leaving its pending position unmeasured.
+            this.schedulePositionUpdate();
+            return;
+        }
+        if (request !== this.positionRequest) {
+            this.schedulePositionUpdate();
+            return;
+        }
+
+        const position = this.getCursorDocumentPosition();
+        if (!position) {
+            this.hide();
+            return;
+        }
+        this.updatePosition(position);
+    }
+
+    /** Return document CSS coordinates for the current local caret. */
+    getCursorDocumentPosition(): Position | null {
+        const cursors = editorOverlayStore.getLocalCursorInstances();
+        if (cursors.length !== 1) return null;
         const cursor = cursors[0];
+        if (!this.commandCursorItemId || cursor.itemId !== this.commandCursorItemId) return null;
         const itemEl = document.querySelector(
             `.outliner-item[data-item-id="${cursor.itemId}"] .item-text`,
         ) as HTMLElement | null;
         if (!itemEl) return null;
-        const textNode = Array.from(itemEl.childNodes).find(
-            n => n.nodeType === Node.TEXT_NODE,
-        ) as Text | undefined;
+        const textPosition = findTextPositionInElement(itemEl, cursor.offset);
+        if (!textPosition) return null;
         const range = document.createRange();
-        const offset = Math.min(cursor.offset, textNode?.textContent?.length ?? 0);
-        range.setStart(textNode || itemEl, offset);
+        range.setStart(textPosition.node, textPosition.offset);
         range.collapse(true);
-        const rect = range.getClientRects()[0] || itemEl.getBoundingClientRect();
-        return { top: rect.bottom + 4, left: rect.left };
+        const rect = range.getClientRects()[0];
+        if (
+            !rect || rect.height <= 0 || !Number.isFinite(rect.left) || !Number.isFinite(rect.bottom)
+        ) return null;
+        return { top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX };
     }
 
     insert(type: CommandType) {
