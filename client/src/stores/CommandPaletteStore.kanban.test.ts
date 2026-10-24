@@ -30,6 +30,7 @@ const cursor = vi.hoisted(() => ({
 vi.mock("./EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
         getCursorInstances: () => [cursor],
+        getLocalCursorInstances: () => [cursor],
         clearCursorAndSelection() {},
         setActiveItem() {},
         startCursorBlink() {},
@@ -46,13 +47,17 @@ beforeEach(() => {
     cursor.itemId = state.target.id;
     cursor.offset = 0;
     commandPaletteStore.hide();
-    commandPaletteStore.show({ top: 0, left: 0 });
+});
+
+function openKanbanCommand() {
+    commandPaletteStore.show(false);
     cursor.offset = 7;
     commandPaletteStore.updateQuery("kanban");
-});
+}
 
 describe("production Kanban slash command", () => {
     it("discovers and confirms an unbound placement without creating definitions", () => {
+        openKanbanCommand();
         const stop = registerEditorSurface(() => true);
         try {
             expect(commandPaletteStore.visible.map(command => command.type)).toEqual(["kanban"]);
@@ -68,6 +73,7 @@ describe("production Kanban slash command", () => {
         }
     });
     it("checks admission and surface writes before removing the command text", () => {
+        openKanbanCommand();
         let writable = false;
         const stop = registerEditorSurface(() => writable);
         try {

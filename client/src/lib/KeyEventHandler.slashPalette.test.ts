@@ -114,7 +114,7 @@ describe("KeyEventHandler slash command palette", () => {
     it("matches the offsets handleKeyDown recorded for the same slash", () => {
         // handleKeyDown opens the palette before the input event fires, with the
         // same pre-insert offset, so re-recording it must be a no-op.
-        commandPaletteStore.show({ top: 0, left: 0 }, false);
+        commandPaletteStore.show(false);
         typeSlash();
 
         commandPaletteStore.handleCommandInput("d");
@@ -127,7 +127,7 @@ describe("KeyEventHandler slash command palette", () => {
         // belong to this slash; the input event must re-record them.
         cursor.itemId = "stale-item";
         cursor.offset = 2;
-        commandPaletteStore.show({ top: 0, left: 0 }, false);
+        commandPaletteStore.show(false);
 
         cursor.itemId = "item1";
         cursor.offset = 5;
