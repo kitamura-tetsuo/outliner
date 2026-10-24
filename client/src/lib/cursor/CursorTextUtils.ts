@@ -72,7 +72,11 @@ export function getVisualCaretLines(itemId: string): VisualCaretLine[] | null {
 
             // Some engines expose no rectangle for a collapsed range at a node
             // boundary. A one-character range supplies the same legal caret edge.
-            if (rect.width === 0 && rect.height === 0) {
+            // Firefox may return a zero-width collapsed rectangle with a
+            // non-zero height but no authoritative horizontal edge. Resolve
+            // every zero-width caret from an adjacent character rectangle so
+            // retained-X traversal agrees across engines.
+            if (rect.width === 0) {
                 const probe = document.createRange();
                 if (boundary.offset < boundary.node.data.length) {
                     probe.setStart(boundary.node, boundary.offset);
