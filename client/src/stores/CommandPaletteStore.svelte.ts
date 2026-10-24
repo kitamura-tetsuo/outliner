@@ -317,9 +317,19 @@ class CommandPaletteStore {
         const generation = this.sessionGeneration;
         const request = this.positionRequest;
         await tick();
+        // A resize can settle Svelte state before the browser has completed
+        // the corresponding layout. Measure in the next rendered frame so a
+        // wrapped caret uses the new viewport geometry.
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
         this.positionRefreshScheduled = false;
 
-        if (!this.isVisible || generation !== this.sessionGeneration) {
+        if (!this.isVisible) return;
+        if (generation !== this.sessionGeneration) {
+            // A later command session may have reused the coalesced scheduler
+            // while this callback belonged to the old one. Start fresh for
+            // that session rather than either committing stale geometry or
+            // leaving its pending position unmeasured.
+            this.schedulePositionUpdate();
             return;
         }
         if (request !== this.positionRequest) {
