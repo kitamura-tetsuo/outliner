@@ -12,6 +12,7 @@ tests:
 - client/e2e/core/cmd-palette-keeps-text-before-slash-8c6d40b1.spec.ts
 - client/e2e/core/cmd-palette-live-position-a4e73c9c.spec.ts
 - client/e2e/core/cmd-palette-navigation-position-a4e73c9d.spec.ts
+- client/e2e/core/cmd-palette-pending-position-a4e73c9e.spec.ts
 - client/e2e/core/cmd-palette-position-a4e73c9b.spec.ts
 - client/e2e/core/slr-slash-command-palette-visibility.spec.ts
 - client/src/lib/KeyEventHandler.slashPalette.test.ts
