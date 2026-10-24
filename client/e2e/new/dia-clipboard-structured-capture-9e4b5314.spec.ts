@@ -37,6 +37,14 @@ test.describe("FTR-9e4b5314: structural Copy captures the Diagram payload", () =
     });
 
     test("real keyboard Copy exposes this Diagram's identity and snapshot source", async ({ page }) => {
+        // Guard against a late dependency optimization restarting mounted pages
+        // during the first Diagram operation. Keep this oracle independent of the
+        // application's clipboard result/capture bridges.
+        const navigations: string[] = [];
+        page.on("framenavigated", frame => {
+            if (frame === page.mainFrame()) navigations.push(frame.url());
+        });
+        const documentSession = await page.evaluate(() => performance.timeOrigin);
         const { diagramId: d, occurrenceId } = await insertDiagram(page, page.locator(".outliner-item").nth(1));
         await seedSource(page, d, "graph TD");
 
@@ -45,6 +53,20 @@ test.describe("FTR-9e4b5314: structural Copy captures the Diagram payload", () =
 
         // The real system clipboard carries the source for external destinations.
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("graph TD");
+        const clipboardPayload = await page.evaluate(async () => {
+            const items = await navigator.clipboard.read();
+            const item = items.find(entry => entry.types.includes("text/html"));
+            if (!item) throw new Error("Diagram Copy did not write the system clipboard HTML flavor");
+            const html = await (await item.getType("text/html")).text();
+            const document = new DOMParser().parseFromString(html, "text/html");
+            const encoded = document.querySelector("[data-outliner-items]")?.getAttribute("data-outliner-items");
+            if (!encoded) throw new Error("Diagram Copy did not write the structured clipboard payload");
+            const bytes = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
+            return JSON.parse(new TextDecoder().decode(bytes));
+        });
+        expect(clipboardPayload).toMatchObject({ diagrams: { [d]: { source: "graph TD" } } });
+        expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentSession);
+        expect(navigations).toEqual([]);
         // The structured payload carries this Diagram's identity and snapshot,
         // independent of any result event (a Copy reports none on success, and
         // none is read here).

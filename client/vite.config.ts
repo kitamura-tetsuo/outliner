@@ -155,7 +155,11 @@ export default defineConfig(async ({ mode }) => {
             // as "new" dependencies mid-run: a late discovery triggers a dep
             // re-optimization + full page reload, which tears the app out from
             // under an in-flight e2e seed (outliner-base disappears -> timeout).
-            include: ["yjs", "yjs-orderedtree", "uuid"],
+            // Diagram rendering loads Mermaid on first use. Discovering it only
+            // after the editor is mounted can restart every open dev page and
+            // destroy an in-flight keyboard/clipboard session (#5735). Include
+            // its lazy renderer graph in the initial optimization as well.
+            include: ["yjs", "yjs-orderedtree", "uuid", "mermaid"],
         },
         define: {
             global: "globalThis",
