@@ -63,6 +63,35 @@ test.describe("CLM-6f0bdbc3: Move up at the top line", () => {
         expect(secondItemCursorInstance?.itemId).toBe(secondItemId);
         expect(secondItemCursorInstance?.offset).toBe(0);
 
+        // Independently resolve the previous row's legal caret nearest the
+        // rendered X of the known source offset. This fixture crosses the
+        // title/body indentation boundary, so model offset 0 is not generally
+        // the nearest position in the common viewport coordinate space.
+        const expectedOffset = await page.evaluate(({ firstItemId, secondItemId }) => {
+            const textElement = (itemId: string) =>
+                document.querySelector(`[data-item-id="${CSS.escape(itemId)}"] .item-text`) as HTMLElement;
+            const caretRect = (element: HTMLElement, offset: number) => {
+                const node = element.firstChild as Text;
+                const range = document.createRange();
+                range.setStart(node, offset);
+                range.collapse(true);
+                return range.getBoundingClientRect();
+            };
+            const sourceX = textElement(secondItemId).getBoundingClientRect().left;
+            const target = textElement(firstItemId);
+            const candidates = Array.from({ length: (target.textContent?.length ?? 0) + 1 }, (_, offset) => ({
+                offset,
+                x: caretRect(target, offset).left,
+            }));
+            return candidates.reduce((best, candidate) => {
+                const distance = Math.abs(candidate.x - sourceX);
+                const bestDistance = Math.abs(best.x - sourceX);
+                return distance < bestDistance || (distance === bestDistance && candidate.offset < best.offset)
+                    ? candidate
+                    : best;
+            }).offset;
+        }, { firstItemId: firstItemId!, secondItemId: secondItemId! });
+
         // Check the text of the second item
         const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(
             ".item-text",
@@ -99,7 +128,6 @@ test.describe("CLM-6f0bdbc3: Move up at the top line", () => {
             | undefined;
         expect(activeCursorInstance?.itemId).toBe(firstItemId);
 
-        // Since Up Arrow was pressed from the beginning of the 2nd item, it should move to the beginning of the last line of the previous item
-        expect(activeCursorInstance?.offset).toBe(0);
+        expect(activeCursorInstance?.offset).toBe(expectedOffset);
     });
 });

@@ -161,7 +161,9 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
         await page.waitForTimeout(300);
 
         // Verify selection is created
-        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
+        const selectionFragments = page.locator(".editor-overlay .selection");
+        expect(await selectionFragments.count()).toBeGreaterThan(0);
+        await expect(selectionFragments.first()).toBeVisible();
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {

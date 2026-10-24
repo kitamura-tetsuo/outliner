@@ -5,9 +5,13 @@ category: cursor-management
 status: implemented
 tests:
 - client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts
+- client/e2e/core/clm-vertical-visual-goal-empty-short-5768.spec.ts
+- client/e2e/core/clm-vertical-formatted-active-layout-5768.spec.ts
+- client/src/tests/unit/cursor/cursor-visual-caret-goal.spec.ts
 acceptance:
 - Can move between empty text items using keyboard
 - Cursor moves correctly with multiple keyboard operations after clicking
 - Input goes to the correct item
 - Only one cursor is displayed even when moving between items
+- Vertical movement retains a rendered pixel-X goal through empty and short rows
 title-ja: 空のテキストアイテムでのカーソル移動と複数回のキーボード操作

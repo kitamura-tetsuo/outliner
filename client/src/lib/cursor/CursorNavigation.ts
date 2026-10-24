@@ -1,3 +1,4 @@
+import { flushSync } from "svelte";
 import type { Item as AppItem } from "../../schema/app-schema";
 import type { Item } from "../../schema/yjs-schema";
 import { diagramEditingTarget, isDiagramItem } from "../../services/diagram/diagramEditing";
@@ -11,8 +12,10 @@ import {
     getCurrentLineIndex,
     getLineEndOffset,
     getLineStartOffset,
+    getVisualCaretLines,
     getVisualLineInfo,
     getVisualLineOffsetRange,
+    nearestVisualCaret,
     resolveItemText,
 } from "./CursorTextUtils";
 
@@ -33,7 +36,9 @@ export interface CursorNavigationContext {
     userId: string;
     cursorId: string;
     initialColumn: number | null;
+    preferredVisualX: number | null;
     resetInitialColumn(): void;
+    isOnDiagramOccurrence(): boolean;
     findTarget(): Item | undefined;
     applyToStore(): void;
 }
@@ -79,6 +84,69 @@ function navigableText(item: Item | undefined): string {
 
 export class CursorNavigation {
     constructor(private readonly cursor: CursorNavigationContext) {}
+
+    /** Move an ordinary collapsed caret by one rendered row using a retained CSS-pixel X. */
+    private moveOrdinaryVertical(direction: "up" | "down"): boolean {
+        if (this.cursor.isOnDiagramOccurrence()) return false;
+        const currentLines = getVisualCaretLines(this.cursor.itemId);
+        if (!currentLines) return false;
+        const currentLineIndex = currentLines.findIndex(line =>
+            this.cursor.offset >= line.startOffset && this.cursor.offset <= line.endOffset
+        );
+        if (currentLineIndex < 0) return false;
+        const currentCaret = currentLines[currentLineIndex].carets.find(caret => caret.offset === this.cursor.offset);
+        if (!currentCaret) return false;
+        if (this.cursor.preferredVisualX === null) this.cursor.preferredVisualX = currentCaret.x;
+
+        let targetItemId = this.cursor.itemId;
+        let targetLines = currentLines;
+        let targetLineIndex = currentLineIndex + (direction === "up" ? -1 : 1);
+        if (targetLineIndex < 0 || targetLineIndex >= targetLines.length) {
+            const adjacent = direction === "up"
+                ? findPreviousItem(this.cursor.itemId)
+                : findNextItem(this.cursor.itemId);
+            if (!adjacent) {
+                const text = resolveItemText(this.cursor.findTarget());
+                this.cursor.offset = direction === "up" ? 0 : text.length;
+                this.cursor.applyToStore();
+                store.startCursorBlink();
+                return true;
+            }
+            targetItemId = adjacent.id;
+            // Inactive formatted Text renders presentation HTML whose DOM offsets
+            // and wrapping do not match the editable model. Activate the target
+            // and synchronously flush that render before resolving its model
+            // offset. The cursor itself remains on the valid source position
+            // until authoritative destination geometry has been obtained.
+            flushSync(() => store.setActiveItem(targetItemId));
+            const measured = getVisualCaretLines(targetItemId);
+            // A non-Text row keeps its established navigation ownership.
+            if (!measured) {
+                flushSync(() => store.setActiveItem(this.cursor.itemId));
+                return false;
+            }
+            targetLines = measured;
+            targetLineIndex = direction === "up" ? targetLines.length - 1 : 0;
+        }
+
+        const destination = nearestVisualCaret(targetLines[targetLineIndex].carets, this.cursor.preferredVisualX);
+        if (!destination) return false;
+        const oldItemId = this.cursor.itemId;
+        if (targetItemId !== oldItemId) store.clearSelectionForUser(this.cursor.userId);
+        this.cursor.itemId = targetItemId;
+        this.cursor.offset = destination.offset;
+        this.cursor.applyToStore();
+        store.startCursorBlink();
+        if (targetItemId !== oldItemId && typeof document !== "undefined") {
+            document.dispatchEvent(
+                new CustomEvent("navigate-to-item", {
+                    bubbles: true,
+                    detail: { direction, fromItemId: oldItemId, toItemId: targetItemId, cursorScreenX: destination.x },
+                }),
+            );
+        }
+        return true;
+    }
 
     moveLeft() {
         // Reset initial column position as this is not an up/down key operation
@@ -162,7 +230,8 @@ export class CursorNavigation {
         }
     }
 
-    moveUp() {
+    moveUp(useVisualGoal = true) {
+        if (useVisualGoal && this.moveOrdinaryVertical("up")) return;
         const target = this.cursor.findTarget();
         if (!target) return;
 
@@ -301,7 +370,8 @@ export class CursorNavigation {
         }
     }
 
-    moveDown() {
+    moveDown(useVisualGoal = true) {
+        if (useVisualGoal && this.moveOrdinaryVertical("down")) return;
         const target = this.cursor.findTarget();
         if (!target) return;
 
