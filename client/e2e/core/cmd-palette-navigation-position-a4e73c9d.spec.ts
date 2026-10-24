@@ -70,7 +70,8 @@ test("pending palette refresh is rejected when Svelte navigation unmounts its ta
 
     const returnLink = page.locator(`main a[href="${outlinePath}"]`);
     await expect(returnLink).toBeVisible();
-    await returnLink.click();
+    await returnLink.focus();
+    await page.keyboard.press("Enter");
     await expect(page).toHaveURL(new RegExp(`${outlinePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
 
     const returnedItem = page.locator(itemSelector);
