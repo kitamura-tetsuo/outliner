@@ -71,7 +71,7 @@ function focusNode(node: HTMLElement) {
         class="cell-value"
         aria-label={value === null || value === undefined || String(value) === "" ? `Empty cell, ${ariaLabel || "cell"}` : `${String(value)}, ${ariaLabel || "cell"}`}
         class:readonly={!editable}
-        aria-disabled={!editable}
+        aria-disabled={!editable ? "true" : "false"}
         onclick={() => {
             if (editable) editing = true;
         }}

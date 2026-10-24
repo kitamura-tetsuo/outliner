@@ -278,7 +278,7 @@ import { isPublicProject } from "../lib/publicProject";
 
 </script>
 
-<aside class="sidebar" class:open={isOpen} aria-label="Main Sidebar" inert={!isOpen} aria-hidden={!isOpen}>
+<aside class="sidebar" class:open={isOpen} aria-label="Main Sidebar" inert={!isOpen} aria-hidden={!isOpen ? "true" : "false"}>
     <div class="sidebar-content">
         <h2 class="sidebar-title">Sidebar</h2>
 

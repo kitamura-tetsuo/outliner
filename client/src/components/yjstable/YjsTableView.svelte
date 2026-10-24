@@ -384,7 +384,7 @@ onDestroy(() => {
             <button
                 type="button"
                 class:active={showGrid}
-                aria-pressed={showGrid}
+                aria-pressed={showGrid ? "true" : "false"}
                 data-testid="yjs-table-toggle-grid"
                 onclick={() => {
                     showGrid = !showGrid;
@@ -393,7 +393,7 @@ onDestroy(() => {
             <button
                 type="button"
                 class:active={showChart}
-                aria-pressed={showChart}
+                aria-pressed={showChart ? "true" : "false"}
                 data-testid="yjs-table-toggle-chart"
                 onclick={async () => {
                     showChart = !showChart;
@@ -406,7 +406,7 @@ onDestroy(() => {
             <button
                 type="button"
                 class:active={showUiDef}
-                aria-pressed={showUiDef}
+                aria-pressed={showUiDef ? "true" : "false"}
                 data-testid="yjs-table-toggle-ui"
                 onclick={() => {
                     showUiDef = !showUiDef;

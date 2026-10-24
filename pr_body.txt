@@ -1,9 +1,26 @@
 [Issues]
-The `aria-expanded` attribute in several components (e.g. `SearchBox.svelte`, `OutlinerItem.svelte`, `Sidebar.svelte`) was being bound directly to boolean values (e.g. `aria-expanded={isOpen}`). While functionally acceptable in some contexts, the W3C spec requires these to be explicitly `"true"` or `"false"` string values.
+Several UI components in the `client/src/components/` directory used boolean expressions directly for `aria-*` attributes (e.g. `aria-selected`, `aria-pressed`, `aria-disabled`). While modern Svelte versions gracefully handle boolean stringification, adhering to explicit string literals (e.g. `"true"` or `"false"`) for ARIA enumerated attributes is a stricter, safer standard that aligns with project conventions, ensures accessibility correctness across different DOM implementations, and avoids linter/type-checker ambiguities.
 
 [Changes]
-Converted all boolean template bindings for the `aria-expanded` attribute across the Svelte components in `client/src/` to explicitly evaluate to `"true"` or `"false"` (e.g. `aria-expanded={isOpen ? "true" : "false"}`).
+Converted boolean `aria-*` attributes in the following components to explicit ternary string literals:
+- `client/src/components/calendar/CalendarView.svelte`
+- `client/src/components/yjstable/TableGrid.svelte`
+- `client/src/components/yjstable/cells/TextCell.svelte`
+- `client/src/components/yjstable/cells/NumberCell.svelte`
+- `client/src/components/diagram/DiagramChooser.svelte`
+- `client/src/components/schedule/ScheduleRuleList.svelte`
+- `client/src/components/yjstable/TableEntityView.svelte`
+- `client/src/components/yjstable/YjsTableView.svelte`
+- `client/src/components/DatabaseSidebar.svelte`
+- `client/src/components/OutlinerItemVoteCount.svelte`
+- `client/src/components/Sidebar.svelte`
+- `client/src/components/SearchBox.svelte`
+- `client/src/components/SlashCommandPalette.svelte`
+- `client/src/components/SnapshotDiffModal.svelte`
+- `client/src/components/AliasPicker.svelte`
+- `client/src/components/AuthComponent.svelte`
+- `client/src/components/OutlinerItem.svelte`
 
 [Verification Results]
-- Checked typescript compilation and svelte warnings with `cd client && npm run check`. No issues found.
-- Ran unit tests across the modified component paths (`cd client && npx vitest run src/components/`) to ensure no functional regressions were introduced.
+- Ran `npm run lint` and `npx svelte-check` in `client` to verify strict TypeScript and Svelte typing. All checks pass.
+- Verified components render without breaking compilation or logic.
