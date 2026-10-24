@@ -362,7 +362,7 @@ const logger = getLogger("SearchBox");
                 <li
                     id={`search-result-item-${componentId}-${i}`}
                     role="option"
-                    aria-selected={i === selected}
+                    aria-selected={i === selected ? "true" : "false"}
                     class:selected={i === selected}
                 >
                     <button type="button"

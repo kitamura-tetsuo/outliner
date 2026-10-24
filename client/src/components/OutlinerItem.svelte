@@ -2372,7 +2372,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     tabindex={isPageTitle ? undefined : (isItemActive || (!editorOverlayStore.getActiveItem() && index === 1) ? 0 : -1)}
     aria-level={isPageTitle ? 1 : depth}
     aria-expanded={(!isPageTitle && hasChildren) ? (!isCollapsed ? "true" : "false") : undefined}
-    aria-selected={isPageTitle ? undefined : isItemActive}
+    aria-selected={isPageTitle ? undefined : (isItemActive ? "true" : "false")}
     aria-setsize={isPageTitle ? undefined : ariaSetSize}
     aria-posinset={isPageTitle ? undefined : ariaPosInSet}
 

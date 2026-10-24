@@ -1549,7 +1549,7 @@ function handleCancelDelete() {
                         role="columnheader"
                         tabindex="0"
                         aria-label="Select current query result"
-                        aria-selected={allSelected()}
+                        aria-selected={allSelected() ? "true" : "false"}
                         onclick={selectAllResult}
                         onkeydown={(event) => activateHeader(event, selectAllResult)}
                     >▦</th>
@@ -1559,7 +1559,7 @@ function handleCancelDelete() {
                             role="columnheader"
                             tabindex="0"
                             data-col={column}
-                            aria-selected={columnSelected(column)}
+                            aria-selected={columnSelected(column) ? "true" : "false"}
                             class:header-selected={columnSelected(column)}
                             class:col-fixed={fixedWidthOf(column) !== undefined}
                             onclick={(event) => {
@@ -1691,7 +1691,7 @@ function handleCancelDelete() {
                             role="rowheader"
                             tabindex={logicalRowId === undefined ? undefined : 0}
                             aria-label={`Select row ${rowIndex + 1}`}
-                            aria-selected={logicalRowId !== undefined ? rowSelected(logicalRowId) : undefined}
+                            aria-selected={logicalRowId !== undefined ? (rowSelected(logicalRowId) ? "true" : "false") : undefined}
                             onclick={(event) => logicalRowId && selectRowHeader(event, logicalRowId)}
                             onkeydown={(event) => logicalRowId
                                 && activateHeader(event, () => selectRowHeader(event, logicalRowId))}
@@ -1710,7 +1710,7 @@ function handleCancelDelete() {
                                 class:grid-active={logicalCell !== undefined && cellActive(logicalCell)}
                                 class:grid-find-match={findMatch?.rowId === navigationRowId
                                     && findMatch?.columnId === column}
-                                aria-selected={logicalCell !== undefined ? cellSelected(logicalCell) : undefined}
+                                aria-selected={logicalCell !== undefined ? (cellSelected(logicalCell) ? "true" : "false") : undefined}
                                 onclickcapture={(event) => {
                                     suppressSyntheticTouchClick(event);
                                     if (event.defaultPrevented) return;
@@ -1799,7 +1799,7 @@ function handleCancelDelete() {
             <div class="touch-selection-toolbar" role="toolbar" aria-label="Grid selection actions">
                 <button
                     type="button"
-                    aria-pressed={additiveTouchSelection}
+                    aria-pressed={additiveTouchSelection ? "true" : "false"}
                     onclick={() => additiveTouchSelection = !additiveTouchSelection}
                 >{additiveTouchSelection ? "Add selection: on" : "Add selection"}</button>
                 {#if activeSelectionCell()}

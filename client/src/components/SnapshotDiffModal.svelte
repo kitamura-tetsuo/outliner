@@ -168,7 +168,7 @@ $effect(() => {
                     {@const isSelected = selectedId === s.id}
                     <li>
                         <button type="button"
-                            aria-pressed={isSelected}
+                            aria-pressed={isSelected ? "true" : "false"}
                             class="w-full text-left p-2 rounded text-sm transition-colors duration-200 {isSelected ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'hover:bg-gray-100'}"
                             onclick={() => showDiff(s.id)}
                         >
@@ -301,7 +301,7 @@ $effect(() => {
             class="px-4 py-2 rounded transition-colors text-sm font-medium {selectedId ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}"
             onclick={revert}
             disabled={!selectedId}
-            aria-disabled={!selectedId}
+            aria-disabled={!selectedId ? "true" : "false"}
             title={!selectedId ? "Select a snapshot first" : "Revert to selected snapshot"}
         >
             Revert

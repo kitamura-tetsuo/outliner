@@ -19,7 +19,7 @@ function handleClick(type: CommandType) {
         {#each commandPaletteStore.visible as cmd, i (cmd.type)}
             <li
                 role="option"
-                aria-selected={i === commandPaletteStore.selectedIndex}
+                aria-selected={i === commandPaletteStore.selectedIndex ? "true" : "false"}
                 class:selected={i === commandPaletteStore.selectedIndex}
                 id="command-item-{cmd.type}"
                 data-testid="command-item-{cmd.type}"

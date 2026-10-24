@@ -43,7 +43,7 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
 });
 </script>
 
-<aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar" inert={!isOpen} aria-hidden={!isOpen}>
+<aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar" inert={!isOpen} aria-hidden={!isOpen ? "true" : "false"}>
     <div class="sidebar-content">
         <div class="header">
             <h2 class="sidebar-title">Databases</h2>
