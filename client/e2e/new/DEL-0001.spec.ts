@@ -31,12 +31,12 @@ test.describe("DEL-0001: Project Deletion Page", () => {
         }
 
         const listProjects = async (): Promise<string[]> => {
-            const response = await page.request.get("/api/projects", {
-                headers: { Authorization: `Bearer ${idToken}` },
+            const response = await page.request.post("/api/getUserProjects", {
+                data: { idToken },
             });
             expect(response.ok(), await response.text()).toBeTruthy();
-            const body = await response.json() as { projects: { projectId: string; }[]; };
-            return body.projects.map(project => project.projectId);
+            const body = await response.json() as { projects: string[]; };
+            return body.projects;
         };
 
         // The fixture must be listed and accessible before acting.

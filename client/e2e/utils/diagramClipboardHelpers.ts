@@ -59,25 +59,30 @@ export async function selectWholeRows(page: Page, firstId: string, lastId: strin
 }
 
 export async function copySelection(page: Page): Promise<void> {
-    await page.keyboard.press("Control+c");
+    await page.locator("textarea.global-textarea").press("Control+c");
 }
 
 export async function cutSelection(page: Page): Promise<void> {
-    await page.keyboard.press("Control+x");
+    await page.locator("textarea.global-textarea").press("Control+x");
 }
 
 /** Put the caret at the end of a Text row and paste the real clipboard there. */
 export async function pasteAfterRow(page: Page, row: Locator): Promise<void> {
     await row.locator(".item-content").first().click({ force: true });
     await TestHelpers.waitForCursorVisible(page);
-    await page.keyboard.press("End");
-    await page.keyboard.press("Control+v");
+    const itemId = await row.getAttribute("data-item-id");
+    await expect.poll(() => page.evaluate(() => (globalThis as any).editorOverlayStore.getActiveItem()))
+        .toBe(itemId);
+    const textarea = page.locator("textarea.global-textarea");
+    // A painted caret can outlive DOM focus after a palette/chooser closes.
+    // Target the input bridge so native clipboard events reach its handlers.
+    await textarea.press("End");
+    await textarea.press("Control+v");
 }
 
 /** Paste the real clipboard wherever the caret already is. */
 export async function pasteAtCaret(page: Page): Promise<void> {
-    await page.locator("textarea.global-textarea").focus();
-    await page.keyboard.press("Control+v");
+    await page.locator("textarea.global-textarea").press("Control+v");
 }
 
 /** The current page's outline, straight from the tree. */
