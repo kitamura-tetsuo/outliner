@@ -62,8 +62,7 @@ test.describe("REQ-006: formatted destinations use their active editing layout",
     }
 
     test("Down chooses the nearest caret on the active target's first visual row", async ({ page }, testInfo) => {
-        const formatted = `[[${"mixed日本語Wi".repeat(8)}]]`;
-        await page.setViewportSize({ width: 360, height: 720 });
+        const formatted = `[[${"mixed日本語Wi".repeat(30)}]]`;
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["WWWWWWWWWWWW", formatted]);
         const ids = await bodyIds(page);
         const target = page.locator(`[data-item-id="${ids[1]}"] .item-text`);
