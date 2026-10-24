@@ -29,30 +29,12 @@ test.describe("Cursor movement on empty text items", () => {
         });
         console.log("Debug info:", JSON.stringify(debugInfo, null, 2));
 
-        // If project or currentPage isn't loaded, skip this test
-        // This is a known issue with the Yjs connection in E2E tests
-        if (!debugInfo.hasProject || !debugInfo.hasCurrentPage) {
-            console.log("Project or currentPage not loaded, skipping test (known Yjs connection issue)");
-            expect(true).toBe(true);
-            return;
-        }
-
-        // If no items exist, create them
-        if (debugInfo.itemCount < 2) {
-            // Try to create items using the "Add Item" button
-            const addButton = page.getByTestId("add-item-button");
-            if (await addButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-                for (let i = 0; i < 2; i++) {
-                    await addButton.click();
-                    await page.waitForTimeout(300);
-                }
-            }
-        }
+        expect(debugInfo.hasProject).toBe(true);
+        expect(debugInfo.hasCurrentPage).toBe(true);
+        expect(debugInfo.itemCount).toBeGreaterThanOrEqual(3);
 
         // Wait for items to be available
-        await page.waitForSelector(".outliner-item[data-item-id]", { timeout: 30000 }).catch(() => {
-            console.log("Items not found within timeout, continuing anyway");
-        });
+        await page.waitForSelector(".outliner-item[data-item-id]", { timeout: 30000 });
 
         // Verify we have items
         const itemCount = await page.locator(".outliner-item[data-item-id]").count();

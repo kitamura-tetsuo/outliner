@@ -1,3 +1,4 @@
+import { flushSync } from "svelte";
 import type { Item as AppItem } from "../../schema/app-schema";
 import type { Item } from "../../schema/yjs-schema";
 import { diagramEditingTarget, isDiagramItem } from "../../services/diagram/diagramEditing";
@@ -112,9 +113,18 @@ export class CursorNavigation {
                 return true;
             }
             targetItemId = adjacent.id;
+            // Inactive formatted Text renders presentation HTML whose DOM offsets
+            // and wrapping do not match the editable model. Activate the target
+            // and synchronously flush that render before resolving its model
+            // offset. The cursor itself remains on the valid source position
+            // until authoritative destination geometry has been obtained.
+            flushSync(() => store.setActiveItem(targetItemId));
             const measured = getVisualCaretLines(targetItemId);
             // A non-Text row keeps its established navigation ownership.
-            if (!measured) return false;
+            if (!measured) {
+                flushSync(() => store.setActiveItem(this.cursor.itemId));
+                return false;
+            }
             targetLines = measured;
             targetLineIndex = direction === "up" ? targetLines.length - 1 : 0;
         }
