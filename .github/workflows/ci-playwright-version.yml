@@ -32,7 +32,7 @@ on:
 
 jobs:
   playwright-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       sync_result: ${{ steps.publish.outputs.result }}
       handoff_result: ${{ steps.handoff.outputs.result }}

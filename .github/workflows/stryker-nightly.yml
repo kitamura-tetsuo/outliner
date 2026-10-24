@@ -16,7 +16,7 @@ jobs:
     # label set that omits its image name. The job then sat queued for 24 hours
     # before Actions killed it with "The job was not acquired by Runner of type
     # hosted even after multiple attempts". Name the hosted image instead.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: client

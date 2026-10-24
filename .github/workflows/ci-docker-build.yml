@@ -16,7 +16,7 @@ concurrency:
 jobs:
   server-image:
     name: Build server image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -87,7 +87,7 @@ jobs:
 
   server-debug-image:
     name: Build server debug image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
