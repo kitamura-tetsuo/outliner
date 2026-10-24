@@ -17,6 +17,7 @@ async function modelText(page: Page): Promise<string[]> {
 
 async function place(page: Page, itemId: string, offset: number): Promise<void> {
     await page.locator(`[data-item-id="${itemId}"] .item-content`).click({ force: true });
+    await TestHelpers.focusGlobalTextarea(page);
     await page.keyboard.press("Home");
     for (let index = 0; index < offset; index += 1) await page.keyboard.press("ArrowRight");
     await expect(page.locator("textarea.global-textarea")).toBeFocused();
