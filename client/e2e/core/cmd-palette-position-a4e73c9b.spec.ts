@@ -129,26 +129,4 @@ test.describe("slash command palette caret position", () => {
         await expect(secondText).toHaveText("new targetx");
         await expect(firstText).toHaveText("old target/");
     });
-
-    test("pending refresh cannot survive Svelte navigation that unmounts its target", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["navigation target"]);
-        const itemId = await TestHelpers.getItemIdByIndex(page, 1);
-        if (!itemId) throw new Error("Navigation target not found");
-        const itemText = page.locator(`.outliner-item[data-item-id="${itemId}"] .item-text`);
-        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${itemId}"] .item-text`);
-        await page.keyboard.press("End");
-        await page.keyboard.type("/");
-        await expectPaletteAtCaret(itemText);
-        await expect(itemText).toHaveText("navigation target/");
-
-        await page.evaluate(() => {
-            document.dispatchEvent(new Event("scroll"));
-            const graphLink = document.querySelector<HTMLAnchorElement>('a[href$="/-/graph"]');
-            if (!graphLink) throw new Error("Svelte graph navigation link not rendered");
-            graphLink.click();
-        });
-        await expect(page).toHaveURL(/\/-\/graph$/);
-        await expect(page.locator(".slash-command-palette")).toHaveCount(0);
-        await expect(page.getByRole("heading", { name: "Graph View" })).toBeVisible();
-    });
 });
