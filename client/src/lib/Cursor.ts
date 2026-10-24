@@ -79,6 +79,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     private readonly editor: CursorEditor;
     private readonly navigation: CursorNavigation;
     initialColumn: number | null = null;
+    preferredVisualX: number | null = null;
 
     private getSelection() {
         return getSelectionForUser(this.userId);
@@ -314,6 +315,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     // Not private: CursorNavigation calls this via the CursorNavigationContext interface.
     resetInitialColumn() {
         this.initialColumn = null;
+        this.preferredVisualX = null;
     }
 
     // Visual-line-aware cursor navigation (moveLeft/moveRight/moveUp/moveDown and the
@@ -329,12 +331,12 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         this.navigation.moveRight();
     }
 
-    moveUp() {
-        this.navigation.moveUp();
+    moveUp(useVisualGoal = true) {
+        this.navigation.moveUp(useVisualGoal);
     }
 
-    moveDown() {
-        this.navigation.moveDown();
+    moveDown(useVisualGoal = true) {
+        this.navigation.moveDown(useVisualGoal);
     }
 
     /**
@@ -434,8 +436,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                     return true;
                 }
                 this.applyToStore();
-            } else if (key === "ArrowUp") this.moveUp();
-            else if (key === "ArrowDown") this.moveDown();
+            } else if (key === "ArrowUp") this.moveUp(false);
+            else if (key === "ArrowDown") this.moveDown(false);
             else if (key === "Home") this.moveToLineStart();
             else this.moveToLineEnd();
             return true;
@@ -447,10 +449,10 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         if (key === "ArrowLeft") this.offset = previousCharacterOffset(source, this.offset);
         else if (key === "ArrowRight") this.offset = nextCharacterOffset(source, this.offset);
         else if (key === "ArrowUp") {
-            if (lineInfo && lineInfo.lineIndex > 0) this.moveUp();
+            if (lineInfo && lineInfo.lineIndex > 0) this.moveUp(false);
             else this.offset = 0;
         } else if (key === "ArrowDown") {
-            if (lineInfo && lineInfo.lineIndex < lineInfo.totalLines - 1) this.moveDown();
+            if (lineInfo && lineInfo.lineIndex < lineInfo.totalLines - 1) this.moveDown(false);
             else this.offset = source.length;
         } else if (key === "Home") this.moveToLineStart();
         else this.moveToLineEnd();
@@ -943,7 +945,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor up (Update Focus)
-        this.moveUp();
+        this.moveUp(false);
 
         this.updateSelectionAfterMove(startItemId, startOffset);
     }
@@ -958,7 +960,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor down (Update Focus)
-        this.moveDown();
+        this.moveDown(false);
 
         this.updateSelectionAfterMove(startItemId, startOffset);
     }
