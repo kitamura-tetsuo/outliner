@@ -32,7 +32,9 @@ test.describe("FTR-9e4b5314: snapshot sharing and refusals", () => {
         test.setTimeout(150000);
         await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["", "", "anchor"]);
-        await expect(page.locator(".outliner-item")).toHaveCount(4, { timeout: 15000 });
+        // A cold first attempt under shard load can take longer for Yjs sync
+        // and initial render; the count itself stays strict.
+        await expect(page.locator(".outliner-item")).toHaveCount(4, { timeout: 30000 });
         await recordClipboardResults(page);
     });
 
@@ -48,14 +50,37 @@ test.describe("FTR-9e4b5314: snapshot sharing and refusals", () => {
 
         const anchor = await rowByText(page, "anchor");
         await pasteAfterRow(page, anchor);
-        const e = (await lastClipboardResult(page, 1)).diagramIdMap[d] as string;
+        const firstPaste = await lastClipboardResult(page, 1);
+        // Fail fast on a refused first paste instead of cascading into a
+        // confusing downstream mismatch.
+        expect(firstPaste).toMatchObject({ ok: true, operation: "paste" });
+        const e: unknown = firstPaste.diagramIdMap?.[d];
+        expect(typeof e, "first paste allocates a fresh Diagram for the copied original").toBe("string");
+        // Let the first paste settle in the outline before issuing the second
+        // one: a cold first attempt under shard load can lag behind the
+        // result event, and the second paste must not race the first.
+        await expect.poll(
+            async () => (await pageOutline(page)).filter(n => n.diagramId === e).length,
+            { timeout: 30000 },
+        ).toBe(2);
+
         await pasteAfterRow(page, anchor);
-        const f = (await lastClipboardResult(page, 2)).diagramIdMap[d] as string;
+        const secondPaste = await lastClipboardResult(page, 2);
+        expect(secondPaste).toMatchObject({ ok: true, operation: "paste" });
+        const f: unknown = secondPaste.diagramIdMap?.[d];
+        expect(typeof f, "second paste allocates another fresh Diagram for the copied original").toBe("string");
 
         expect(new Set([d, e, f]).size).toBe(3);
-        expect(await projectDiagrams(page)).toEqual({ [d]: "changed after copy", [e]: "copy time", [f]: "copy time" });
+        await expect.poll(() => projectDiagrams(page), { timeout: 30000 }).toEqual({
+            [d]: "changed after copy",
+            [e as string]: "copy time",
+            [f as string]: "copy time",
+        });
         // The later Paste lands right after the caret row, ahead of the earlier one.
-        expect((await pageOutline(page)).map(n => n.diagramId ?? n.text)).toEqual([d, d, "anchor", f, f, e, e]);
+        await expect.poll(
+            async () => (await pageOutline(page)).map(n => n.diagramId ?? n.text),
+            { timeout: 30000 },
+        ).toEqual([d, d, "anchor", f, f, e, e]);
     });
 
     test("a read-only surface permits Copy but refuses Cut staging and Paste before any write", async ({ page }) => {

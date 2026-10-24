@@ -14,3 +14,4 @@ acceptance:
 - Clicking Delete removes the selected projects
 - Multiple projects can be selected via checkboxes
 - Users can see all project container IDs and titles
+- Deleting the project identified by its stable ID removes that project while an unselected control project remains, verified against the authoritative membership state and the list after reload

@@ -144,6 +144,9 @@ export async function cutSelection(page: Page): Promise<void> {
 export async function pasteAfterRow(page: Page, row: Locator): Promise<void> {
     await row.locator(".item-content").first().click({ force: true });
     await TestHelpers.waitForCursorVisible(page);
+    const itemId = await row.getAttribute("data-item-id");
+    await expect.poll(() => page.evaluate(() => (globalThis as any).editorOverlayStore.getActiveItem()))
+        .toBe(itemId);
     // A visible caret does not prove the keyboard target: a paste issued while
     // the textarea is unfocused never reaches the production paste handler and
     // emits no result.
