@@ -2371,8 +2371,8 @@ export function setSelectionPosition(start: number, end: number = start) {
     aria-label={isPageTitle ? undefined : (isVisualNodeItem ? visualNodeLabel : (!model.original.text ? "Blank outline item" : undefined))}
     tabindex={isPageTitle ? undefined : (isItemActive || (!editorOverlayStore.getActiveItem() && index === 1) ? 0 : -1)}
     aria-level={isPageTitle ? 1 : depth}
-    aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
-    aria-selected={isPageTitle ? undefined : isItemActive}
+    aria-expanded={(!isPageTitle && hasChildren) ? (!isCollapsed ? "true" : "false") : undefined}
+    aria-selected={isPageTitle ? undefined : (isItemActive ? "true" : "false")}
     aria-setsize={isPageTitle ? undefined : ariaSetSize}
     aria-posinset={isPageTitle ? undefined : ariaPosInSet}
 
@@ -2404,7 +2404,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     onclick={(e) => { e.stopPropagation(); toggleCollapse(); }}
                     title={isCollapsed ? "Expand" : "Collapse"}
                     aria-label={isCollapsed ? "Expand item" : "Collapse item"}
-                    aria-expanded={!isCollapsed}
+                    aria-expanded={!isCollapsed ? "true" : "false"}
                     draggable={!isReadOnly || compTypeValue === "yjstable"}
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}

@@ -56,7 +56,7 @@ function handleKeydown(event: KeyboardEvent) {
         {:else}
             <ul role="listbox" aria-label="Existing Mermaid diagrams">
                 {#each diagrams as d (d.id)}
-                    <li role="option" aria-selected={selectedId === d.id} class:selected={selectedId === d.id}>
+                    <li role="option" aria-selected={selectedId === d.id ? "true" : "false"} class:selected={selectedId === d.id}>
                         <button
                             type="button"
                             data-testid="diagram-chooser-option"

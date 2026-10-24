@@ -278,7 +278,7 @@ import { isPublicProject } from "../lib/publicProject";
 
 </script>
 
-<aside class="sidebar" class:open={isOpen} aria-label="Main Sidebar" inert={!isOpen} aria-hidden={!isOpen}>
+<aside class="sidebar" class:open={isOpen} aria-label="Main Sidebar" inert={!isOpen} aria-hidden={!isOpen ? "true" : "false"}>
     <div class="sidebar-content">
         <h2 class="sidebar-title">Sidebar</h2>
 
@@ -288,7 +288,7 @@ import { isPublicProject } from "../lib/publicProject";
             <button type="button"
                 class="section-header"
                 onclick={() => (isProjectsCollapsed = !isProjectsCollapsed)}
-                aria-expanded={!isProjectsCollapsed}
+                aria-expanded={!isProjectsCollapsed ? "true" : "false"}
                 aria-controls="sidebar-projects-list"
                 aria-label="Toggle projects section"
             >
@@ -352,7 +352,7 @@ import { isPublicProject } from "../lib/publicProject";
                     <button type="button"
                         class="pages-toggle-btn"
                         onclick={() => (isPagesCollapsed = !isPagesCollapsed)}
-                        aria-expanded={!isPagesCollapsed}
+                        aria-expanded={!isPagesCollapsed ? "true" : "false"}
                         aria-controls="sidebar-pages-list"
                         aria-label="Toggle pages section"
                     >
@@ -455,7 +455,7 @@ import { isPublicProject } from "../lib/publicProject";
             <button type="button"
                 class="section-header"
                 onclick={() => (isTablesCollapsed = !isTablesCollapsed)}
-                aria-expanded={!isTablesCollapsed}
+                aria-expanded={!isTablesCollapsed ? "true" : "false"}
                 aria-controls="sidebar-tables-list"
                 aria-label="Toggle tables section"
             >
@@ -532,7 +532,7 @@ import { isPublicProject } from "../lib/publicProject";
                     <button type="button"
                         class="pages-toggle-btn"
                         onclick={() => (isSchedulesCollapsed = !isSchedulesCollapsed)}
-                        aria-expanded={!isSchedulesCollapsed}
+                        aria-expanded={!isSchedulesCollapsed ? "true" : "false"}
                         aria-controls="sidebar-schedules-list"
                         aria-label="Toggle scheduled SQL section"
                     >

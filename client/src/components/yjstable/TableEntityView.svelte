@@ -198,7 +198,7 @@ onDestroy(() => {
             <button
                 type="button"
                 class:active={showSchema}
-                aria-pressed={showSchema}
+                aria-pressed={showSchema ? "true" : "false"}
                 data-testid="table-entity-toggle-schema"
                 onclick={() => {
                     showSchema = !showSchema;

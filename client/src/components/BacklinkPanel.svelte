@@ -93,7 +93,7 @@ onDestroy(() => {
         aria-label="Toggle Backlinks"
         class="backlink-toggle-button"
         class:active={isOpen}
-        aria-expanded={isOpen}
+        aria-expanded={isOpen ? "true" : "false"}
         aria-controls="backlink-content"
     >
         <span class="backlink-count">{hasLoaded ? backlinks.length : '-'}</span>

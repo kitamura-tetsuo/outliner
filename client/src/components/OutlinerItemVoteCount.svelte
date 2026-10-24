@@ -13,7 +13,7 @@ let { count, title, ariaLabel, voted, onToggle }: Props = $props();
 <button type="button"
     class="vote-count"
     {title}
-    aria-pressed={voted}
+    aria-pressed={voted ? "true" : "false"}
     onclick={(e) => { e.stopPropagation(); onToggle(); }}
     onpointerdown={(e) => { e.stopPropagation(); }}
     onmousedown={(e) => { e.stopPropagation(); }}

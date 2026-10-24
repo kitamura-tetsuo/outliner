@@ -631,7 +631,7 @@ onDestroy(() => {
         <button
             type="button"
             class:active={showSettings}
-            aria-pressed={showSettings}
+            aria-pressed={showSettings ? "true" : "false"}
             aria-controls="calendar-settings-panel"
             data-testid="calendar-toggle-settings"
             onclick={() => { showSettings = !showSettings; }}

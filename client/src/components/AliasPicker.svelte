@@ -136,7 +136,7 @@ $effect(() => {
                 <li
                     id="alias-option-{index}"
                     role="option"
-                    aria-selected={index === selectedIndex}
+                    aria-selected={index === selectedIndex ? "true" : "false"}
                     class:selected={index === selectedIndex}
                 >
                     <button type="button"

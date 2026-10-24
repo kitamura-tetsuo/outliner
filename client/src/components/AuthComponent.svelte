@@ -180,7 +180,7 @@ async function handleLogout() {
             onclick={handleLogin}
             class="auth-button google-btn"
             disabled={isLoading || isLoggingIn}
-            aria-disabled={isLoading || isLoggingIn}
+            aria-disabled={isLoading || isLoggingIn ? "true" : "false"}
         >
             <span class="google-icon">
                 {#if isLoggingIn}
@@ -243,7 +243,7 @@ async function handleLogout() {
                 <button type="submit"
                     class="email-login-btn"
                     disabled={isLoggingIn || (!isOnPrem && !email) || !password}
-                    aria-disabled={isLoggingIn || (!isOnPrem && !email) || !password}
+                    aria-disabled={isLoggingIn || (!isOnPrem && !email) || !password ? "true" : "false"}
                 >
                     {#if isLoggingIn}
                         <span class="spinner-inline"></span>
