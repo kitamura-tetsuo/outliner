@@ -163,7 +163,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 return option && option.series && option.series[0] && option.series[0].data
                     && option.series[0].data.length >= 1;
             } catch (error) {
-                console.error("Error checking graph option:", error);
+                console.warn("Error checking graph option:", error);
                 return false;
             }
         }, { timeout: 10000 });
@@ -303,7 +303,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     && option.series[0].data && option.series[0].data.length >= 2
                     && option.series[0].links && option.series[0].links.length >= 1;
             } catch (error) {
-                console.error("Error checking updated graph:", error);
+                console.warn("Error checking updated graph:", error);
                 return false;
             }
         }, { timeout: 15000 });

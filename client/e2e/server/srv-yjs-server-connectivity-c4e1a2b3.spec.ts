@@ -38,7 +38,7 @@ test.describe("Yjs server", () => {
                     };
 
                     ws.onerror = (error) => {
-                        console.error("WebSocket error event:", error);
+                        console.warn("WebSocket error event:", error);
                         // In some cases, we might not get detailed error info from browser security
                         resolve({
                             connected: false,
@@ -110,7 +110,10 @@ test.describe("Yjs server", () => {
                 // Server responded with a rejection code, which means it's running
                 console.log(`Server responded with code ${(wsServerResponse as any).code}, indicating it's running`);
             } else {
-                console.error(`Server did not respond properly. Response:`, wsServerResponse);
+                test.info().annotations.push({
+                    type: "warning",
+                    description: `Server did not respond properly. Response: ${JSON.stringify(wsServerResponse)}`,
+                });
             }
         }
 
