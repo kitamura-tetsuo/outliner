@@ -18,6 +18,7 @@ import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { CreateTableTool } from "./mcp/create-table-tool.js";
 import { OutlinerGridPresentationService } from "./mcp/grid-presentation.js";
+import { KanbanObservationService } from "./mcp/kanban-observations.js";
 import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
 import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
@@ -470,6 +471,9 @@ export async function startServer(
     // project operation reuses the established projectUsers ACL and direct
     // Hocuspocus document lifecycle.
     const mcpRelations = new OutlinerRelationService(hocuspocus, checkContainerAccess);
+    // One process-local authority owns live-room continuity for later Kanban
+    // readers/mutators. It intentionally is not an MCP endpoint by itself.
+    const kanbanObservations = new KanbanObservationService(hocuspocus);
     // Standalone Table creation (issue #5411) acknowledges success only once
     // both the prepared Table room and the registry publication are stored.
     const tableCreation = new OutlinerTableCreationService(
@@ -773,6 +777,9 @@ export async function startServer(
         // Awaited so the scheduler's worker releases its Postgres WASM heap
         // before the process goes down.
         await jobScheduler?.stop();
+        // Observation leases must leave while Hocuspocus can still perform
+        // their normal/orphan-safe direct-connection release.
+        await kanbanObservations.dispose();
         if (typeof (hocuspocus as unknown as { destroy?: () => void; }).destroy === "function") {
             (hocuspocus as unknown as { destroy?: () => void; }).destroy?.();
         } else {
@@ -783,5 +790,14 @@ export async function startServer(
         });
     };
 
-    return { server, hocuspocus, persistence, tableCreation, gridPresentation, mcpRelations, shutdown };
+    return {
+        server,
+        hocuspocus,
+        persistence,
+        tableCreation,
+        gridPresentation,
+        mcpRelations,
+        kanbanObservations,
+        shutdown,
+    };
 }
