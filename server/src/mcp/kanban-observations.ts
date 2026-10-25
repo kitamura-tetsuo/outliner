@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import * as Y from "yjs";
-import type { LiveRoomHost } from "./live-room.js";
+import { closeLiveRoom, type DirectConnection, type LiveRoomHost } from "./live-room.js";
 
 export const KANBAN_OBSERVATION_TTL_MS = 5 * 60_000;
 export const KANBAN_OBSERVATION_LIMITS = {
@@ -25,6 +25,30 @@ export interface KanbanObservationLease {
     release(): Promise<void>;
 }
 
+/**
+ * Transfer already-open production direct connections into an observation.
+ * No room is opened or reconstructed here. Release remains orphan-safe when a
+ * serving-room incarnation is replaced while the observation is retained.
+ */
+export function adoptKanbanObservationLease(
+    host: LiveRoomHost,
+    projectConnection: DirectConnection,
+    additionalConnections: readonly DirectConnection[] = [],
+): KanbanObservationLease {
+    const connections = [projectConnection, ...additionalConnections];
+    const documents = connections.map(connection => connection.document as unknown as Y.Doc);
+    let released = false;
+    return {
+        projectDoc: documents[0]!,
+        rooms: documents.map(doc => ({ room: doc.name, doc })),
+        async release() {
+            if (released) return;
+            released = true;
+            await Promise.all(connections.map(connection => closeLiveRoom(host, connection)));
+        },
+    };
+}
+
 export interface DefinitionObservationCapture {
     readonly target: { readonly projectDoc: Y.Doc; readonly entry: Y.Map<unknown>; };
     readonly keys: readonly KanbanDefinitionKey[];
@@ -37,15 +61,26 @@ export interface MapFieldObservationCapture {
     /** Registry/row container identity, when the owner is itself replaceable. */
     readonly container?: Y.Map<unknown>;
     readonly containerKey?: string;
+    readonly resolveOwner?: () => Y.Map<unknown> | undefined;
     /** Coupled physical slots (for example outline start and allDay). */
     readonly coupledFields?: readonly string[];
     /** Additional exact map entries on which this field's effective schema depends. */
-    readonly dependencies?: readonly { readonly owner: Y.Map<unknown>; readonly fields: readonly string[]; }[];
+    readonly dependencies?: readonly {
+        readonly owner: Y.Map<unknown>;
+        readonly fields: readonly string[];
+        readonly container?: Y.Map<unknown>;
+        readonly containerKey?: string;
+    }[];
+    /** Exact live source-schema texts used to establish the effective field. */
+    readonly schemaTexts?: readonly Y.Text[];
 }
 
 export interface PlacementObservationCapture {
     readonly placementId: string;
-    readonly registry: Y.Map<unknown>;
+    /** Actual attached ordered-tree lookup; it must throw or return undefined for a missing node. */
+    readonly resolveValue?: () => Y.Map<unknown> | undefined;
+    /** Legacy map-shaped registries remain usable for non-tree placements. */
+    readonly registry?: Y.Map<unknown>;
     readonly value: Y.Map<unknown>;
 }
 
@@ -212,6 +247,18 @@ export class KanbanObservationService {
 
     private createWatches(input: KanbanObservationCapture): Map<string, Watch> | undefined {
         const watches = new Map<string, Watch>();
+        const fieldCaptures = [...input.tableFields ?? [], ...input.outlineFields ?? []];
+        if (
+            fieldCaptures.some(capture =>
+                !capture.owner.doc
+                || capture.dependencies?.some(dependency =>
+                    !dependency.owner.doc
+                    || (dependency.container && dependency.containerKey !== undefined
+                        && dependency.container.get(dependency.containerKey) !== dependency.owner)
+                )
+                || capture.schemaTexts?.some(text => !text.doc)
+            )
+        ) return undefined;
         if (input.definition) {
             const { target, keys } = input.definition;
             const registry = target.projectDoc.getMap<Y.Map<unknown>>("yjsKanbans");
@@ -229,9 +276,10 @@ export class KanbanObservationService {
             ]] as const
         ) {
             for (const capture of captures ?? []) {
-                if (!capture.owner.doc) return disposeAndUndefined(watches);
                 const prefix = `${kind}:${capture.scopeId}`;
-                const identity = capture.container && capture.containerKey !== undefined
+                const identity = capture.resolveOwner
+                    ? () => capture.resolveOwner?.() === capture.owner
+                    : capture.container && capture.containerKey !== undefined
                     ? () => capture.container?.get(capture.containerKey as string) === capture.owner
                     : undefined;
                 watches.set(prefix, observeMap(capture.owner, capture.field, identity));
@@ -239,27 +287,29 @@ export class KanbanObservationService {
                     watches.set(`${prefix}:coupled:${field}`, observeMap(capture.owner, field, identity));
                 }
                 capture.dependencies?.forEach((dependency, index) => {
-                    if (!dependency.owner.doc) return;
+                    const dependencyIdentity = dependency.container && dependency.containerKey !== undefined
+                        ? () => dependency.container?.get(dependency.containerKey as string) === dependency.owner
+                        : undefined;
                     for (const field of dependency.fields) {
-                        watches.set(`${prefix}:dependency:${index}:${field}`, observeMap(dependency.owner, field));
+                        watches.set(
+                            `${prefix}:dependency:${index}:${field}`,
+                            observeMap(dependency.owner, field, dependencyIdentity),
+                        );
                     }
+                });
+                capture.schemaTexts?.forEach((text, index) => {
+                    watches.set(`${prefix}:schema:${index}`, observeType(text));
                 });
             }
         }
         for (const placement of input.placements ?? []) {
-            if (placement.registry.get(placement.placementId) !== placement.value || !placement.value.doc) {
+            const resolve = placement.resolveValue
+                ?? (() => placement.registry?.get(placement.placementId) as Y.Map<unknown> | undefined);
+            if (resolve() !== placement.value || !placement.value.doc) {
                 return disposeAndUndefined(watches);
             }
             const prefix = `placement:${placement.placementId}`;
-            watches.set(
-                prefix,
-                observeMap(
-                    placement.registry,
-                    placement.placementId,
-                    () => placement.registry.get(placement.placementId) === placement.value,
-                    false,
-                ),
-            );
+            watches.set(prefix, observeResolvedIdentity(placement.value.doc, placement.value, resolve));
             watches.set(`${prefix}:componentType`, observeMap(placement.value, "componentType"));
             watches.set(`${prefix}:kanbanId`, observeMap(placement.value, "kanbanId"));
         }
@@ -300,7 +350,9 @@ export class KanbanObservationService {
             const prefix = `${selection.kind}:${selection.scopeId}:dependency:`;
             for (const [key, watch] of record.watches) {
                 if (
-                    (key.startsWith(prefix) || key.startsWith(`${selection.kind}:${selection.scopeId}:coupled:`))
+                    (key.startsWith(prefix)
+                        || key.startsWith(`${selection.kind}:${selection.scopeId}:coupled:`)
+                        || key.startsWith(`${selection.kind}:${selection.scopeId}:schema:`))
                     && (watch.changed || !watch.current())
                 ) {
                     throw new KanbanObservationError("observation_changed");
@@ -353,6 +405,43 @@ function observeMap<T>(
     return watch;
 }
 
+function observeType(type: Y.AbstractType<unknown>): Watch {
+    const watch: Watch = {
+        key: "type",
+        changed: false,
+        current: () => type.doc !== null,
+        dispose: () => type.unobserve(listener),
+    };
+    const listener = () => watch.changed = true;
+    type.observe(listener);
+    return watch;
+}
+
+function observeResolvedIdentity(
+    doc: Y.Doc,
+    value: Y.Map<unknown>,
+    resolve: () => Y.Map<unknown> | undefined,
+): Watch {
+    const current = () => {
+        try {
+            return resolve() === value;
+        } catch {
+            return false;
+        }
+    };
+    const watch: Watch = {
+        key: "identity",
+        changed: false,
+        current,
+        dispose: () => doc.off("afterTransaction", listener),
+    };
+    const listener = () => {
+        if (!current()) watch.changed = true;
+    };
+    doc.on("afterTransaction", listener);
+    return watch;
+}
+
 function disposeAndUndefined(watches: Map<string, Watch>): undefined {
     for (const watch of watches.values()) watch.dispose();
     return undefined;
@@ -362,6 +451,7 @@ function countScopes(input: KanbanObservationCapture): number {
     let count = input.definition ? 1 + new Set(input.definition.keys).size : 0;
     for (const capture of [...input.tableFields ?? [], ...input.outlineFields ?? []]) {
         count += 1 + new Set(capture.coupledFields ?? []).size
+            + new Set(capture.schemaTexts ?? []).size
             + (capture.dependencies?.reduce((sum, dependency) => sum + new Set(dependency.fields).size, 0) ?? 0);
     }
     count += (input.placements?.length ?? 0) * 3;
