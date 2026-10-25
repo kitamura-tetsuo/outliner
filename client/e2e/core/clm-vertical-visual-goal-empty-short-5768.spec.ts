@@ -121,7 +121,7 @@ test.describe("REQ-007: retained visual goal through short and empty rows", () =
         const before = await modelText(page);
         await place(page, ids[0], 0);
         await page.keyboard.press("ArrowDown");
-        await assertCaret(page, ids[1], Math.min(7, titleLength));
+        await assertCaret(page, ids[1], 0);
         expect(await modelText(page)).toEqual(before);
     });
 
@@ -172,7 +172,7 @@ test.describe("REQ-007: retained visual goal through short and empty rows", () =
         await page.keyboard.press("ArrowUp");
         await assertCaret(page, ids[0], 0);
         await page.keyboard.press("ArrowDown");
-        await assertCaret(page, ids[1], 0);
+        await assertCaret(page, ids[1], Math.min(7, titleLength));
         await page.keyboard.press("ArrowUp");
         await assertCaret(page, ids[0], Math.min(7, titleLength));
     });
