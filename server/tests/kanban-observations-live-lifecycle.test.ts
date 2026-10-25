@@ -45,6 +45,46 @@ describe("Kanban observation live-room lifecycle bounds", function() {
         host.closeConnections();
     });
 
+    it("does not renew the fixed deadline after a successful validation", async () => {
+        const host = new Hocuspocus({ name: "kanban-fixed-deadline-test", quiet: true });
+        let now = 1_000;
+        const service = new KanbanObservationService(host, {
+            now: () => now,
+            ttlMs: 100,
+            setTimer: () => ({}) as ReturnType<typeof setTimeout>,
+            clearTimer: () => {},
+        });
+        const { result } = await capture(host, service, "projects/p");
+        if (!result.available) throw new Error(result.reason);
+        const guard = service.acquire("u", "projects/p", result.observationToken);
+        const selection = { kind: "definition", kanbanId: "k", keys: [] } as const;
+
+        now = 1_050;
+        guard.assertCurrent(selection);
+        now = 1_101;
+        expect(() => guard.assertCurrent(selection)).to.throw(KanbanObservationError, "observation_expired");
+
+        await service.dispose();
+        host.closeConnections();
+    });
+
+    it("rejects another Kanban while the captured Kanban still validates", async () => {
+        const host = new Hocuspocus({ name: "kanban-binding-test", quiet: true });
+        const service = new KanbanObservationService(host);
+        const { result } = await capture(host, service, "projects/p");
+        if (!result.available) throw new Error(result.reason);
+        const guard = service.acquire("u", "projects/p", result.observationToken);
+
+        expect(() => guard.assertCurrent({ kind: "definition", kanbanId: "k2", keys: [] })).to.throw(
+            KanbanObservationError,
+            "scope_not_observed",
+        );
+        guard.assertCurrent({ kind: "definition", kanbanId: "k", keys: [] });
+
+        await service.dispose();
+        host.closeConnections();
+    });
+
     for (
         const [name, limits] of [
             ["per-owner/project token", { perOwnerProject: 1 }],
