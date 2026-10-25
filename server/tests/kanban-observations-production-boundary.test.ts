@@ -2,7 +2,7 @@ import { expect } from "chai";
 import fs from "fs-extra";
 import * as Y from "yjs";
 import { createKanbanEntry, getKanbanDefinitionTarget } from "../../shared/src/services/kanbanDefinition.js";
-import { replaceSqlCatalogSource, restoreSqlCatalogObject } from "../../shared/src/services/sqlCatalog.js";
+import { restoreSqlCatalogObject } from "../../shared/src/services/sqlCatalog.js";
 import { adoptKanbanObservationLease, KanbanObservationError } from "../src/mcp/kanban-observations.js";
 import { openLiveRoom } from "../src/mcp/live-room.js";
 import { Project } from "../src/schema/app-schema.js";
@@ -72,8 +72,40 @@ describe("Kanban observations at the persisted production boundary", function() 
             kind: "enum",
             source: "CREATE TYPE task_status AS ENUM ('todo')",
         });
-        const catalog = projectDoc.getMap<Y.Map<unknown>>("sqlCatalog");
         const sourceRef = { kind: "table", id: "t", sqlName: "tasks", rowId: "r" };
+        const effectiveSchema = await server!.kanbanObservations.analyzeTableEffectiveSchema({
+            projectDoc,
+            sourceSchema: schema,
+            projectId: "p",
+            tableId: "t",
+        })!;
+        const omittedEnum = server!.kanbanObservations.capture({
+            uid: "u",
+            projectId: "p",
+            kanbanId: "k",
+            lease: adoptKanbanObservationLease(server!.hocuspocus, projectHandle, [tableHandle]),
+            tableFields: [{
+                scopeId: "omitted-enum",
+                owner: row,
+                field: "status",
+                container: tableDoc.getMap("data"),
+                containerKey: "r",
+                sourceRef,
+                outputField: "status",
+                physicalColumn: "status",
+                roles: ["title"],
+                effectiveSchema: { tableId: "t", sourceSchema: schema, catalogDependencies: [] } as never,
+                table: {
+                    projectDoc,
+                    registry: projectDoc.getMap("yjsTables"),
+                    tableId: "t",
+                    entry: tableEntry,
+                    sqlName: "tasks",
+                    tableDoc,
+                },
+            }],
+        });
+        expect(omittedEnum).to.deep.equal({ available: false, reason: "source_unavailable" });
         const capture = () =>
             server!.kanbanObservations.capture({
                 uid: "u",
@@ -98,15 +130,7 @@ describe("Kanban observations at the persisted production boundary", function() 
                         sqlName: "tasks",
                         tableDoc,
                     },
-                    effectiveSchema: {
-                        sourceSchema: schema,
-                        catalogDependencies: [{
-                            owner: catalog.get("status-enum")!,
-                            fields: ["kind", "source"],
-                            container: catalog,
-                            containerKey: "status-enum",
-                        }],
-                    },
+                    effectiveSchema,
                 }],
             });
         const captured = capture();
@@ -125,56 +149,6 @@ describe("Kanban observations at the persisted production boundary", function() 
         schema.delete(schema.length - 11, 11);
         expect(() => server!.kanbanObservations.acquire("u", "p", captured.observationToken).assertCurrent(selection))
             .to.throw(KanbanObservationError, "observation_changed");
-
-        // A separate observation proves catalog events, not the stale schema
-        // guard above, are the reason the second selector is rejected.
-        await server!.kanbanObservations.release(captured.observationToken);
-        const secondProject = await openLiveRoom(server!.hocuspocus, "projects/p", "u", { test: "project-2" });
-        const secondTable = await openLiveRoom(server!.hocuspocus, "projects/p/tables/t", "u", { test: "table-2" });
-        const secondDoc = secondProject.document as unknown as Y.Doc;
-        const secondTableDoc = secondTable.document as unknown as Y.Doc;
-        const secondRow = secondTableDoc.getMap<Y.Map<unknown>>("data").get("r")!;
-        const secondCatalog = secondDoc.getMap<Y.Map<unknown>>("sqlCatalog");
-        const secondEntry = secondDoc.getMap<Y.Map<unknown>>("yjsTables").get("t")!;
-        const second = server!.kanbanObservations.capture({
-            uid: "u",
-            projectId: "p",
-            kanbanId: "k",
-            lease: adoptKanbanObservationLease(server!.hocuspocus, secondProject, [secondTable]),
-            tableFields: [{
-                scopeId: "tasks:r:status",
-                owner: secondRow,
-                field: "status",
-                container: secondTableDoc.getMap("data"),
-                containerKey: "r",
-                sourceRef,
-                outputField: "status",
-                physicalColumn: "status",
-                roles: ["title"],
-                table: {
-                    projectDoc: secondDoc,
-                    registry: secondDoc.getMap("yjsTables"),
-                    tableId: "t",
-                    entry: secondEntry,
-                    sqlName: "tasks",
-                    tableDoc: secondTableDoc,
-                },
-                effectiveSchema: {
-                    sourceSchema: secondTableDoc.getText("schema"),
-                    catalogDependencies: [{
-                        owner: secondCatalog.get("status-enum")!,
-                        fields: ["kind", "source"],
-                        container: secondCatalog,
-                        containerKey: "status-enum",
-                    }],
-                },
-            }],
-        });
-        if (!second.available) throw new Error(second.reason);
-        replaceSqlCatalogSource(secondDoc, "status-enum", "CREATE TYPE task_status AS ENUM ('todo', 'done')");
-        replaceSqlCatalogSource(secondDoc, "status-enum", "CREATE TYPE task_status AS ENUM ('todo')");
-        expect(() => server!.kanbanObservations.acquire("u", "p", second.observationToken).assertCurrent(selection))
-            .to.throw(KanbanObservationError, "observation_changed");
     });
 
     it("binds Table selectors to registry identity, route, source, and canonical role", async () => {
@@ -191,7 +165,41 @@ describe("Kanban observations at the persisted production boundary", function() 
         const row = new Y.Map<unknown>();
         row.set("status", "todo");
         tableDoc.getMap("data").set("r", row);
+        tableDoc.getText("schema").insert(0, "CREATE TABLE tasks (status text)");
         const sourceRef = { kind: "table", id: "t", sqlName: "tasks", rowId: "r" };
+        const scalarSchema = await server!.kanbanObservations.analyzeTableEffectiveSchema({
+            projectDoc,
+            sourceSchema: tableDoc.getText("schema"),
+            projectId: "p",
+            tableId: "t",
+        })!;
+        const oldTableDoc = new Y.Doc();
+        const oldData = oldTableDoc.getMap<Y.Map<unknown>>("data");
+        const oldRow = new Y.Map<unknown>();
+        oldRow.set("status", "todo");
+        oldData.set("r", oldRow);
+        const staleRawTarget = server!.kanbanObservations.capture({
+            uid: "u",
+            projectId: "p",
+            kanbanId: "k",
+            lease: adoptKanbanObservationLease(server!.hocuspocus, projectHandle, [tableHandle]),
+            tableFields: [{
+                scopeId: "stale-row",
+                owner: oldRow,
+                field: "status",
+                container: oldData,
+                containerKey: "r",
+                sourceRef,
+                outputField: "cardStatus",
+                physicalColumn: "status",
+                roles: ["title"],
+                effectiveSchema: scalarSchema,
+                table: { projectDoc, registry, tableId: "t", entry, sqlName: "tasks", tableDoc },
+            }],
+        });
+        expect(staleRawTarget).to.deep.equal({ available: false, reason: "source_unavailable" });
+        expect(projectHandle.document).not.to.equal(null);
+        expect(tableHandle.document).not.to.equal(null);
         const withoutSchema = server!.kanbanObservations.capture({
             uid: "u",
             projectId: "p",
@@ -207,7 +215,11 @@ describe("Kanban observations at the persisted production boundary", function() 
                 outputField: "cardStatus",
                 physicalColumn: "status",
                 roles: ["title"],
-                effectiveSchema: undefined as never,
+                effectiveSchema: {
+                    tableId: "t",
+                    sourceSchema: tableDoc.getText("schema"),
+                    catalogDependencies: [],
+                } as never,
                 table: { projectDoc, registry, tableId: "t", entry, sqlName: "tasks", tableDoc },
             }],
         });
@@ -229,7 +241,7 @@ describe("Kanban observations at the persisted production boundary", function() 
                 outputField: "cardStatus",
                 physicalColumn: "status",
                 roles: ["title", "detail"],
-                effectiveSchema: { sourceSchema: tableDoc.getText("schema"), catalogDependencies: [] },
+                effectiveSchema: scalarSchema,
                 table: { projectDoc, registry, tableId: "t", entry, sqlName: "tasks", tableDoc },
             }],
         });

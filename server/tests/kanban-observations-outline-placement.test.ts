@@ -1,6 +1,7 @@
 import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
 import * as Y from "yjs";
+import { createKanbanEntry, getKanbanDefinitionTarget } from "../../shared/src/services/kanbanDefinition.js";
 import {
     adoptKanbanObservationLease,
     KanbanObservationError,
@@ -223,6 +224,42 @@ describe("Kanban observations over production ordered-tree storage", function() 
             "observation_changed",
         );
         await service.dispose();
+        host.closeConnections();
+    });
+
+    it("cleans earlier observers when a later production target disappears during capture", async () => {
+        const host = new Hocuspocus({ name: "kanban-capture-cleanup-test", quiet: true });
+        const connection = await openLiveRoom(host, "projects/p", "u", { test: "capture-cleanup" });
+        const doc = connection.document as unknown as Y.Doc;
+        const project = Project.fromDoc(doc);
+        createKanbanEntry(doc, "k", { name: "Board" });
+        const definition = getKanbanDefinitionTarget(doc, "k")!;
+        const placement = project.addPage("Page", "u").items.addNode("u");
+        placement.componentType = "kanban";
+        placement.kanbanId = "k";
+        const value = project.tree.getNodeValueFromKey(placement.key) as Y.Map<unknown>;
+        const listeners = () => ((definition.entry as unknown as { _eH: { l: unknown[]; }; })._eH.l.length);
+        const before = listeners();
+        project.tree.deleteNodeAndDescendants(placement.key);
+        const service = new KanbanObservationService(host);
+        const captured = service.capture({
+            uid: "u",
+            projectId: "p",
+            kanbanId: "k",
+            lease: adoptKanbanObservationLease(host, connection),
+            definition: { target: definition, keys: ["name"] },
+            placements: [{
+                placementId: placement.key,
+                value,
+                resolveValue: () => project.tree.getNodeValueFromKey(placement.key) as Y.Map<unknown>,
+            }],
+        });
+        expect(captured).to.deep.equal({ available: false, reason: "source_unavailable" });
+        expect(listeners()).to.equal(before);
+        expect(connection.document).not.to.equal(null);
+        await service.dispose();
+        expect(listeners()).to.equal(before);
+        await connection.disconnect();
         host.closeConnections();
     });
 });

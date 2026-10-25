@@ -49,6 +49,79 @@ describe("Kanban observations through production live-room handles", function() 
         expect(connection.document).to.equal(null);
     });
 
+    it("rejects selected mutations synchronously inside an open Yjs transaction", async () => {
+        const projectConnection = await openLiveRoom(host, "projects/p", "u", { test: "sync-project" });
+        const tableConnection = await openLiveRoom(host, "projects/p/tables/t", "u", { test: "sync-table" });
+        const projectDoc = projectConnection.document as unknown as Y.Doc;
+        const tableDoc = tableConnection.document as unknown as Y.Doc;
+        createKanbanEntry(projectDoc, "k", { name: "Board" });
+        const definition = getKanbanDefinitionTarget(projectDoc, "k")!;
+        const tableEntry = new Y.Map<unknown>();
+        tableEntry.set("sqlName", "tasks");
+        projectDoc.getMap("yjsTables").set("t", tableEntry);
+        const row = new Y.Map<unknown>();
+        row.set("status", "todo");
+        tableDoc.getMap("data").set("r", row);
+        tableDoc.getText("schema").insert(0, "CREATE TABLE tasks (status text)");
+        const effectiveSchema = await service.analyzeTableEffectiveSchema({
+            projectId: "p",
+            projectDoc,
+            tableId: "t",
+            sourceSchema: tableDoc.getText("schema"),
+        });
+        if (!effectiveSchema) throw new Error("schema analysis failed");
+        const captured = service.capture({
+            uid: "u",
+            projectId: "p",
+            kanbanId: "k",
+            lease: adoptKanbanObservationLease(host, projectConnection, [tableConnection]),
+            definition: { target: definition, keys: ["name"] },
+            tableFields: [{
+                scopeId: "status",
+                owner: row,
+                field: "status",
+                container: tableDoc.getMap("data"),
+                containerKey: "r",
+                sourceRef: { kind: "table", id: "t", sqlName: "tasks", rowId: "r" },
+                outputField: "status",
+                physicalColumn: "status",
+                roles: ["title"],
+                effectiveSchema,
+                table: {
+                    projectDoc,
+                    registry: projectDoc.getMap("yjsTables"),
+                    tableId: "t",
+                    entry: tableEntry,
+                    sqlName: "tasks",
+                    tableDoc,
+                },
+            }],
+        });
+        if (!captured.available) throw new Error(captured.reason);
+        const guard = service.acquire("u", "p", captured.observationToken);
+        projectDoc.transact(() => {
+            definition.entry.set("name", "Changed");
+            expect(() => guard.assertCurrent({ kind: "definition", kanbanId: "k", keys: ["name"] })).to.throw(
+                KanbanObservationError,
+                "observation_changed",
+            );
+        });
+        tableDoc.transact(() => {
+            row.set("status", "done");
+            expect(() =>
+                guard.assertCurrent({
+                    kind: "table-field",
+                    kanbanId: "k",
+                    scopeId: "status",
+                    sourceRef: { kind: "table", id: "t", sqlName: "tasks", rowId: "r" },
+                    outputField: "status",
+                    physicalColumn: "status",
+                    role: "title",
+                })
+            ).to.throw(KanbanObservationError, "observation_changed");
+        });
+    });
+
     it("observes real Table schema/catalog ABA and unrelated catalog edits", async () => {
         const projectConnection = await openLiveRoom(host, "projects/p", "u", { test: "project" });
         const tableConnection = await openLiveRoom(host, "projects/p/tables/t", "u", { test: "table" });
@@ -73,6 +146,12 @@ describe("Kanban observations through production live-room handles", function() 
             source: "CREATE TYPE other AS ENUM ('x')",
         });
         const catalog = projectDoc.getMap<Y.Map<unknown>>("sqlCatalog");
+        const effectiveSchema = await service.analyzeTableEffectiveSchema({
+            projectDoc,
+            sourceSchema: tableDoc.getText("schema"),
+            projectId: "p",
+            tableId: "t",
+        })!;
         const captured = service.capture({
             uid: "u",
             projectId: "p",
@@ -96,15 +175,7 @@ describe("Kanban observations through production live-room handles", function() 
                     sqlName: "tasks",
                     tableDoc,
                 },
-                effectiveSchema: {
-                    sourceSchema: tableDoc.getText("schema"),
-                    catalogDependencies: [{
-                        owner: catalog.get("status-enum")!,
-                        fields: ["kind", "source"],
-                        container: catalog,
-                        containerKey: "status-enum",
-                    }],
-                },
+                effectiveSchema,
             }],
         });
         if (!captured.available) throw new Error(captured.reason);
@@ -142,6 +213,7 @@ describe("Kanban observations through production live-room handles", function() 
         });
         if (!captured.available) throw new Error(captured.reason);
         host.documents.set("projects/p", new Y.Doc() as never);
+        host.documents.set("projects/p", doc as never);
         expect(() => service.acquire("u", "p", captured.observationToken)).to.throw(
             KanbanObservationError,
             "observation_unavailable",
