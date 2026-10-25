@@ -27,6 +27,7 @@ import { acquireDb, materializeProjectCatalog, resultColumnMetadata, SYSTEM_SCHE
 const LIMITS = { queryBytes: 16 * 1024, rows: 10_000, columns: 100, lanes: 1_000, jsonBytes: 8 * 1024 * 1024 } as const;
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 type KanbanEntry = NonNullable<ReturnType<ReturnType<typeof getKanbanRegistry>["get"]>>;
+const releasedConnections = new WeakSet<object>();
 
 export type KanbanObservationStatus = "success" | "incomplete" | "invalid" | "unavailable" | "error";
 export type KanbanReadOnlyReason = "unproven_source" | "computed" | "identity" | "unsupported_source_field";
@@ -508,6 +509,8 @@ function releaseAll(host: LiveRoomHost, project: DirectConnection, sources: Read
         done = true;
         let error: unknown;
         for (const connection of [...sources.values(), project]) {
+            if (releasedConnections.has(connection)) continue;
+            releasedConnections.add(connection);
             try {
                 await closeLiveRoom(host, connection);
             } catch (e) {
