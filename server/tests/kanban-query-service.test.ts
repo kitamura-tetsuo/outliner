@@ -1,6 +1,10 @@
 import { expect } from "chai";
 import * as Y from "yjs";
-import { createKanbanEntry } from "../../shared/src/services/kanbanDefinition.js";
+import {
+    applyKanbanUpdates,
+    createKanbanEntry,
+    getKanbanDefinitionTarget,
+} from "../../shared/src/services/kanbanDefinition.js";
 import { OutlinerKanbanQueryService } from "../src/mcp/kanban-query-service.js";
 import { McpReadError } from "../src/mcp/mcp-error.js";
 import { Project } from "../src/schema/app-schema.js";
@@ -102,6 +106,69 @@ describe("server Kanban observation", function() {
             expect(error).to.be.instanceOf(McpReadError);
             expect((error as McpReadError).code).to.equal("forbidden");
         }
+    });
+
+    it("keeps the definition baseline across asynchronous source opening and ABA edits", async () => {
+        const query = "SELECT id, status FROM tasks";
+        await seed(server, query);
+        const reached = deferred(), release = deferred();
+        const service = new OutlinerKanbanQueryService(server as never, async () => true, {
+            beforeSourceOpen: async () => {
+                reached.resolve();
+                await release.promise;
+            },
+        });
+        const pending = service.openObservation(UID, PROJECT, "board");
+        await reached.promise;
+        const connection = await server.openDirectConnection(`projects/${PROJECT}`);
+        const target = getKanbanDefinitionTarget(connection.document as never, "board")!;
+        applyKanbanUpdates(target, { query: `${query} WHERE FALSE` });
+        applyKanbanUpdates(target, { query });
+        release.resolve();
+        const stale = await pending;
+        expect(stale).to.include({ status: "unavailable", reason: "stale_evidence" });
+        expect(stale.routes).to.deep.equal([]);
+
+        applyKanbanUpdates(target, { query: `${query} WHERE FALSE` });
+        const fresh = await new OutlinerKanbanQueryService(server as never, async () => true).openObservation(
+            UID,
+            PROJECT,
+            "board",
+        );
+        expect(fresh.status).to.equal("success");
+        expect(fresh.lanes.flatMap(lane => lane.cards)).to.deep.equal([]);
+        await fresh.release();
+    });
+
+    it("does not refresh the definition baseline between multiple source opens", async () => {
+        await seed(server, "SELECT id, status FROM tasks UNION ALL SELECT id, status FROM archive");
+        const project = await server.openDirectConnection(`projects/${PROJECT}`);
+        const archive = new Y.Map<unknown>();
+        archive.set("name", "Archive");
+        archive.set("sqlName", "archive");
+        project.document.getMap("yjsTables").set("archive-id", archive);
+        const archiveRoom = await server.openDirectConnection(`projects/${PROJECT}/tables/archive-id`);
+        archiveRoom.document.getText("schema").insert(
+            0,
+            "CREATE TABLE archive(id TEXT PRIMARY KEY, status TEXT)",
+        );
+        const reached = deferred(), release = deferred();
+        const service = new OutlinerKanbanQueryService(server as never, async () => true, {
+            beforeSourceOpen: async (_id, index) => {
+                if (index !== 1) return;
+                reached.resolve();
+                await release.promise;
+            },
+        });
+        const pending = service.openObservation(UID, PROJECT, "board");
+        await reached.promise;
+        applyKanbanUpdates(getKanbanDefinitionTarget(project.document as never, "board")!, {
+            query: "SELECT id, status FROM tasks WHERE FALSE",
+        });
+        release.resolve();
+        const stale = await pending;
+        expect(stale).to.include({ status: "unavailable", reason: "stale_evidence" });
+        expect(stale.routes).to.deep.equal([]);
     });
 
     it("treats pure row deletion as stale before certification and after return", async () => {

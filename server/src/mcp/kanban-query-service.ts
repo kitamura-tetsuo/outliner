@@ -86,6 +86,7 @@ interface TableInput {
     doc: Y.Doc;
     schema: string;
     records: readonly [string, Y.Map<unknown>][];
+    revision: string;
 }
 
 /** Complete, retained server-side observation of one saved Project Kanban. */
@@ -96,6 +97,7 @@ export class OutlinerKanbanQueryService {
         private readonly options: {
             beforeCertification?: () => Promise<void>;
             beforeFinalCertification?: () => Promise<void>;
+            beforeSourceOpen?: (tableId: string, index: number) => Promise<void>;
         } = {},
     ) {}
 
@@ -166,8 +168,13 @@ export class OutlinerKanbanQueryService {
                     ? [{ id, sqlName }]
                     : [];
             });
+            // Bind the detached settings and dependency selection to the exact
+            // Project state which produced them, before opening any source.
+            // Never refresh this baseline after an asynchronous boundary.
+            const projectRevision = projectSnapshot(doc, entry);
             const inputs: TableInput[] = [];
-            for (const table of tables) {
+            for (const [index, table] of tables.entries()) {
+                await this.options.beforeSourceOpen?.(table.id, index);
                 const connection = await openLiveRoom(host, `projects/${projectId}/tables/${table.id}`, uid, {
                     effect: "none",
                 });
@@ -179,9 +186,22 @@ export class OutlinerKanbanQueryService {
                     doc: tableDoc,
                     schema: tableDoc.getText("schema").toString(),
                     records: [...tableDoc.getMap<Y.Map<unknown>>("data").entries()],
+                    revision: documentRevision(tableDoc),
                 });
+                if (!this.inputsCurrent(host, projectId, doc, entry, inputs, projectRevision)) {
+                    return await this.finish(
+                        uid,
+                        projectId,
+                        project,
+                        sources,
+                        doc,
+                        entry,
+                        settings,
+                        "unavailable",
+                        "stale_evidence",
+                    );
+                }
             }
-            const captured = snapshot(doc, entry, inputs);
             const lease = await acquireDb();
             try {
                 const catalog = await materializeProjectCatalog(lease.db, projectId, doc as never);
@@ -328,7 +348,7 @@ export class OutlinerKanbanQueryService {
                 }
                 await this.options.beforeCertification?.();
                 await this.authorize(uid, projectId);
-                const currentCheck = () => this.inputsCurrent(host, projectId, doc, entry, inputs, captured);
+                const currentCheck = () => this.inputsCurrent(host, projectId, doc, entry, inputs, projectRevision);
                 if (!currentCheck()) {
                     return await this.finish(
                         uid,
@@ -430,14 +450,15 @@ export class OutlinerKanbanQueryService {
         doc: Y.Doc,
         entry: KanbanEntry,
         inputs: TableInput[],
-        captured: string,
+        projectRevision: string,
     ) {
         return getKanbanRegistry(doc as never).get(
                     [...getKanbanRegistry(doc as never).entries()].find(([, value]) => value === entry)?.[0] ?? "",
                 ) === entry
             && isLiveRoom(host, `projects/${projectId}`, doc)
             && inputs.every(input => isLiveRoom(host, `projects/${projectId}/tables/${input.id}`, input.doc))
-            && snapshot(doc, entry, inputs) === captured;
+            && projectSnapshot(doc, entry) === projectRevision
+            && inputs.every(input => documentRevision(input.doc) === input.revision);
     }
     private host(): LiveRoomHost {
         if (!this.hocuspocus.documents) {
@@ -612,12 +633,11 @@ async function loadRecords(
         );
     }
 }
-function snapshot(doc: Y.Doc, entry: { toJSON(): unknown; }, tables: readonly TableInput[]) {
-    return revision([
-        Buffer.from(Y.encodeStateAsUpdate(doc)).toString("base64url"),
-        entry.toJSON(),
-        tables.map(t => [t.id, Buffer.from(Y.encodeStateAsUpdate(t.doc)).toString("base64url")]),
-    ]);
+function projectSnapshot(doc: Y.Doc, entry: { toJSON(): unknown; }) {
+    return revision([documentRevision(doc), entry.toJSON()]);
+}
+function documentRevision(doc: Y.Doc) {
+    return Buffer.from(Y.encodeStateAsUpdate(doc)).toString("base64url");
 }
 function revision(value: unknown) {
     return crypto.createHash("sha256").update(JSON.stringify(value)).digest("base64url");
