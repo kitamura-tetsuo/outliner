@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as Y from "yjs";
 import { applyKanbanUpdates, getKanbanDefinitionTarget } from "../../shared/src/services/kanbanDefinition.js";
 import { OutlinerKanbanQueryService } from "../src/mcp/kanban-query-service.js";
+import { releaseWithoutStore } from "../src/mcp/live-room.js";
 import { Project } from "../src/schema/app-schema.js";
 
 const UID = "owner", PROJECT = "kanban-production";
@@ -58,34 +59,43 @@ function deferred() {
     return { promise, resolve };
 }
 
-async function projectWithClient(query: string, table = false) {
+async function projectWithClient(query: string, source: false | "outline" = false) {
     installClientRunes();
-    const [{ KanbanQueryRunner }, { createKanban, getKanbanHandles }, tableDocs] = await Promise.all([
+    const [{ KanbanQueryRunner }, { createKanban, getKanbanHandles }] = await Promise.all([
         import("../../client/src/services/yjstable/kanbanQueryRunner.js"),
         import("../../client/src/services/yjstable/kanbanDocs.js"),
-        import("../../client/src/services/yjstable/tableDocs.js"),
     ]);
-    const doc = new Y.Doc({ guid: "kanban-production-client" });
-    if (table) {
-        const tableId = tableDocs.createTable(doc as never, "Tasks", "tasks", { tableId: "tasks" });
-        const handles = tableDocs.getTableHandles(doc as never, tableId)!;
-        tableDocs.setSchemaText(handles, "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT)");
-        tableDocs.addRecord(handles, { status: "todo", title: "A" }, "a");
-        tableDocs.addRecord(handles, { status: "done", title: "B" }, "b");
+    const doc = new Y.Doc({ guid: `kanban-production-client-${crypto.randomUUID()}` });
+    const connect = async () => ({ waitForInitialSync: async () => ({ synced: true }), dispose: () => {} });
+    let expectedOutlineId: string | undefined;
+    if (source === "outline") {
+        const project = Project.fromDoc(doc as never);
+        const page = project.addPage("Schedule", UID);
+        const allDay = page.items.addNode(UID);
+        allDay.updateText("all-day");
+        allDay.yMap.set("start", "2026-10-25");
+        allDay.yMap.set("allDay", true);
+        expectedOutlineId = allDay.id;
+        const timed = page.items.addNode(UID);
+        timed.updateText("timed");
+        timed.yMap.set("start", "2026-10-25T09:00:00Z");
+        timed.yMap.set("allDay", false);
     }
-    const kanbanId = createKanban(doc, { query, groupField: "status" });
+    const kanbanId = createKanban(doc, { query, groupField: "status", laneOrder: ["done", "todo"] });
     const runner = new KanbanQueryRunner({
         projectDoc: doc,
         kanbanId,
         kanban: getKanbanHandles(doc, kanbanId)!,
-        connect: async () => ({ waitForInitialSync: async () => ({ synced: true }), dispose: () => {} }),
+        connect,
     });
     let projection: any;
     const unsubscribe = runner.subscribeProjection(value => projection = value);
     runner.start();
+    await new Promise(resolve => setTimeout(resolve, 250));
     await runner.runQueryNow();
     unsubscribe();
     runner.dispose();
+    projection.expectedOutlineId = expectedOutlineId;
     return projection;
 }
 
@@ -115,7 +125,7 @@ describe("Kanban observation production rooms and client parity", function() {
         expect(observed.lanes.flatMap(lane => lane.cards)).to.have.length(6);
         expect(observed.lanes.find(lane => lane.key === "2")!.cards).to.have.length(2);
         const client = await projectWithClient(query);
-        expect(client.status).to.equal("success");
+        expect(client.status, JSON.stringify(client)).to.equal("success");
         expect(client.lanes.map((lane: any) => lane.key)).to.deep.equal(expectedKeys);
         expect(client.lanes.flatMap((lane: any) => lane.cards)).to.have.length(6);
         await observed.release();
@@ -148,11 +158,29 @@ describe("Kanban observation production rooms and client parity", function() {
         expect(server.hocuspocus.documents.has(`projects/${PROJECT}/tables/tasks`)).to.equal(false);
     });
 
+    it("releases orphaned retained handles without overwriting replacement room state", async () => {
+        const held = await seed(server.hocuspocus, "SELECT id, status FROM tasks", true);
+        const observed = await new OutlinerKanbanQueryService(server.hocuspocus, async () => true)
+            .openObservation(UID, PROJECT, "board");
+        const room = `projects/${PROJECT}/tables/tasks`;
+        const oldSource = server.hocuspocus.documents.get(room);
+        releaseWithoutStore(held[1]);
+        server.hocuspocus.documents.delete(room);
+        const replacement = await server.hocuspocus.openDirectConnection(room, { context: { uid: UID } });
+        expect(replacement.document).not.to.equal(oldSource);
+        replacement.document!.getMap("replacement").set("proof", "preserved");
+        await observed.release();
+        expect(server.hocuspocus.documents.get(room)).to.equal(replacement.document);
+        expect(replacement.document!.getMap("replacement").get("proof")).to.equal("preserved");
+        await replacement.disconnect();
+        await held[0].disconnect();
+    });
+
     it("covers ordered Table results, physical/computed routes, zero rows, and diagnostics", async () => {
         const held = await seed(
             server.hocuspocus,
             "SELECT id, status, title || '!' AS display FROM tasks ORDER BY id DESC LIMIT 1",
-            true,
+            "table",
             { titleField: "display", detailFields: ["status"] },
         );
         const service = new OutlinerKanbanQueryService(server.hocuspocus, async () => true);
@@ -162,19 +190,31 @@ describe("Kanban observation production rooms and client parity", function() {
         ]);
         expect(result.routes.find(route => route.output === "status")?.writable).to.equal(true);
         expect(result.routes.find(route => route.output === "display")).to.include({ writable: false });
-        const client = await projectWithClient(
-            "SELECT id, status, title || '!' AS display FROM tasks ORDER BY id DESC LIMIT 1",
-            true,
-        );
-        expect(client.status).to.equal("success");
-        expect(client.lanes.map((lane: any) => [lane.key, lane.cards.map((card: any) => card.sourceIdentity?.id)]))
-            .to.deep.equal([["done", ["b"]]]);
+        const duplicateQuery = `SELECT id, status, title FROM tasks
+            UNION ALL SELECT id, status, title FROM tasks WHERE id = 'a'
+            ORDER BY status, id`;
+        applyKanbanUpdates(getKanbanDefinitionTarget(held[0].document as never, "board")!, {
+            query: duplicateQuery,
+            titleField: "title",
+            detailFields: [],
+        });
+        const duplicateServer = await service.openObservation(UID, PROJECT, "board");
+        expect(duplicateServer.lanes.map(lane => [
+            lane.key,
+            lane.cards.map(card => [card.row.title, card.source?.rowId]),
+        ])).to.deep.equal([
+            ["done", [["B", undefined]]],
+            ["todo", [["A", undefined], ["A", undefined]]],
+        ]);
+        await duplicateServer.release();
         await result.release();
 
         const project = held[0].document as unknown as Y.Doc;
         const target = getKanbanDefinitionTarget(project as never, "board")!;
         applyKanbanUpdates(target, {
             query: "SELECT id, status, title || '!' AS display FROM tasks WHERE FALSE",
+            titleField: "display",
+            detailFields: ["status"],
         });
         const empty = await service.openObservation(UID, PROJECT, "board");
         expect(empty.status).to.equal("success");
@@ -304,6 +344,14 @@ describe("Kanban observation production rooms and client parity", function() {
         const date = await service.openObservation(UID, PROJECT, "board");
         expect(date.lanes.map(lane => lane.key)).to.deep.equal(["all-day"]);
         expect(date.lanes[0].cards[0].source).to.include({ kind: "system", sqlName: "outline_items" });
+        const clientDate = await projectWithClient(
+            "SELECT id, text AS status FROM outline_items WHERE start_on = DATE '2026-10-25'",
+            "outline",
+        );
+        expect(clientDate.lanes.map((lane: any) => [
+            lane.key,
+            lane.cards.map((card: any) => [card.row.status, card.sourceIdentity?.id]),
+        ])).to.deep.equal([["all-day", [["all-day", clientDate.expectedOutlineId]]]]);
         await date.release();
         applyKanbanUpdates(getKanbanDefinitionTarget(held[0].document as never, "board")!, {
             query: "SELECT id, text AS status FROM outline_items WHERE start_at IS NOT NULL",
