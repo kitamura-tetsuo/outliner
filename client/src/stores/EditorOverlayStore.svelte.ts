@@ -2138,10 +2138,7 @@ export class EditorOverlayStore {
                 userId: "local",
             });
 
-            const remainingEntries = Object.entries(this.selections).filter(
-                ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
-            );
-            this.selections = Object.fromEntries(remainingEntries);
+            this.clearSelectionForUser("local");
             this.setSelection({
                 startItemId: activeId,
                 endItemId: activeId,
@@ -2202,10 +2199,7 @@ export class EditorOverlayStore {
         }
 
         // Drop the local selection the mirror replaces, keeping other users' and box selections
-        const remainingEntries = Object.entries(this.selections).filter(
-            ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
-        );
-        this.selections = Object.fromEntries(remainingEntries);
+        this.clearSelectionForUser("local");
         this.setSelection({
             startItemId: startPosition.itemId,
             startOffset: startPosition.offset,
