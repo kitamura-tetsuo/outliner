@@ -53,6 +53,38 @@ describe("Kanban observations over production ordered-tree storage", function() 
         host.closeConnections();
     });
 
+    for (
+        const field of [
+            "id",
+            "page_id",
+            "parent_id",
+            "recurrence_parent_id",
+            "recurrence_occurrence_id",
+        ]
+    ) {
+        it(`refuses the structural outline field ${field}`, async () => {
+            const host = new Hocuspocus({ name: `kanban-outline-${field}-test`, quiet: true });
+            const connection = await openLiveRoom(host, "projects/p", "u", { test: field });
+            const project = Project.fromDoc(connection.document as unknown as Y.Doc);
+            const item = project.addPage("Page", "u").items.addNode("u");
+            const value = project.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
+            const service = new KanbanObservationService(host);
+            const captured = service.capture({
+                uid: "u",
+                projectId: "p",
+                kanbanId: "k",
+                lease: adoptKanbanObservationLease(host, connection),
+                outlineFields: [{ scopeId: `item:${field}`, owner: value, field }],
+            });
+            expect(captured).to.deep.equal({ available: false, reason: "source_unavailable" });
+            // Refusal does not adopt the production connection.
+            expect(connection.document).not.to.equal(null);
+            await connection.disconnect();
+            await service.dispose();
+            host.closeConnections();
+        });
+    }
+
     it("allows reorder but rejects placement binding ABA and deletion", async () => {
         const host = new Hocuspocus({ name: "kanban-placement-test", quiet: true });
         const connection = await openLiveRoom(host, "projects/p", "u", { test: "placement" });

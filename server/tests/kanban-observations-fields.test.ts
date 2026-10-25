@@ -13,6 +13,9 @@ describe("KanbanObservationService physical field scopes", () => {
         rows.set("r1", row);
         const schema = project.getMap<unknown>("schema");
         schema.set("source", "title text");
+        const tableEntry = new Y.Map<unknown>();
+        tableEntry.set("sqlName", "tasks");
+        project.getMap("yjsTables").set("t", tableEntry);
         const host = {
             documents: new Map([["projects/p", project]]),
             openDirectConnection: async () => undefined as never,
@@ -29,12 +32,32 @@ describe("KanbanObservationService physical field scopes", () => {
                 field: "title",
                 container: rows,
                 containerKey: "r1",
+                sourceRef: { kind: "table", id: "t", sqlName: "tasks", rowId: "r1" },
+                outputField: "title",
+                physicalColumn: "title",
+                roles: ["title"],
+                table: {
+                    projectDoc: project,
+                    registry: project.getMap("yjsTables"),
+                    tableId: "t",
+                    entry: tableEntry,
+                    sqlName: "tasks",
+                    tableDoc: project,
+                },
                 dependencies: [{ owner: schema, fields: ["source"] }],
             }],
         });
         if (!captured.available) throw new Error(captured.reason);
         row.set("other", "changed");
-        const selection = { kind: "table-field", kanbanId: "k", scopeId: "card:r1:title" } as const;
+        const selection = {
+            kind: "table-field",
+            kanbanId: "k",
+            scopeId: "card:r1:title",
+            sourceRef: { kind: "table", id: "t", sqlName: "tasks", rowId: "r1" },
+            outputField: "title",
+            physicalColumn: "title",
+            role: "title",
+        } as const;
         service.acquire("u", "p", captured.observationToken).assertCurrent(selection);
         text.delete(0, 1);
         text.insert(0, "B");

@@ -84,6 +84,18 @@ describe("Kanban observations through production live-room handles", function() 
                 field: "status",
                 container: tableDoc.getMap("data"),
                 containerKey: "r",
+                sourceRef: { kind: "table", id: "t", sqlName: "tasks", rowId: "r" },
+                outputField: "status",
+                physicalColumn: "status",
+                roles: ["group"],
+                table: {
+                    projectDoc,
+                    registry: projectDoc.getMap("yjsTables"),
+                    tableId: "t",
+                    entry: tableEntry,
+                    sqlName: "tasks",
+                    tableDoc,
+                },
                 dependencies: [
                     {
                         owner: catalog.get("status-enum")!,
@@ -96,7 +108,15 @@ describe("Kanban observations through production live-room handles", function() 
             }],
         });
         if (!captured.available) throw new Error(captured.reason);
-        const selection = { kind: "table-field", kanbanId: "k", scopeId: "tasks:r:status" } as const;
+        const selection = {
+            kind: "table-field",
+            kanbanId: "k",
+            scopeId: "tasks:r:status",
+            sourceRef: { kind: "table", id: "t", sqlName: "tasks", rowId: "r" },
+            outputField: "status",
+            physicalColumn: "status",
+            role: "group",
+        } as const;
         replaceSqlCatalogSource(projectDoc, "other-enum", "CREATE TYPE other AS ENUM ('y')");
         row.set("description", "second");
         service.acquire("u", "p", captured.observationToken).assertCurrent(selection);

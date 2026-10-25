@@ -110,7 +110,7 @@ describe("Kanban observation live-room lifecycle bounds", function() {
             projectId: "p",
             kanbanId: "k",
             lease: adoptKanbanObservationLease(host, connection),
-            tableFields: [{ scopeId: "r:field", owner: row, field: "field" }],
+            outlineFields: [{ scopeId: "r:field", owner: row, field: "field" }],
         });
         if (!accepted.available) throw new Error(accepted.reason);
         await service.release(accepted.observationToken);
@@ -124,7 +124,7 @@ describe("Kanban observation live-room lifecycle bounds", function() {
             projectId: "after",
             kanbanId: "k",
             lease: adoptKanbanObservationLease(host, afterConnection),
-            tableFields: [{ scopeId: "r:field", owner: afterRow, field: "field" }],
+            outlineFields: [{ scopeId: "r:field", owner: afterRow, field: "field" }],
         });
         expect(afterRelease.available).to.equal(true);
         await service.dispose();

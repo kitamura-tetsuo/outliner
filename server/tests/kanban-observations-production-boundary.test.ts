@@ -73,6 +73,7 @@ describe("Kanban observations at the persisted production boundary", function() 
             source: "CREATE TYPE task_status AS ENUM ('todo')",
         });
         const catalog = projectDoc.getMap<Y.Map<unknown>>("sqlCatalog");
+        const sourceRef = { kind: "table", id: "t", sqlName: "tasks", rowId: "r" };
         const capture = () =>
             server!.kanbanObservations.capture({
                 uid: "u",
@@ -85,6 +86,18 @@ describe("Kanban observations at the persisted production boundary", function() 
                     field: "status",
                     container: tableDoc.getMap("data"),
                     containerKey: "r",
+                    sourceRef,
+                    outputField: "status",
+                    physicalColumn: "status",
+                    roles: ["title", "detail"],
+                    table: {
+                        projectDoc,
+                        registry: projectDoc.getMap("yjsTables"),
+                        tableId: "t",
+                        entry: tableEntry,
+                        sqlName: "tasks",
+                        tableDoc,
+                    },
                     schemaTexts: [schema],
                     dependencies: [{
                         owner: catalog.get("status-enum")!,
@@ -96,7 +109,15 @@ describe("Kanban observations at the persisted production boundary", function() 
             });
         const captured = capture();
         if (!captured.available) throw new Error(captured.reason);
-        const selection = { kind: "table-field", kanbanId: "k", scopeId: "tasks:r:status" } as const;
+        const selection = {
+            kind: "table-field",
+            kanbanId: "k",
+            scopeId: "tasks:r:status",
+            sourceRef,
+            outputField: "status",
+            physicalColumn: "status",
+            role: "title",
+        } as const;
 
         schema.insert(schema.length, " -- changed");
         schema.delete(schema.length - 11, 11);
@@ -112,6 +133,7 @@ describe("Kanban observations at the persisted production boundary", function() 
         const secondTableDoc = secondTable.document as unknown as Y.Doc;
         const secondRow = secondTableDoc.getMap<Y.Map<unknown>>("data").get("r")!;
         const secondCatalog = secondDoc.getMap<Y.Map<unknown>>("sqlCatalog");
+        const secondEntry = secondDoc.getMap<Y.Map<unknown>>("yjsTables").get("t")!;
         const second = server!.kanbanObservations.capture({
             uid: "u",
             projectId: "p",
@@ -123,6 +145,18 @@ describe("Kanban observations at the persisted production boundary", function() 
                 field: "status",
                 container: secondTableDoc.getMap("data"),
                 containerKey: "r",
+                sourceRef,
+                outputField: "status",
+                physicalColumn: "status",
+                roles: ["title"],
+                table: {
+                    projectDoc: secondDoc,
+                    registry: secondDoc.getMap("yjsTables"),
+                    tableId: "t",
+                    entry: secondEntry,
+                    sqlName: "tasks",
+                    tableDoc: secondTableDoc,
+                },
                 schemaTexts: [secondTableDoc.getText("schema")],
                 dependencies: [{
                     owner: secondCatalog.get("status-enum")!,
@@ -137,5 +171,84 @@ describe("Kanban observations at the persisted production boundary", function() 
         replaceSqlCatalogSource(secondDoc, "status-enum", "CREATE TYPE task_status AS ENUM ('todo')");
         expect(() => server!.kanbanObservations.acquire("u", "p", second.observationToken).assertCurrent(selection))
             .to.throw(KanbanObservationError, "observation_changed");
+    });
+
+    it("binds Table selectors to registry identity, route, source, and canonical role", async () => {
+        const projectHandle = await openLiveRoom(server!.hocuspocus, "projects/p", "u", { test: "binding" });
+        const tableHandle = await openLiveRoom(server!.hocuspocus, "projects/p/tables/t", "u", {
+            test: "binding-table",
+        });
+        const projectDoc = projectHandle.document as unknown as Y.Doc;
+        const tableDoc = tableHandle.document as unknown as Y.Doc;
+        const registry = projectDoc.getMap<Y.Map<unknown>>("yjsTables");
+        const entry = new Y.Map<unknown>();
+        entry.set("sqlName", "tasks");
+        registry.set("t", entry);
+        const row = new Y.Map<unknown>();
+        row.set("status", "todo");
+        tableDoc.getMap("data").set("r", row);
+        const sourceRef = { kind: "table", id: "t", sqlName: "tasks", rowId: "r" };
+        const captured = server!.kanbanObservations.capture({
+            uid: "u",
+            projectId: "p",
+            kanbanId: "k",
+            lease: adoptKanbanObservationLease(server!.hocuspocus, projectHandle, [tableHandle]),
+            tableFields: [{
+                scopeId: "status",
+                owner: row,
+                field: "status",
+                container: tableDoc.getMap("data"),
+                containerKey: "r",
+                sourceRef,
+                outputField: "cardStatus",
+                physicalColumn: "status",
+                roles: ["title", "detail"],
+                table: { projectDoc, registry, tableId: "t", entry, sqlName: "tasks", tableDoc },
+            }],
+        });
+        if (!captured.available) throw new Error(captured.reason);
+        const guard = server!.kanbanObservations.acquire("u", "p", captured.observationToken);
+        expect(() =>
+            guard.assertCurrent({
+                kind: "table-field",
+                kanbanId: "k",
+                scopeId: "status",
+                sourceRef,
+                outputField: "cardStatus",
+                physicalColumn: "status",
+                role: "detail",
+            })
+        ).to.throw(
+            KanbanObservationError,
+            "scope_not_observed",
+        );
+        expect(() =>
+            guard.assertCurrent({
+                kind: "table-field",
+                kanbanId: "k",
+                scopeId: "status",
+                sourceRef: { ...sourceRef, rowId: "another" },
+                outputField: "cardStatus",
+                physicalColumn: "status",
+                role: "title",
+            })
+        ).to.throw(KanbanObservationError, "scope_not_observed");
+
+        entry.set("sqlName", "other");
+        entry.set("sqlName", "tasks");
+        expect(() =>
+            guard.assertCurrent({
+                kind: "table-field",
+                kanbanId: "k",
+                scopeId: "status",
+                sourceRef,
+                outputField: "cardStatus",
+                physicalColumn: "status",
+                role: "title",
+            })
+        ).to.throw(
+            KanbanObservationError,
+            "observation_changed",
+        );
     });
 });
