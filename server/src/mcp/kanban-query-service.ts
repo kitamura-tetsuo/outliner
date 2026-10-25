@@ -107,11 +107,12 @@ export class OutlinerKanbanQueryService {
         }
         await this.authorize(uid, projectId);
         const host = this.host();
-        const project = await openLiveRoom(host, `projects/${projectId}`, uid, { effect: "none" });
+        let project: DirectConnection | undefined;
         const sources = new Map<string, DirectConnection>();
         let transferred = false;
         let failure: unknown;
         try {
+            project = await openLiveRoom(host, `projects/${projectId}`, uid, { effect: "none" });
             await this.authorize(uid, projectId);
             const doc = project.document as unknown as Y.Doc;
             const entry = getKanbanRegistry(doc as never).get(kanbanId);
@@ -659,13 +660,17 @@ function documentRevision(doc: Y.Doc) {
 function revision(value: unknown) {
     return crypto.createHash("sha256").update(JSON.stringify(value)).digest("base64url");
 }
-function releaseAll(host: LiveRoomHost, project: DirectConnection, sources: ReadonlyMap<string, DirectConnection>) {
+function releaseAll(
+    host: LiveRoomHost,
+    project: DirectConnection | undefined,
+    sources: ReadonlyMap<string, DirectConnection>,
+) {
     let done = false;
     return async () => {
         if (done) return;
         done = true;
         let error: unknown;
-        for (const connection of [...sources.values(), project]) {
+        for (const connection of [...sources.values(), ...(project ? [project] : [])]) {
             if (releasedConnections.has(connection)) continue;
             releasedConnections.add(connection);
             try {

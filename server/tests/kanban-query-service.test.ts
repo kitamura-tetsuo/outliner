@@ -13,6 +13,7 @@ class RoomHost {
     readonly documents = new Map<string, Y.Doc>();
     beforeOpen?: (room: string) => Promise<void>;
     failOpen?: (room: string) => boolean;
+    failDisconnect?: (room: string) => boolean;
     async openDirectConnection(room: string) {
         await this.beforeOpen?.(room);
         if (this.failOpen?.(room)) throw new Error(`failed to open ${room}`);
@@ -22,7 +23,13 @@ class RoomHost {
             Object.defineProperty(document, "name", { value: room });
             this.documents.set(room, document);
         }
-        return { document, disconnect: async () => {}, context: {} };
+        return {
+            document,
+            disconnect: async () => {
+                if (this.failDisconnect?.(room)) throw new Error(`failed to disconnect ${room}`);
+            },
+            context: {},
+        };
     }
     async destroy() {
         for (const doc of this.documents.values()) doc.destroy();
@@ -147,6 +154,61 @@ describe("server Kanban observation", function() {
         } catch (error) {
             expect(error).to.be.instanceOf(Error);
             expect((error as Error).message).to.contain("failed to open");
+        }
+    });
+
+    it("rechecks authorization when asynchronous Project opening fails", async () => {
+        await seed(server, "SELECT id, status FROM tasks");
+        const reached = deferred(), release = deferred();
+        let allowed = true;
+        server.beforeOpen = async room => {
+            if (room !== `projects/${PROJECT}`) return;
+            reached.resolve();
+            await release.promise;
+        };
+        server.failOpen = room => room === `projects/${PROJECT}`;
+        const pending = new OutlinerKanbanQueryService(server as never, async () => allowed)
+            .openObservation(UID, PROJECT, "board");
+        await reached.promise;
+        allowed = false;
+        release.resolve();
+        try {
+            await pending;
+            expect.fail("expected forbidden");
+        } catch (error) {
+            expect(error).to.be.instanceOf(McpReadError);
+            expect((error as McpReadError).code).to.equal("forbidden");
+        }
+
+        server.beforeOpen = undefined;
+        allowed = true;
+        try {
+            await new OutlinerKanbanQueryService(server as never, async () => allowed).openObservation(
+                UID,
+                PROJECT,
+                "board",
+            );
+            expect.fail("expected Project opening failure");
+        } catch (error) {
+            expect((error as Error).message).to.contain("failed to open");
+        }
+    });
+
+    it("does not let cleanup replace forbidden after source acquisition failure", async () => {
+        await seed(server, "SELECT id, status FROM tasks");
+        let checks = 0;
+        server.failOpen = room => room.endsWith("/tables/tasks-id");
+        server.failDisconnect = room => room === `projects/${PROJECT}`;
+        try {
+            await new OutlinerKanbanQueryService(server as never, async () => ++checks < 3).openObservation(
+                UID,
+                PROJECT,
+                "board",
+            );
+            expect.fail("expected forbidden");
+        } catch (error) {
+            expect(error).to.be.instanceOf(McpReadError);
+            expect((error as McpReadError).code).to.equal("forbidden");
         }
     });
 
