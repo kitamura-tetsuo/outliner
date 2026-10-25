@@ -96,15 +96,15 @@ describe("Kanban observations through production live-room handles", function() 
                     sqlName: "tasks",
                     tableDoc,
                 },
-                dependencies: [
-                    {
+                effectiveSchema: {
+                    sourceSchema: tableDoc.getText("schema"),
+                    catalogDependencies: [{
                         owner: catalog.get("status-enum")!,
                         fields: ["kind", "source"],
                         container: catalog,
                         containerKey: "status-enum",
-                    },
-                ],
-                schemaTexts: [tableDoc.getText("schema")],
+                    }],
+                },
             }],
         });
         if (!captured.available) throw new Error(captured.reason);

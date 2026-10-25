@@ -11,8 +11,7 @@ describe("KanbanObservationService physical field scopes", () => {
         row.set("title", text);
         row.set("other", "untouched");
         rows.set("r1", row);
-        const schema = project.getMap<unknown>("schema");
-        schema.set("source", "title text");
+        project.getText("schema").insert(0, "CREATE TABLE tasks (title text)");
         const tableEntry = new Y.Map<unknown>();
         tableEntry.set("sqlName", "tasks");
         project.getMap("yjsTables").set("t", tableEntry);
@@ -44,7 +43,7 @@ describe("KanbanObservationService physical field scopes", () => {
                     sqlName: "tasks",
                     tableDoc: project,
                 },
-                dependencies: [{ owner: schema, fields: ["source"] }],
+                effectiveSchema: { sourceSchema: project.getText("schema"), catalogDependencies: [] },
             }],
         });
         if (!captured.available) throw new Error(captured.reason);

@@ -98,13 +98,15 @@ describe("Kanban observations at the persisted production boundary", function() 
                         sqlName: "tasks",
                         tableDoc,
                     },
-                    schemaTexts: [schema],
-                    dependencies: [{
-                        owner: catalog.get("status-enum")!,
-                        fields: ["kind", "source"],
-                        container: catalog,
-                        containerKey: "status-enum",
-                    }],
+                    effectiveSchema: {
+                        sourceSchema: schema,
+                        catalogDependencies: [{
+                            owner: catalog.get("status-enum")!,
+                            fields: ["kind", "source"],
+                            container: catalog,
+                            containerKey: "status-enum",
+                        }],
+                    },
                 }],
             });
         const captured = capture();
@@ -157,13 +159,15 @@ describe("Kanban observations at the persisted production boundary", function() 
                     sqlName: "tasks",
                     tableDoc: secondTableDoc,
                 },
-                schemaTexts: [secondTableDoc.getText("schema")],
-                dependencies: [{
-                    owner: secondCatalog.get("status-enum")!,
-                    fields: ["kind", "source"],
-                    container: secondCatalog,
-                    containerKey: "status-enum",
-                }],
+                effectiveSchema: {
+                    sourceSchema: secondTableDoc.getText("schema"),
+                    catalogDependencies: [{
+                        owner: secondCatalog.get("status-enum")!,
+                        fields: ["kind", "source"],
+                        container: secondCatalog,
+                        containerKey: "status-enum",
+                    }],
+                },
             }],
         });
         if (!second.available) throw new Error(second.reason);
@@ -188,6 +192,28 @@ describe("Kanban observations at the persisted production boundary", function() 
         row.set("status", "todo");
         tableDoc.getMap("data").set("r", row);
         const sourceRef = { kind: "table", id: "t", sqlName: "tasks", rowId: "r" };
+        const withoutSchema = server!.kanbanObservations.capture({
+            uid: "u",
+            projectId: "p",
+            kanbanId: "k",
+            lease: adoptKanbanObservationLease(server!.hocuspocus, projectHandle, [tableHandle]),
+            tableFields: [{
+                scopeId: "missing-schema",
+                owner: row,
+                field: "status",
+                container: tableDoc.getMap("data"),
+                containerKey: "r",
+                sourceRef,
+                outputField: "cardStatus",
+                physicalColumn: "status",
+                roles: ["title"],
+                effectiveSchema: undefined as never,
+                table: { projectDoc, registry, tableId: "t", entry, sqlName: "tasks", tableDoc },
+            }],
+        });
+        expect(withoutSchema).to.deep.equal({ available: false, reason: "source_unavailable" });
+        expect(projectHandle.document).not.to.equal(null);
+        expect(tableHandle.document).not.to.equal(null);
         const captured = server!.kanbanObservations.capture({
             uid: "u",
             projectId: "p",
@@ -203,6 +229,7 @@ describe("Kanban observations at the persisted production boundary", function() 
                 outputField: "cardStatus",
                 physicalColumn: "status",
                 roles: ["title", "detail"],
+                effectiveSchema: { sourceSchema: tableDoc.getText("schema"), catalogDependencies: [] },
                 table: { projectDoc, registry, tableId: "t", entry, sqlName: "tasks", tableDoc },
             }],
         });
