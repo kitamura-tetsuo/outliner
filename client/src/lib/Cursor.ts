@@ -39,10 +39,11 @@ import { yjsService } from "./yjs/service";
 const logger = getLogger("Cursor");
 
 // Cursor instances are reconstructed from overlay state during activation.
-// Keep the transient ordinary-vertical goal keyed by the stable local cursor
-// identity so a cross-item render cannot accidentally start a new sequence.
+// Keep the transient ordinary-vertical goal keyed by local user and page so a
+// cross-item render (which assigns a new cursor ID) cannot accidentally start
+// a new sequence, while navigation to another page cannot inherit the goal.
 // Reset actions remove the entry through the preferredVisualX setter below.
-const preferredVisualXByCursorId = new Map<string, number>();
+const preferredVisualXByEditingContext = new Map<string, number>();
 
 export interface CursorOptions {
     itemId: string;
@@ -86,12 +87,18 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     private readonly navigation: CursorNavigation;
     initialColumn: number | null = null;
     get preferredVisualX(): number | null {
-        return preferredVisualXByCursorId.get(this.cursorId) ?? null;
+        return preferredVisualXByEditingContext.get(this.visualGoalContextKey()) ?? null;
     }
 
     set preferredVisualX(value: number | null) {
-        if (value === null) preferredVisualXByCursorId.delete(this.cursorId);
-        else preferredVisualXByCursorId.set(this.cursorId, value);
+        const key = this.visualGoalContextKey();
+        if (value === null) preferredVisualXByEditingContext.delete(key);
+        else preferredVisualXByEditingContext.set(key, value);
+    }
+
+    private visualGoalContextKey(): string {
+        const pageId = (generalStore.currentPage as { id?: string; } | undefined)?.id ?? "no-page";
+        return `${this.userId}:${pageId}`;
     }
 
     private getSelection() {
