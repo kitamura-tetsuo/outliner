@@ -59,7 +59,7 @@ export type RelationWrite =
     | { op: "INSERT"; values: Record<string, RelationValue>; destination?: { parentKey: string; }; }
     | { op: "DELETE"; rowId: string; disposition?: "delete-source" | "clear-projected-field"; };
 
-const SYSTEM_SCHEMA = `CREATE TABLE outline_items (
+export const SYSTEM_SCHEMA = `CREATE TABLE outline_items (
  id TEXT PRIMARY KEY, page_id TEXT, parent_id TEXT, text TEXT, due TIMESTAMPTZ,
  done BOOLEAN, tags TEXT, all_day BOOLEAN, start_on DATE, start_at TIMESTAMPTZ,
  duration INTERVAL, rrule TEXT, recurrence_dtstart TEXT, recurrence_timezone TEXT,
@@ -178,7 +178,7 @@ export async function validateProjectTableCandidate(
     };
 }
 
-async function resultColumnMetadata(
+export async function resultColumnMetadata(
     db: PGlite,
     fields: readonly QueryField[],
     catalog: MaterializedCatalog,
