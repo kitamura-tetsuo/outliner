@@ -2,8 +2,6 @@
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
 import { onMount } from "svelte";
-import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
 import { userManager } from "../../auth/UserManager";
 import { getAuthorizedClientByProjectTitle } from "../../lib/yjsService.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
