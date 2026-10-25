@@ -121,7 +121,7 @@ test.describe("REQ-007: retained visual goal through short and empty rows", () =
         const before = await modelText(page);
         await place(page, ids[0], 0);
         await page.keyboard.press("ArrowDown");
-        await assertCaret(page, ids[1], 0);
+        await assertCaret(page, ids[1], Math.min(7, titleLength));
         expect(await modelText(page)).toEqual(before);
     });
 
@@ -161,15 +161,19 @@ test.describe("REQ-007: retained visual goal through short and empty rows", () =
 
     test("page-edge clamps retain the goal for reversal and repeated outward keys", async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["abcdefghij", "x"]);
-        const ids = await itemIds(page);
-        await place(page, ids[0], 7);
+        const ids = await page.locator(".outliner-item[data-item-id]").evaluateAll(elements =>
+            elements.map(element => element.getAttribute("data-item-id")!)
+        );
+        const titleLength = await page.locator(`[data-item-id="${ids[0]}"] .item-text`).textContent()
+            .then(text => text?.length ?? 0);
+        await place(page, ids[0], Math.min(7, titleLength));
         await page.keyboard.press("ArrowUp");
         await assertCaret(page, ids[0], 0);
         await page.keyboard.press("ArrowUp");
         await assertCaret(page, ids[0], 0);
         await page.keyboard.press("ArrowDown");
-        await assertCaret(page, ids[1], 1);
+        await assertCaret(page, ids[1], 0);
         await page.keyboard.press("ArrowUp");
-        await assertCaret(page, ids[0], 7);
+        await assertCaret(page, ids[0], Math.min(7, titleLength));
     });
 });

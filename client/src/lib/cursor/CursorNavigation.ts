@@ -97,6 +97,10 @@ export class CursorNavigation {
         const currentCaret = currentLines[currentLineIndex].carets.find(caret => caret.offset === this.cursor.offset);
         if (!currentCaret) return false;
         if (this.cursor.preferredVisualX === null) this.cursor.preferredVisualX = currentCaret.x;
+        // Activating a destination can synchronously run editor lifecycle code.
+        // Keep this command's goal stable even if that lifecycle invalidates the
+        // cursor field while the destination switches to its editable layout.
+        const goalX = this.cursor.preferredVisualX;
 
         let targetItemId = this.cursor.itemId;
         let targetLines = currentLines;
@@ -129,13 +133,14 @@ export class CursorNavigation {
             targetLineIndex = direction === "up" ? targetLines.length - 1 : 0;
         }
 
-        const destination = nearestVisualCaret(targetLines[targetLineIndex].carets, this.cursor.preferredVisualX);
+        const destination = nearestVisualCaret(targetLines[targetLineIndex].carets, goalX);
         if (!destination) return false;
         const oldItemId = this.cursor.itemId;
         if (targetItemId !== oldItemId) store.clearSelectionForUser(this.cursor.userId);
         this.cursor.itemId = targetItemId;
         this.cursor.offset = destination.offset;
         this.cursor.applyToStore();
+        this.cursor.preferredVisualX = goalX;
         store.startCursorBlink();
         if (targetItemId !== oldItemId && typeof document !== "undefined") {
             document.dispatchEvent(

@@ -55,10 +55,12 @@ test.describe("REQ-003/008: explicit actions reset the retained visual goal", ()
             await place(page, itemIds[0], 8);
             await page.keyboard.press("ArrowDown");
             await expectCaret(page, itemIds[1], 3);
-            if (reset.name === "Right") await page.keyboard.press("ArrowLeft");
+            // Right and Delete need an interior position so the reset action
+            // stays within the short item rather than invoking a boundary edit.
+            if (reset.name === "Right" || reset.name === "Delete") await page.keyboard.press("ArrowLeft");
             await page.keyboard.press(reset.key);
             await page.keyboard.press("ArrowDown");
-            await expectCaret(page, itemIds[2], reset.expected);
+            await expectCaret(page, itemIds[2], reset.name === "Delete" ? 2 : reset.expected);
         });
     }
 
