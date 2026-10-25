@@ -18,11 +18,17 @@ import type {
     SelectProvenanceEvidence,
     SelectRelationEvidence,
 } from "../../../shared/src/services/viewSourceEvidence.js";
-import { type Item, Project } from "../schema/app-schema.js";
+import { Project } from "../schema/app-schema.js";
 import { boundGridRelations } from "./grid-query-evidence.js";
 import { closeLiveRoom, type DirectConnection, isLiveRoom, type LiveRoomHost, openLiveRoom } from "./live-room.js";
 import { McpReadError } from "./mcp-error.js";
-import { acquireDb, materializeProjectCatalog, resultColumnMetadata, SYSTEM_SCHEMA } from "./relation-service.js";
+import {
+    acquireDb,
+    materializeProjectCatalog,
+    outlineItemRows,
+    resultColumnMetadata,
+    SYSTEM_SCHEMA,
+} from "./relation-service.js";
 
 const LIMITS = { queryBytes: 16 * 1024, rows: 10_000, columns: 100, lanes: 1_000, jsonBytes: 8 * 1024 * 1024 } as const;
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -87,7 +93,10 @@ export class OutlinerKanbanQueryService {
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection"> & Partial<Pick<Hocuspocus, "documents">>,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
-        private readonly options: { beforeCertification?: () => Promise<void>; } = {},
+        private readonly options: {
+            beforeCertification?: () => Promise<void>;
+            beforeFinalCertification?: () => Promise<void>;
+        } = {},
     ) {}
 
     async openObservation(uid: string, projectId: string, kanbanId: string): Promise<KanbanProjectionObservation> {
@@ -108,6 +117,8 @@ export class OutlinerKanbanQueryService {
             const querySize = Buffer.byteLength(settings.query, "utf8");
             if (querySize > LIMITS.queryBytes) {
                 return await this.finish(
+                    uid,
+                    projectId,
                     project,
                     sources,
                     doc,
@@ -119,13 +130,33 @@ export class OutlinerKanbanQueryService {
                 );
             }
             if (!settings.query.trim() || !settings.groupField) {
-                return await this.finish(project, sources, doc, entry, settings, "incomplete", "missing_role");
+                return await this.finish(
+                    uid,
+                    projectId,
+                    project,
+                    sources,
+                    doc,
+                    entry,
+                    settings,
+                    "incomplete",
+                    "missing_role",
+                );
             }
             let query: string;
             try {
                 query = validateReadOnlySelect(settings.query, false);
             } catch {
-                return await this.finish(project, sources, doc, entry, settings, "invalid", "invalid_query");
+                return await this.finish(
+                    uid,
+                    projectId,
+                    project,
+                    sources,
+                    doc,
+                    entry,
+                    settings,
+                    "invalid",
+                    "invalid_query",
+                );
             }
 
             const identifiers = parseSqlIdentifiers(query);
@@ -155,7 +186,7 @@ export class OutlinerKanbanQueryService {
             try {
                 const catalog = await materializeProjectCatalog(lease.db, projectId, doc as never);
                 await lease.db.exec(SYSTEM_SCHEMA);
-                for (const row of outlineRows(Project.fromDoc(doc as never))) {
+                for (const row of outlineItemRows(Project.fromDoc(doc as never))) {
                     await lease.db.query(
                         `INSERT INTO outline_items VALUES (${row.map((_, i) => `$${i + 1}`).join(",")})`,
                         row,
@@ -186,6 +217,8 @@ export class OutlinerKanbanQueryService {
                 );
                 if ((result.fields?.length ?? 0) > LIMITS.columns) {
                     return await this.finish(
+                        uid,
+                        projectId,
                         project,
                         sources,
                         doc,
@@ -198,6 +231,8 @@ export class OutlinerKanbanQueryService {
                 }
                 if (result.rows.length > LIMITS.rows) {
                     return await this.finish(
+                        uid,
+                        projectId,
                         project,
                         sources,
                         doc,
@@ -214,6 +249,8 @@ export class OutlinerKanbanQueryService {
                 );
                 if (jsonBytes > LIMITS.jsonBytes) {
                     return await this.finish(
+                        uid,
+                        projectId,
                         project,
                         sources,
                         doc,
@@ -230,7 +267,17 @@ export class OutlinerKanbanQueryService {
                         names.filter(name => name === field).length !== 1
                     );
                 if (invalidRole) {
-                    return await this.finish(project, sources, doc, entry, settings, "invalid", "invalid_role_column");
+                    return await this.finish(
+                        uid,
+                        projectId,
+                        project,
+                        sources,
+                        doc,
+                        entry,
+                        settings,
+                        "invalid",
+                        "invalid_role_column",
+                    );
                 }
                 const binding = await boundGridRelations(
                     lease.db,
@@ -250,12 +297,25 @@ export class OutlinerKanbanQueryService {
                     columns: (result.fields ?? []).map(field => ({ name: field.name, typeId: field.dataTypeID })),
                 };
                 const analysis = analyzeProjectQueryProvenance(evidence);
-                const projection = projectRows(result.rows, settings, analysis, evidence.queryId);
+                const declaredLanes = await groupingChoices(lease.db, settings, analysis, catalog.enums);
+                const projection = projectRows(result.rows, settings, analysis, evidence.queryId, declaredLanes);
                 if (!projection) {
-                    return await this.finish(project, sources, doc, entry, settings, "invalid", "invalid_group_value");
+                    return await this.finish(
+                        uid,
+                        projectId,
+                        project,
+                        sources,
+                        doc,
+                        entry,
+                        settings,
+                        "invalid",
+                        "invalid_group_value",
+                    );
                 }
                 if (projection.lanes.length > LIMITS.lanes) {
                     return await this.finish(
+                        uid,
+                        projectId,
                         project,
                         sources,
                         doc,
@@ -270,10 +330,35 @@ export class OutlinerKanbanQueryService {
                 await this.authorize(uid, projectId);
                 const currentCheck = () => this.inputsCurrent(host, projectId, doc, entry, inputs, captured);
                 if (!currentCheck()) {
-                    return await this.finish(project, sources, doc, entry, settings, "unavailable", "stale_evidence");
+                    return await this.finish(
+                        uid,
+                        projectId,
+                        project,
+                        sources,
+                        doc,
+                        entry,
+                        settings,
+                        "unavailable",
+                        "stale_evidence",
+                    );
                 }
                 const metadata = await resultColumnMetadata(lease.db, result.fields ?? [], catalog);
                 const routes = roleRoutes(settings, analysis, evidence.sources);
+                await this.options.beforeFinalCertification?.();
+                await this.authorize(uid, projectId);
+                if (!currentCheck()) {
+                    return await this.finish(
+                        uid,
+                        projectId,
+                        project,
+                        sources,
+                        doc,
+                        entry,
+                        settings,
+                        "unavailable",
+                        "stale_evidence",
+                    );
+                }
                 const release = releaseAll(host, project, sources);
                 transferred = true;
                 return new KanbanProjectionObservation(
@@ -290,8 +375,12 @@ export class OutlinerKanbanQueryService {
                     release,
                 );
             } catch (error) {
+                if (error instanceof McpReadError && error.code === "forbidden") throw error;
+                await this.authorize(uid, projectId);
                 const reason = isMissingRelation(error) ? "missing_source" : "execution_error";
                 return await this.finish(
+                    uid,
+                    projectId,
                     project,
                     sources,
                     doc,
@@ -309,6 +398,8 @@ export class OutlinerKanbanQueryService {
     }
 
     private async finish(
+        uid: string,
+        projectId: string,
         project: DirectConnection,
         sources: Map<string, DirectConnection>,
         doc: Y.Doc,
@@ -318,6 +409,7 @@ export class OutlinerKanbanQueryService {
         reason: string,
         limit?: keyof typeof LIMITS,
     ): Promise<KanbanProjectionObservation> {
+        await this.authorize(uid, projectId);
         return new KanbanProjectionObservation(
             status,
             false,
@@ -366,6 +458,7 @@ function projectRows(
     settings: KanbanSettings,
     analysis: ProjectQueryProvenance,
     queryId: string,
+    declared: readonly string[],
 ) {
     const by = new Map<KanbanLaneValue, KanbanObservedCard[]>(), seen: KanbanLaneValue[] = [];
     for (let i = 0; i < rows.length; i++) {
@@ -390,11 +483,15 @@ function projectRows(
                 : {}),
         });
     }
-    const eligible = [...seen], preferred = settings.laneOrder.filter(lane => eligible.includes(lane));
+    const eligible: KanbanLaneValue[] = [
+            ...declared,
+            ...seen.filter(lane => !declared.includes(lane as string)),
+        ],
+        preferred = settings.laneOrder.filter(lane => eligible.includes(lane));
     return {
         lanes: [...preferred, ...eligible.filter(lane => !preferred.includes(lane))].map(key => ({
             key,
-            cards: by.get(key)!,
+            cards: by.get(key) ?? [],
         })),
     };
 }
@@ -422,7 +519,12 @@ function roleRoutes(
             }
             const match = matches[0]!,
                 evidence = sources.find(source => source.id === match.source.id && source.kind === match.source.kind);
-            if (!evidence?.columns.includes(match.field) || match.field === "id") {
+            const hasIdentity = !!analysis.bareIdSource
+                || (analysis.branches.length > 0 && analysis.branches.every(branch => branch.routedIdentity));
+            if (
+                !hasIdentity || !evidence?.columns.includes(match.field) || match.field === "id"
+                || !sourceFieldWritable(match.source.kind, match.field)
+            ) {
                 return {
                     output,
                     writable: false,
@@ -432,6 +534,60 @@ function roleRoutes(
             return { output, writable: true, source: { ...match.source, field: match.field } };
         },
     );
+}
+
+const OUTLINE_WRITABLE = new Set([
+    "text",
+    "due",
+    "done",
+    "tags",
+    "all_day",
+    "start_on",
+    "start_at",
+    "duration",
+    "rrule",
+    "recurrence_dtstart",
+    "recurrence_timezone",
+]);
+
+function sourceFieldWritable(kind: "table" | "system", field: string) {
+    return kind === "table" || OUTLINE_WRITABLE.has(field);
+}
+
+async function groupingChoices(
+    db: import("@electric-sql/pglite").PGlite,
+    settings: KanbanSettings,
+    analysis: ProjectQueryProvenance,
+    enums: readonly { name: string; labels: readonly string[]; }[],
+): Promise<string[]> {
+    if (analysis.status !== "proven" || analysis.suppliers.length !== 1 || !settings.groupField) return [];
+    const source = analysis.suppliers[0]!;
+    const field = unambiguousPhysicalColumn(analysis, source.sqlName, settings.groupField);
+    if (!field) return [];
+    const column = (await db.query<{ udt_name: string; }>(
+        "SELECT udt_name FROM information_schema.columns "
+            + "WHERE table_schema='public' AND table_name=$1 AND column_name=$2",
+        [source.sqlName, field],
+    )).rows[0];
+    const enumLabels = enums.find(value => value.name === column?.udt_name)?.labels;
+    if (enumLabels) return [...enumLabels];
+    const checks = await db.query<{ definition: string; }>(
+        "SELECT pg_get_constraintdef(c.oid) AS definition FROM pg_constraint c "
+            + "JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace "
+            + "WHERE n.nspname='public' AND t.relname=$1 AND c.contype='c'",
+        [source.sqlName],
+    );
+    // Decode PostgreSQL's canonical rendering of the compiler-supported
+    // `field IN ('value', ...)` constraint. Provenance remains AST/native-binding based.
+    for (const { definition } of checks.rows) {
+        const columnMatch = definition.match(/CHECK\s*\(\(?\s*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))/i);
+        if ((columnMatch?.[1] ?? columnMatch?.[2]) !== field || !/=\s*ANY\s*\(/i.test(definition)) continue;
+        const array = definition.match(/ARRAY\s*\[([\s\S]*?)\]/i);
+        if (!array) continue;
+        const values = [...array[1].matchAll(/'((?:[^']|'')*)'/g)].map(match => match[1].replace(/''/g, "'"));
+        if (values.length) return values;
+    }
+    return [];
 }
 
 async function columnsFor(db: import("@electric-sql/pglite").PGlite, relation: string) {
@@ -456,47 +612,11 @@ async function loadRecords(
         );
     }
 }
-function outlineRows(project: Project): unknown[][] {
-    const items: Item[] = [],
-        visit = (values: Iterable<Item>) => {
-            for (const item of values) {
-                items.push(item);
-                visit(item.items);
-            }
-        };
-    visit(project.items);
-    return items.filter(item => item.yMap.get("due") || item.yMap.get("start") || item.yMap.get("rrule")).map(item => {
-        const v = item.yMap, due = v.get("due"), start = v.get("start");
-        let pageId = item.key, cursor = item;
-        while (cursor.parent && cursor.parent.parentKey !== "root") {
-            pageId = cursor.parent.parentKey;
-            cursor = items.find(i => i.key === pageId) ?? cursor;
-        }
-        return [
-            item.key,
-            pageId,
-            item.parent?.parentKey === "root" ? null : item.parent?.parentKey ?? null,
-            String(v.get("text") ?? ""),
-            due ?? null,
-            Boolean(v.get("done")),
-            v.get("tags") ?? null,
-            Boolean(v.get("allDay")),
-            v.get("startOn") ?? null,
-            start ?? null,
-            v.get("duration") ?? null,
-            v.get("rrule") ?? null,
-            v.get("recurrenceDtstart") ?? null,
-            v.get("recurrenceTimezone") ?? null,
-            v.get("recurrenceParentId") ?? null,
-            v.get("recurrenceOccurrenceId") ?? null,
-        ];
-    });
-}
 function snapshot(doc: Y.Doc, entry: { toJSON(): unknown; }, tables: readonly TableInput[]) {
     return revision([
-        Buffer.from(Y.encodeStateVector(doc)).toString("base64url"),
+        Buffer.from(Y.encodeStateAsUpdate(doc)).toString("base64url"),
         entry.toJSON(),
-        tables.map(t => [t.id, Buffer.from(Y.encodeStateVector(t.doc)).toString("base64url")]),
+        tables.map(t => [t.id, Buffer.from(Y.encodeStateAsUpdate(t.doc)).toString("base64url")]),
     ]);
 }
 function revision(value: unknown) {

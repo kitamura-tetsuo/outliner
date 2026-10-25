@@ -249,6 +249,50 @@ export function tableContentRevision(
     });
 }
 
+/** Canonical materialization of the Project-owned outline_items relation. */
+export function outlineItemRows(project: Project): unknown[][] {
+    const rows: unknown[][] = [];
+    const items: Item[] = [];
+    const visit = (values: Iterable<Item>) => {
+        for (const item of values) {
+            items.push(item);
+            visit(item.items);
+        }
+    };
+    visit(project.items);
+    for (const item of items) {
+        const value = item.yMap, due = value.get("due"), start = value.get("start"), rrule = value.get("rrule");
+        if (!due && !start && !rrule) continue;
+        let parentId: string | null = item.parent?.parentKey ?? null;
+        if (parentId === "root") parentId = null;
+        let pageId = item.key, cursor = item;
+        while (cursor.parent && cursor.parent.parentKey !== "root") {
+            pageId = cursor.parent.parentKey;
+            const next = items.find(candidate => candidate.key === pageId);
+            if (!next) break;
+            cursor = next;
+        }
+        rows.push([
+            item.key,
+            pageId,
+            parentId,
+            item.text,
+            due,
+            Boolean(value.get("done")),
+            JSON.stringify(item.tags),
+            value.get("allDay"),
+            value.get("allDay") ? start : null,
+            value.get("allDay") ? null : start,
+            value.get("duration"),
+            rrule,
+            value.get("recurrenceDtstart"),
+            value.get("recurrenceTimezone"),
+            value.get("recurrenceParentId"),
+            value.get("recurrenceOccurrenceId"),
+        ]);
+    }
+    return rows;
+}
 export class OutlinerRelationService {
     private readonly idempotency = new IdempotencyCache();
 
@@ -2937,46 +2981,8 @@ export class OutlinerRelationService {
 
     /** The outline_items relation's rows, read synchronously from one project state. */
     private outlineItemRows(project: Project): unknown[][] {
-        const rows: unknown[][] = [];
-        const items = this.allItems(project);
-        for (const item of items) {
-            const value = item.yMap;
-            const due = value.get("due");
-            const start = value.get("start");
-            const rrule = value.get("rrule");
-            if (!due && !start && !rrule) continue;
-            let parentId: string | null = item.parent?.parentKey ?? null;
-            if (parentId === "root") parentId = null;
-            let pageId = item.key;
-            let cursor = item;
-            while (cursor.parent && cursor.parent.parentKey !== "root") {
-                pageId = cursor.parent.parentKey;
-                const next = items.find(candidate => candidate.key === pageId);
-                if (!next) break;
-                cursor = next;
-            }
-            rows.push([
-                item.key,
-                pageId,
-                parentId,
-                item.text,
-                due,
-                Boolean(value.get("done")),
-                JSON.stringify(item.tags),
-                value.get("allDay"),
-                value.get("allDay") ? start : null,
-                value.get("allDay") ? null : start,
-                value.get("duration"),
-                rrule,
-                value.get("recurrenceDtstart"),
-                value.get("recurrenceTimezone"),
-                value.get("recurrenceParentId"),
-                value.get("recurrenceOccurrenceId"),
-            ]);
-        }
-        return rows;
+        return outlineItemRows(project);
     }
-
     private writeOutline(project: Project, write: RelationWrite, precondition: MutationPrecondition) {
         this.assertWriteSize(write);
         if (write.op === "INSERT" && !write.destination) {
