@@ -1,26 +1,8 @@
 [Issues]
-Several UI components in the `client/src/components/` directory used boolean expressions directly for `aria-*` attributes (e.g. `aria-selected`, `aria-pressed`, `aria-disabled`). While modern Svelte versions gracefully handle boolean stringification, adhering to explicit string literals (e.g. `"true"` or `"false"`) for ARIA enumerated attributes is a stricter, safer standard that aligns with project conventions, ensures accessibility correctness across different DOM implementations, and avoids linter/type-checker ambiguities.
+The existing user manuals incorrectly described UI elements and navigation based on the current actual behavior in the Demo Environment (e.g. referencing a "top navigation bar" instead of a "main top toolbar", inaccurately splitting the page controls toolbar, and incorrectly locating the login status indicator).
 
 [Changes]
-Converted boolean `aria-*` attributes in the following components to explicit ternary string literals:
-- `client/src/components/calendar/CalendarView.svelte`
-- `client/src/components/yjstable/TableGrid.svelte`
-- `client/src/components/yjstable/cells/TextCell.svelte`
-- `client/src/components/yjstable/cells/NumberCell.svelte`
-- `client/src/components/diagram/DiagramChooser.svelte`
-- `client/src/components/schedule/ScheduleRuleList.svelte`
-- `client/src/components/yjstable/TableEntityView.svelte`
-- `client/src/components/yjstable/YjsTableView.svelte`
-- `client/src/components/DatabaseSidebar.svelte`
-- `client/src/components/OutlinerItemVoteCount.svelte`
-- `client/src/components/Sidebar.svelte`
-- `client/src/components/SearchBox.svelte`
-- `client/src/components/SlashCommandPalette.svelte`
-- `client/src/components/SnapshotDiffModal.svelte`
-- `client/src/components/AliasPicker.svelte`
-- `client/src/components/AuthComponent.svelte`
-- `client/src/components/OutlinerItem.svelte`
-
-[Verification Results]
-- Ran `npm run lint` and `npx svelte-check` in `client` to verify strict TypeScript and Svelte typing. All checks pass.
-- Verified components render without breaking compilation or logic.
+Modified docs/user-manual/index.md and docs/ja/user-manual/index.md to accurately reflect the Demo Environment UI:
+- Updated references of "top navigation bar" to "main top toolbar".
+- Unified the "top-right toolbar" and "page controls toolbar" descriptions into a single "page controls toolbar" located above the page title, grouping all relevant controls (Search, Graph View, Add Item, etc.).
+- Adjusted the login status indicator location to point to the main top toolbar.
