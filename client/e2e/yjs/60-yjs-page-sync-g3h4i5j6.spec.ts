@@ -301,21 +301,21 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                     }
                     return null;
                 } catch (e) {
-                    console.error("page2: Error checking for page:", e);
+                    console.warn("page2: Error checking for page:", e);
                     return null;
                 }
             },
             { pageId: pageInfo.pageId },
             { timeout: 30000 },
         ).then(handle => handle.jsonValue()).catch((e) => {
-            console.error("page2: waitForFunction failed:", e);
+            test.info().annotations.push({ type: "warning", description: `page2: waitForFunction failed: ${e}` });
             return null;
         });
 
         console.log("page2: Page data from waitForFunction:", page2Data);
 
         if (!page2Data) {
-            console.error("page2: page1's page not found after 30s");
+            test.info().annotations.push({ type: "warning", description: `page2: page1's page not found after 30s` });
             await context1.close();
             await context2.close();
             throw new Error("Page not found in page2 after 30s");

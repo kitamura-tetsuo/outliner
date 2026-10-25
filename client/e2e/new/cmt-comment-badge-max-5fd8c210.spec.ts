@@ -102,7 +102,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
                             // Wait for the UI to potentially update
                             return found;
                         } else {
-                            console.error("Item does not have addComment method");
+                            console.warn("Item does not have addComment method");
                             return ["", ""];
                         }
                     }
@@ -123,14 +123,14 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
                             // Wait for the UI to potentially update
                             return found;
                         } else {
-                            console.error("Item does not have addComment method");
+                            console.warn("Item does not have addComment method");
                             return ["", ""];
                         }
                     }
                 }
             }
 
-            console.error("Item with ID", id, "not found in either currentPage or project");
+            console.warn("Item with ID", id, "not found in either currentPage or project");
             return ["", ""]; // Return empty IDs to indicate failure
         }, itemId);
 

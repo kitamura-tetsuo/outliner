@@ -25,7 +25,10 @@ test.describe("ALS-0001: Alias self-reference prevention", () => {
         if (!firstId) {
             // Debugging info
             const count = await page.locator(".outliner-item").count();
-            console.error(`Failed to find first item ID. Visible items: ${count}`);
+            test.info().annotations.push({
+                type: "warning",
+                description: `Failed to find first item ID. Visible items: ${count}`,
+            });
             throw new Error("first item not found after retries");
         }
 
