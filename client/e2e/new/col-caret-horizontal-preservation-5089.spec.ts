@@ -47,11 +47,13 @@ test.describe("Caret Horizontal Position Preservation", () => {
         }
 
         await page.keyboard.press("ArrowDown");
-        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(6);
+        // The proportional rendered X at alphabetic offset 6 is nearest to
+        // numeric offset 5, rather than the same character column.
+        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(5);
         await page.keyboard.press("ArrowDown");
         expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(3);
         await page.keyboard.press("ArrowUp");
-        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(6);
+        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(5);
         await page.keyboard.press("ArrowUp");
         expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(6);
 

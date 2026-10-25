@@ -55,8 +55,11 @@ async function assertCaret(page: Page, itemId: string, offset: number): Promise<
         expect(actual, "displayed caret has no layout box").toBeTruthy();
         expect(Math.abs(actual!.x - expected.x), "caret must use the independently measured DOM position")
             .toBeLessThanOrEqual(1);
+        // The overlay caret and collapsed DOM Range use different font-metric
+        // boxes. Their centers differ by a few pixels across engines even on
+        // the same row, while adjacent rows are a full line-height apart.
         expect(Math.abs(actual!.y + actual!.height / 2 - expected.y), "caret must be on the expected visual row")
-            .toBeLessThanOrEqual(1);
+            .toBeLessThan(6);
     }
 }
 
