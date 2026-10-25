@@ -38,6 +38,13 @@ import { extendFocusAcrossVisualNode } from "./selection/selectionKeyboard";
 import { yjsService } from "./yjs/service";
 const logger = getLogger("Cursor");
 
+// Cursor instances are reconstructed from overlay state during activation.
+// Keep the transient ordinary-vertical goal keyed by local user and page so a
+// cross-item render (which assigns a new cursor ID) cannot accidentally start
+// a new sequence, while navigation to another page cannot inherit the goal.
+// Reset actions remove the entry through the preferredVisualX setter below.
+const preferredVisualXByEditingContext = new Map<string, number>();
+
 export interface CursorOptions {
     itemId: string;
     offset: number;
@@ -79,6 +86,29 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     private readonly editor: CursorEditor;
     private readonly navigation: CursorNavigation;
     initialColumn: number | null = null;
+    get preferredVisualX(): number | null {
+        return preferredVisualXByEditingContext.get(this.visualGoalContextKey()) ?? null;
+    }
+
+    set preferredVisualX(value: number | null) {
+        const key = this.visualGoalContextKey();
+        if (value === null) preferredVisualXByEditingContext.delete(key);
+        else preferredVisualXByEditingContext.set(key, value);
+    }
+
+    private visualGoalContextKey(): string {
+        return Cursor.visualGoalContextKey(this.userId);
+    }
+
+    private static visualGoalContextKey(userId: string): string {
+        const pageId = (generalStore.currentPage as { id?: string; } | undefined)?.id ?? "no-page";
+        return `${userId}:${pageId}`;
+    }
+
+    /** Invalidate a retained goal when a semantic caret-placement gesture starts a new sequence. */
+    static resetPreferredVisualX(userId: string): void {
+        preferredVisualXByEditingContext.delete(Cursor.visualGoalContextKey(userId));
+    }
 
     private getSelection() {
         return getSelectionForUser(this.userId);
@@ -314,6 +344,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     // Not private: CursorNavigation calls this via the CursorNavigationContext interface.
     resetInitialColumn() {
         this.initialColumn = null;
+        this.preferredVisualX = null;
     }
 
     // Visual-line-aware cursor navigation (moveLeft/moveRight/moveUp/moveDown and the
@@ -329,12 +360,12 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         this.navigation.moveRight();
     }
 
-    moveUp() {
-        this.navigation.moveUp();
+    moveUp(useVisualGoal = true) {
+        this.navigation.moveUp(useVisualGoal);
     }
 
-    moveDown() {
-        this.navigation.moveDown();
+    moveDown(useVisualGoal = true) {
+        this.navigation.moveDown(useVisualGoal);
     }
 
     /**
@@ -434,8 +465,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                     return true;
                 }
                 this.applyToStore();
-            } else if (key === "ArrowUp") this.moveUp();
-            else if (key === "ArrowDown") this.moveDown();
+            } else if (key === "ArrowUp") this.moveUp(false);
+            else if (key === "ArrowDown") this.moveDown(false);
             else if (key === "Home") this.moveToLineStart();
             else this.moveToLineEnd();
             return true;
@@ -447,10 +478,10 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         if (key === "ArrowLeft") this.offset = previousCharacterOffset(source, this.offset);
         else if (key === "ArrowRight") this.offset = nextCharacterOffset(source, this.offset);
         else if (key === "ArrowUp") {
-            if (lineInfo && lineInfo.lineIndex > 0) this.moveUp();
+            if (lineInfo && lineInfo.lineIndex > 0) this.moveUp(false);
             else this.offset = 0;
         } else if (key === "ArrowDown") {
-            if (lineInfo && lineInfo.lineIndex < lineInfo.totalLines - 1) this.moveDown();
+            if (lineInfo && lineInfo.lineIndex < lineInfo.totalLines - 1) this.moveDown(false);
             else this.offset = source.length;
         } else if (key === "Home") this.moveToLineStart();
         else this.moveToLineEnd();
@@ -943,7 +974,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor up (Update Focus)
-        this.moveUp();
+        this.moveUp(false);
 
         this.updateSelectionAfterMove(startItemId, startOffset);
     }
@@ -958,7 +989,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor down (Update Focus)
-        this.moveDown();
+        this.moveDown(false);
 
         this.updateSelectionAfterMove(startItemId, startOffset);
     }

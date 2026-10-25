@@ -1,6 +1,7 @@
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import { expect, test } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Caret Horizontal Position Preservation", () => {
@@ -46,28 +47,22 @@ test.describe("Caret Horizontal Position Preservation", () => {
         }
 
         await page.keyboard.press("ArrowDown");
-        // We do NOT type here, to preserve initialColumn=6
+        // The proportional rendered X at alphabetic offset 6 is nearest to
+        // numeric offset 5, rather than the same character column.
+        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(5);
         await page.keyboard.press("ArrowDown");
-        // We are now on "123|" which is length 3. If we typed, we would type at pos 3.
-        await page.keyboard.insertText("Y"); // "123Y". Now column is 4. initialColumn is reset to 4.
+        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(3);
+        await page.keyboard.press("ArrowUp");
+        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(5);
+        await page.keyboard.press("ArrowUp");
+        expect((await CursorValidator.getCursorData(page)).cursorInstances[0]?.offset).toBe(6);
 
-        // Now if we press ArrowUp, it will use initialColumn=4.
-        // Let's reset initialColumn to 6 manually by navigating left and right
-        await page.keyboard.press("ArrowUp"); // go up to "123456789", we should be at "1234|56789" (col 4)
-
-        // Verify output visually
-        await page.keyboard.insertText("Z"); // "1234Z56789"
+        // Only edit after the no-edit restoration sequence has been observed.
+        await page.keyboard.insertText("Q");
 
         const items = page.locator(".outliner-item");
-        await expect(items.nth(1).locator(".item-text")).toHaveText("abcdefghi");
-        await expect(items.nth(2).locator(".item-text")).toHaveText("1234Z56789");
-        await expect(items.nth(3).locator(".item-text")).toHaveText("123Y");
-
-        // Verify ArrowUp again
-        await page.keyboard.press("ArrowUp"); // go up to "abcdefghi" from "1234Z56789"
-        // Since we typed Z, initialColumn was reset to 5 ("1234Z|")
-        // So we should end up at "abcde|fghi" (col 5)
-        await page.keyboard.insertText("Q");
-        await expect(items.nth(1).locator(".item-text")).toHaveText("abcdeQfghi");
+        await expect(items.nth(1).locator(".item-text")).toHaveText("abcdefQghi");
+        await expect(items.nth(2).locator(".item-text")).toHaveText("123456789");
+        await expect(items.nth(3).locator(".item-text")).toHaveText("123");
     });
 });

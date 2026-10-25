@@ -1,4 +1,5 @@
 import { DIAGRAM_SOURCE_SELECTOR, sourceVisualLines } from "../../services/diagram/diagramSourceDom";
+import { escapeId } from "../../utils/domUtils";
 import { getLogger } from "../logger";
 
 const logger = getLogger("CursorTextUtils");
@@ -9,12 +10,124 @@ export interface VisualLineSegment {
     y: number;
 }
 
+export interface VisualCaretPosition {
+    offset: number;
+    x: number;
+    y: number;
+}
+
+export interface VisualCaretLine extends VisualLineSegment {
+    carets: VisualCaretPosition[];
+}
+
 export interface VisualLineInfo {
     lineIndex: number;
     lineStartOffset: number;
     lineEndOffset: number;
     totalLines: number;
     lines: VisualLineSegment[];
+}
+
+function textBoundaryAtOffset(root: HTMLElement, requestedOffset: number): { node: Text; offset: number; } | undefined {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let remaining = Math.max(0, requestedOffset);
+    let last: Text | undefined;
+    while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
+        const length = node.data.length;
+        if (remaining <= length) return { node, offset: remaining };
+        remaining -= length;
+        last = node;
+    }
+    return last ? { node: last, offset: last.data.length } : undefined;
+}
+
+/**
+ * Measure every legal UTF-16 caret position in the rendered ordinary Text DOM.
+ * Coordinates are viewport coordinates, so rows with different indentation share
+ * one coordinate space. Nested formatting nodes are deliberately traversed rather
+ * than treating the first direct text node as the entire model string.
+ */
+export function getVisualCaretLines(itemId: string): VisualCaretLine[] | null {
+    if (typeof document === "undefined") return null;
+    const itemElement = document.querySelector(`[data-item-id="${escapeId(itemId)}"]`);
+    const textElement = itemElement?.querySelector(".item-text") as HTMLElement | null;
+    if (!textElement) return null;
+
+    const textLength = textElement.textContent?.length ?? 0;
+    if (textLength === 0) {
+        const rect = textElement.getBoundingClientRect();
+        return [{ startOffset: 0, endOffset: 0, y: rect.top, carets: [{ offset: 0, x: rect.left, y: rect.top }] }];
+    }
+
+    try {
+        const carets: VisualCaretPosition[] = [];
+        for (let offset = 0; offset <= textLength; offset += 1) {
+            const boundary = textBoundaryAtOffset(textElement, offset);
+            if (!boundary) return null;
+            const range = document.createRange();
+            range.setStart(boundary.node, boundary.offset);
+            range.collapse(true);
+            let rect = range.getBoundingClientRect();
+
+            // Some engines expose no rectangle for a collapsed range at a node
+            // boundary. A one-character range supplies the same legal caret edge.
+            // Firefox may return a zero-width collapsed rectangle with a
+            // non-zero height but no authoritative horizontal edge. Resolve
+            // every zero-width caret from an adjacent character rectangle so
+            // retained-X traversal agrees across engines.
+            if (rect.width === 0) {
+                const probe = document.createRange();
+                if (boundary.offset < boundary.node.data.length) {
+                    probe.setStart(boundary.node, boundary.offset);
+                    probe.setEnd(boundary.node, boundary.offset + 1);
+                    rect = probe.getBoundingClientRect();
+                } else if (boundary.offset > 0) {
+                    probe.setStart(boundary.node, boundary.offset - 1);
+                    probe.setEnd(boundary.node, boundary.offset);
+                    const previous = probe.getBoundingClientRect();
+                    carets.push({ offset, x: previous.right, y: previous.top });
+                    continue;
+                }
+            }
+            carets.push({ offset, x: rect.left, y: rect.top });
+        }
+
+        const lines: VisualCaretLine[] = [];
+        for (const caret of carets) {
+            const line = lines.find(candidate => Math.abs(candidate.y - caret.y) <= 2);
+            if (line) {
+                line.endOffset = caret.offset;
+                line.carets.push(caret);
+            } else {
+                lines.push({
+                    startOffset: caret.offset,
+                    endOffset: caret.offset,
+                    y: caret.y,
+                    carets: [caret],
+                });
+            }
+        }
+        return lines.length > 0 ? lines : null;
+    } catch (error) {
+        logger.error({ error }, "Error measuring visual caret positions:");
+        return null;
+    }
+}
+
+/** Resolve the legal caret nearest a retained pixel X; ties prefer the smaller offset. */
+export function nearestVisualCaret(
+    carets: readonly VisualCaretPosition[],
+    goalX: number,
+): VisualCaretPosition | undefined {
+    return carets.reduce<VisualCaretPosition | undefined>((best, candidate) => {
+        if (!best) return candidate;
+        const distance = Math.abs(candidate.x - goalX);
+        const bestDistance = Math.abs(best.x - goalX);
+        return distance < bestDistance || (distance === bestDistance && candidate.offset < best.offset)
+            ? candidate
+            : best;
+    }, undefined);
 }
 
 /**
