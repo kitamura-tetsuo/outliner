@@ -1,54 +1,47 @@
 import { expect } from "chai";
 import * as Y from "yjs";
-import {
-    applyKanbanUpdates,
-    createKanbanEntry,
-    getKanbanDefinitionTarget,
-} from "../../shared/src/services/kanbanDefinition.js";
+import { applyKanbanUpdates, getKanbanDefinitionTarget } from "../../shared/src/services/kanbanDefinition.js";
 import { OutlinerKanbanQueryService } from "../src/mcp/kanban-query-service.js";
 import { Project } from "../src/schema/app-schema.js";
 
 const UID = "owner", PROJECT = "kanban-production";
 
 async function seed(host: any, query: string, table = false, settings: Record<string, unknown> = {}) {
-    const project = await host.openDirectConnection(`projects/${PROJECT}`, { context: { uid: UID } });
-    const doc = project.document as unknown as Y.Doc;
-    Y.applyUpdate(doc, Y.encodeStateAsUpdate(Project.createInstance("Kanban production").ydoc));
+    installClientRunes();
+    const [{ createKanban }, tableDocs] = await Promise.all([
+        import("../../client/src/services/yjstable/kanbanDocs.js"),
+        import("../../client/src/services/yjstable/tableDocs.js"),
+    ]);
+    const canonical = Project.createInstance("Kanban production");
+    let canonicalTable: ReturnType<typeof tableDocs.getTableHandles>;
     if (table) {
-        const entry = new Y.Map<unknown>();
-        entry.set("name", "Tasks");
-        entry.set("sqlName", "tasks");
-        doc.getMap("yjsTables").set("tasks", entry);
+        const tableId = tableDocs.createTable(canonical.ydoc as never, "Tasks", "tasks", { tableId: "tasks" });
+        canonicalTable = tableDocs.getTableHandles(canonical.ydoc as never, tableId)!;
+        tableDocs.setSchemaText(canonicalTable, "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT)");
+        tableDocs.addRecord(canonicalTable, { status: "todo", title: "A" }, "a");
+        tableDocs.addRecord(canonicalTable, { status: "done", title: "B" }, "b");
     }
-    createKanbanEntry(doc as never, "board", {
+    createKanban(canonical.ydoc as never, {
+        kanbanId: "board",
         query,
         groupField: "status",
         laneOrder: ["done", "todo"],
         ...settings,
     });
+    const project = await host.openDirectConnection(`projects/${PROJECT}`, { context: { uid: UID } });
+    const doc = project.document as unknown as Y.Doc;
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(canonical.ydoc as never));
     const held = [project];
     if (table) {
         const source = await host.openDirectConnection(`projects/${PROJECT}/tables/tasks`, { context: { uid: UID } });
         const sourceDoc = source.document as unknown as Y.Doc;
-        sourceDoc.getText("schema").insert(0, "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT)");
-        for (const [id, status, title] of [["a", "todo", "A"], ["b", "done", "B"]]) {
-            const row = new Y.Map<unknown>();
-            row.set("status", status);
-            row.set("title", title);
-            sourceDoc.getMap("data").set(id, row);
-        }
+        Y.applyUpdate(sourceDoc, Y.encodeStateAsUpdate(canonicalTable!.doc as never));
         held.push(source);
     }
     return held;
 }
 
-function deferred() {
-    let resolve!: () => void;
-    const promise = new Promise<void>(done => resolve = done);
-    return { promise, resolve };
-}
-
-async function projectWithClient(query: string) {
+function installClientRunes() {
     Object.assign(globalThis, {
         $state: <T>(value: T) => value,
         $derived: <T>(value: T) => value,
@@ -57,16 +50,35 @@ async function projectWithClient(query: string) {
         $bindable: <T>(value: T) => value,
         $inspect: <T>(value: T) => value,
     });
-    const [{ KanbanQueryRunner }, { createKanban, getKanbanHandles }] = await Promise.all([
+}
+
+function deferred() {
+    let resolve!: () => void;
+    const promise = new Promise<void>(done => resolve = done);
+    return { promise, resolve };
+}
+
+async function projectWithClient(query: string, table = false) {
+    installClientRunes();
+    const [{ KanbanQueryRunner }, { createKanban, getKanbanHandles }, tableDocs] = await Promise.all([
         import("../../client/src/services/yjstable/kanbanQueryRunner.js"),
         import("../../client/src/services/yjstable/kanbanDocs.js"),
+        import("../../client/src/services/yjstable/tableDocs.js"),
     ]);
     const doc = new Y.Doc({ guid: "kanban-production-client" });
+    if (table) {
+        const tableId = tableDocs.createTable(doc as never, "Tasks", "tasks", { tableId: "tasks" });
+        const handles = tableDocs.getTableHandles(doc as never, tableId)!;
+        tableDocs.setSchemaText(handles, "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT)");
+        tableDocs.addRecord(handles, { status: "todo", title: "A" }, "a");
+        tableDocs.addRecord(handles, { status: "done", title: "B" }, "b");
+    }
     const kanbanId = createKanban(doc, { query, groupField: "status" });
     const runner = new KanbanQueryRunner({
         projectDoc: doc,
         kanbanId,
         kanban: getKanbanHandles(doc, kanbanId)!,
+        connect: async () => ({ waitForInitialSync: async () => ({ synced: true }), dispose: () => {} }),
     });
     let projection: any;
     const unsubscribe = runner.subscribeProjection(value => projection = value);
@@ -150,6 +162,13 @@ describe("Kanban observation production rooms and client parity", function() {
         ]);
         expect(result.routes.find(route => route.output === "status")?.writable).to.equal(true);
         expect(result.routes.find(route => route.output === "display")).to.include({ writable: false });
+        const client = await projectWithClient(
+            "SELECT id, status, title || '!' AS display FROM tasks ORDER BY id DESC LIMIT 1",
+            true,
+        );
+        expect(client.status).to.equal("success");
+        expect(client.lanes.map((lane: any) => [lane.key, lane.cards.map((card: any) => card.sourceIdentity?.id)]))
+            .to.deep.equal([["done", ["b"]]]);
         await result.release();
 
         const project = held[0].document as unknown as Y.Doc;
@@ -183,6 +202,45 @@ describe("Kanban observation production rooms and client parity", function() {
         expect(overflow).to.include({ status: "unavailable", reason: "resource_limit", limit: "rows" });
         expect(overflow.lanes).to.deep.equal([]);
         expect(overflow.routes).to.deep.equal([]);
+        await Promise.all(held.map(connection => connection.disconnect()));
+    });
+
+    it("diagnoses query, column, lane, and JSON resource boundaries without partial authority", async () => {
+        const held = await seed(server.hocuspocus, "SELECT 'lane' AS status");
+        const service = new OutlinerKanbanQueryService(server.hocuspocus, async () => true);
+        const target = getKanbanDefinitionTarget(held[0].document as never, "board")!;
+        const assertLimit = async (query: string, limit: string) => {
+            applyKanbanUpdates(target, { query });
+            const result = await service.openObservation(UID, PROJECT, "board");
+            expect(result).to.include({ status: "unavailable", reason: "resource_limit", limit });
+            expect(result.lanes).to.deep.equal([]);
+            expect(result.routes).to.deep.equal([]);
+        };
+        await assertLimit(
+            `SELECT ${Array.from({ length: 101 }, (_, index) => `${index} AS c${index}`).join(", ")}, 'x' AS status`,
+            "columns",
+        );
+        await assertLimit("SELECT i::text AS status FROM generate_series(1, 1001) i", "lanes");
+        await assertLimit("SELECT repeat('x', 8388608) AS status", "jsonBytes");
+        await assertLimit(`SELECT 'x' AS status /*${"x".repeat(16384)}*/`, "queryBytes");
+        await Promise.all(held.map(connection => connection.disconnect()));
+    });
+
+    it("distinguishes incomplete, invalid-role, and unavailable-source diagnostics", async () => {
+        const held = await seed(server.hocuspocus, "SELECT 'lane' AS status");
+        const service = new OutlinerKanbanQueryService(server.hocuspocus, async () => true);
+        const target = getKanbanDefinitionTarget(held[0].document as never, "board")!;
+        applyKanbanUpdates(target, { query: "" });
+        const incomplete = await service.openObservation(UID, PROJECT, "board");
+        expect(incomplete).to.include({ status: "incomplete", reason: "missing_role" });
+        applyKanbanUpdates(target, { query: "SELECT 'a' AS status, 'b' AS status" });
+        const duplicate = await service.openObservation(UID, PROJECT, "board");
+        expect(duplicate).to.include({ status: "invalid", reason: "invalid_role_column" });
+        applyKanbanUpdates(target, { query: "SELECT id, status FROM absent_source" });
+        const unavailable = await service.openObservation(UID, PROJECT, "board");
+        expect(unavailable.status).to.equal("unavailable");
+        expect(unavailable.reason).to.equal("missing_source");
+        expect(unavailable.routes).to.deep.equal([]);
         await Promise.all(held.map(connection => connection.disconnect()));
     });
 
