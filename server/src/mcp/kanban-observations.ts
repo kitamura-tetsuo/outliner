@@ -40,7 +40,10 @@ export function adoptKanbanObservationLease(
     let released = false;
     return {
         projectDoc: documents[0]!,
-        rooms: documents.map(doc => ({ room: doc.name, doc })),
+        rooms: documents.map((doc, index) => ({
+            room: (connections[index]!.document as unknown as { name: string; }).name,
+            doc,
+        })),
         async release() {
             if (released) return;
             released = true;
@@ -298,7 +301,7 @@ export class KanbanObservationService {
                     }
                 });
                 capture.schemaTexts?.forEach((text, index) => {
-                    watches.set(`${prefix}:schema:${index}`, observeType(text));
+                    watches.set(`${prefix}:schema:${index}`, observeText(text));
                 });
             }
         }
@@ -405,7 +408,7 @@ function observeMap<T>(
     return watch;
 }
 
-function observeType(type: Y.AbstractType<unknown>): Watch {
+function observeText(type: Y.Text): Watch {
     const watch: Watch = {
         key: "type",
         changed: false,
