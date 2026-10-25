@@ -57,18 +57,9 @@ async function loadProject(projectNameFromParam?: string) {
             project = client.getProject();
             // expose project to the global store so pages become available immediately
             store.project = project as unknown as AppProject;
-        } else {
-            // Only redirect if user is authenticated (to avoid redirecting during initial load)
-            // If user is not authenticated, the onMount listener will retry once auth settles.
-            if (userManager.getCurrentUser()) {
-                goto(resolve("/error/project-unavailable"));
-            }
         }
     } catch (err) {
         logger.error({ error: err }, "Failed to load project:");
-        if (err instanceof Error && err.message.includes("Access Denied")) {
-            goto(resolve("/error/project-unavailable"));
-        }
     }
 }
 
