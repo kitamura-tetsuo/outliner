@@ -11,7 +11,11 @@ import { Project } from "../src/schema/app-schema.js";
 
 class RoomHost {
     readonly documents = new Map<string, Y.Doc>();
+    beforeOpen?: (room: string) => Promise<void>;
+    failOpen?: (room: string) => boolean;
     async openDirectConnection(room: string) {
+        await this.beforeOpen?.(room);
+        if (this.failOpen?.(room)) throw new Error(`failed to open ${room}`);
         let document = this.documents.get(room);
         if (!document) {
             document = new Y.Doc();
@@ -105,6 +109,44 @@ describe("server Kanban observation", function() {
         } catch (error) {
             expect(error).to.be.instanceOf(McpReadError);
             expect((error as McpReadError).code).to.equal("forbidden");
+        }
+    });
+
+    it("rechecks authorization when asynchronous source opening fails", async () => {
+        await seed(server, "SELECT id, status FROM tasks");
+        const reached = deferred(), release = deferred();
+        let allowed = true;
+        server.beforeOpen = async room => {
+            if (!room.endsWith("/tables/tasks-id")) return;
+            reached.resolve();
+            await release.promise;
+        };
+        server.failOpen = room => room.endsWith("/tables/tasks-id");
+        const pending = new OutlinerKanbanQueryService(server as never, async () => allowed)
+            .openObservation(UID, PROJECT, "board");
+        await reached.promise;
+        allowed = false;
+        release.resolve();
+        try {
+            await pending;
+            expect.fail("expected forbidden");
+        } catch (error) {
+            expect(error).to.be.instanceOf(McpReadError);
+            expect((error as McpReadError).code).to.equal("forbidden");
+        }
+
+        server.beforeOpen = undefined;
+        allowed = true;
+        try {
+            await new OutlinerKanbanQueryService(server as never, async () => allowed).openObservation(
+                UID,
+                PROJECT,
+                "board",
+            );
+            expect.fail("expected source opening failure");
+        } catch (error) {
+            expect(error).to.be.instanceOf(Error);
+            expect((error as Error).message).to.contain("failed to open");
         }
     });
 

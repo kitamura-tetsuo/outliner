@@ -110,6 +110,7 @@ export class OutlinerKanbanQueryService {
         const project = await openLiveRoom(host, `projects/${projectId}`, uid, { effect: "none" });
         const sources = new Map<string, DirectConnection>();
         let transferred = false;
+        let failure: unknown;
         try {
             await this.authorize(uid, projectId);
             const doc = project.document as unknown as Y.Doc;
@@ -412,8 +413,24 @@ export class OutlinerKanbanQueryService {
             } finally {
                 lease.release();
             }
+        } catch (error) {
+            failure = error;
+            if (error instanceof McpReadError && error.code === "forbidden") throw error;
+            // Source acquisition lives outside the SQL boundary. Recheck ACL
+            // before allowing its failure to escape so revocation cannot leak
+            // room/source-specific diagnostics.
+            await this.authorize(uid, projectId);
+            throw error;
         } finally {
-            if (!transferred) await releaseAll(host, project, sources)();
+            if (!transferred) {
+                try {
+                    await releaseAll(host, project, sources)();
+                } catch (cleanupError) {
+                    // Cleanup cannot replace a known forbidden or acquisition
+                    // outcome with connection-specific information.
+                    if (failure === undefined) throw cleanupError;
+                }
+            }
         }
     }
 
