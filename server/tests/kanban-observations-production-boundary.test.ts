@@ -78,6 +78,8 @@ describe("Kanban observations at the persisted production boundary", function() 
             sourceSchema: schema,
             projectId: "p",
             tableId: "t",
+            sqlName: "tasks",
+            physicalColumn: "status",
         })!;
         const omittedEnum = server!.kanbanObservations.capture({
             uid: "u",
@@ -172,6 +174,8 @@ describe("Kanban observations at the persisted production boundary", function() 
             sourceSchema: tableDoc.getText("schema"),
             projectId: "p",
             tableId: "t",
+            sqlName: "tasks",
+            physicalColumn: "status",
         })!;
         const oldTableDoc = new Y.Doc();
         const oldData = oldTableDoc.getMap<Y.Map<unknown>>("data");
@@ -217,6 +221,8 @@ describe("Kanban observations at the persisted production boundary", function() 
                 roles: ["title"],
                 effectiveSchema: {
                     tableId: "t",
+                    sqlName: "tasks",
+                    physicalColumn: "status",
                     sourceSchema: tableDoc.getText("schema"),
                     catalogDependencies: [],
                 } as never,

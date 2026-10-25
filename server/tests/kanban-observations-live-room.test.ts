@@ -67,6 +67,8 @@ describe("Kanban observations through production live-room handles", function() 
             projectId: "p",
             projectDoc,
             tableId: "t",
+            sqlName: "tasks",
+            physicalColumn: "status",
             sourceSchema: tableDoc.getText("schema"),
         });
         if (!effectiveSchema) throw new Error("schema analysis failed");
@@ -134,16 +136,19 @@ describe("Kanban observations through production live-room handles", function() 
         row.set("status", "todo");
         row.set("description", "first");
         tableDoc.getMap("data").set("r", row);
-        tableDoc.getText("schema").insert(0, "CREATE TABLE tasks (status task_status)");
+        tableDoc.getText("schema").insert(
+            0,
+            "CREATE TABLE tasks (status task_status, priority task_priority)",
+        );
         restoreSqlCatalogObject(projectDoc, {
             id: "status-enum",
             kind: "enum",
             source: "CREATE TYPE task_status AS ENUM ('todo')",
         });
         restoreSqlCatalogObject(projectDoc, {
-            id: "other-enum",
+            id: "priority-enum",
             kind: "enum",
-            source: "CREATE TYPE other AS ENUM ('x')",
+            source: "CREATE TYPE task_priority AS ENUM ('low')",
         });
         const catalog = projectDoc.getMap<Y.Map<unknown>>("sqlCatalog");
         const effectiveSchema = await service.analyzeTableEffectiveSchema({
@@ -151,6 +156,8 @@ describe("Kanban observations through production live-room handles", function() 
             sourceSchema: tableDoc.getText("schema"),
             projectId: "p",
             tableId: "t",
+            sqlName: "tasks",
+            physicalColumn: "status",
         })!;
         const captured = service.capture({
             uid: "u",
@@ -188,7 +195,12 @@ describe("Kanban observations through production live-room handles", function() 
             physicalColumn: "status",
             role: "group",
         } as const;
-        replaceSqlCatalogSource(projectDoc, "other-enum", "CREATE TYPE other AS ENUM ('y')");
+        replaceSqlCatalogSource(
+            projectDoc,
+            "priority-enum",
+            "CREATE TYPE task_priority AS ENUM ('low', 'high')",
+        );
+        replaceSqlCatalogSource(projectDoc, "priority-enum", "CREATE TYPE task_priority AS ENUM ('low')");
         row.set("description", "second");
         service.acquire("u", "p", captured.observationToken).assertCurrent(selection);
         const dependency = catalog.get("status-enum")!;

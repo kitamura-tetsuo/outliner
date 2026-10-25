@@ -25,6 +25,8 @@ describe("KanbanObservationService physical field scopes", () => {
             sourceSchema: project.getText("schema"),
             projectId: "p",
             tableId: "t",
+            sqlName: "tasks",
+            physicalColumn: "title",
         })!;
         const captured = service.capture({
             uid: "u",
@@ -98,6 +100,8 @@ describe("KanbanObservationService physical field scopes", () => {
             projectId: "p",
             projectDoc: doc,
             tableId: "t",
+            sqlName: "tasks",
+            physicalColumn: "status",
             sourceSchema: doc.getText("schema"),
         });
         if (!effectiveSchema) throw new Error("schema analysis failed");

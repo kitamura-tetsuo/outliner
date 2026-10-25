@@ -91,6 +91,7 @@ const effectiveSchemaAuthority = Symbol("KanbanEffectiveSchemaAuthority");
 
 export interface TableEffectiveSchemaObservation {
     readonly tableId: string;
+    readonly physicalColumn: string;
     readonly sourceSchema: Y.Text;
     readonly catalogDependencies: readonly SchemaDependencyObservation[];
     readonly [effectiveSchemaAuthority]: true;
@@ -285,6 +286,8 @@ export class KanbanObservationService {
         readonly projectId: string;
         readonly projectDoc: Y.Doc;
         readonly tableId: string;
+        readonly sqlName: string;
+        readonly physicalColumn: string;
         readonly sourceSchema: Y.Text;
     }): Promise<TableEffectiveSchemaObservation | undefined> {
         if (!input.sourceSchema.doc) return undefined;
@@ -298,9 +301,33 @@ export class KanbanObservationService {
         });
         if (compiled.status !== "ready") return undefined;
         const dependency = compiled.environment.dependencies.find(row => row.referencingId === input.tableId);
-        const requiredIds = dependency?.status === "complete"
-            ? dependency.requiredEnums.map(item => item.objectId)
-            : undefined;
+        let requiredIds: string[] | undefined;
+        if (dependency?.status === "complete") {
+            const columnType = await compiled.environment.db.query<{
+                type_name: string;
+                type_kind: string;
+                element_type_name: string | null;
+                element_type_kind: string | null;
+            }>(
+                "SELECT t.typname AS type_name, t.typtype AS type_kind, et.typname AS element_type_name, "
+                    + "et.typtype AS element_type_kind FROM pg_attribute a "
+                    + "JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace "
+                    + "JOIN pg_type t ON t.oid=a.atttypid LEFT JOIN pg_type et ON et.oid=t.typelem "
+                    + "WHERE n.nspname='public' AND c.relname=$1 AND a.attname=$2 "
+                    + "AND a.attnum>0 AND NOT a.attisdropped",
+                [input.sqlName, input.physicalColumn],
+            );
+            const type = columnType.rows[0];
+            if (type) {
+                const enumName = type.type_kind === "e" ? type.type_name : undefined;
+                if (type.element_type_kind !== "e") {
+                    requiredIds = enumName === undefined
+                        ? []
+                        : compiled.environment.enums.filter(item => item.name === enumName).map(item => item.objectId);
+                    if (enumName !== undefined && requiredIds.length !== 1) requiredIds = undefined;
+                }
+            }
+        }
         await compiled.environment.dispose();
         const currentCatalog = readSqlCatalog(input.projectId, input.projectDoc as never);
         if (
@@ -326,6 +353,7 @@ export class KanbanObservationService {
         }
         const evidence = {
             tableId: input.tableId,
+            physicalColumn: input.physicalColumn,
             sourceSchema: input.sourceSchema,
             catalogDependencies: Object.freeze(dependencies),
             [effectiveSchemaAuthority]: true as const,
@@ -595,6 +623,7 @@ export class KanbanObservationService {
                 || !effectiveSchema
                 || !this.effectiveSchemaEvidence.has(effectiveSchema)
                 || effectiveSchema.tableId !== table.tableId
+                || effectiveSchema.physicalColumn !== capture.physicalColumn
                 || effectiveSchema.sourceSchema !== table.tableDoc.getText("schema")
                 || !effectiveSchema.sourceSchema.doc
                 || effectiveSchema.catalogDependencies.some(dependency =>
