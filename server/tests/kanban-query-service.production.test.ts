@@ -180,7 +180,7 @@ describe("Kanban observation production rooms and client parity", function() {
         const held = await seed(
             server.hocuspocus,
             "SELECT id, status, title || '!' AS display FROM tasks ORDER BY id DESC LIMIT 1",
-            "table",
+            true,
             { titleField: "display", detailFields: ["status"] },
         );
         const service = new OutlinerKanbanQueryService(server.hocuspocus, async () => true);
