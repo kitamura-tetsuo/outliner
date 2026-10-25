@@ -97,8 +97,17 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     }
 
     private visualGoalContextKey(): string {
+        return Cursor.visualGoalContextKey(this.userId);
+    }
+
+    private static visualGoalContextKey(userId: string): string {
         const pageId = (generalStore.currentPage as { id?: string; } | undefined)?.id ?? "no-page";
-        return `${this.userId}:${pageId}`;
+        return `${userId}:${pageId}`;
+    }
+
+    /** Invalidate a retained goal when a semantic caret-placement gesture starts a new sequence. */
+    static resetPreferredVisualX(userId: string): void {
+        preferredVisualXByEditingContext.delete(Cursor.visualGoalContextKey(userId));
     }
 
     private getSelection() {

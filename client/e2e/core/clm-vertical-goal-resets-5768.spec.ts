@@ -3,6 +3,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import { expect, type Page, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { pointInsideCharacter } from "../utils/selectionGeometryHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 async function ids(page: Page): Promise<string[]> {
@@ -69,10 +70,20 @@ test.describe("REQ-003/008: explicit actions reset the retained visual goal", ()
         const itemIds = await ids(page);
         await place(page, itemIds[0], 8);
         await page.keyboard.press("ArrowDown");
-        await place(page, itemIds[1], 1);
+        await expectCaret(page, itemIds[1], 3);
+
+        const sameItemPoint = await pointInsideCharacter(page, itemIds[1], 1);
+        await page.mouse.click(sameItemPoint.x, sameItemPoint.y);
+        await expectCaret(page, itemIds[1], 1);
         await page.keyboard.press("ArrowDown");
         await expectCaret(page, itemIds[2], 1);
-        await place(page, itemIds[0], 2);
+
+        await place(page, itemIds[0], 8);
+        await page.keyboard.press("ArrowDown");
+        await expectCaret(page, itemIds[1], 3);
+        const crossItemPoint = await pointInsideCharacter(page, itemIds[0], 2);
+        await page.mouse.click(crossItemPoint.x, crossItemPoint.y);
+        await expectCaret(page, itemIds[0], 2);
         await page.keyboard.press("ArrowDown");
         await expectCaret(page, itemIds[1], 2);
     });

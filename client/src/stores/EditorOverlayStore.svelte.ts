@@ -1360,6 +1360,7 @@ export class EditorOverlayStore {
      * their existing lifecycle.
      */
     placeLocalCaret({ itemId, offset }: Pick<CursorPosition, "itemId" | "offset">): string {
+        Cursor.resetPreferredVisualX("local");
         this.clearSelectionForUser("local");
         this.setActiveItem(itemId);
         return this.setCursor({ itemId, offset, isActive: true, userId: "local" });
