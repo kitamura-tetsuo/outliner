@@ -1,8 +1,0 @@
-[Issues]
-The existing user manuals incorrectly described UI elements and navigation based on the current actual behavior in the Demo Environment (e.g. referencing a "top navigation bar" instead of a "main top toolbar", inaccurately splitting the page controls toolbar, and incorrectly locating the login status indicator).
-
-[Changes]
-Modified docs/user-manual/index.md and docs/ja/user-manual/index.md to accurately reflect the Demo Environment UI:
-- Updated references of "top navigation bar" to "main top toolbar".
-- Unified the "top-right toolbar" and "page controls toolbar" descriptions into a single "page controls toolbar" located above the page title, grouping all relevant controls (Search, Graph View, Add Item, etc.).
-- Adjusted the login status indicator location to point to the main top toolbar.
