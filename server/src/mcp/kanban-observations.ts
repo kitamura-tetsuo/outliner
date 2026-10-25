@@ -214,6 +214,7 @@ interface RecordState {
     readonly lease: KanbanObservationLease;
     readonly watches: Map<string, Watch>;
     readonly tableSelections: Map<string, TableSelectionState>;
+    readonly outlineSelections: Map<string, ReadonlySet<string>>;
     readonly roomGenerations: ReadonlyMap<string, number>;
     readonly deadline: number;
     readonly timer: ReturnType<typeof setTimeout>;
@@ -267,7 +268,7 @@ export class KanbanObservationService {
     private scopeCount = 0;
     private leaseCount = 0;
     private readonly objectIds = new WeakMap<object, number>();
-    private readonly effectiveSchemaEvidence = new WeakSet<object>();
+    private readonly effectiveSchemaEvidence = new WeakMap<object, { schema: string; catalogRevision: string; }>();
     private nextObjectId = 1;
     private readonly roomGenerations = new Map<string, number>();
     private readonly restoreRoomMonitor: () => void;
@@ -334,10 +335,12 @@ export class KanbanObservationService {
             !requiredIds || input.sourceSchema.toString() !== schema
             || currentCatalog.status !== "ready" || currentCatalog.snapshot.revision !== catalogRead.snapshot.revision
         ) return undefined;
-        const catalog = input.projectDoc.getMap<Y.Map<unknown>>("sqlCatalog");
+        const catalog = requiredIds.length > 0
+            ? input.projectDoc.getMap<Y.Map<unknown>>("sqlCatalog")
+            : undefined;
         const dependencies: SchemaDependencyObservation[] = [];
         for (const id of new Set(requiredIds)) {
-            const owner = catalog.get(id);
+            const owner = catalog?.get(id);
             if (
                 !(owner instanceof Y.Map) || typeof owner.get("kind") !== "string"
                 || typeof owner.get("source") !== "string"
@@ -358,7 +361,7 @@ export class KanbanObservationService {
             catalogDependencies: Object.freeze(dependencies),
             [effectiveSchemaAuthority]: true as const,
         };
-        this.effectiveSchemaEvidence.add(evidence);
+        this.effectiveSchemaEvidence.set(evidence, { schema, catalogRevision: catalogRead.snapshot.revision });
         return evidence;
     }
 
@@ -377,7 +380,8 @@ export class KanbanObservationService {
 
         const tableSelections = this.validateTableCaptures(input);
         if (!tableSelections) return { available: false, reason: "source_unavailable" };
-        const watches = this.createWatches(input, tableSelections);
+        const outlineSelections = new Map<string, ReadonlySet<string>>();
+        const watches = this.createWatches(input, tableSelections, outlineSelections);
         if (!watches) return { available: false, reason: "source_unavailable" };
         const scopeCount = watches.size;
         if (scopeCount > this.limits.scopesPerToken || this.scopeCount + scopeCount > this.limits.scopes) {
@@ -395,6 +399,7 @@ export class KanbanObservationService {
             lease: input.lease,
             watches,
             tableSelections,
+            outlineSelections,
             roomGenerations: new Map(input.lease.rooms.map(({ room }) => [room, this.roomGenerations.get(room) ?? 0])),
             deadline,
             released: false,
@@ -428,6 +433,7 @@ export class KanbanObservationService {
             return originalSet.call(this, room, doc);
         };
         const monitoredDelete: typeof documents.delete = function(this: Map<string, unknown>, room) {
+            if (this.has(room)) generations.set(room, (generations.get(room) ?? 0) + 1);
             return originalDelete.call(this, room);
         };
         documents.set = monitoredSet;
@@ -475,6 +481,7 @@ export class KanbanObservationService {
     private createWatches(
         input: KanbanObservationCapture,
         tableSelections: Map<string, TableSelectionState>,
+        outlineSelections: Map<string, ReadonlySet<string>>,
     ): Map<string, Watch> | undefined {
         const watches = new Map<string, Watch>();
         if (hasDuplicates(input.outlineFields?.map(capture => capture.scopeId) ?? [])) {
@@ -484,7 +491,7 @@ export class KanbanObservationService {
             return disposeAndUndefined(watches);
         }
         try {
-            return this.registerWatches(input, watches, tableSelections);
+            return this.registerWatches(input, watches, tableSelections, outlineSelections);
         } catch {
             disposeWatches(watches);
             return undefined;
@@ -495,6 +502,7 @@ export class KanbanObservationService {
         input: KanbanObservationCapture,
         watches: Map<string, Watch>,
         tableSelections: Map<string, TableSelectionState>,
+        outlineSelections: Map<string, ReadonlySet<string>>,
     ): Map<string, Watch> | undefined {
         const fieldCaptures = input.tableFields ?? [];
         if (
@@ -576,13 +584,14 @@ export class KanbanObservationService {
             );
         }
         for (const capture of input.outlineFields ?? []) {
-            const prefix = `outline-field:${capture.scopeId}`;
             const identity = () => safelyResolve(capture.resolveOwner) === capture.owner;
-            const [field, ...coupledFields] = OUTLINE_FIELD_SLOTS[capture.field];
-            watches.set(prefix, observeMap(capture.owner, field!, identity));
-            for (const coupled of coupledFields) {
-                watches.set(`${prefix}:coupled:${coupled}`, observeMap(capture.owner, coupled, identity));
+            const watchKeys = new Set<string>();
+            for (const field of OUTLINE_FIELD_SLOTS[capture.field]) {
+                const key = this.physicalKey("map", capture.owner, field);
+                if (!watches.has(key)) watches.set(key, observeMap(capture.owner, field, identity));
+                watchKeys.add(key);
             }
+            outlineSelections.set(capture.scopeId, watchKeys);
         }
         for (const placement of input.placements ?? []) {
             const resolve = placement.resolveValue
@@ -604,6 +613,8 @@ export class KanbanObservationService {
             const { table, sourceRef } = capture;
             const roles = new Set(capture.roles);
             const effectiveSchema = capture.effectiveSchema;
+            const evidence = effectiveSchema && this.effectiveSchemaEvidence.get(effectiveSchema);
+            const currentCatalog = readSqlCatalog(input.projectId, table.projectDoc as never);
             // A configured title is authoritative when the same output is also
             // listed as a detail field.
             if (roles.has("title")) roles.delete("detail");
@@ -621,7 +632,9 @@ export class KanbanObservationService {
                 || capture.owner.doc !== table.tableDoc
                 || capture.container.get(capture.containerKey) !== capture.owner
                 || !effectiveSchema
-                || !this.effectiveSchemaEvidence.has(effectiveSchema)
+                || !evidence
+                || effectiveSchema.sourceSchema.toString() !== evidence.schema
+                || currentCatalog.status !== "ready" || currentCatalog.snapshot.revision !== evidence.catalogRevision
                 || effectiveSchema.tableId !== table.tableId
                 || effectiveSchema.physicalColumn !== capture.physicalColumn
                 || effectiveSchema.sourceSchema !== table.tableDoc.getText("schema")
@@ -680,6 +693,16 @@ export class KanbanObservationService {
                 const watch = record.watches.get(key)!;
                 if (watch.changed || !watch.current()) throw new KanbanObservationError("observation_changed");
             }
+            return;
+        }
+        if (selection.kind === "outline-field") {
+            const watchKeys = record.outlineSelections.get(selection.scopeId);
+            if (!watchKeys) throw new KanbanObservationError("scope_not_observed");
+            for (const key of watchKeys) {
+                const watch = record.watches.get(key)!;
+                if (watch.changed || !watch.current()) throw new KanbanObservationError("observation_changed");
+            }
+            return;
         }
         const keys = selection.kind === "definition"
             ? ["definition", ...new Set(selection.keys).values()].map((key, index) =>
@@ -691,28 +714,11 @@ export class KanbanObservationService {
                 `placement:${selection.placementId}:componentType`,
                 `placement:${selection.placementId}:kanbanId`,
             ]
-            : selection.kind === "table-field"
-            ? []
-            : [`${selection.kind}:${selection.scopeId}`];
+            : [];
         for (const key of keys) {
             const watch = record.watches.get(key);
             if (!watch) throw new KanbanObservationError("scope_not_observed");
             if (watch.changed || !watch.current()) throw new KanbanObservationError("observation_changed");
-        }
-        if (selection.kind === "table-field" || selection.kind === "outline-field") {
-            const prefix = `${selection.kind}:${selection.scopeId}:dependency:`;
-            for (const [key, watch] of record.watches) {
-                if (
-                    (key.startsWith(prefix)
-                        || key.startsWith(`${selection.kind}:${selection.scopeId}:registry`)
-                        || key.startsWith(`${selection.kind}:${selection.scopeId}:sqlName`)
-                        || key.startsWith(`${selection.kind}:${selection.scopeId}:coupled:`)
-                        || key.startsWith(`${selection.kind}:${selection.scopeId}:schema`))
-                    && (watch.changed || !watch.current())
-                ) {
-                    throw new KanbanObservationError("observation_changed");
-                }
-            }
         }
     }
 
@@ -738,7 +744,8 @@ function observeMap<T>(
     identity = () => owner.doc !== null,
     nested = true,
 ): Watch {
-    const captured = snapshotValue(owner.get(field));
+    const capturedValue = owner.get(field);
+    const captured = snapshotValue(capturedValue);
     const mapListener = (event: Y.YMapEvent<T>) => {
         if (event.keysChanged.has(field)) watch.changed = true;
     };
@@ -753,12 +760,31 @@ function observeMap<T>(
     const watch: Watch = {
         key: field,
         changed: false,
-        current: () => identity() && (!nested || snapshotValue(owner.get(field)) === captured),
+        current: () =>
+            identity()
+            && (!nested
+                || (!transactionTouches(owner, field, capturedValue)
+                    && sameCapturedValue(owner.get(field), capturedValue, captured))),
         dispose: nested ? () => owner.unobserveDeep(deepListener) : () => owner.unobserve(mapListener),
     };
     if (nested) owner.observeDeep(deepListener);
     else owner.observe(mapListener);
     return watch;
+}
+
+function transactionTouches<T>(owner: Y.Map<T>, field: string, capturedValue: unknown): boolean {
+    const transaction = (owner.doc as unknown as {
+        _transaction?: { changed: Map<Y.AbstractType<unknown>, Set<string | null>>; };
+    } | null)?._transaction;
+    if (!transaction) return false;
+    const ownerChanges = transaction.changed.get(owner as unknown as Y.AbstractType<unknown>);
+    if (ownerChanges?.has(field)) return true;
+    return capturedValue instanceof Y.AbstractType && transaction.changed.has(capturedValue);
+}
+
+function sameCapturedValue(current: unknown, capturedValue: unknown, capturedSnapshot: string): boolean {
+    if (capturedValue instanceof Y.AbstractType && current !== capturedValue) return false;
+    return snapshotValue(current) === capturedSnapshot;
 }
 
 function observeText(type: Y.Text): Watch {

@@ -41,15 +41,13 @@ describe("Kanban observations over production ordered-tree storage", function() 
         value.set("done", true);
         const selection = { kind: "outline-field", kanbanId: "k", scopeId: "item:text" } as const;
         service.acquire("u", "p", captured.observationToken).assertCurrent(selection);
-        const text = value.get("text") as Y.Text;
-        text.delete(0, 1);
-        text.insert(0, "B");
-        text.delete(0, 1);
-        text.insert(0, "A");
-        expect(() => service.acquire("u", "p", captured.observationToken).assertCurrent(selection)).to.throw(
-            KanbanObservationError,
-            "observation_changed",
-        );
+        doc.transact(() => {
+            value.set("text", new Y.Text("A"));
+            expect(() => service.acquire("u", "p", captured.observationToken).assertCurrent(selection)).to.throw(
+                KanbanObservationError,
+                "observation_changed",
+            );
+        });
         await service.dispose();
         host.closeConnections();
     });
@@ -260,6 +258,36 @@ describe("Kanban observations over production ordered-tree storage", function() 
         await service.dispose();
         expect(listeners()).to.equal(before);
         await connection.disconnect();
+        host.closeConnections();
+    });
+
+    it("deduplicates shared physical slots across logical outline selectors", async () => {
+        const host = new Hocuspocus({ name: "kanban-outline-capacity-test", quiet: true });
+        const connection = await openLiveRoom(host, "projects/p", "u", { test: "outline-capacity" });
+        const project = Project.fromDoc(connection.document as unknown as Y.Doc);
+        const item = project.addPage("Page", "u").items.addNode("u");
+        item.start = "2026-01-01";
+        item.allDay = true;
+        const value = project.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
+        const resolve = () => project.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
+        const service = new KanbanObservationService(host, { limits: { scopesPerToken: 2, scopes: 2 } });
+        const captured = service.capture({
+            uid: "u",
+            projectId: "p",
+            kanbanId: "k",
+            lease: adoptKanbanObservationLease(host, connection),
+            outlineFields: [
+                { scopeId: "item:start-on", owner: value, field: "start_on", resolveOwner: resolve },
+                { scopeId: "item:start-at", owner: value, field: "start_at", resolveOwner: resolve },
+            ],
+        });
+        expect(captured.available).to.equal(true);
+        if (!captured.available) return;
+        const guard = service.acquire("u", "p", captured.observationToken);
+        guard.assertCurrent({ kind: "outline-field", kanbanId: "k", scopeId: "item:start-on" });
+        guard.assertCurrent({ kind: "outline-field", kanbanId: "k", scopeId: "item:start-at" });
+        await service.release(captured.observationToken);
+        await service.dispose();
         host.closeConnections();
     });
 });

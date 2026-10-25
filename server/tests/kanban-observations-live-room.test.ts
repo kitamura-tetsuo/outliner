@@ -103,6 +103,7 @@ describe("Kanban observations through production live-room handles", function() 
         const guard = service.acquire("u", "p", captured.observationToken);
         projectDoc.transact(() => {
             definition.entry.set("name", "Changed");
+            definition.entry.set("name", "Board");
             expect(() => guard.assertCurrent({ kind: "definition", kanbanId: "k", keys: ["name"] })).to.throw(
                 KanbanObservationError,
                 "observation_changed",
@@ -110,6 +111,7 @@ describe("Kanban observations through production live-room handles", function() 
         });
         tableDoc.transact(() => {
             row.set("status", "done");
+            row.set("status", "todo");
             expect(() =>
                 guard.assertCurrent({
                     kind: "table-field",
@@ -224,7 +226,7 @@ describe("Kanban observations through production live-room handles", function() 
             definition: { target: getKanbanDefinitionTarget(doc, "k")!, keys: [] },
         });
         if (!captured.available) throw new Error(captured.reason);
-        host.documents.set("projects/p", new Y.Doc() as never);
+        host.documents.delete("projects/p");
         host.documents.set("projects/p", doc as never);
         expect(() => service.acquire("u", "p", captured.observationToken)).to.throw(
             KanbanObservationError,

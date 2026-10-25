@@ -73,7 +73,7 @@ describe("Kanban observations at the persisted production boundary", function() 
             source: "CREATE TYPE task_status AS ENUM ('todo')",
         });
         const sourceRef = { kind: "table", id: "t", sqlName: "tasks", rowId: "r" };
-        const effectiveSchema = await server!.kanbanObservations.analyzeTableEffectiveSchema({
+        let effectiveSchema = await server!.kanbanObservations.analyzeTableEffectiveSchema({
             projectDoc,
             sourceSchema: schema,
             projectId: "p",
@@ -135,6 +135,19 @@ describe("Kanban observations at the persisted production boundary", function() 
                     effectiveSchema,
                 }],
             });
+        schema.insert(schema.length, " ");
+        expect(capture()).to.deep.equal({ available: false, reason: "source_unavailable" });
+        expect(projectHandle.document).not.to.equal(null);
+        expect(tableHandle.document).not.to.equal(null);
+        schema.delete(schema.length - 1, 1);
+        effectiveSchema = await server!.kanbanObservations.analyzeTableEffectiveSchema({
+            projectDoc,
+            sourceSchema: schema,
+            projectId: "p",
+            tableId: "t",
+            sqlName: "tasks",
+            physicalColumn: "status",
+        })!;
         const captured = capture();
         if (!captured.available) throw new Error(captured.reason);
         const selection = {
