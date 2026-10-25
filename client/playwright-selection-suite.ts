@@ -10,6 +10,7 @@ export const retainedSelectionMatches = retainedSelectionSpecs.map(spec => `**/$
 // the selection manifest and its coverage guard.
 const ordinaryVerticalMatches = [
     "**/core/clm-vertical-formatted-active-layout-5768.spec.ts",
+    "**/core/clm-vertical-goal-resets-5768.spec.ts",
     "**/core/clm-vertical-visual-goal-empty-short-5768.spec.ts",
 ];
 
