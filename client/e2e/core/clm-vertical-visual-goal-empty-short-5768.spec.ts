@@ -172,7 +172,9 @@ test.describe("REQ-007: retained visual goal through short and empty rows", () =
         await page.keyboard.press("ArrowUp");
         await assertCaret(page, ids[0], 0);
         await page.keyboard.press("ArrowDown");
-        await assertCaret(page, ids[1], Math.min(7, titleLength));
+        // The title uses a larger font, so its offset-7 X lies beyond this
+        // ten-character body row and correctly clamps to that row's endpoint.
+        await assertCaret(page, ids[1], 10);
         await page.keyboard.press("ArrowUp");
         await assertCaret(page, ids[0], Math.min(7, titleLength));
     });

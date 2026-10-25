@@ -38,6 +38,12 @@ import { extendFocusAcrossVisualNode } from "./selection/selectionKeyboard";
 import { yjsService } from "./yjs/service";
 const logger = getLogger("Cursor");
 
+// Cursor instances are reconstructed from overlay state during activation.
+// Keep the transient ordinary-vertical goal keyed by the stable local cursor
+// identity so a cross-item render cannot accidentally start a new sequence.
+// Reset actions remove the entry through the preferredVisualX setter below.
+const preferredVisualXByCursorId = new Map<string, number>();
+
 export interface CursorOptions {
     itemId: string;
     offset: number;
@@ -79,7 +85,14 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     private readonly editor: CursorEditor;
     private readonly navigation: CursorNavigation;
     initialColumn: number | null = null;
-    preferredVisualX: number | null = null;
+    get preferredVisualX(): number | null {
+        return preferredVisualXByCursorId.get(this.cursorId) ?? null;
+    }
+
+    set preferredVisualX(value: number | null) {
+        if (value === null) preferredVisualXByCursorId.delete(this.cursorId);
+        else preferredVisualXByCursorId.set(this.cursorId, value);
+    }
 
     private getSelection() {
         return getSelectionForUser(this.userId);
