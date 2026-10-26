@@ -2,16 +2,16 @@ import { getLogger } from "../logger";
 
 const logger = getLogger("CursorEditor");
 
-import type { Item } from "../../schema/yjs-schema";
-import { Items } from "../../schema/yjs-schema";
+import { Item, Items } from "../../schema/yjs-schema";
 import { isDiagramItem, refuseCrossOwnerDiagramRange } from "../../services/diagram/diagramEditing";
-import { isVisualNode } from "../../services/outline/nodeTree";
+import { canAcceptChild, isVisualNode } from "../../services/outline/nodeTree";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { allocatePageTitle } from "../../utils/pageUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
+import { safeGetNodeParent } from "../../utils/treeUtils";
 import { KeyEventHandler } from "../KeyEventHandler";
 import { isReservedPageSegment } from "../managementPaths";
 import { endpointOffsetInText } from "../selection/selectionContent";
@@ -438,10 +438,51 @@ export class CursorEditor {
                     const currentIndex = itemsCollection.indexOf(
                         target as unknown as import("../../schema/app-schema").Item,
                     );
-                    target.updateText(beforeText);
-                    const newItem = addNode(cursor.userId, currentIndex + 1);
+                    const childKeys = [...target.items].map(child => child.key);
+                    const tree = target.tree;
+                    const sourceKey = target.key;
+                    const parentKey = (itemsCollection as import("../../schema/app-schema").Items).parentKey;
+
+                    // Validate the complete structural operation before the first Yjs mutation.
+                    // There is no async boundary between this check and the transaction, so a
+                    // refused split leaves the split-entry snapshot untouched.
+                    if (
+                        currentIndex < 0
+                        || cursor.offset < 0
+                        || cursor.offset > text.length
+                        || safeGetNodeParent(tree, sourceKey) !== parentKey
+                        || childKeys.some(childKey =>
+                            safeGetNodeParent(tree, childKey) !== sourceKey
+                            || !canAcceptChild({ componentType: undefined }, new Item(target.ydoc, tree, childKey))
+                        )
+                    ) return;
+
+                    const newItem = target.ydoc.transact(() => {
+                        // Recheck authoritative parentage at mutation entry. Synchronous Yjs
+                        // transactions cannot be interleaved by a remote update after this point.
+                        if (
+                            safeGetNodeParent(tree, sourceKey) !== parentKey
+                            || childKeys.some(childKey => safeGetNodeParent(tree, childKey) !== sourceKey)
+                        ) return undefined;
+
+                        target.updateText(beforeText);
+                        const created = addNode(cursor.userId, currentIndex + 1);
+                        if (!created) return undefined;
+                        created.updateText(afterText);
+
+                        const movableTree = tree as unknown as {
+                            moveChildToParent(childKey: string, parentKey: string): void;
+                            recomputeParentsAndChildren?: () => void;
+                            setNodeOrderToEnd(nodeKey: string): void;
+                        };
+                        for (const childKey of childKeys) {
+                            movableTree.moveChildToParent(childKey, created.key);
+                            movableTree.recomputeParentsAndChildren?.();
+                            movableTree.setNodeOrderToEnd(childKey);
+                        }
+                        return created;
+                    }, null);
                     if (!newItem) return;
-                    newItem.updateText(afterText);
 
                     const oldItemId = cursor.itemId;
                     const clearCursorAndSelection =

@@ -11,6 +11,9 @@ acceptance:
 - Text after the cursor moves to the new item
 - Text before the cursor remains in the current item
 - The cursor moves to the beginning of the new item
+- Existing child subtrees move to the new item without changing their IDs or order
+- Child reparenting applies when splitting at the start, middle, end, or in an empty item
+- The text split, sibling creation, and child reparenting are published as one Yjs transaction
 tests:
 - client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
 - client/e2e/core/itm-yjs-tree-reflects-split-42ac1ecd.spec.ts
