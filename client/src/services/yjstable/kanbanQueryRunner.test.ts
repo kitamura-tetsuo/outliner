@@ -100,6 +100,31 @@ describe("Kanban SQL result projection", { timeout: 30000 }, () => {
         context.session.dispose();
     });
 
+    it("preserves ordered duplicate source occurrences for server parity", async () => {
+        const context = await setup();
+        addRecord(context.table, { title: "A", status: "todo", priority: 1 }, "a");
+        addRecord(context.table, { title: "B", status: "done", priority: 2 }, "b");
+        updateKanban(context.projectDoc, context.kanbanId, {
+            query: `SELECT id, status, title FROM tasks
+                UNION ALL SELECT id, status, title FROM tasks WHERE id = 'a'
+                ORDER BY status, id`,
+            laneOrder: ["done", "todo"],
+            titleField: "title",
+        });
+        const value = await execute(context.runner);
+        expect(value.status).toBe("success");
+        expect(value.lanes.map(lane => [
+            lane.key,
+            lane.cards.map(card => [card.row.title, card.sourceIdentity?.id]),
+        ])).toEqual([
+            ["done", [["B", undefined]]],
+            ["todo", [["A", undefined], ["A", undefined]]],
+        ]);
+        expect(new Set(value.lanes[1].cards.map(card => card.occurrenceKey)).size).toBe(2);
+        context.runner.dispose();
+        context.session.dispose();
+    });
+
     it("expands only proven primary-table checked TEXT choices", async () => {
         const context = await setup(
             "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, status TEXT CHECK (status IN ('todo', 'doing', 'done')), priority INTEGER)",

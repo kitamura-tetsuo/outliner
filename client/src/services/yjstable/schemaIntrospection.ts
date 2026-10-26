@@ -7,7 +7,10 @@
 // grammar is exactly what Postgres accepts.
 
 import { loadModule, parseSync } from "libpg-query";
+import { extractCheckInOptions } from "../../../../shared/src/services/checkConstraintOptions";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
+
+export { extractCheckInOptions };
 
 await loadModule();
 
@@ -122,52 +125,6 @@ function selectExpression(expression: string): unknown {
         return undefined;
     }
     return node(node(targets[0])?.ResTarget)?.val;
-}
-
-/**
- * Extract the allowed literal values from a Postgres CHECK constraint
- * definition when it has the shape produced by `CHECK (col IN (...))`
- * (Postgres normalizes IN lists to `= ANY (ARRAY[...])`).
- * Returns the referenced column name and its options, or undefined for any
- * other kind of CHECK expression.
- */
-export function extractCheckInOptions(
-    expression: string,
-): { column: string; options: string[]; } | undefined {
-    try {
-        const expr = node(node(selectExpression(expression))?.A_Expr);
-        const names = expr?.name;
-        if (
-            (expr?.kind !== "AEXPR_OP_ANY" && expr?.kind !== "AEXPR_OP")
-            || !Array.isArray(names) || names.length !== 1
-            || node(node(names[0])?.String)?.sval !== "="
-        ) {
-            return undefined;
-        }
-        const fields = node(node(expr.lexpr)?.ColumnRef)?.fields;
-        if (!Array.isArray(fields) || fields.length !== 1) return undefined;
-        const column = node(node(fields[0])?.String)?.sval;
-        if (typeof column !== "string") return undefined;
-        const elements = expr.kind === "AEXPR_OP"
-            ? [expr.rexpr]
-            : node(node(expr.rexpr)?.A_ArrayExpr)?.elements;
-        if (!Array.isArray(elements) || elements.length === 0) return undefined;
-        const options: string[] = [];
-        for (const element of elements) {
-            const cast = node(node(element)?.TypeCast);
-            const typeNames = node(cast?.typeName)?.names;
-            const lastTypeName = Array.isArray(typeNames) ? node(node(typeNames.at(-1))?.String)?.sval : undefined;
-            const constant = node(node(cast?.arg)?.A_Const);
-            const value = node(constant?.sval)?.sval;
-            if (!constant || constant.isnull || lastTypeName !== "text" || typeof value !== "string") {
-                return undefined;
-            }
-            options.push(value);
-        }
-        return { column, options };
-    } catch {
-        return undefined;
-    }
 }
 
 interface CatalogScalarType {
