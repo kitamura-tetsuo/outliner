@@ -67,6 +67,7 @@ function runAndReplicate(project: Project, action: () => void): Project {
 afterEach(() => {
     generalStore.currentPage = undefined;
     generalStore.project = undefined;
+    generalStore.activeViewModel = undefined;
 });
 
 describe("item-boundary descendant preservation", () => {
@@ -356,6 +357,60 @@ describe("item-boundary descendant preservation", () => {
         expect(treeHas(replica, layout.id)).toBe(false);
         expect(new Item(replica.ydoc, replica.tree, visual.id).yMap.get("binding")).toBe("retained");
         expect([context.itemId, context.offset]).toEqual([text.id, 5]);
+        editor.destroy();
+    });
+
+    it("runs collapsed backward visual promotion as one complete replicated action", () => {
+        const project = Project.createInstance("cursor backward visual promotion");
+        const page = add(project.items, "Page");
+        const before = add(page.items, "Before");
+        const layout = page.items.addNode("test");
+        layout.componentType = LAYOUT_COMPONENT_TYPE;
+        const visual1 = layout.items.addNode("test");
+        visual1.componentType = GRID_COMPONENT_TYPE;
+        visual1.yMap.set("binding", "first");
+        const visual2 = layout.items.addNode("test");
+        visual2.componentType = GRID_COMPONENT_TYPE;
+        visual2.yMap.set("binding", "second");
+        const text = add(page.items, "After");
+        usePage(project, page);
+        generalStore.activeViewModel = { isCollapsed: itemId => itemId === layout.id } as never;
+        const context = editingContext(text, 0);
+        const editor = new CursorEditor(context);
+
+        const replica = runAndReplicate(project, () => editor.deleteBackward());
+
+        const replicaPage = new Item(replica.ydoc, replica.tree, page.id);
+        expect(ids(replicaPage.items)).toEqual([before.id, visual1.id, visual2.id, text.id]);
+        expect(treeHas(replica, layout.id)).toBe(false);
+        expect(new Item(replica.ydoc, replica.tree, visual1.id).yMap.get("binding")).toBe("first");
+        expect(new Item(replica.ydoc, replica.tree, visual2.id).yMap.get("binding")).toBe("second");
+        expect(new Item(replica.ydoc, replica.tree, text.id).text.toString()).toBe("After");
+        expect([context.itemId, context.offset]).toEqual([text.id, 0]);
+        editor.destroy();
+    });
+
+    it("refuses backward visual removal when the surviving Text has missing storage", () => {
+        const project = Project.createInstance("unsafe backward visual target");
+        const page = add(project.items, "Page");
+        const visual = page.items.addNode("test");
+        visual.componentType = GRID_COMPONENT_TYPE;
+        const text = add(page.items, "After");
+        text.yMap.delete("text");
+        usePage(project, page);
+        const context = editingContext(text, 0);
+        const editor = new CursorEditor(context);
+        const before = Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc);
+        const updates: Uint8Array[] = [];
+        project.ydoc.on("update", update => updates.push(update));
+
+        editor.deleteBackward();
+
+        expect(updates).toEqual([]);
+        expect(Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc)).toEqual(before);
+        expect(ids(page.items)).toEqual([visual.id, text.id]);
+        expect([context.itemId, context.offset]).toEqual([text.id, 0]);
+        expect(context.applyToStore).not.toHaveBeenCalled();
         editor.destroy();
     });
 });

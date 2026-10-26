@@ -863,6 +863,9 @@ export class CursorEditor {
         // Backspace removes the preceding block and leaves the Text node (and
         // caret) exactly where they are.
         if (isVisualNode(prevItem as unknown as import("../../schema/app-schema").Item)) {
+            const current = currentItem as unknown as import("../../schema/app-schema").Item;
+            const currentBackingText = current.yMap.get("text");
+            if (!(currentBackingText instanceof Y.Text) || currentBackingText.doc !== current.ydoc) return;
             if (
                 !applyBoundaryTreeEdit({
                     kind: "promote",
