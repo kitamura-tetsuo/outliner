@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-10-26T08:37:57.281Z",
+  "rules": [
+    "no-console",
+    "no-unused-vars"
+  ],
+  "candidates": [
+    {
+      "file": "client/src/lib/yjsService.svelte.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.589Z",
+      "score": 35
+    },
+    {
+      "file": "client/src/lib/yjsService.svelte.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.589Z",
+      "score": 35
+    },
+    {
+      "file": "client/src/lib/backlinkCollector.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.584Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/backlinkCollector.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.584Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/debug.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.585Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/debug.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.585Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/deployment.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.585Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/deployment.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.585Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/editorFocus.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.585Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/editorFocus.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-10-26T08:34:58.585Z",
+      "score": 33
+    }
+  ],
+  "proposedChanges": {
+    "no-console": {
+      "files": [
+        "client/src/lib/yjsService.svelte.ts",
+        "client/src/lib/backlinkCollector.ts",
+        "client/src/lib/debug.ts",
+        "client/src/lib/deployment.ts",
+        "client/src/lib/editorFocus.ts"
+      ],
+      "severity": "error"
+    },
+    "no-unused-vars": {
+      "files": [
+        "client/src/lib/yjsService.svelte.ts",
+        "client/src/lib/backlinkCollector.ts",
+        "client/src/lib/debug.ts",
+        "client/src/lib/deployment.ts",
+        "client/src/lib/editorFocus.ts"
+      ],
+      "severity": "error"
+    }
+  }
+}
