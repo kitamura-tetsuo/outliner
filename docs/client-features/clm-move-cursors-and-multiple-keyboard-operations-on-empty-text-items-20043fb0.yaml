@@ -5,8 +5,8 @@ category: cursor-management
 status: implemented
 tests:
 - client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts
-- client/e2e/core/clm-vertical-visual-goal-empty-short-5768.spec.ts
 - client/e2e/core/clm-vertical-formatted-active-layout-5768.spec.ts
+- client/e2e/core/clm-vertical-visual-goal-empty-short-5768.spec.ts
 - client/src/tests/unit/cursor/cursor-visual-caret-goal.spec.ts
 acceptance:
 - Can move between empty text items using keyboard
