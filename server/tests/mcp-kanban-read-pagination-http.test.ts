@@ -80,6 +80,10 @@ describe("Kanban metadata ranges through production MCP HTTP", function() {
                 })),
             ).to.deep.equal(placements.map(item => ({ kanbanId: "board", placementId: item.placementId })));
 
+            // Let the completed subtree read fully unload its direct room so
+            // each following token starts from a stable room incarnation.
+            await waitForRoomRelease(fixture.server.hocuspocus.documents, `projects/${PROJECT}`);
+
             const sorted = [...placements].sort((a, b) => a.placementId.localeCompare(b.placementId));
             for (const offset of [0, 1, 2, 3]) {
                 const read = await fixture.mcp.call("get_kanban", {
@@ -106,6 +110,7 @@ describe("Kanban metadata ranges through production MCP HTTP", function() {
                     guard.release();
                 }
                 await fixture.server.kanbanObservations.release(read.payload.observationToken);
+                await waitForRoomRelease(fixture.server.hocuspocus.documents, `projects/${PROJECT}`);
             }
 
             const latest = await fixture.mcp.call("get_kanban", {
@@ -128,3 +133,10 @@ describe("Kanban metadata ranges through production MCP HTTP", function() {
         }
     });
 });
+
+async function waitForRoomRelease(documents: Map<string, unknown>, room: string): Promise<void> {
+    for (let attempt = 0; attempt < 100 && documents.has(room); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    expect(documents.has(room), `${room} did not unload`).to.equal(false);
+}

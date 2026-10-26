@@ -50,7 +50,7 @@ describe("Kanban query ranges and diagnostics through production MCP HTTP", func
             guard.assertCurrent({
                 kind: "table-field",
                 kanbanId: "board",
-                scopeId: `tasks:${secondCard.sourceRef.rowId}:title`,
+                scopeId: JSON.stringify(["tasks", secondCard.sourceRef.rowId, "title"]),
                 sourceRef: secondCard.sourceRef,
                 outputField: "title",
                 physicalColumn: "title",

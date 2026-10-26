@@ -69,6 +69,12 @@ export class OutlinerKanbanReadService {
         if (!allowed) throw new McpReadError("forbidden", "Project is inaccessible");
     }
 
+    /** Reauthorize at the router's final, post-cleanup disclosure boundary. */
+    async authorizeDisclosure(uid: string, projectId: string): Promise<void> {
+        this.validate(projectId);
+        await this.authorize(uid, projectId);
+    }
+
     async list(uid: string, projectId: string, limitValue?: number, cursor?: string) {
         this.validate(projectId);
         const limit = bounded(limitValue, 100, "limit", 1, 500);
@@ -115,6 +121,10 @@ export class OutlinerKanbanReadService {
                 a.placementId.localeCompare(b.placementId)
             );
             const selected = all.slice(offset, offset + limit);
+            // These detached values and the guards below must describe the
+            // same synchronous observation, even if final authorization waits.
+            const settings = readKanbanSettings(entry);
+            const placementSnapshot = selected.map(({ capture: _capture, ...item }) => item);
             const lease = adoptKanbanObservationLease(this.host, connection);
             const capture = this.observations.capture({
                 uid,
@@ -131,9 +141,9 @@ export class OutlinerKanbanReadService {
             const result = {
                 projectId,
                 kanbanId,
-                settings: readKanbanSettings(entry),
+                settings,
                 projection: { evaluated: false },
-                placements: selected.map(({ capture: _capture, ...item }) => item),
+                placements: placementSnapshot,
                 placementCount: all.length,
                 returnedCount: selected.length,
                 offset,
@@ -355,7 +365,9 @@ export class OutlinerKanbanReadService {
                 });
                 if (!effectiveSchema) continue;
                 const capture: TableFieldObservationCapture = {
-                    scopeId: `${card.source.id}:${card.source.rowId}:${outputField}`,
+                    // JSON tuple encoding is injective for arbitrary valid
+                    // record IDs and quoted SQL output aliases.
+                    scopeId: JSON.stringify([card.source.id, card.source.rowId, outputField]),
                     owner,
                     field: route.source.field,
                     container: data as never,

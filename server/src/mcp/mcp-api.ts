@@ -228,6 +228,8 @@ export function createMcpRouter(
                 mutating?: boolean;
                 /** Reject unlisted argument fields instead of silently dropping them. */
                 strict?: boolean;
+                /** Recheck project access after handler cleanup, immediately before disclosure. */
+                authorizeDisclosure?: (args: z.infer<z.ZodObject<T>>) => Promise<void>;
             } = {},
         ) => {
             const callback = (async (args: unknown) => {
@@ -241,6 +243,7 @@ export function createMcpRouter(
                             KANBAN_RESPONSE_LIFECYCLE
                         ]
                         : undefined;
+                    await options.authorizeDisclosure?.(args as z.infer<z.ZodObject<T>>);
                     const validated = toolOutputSchemas[name].parse(result) as z.infer<typeof z.json>;
                     lifecycle?.disclosureSucceeded();
                     if (options.mutating) {
@@ -374,7 +377,10 @@ export function createMcpRouter(
                     cursor: z.string().optional(),
                 },
                 args => kanbanService.list(uid, args.projectId, args.limit, args.cursor),
-                { strict: true },
+                {
+                    strict: true,
+                    authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
             );
             tool(
                 "get_kanban",
@@ -387,7 +393,10 @@ export function createMcpRouter(
                 },
                 args =>
                     kanbanService.get(uid, args.projectId, args.kanbanId, args.placementOffset, args.placementLimit),
-                { strict: true },
+                {
+                    strict: true,
+                    authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
             );
             tool(
                 "query_kanban",
@@ -399,7 +408,10 @@ export function createMcpRouter(
                     maxCards: z.number().int().min(1).max(500).optional(),
                 },
                 args => kanbanService.query(uid, args.projectId, args.kanbanId, args.cardOffset, args.maxCards),
-                { strict: true },
+                {
+                    strict: true,
+                    authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
             );
         }
         tool(

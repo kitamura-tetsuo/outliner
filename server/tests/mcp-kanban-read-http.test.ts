@@ -64,7 +64,7 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             guard.assertCurrent({
                 kind: "table-field",
                 kanbanId: "board",
-                scopeId: "tasks:r1:title",
+                scopeId: tableScope("tasks", "r1", "title"),
                 sourceRef: card.sourceRef,
                 outputField: "title",
                 physicalColumn: "title",
@@ -73,7 +73,7 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             guard.assertCurrent({
                 kind: "table-field",
                 kanbanId: "board",
-                scopeId: "tasks:r1:status",
+                scopeId: tableScope("tasks", "r1", "status"),
                 sourceRef: card.sourceRef,
                 outputField: "status",
                 physicalColumn: "status",
@@ -114,7 +114,7 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 distinctGuard.assertCurrent({
                     kind: "table-field",
                     kanbanId: "board",
-                    scopeId: `tasks:${rowId}:title`,
+                    scopeId: tableScope("tasks", rowId, "title"),
                     sourceRef: { kind: "table", id: "tasks", sqlName: "tasks", rowId },
                     outputField: "title",
                     physicalColumn: "title",
@@ -123,6 +123,39 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             }
             distinctGuard.release();
             await f.server.kanbanObservations.release(three.payload.observationToken);
+
+            await seedCollisionProneScopes(f.server.hocuspocus);
+            const punctuated = await call("query_kanban", { projectId: PROJECT, kanbanId: "board", maxCards: 2 });
+            expect(punctuated.payload.mutationObservation).to.deep.equal({ available: true });
+            const punctuatedCards = punctuated.payload.lanes.flatMap((lane: { cards: unknown[]; }) => lane.cards);
+            expect(punctuatedCards.map((card: { sourceRef: { rowId: string; }; }) => card.sourceRef.rowId))
+                .to.deep.equal(["a", "a:b"]);
+            const punctuatedGuard = f.server.kanbanObservations.acquire(
+                UID,
+                PROJECT,
+                punctuated.payload.observationToken,
+            );
+            for (const card of punctuatedCards) {
+                for (
+                    const [outputField, physicalColumn, role] of [
+                        ["c", "title", "title"],
+                        ["b:c", "detail", "detail"],
+                        ["status", "status", "group"],
+                    ] as const
+                ) {
+                    punctuatedGuard.assertCurrent({
+                        kind: "table-field",
+                        kanbanId: "board",
+                        scopeId: tableScope("tasks", card.sourceRef.rowId, outputField),
+                        sourceRef: card.sourceRef,
+                        outputField,
+                        physicalColumn,
+                        role,
+                    });
+                }
+            }
+            punctuatedGuard.release();
+            await f.server.kanbanObservations.release(punctuated.payload.observationToken);
         } finally {
             await client.close();
             await f.stop();
@@ -172,6 +205,50 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             await f.stop();
         }
     });
+
+    it("snapshots metadata settings at capture and reauthorizes after diagnostic cleanup", async () => {
+        const f = await startMcpTestServer();
+        try {
+            await seedBoard(f.server.hocuspocus);
+            f.seams.gate = async (requestId, check) => {
+                if (requestId !== "coherent-settings" || check !== 3) return;
+                const doc = f.server.hocuspocus.documents.get(`projects/${PROJECT}`) as Y.Doc;
+                applyKanbanUpdates(getKanbanDefinitionTarget(doc, "board")!, { name: "Changed concurrently" });
+            };
+            const metadata = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" }, {
+                requestId: "coherent-settings",
+            });
+            expect(metadata.result.isError, JSON.stringify(metadata)).not.to.equal(true);
+            expect(metadata.payload.settings.name).to.equal("Board");
+            const metadataGuard = f.server.kanbanObservations.acquire(
+                UID,
+                PROJECT,
+                metadata.payload.observationToken,
+            );
+            expect(() => metadataGuard.assertCurrent({ kind: "definition", kanbanId: "board", keys: ["name"] })).to
+                .throw("observation_changed");
+            metadataGuard.release();
+            await f.server.kanbanObservations.release(metadata.payload.observationToken);
+
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                applyKanbanUpdates(getKanbanDefinitionTarget(doc, "board")!, { query: "SELECT FROM" });
+            });
+            let observedOpenRoom = false;
+            f.seams.gate = async requestId => {
+                if (requestId !== "revoked-after-cleanup") return;
+                const open = f.server.hocuspocus.documents.has(`projects/${PROJECT}`);
+                if (open) observedOpenRoom = true;
+                else if (observedOpenRoom) f.acl.revoke("projectUsers", PROJECT, UID);
+            };
+            const denied = await f.mcp.call("query_kanban", { projectId: PROJECT, kanbanId: "board" }, {
+                requestId: "revoked-after-cleanup",
+            });
+            expect(denied.result.isError).to.equal(true);
+            expect(denied.payload.code).to.equal("forbidden");
+        } finally {
+            await f.stop();
+        }
+    });
 });
 
 async function seedBoard(host: Parameters<typeof withRoom>[0]): Promise<void> {
@@ -191,13 +268,39 @@ async function seedBoard(host: Parameters<typeof withRoom>[0]): Promise<void> {
         expect(project.items.length).to.be.greaterThan(0);
     });
     await withRoom(host, `projects/${PROJECT}/tables/tasks`, doc => {
-        doc.getText("schema").insert(0, "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT)");
+        doc.getText("schema").insert(
+            0,
+            "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT, detail TEXT)",
+        );
         const row = new Y.Map<unknown>();
         row.set("status", "todo");
         row.set("title", "First");
         doc.getMap("data").set("r1", row);
     });
 }
+
+async function seedCollisionProneScopes(host: Parameters<typeof withRoom>[0]): Promise<void> {
+    await withRoom(host, `projects/${PROJECT}`, doc => {
+        applyKanbanUpdates(getKanbanDefinitionTarget(doc, "board")!, {
+            query: "SELECT id, status, title AS c, detail AS \"b:c\" FROM tasks WHERE id IN ('a', 'a:b') ORDER BY id",
+            groupField: "status",
+            titleField: "c",
+            detailFields: ["b:c"],
+        });
+    });
+    await withRoom(host, `projects/${PROJECT}/tables/tasks`, doc => {
+        for (const id of ["a", "a:b"]) {
+            const row = new Y.Map<unknown>();
+            row.set("status", "todo");
+            row.set("title", `Title ${id}`);
+            row.set("detail", `Detail ${id}`);
+            doc.getMap("data").set(id, row);
+        }
+    });
+}
+
+const tableScope = (tableId: string, rowId: string, outputField: string) =>
+    JSON.stringify([tableId, rowId, outputField]);
 
 async function seedDuplicateOccurrences(host: Parameters<typeof withRoom>[0]): Promise<void> {
     await withRoom(host, `projects/${PROJECT}`, doc => {
