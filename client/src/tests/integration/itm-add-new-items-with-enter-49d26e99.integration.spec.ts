@@ -155,8 +155,14 @@ describe("ITM-0001: Add new item with Enter", () => {
         const item = page.items.addNode("me");
         item.updateText("HelloWorld");
         const child1 = item.items.addNode("me");
+        child1.updateText("metadata child");
+        child1.tags = ["important", "preserve-me"];
+        child1.duration = "PT45M";
         const grandchild = child1.items.addNode("me");
+        grandchild.updateText("nested payload");
         const child2 = item.items.addNode("me");
+        child2.componentType = "yjstable";
+        child2.yjsGridId = "grid-binding-5795";
         const following = page.items.addNode("me");
         const replicaDoc = new Y.Doc();
         Y.applyUpdate(replicaDoc, Y.encodeStateAsUpdate(project.ydoc));
@@ -169,6 +175,7 @@ describe("ITM-0001: Add new item with Enter", () => {
         cursor.insertLineBreak();
 
         expect(updates).toHaveLength(1);
+        const sibling = page.items.at(1)!;
         Y.applyUpdate(replicaDoc, updates[0]!);
         const replica = Project.fromDoc(replicaDoc);
         const replicaPage = new Item(replicaDoc, replica.tree, page.key);
@@ -179,5 +186,28 @@ describe("ITM-0001: Add new item with Enter", () => {
         expect(replicaSibling.text.toString()).toBe("World");
         expect([...replicaSibling.items].map(node => node.id)).toEqual([child1.id, child2.id]);
         expect(replica.tree.getNodeParentFromKey(grandchild.key)).toBe(child1.key);
+        const localChild = sibling.items.at(0)!;
+        const localVisualChild = sibling.items.at(1)!;
+        expect(localChild.id).toBe(child1.id);
+        expect(localChild.text.toString()).toBe("metadata child");
+        expect(localChild.tags).toEqual(["important", "preserve-me"]);
+        expect(localChild.duration).toBe("PT45M");
+        expect(localChild.items.at(0)!.id).toBe(grandchild.id);
+        expect(localChild.items.at(0)!.text.toString()).toBe("nested payload");
+        expect(localVisualChild.id).toBe(child2.id);
+        expect(localVisualChild.componentType).toBe("yjstable");
+        expect(localVisualChild.yjsGridId).toBe("grid-binding-5795");
+
+        const replicaChild = replicaSibling.items.at(0)!;
+        const replicaVisualChild = replicaSibling.items.at(1)!;
+        expect(replicaChild.id).toBe(child1.id);
+        expect(replicaChild.text.toString()).toBe("metadata child");
+        expect(replicaChild.tags).toEqual(["important", "preserve-me"]);
+        expect(replicaChild.duration).toBe("PT45M");
+        expect(replicaChild.items.at(0)!.id).toBe(grandchild.id);
+        expect(replicaChild.items.at(0)!.text.toString()).toBe("nested payload");
+        expect(replicaVisualChild.id).toBe(child2.id);
+        expect(replicaVisualChild.componentType).toBe("yjstable");
+        expect(replicaVisualChild.yjsGridId).toBe("grid-binding-5795");
     });
 });

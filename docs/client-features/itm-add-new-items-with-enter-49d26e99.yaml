@@ -5,17 +5,19 @@ description: Splits the item at the cursor position and adds a new item.
 category: item-management
 status: implemented
 acceptance:
+- Child reparenting applies when splitting at the start, middle, end, or in an empty item
+- Existing child subtrees move to the new item without changing their IDs or order
 - For normal items, the new item is added as a sibling
 - For titles, the new item is added as the first child
 - Pressing Enter splits the item at the cursor position
 - Text after the cursor moves to the new item
 - Text before the cursor remains in the current item
 - The cursor moves to the beginning of the new item
-- Existing child subtrees move to the new item without changing their IDs or order
-- Child reparenting applies when splitting at the start, middle, end, or in an empty item
 - The text split, sibling creation, and child reparenting are published as one Yjs transaction
 tests:
 - client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
+- client/e2e/core/itm-enter-split-child-offsets-5795a001.spec.ts
+- client/e2e/core/itm-enter-split-selection-dispatch-5795a002.spec.ts
 - client/e2e/core/itm-yjs-tree-reflects-split-42ac1ecd.spec.ts
 - client/src/tests/integration/itm-add-new-items-with-enter-49d26e99.integration.spec.ts
 title-ja: Enterで新規アイテム追加
