@@ -527,6 +527,11 @@ export class CursorEditor {
                     }
 
                     cursor.applyToStore();
+                    const textarea = store.getTextareaRef();
+                    if (textarea && !store.isComposing) {
+                        textarea.value = afterText;
+                        store.applyTextareaSelectionRange(textarea, 0, 0);
+                    }
                     return;
                 }
             }

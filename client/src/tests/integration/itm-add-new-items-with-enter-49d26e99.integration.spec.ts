@@ -1,5 +1,5 @@
 import { render } from "@testing-library/svelte";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import OutlinerTree from "../../components/OutlinerTree.svelte";
@@ -147,6 +147,36 @@ describe("ITM-0001: Add new item with Enter", () => {
         expect(getSelectionForUser("me")).toBeUndefined();
         expect(cursor.itemId).toBe(page.items.at(1)!.id);
         expect(cursor.offset).toBe(0);
+    });
+
+    it("does not restore a cleared selection from delayed keyboard recovery", async () => {
+        vi.useFakeTimers();
+        try {
+            const project = Project.createInstance("test");
+            const page = project.addPage("page", "me");
+            const item = page.items.addNode("me");
+            item.updateText("HelloWorld");
+            const child = item.items.addNode("me");
+            child.updateText("child");
+            generalStore.project = project;
+            generalStore.currentPage = page;
+            const cursor = new Cursor("c1", { itemId: item.id, offset: 2, isActive: true, userId: "me" });
+            cursor.applyToStore();
+
+            for (let offset = 2; offset < 7; offset++) cursor.extendSelectionRight();
+            expect(getSelectionForUser("me")).toBeDefined();
+
+            cursor.insertLineBreak();
+            await vi.runAllTimersAsync();
+
+            const sibling = page.items.at(1)!;
+            expect(getSelectionForUser("me")).toBeUndefined();
+            expect(cursor.itemId).toBe(sibling.id);
+            expect(cursor.offset).toBe(0);
+            expect([...sibling.items].map(node => node.id)).toEqual([child.id]);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it("publishes the complete split and subtree transfer in one replica update", () => {
