@@ -16,6 +16,14 @@ function ids(items: Items): string[] {
     return Array.from(items, item => item.id);
 }
 
+function treeHas(project: Project, key: string): boolean {
+    const tree = project.tree as unknown as {
+        hasNode?: (nodeKey: string) => boolean;
+        computedMap?: Map<string, unknown>;
+    };
+    return typeof tree.hasNode === "function" ? tree.hasNode(key) : tree.computedMap?.has(key) === true;
+}
+
 function editingContext(item: Item, offset: number): CursorEditingContext {
     return {
         itemId: item.id,
@@ -35,6 +43,25 @@ function editingContext(item: Item, offset: number): CursorEditingContext {
 function usePage(project: Project, page: Item): void {
     generalStore.project = project;
     generalStore.currentPage = page;
+}
+
+function runAndReplicate(project: Project, action: () => void): Project {
+    const replicaDoc = new Y.Doc();
+    Y.applyUpdate(replicaDoc, Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc));
+    const updates: Uint8Array[] = [];
+    let transactions = 0;
+    const onTransaction = (transaction: Y.Transaction) => {
+        if (transaction.changed.size > 0) transactions += 1;
+    };
+    project.ydoc.on("update", update => updates.push(update));
+    project.ydoc.on("afterTransaction", onTransaction);
+
+    action();
+
+    expect(transactions).toBe(1);
+    expect(updates).toHaveLength(1);
+    Y.applyUpdate(replicaDoc, updates[0]);
+    return Project.fromDoc(replicaDoc as unknown as typeof project.ydoc);
 }
 
 afterEach(() => {
@@ -192,6 +219,95 @@ describe("item-boundary descendant preservation", () => {
         expect(replicaChild.yMap.get("collapsed")).toBe(true);
         expect(ids(replicaChild.items)).toEqual([grandchild.id]);
         expect(replicaChild.text.toString()).toBe("Child");
+        editor.destroy();
+    });
+
+    it("runs a backward sibling merge as one complete replicated action", () => {
+        const project = Project.createInstance("cursor backward merge");
+        const page = add(project.items, "Page");
+        const a = add(page.items, "Alpha");
+        const b = add(page.items, "Beta");
+        const child = add(b.items, "Child");
+        child.yMap.set("metadata", "retained");
+        usePage(project, page);
+        const context = editingContext(b, 0);
+        const editor = new CursorEditor(context);
+
+        const replica = runAndReplicate(project, () => editor.deleteBackward());
+
+        const replicaPage = new Item(replica.ydoc, replica.tree, page.id);
+        const replicaA = new Item(replica.ydoc, replica.tree, a.id);
+        expect(ids(replicaPage.items)).toEqual([a.id]);
+        expect(treeHas(replica, b.id)).toBe(false);
+        expect(replicaA.text.toString()).toBe("AlphaBeta");
+        expect(ids(replicaA.items)).toEqual([child.id]);
+        expect(new Item(replica.ydoc, replica.tree, child.id).yMap.get("metadata")).toBe("retained");
+        expect([context.itemId, context.offset]).toEqual([a.id, 5]);
+        editor.destroy();
+    });
+
+    it("runs a direct-child forward merge as one complete replicated action", () => {
+        const project = Project.createInstance("cursor direct child merge");
+        const page = add(project.items, "Page");
+        const parent = add(page.items, "Alpha");
+        const source = add(parent.items, "Beta");
+        const promoted = add(source.items, "Promoted");
+        const after = add(parent.items, "After");
+        usePage(project, page);
+        const context = editingContext(parent, 5);
+        const editor = new CursorEditor(context);
+
+        const replica = runAndReplicate(project, () => editor.deleteForward());
+
+        const replicaParent = new Item(replica.ydoc, replica.tree, parent.id);
+        expect(replicaParent.text.toString()).toBe("AlphaBeta");
+        expect(ids(replicaParent.items)).toEqual([promoted.id, after.id]);
+        expect(treeHas(replica, source.id)).toBe(false);
+        editor.destroy();
+    });
+
+    it("runs empty-wrapper promotion as one complete replicated action", () => {
+        const project = Project.createInstance("cursor empty promotion");
+        const page = add(project.items, "Page");
+        const before = add(page.items, "Before");
+        const empty = add(page.items, "");
+        const promoted = add(empty.items, "Promoted");
+        const after = add(page.items, "After");
+        usePage(project, page);
+        const context = editingContext(empty, 0);
+        const editor = new CursorEditor(context);
+
+        const replica = runAndReplicate(project, () => editor.deleteForward());
+
+        const replicaPage = new Item(replica.ydoc, replica.tree, page.id);
+        expect(ids(replicaPage.items)).toEqual([before.id, promoted.id, after.id]);
+        expect(treeHas(replica, empty.id)).toBe(false);
+        expect(new Item(replica.ydoc, replica.tree, promoted.id).text.toString()).toBe("Promoted");
+        expect([context.itemId, context.offset]).toEqual([promoted.id, 0]);
+        editor.destroy();
+    });
+
+    it("runs visual promotion as one complete replicated action", () => {
+        const project = Project.createInstance("cursor visual promotion");
+        const page = add(project.items, "Page");
+        const text = add(page.items, "Alpha");
+        const layout = page.items.addNode("test");
+        layout.componentType = LAYOUT_COMPONENT_TYPE;
+        const visual = layout.items.addNode("test");
+        visual.componentType = GRID_COMPONENT_TYPE;
+        visual.yMap.set("binding", "retained");
+        const after = add(page.items, "After");
+        usePage(project, page);
+        const context = editingContext(text, 5);
+        const editor = new CursorEditor(context);
+
+        const replica = runAndReplicate(project, () => editor.deleteForward());
+
+        const replicaPage = new Item(replica.ydoc, replica.tree, page.id);
+        expect(ids(replicaPage.items)).toEqual([text.id, visual.id, after.id]);
+        expect(treeHas(replica, layout.id)).toBe(false);
+        expect(new Item(replica.ydoc, replica.tree, visual.id).yMap.get("binding")).toBe("retained");
+        expect([context.itemId, context.offset]).toEqual([text.id, 5]);
         editor.destroy();
     });
 });

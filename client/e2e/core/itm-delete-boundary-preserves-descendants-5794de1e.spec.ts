@@ -28,6 +28,16 @@ test.describe("ITM-5794de1e: Delete boundary descendant preservation", () => {
         await page.locator(`.outliner-item[data-item-id="${seeded.b}"] .collapse-btn`).click();
         await expect(page.locator(`.outliner-item[data-item-id="${seeded.child}"]`)).toBeHidden();
 
+        const peer = await page.context().newPage();
+        await peer.goto(page.url());
+        await TestHelpers.waitForOutlinerItems(peer);
+        await expect.poll(async () =>
+            peer.evaluate(id => {
+                const items = (globalThis as any).generalStore.currentPage?.items;
+                return [...items].some((item: any) => item.id === id);
+            }, seeded.b)
+        ).toBe(true);
+
         await TestHelpers.focusGlobalTextarea(page);
         await TestHelpers.setCursor(page, seeded.a, 5);
         await expect.poll(async () => (await CursorValidator.getCursorData(page)).cursors[0]?.offset).toBe(5);
@@ -53,6 +63,24 @@ test.describe("ITM-5794de1e: Delete boundary descendant preservation", () => {
         expect(cursor.activeItemId).toBe(seeded.a);
         expect(cursor.cursors).toHaveLength(1);
         expect(cursor.cursors[0].offset).toBe(5);
+        await expect.poll(async () =>
+            peer.evaluate((ids) => {
+                const items = (globalThis as any).generalStore.currentPage.items;
+                const a = [...items].find((item: any) => item.id === ids.a);
+                return {
+                    roots: [...items].map((item: any) => item.id),
+                    text: String(a.text),
+                    children: [...a.items].map((item: any) => item.id),
+                    grandchildren: [...a.items.at(0).items].map((item: any) => item.id),
+                };
+            }, seeded)
+        ).toEqual({
+            roots: [seeded.a, seeded.z],
+            text: "AlphaBeta",
+            children: [seeded.child],
+            grandchildren: [seeded.grandchild],
+        });
+        await peer.close();
     });
 
     test("Delete removes a child-bearing Layout but preserves its placements and caret", async ({ page }) => {
