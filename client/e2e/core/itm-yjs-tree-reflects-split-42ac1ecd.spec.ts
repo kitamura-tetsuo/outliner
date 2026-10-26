@@ -34,3 +34,45 @@ test.describe("ITM-0001: Add new item with Enter", () => {
         expect(treeData.items[1].text.trimStart()).toBe("Second part of text.");
     });
 });
+
+test("Enter reparents and reveals a collapsed nested subtree in visual order", async ({ page }, testInfo) => {
+    await TestHelpers.seedProjectAndNavigate(page, testInfo, ["HelloWorld", "C1", "G", "C2", "Z"]);
+    await TestHelpers.setupTreeDebugger(page);
+    await TestHelpers.waitForOutlinerItems(page, 6);
+    const ids = await Promise.all([1, 2, 3, 4, 5].map(index => TestHelpers.getItemIdByIndex(page, index)));
+    const [sourceId, child1Id, grandchildId, child2Id, followingId] = ids as string[];
+
+    const focusAndPress = async (id: string, key: string) => {
+        await page.locator(`.outliner-item[data-item-id="${id}"] .item-content`).click({ force: true });
+        await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
+        await page.keyboard.press(key);
+    };
+    await focusAndPress(child1Id, "Tab");
+    await focusAndPress(grandchildId, "Tab");
+    await focusAndPress(child2Id, "Tab");
+
+    const source = page.locator(`.outliner-item[data-item-id="${sourceId}"]`);
+    await expect(source).toHaveAttribute("aria-expanded", "true");
+    await source.locator("button.collapse-btn").click({ force: true });
+    await expect(source).toHaveAttribute("aria-expanded", "false");
+    await focusAndPress(sourceId, "End");
+    await page.keyboard.press("Enter");
+
+    await expect(page.locator(`.outliner-item[data-item-id="${child1Id}"]`)).toBeVisible();
+    const treeData = await TreeValidator.getTreeData(page);
+    const newItem = treeData.items.find(item => item.text === "" && item.id !== sourceId)!;
+    expect(treeData.items.map(item => item.id)).toEqual([sourceId, newItem.id, followingId]);
+    expect(newItem.items.map((item: { id: string; }) => item.id)).toEqual([child1Id, child2Id]);
+    expect(newItem.items[0].items.map((item: { id: string; }) => item.id)).toEqual([grandchildId]);
+    const visualIds = await page.locator(".outliner-item:not(.page-title)").evaluateAll(elements =>
+        elements.map(element => element.getAttribute("data-item-id"))
+    );
+    expect(visualIds).toEqual([
+        sourceId,
+        newItem.id,
+        child1Id,
+        grandchildId,
+        child2Id,
+        followingId,
+    ]);
+});

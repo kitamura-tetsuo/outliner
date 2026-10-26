@@ -442,6 +442,12 @@ export class CursorEditor {
                     const tree = target.tree;
                     const sourceKey = target.key;
                     const parentKey = (itemsCollection as import("../../schema/app-schema").Items).parentKey;
+                    const plannedTextSibling = { componentType: undefined };
+                    const parentAcceptsSibling = !tree || parentKey === "root"
+                        || (
+                            tree.computedMap?.has(parentKey) === true
+                            && canAcceptChild(new Item(target.ydoc, tree, parentKey), plannedTextSibling)
+                        );
 
                     // Validate the complete structural operation before the first Yjs mutation.
                     // There is no async boundary between this check and the transaction, so a
@@ -450,14 +456,15 @@ export class CursorEditor {
                         currentIndex < 0
                         || cursor.offset < 0
                         || cursor.offset > text.length
+                        || !parentAcceptsSibling
                         || safeGetNodeParent(tree, sourceKey) !== parentKey
                         || childKeys.some(childKey =>
                             safeGetNodeParent(tree, childKey) !== sourceKey
-                            || !canAcceptChild({ componentType: undefined }, new Item(target.ydoc, tree, childKey))
+                            || !canAcceptChild(plannedTextSibling, new Item(target.ydoc, tree, childKey))
                         )
                     ) return;
 
-                    const newItem = target.ydoc.transact(() => {
+                    const mutate = () => {
                         // Recheck authoritative parentage at mutation entry. Synchronous Yjs
                         // transactions cannot be interleaved by a remote update after this point.
                         if (
@@ -481,17 +488,24 @@ export class CursorEditor {
                             movableTree.setNodeOrderToEnd(childKey);
                         }
                         return created;
-                    }, null);
+                    };
+                    // Real schema Items always carry the document. The fallback keeps the
+                    // long-standing lightweight Item contract used by cursor consumers that
+                    // do not own Yjs state; production mutations use the transaction path.
+                    const ydoc = target.ydoc
+                        ?? (itemsCollection as import("../../schema/app-schema").Items).ydoc;
+                    const newItem = ydoc?.transact ? ydoc.transact(mutate, null) : mutate();
                     if (!newItem) return;
 
                     const oldItemId = cursor.itemId;
                     const clearCursorAndSelection =
-                        (store as { clearCursorAndSelection?: (userId: string) => void; }).clearCursorAndSelection;
+                        (store as { clearCursorAndSelection?: (userId: string, clearSelections?: boolean) => void; })
+                            .clearCursorAndSelection;
                     if (typeof clearCursorAndSelection === "function") {
                         if (typeof clearCursorAndSelection.call === "function") {
-                            clearCursorAndSelection.call(store, cursor.userId);
+                            clearCursorAndSelection.call(store, cursor.userId, true);
                         } else {
-                            clearCursorAndSelection(cursor.userId);
+                            clearCursorAndSelection(cursor.userId, true);
                         }
                     } else {
                         store.clearSelectionForUser?.(cursor.userId);
