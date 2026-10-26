@@ -45,10 +45,13 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ### Page Toolbars
 
-The page view provides a page controls toolbar (located above the page title) for page-specific actions. It provides:
+The page view provides toolbars for page-specific actions. At the top right of the page, you will find:
 
 - **Search:** Opens the "Search and Replace" (Unified Find) panel to search and replace text and grid cells within the current page.
 - **Graph View:** Opens a visual graph representation of page links.
+
+At the bottom of the page (below the outline tree), the editor toolbar provides:
+
 - **Add Item:** Adds a new item to the bottom of the page.
 - **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
 - **History / Diff:** Opens the history panel to view past edits and differences.
@@ -152,7 +155,7 @@ Paste any URL to automatically create an external link.
 Easily find content and execute actions within Outliner.
 
 - **Search pages:** Use the **Search pages** input in the main top toolbar to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Unified Find (Search and Replace):** Click the **Search** button on the page to open Find on this page. It searches outline text and every visible Grid result cell in one session. The search panel includes advanced options such as **Regex**, **Case Sensitive**, and **Whole Word**, as well as an option to **Include page titles**. Use the **Scope** dropdown to search across the entire **Project text**, the current **Page**, or choose **Selection** to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
+- **Unified Find (Search and Replace):** Click the **Search** button at the top right of the page to open Find on this page. It searches outline text and every visible Grid result cell in one session. The search panel includes advanced options such as **Regex**, **Case Sensitive**, and **Whole Word**, as well as an option to **Include page titles**. Use the **Scope** dropdown to search across the entire **Project text**, the current **Page**, or choose **Selection** to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -325,7 +328,7 @@ A calendar is a query plus a role assignment over its result columns — which c
 
 ## Keyboard Shortcuts
 
-Here is a complete list of shortcuts. You can also view this list by clicking the **Keyboard Shortcuts** button at the top right of the page.
+Here is a complete list of shortcuts. You can also view this list by clicking the **Keyboard Shortcuts** button at the bottom of the page.
 
 | Action                  | Windows/Linux                    | Mac                            |
 | ----------------------- | -------------------------------- | ------------------------------ |
