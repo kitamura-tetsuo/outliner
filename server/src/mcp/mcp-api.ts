@@ -8,6 +8,11 @@ import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
 import type { CreateTableTool } from "./create-table-tool.js";
+import {
+    KANBAN_RESPONSE_LIFECYCLE,
+    type KanbanResponseLifecycle,
+    type OutlinerKanbanReadService,
+} from "./kanban-read-service.js";
 import { McpEffectError } from "./mcp-error.js";
 import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 import { OutlinerRelationService } from "./relation-service.js";
@@ -96,6 +101,7 @@ export function createMcpRouter(
     scheduleService?: OutlinerScheduleService,
     tableCreation?: CreateTableTool,
     gridPresentationTool?: UpdateGridPresentationTool,
+    kanbanService?: OutlinerKanbanReadService,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -222,14 +228,24 @@ export function createMcpRouter(
                 mutating?: boolean;
                 /** Reject unlisted argument fields instead of silently dropping them. */
                 strict?: boolean;
+                /** Recheck project access after handler cleanup, immediately before disclosure. */
+                authorizeDisclosure?: (args: z.infer<z.ZodObject<T>>) => Promise<void>;
             } = {},
         ) => {
             const callback = (async (args: unknown) => {
                 const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
                 const auditBase = buildAuditBase(name, typedArgs);
+                let lifecycle: KanbanResponseLifecycle | undefined;
                 try {
                     const result = await handler(args as z.infer<z.ZodObject<T>>);
+                    lifecycle = result && typeof result === "object"
+                        ? (result as { [KANBAN_RESPONSE_LIFECYCLE]?: KanbanResponseLifecycle; })[
+                            KANBAN_RESPONSE_LIFECYCLE
+                        ]
+                        : undefined;
+                    await options.authorizeDisclosure?.(args as z.infer<z.ZodObject<T>>);
                     const validated = toolOutputSchemas[name].parse(result) as z.infer<typeof z.json>;
+                    lifecycle?.disclosureSucceeded();
                     if (options.mutating) {
                         const fields = result && typeof result === "object"
                             ? result as Record<string, unknown>
@@ -260,7 +276,20 @@ export function createMcpRouter(
                         });
                     }
                     return response(validated);
-                } catch (error) {
+                } catch (caught) {
+                    await lifecycle?.disclosureFailed();
+                    // A handler can throw only after its own awaited room
+                    // cleanup. Recheck at this final boundary as well so a
+                    // source-specific error cannot disclose existence after
+                    // access was revoked during that cleanup.
+                    let error = caught;
+                    if (options.authorizeDisclosure) {
+                        try {
+                            await options.authorizeDisclosure(args as z.infer<z.ZodObject<T>>);
+                        } catch (authorizationError) {
+                            error = authorizationError;
+                        }
+                    }
                     if (error instanceof McpReadError) {
                         logger.info({
                             event: "mcp_resolution_failed",
@@ -350,6 +379,53 @@ export function createMcpRouter(
             query: z.string(),
             limit: z.number().int().optional(),
         }, args => service.searchItems(uid, args.projectId, args.query, args.limit));
+        if (kanbanService) {
+            tool(
+                "list_kanbans",
+                "List current Kanban definitions without executing their queries.",
+                {
+                    projectId: z.string(),
+                    limit: z.number().int().min(1).max(500).optional(),
+                    cursor: z.string().optional(),
+                },
+                args => kanbanService.list(uid, args.projectId, args.limit, args.cursor),
+                {
+                    strict: true,
+                    authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+            tool(
+                "get_kanban",
+                "Inspect exact saved Kanban settings and placements.",
+                {
+                    projectId: z.string(),
+                    kanbanId: z.string(),
+                    placementOffset: z.number().int().nonnegative().optional(),
+                    placementLimit: z.number().int().min(1).max(500).optional(),
+                },
+                args =>
+                    kanbanService.get(uid, args.projectId, args.kanbanId, args.placementOffset, args.placementLimit),
+                {
+                    strict: true,
+                    authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+            tool(
+                "query_kanban",
+                "Read a current bounded Kanban projection.",
+                {
+                    projectId: z.string(),
+                    kanbanId: z.string(),
+                    cardOffset: z.number().int().nonnegative().optional(),
+                    maxCards: z.number().int().min(1).max(500).optional(),
+                },
+                args => kanbanService.query(uid, args.projectId, args.kanbanId, args.cardOffset, args.maxCards),
+                {
+                    strict: true,
+                    authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+        }
         tool(
             "get_grid",
             "Inspect Grid configuration and current SELECT source diagnostics.",

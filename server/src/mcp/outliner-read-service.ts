@@ -21,6 +21,9 @@ export interface OutlineNodeRead {
     text?: string;
     gridId?: string;
     calendarId?: string;
+    diagramId?: string;
+    kanbanId?: string;
+    placementId?: string;
     children?: OutlineNodeRead[];
     /**
      * Content-hash revision of this node's own outline_items fields (text,
@@ -33,7 +36,7 @@ export interface OutlineNodeRead {
 }
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
-type ResolvableEntityKind = "grids" | "calendars" | "tables" | "schedules";
+type ResolvableEntityKind = "grids" | "calendars" | "tables" | "schedules" | "kanbans";
 
 function assertId(value: string, label: string): void {
     if (!ID.test(value)) throw new McpReadError("invalid_argument", `Invalid ${label}`);
@@ -44,7 +47,7 @@ function parseResolvablePath(pathname: string): {
     pageTitle?: string;
     entityKind?: ResolvableEntityKind;
     entityId?: string;
-    entityListKind?: "schedules";
+    entityListKind?: "schedules" | "kanbans";
 } {
     const encodedParts = pathname.split("/");
     if (encodedParts[encodedParts.length - 1] === "") encodedParts.pop();
@@ -67,8 +70,8 @@ function parseResolvablePath(pathname: string): {
 
     if (parts.length === 1) return { projectTitle: parts[0]! };
     if (parts.length === 2 && parts[1] !== "-") return { projectTitle: parts[0]!, pageTitle: parts[1]! };
-    if (parts.length === 3 && parts[1] === "-" && parts[2] === "schedules") {
-        return { projectTitle: parts[0]!, entityListKind: "schedules" };
+    if (parts.length === 3 && parts[1] === "-" && ["schedules", "kanbans"].includes(parts[2]!)) {
+        return { projectTitle: parts[0]!, entityListKind: parts[2] as "schedules" | "kanbans" };
     }
 
     // Keep accepting the pre-#5012 resource-first form for existing MCP
@@ -84,7 +87,7 @@ function parseResolvablePath(pathname: string): {
 
     if (
         parts.length === 4 && parts[1] === "-"
-        && ["grids", "calendars", "tables", "schedules"].includes(parts[2]!)
+        && ["grids", "calendars", "tables", "schedules", "kanbans"].includes(parts[2]!)
     ) {
         return {
             projectTitle: parts[0]!,
@@ -133,6 +136,11 @@ export function serializeItem(item: Item): OutlineNodeRead {
     if (kind === "text") value.text = item.text;
     if (kind === "grid") value.gridId = item.yjsGridId;
     if (kind === "calendar") value.calendarId = item.calendarId;
+    if (kind === "diagram") value.diagramId = item.diagramId;
+    if (kind === "kanban") {
+        value.kanbanId = item.kanbanId;
+        value.placementId = item.key;
+    }
     return value;
 }
 
@@ -165,21 +173,39 @@ export class OutlinerReadService {
         assertId(projectId, "project ID");
         await this.authorize(uid, projectId);
         const connection = await this.hocuspocus.openDirectConnection(`projects/${projectId}`, { context: { uid } });
-        let result: T;
+        let result: T | undefined;
+        let readError: unknown;
+        let readFailed = false;
+        let cleanupError: unknown;
+        let cleanupFailed = false;
         try {
             // Recheck after the asynchronous room opening: a grant revoked
             // while the open was pending must not reach the read.
             await this.authorize(uid, projectId);
-            result = await read(
-                Project.fromDoc(connection.document as unknown as Parameters<typeof Project.fromDoc>[0]),
-            );
+            try {
+                result = await read(
+                    Project.fromDoc(connection.document as unknown as Parameters<typeof Project.fromDoc>[0]),
+                );
+            } catch (error) {
+                readFailed = true;
+                readError = error;
+            }
         } finally {
-            await connection.disconnect();
+            try {
+                await connection.disconnect();
+            } catch (error) {
+                cleanupFailed = true;
+                cleanupError = error;
+            }
         }
-        // Recheck after the read and connection release, before disclosing
-        // the captured result: a grant revoked meanwhile withholds it.
+        // Recheck after the read and connection release before disclosing
+        // either a captured result or a source-specific error. Keeping a
+        // thrown read outcome until here prevents cleanup-time revocation
+        // from leaking entity existence through not_found diagnostics.
         await this.authorize(uid, projectId);
-        return result;
+        if (cleanupFailed) throw cleanupError;
+        if (readFailed) throw readError;
+        return result as T;
     }
 
     async resolveUrl(
@@ -190,7 +216,16 @@ export class OutlinerReadService {
             projectId: string;
             pageId?: string;
             entityId?: string;
-            kind: "project" | "page" | "grid" | "calendar" | "table" | "schedule" | "schedule-list";
+            kind:
+                | "project"
+                | "page"
+                | "grid"
+                | "calendar"
+                | "table"
+                | "schedule"
+                | "schedule-list"
+                | "kanban"
+                | "kanban-list";
         }
     > {
         let url: URL;
@@ -248,6 +283,7 @@ export class OutlinerReadService {
             foundProjectWithoutEntity = true;
             const resolved = await this.withProject(uid, projectId, project => {
                 if (entityListKind === "schedules") return { projectId, kind: "schedule-list" as const };
+                if (entityListKind === "kanbans") return { projectId, kind: "kanban-list" as const };
                 if (entityKind) {
                     const exists = entityKind === "grids"
                         ? project.ydoc.getMap("yjsGrids").has(entityId!)
@@ -255,7 +291,9 @@ export class OutlinerReadService {
                         ? project.calendars.has(entityId!)
                         : entityKind === "tables"
                         ? project.ydoc.getMap("yjsTables").has(entityId!)
-                        : project.schedules.has(entityId!);
+                        : entityKind === "schedules"
+                        ? project.schedules.has(entityId!)
+                        : project.ydoc.getMap("yjsKanbans").has(entityId!);
                     if (!exists) {
                         throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`, {
                             ...resolutionDebug,
@@ -268,7 +306,7 @@ export class OutlinerReadService {
                     return {
                         projectId,
                         entityId,
-                        kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" | "schedule",
+                        kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" | "schedule" | "kanban",
                     };
                 }
                 if (!pageTitle) return { projectId, kind: "project" as const };

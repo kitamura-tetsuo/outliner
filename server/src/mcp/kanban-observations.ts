@@ -243,6 +243,10 @@ const OUTLINE_FIELD_SLOTS: Record<OutlineWritableColumn, readonly string[]> = {
     recurrence_timezone: ["recurrenceTimezone"],
 };
 
+export function isOutlineWritableColumn(field: string): field is OutlineWritableColumn {
+    return Object.prototype.hasOwnProperty.call(OUTLINE_FIELD_SLOTS, field);
+}
+
 export interface KanbanObservationServiceOptions {
     readonly now?: () => number;
     readonly setTimer?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
