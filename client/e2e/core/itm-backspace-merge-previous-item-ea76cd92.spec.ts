@@ -59,12 +59,53 @@ test.describe("ITM-ea76cd92: Backspace merge previous item", () => {
         expect(cursorData.activeItemId).toBe(firstId);
 
         // Verify cursor position
-        if (cursorData.cursors.length > 0) {
-            console.log(`Cursor offset: ${cursorData.cursors[0].offset}`);
-            expect(cursorData.cursors[0].offset).toBe("First".length);
-        } else {
-            // Warn if cursor is not set, but do not fail the test
-            console.warn("Warning: No cursor found after merge operation");
-        }
+        expect(cursorData.cursors).toHaveLength(1);
+        expect(cursorData.cursors[0].offset).toBe("First".length);
+    });
+
+    test("preserves nested descendant IDs and order after a real Backspace", async ({ page }) => {
+        const seeded = await page.evaluate(() => {
+            const items = (globalThis as any).generalStore.currentPage.items;
+            const first = items.at(0);
+            const second = items.at(1);
+            const child1 = second.items.addNode("e2e");
+            child1.updateText("Child 1");
+            const grandchild = child1.items.addNode("e2e");
+            grandchild.updateText("Grandchild");
+            const child2 = second.items.addNode("e2e");
+            child2.updateText("Child 2");
+            return {
+                first: first.id,
+                second: second.id,
+                child1: child1.id,
+                child2: child2.id,
+                grandchild: grandchild.id,
+            };
+        });
+
+        await TestHelpers.setCursor(page, seeded.second, 0);
+        await TestHelpers.focusGlobalTextarea(page);
+        await page.keyboard.press("Backspace");
+
+        const tree = await page.evaluate((expected) => {
+            const items = (globalThis as any).generalStore.currentPage.items;
+            const survivor = [...items].find((item: any) => item.id === expected.first);
+            return {
+                rootIds: [...items].map((item: any) => item.id),
+                text: String(survivor.text),
+                childIds: [...survivor.items].map((item: any) => item.id),
+                grandchildIds: [...survivor.items.at(0).items].map((item: any) => item.id),
+            };
+        }, seeded);
+        expect(tree).toEqual({
+            rootIds: [seeded.first],
+            text: "FirstSecond",
+            childIds: [seeded.child1, seeded.child2],
+            grandchildIds: [seeded.grandchild],
+        });
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.activeItemId).toBe(seeded.first);
+        expect(cursorData.cursors).toHaveLength(1);
+        expect(cursorData.cursors[0].offset).toBe("First".length);
     });
 });

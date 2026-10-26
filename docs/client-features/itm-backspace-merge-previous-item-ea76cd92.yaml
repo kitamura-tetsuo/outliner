@@ -1,12 +1,14 @@
 id: ITM-ea76cd92
 title: Merge with previous item on Backspace at start
-description: Pressing Backspace at the beginning of an item joins it with the previous item and moves the cursor to the boundary.
+description: Pressing Backspace at the beginning of an item joins it with the previous item, preserves its descendant subtree, and moves the cursor to the boundary.
 category: item-management
 status: implemented
 acceptance:
 - Pressing Backspace at the beginning of an item merges it with the previous item
 - The cursor moves to the end of the text before the merge
 - The merged text is displayed correctly
+- Descendants of the removed item retain their IDs, nesting, and order under the surviving item
 tests:
 - client/e2e/core/itm-backspace-merge-previous-item-ea76cd92.spec.ts
+- client/src/tests/integration/cursor/itm-boundary-descendant-preservation-5794.integration.spec.ts
 title-ja: Backspaceで前のアイテムと結合
