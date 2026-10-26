@@ -288,6 +288,7 @@ export class OutlinerKanbanReadService {
         roleFields: ReadonlySet<string>,
     ): Promise<TableFieldObservationCapture[]> {
         const result: TableFieldObservationCapture[] = [];
+        const capturesByPhysicalSelection = new Map<string, TableFieldObservationCapture>();
         const projectDoc = observed.handles.project.document as unknown as Y.Doc;
         const registry = projectDoc.getMap<Y.Map<unknown>>("yjsTables");
         for (const card of cards) {
@@ -302,6 +303,25 @@ export class OutlinerKanbanReadService {
             for (const outputField of roleFields) {
                 const route = observed.routes.find(item => item.output === outputField);
                 if (!route?.writable || route.source?.kind !== "table" || route.source.id !== card.source.id) continue;
+                const selectionKey = JSON.stringify([
+                    card.source.kind,
+                    card.source.id,
+                    card.source.sqlName,
+                    card.source.rowId,
+                    outputField,
+                    route.source.field,
+                ]);
+                const roles = [
+                    ...(outputField === observed.settings?.titleField ? ["title" as const] : []),
+                    ...(observed.settings?.detailFields.includes(outputField) ? ["detail" as const] : []),
+                    ...(outputField === observed.settings?.groupField ? ["group" as const] : []),
+                ];
+                const existing = capturesByPhysicalSelection.get(selectionKey);
+                if (existing) {
+                    // Result occurrences are intentionally not deduplicated;
+                    // only their identical physical guard is coalesced.
+                    continue;
+                }
                 const effectiveSchema = await this.observations.analyzeTableEffectiveSchema({
                     projectId,
                     projectDoc,
@@ -311,12 +331,7 @@ export class OutlinerKanbanReadService {
                     sourceSchema: tableDoc.getText("schema"),
                 });
                 if (!effectiveSchema) continue;
-                const roles = [
-                    ...(outputField === observed.settings?.titleField ? ["title" as const] : []),
-                    ...(observed.settings?.detailFields.includes(outputField) ? ["detail" as const] : []),
-                    ...(outputField === observed.settings?.groupField ? ["group" as const] : []),
-                ];
-                result.push({
+                const capture: TableFieldObservationCapture = {
                     scopeId: `${card.source.id}:${card.source.rowId}:${outputField}`,
                     owner,
                     field: route.source.field,
@@ -335,7 +350,9 @@ export class OutlinerKanbanReadService {
                         sqlName: card.source.sqlName,
                         tableDoc,
                     },
-                });
+                };
+                capturesByPhysicalSelection.set(selectionKey, capture);
+                result.push(capture);
             }
         }
         return result;

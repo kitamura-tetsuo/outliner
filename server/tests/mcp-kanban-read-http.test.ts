@@ -2,13 +2,17 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { expect } from "chai";
 import * as Y from "yjs";
-import { createKanbanEntry } from "../../shared/src/services/kanbanDefinition.js";
+import {
+    applyKanbanUpdates,
+    createKanbanEntry,
+    getKanbanDefinitionTarget,
+} from "../../shared/src/services/kanbanDefinition.js";
 import { Project } from "../src/schema/app-schema.js";
 import { PROJECT, startMcpTestServer, token, UID } from "./mcp-create-table-fixture.js";
 import { withRoom } from "./server-create-table-fixture.js";
 
 describe("Kanban reads through the production MCP HTTP router", function() {
-    this.timeout(30_000);
+    this.timeout(120_000);
 
     it("discovers strict bounds and returns a consumable same-observation query token", async () => {
         const f = await startMcpTestServer();
@@ -77,6 +81,48 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             });
             guard.release();
             await f.server.kanbanObservations.release(queried.payload.observationToken);
+
+            await seedDuplicateOccurrences(f.server.hocuspocus);
+            const one = await call("query_kanban", { projectId: PROJECT, kanbanId: "board", maxCards: 1 });
+            const two = await call("query_kanban", { projectId: PROJECT, kanbanId: "board", maxCards: 2 });
+            for (const response of [one, two]) {
+                expect(response.payload.mutationObservation).to.deep.equal({ available: true });
+                const cards = response.payload.lanes.flatMap((lane: { cards: unknown[]; }) => lane.cards);
+                expect(cards).to.have.length(response === one ? 1 : 2);
+                expect(
+                    cards.every((item: { sourceRef: unknown; }) =>
+                        JSON.stringify(item.sourceRef) === JSON.stringify(cards[0].sourceRef)
+                    ),
+                ).to.equal(true);
+                expect(
+                    cards.every((item: { fieldCapabilities: { outputField: string; updateEligible: boolean; }[]; }) =>
+                        item.fieldCapabilities.some(field => field.outputField === "title" && field.updateEligible)
+                    ),
+                ).to.equal(true);
+                expect(cards.every((item: { moveCapability: { eligible: boolean; }; }) => item.moveCapability.eligible))
+                    .to.equal(true);
+                expect(new Set(cards.map((item: { occurrenceId: string; }) => item.occurrenceId)).size)
+                    .to.equal(cards.length);
+                await f.server.kanbanObservations.release(response.payload.observationToken);
+            }
+            const three = await call("query_kanban", { projectId: PROJECT, kanbanId: "board", maxCards: 3 });
+            const threeCards = three.payload.lanes.flatMap((lane: { cards: unknown[]; }) => lane.cards);
+            expect(threeCards.map((item: { sourceRef: { rowId: string; }; }) => item.sourceRef.rowId))
+                .to.deep.equal(["r1", "r1", "r2"]);
+            const distinctGuard = f.server.kanbanObservations.acquire(UID, PROJECT, three.payload.observationToken);
+            for (const rowId of ["r1", "r2"]) {
+                distinctGuard.assertCurrent({
+                    kind: "table-field",
+                    kanbanId: "board",
+                    scopeId: `tasks:${rowId}:title`,
+                    sourceRef: { kind: "table", id: "tasks", sqlName: "tasks", rowId },
+                    outputField: "title",
+                    physicalColumn: "title",
+                    role: "title",
+                });
+            }
+            distinctGuard.release();
+            await f.server.kanbanObservations.release(three.payload.observationToken);
         } finally {
             await client.close();
             await f.stop();
@@ -150,5 +196,22 @@ async function seedBoard(host: Parameters<typeof withRoom>[0]): Promise<void> {
         row.set("status", "todo");
         row.set("title", "First");
         doc.getMap("data").set("r1", row);
+    });
+}
+
+async function seedDuplicateOccurrences(host: Parameters<typeof withRoom>[0]): Promise<void> {
+    await withRoom(host, `projects/${PROJECT}`, doc => {
+        applyKanbanUpdates(getKanbanDefinitionTarget(doc, "board")!, {
+            query: `SELECT 'tasks' AS source_kind, id AS source_id, title, status FROM tasks WHERE id = 'r1'
+                UNION ALL SELECT 'tasks', id, title, status FROM tasks WHERE id = 'r1'
+                UNION ALL SELECT 'tasks', id, title, status FROM tasks WHERE id = 'r2'`,
+            detailFields: [],
+        });
+    });
+    await withRoom(host, `projects/${PROJECT}/tables/tasks`, doc => {
+        const row = new Y.Map<unknown>();
+        row.set("status", "todo");
+        row.set("title", "Second");
+        doc.getMap("data").set("r2", row);
     });
 }
