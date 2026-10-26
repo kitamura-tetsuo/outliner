@@ -135,8 +135,10 @@ describe("Kanban metadata ranges through production MCP HTTP", function() {
 });
 
 async function waitForRoomRelease(documents: Map<string, unknown>, room: string): Promise<void> {
-    for (let attempt = 0; attempt < 100 && documents.has(room); attempt++) {
+    let absentChecks = 0;
+    for (let attempt = 0; attempt < 100 && absentChecks < 2; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 10));
+        absentChecks = documents.has(room) ? 0 : absentChecks + 1;
     }
-    expect(documents.has(room), `${room} did not unload`).to.equal(false);
+    expect(absentChecks, `${room} did not remain unloaded`).to.equal(2);
 }
