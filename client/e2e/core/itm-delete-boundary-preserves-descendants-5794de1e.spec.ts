@@ -25,6 +25,9 @@ test.describe("ITM-5794de1e: Delete boundary descendant preservation", () => {
             return { a: a.id, b: b.id, z: items.at(2).id, child: child.id, grandchild: grandchild.id };
         });
 
+        await page.locator(`.outliner-item[data-item-id="${seeded.b}"] .collapse-btn`).click();
+        await expect(page.locator(`.outliner-item[data-item-id="${seeded.child}"]`)).toBeHidden();
+
         await TestHelpers.setCursor(page, seeded.a, 5);
         await TestHelpers.focusGlobalTextarea(page);
         await page.keyboard.press("Delete");
