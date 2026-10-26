@@ -118,6 +118,67 @@ const relationMutation = z.looseObject({
     replayed: z.boolean(),
 });
 
+const kanbanLaneValue = z.union([z.string(), z.null()]);
+const kanbanSettings = z.strictObject({
+    name: z.string(),
+    query: z.string(),
+    groupField: z.string().optional(),
+    titleField: z.string().optional(),
+    detailFields: z.array(z.string()),
+    laneOrder: z.array(kanbanLaneValue),
+});
+const kanbanMutationObservation = z.strictObject({
+    available: z.boolean(),
+    reason: z.string().optional(),
+});
+const kanbanPlacement = z.strictObject({
+    placementId: z.string(),
+    itemId: z.string(),
+    pageId: z.string(),
+    pageTitle: z.string(),
+});
+const kanbanSourceRef = z.strictObject({
+    kind: z.enum(["table", "system"]),
+    id: z.string(),
+    sqlName: z.string(),
+    rowId: z.string(),
+});
+const kanbanFieldCapability = z.strictObject({
+    outputField: z.string(),
+    updateEligible: z.boolean(),
+    reason: z.string().optional(),
+});
+const kanbanMoveCapability = z.strictObject({
+    eligible: z.boolean(),
+    reason: z.string().optional(),
+});
+const kanbanCard = z.strictObject({
+    occurrenceId: z.string(),
+    row: z.record(z.string(), z.json()),
+    sourceRef: kanbanSourceRef.optional(),
+    fieldCapabilities: z.array(kanbanFieldCapability),
+    moveCapability: kanbanMoveCapability,
+});
+const kanbanLane = z.strictObject({
+    key: kanbanLaneValue,
+    totalCards: z.number().int().nonnegative(),
+    returnedCards: z.number().int().nonnegative(),
+    cards: z.array(kanbanCard),
+});
+const kanbanProjection = z.strictObject({
+    status: z.enum(["success", "incomplete", "invalid", "unavailable", "error"]),
+    current: z.boolean(),
+    reason: z.string().optional(),
+    queryId: z.string().optional(),
+    responseBudget: z.number().int().positive().optional(),
+});
+const kanbanCounts = z.strictObject({
+    totalCards: z.number().int().nonnegative(),
+    returnedCards: z.number().int().nonnegative(),
+    offset: z.number().int().nonnegative(),
+    cardsTruncated: z.boolean(),
+});
+
 /**
  * Successful result contracts for every tool exposed through the common MCP
  * registration path. Object contracts are deliberately loose only for fields
@@ -156,24 +217,24 @@ export const toolOutputSchemas = {
     get_kanban: z.looseObject({
         projectId: z.string(),
         kanbanId: z.string(),
-        settings: jsonObject,
-        projection: z.object({ evaluated: z.literal(false) }),
-        placements: z.array(jsonObject),
+        settings: kanbanSettings,
+        projection: z.strictObject({ evaluated: z.literal(false) }),
+        placements: z.array(kanbanPlacement),
         placementCount: z.number().int().nonnegative(),
         returnedCount: z.number().int().nonnegative(),
         offset: z.number().int().nonnegative(),
         truncated: z.boolean(),
-        mutationObservation: jsonObject,
+        mutationObservation: kanbanMutationObservation,
         observationToken: z.string().optional(),
         expiresAt: z.string().optional(),
     }),
     query_kanban: z.looseObject({
         projectId: z.string(),
         kanbanId: z.string(),
-        projection: jsonObject,
-        lanes: z.array(jsonObject).optional(),
-        counts: jsonObject.optional(),
-        mutationObservation: jsonObject,
+        projection: kanbanProjection,
+        lanes: z.array(kanbanLane).optional(),
+        counts: kanbanCounts.optional(),
+        mutationObservation: kanbanMutationObservation,
         observationToken: z.string().optional(),
         expiresAt: z.string().optional(),
     }),

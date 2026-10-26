@@ -7,6 +7,7 @@ import {
     createKanbanEntry,
     getKanbanDefinitionTarget,
 } from "../../shared/src/services/kanbanDefinition.js";
+import { toolOutputSchemas } from "../src/mcp/tool-output-schemas.js";
 import { Project } from "../src/schema/app-schema.js";
 import { deferred, PROJECT, startMcpTestServer, token, UID } from "./mcp-create-table-fixture.js";
 import { withRoom } from "./server-create-table-fixture.js";
@@ -35,6 +36,69 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             const limit = discovered.tools.find((tool: { name: string; }) => tool.name === "list_kanbans")
                 .inputSchema.properties.limit;
             expect(limit).to.include({ minimum: 1, maximum: 500 });
+            const getOutput = discovered.tools.find((tool: { name: string; }) => tool.name === "get_kanban")
+                .outputSchema.properties;
+            expect(getOutput.settings.required).to.include.members(["name", "query", "detailFields", "laneOrder"]);
+            expect(getOutput.placements.items.required).to.have.members([
+                "placementId",
+                "itemId",
+                "pageId",
+                "pageTitle",
+            ]);
+            expect(getOutput.mutationObservation.required).to.include("available");
+            const queryOutput = discovered.tools.find((tool: { name: string; }) => tool.name === "query_kanban")
+                .outputSchema.properties;
+            expect(queryOutput.projection.properties.status.enum).to.have.members([
+                "success",
+                "incomplete",
+                "invalid",
+                "unavailable",
+                "error",
+            ]);
+            const lane = queryOutput.lanes.items;
+            expect(lane.properties.key.type).to.have.members(["string", "null"]);
+            expect(lane.required).to.have.members(["key", "totalCards", "returnedCards", "cards"]);
+            expect(lane.properties.cards.items.required).to.have.members([
+                "occurrenceId",
+                "row",
+                "fieldCapabilities",
+                "moveCapability",
+            ]);
+            expect(lane.properties.cards.items.properties.sourceRef.required).to.have.members([
+                "kind",
+                "id",
+                "sqlName",
+                "rowId",
+            ]);
+            expect(queryOutput.counts.required).to.have.members([
+                "totalCards",
+                "returnedCards",
+                "offset",
+                "cardsTruncated",
+            ]);
+            expect(queryOutput.mutationObservation.required).to.include("available");
+            expect(
+                toolOutputSchemas.get_kanban.safeParse({
+                    projectId: "p",
+                    kanbanId: "k",
+                    settings: {},
+                    projection: { evaluated: false },
+                    placements: [],
+                    placementCount: 0,
+                    returnedCount: 0,
+                    offset: 0,
+                    truncated: false,
+                    mutationObservation: {},
+                }).success,
+            ).to.equal(false);
+            expect(
+                toolOutputSchemas.query_kanban.safeParse({
+                    projectId: "p",
+                    kanbanId: "k",
+                    projection: {},
+                    mutationObservation: {},
+                }).success,
+            ).to.equal(false);
             for (const invalid of [0, 501, 1.5]) {
                 const response = await client.callTool({
                     name: "list_kanbans",
