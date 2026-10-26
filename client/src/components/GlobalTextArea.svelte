@@ -313,7 +313,7 @@ function handleBlur(event: FocusEvent) {
     wrap="off"
     aria-label="Edit item text"
     role={commandPaletteStore.isVisible ? "combobox" : undefined}
-    aria-expanded={commandPaletteStore.isVisible ? "true" : undefined}
+    aria-expanded={commandPaletteStore.isVisible ? "true" : "false"}
     aria-controls={commandPaletteStore.isVisible ? "slash-command-listbox" : "outliner-tree"}
     aria-activedescendant={commandPaletteStore.isVisible
         ? (commandPaletteStore.visible[commandPaletteStore.selectedIndex]?.type ? `command-item-${commandPaletteStore.visible[commandPaletteStore.selectedIndex]?.type}` : undefined)
