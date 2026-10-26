@@ -19,6 +19,7 @@ import { logger as defaultLogger } from "./logger.js";
 import { CreateTableTool } from "./mcp/create-table-tool.js";
 import { OutlinerGridPresentationService } from "./mcp/grid-presentation.js";
 import { KanbanObservationService } from "./mcp/kanban-observations.js";
+import { OutlinerKanbanReadService } from "./mcp/kanban-read-service.js";
 import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
 import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
@@ -532,6 +533,7 @@ export async function startServer(
         new CreateTableTool(tableCreation, checkContainerAccess),
         // One long-lived instance: its replay window spans MCP requests.
         new UpdateGridPresentationTool(gridPresentation, checkContainerAccess),
+        new OutlinerKanbanReadService(hocuspocus, checkContainerAccess, kanbanObservations),
     ));
 
     // Log rotation endpoint

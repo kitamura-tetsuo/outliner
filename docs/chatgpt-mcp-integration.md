@@ -168,3 +168,22 @@ all asynchronous cleanup, for successful results and diagnostic failures alike.
 Query-update retries authorize before replay lookup. A known accepted mutation
 remains replayable when release fails; withheld results retain truthful effect
 metadata only in the internal audit record.
+
+### Kanban discovery and reads
+
+Remote clients can call `list_kanbans`, `get_kanban`, and `query_kanban` with an
+authorized `projectId`. Listing never runs saved SQL. Metadata reads return the
+exact saved settings and direct outline placements even when a query is incomplete
+or invalid; `placementId` is the stable tree occurrence while `itemId` remains the
+outline item's public ID. Canonical `/{project}/-/kanbans` and
+`/{project}/-/kanbans/{kanbanId}` URLs resolve to the same stable identities.
+
+Query results preserve typed lane keys, complete lane counts, SQL order, duplicate
+occurrences, and proven `sourceRef` values. `cardOffset` and `maxCards` select a
+transport range after the complete projection; every call is a new current
+observation, not a continuation snapshot. Intervening edits can therefore shift a
+later range. A later authorized mutation must use the source references and opaque
+observation token returned by the exact read it acts on; a token is evidence of
+what was observed, not write authorization. If current guard evidence cannot be
+retained, read data remains available with an explicit unavailable mutation
+observation instead of an unguarded write path.

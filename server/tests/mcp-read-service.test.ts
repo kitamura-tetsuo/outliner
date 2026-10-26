@@ -27,6 +27,12 @@ describe("Outliner MCP read service", () => {
         calendarMap.set("query", "SELECT * FROM outline_items");
         calendarMap.set("groupAxes", ["owner"]);
         project.calendars.set("calendar-1", calendarMap as never);
+        const kanban = layout.items.addNode("test");
+        kanban.componentType = "kanban";
+        kanban.kanbanId = "kanban-1";
+        const kanbanMap = new (project.ydoc.getMap("yjsKanbans").constructor as new() => MapLike)();
+        kanbanMap.set("name", "Roadmap board");
+        project.ydoc.getMap("yjsKanbans").set("kanban-1", kanbanMap as never);
         const scheduleMap = new (project.schedules.constructor as new() => MapLike)();
         scheduleMap.set("targetTableId", "table-1");
         project.schedules.set("rule-1", scheduleMap as never);
@@ -43,7 +49,7 @@ describe("Outliner MCP read service", () => {
             async () => allowed,
             async () => [{ projectId: "project-1", title: "MCP test" }],
         );
-        return { service, project, page, text, layout, grid, calendar, disconnects: () => disconnects };
+        return { service, project, page, text, layout, grid, calendar, kanban, disconnects: () => disconnects };
     }
 
     it("retrieves Text and textless visual nodes without flattening kinds", async () => {
@@ -63,7 +69,7 @@ describe("Outliner MCP read service", () => {
         const { service, page } = fixture();
         const full = await service.getSubtree("uid", "project-1", page.id, 3, 20);
         expect(full.root.children?.map(node => node.kind)).to.deep.equal(["text", "layout"]);
-        expect(full.root.children?.[1]?.children?.map(node => node.kind)).to.deep.equal(["grid", "calendar"]);
+        expect(full.root.children?.[1]?.children?.map(node => node.kind)).to.deep.equal(["grid", "calendar", "kanban"]);
         const bounded = await service.getSubtree("uid", "project-1", page.id, 1, 2);
         expect(bounded.truncated).to.equal(true);
         expect(bounded.root.children).to.have.length(1);
@@ -130,6 +136,22 @@ describe("Outliner MCP read service", () => {
             projectId: "project-1",
             entityId: "table-1",
             kind: "table",
+        });
+    });
+
+    it("resolves canonical Kanban routes and preserves placement identity", async () => {
+        const { service, kanban } = fixture();
+        expect(await service.resolveUrl("uid", "https://outliner.example/MCP%20test/-/kanbans")).to.deep.equal({
+            projectId: "project-1",
+            kind: "kanban-list",
+        });
+        expect(await service.resolveUrl("uid", "https://outliner.example/MCP%20test/-/kanbans/kanban-1"))
+            .to.deep.equal({ projectId: "project-1", entityId: "kanban-1", kind: "kanban" });
+        expect(await service.getItem("uid", "project-1", kanban.id)).to.deep.include({
+            id: kanban.id,
+            kind: "kanban",
+            kanbanId: "kanban-1",
+            placementId: kanban.key,
         });
     });
 

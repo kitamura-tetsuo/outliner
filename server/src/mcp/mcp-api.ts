@@ -8,6 +8,7 @@ import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
 import type { CreateTableTool } from "./create-table-tool.js";
+import type { OutlinerKanbanReadService } from "./kanban-read-service.js";
 import { McpEffectError } from "./mcp-error.js";
 import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 import { OutlinerRelationService } from "./relation-service.js";
@@ -96,6 +97,7 @@ export function createMcpRouter(
     scheduleService?: OutlinerScheduleService,
     tableCreation?: CreateTableTool,
     gridPresentationTool?: UpdateGridPresentationTool,
+    kanbanService?: OutlinerKanbanReadService,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -350,6 +352,44 @@ export function createMcpRouter(
             query: z.string(),
             limit: z.number().int().optional(),
         }, args => service.searchItems(uid, args.projectId, args.query, args.limit));
+        if (kanbanService) {
+            tool(
+                "list_kanbans",
+                "List current Kanban definitions without executing their queries.",
+                {
+                    projectId: z.string(),
+                    limit: z.number().int().optional(),
+                    cursor: z.string().optional(),
+                },
+                args => kanbanService.list(uid, args.projectId, args.limit, args.cursor),
+                { strict: true },
+            );
+            tool(
+                "get_kanban",
+                "Inspect exact saved Kanban settings and placements.",
+                {
+                    projectId: z.string(),
+                    kanbanId: z.string(),
+                    placementOffset: z.number().int().optional(),
+                    placementLimit: z.number().int().optional(),
+                },
+                args =>
+                    kanbanService.get(uid, args.projectId, args.kanbanId, args.placementOffset, args.placementLimit),
+                { strict: true },
+            );
+            tool(
+                "query_kanban",
+                "Read a current bounded Kanban projection.",
+                {
+                    projectId: z.string(),
+                    kanbanId: z.string(),
+                    cardOffset: z.number().int().optional(),
+                    maxCards: z.number().int().optional(),
+                },
+                args => kanbanService.query(uid, args.projectId, args.kanbanId, args.cardOffset, args.maxCards),
+                { strict: true },
+            );
+        }
         tool(
             "get_grid",
             "Inspect Grid configuration and current SELECT source diagnostics.",
