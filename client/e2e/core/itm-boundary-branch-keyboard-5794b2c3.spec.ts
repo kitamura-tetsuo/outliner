@@ -50,6 +50,39 @@ test.describe("ITM-5794de1e: boundary branches through real keys", () => {
         expect([cursor.activeItemId, cursor.cursors[0]?.offset]).toEqual([seeded.parent, 5]);
     });
 
+    test("Delete refuses a current Text item whose backing text is missing", async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Alpha", "", "Z"]);
+        const seeded = await page.evaluate(() => {
+            const items = (globalThis as any).generalStore.currentPage.items;
+            const source = items.at(1);
+            const child = source.items.addNode("e2e");
+            child.updateText("Child");
+            source.yMap.delete("text");
+            return { alpha: items.at(0).id, source: source.id, child: child.id, z: items.at(2).id };
+        });
+        await pressAt(page, seeded.source, 0, "Delete");
+
+        const state = await page.evaluate(() => {
+            const items = (globalThis as any).generalStore.currentPage.items;
+            const source = items.at(1);
+            return {
+                roots: [...items].map((item: any) => item.id),
+                sourceHasText: source.yMap.has("text"),
+                children: [...source.items].map((item: any) => item.id),
+            };
+        });
+        expect(state).toEqual({
+            roots: [seeded.alpha, seeded.source, seeded.z],
+            sourceHasText: false,
+            children: [seeded.child],
+        });
+        const cursor = await CursorValidator.getCursorData(page);
+        expect([cursor.activeItemId, cursor.cursors.find(entry => entry.itemId === seeded.source)?.offset]).toEqual([
+            seeded.source,
+            0,
+        ]);
+    });
+
     for (const direction of ["Backspace", "Delete"] as const) {
         test(
             `${direction} removes an adjacent leaf visual without changing Text or caret`,

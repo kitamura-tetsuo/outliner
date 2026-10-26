@@ -955,9 +955,11 @@ export class CursorEditor {
         const currentItem = cursor.findTarget();
         if (!currentItem) return;
 
-        if (currentItem.text && currentItem.text.length > 0) return;
-
         const source = currentItem as unknown as import("../../schema/app-schema").Item;
+        const sourceText = source.yMap.get("text");
+        if (!(sourceText instanceof Y.Text) || sourceText.doc !== source.ydoc) return;
+        if (sourceText.length > 0) return;
+
         const promotedText = Array.from(source.items).find(item => isTextNode(item));
         const findEditable = (direction: "next" | "previous") => {
             let candidate = direction === "next" ? findNextItem(cursor.itemId) : findPreviousItem(cursor.itemId);
