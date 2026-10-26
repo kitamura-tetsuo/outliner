@@ -5,5 +5,4 @@ category: environment
 status: implemented
 components: []
 tests:
-- scripts/tests/env-ci-supported-node-lts-3edc9a14.spec.ts
-title-ja: Active CI workflows use supported Node.js LTS
+  - scripts/tests/env-ci-supported-node-lts-3edc9a14.spec.ts
