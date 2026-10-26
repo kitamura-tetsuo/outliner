@@ -1,10 +1,11 @@
+import * as Y from "yjs";
 import { getLogger } from "../logger";
 
 const logger = getLogger("CursorEditor");
 
 import { Item, Items } from "../../schema/yjs-schema";
 import { isDiagramItem, refuseCrossOwnerDiagramRange } from "../../services/diagram/diagramEditing";
-import { canAcceptChild, isVisualNode } from "../../services/outline/nodeTree";
+import { canAcceptChild, isTextNode, isVisualNode } from "../../services/outline/nodeTree";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
@@ -20,6 +21,7 @@ import {
     normalizeSelectionEndpoints,
     textSelectionEndpoints,
 } from "../selection/selectionEndpoints";
+import { applyBoundaryTreeEdit } from "./boundaryTreeEdit";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
@@ -364,7 +366,7 @@ export class CursorEditor {
                     this.deleteEmptyItem();
                     return;
                 }
-                this.mergeWithNextItem();
+                if (!this.mergeWithNextItem()) return;
             }
         }
 
@@ -921,10 +923,15 @@ export class CursorEditor {
         // Backspace removes the preceding block and leaves the Text node (and
         // caret) exactly where they are.
         if (isVisualNode(prevItem as unknown as import("../../schema/app-schema").Item)) {
-            this.runInTransaction(
-                [prevItem as unknown as import("../../schema/app-schema").Item],
-                () => this.deleteItemNode(prevItem as unknown as import("../../schema/app-schema").Item),
-            );
+            const current = currentItem as unknown as import("../../schema/app-schema").Item;
+            const currentBackingText = current.yMap.get("text");
+            if (!(currentBackingText instanceof Y.Text) || currentBackingText.doc !== current.ydoc) return;
+            if (
+                !applyBoundaryTreeEdit({
+                    kind: "promote",
+                    source: prevItem as unknown as import("../../schema/app-schema").Item,
+                })
+            ) return;
             store.clearCursorForItem(
                 (prevItem as unknown as import("../../schema/app-schema").Item).id,
             );
@@ -940,13 +947,14 @@ export class CursorEditor {
         const prevId = (prevItem as unknown as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
-        this.runInTransaction([
-            prevItem as unknown as import("../../schema/app-schema").Item,
-            currentItem as unknown as import("../../schema/app-schema").Item,
-        ], () => {
-            this.updateItemText(prevItem as unknown as import("../../schema/app-schema").Item, combinedText);
-            this.deleteItemNode(currentItem as unknown as import("../../schema/app-schema").Item);
-        });
+        if (
+            !applyBoundaryTreeEdit({
+                kind: "merge",
+                source: currentItem as unknown as import("../../schema/app-schema").Item,
+                survivor: prevItem as unknown as import("../../schema/app-schema").Item,
+                mergedText: combinedText,
+            })
+        ) return;
 
         cursor.itemId = prevId;
         cursor.offset = newOffset;
@@ -979,106 +987,32 @@ export class CursorEditor {
         return "";
     }
 
-    private updateItemText(item: import("../../schema/app-schema").Item, text: string) {
-        if (!item) return;
-        if (typeof item.updateText === "function") {
-            item.updateText(text);
-            return;
-        }
-
-        const tree = (item as unknown as import("../../schema/app-schema").Item)?.tree;
-        const key = (item as unknown as import("../../schema/app-schema").Item)?.key
-            ?? (item as unknown as import("../../schema/app-schema").Item)?.id;
-        if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
-
-        const value = tree.getNodeValueFromKey(key);
-        const yText = (value as { get?: (k: string) => unknown; })?.get?.("text");
-        try {
-            if (
-                yText && typeof (yText as { delete: (i: number, l: number) => void; }).delete === "function"
-                && typeof (yText as { insert: (i: number, s: string) => void; }).insert === "function"
-            ) {
-                const yt = yText as {
-                    delete(i: number, l: number): void;
-                    insert(i: number, s: string): void;
-                    length: number;
-                };
-                yt.delete(0, yt.length);
-                if (text) yt.insert(0, text);
-            } else if (value && typeof (value as { set: (k: string, v: unknown) => void; }).set === "function") {
-                (value as { set(k: string, v: unknown): void; }).set("text", text);
-            }
-            if (value && typeof (value as { set: (k: string, v: unknown) => void; }).set === "function") {
-                (value as { set(k: string, v: unknown): void; }).set("lastChanged", Date.now());
-            }
-        } catch (_e) {
-            logger.error(_e);
-        }
-    }
-
-    private deleteItemNode(item: import("../../schema/app-schema").Item) {
-        if (!item) return;
-        if (typeof item.delete === "function") {
-            item.delete();
-            return;
-        }
-
-        const key = (item as unknown as import("../../schema/app-schema").Item)?.key
-            ?? (item as unknown as import("../../schema/app-schema").Item)?.id;
-        if (!key) return;
-
-        const treeCandidates = [
-            (item as unknown as import("../../schema/app-schema").Item)?.tree,
-            (item as unknown as import("../../schema/app-schema").Item)?.parent?.tree,
-            (generalStore as { project?: { tree?: unknown; }; })?.project?.tree,
-        ];
-
-        for (const tree of treeCandidates) {
-            if (
-                tree
-                && typeof (tree as { deleteNodeAndDescendants?: (k: string) => void; }).deleteNodeAndDescendants
-                    === "function"
-            ) {
-                try {
-                    (tree as { deleteNodeAndDescendants: (k: string) => void; }).deleteNodeAndDescendants(key);
-                    return;
-                } catch (_e) {
-                    logger.error(_e);
-                }
-            }
-        }
-    }
-
-    private runInTransaction(participants: import("../../schema/app-schema").Item[], action: () => void) {
-        const doc = participants
-            .map(item => (item as unknown as import("../../schema/app-schema").Item)?.ydoc)
-            .find(candidate => candidate && typeof candidate.transact === "function");
-
-        if (doc) {
-            try {
-                doc.transact(action);
-                return;
-            } catch (_e) {
-                logger.error(_e);
-            }
-        }
-
-        action();
-    }
-
     private mergeWithNextItem() {
         const cursor = this.cursor;
         const currentItem = cursor.findTarget();
-        if (!currentItem) return;
+        if (!currentItem) return false;
 
         const nextItem = findNextItem(cursor.itemId);
-        if (!nextItem) return;
+        if (!nextItem) return false;
 
-        const currentText = (currentItem as unknown as import("../../schema/app-schema").Item).text || "";
-        const nextText = (nextItem as unknown as import("../../schema/app-schema").Item).text || "";
-        (currentItem as unknown as import("../../schema/app-schema").Item).updateText(currentText + nextText);
+        if (isVisualNode(nextItem as unknown as import("../../schema/app-schema").Item)) {
+            const current = currentItem as unknown as import("../../schema/app-schema").Item;
+            const currentBackingText = current.yMap.get("text");
+            if (!(currentBackingText instanceof Y.Text) || currentBackingText.doc !== current.ydoc) return false;
+            return applyBoundaryTreeEdit({
+                kind: "promote",
+                source: nextItem as unknown as import("../../schema/app-schema").Item,
+            });
+        }
 
-        (nextItem as unknown as import("../../schema/app-schema").Item).delete();
+        const currentText = this.getPlainText(currentItem as unknown as import("../../schema/app-schema").Item);
+        const nextText = this.getPlainText(nextItem as unknown as import("../../schema/app-schema").Item);
+        return applyBoundaryTreeEdit({
+            kind: "merge",
+            source: nextItem as unknown as import("../../schema/app-schema").Item,
+            survivor: currentItem as unknown as import("../../schema/app-schema").Item,
+            mergedText: currentText + nextText,
+        });
     }
 
     private deleteEmptyItem() {
@@ -1086,30 +1020,50 @@ export class CursorEditor {
         const currentItem = cursor.findTarget();
         if (!currentItem) return;
 
-        if (currentItem.text && currentItem.text.length > 0) return;
+        const source = currentItem as unknown as import("../../schema/app-schema").Item;
+        const sourceText = source.yMap.get("text");
+        if (!(sourceText instanceof Y.Text) || sourceText.doc !== source.ydoc) return;
+        if (sourceText.length > 0) return;
 
-        const nextItem = findNextItem(cursor.itemId);
+        const promotedText = Array.from(source.items).find(item => isTextNode(item));
+        const findEditable = (direction: "next" | "previous") => {
+            let candidate = direction === "next" ? findNextItem(cursor.itemId) : findPreviousItem(cursor.itemId);
+            const visited = new Set<string>([cursor.itemId]);
+            while (candidate && !visited.has(candidate.id)) {
+                if (isTextNode(candidate)) return candidate;
+                visited.add(candidate.id);
+                candidate = direction === "next" ? findNextItem(candidate.id) : findPreviousItem(candidate.id);
+            }
+            return undefined;
+        };
+        const nextItem = findEditable("next");
 
-        let targetItemId: string;
+        let targetItem: import("../../schema/app-schema").Item;
         let targetOffset: number;
 
-        if (nextItem) {
-            targetItemId = nextItem.id;
+        if (promotedText) {
+            targetItem = promotedText;
+            targetOffset = 0;
+        } else if (nextItem && nextItem.id !== source.id) {
+            targetItem = nextItem as unknown as import("../../schema/app-schema").Item;
             targetOffset = 0;
         } else {
-            const prevItem = findPreviousItem(cursor.itemId);
-            if (prevItem) {
-                targetItemId = prevItem.id;
+            const prevItem = findEditable("previous");
+            if (prevItem && prevItem.id !== source.id) {
+                targetItem = prevItem as unknown as import("../../schema/app-schema").Item;
                 targetOffset = prevItem.text ? prevItem.text.length : 0;
             } else {
                 return;
             }
         }
 
-        store.clearCursorForItem(cursor.itemId);
-        (currentItem as unknown as import("../../schema/app-schema").Item).delete();
+        const focusText = targetItem.yMap.get("text");
+        if (!(focusText instanceof Y.Text) || focusText.doc !== source.ydoc) return;
 
-        cursor.itemId = targetItemId;
+        if (!applyBoundaryTreeEdit({ kind: "promote", source })) return;
+        store.clearCursorForItem(cursor.itemId);
+
+        cursor.itemId = targetItem.id;
         cursor.offset = targetOffset;
 
         store.setActiveItem(cursor.itemId);

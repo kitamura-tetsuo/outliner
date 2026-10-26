@@ -39,7 +39,7 @@ vi.mock("../../../stores/store.svelte", () => {
 
 import type { CursorEditingContext } from "../../../lib/cursor/CursorEditor";
 import { CursorEditor } from "../../../lib/cursor/CursorEditor";
-import type { Item } from "../../../schema/yjs-schema";
+import { type Item, Item as SchemaItem, Project } from "../../../schema/yjs-schema";
 import type { SelectionRange } from "../../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
@@ -423,16 +423,27 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
     });
 
     it("treats the visual node before a Text item atomically on Backspace", () => {
-        item2.componentType = "calendar";
-        item2._text = "";
+        const project = Project.createInstance("visual boundary");
+        const page = project.items.addNode("test");
+        page.updateText("Page");
+        const first = page.items.addNode("test");
+        first.updateText("First");
+        const visual = page.items.addNode("test");
+        visual.componentType = "calendar";
+        const current = page.items.addNode("test");
+        current.updateText("Third item text");
+        const last = page.items.addNode("test");
+        last.updateText("Fourth");
+        const mutableStore = generalStore as unknown as { currentPage: SchemaItem; };
+        mutableStore.currentPage = page;
         const cursorCtx: CursorEditingContext = {
-            itemId: item3.id,
+            itemId: current.id,
             offset: 0,
             userId: "local",
             isActive: true,
             clearSelection: vi.fn(),
             applyToStore: vi.fn(),
-            findTarget: () => item3 as unknown as Item,
+            findTarget: () => current,
             moveToLineStart: vi.fn(),
             moveToLineEnd: vi.fn(),
         };
@@ -440,9 +451,9 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
 
         editor.deleteBackward();
 
-        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item3", "item4"]);
-        expect(item3._text).toBe("Third item text");
-        expect(cursorCtx.itemId).toBe(item3.id);
+        expect(Array.from(page.items, item => item.id)).toEqual([first.id, current.id, last.id]);
+        expect(current.text.toString()).toBe("Third item text");
+        expect(cursorCtx.itemId).toBe(current.id);
         expect(cursorCtx.offset).toBe(0);
     });
 });
