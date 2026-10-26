@@ -1,20 +1,36 @@
 import type { Hocuspocus } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { getKanbanRegistry, readKanbanSettings } from "../../../shared/src/services/kanbanDefinition.js";
+import { ownsOutlineText } from "../../../shared/src/services/outlineNodeKind.js";
 import { type Item, Project } from "../schema/app-schema.js";
 import {
     adoptKanbanObservationLease,
+    isOutlineWritableColumn,
     KanbanObservationService,
+    type OutlineFieldObservationCapture,
     type PlacementObservationCapture,
+    type TableCardBindingRole,
     type TableFieldObservationCapture,
 } from "./kanban-observations.js";
-import { OutlinerKanbanQueryService } from "./kanban-query-service.js";
+import { type KanbanObservedCard, OutlinerKanbanQueryService } from "./kanban-query-service.js";
 import { closeLiveRoom, type LiveRoomHost, openLiveRoom } from "./live-room.js";
 import { McpReadError } from "./mcp-error.js";
 
 const ID = /^[A-Za-z0-9_-]{1,200}$/;
 const RESPONSE_BUDGET = 1024 * 1024;
 const SETTING_KEYS = ["name", "query", "groupField", "titleField", "detailFields", "laneOrder"] as const;
+type CardSourceRef = NonNullable<KanbanObservedCard["source"]>;
+interface QualifiedFieldCapture {
+    readonly sourceRef: {
+        readonly kind: string;
+        readonly id: string;
+        readonly sqlName: string;
+        readonly rowId: string;
+    };
+    readonly outputField: string;
+    readonly roles: readonly TableCardBindingRole[];
+}
+interface OutlineCardFieldCapture extends OutlineFieldObservationCapture, QualifiedFieldCapture {}
 
 export const KANBAN_RESPONSE_LIFECYCLE = Symbol("kanbanResponseLifecycle");
 export interface KanbanResponseLifecycle {
@@ -63,7 +79,9 @@ export class OutlinerKanbanReadService {
             await this.authorize(uid, projectId);
             const definitions = [...getKanbanRegistry(connection.document as never).entries()]
                 .map(([kanbanId, entry]) => ({ kanbanId, name: readKanbanSettings(entry).name }))
-                .sort((a, b) => a.kanbanId.localeCompare(b.kanbanId));
+                // Cursor comparison uses JS code-point ordering. Sorting must
+                // use the exact same ordering or mixed-case IDs get skipped.
+                .sort((a, b) => a.kanbanId < b.kanbanId ? -1 : a.kanbanId > b.kanbanId ? 1 : 0);
             const eligible = cursor === undefined ? definitions : definitions.filter(item => item.kanbanId > cursor);
             const kanbans = eligible.slice(0, limit);
             await this.authorize(uid, projectId);
@@ -162,7 +180,10 @@ export class OutlinerKanbanReadService {
                 observed.settings?.titleField,
                 ...(observed.settings?.detailFields ?? []),
             ].filter((field): field is string => !!field));
-            const captures = await this.tableCaptures(projectId, observed, chosen.map(value => value.card), roleFields);
+            const cards = chosen.map(value => value.card);
+            const tableFields = await this.tableCaptures(projectId, observed, cards, roleFields);
+            const outlineFields = this.outlineCaptures(observed, cards, roleFields);
+            const qualifiedFields: readonly QualifiedFieldCapture[] = [...tableFields, ...outlineFields];
             await this.authorize(uid, projectId);
             if (!observed.isCurrent()) return staleResult(projectId, kanbanId);
             const projectDoc = observed.handles.project.document as unknown as Y.Doc;
@@ -181,7 +202,8 @@ export class OutlinerKanbanReadService {
                 kanbanId,
                 lease,
                 definition: { target: { projectDoc, entry: entry as never }, keys: SETTING_KEYS },
-                tableFields: captures,
+                tableFields,
+                outlineFields,
             });
             transferred = capture.available;
             issuedToken = capture.available ? capture.observationToken : undefined;
@@ -207,10 +229,8 @@ export class OutlinerKanbanReadService {
                     fieldCapabilities: [...roleFields].map(outputField => {
                         const route = observed.routes.find(item => item.output === outputField);
                         const eligible = capture.available && !!route?.writable
-                            && captures.some(item =>
-                                item.outputField === outputField && item.sourceRef.rowId === card.source?.rowId
-                                && (item.roles.includes("title") || item.roles.includes("detail"))
-                            );
+                            && (hasFieldSelection(qualifiedFields, card.source, outputField, "title")
+                                || hasFieldSelection(qualifiedFields, card.source, outputField, "detail"));
                         const updateConfigured = outputField === observed.settings?.titleField
                             || observed.settings?.detailFields.includes(outputField);
                         return {
@@ -230,8 +250,8 @@ export class OutlinerKanbanReadService {
                     moveCapability: capability(
                         capture.available,
                         observed.routes.find(item => item.output === observed.settings?.groupField),
-                        captures,
-                        card.source?.rowId,
+                        qualifiedFields,
+                        card.source,
                         observed.settings?.groupField,
                         captureFailureReason,
                     ),
@@ -284,7 +304,7 @@ export class OutlinerKanbanReadService {
     private async tableCaptures(
         projectId: string,
         observed: Awaited<ReturnType<OutlinerKanbanQueryService["openObservation"]>>,
-        cards: readonly { source?: { kind: "table" | "system"; id: string; sqlName: string; rowId: string; }; }[],
+        cards: readonly KanbanObservedCard[],
         roleFields: ReadonlySet<string>,
     ): Promise<TableFieldObservationCapture[]> {
         const result: TableFieldObservationCapture[] = [];
@@ -302,7 +322,10 @@ export class OutlinerKanbanReadService {
             if (!owner) continue;
             for (const outputField of roleFields) {
                 const route = observed.routes.find(item => item.output === outputField);
-                if (!route?.writable || route.source?.kind !== "table" || route.source.id !== card.source.id) continue;
+                if (
+                    !route?.writable || route.source?.kind !== "table" || route.source.id !== card.source.id
+                    || route.source.sqlName !== card.source.sqlName
+                ) continue;
                 const selectionKey = JSON.stringify([
                     card.source.kind,
                     card.source.id,
@@ -357,20 +380,95 @@ export class OutlinerKanbanReadService {
         }
         return result;
     }
+
+    private outlineCaptures(
+        observed: Awaited<ReturnType<OutlinerKanbanQueryService["openObservation"]>>,
+        cards: readonly KanbanObservedCard[],
+        roleFields: ReadonlySet<string>,
+    ): OutlineCardFieldCapture[] {
+        const result: OutlineCardFieldCapture[] = [];
+        const scopes = new Set<string>();
+        const doc = observed.handles.project.document as unknown as Y.Doc;
+        const project = Project.fromDoc(doc as never);
+        for (const card of cards) {
+            const source = card.source;
+            if (source?.kind !== "system" || source.id !== "outline_items" || source.sqlName !== "outline_items") {
+                continue;
+            }
+            // outline_items.id is the actual tree occurrence key, not Item.id.
+            // Item.yMap can return a detached fallback after deletion.
+            const resolveOwner = () => {
+                try {
+                    if (!doc.getMap("orderedTree").has(source.rowId)) return undefined;
+                    return project.tree.getNodeValueFromKey(source.rowId) as Y.Map<unknown> | undefined;
+                } catch {
+                    return undefined;
+                }
+            };
+            const owner = resolveOwner();
+            if (!owner || owner.doc !== doc) continue;
+            for (const outputField of roleFields) {
+                const route = observed.routes.find(item => item.output === outputField);
+                if (
+                    !route?.writable || route.source?.kind !== "system" || route.source.id !== source.id
+                    || route.source.sqlName !== source.sqlName || !isOutlineWritableColumn(route.source.field)
+                ) continue;
+                if (
+                    route.source.field === "text" && !ownsOutlineText({
+                        componentType: owner.get("componentType") as string | undefined,
+                    })
+                ) continue;
+                const scopeId = JSON.stringify([source.id, source.rowId, outputField]);
+                if (scopes.has(scopeId)) continue;
+                scopes.add(scopeId);
+                result.push({
+                    scopeId,
+                    owner,
+                    field: route.source.field,
+                    resolveOwner,
+                    sourceRef: source,
+                    outputField,
+                    roles: fieldRoles(outputField, observed.settings),
+                });
+            }
+        }
+        return result;
+    }
+}
+
+function fieldRoles(
+    outputField: string,
+    settings: Awaited<ReturnType<OutlinerKanbanQueryService["openObservation"]>>["settings"],
+): TableCardBindingRole[] {
+    return [
+        ...(outputField === settings?.titleField ? ["title" as const] : []),
+        ...(settings?.detailFields.includes(outputField) ? ["detail" as const] : []),
+        ...(outputField === settings?.groupField ? ["group" as const] : []),
+    ];
+}
+
+function hasFieldSelection(
+    captures: readonly QualifiedFieldCapture[],
+    source: CardSourceRef | undefined,
+    outputField: string | undefined,
+    role: TableCardBindingRole,
+): boolean {
+    return !!source && captures.some(item =>
+        item.outputField === outputField && item.roles.includes(role)
+        && item.sourceRef.kind === source.kind && item.sourceRef.id === source.id
+        && item.sourceRef.sqlName === source.sqlName && item.sourceRef.rowId === source.rowId
+    );
 }
 
 function capability(
     available: boolean,
     route: { writable: boolean; reason?: string; } | undefined,
-    captures: readonly TableFieldObservationCapture[],
-    rowId: string | undefined,
+    captures: readonly QualifiedFieldCapture[],
+    source: CardSourceRef | undefined,
     outputField: string | undefined,
     unavailableReason: string | undefined,
 ) {
-    const eligible = available && !!route?.writable
-        && captures.some(item =>
-            item.outputField === outputField && item.sourceRef.rowId === rowId && item.roles.includes("group")
-        );
+    const eligible = available && !!route?.writable && hasFieldSelection(captures, source, outputField, "group");
     return eligible ? { eligible: true } : {
         eligible: false,
         reason: route?.writable ? unavailableReason ?? "source_unavailable" : route?.reason ?? "unproven_source",
@@ -412,7 +510,10 @@ function placements(project: Project, kanbanId: string) {
         }
     > = [];
     const visit = (item: Item, page: Item, pageTitle: string) => {
-        const resolveValue = () => item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown> | undefined;
+        const resolveValue = () =>
+            item.ydoc.getMap("orderedTree").has(item.key)
+                ? item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown> | undefined
+                : undefined;
         const value = resolveValue();
         if (value?.get("componentType") === "kanban" && value.get("kanbanId") === kanbanId) {
             result.push({

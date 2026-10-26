@@ -1,0 +1,12 @@
+id: KAN-6b9e5d43
+title: Remote MCP discovery of browser-created Kanban boards
+title-ja: ブラウザー作成 Kanban ボードの MCP 経由での参照
+description: Authenticated MCP clients can discover and inspect the live settings, source-backed cards, and lanes of a board created through the normal UI, even after the browser disconnects.
+category: tables
+status: implemented
+acceptance:
+- A Kanban created and configured through the regular browser UI is listed by its identity through the authenticated production MCP endpoint.
+- Saved settings, typed lanes, SQL-ordered cards, and proven source identities match the browser result after the browser disconnects.
+- Remote read observation retains its own authorized source lease without creating or modifying Kanban or Table objects.
+tests:
+- client/e2e/new/kan-kanban-mcp-read-roundtrip-6b9e5d43.spec.ts
