@@ -287,6 +287,27 @@ describe("item-boundary descendant preservation", () => {
         editor.destroy();
     });
 
+    it("refuses empty-wrapper deletion when its only cursor fallback has no text storage", () => {
+        const project = Project.createInstance("unsafe empty fallback");
+        const page = add(project.items, "Page");
+        const empty = add(page.items, "");
+        page.yMap.delete("text");
+        usePage(project, page);
+        const context = editingContext(empty, 0);
+        const editor = new CursorEditor(context);
+        const before = Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc);
+        const updates: Uint8Array[] = [];
+        project.ydoc.on("update", update => updates.push(update));
+
+        editor.deleteForward();
+
+        expect(updates).toEqual([]);
+        expect(Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc)).toEqual(before);
+        expect(ids(page.items)).toEqual([empty.id]);
+        expect([context.itemId, context.offset]).toEqual([empty.id, 0]);
+        editor.destroy();
+    });
+
     it("runs visual promotion as one complete replicated action", () => {
         const project = Project.createInstance("cursor visual promotion");
         const page = add(project.items, "Page");

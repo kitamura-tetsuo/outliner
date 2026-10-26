@@ -1,3 +1,4 @@
+import * as Y from "yjs";
 import { getLogger } from "../logger";
 
 const logger = getLogger("CursorEditor");
@@ -970,29 +971,32 @@ export class CursorEditor {
         };
         const nextItem = findEditable("next");
 
-        let targetItemId: string;
+        let targetItem: import("../../schema/app-schema").Item;
         let targetOffset: number;
 
         if (promotedText) {
-            targetItemId = promotedText.id;
+            targetItem = promotedText;
             targetOffset = 0;
         } else if (nextItem && nextItem.id !== source.id) {
-            targetItemId = nextItem.id;
+            targetItem = nextItem as unknown as import("../../schema/app-schema").Item;
             targetOffset = 0;
         } else {
             const prevItem = findEditable("previous");
             if (prevItem && prevItem.id !== source.id) {
-                targetItemId = prevItem.id;
+                targetItem = prevItem as unknown as import("../../schema/app-schema").Item;
                 targetOffset = prevItem.text ? prevItem.text.length : 0;
             } else {
                 return;
             }
         }
 
+        const focusText = targetItem.yMap.get("text");
+        if (!(focusText instanceof Y.Text) || focusText.doc !== source.ydoc) return;
+
         if (!applyBoundaryTreeEdit({ kind: "promote", source })) return;
         store.clearCursorForItem(cursor.itemId);
 
-        cursor.itemId = targetItemId;
+        cursor.itemId = targetItem.id;
         cursor.offset = targetOffset;
 
         store.setActiveItem(cursor.itemId);

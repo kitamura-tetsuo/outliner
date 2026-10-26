@@ -16,7 +16,10 @@ test.describe("ITM-5794de1e: boundary branches through real keys", () => {
     ) {
         await TestHelpers.focusGlobalTextarea(page);
         await TestHelpers.setCursor(page, id, offset);
-        await expect.poll(async () => (await CursorValidator.getCursorData(page)).cursors[0]?.offset).toBe(offset);
+        await expect.poll(async () => {
+            const cursor = await CursorValidator.getCursorData(page);
+            return [cursor.activeItemId, cursor.cursors.find(entry => entry.itemId === id)?.offset];
+        }).toEqual([id, offset]);
         await page.keyboard.press(key);
     }
 
@@ -93,7 +96,11 @@ test.describe("ITM-5794de1e: boundary branches through real keys", () => {
             expect([cursor.activeItemId, cursor.cursors[0]?.offset]).toEqual([ids.alpha, 5]);
 
             await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
-            const only = await page.evaluate(() => (globalThis as any).generalStore.currentPage.items.at(0).id);
+            const only = await page.evaluate(() => {
+                const currentPage = (globalThis as any).generalStore.currentPage;
+                currentPage.yMap.delete("text");
+                return currentPage.items.at(0).id;
+            });
             await pressAt(page, only, 0, "Delete");
             expect(
                 await page.evaluate(() =>
