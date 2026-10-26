@@ -32,6 +32,22 @@ function findTextSelectionForCursor(
     return { ...selection, ...endpoints };
 }
 
+function selectionStillMatches(
+    userId: string,
+    startItemId: string,
+    startOffset: number,
+    endItemId: string,
+    endOffset: number,
+): boolean {
+    const selection = Object.values(store.selections).find(s => s.userId === userId);
+    if (!selection) return false;
+    const endpoints = textSelectionEndpoints(selection);
+    return selection.startItemId === startItemId
+        && endpoints?.startOffset === startOffset
+        && selection.endItemId === endItemId
+        && endpoints?.endOffset === endOffset;
+}
+
 export class CursorSelection {
     private cursor: import("../Cursor").Cursor;
 
@@ -508,6 +524,15 @@ export class CursorSelection {
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {
             setTimeout(() => {
+                if (
+                    !selectionStillMatches(
+                        this.cursor.userId,
+                        startItemId,
+                        startOffset,
+                        endItemId,
+                        endOffset,
+                    )
+                ) return;
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
@@ -778,6 +803,15 @@ export class CursorSelection {
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {
             setTimeout(() => {
+                if (
+                    !selectionStillMatches(
+                        this.cursor.userId,
+                        startItemId,
+                        startOffset,
+                        endItemId,
+                        endOffset,
+                    )
+                ) return;
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
@@ -801,6 +835,15 @@ export class CursorSelection {
 
             // Additional check and update
             setTimeout(() => {
+                if (
+                    !selectionStillMatches(
+                        this.cursor.userId,
+                        startItemId,
+                        startOffset,
+                        endItemId,
+                        endOffset,
+                    )
+                ) return;
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
                     if (typeof window !== "undefined" && window.DEBUG_MODE) {

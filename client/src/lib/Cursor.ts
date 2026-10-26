@@ -853,6 +853,14 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             tick().then(() => {
                 setTimeout(() => {
                     if (typeof document === "undefined") return;
+                    const currentSelection = getSelectionForUser(this.userId);
+                    if (
+                        !currentSelection
+                        || currentSelection.startItemId !== startItemId
+                        || currentSelection.startOffset !== startOffset
+                        || currentSelection.endItemId !== endItemId
+                        || currentSelection.endOffset !== endOffset
+                    ) return;
                     const selectionElements = document.querySelectorAll(".editor-overlay .selection");
 
                     // Reset selection if not displayed

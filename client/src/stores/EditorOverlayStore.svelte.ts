@@ -1066,7 +1066,7 @@ export class EditorOverlayStore {
         if (clearSelections) {
             const filteredSelectionEntries = [];
             for (const [key, s] of Object.entries(this.selections)) {
-                if (s.userId !== userId) {
+                if ((s.userId || "local") !== userId) {
                     filteredSelectionEntries.push([key, s]);
                 }
             }
