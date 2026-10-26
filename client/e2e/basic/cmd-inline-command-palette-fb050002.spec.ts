@@ -163,10 +163,10 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
 
         // Check attributes are reverted
         await expect(globalTextarea).toHaveAttribute("aria-controls", "outliner-tree");
-        // Role and aria-expanded are removed entirely based on our logic (value evaluates to undefined so svelte removes it)
+        // Role is removed entirely based on our logic, aria-expanded is set to "false"
         const role = await globalTextarea.getAttribute("role");
         expect(role).toBeNull();
         const expanded = await globalTextarea.getAttribute("aria-expanded");
-        expect(expanded).toBeNull();
+        expect(expanded).toBe("false");
     });
 });

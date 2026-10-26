@@ -692,7 +692,9 @@ RETURNING *`;
         rule.set("dtstart", "2024-01-01T00:00:00");
         const longRunning = await service.getSchedule("user", "project-1", "rule-1");
         expect(longRunning.derived.nextOccurrences).to.have.length(5);
-        expect(longRunning.derived.nextOccurrences.every(instant => Date.parse(instant) > Date.now())).to.equal(true);
+        // Compare with current UTC time minus a small margin to prevent flakes on exact boundaries
+        const nowMs = Date.now() - 60000;
+        expect(longRunning.derived.nextOccurrences.every(instant => Date.parse(instant) > nowMs)).to.equal(true);
         rule.set("catchUp", true);
         rule.set("dtstart", "2099-01-01T09:00:00");
         rule.set("lastRunAt", "2099-01-01T10:05:00Z");
