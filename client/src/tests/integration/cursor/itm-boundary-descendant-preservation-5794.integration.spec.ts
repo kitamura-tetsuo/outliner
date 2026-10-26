@@ -247,6 +247,37 @@ describe("item-boundary descendant preservation", () => {
         editor.destroy();
     });
 
+    it("appends source children after a collapsed sibling survivor's existing children", () => {
+        const project = Project.createInstance("cursor backward append merge");
+        const page = add(project.items, "Page");
+        const a = add(page.items, "Alpha");
+        const a1 = add(a.items, "A1");
+        const a2 = add(a.items, "A2");
+        const b = add(page.items, "Beta");
+        const b1 = add(b.items, "B1");
+        b1.yMap.set("metadata", "retained");
+        const b1a = add(b1.items, "B1a");
+        const b2 = add(b.items, "B2");
+        usePage(project, page);
+        generalStore.activeViewModel = { isCollapsed: itemId => itemId === a.id } as never;
+        const context = editingContext(b, 0);
+        const editor = new CursorEditor(context);
+
+        const replica = runAndReplicate(project, () => editor.deleteBackward());
+
+        const replicaPage = new Item(replica.ydoc, replica.tree, page.id);
+        const replicaA = new Item(replica.ydoc, replica.tree, a.id);
+        expect(ids(replicaPage.items)).toEqual([a.id]);
+        expect(treeHas(replica, b.id)).toBe(false);
+        expect(replicaA.text.toString()).toBe("AlphaBeta");
+        expect(ids(replicaA.items)).toEqual([a1.id, a2.id, b1.id, b2.id]);
+        const replicaB1 = new Item(replica.ydoc, replica.tree, b1.id);
+        expect(replicaB1.yMap.get("metadata")).toBe("retained");
+        expect(ids(replicaB1.items)).toEqual([b1a.id]);
+        expect([context.itemId, context.offset]).toEqual([a.id, 5]);
+        editor.destroy();
+    });
+
     it("runs a direct-child forward merge as one complete replicated action", () => {
         const project = Project.createInstance("cursor direct child merge");
         const page = add(project.items, "Page");
@@ -357,6 +388,30 @@ describe("item-boundary descendant preservation", () => {
         expect(treeHas(replica, layout.id)).toBe(false);
         expect(new Item(replica.ydoc, replica.tree, visual.id).yMap.get("binding")).toBe("retained");
         expect([context.itemId, context.offset]).toEqual([text.id, 5]);
+        editor.destroy();
+    });
+
+    it("refuses forward visual removal when the surviving Text storage is not Y.Text", () => {
+        const project = Project.createInstance("unsafe forward visual target");
+        const page = add(project.items, "Page");
+        const text = add(page.items, "Alpha");
+        const visual = page.items.addNode("test");
+        visual.componentType = GRID_COMPONENT_TYPE;
+        text.yMap.set("text", "Alpha");
+        usePage(project, page);
+        const context = editingContext(text, 5);
+        const editor = new CursorEditor(context);
+        const before = Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc);
+        const updates: Uint8Array[] = [];
+        project.ydoc.on("update", update => updates.push(update));
+
+        editor.deleteForward();
+
+        expect(updates).toEqual([]);
+        expect(Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc)).toEqual(before);
+        expect(ids(page.items)).toEqual([text.id, visual.id]);
+        expect([context.itemId, context.offset]).toEqual([text.id, 5]);
+        expect(context.applyToStore).not.toHaveBeenCalled();
         editor.destroy();
     });
 

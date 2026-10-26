@@ -366,7 +366,7 @@ export class CursorEditor {
                     this.deleteEmptyItem();
                     return;
                 }
-                this.mergeWithNextItem();
+                if (!this.mergeWithNextItem()) return;
             }
         }
 
@@ -990,22 +990,24 @@ export class CursorEditor {
     private mergeWithNextItem() {
         const cursor = this.cursor;
         const currentItem = cursor.findTarget();
-        if (!currentItem) return;
+        if (!currentItem) return false;
 
         const nextItem = findNextItem(cursor.itemId);
-        if (!nextItem) return;
+        if (!nextItem) return false;
 
         if (isVisualNode(nextItem as unknown as import("../../schema/app-schema").Item)) {
-            applyBoundaryTreeEdit({
+            const current = currentItem as unknown as import("../../schema/app-schema").Item;
+            const currentBackingText = current.yMap.get("text");
+            if (!(currentBackingText instanceof Y.Text) || currentBackingText.doc !== current.ydoc) return false;
+            return applyBoundaryTreeEdit({
                 kind: "promote",
                 source: nextItem as unknown as import("../../schema/app-schema").Item,
             });
-            return;
         }
 
         const currentText = this.getPlainText(currentItem as unknown as import("../../schema/app-schema").Item);
         const nextText = this.getPlainText(nextItem as unknown as import("../../schema/app-schema").Item);
-        applyBoundaryTreeEdit({
+        return applyBoundaryTreeEdit({
             kind: "merge",
             source: nextItem as unknown as import("../../schema/app-schema").Item,
             survivor: currentItem as unknown as import("../../schema/app-schema").Item,
