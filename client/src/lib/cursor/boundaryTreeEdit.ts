@@ -1,4 +1,5 @@
 import { canAcceptChild } from "$shared/services/outlineNodeKind";
+import * as Y from "yjs";
 import { Item } from "../../schema/app-schema";
 import { isTextNode } from "../../services/outline/nodeTree";
 
@@ -64,6 +65,17 @@ export function applyBoundaryTreeEdit(edit: BoundaryTreeEdit): boolean {
         const survivor = edit.survivor;
         if (survivor.ydoc !== source.ydoc || survivor.tree !== source.tree || survivor.key === sourceKey) return false;
         if (!isTextNode(source) || !isTextNode(survivor)) return false;
+        const sourceText = source.yMap.get("text");
+        const survivorText = survivor.yMap.get("text");
+        // Item.text deliberately presents absent storage as an empty string.
+        // Boundary merges must instead distinguish valid empty Y.Text values
+        // from missing/stale backing data before any child is moved.
+        if (
+            !(sourceText instanceof Y.Text)
+            || !(survivorText instanceof Y.Text)
+            || sourceText.doc !== source.ydoc
+            || survivorText.doc !== survivor.ydoc
+        ) return false;
         if (!exists(tree, survivor.key) || parentOf(tree, survivor.key) === undefined) return false;
         destinationKey = survivor.key;
         destination = survivor;
@@ -95,6 +107,6 @@ export function applyBoundaryTreeEdit(edit: BoundaryTreeEdit): boolean {
 
         if (edit.kind === "merge") edit.survivor.updateText(edit.mergedText);
         tree.deleteNodeAndDescendants(sourceKey);
-    }, "cursor-boundary-edit");
+    }, null);
     return true;
 }

@@ -1,0 +1,13 @@
+id: ITM-5794de1e
+title: Preserve descendants during Delete boundary editing
+title-ja: Delete境界編集で子孫を保持
+description: Delete at an item boundary preserves descendant subtrees while merging text or removing an adjacent visual container.
+category: item-management
+status: implemented
+acceptance:
+- Deleting forward into a Text item preserves its descendant IDs, nesting, and order
+- Removing an adjacent visual container promotes its placements without changing their IDs or metadata
+- Invalid or incomplete structural targets leave the outline and caret unchanged
+tests:
+- client/e2e/core/itm-delete-boundary-preserves-descendants-5794de1e.spec.ts
+- client/src/tests/integration/cursor/itm-boundary-descendant-preservation-5794.integration.spec.ts

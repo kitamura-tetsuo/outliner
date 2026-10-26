@@ -1,8 +1,10 @@
 import { canAcceptChild, GRID_COMPONENT_TYPE, LAYOUT_COMPONENT_TYPE } from "$shared/services/outlineNodeKind";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { applyBoundaryTreeEdit } from "../../../lib/cursor/boundaryTreeEdit";
+import { type CursorEditingContext, CursorEditor } from "../../../lib/cursor/CursorEditor";
 import { Item, Items, Project } from "../../../schema/app-schema";
+import { store as generalStore } from "../../../stores/store.svelte";
 
 function add(items: Items, text: string): Item {
     const item = items.addNode("test");
@@ -13,6 +15,32 @@ function add(items: Items, text: string): Item {
 function ids(items: Items): string[] {
     return Array.from(items, item => item.id);
 }
+
+function editingContext(item: Item, offset: number): CursorEditingContext {
+    return {
+        itemId: item.id,
+        offset,
+        userId: "test",
+        isActive: true,
+        clearSelection: vi.fn(),
+        applyToStore: vi.fn(),
+        findTarget() {
+            return this.itemId === item.id ? item : new Item(item.ydoc, item.tree, this.itemId);
+        },
+        moveToLineStart: vi.fn(),
+        moveToLineEnd: vi.fn(),
+    };
+}
+
+function usePage(project: Project, page: Item): void {
+    generalStore.project = project;
+    generalStore.currentPage = page;
+}
+
+afterEach(() => {
+    generalStore.currentPage = undefined;
+    generalStore.project = undefined;
+});
 
 describe("item-boundary descendant preservation", () => {
     it("merges text and reparents an ordered nested subtree in one update", () => {
@@ -102,5 +130,68 @@ describe("item-boundary descendant preservation", () => {
         expect(Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc)).toEqual(before);
         expect(ids(source.items)).toEqual([textChild.id]);
         expect(ids(project.items)).toEqual([layout.id, source.id]);
+    });
+
+    for (const direction of ["backward", "forward"] as const) {
+        it(`refuses ${direction} merge with missing text storage without any mutation or caret movement`, () => {
+            const project = Project.createInstance(`missing ${direction}`);
+            const page = add(project.items, "Page");
+            const a = add(page.items, "Alpha");
+            const b = add(page.items, "Beta");
+            const child = add(b.items, "Child");
+            usePage(project, page);
+            const context = editingContext(direction === "backward" ? b : a, direction === "backward" ? 0 : 5);
+            const editor = new CursorEditor(context);
+            (direction === "backward" ? a : b).yMap.delete("text");
+            const before = Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc);
+            const updates: Uint8Array[] = [];
+            project.ydoc.on("update", update => updates.push(update));
+
+            if (direction === "backward") editor.deleteBackward();
+            else editor.deleteForward();
+
+            expect(updates).toEqual([]);
+            expect(Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc)).toEqual(before);
+            expect(ids(page.items)).toEqual([a.id, b.id]);
+            expect(ids(b.items)).toEqual([child.id]);
+            expect(context.itemId).toBe(direction === "backward" ? b.id : a.id);
+            expect(context.offset).toBe(direction === "backward" ? 0 : 5);
+            editor.destroy();
+        });
+    }
+
+    it("runs a forward Cursor merge as one complete update on a pre-action replica", () => {
+        const project = Project.createInstance("cursor forward merge");
+        const page = add(project.items, "Page");
+        const a = add(page.items, "Alpha");
+        const b = add(page.items, "Beta");
+        const child = add(b.items, "Child");
+        const grandchild = add(child.items, "Grandchild");
+        child.yMap.set("collapsed", true);
+        usePage(project, page);
+        const context = editingContext(a, 5);
+        const editor = new CursorEditor(context);
+        const replicaDoc = new Y.Doc();
+        Y.applyUpdate(replicaDoc, Y.encodeStateAsUpdate(project.ydoc as unknown as Y.Doc));
+        const updates: Uint8Array[] = [];
+        project.ydoc.on("update", update => updates.push(update));
+
+        editor.deleteForward();
+
+        expect(updates).toHaveLength(1);
+        expect(context.itemId).toBe(a.id);
+        expect(context.offset).toBe(5);
+        Y.applyUpdate(replicaDoc, updates[0]);
+        const replica = Project.fromDoc(replicaDoc as unknown as typeof project.ydoc);
+        const replicaPage = new Item(replica.ydoc, replica.tree, page.id);
+        expect(ids(replicaPage.items)).toEqual([a.id]);
+        const replicaA = new Item(replica.ydoc, replica.tree, a.id);
+        expect(replicaA.text.toString()).toBe("AlphaBeta");
+        expect(ids(replicaA.items)).toEqual([child.id]);
+        const replicaChild = new Item(replica.ydoc, replica.tree, child.id);
+        expect(replicaChild.yMap.get("collapsed")).toBe(true);
+        expect(ids(replicaChild.items)).toEqual([grandchild.id]);
+        expect(replicaChild.text.toString()).toBe("Child");
+        editor.destroy();
     });
 });
