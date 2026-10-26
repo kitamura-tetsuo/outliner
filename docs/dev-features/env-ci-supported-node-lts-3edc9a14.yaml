@@ -1,0 +1,8 @@
+id: ENV-CI-SUPPORTED-NODE-LTS
+title: Active CI workflows use supported Node.js LTS
+description: Verify that the ESLint promotion, documentation deployment, and Stryker nightly workflows explicitly use Node.js 24 while Firebase Functions remains on Node.js 22.
+category: environment
+status: implemented
+components: []
+tests:
+  - scripts/tests/env-ci-supported-node-lts-3edc9a14.spec.ts
