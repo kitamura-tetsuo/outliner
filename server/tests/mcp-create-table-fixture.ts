@@ -62,6 +62,8 @@ export interface Seams {
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
     beforeRecordBatchPublication?: () => Promise<void>;
     beforeGridQueryPublication?: () => Promise<void>;
+    /** Pauses the real OutlinerReadService direct-room disconnect. */
+    beforeReadRoomDisconnect?: (room: string) => Promise<void> | void;
 }
 
 /**
@@ -114,7 +116,21 @@ export async function startMcpTestServer() {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => context.run(req.header("x-request-id") ?? "", next));
-    const reads = new OutlinerReadService(server.hocuspocus, gatedAccess, async () => []);
+    const readHost = {
+        openDirectConnection: async (...args: Parameters<typeof server.hocuspocus.openDirectConnection>) => {
+            const connection = await server.hocuspocus.openDirectConnection(...args);
+            const disconnect = connection.disconnect.bind(connection);
+            connection.disconnect = async () => {
+                await seams.beforeReadRoomDisconnect?.(connection.document?.name ?? "");
+                await disconnect();
+            };
+            return connection;
+        },
+    };
+    const reads = new OutlinerReadService(readHost, gatedAccess, async () => [{
+        projectId: PROJECT,
+        title: `Project ${PROJECT}`,
+    }]);
     const relations = new OutlinerRelationService(server.hocuspocus, gatedAccess, {
         beforeRecordBatchPublication: () => seams.beforeRecordBatchPublication?.() ?? Promise.resolve(),
         beforeGridQueryPublication: () => seams.beforeGridQueryPublication?.() ?? Promise.resolve(),

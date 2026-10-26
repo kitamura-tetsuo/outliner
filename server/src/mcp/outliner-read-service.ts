@@ -173,21 +173,39 @@ export class OutlinerReadService {
         assertId(projectId, "project ID");
         await this.authorize(uid, projectId);
         const connection = await this.hocuspocus.openDirectConnection(`projects/${projectId}`, { context: { uid } });
-        let result: T;
+        let result: T | undefined;
+        let readError: unknown;
+        let readFailed = false;
+        let cleanupError: unknown;
+        let cleanupFailed = false;
         try {
             // Recheck after the asynchronous room opening: a grant revoked
             // while the open was pending must not reach the read.
             await this.authorize(uid, projectId);
-            result = await read(
-                Project.fromDoc(connection.document as unknown as Parameters<typeof Project.fromDoc>[0]),
-            );
+            try {
+                result = await read(
+                    Project.fromDoc(connection.document as unknown as Parameters<typeof Project.fromDoc>[0]),
+                );
+            } catch (error) {
+                readFailed = true;
+                readError = error;
+            }
         } finally {
-            await connection.disconnect();
+            try {
+                await connection.disconnect();
+            } catch (error) {
+                cleanupFailed = true;
+                cleanupError = error;
+            }
         }
-        // Recheck after the read and connection release, before disclosing
-        // the captured result: a grant revoked meanwhile withholds it.
+        // Recheck after the read and connection release before disclosing
+        // either a captured result or a source-specific error. Keeping a
+        // thrown read outcome until here prevents cleanup-time revocation
+        // from leaking entity existence through not_found diagnostics.
         await this.authorize(uid, projectId);
-        return result;
+        if (cleanupFailed) throw cleanupError;
+        if (readFailed) throw readError;
+        return result as T;
     }
 
     async resolveUrl(

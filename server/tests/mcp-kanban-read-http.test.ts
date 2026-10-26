@@ -8,7 +8,7 @@ import {
     getKanbanDefinitionTarget,
 } from "../../shared/src/services/kanbanDefinition.js";
 import { Project } from "../src/schema/app-schema.js";
-import { PROJECT, startMcpTestServer, token, UID } from "./mcp-create-table-fixture.js";
+import { deferred, PROJECT, startMcpTestServer, token, UID } from "./mcp-create-table-fixture.js";
 import { withRoom } from "./server-create-table-fixture.js";
 
 describe("Kanban reads through the production MCP HTTP router", function() {
@@ -167,7 +167,7 @@ describe("Kanban reads through the production MCP HTTP router", function() {
         try {
             await seedBoard(f.server.hocuspocus);
             f.seams.gate = async (_requestId, check) => {
-                if (check === 3) f.acl.revoke("projectUsers", PROJECT, UID);
+                if (check === 3) f.acl.revokeAll(PROJECT);
             };
             const denied = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" }, {
                 requestId: "revoked-metadata",
@@ -238,7 +238,7 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 if (requestId !== "revoked-after-cleanup") return;
                 const open = f.server.hocuspocus.documents.has(`projects/${PROJECT}`);
                 if (open) observedOpenRoom = true;
-                else if (observedOpenRoom) f.acl.revoke("projectUsers", PROJECT, UID);
+                else if (observedOpenRoom) f.acl.revokeAll(PROJECT);
             };
             const denied = await f.mcp.call("query_kanban", { projectId: PROJECT, kanbanId: "board" }, {
                 requestId: "revoked-after-cleanup",
@@ -265,7 +265,7 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 if (requestId !== "revoked-thrown-error") return;
                 const open = f.server.hocuspocus.documents.has(`projects/${PROJECT}`);
                 if (open) observedOpenRoom = true;
-                else if (observedOpenRoom) f.acl.revoke("projectUsers", PROJECT, UID);
+                else if (observedOpenRoom) f.acl.revokeAll(PROJECT);
             };
             const denied = await f.mcp.call("get_kanban", {
                 projectId: PROJECT,
@@ -275,6 +275,37 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             expect(denied.result.isError).to.equal(true);
             expect(denied.payload.code).to.equal("forbidden");
             expect(denied.payload.code).not.to.equal("not_found");
+        } finally {
+            await f.stop();
+        }
+    });
+
+    it("reauthorizes missing Kanban URL errors after room cleanup", async () => {
+        const f = await startMcpTestServer();
+        try {
+            const url = "https://outliner.example/Project%20proj-a/-/kanbans/missing-board";
+            const allowed = await f.mcp.call("resolve_url", { url });
+            expect(allowed.result.isError).to.equal(true);
+            expect(allowed.payload.code).to.equal("not_found");
+            expect(allowed.payload).to.include({ stage: "entity_lookup", entityKind: "kanbans" });
+
+            const reachedCleanup = deferred();
+            const resumeCleanup = deferred();
+            f.seams.beforeReadRoomDisconnect = async room => {
+                if (room !== `projects/${PROJECT}`) return;
+                reachedCleanup.resolve();
+                await resumeCleanup.promise;
+            };
+            const pending = f.mcp.call("resolve_url", { url }, { requestId: "revoked-url-error" });
+            await reachedCleanup.promise;
+            f.acl.revokeAll(PROJECT);
+            resumeCleanup.resolve();
+            const denied = await pending;
+            expect(denied.result.isError).to.equal(true);
+            expect(denied.payload.code).to.equal("forbidden");
+            expect(denied.payload.code).not.to.equal("not_found");
+            expect(denied.payload).not.to.have.property("stage", "entity_lookup");
+            expect(f.server.hocuspocus.documents.has(`projects/${PROJECT}`)).to.equal(false);
         } finally {
             await f.stop();
         }
