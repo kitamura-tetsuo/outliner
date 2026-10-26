@@ -1,5 +1,6 @@
 import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
+import sinon from "sinon";
 import * as Y from "yjs";
 import { OutlinerRelationService } from "../src/mcp/relation-service.js";
 import { OutlinerScheduleService } from "../src/mcp/schedule-service.js";
@@ -690,9 +691,54 @@ RETURNING *`;
         rule.set("catchUp", false);
         rule.set("rrule", "FREQ=HOURLY");
         rule.set("dtstart", "2024-01-01T00:00:00");
-        const longRunning = await service.getSchedule("user", "project-1", "rule-1");
-        expect(longRunning.derived.nextOccurrences).to.have.length(5);
-        expect(longRunning.derived.nextOccurrences.every(instant => Date.parse(instant) > Date.now())).to.equal(true);
+        const calculationClock = sinon.stub(Date, "now");
+        try {
+            const beforeHourCutoff = Date.parse("2026-10-26T03:59:59.900Z");
+            calculationClock.returns(beforeHourCutoff);
+            const longRunning = await service.getSchedule("user", "project-1", "rule-1");
+            const expectedAfterBeforeHourCutoff = [
+                "2026-10-26T04:00:00.000Z",
+                "2026-10-26T05:00:00.000Z",
+                "2026-10-26T06:00:00.000Z",
+                "2026-10-26T07:00:00.000Z",
+                "2026-10-26T08:00:00.000Z",
+            ];
+            expect(longRunning.derived.nextOccurrences).to.deep.equal(expectedAfterBeforeHourCutoff);
+            expect(new Set(longRunning.derived.nextOccurrences).size).to.equal(5);
+            expect(
+                longRunning.derived.nextOccurrences.every((instant, index, occurrences) =>
+                    Date.parse(instant) > beforeHourCutoff
+                    && (index === 0 || Date.parse(instant) > Date.parse(occurrences[index - 1]))
+                ),
+            ).to.equal(true);
+
+            // Reproduce the old two-clock oracle: calculation accepted 04:00,
+            // but a post-await clock sample just over the boundary rejects it.
+            calculationClock.returns(Date.parse("2026-10-26T04:00:00.209Z"));
+            expect(longRunning.derived.nextOccurrences.every(instant => Date.parse(instant) > Date.now())).to.equal(
+                false,
+            );
+            expect(longRunning.derived.nextOccurrences.every(instant => Date.parse(instant) > beforeHourCutoff)).to
+                .equal(true);
+
+            for (const cutoff of ["2026-10-26T04:00:00.000Z", "2026-10-26T04:00:00.001Z"]) {
+                const cutoffEpoch = Date.parse(cutoff);
+                calculationClock.returns(cutoffEpoch);
+                const afterCutoff = await service.getSchedule("user", "project-1", "rule-1");
+                expect(afterCutoff.derived.nextOccurrences).to.deep.equal([
+                    "2026-10-26T05:00:00.000Z",
+                    "2026-10-26T06:00:00.000Z",
+                    "2026-10-26T07:00:00.000Z",
+                    "2026-10-26T08:00:00.000Z",
+                    "2026-10-26T09:00:00.000Z",
+                ]);
+                expect(new Set(afterCutoff.derived.nextOccurrences).size).to.equal(5);
+                expect(afterCutoff.derived.nextOccurrences.every(instant => Date.parse(instant) > cutoffEpoch)).to
+                    .equal(true);
+            }
+        } finally {
+            calculationClock.restore();
+        }
         rule.set("catchUp", true);
         rule.set("dtstart", "2099-01-01T09:00:00");
         rule.set("lastRunAt", "2099-01-01T10:05:00Z");
