@@ -19,11 +19,13 @@ const workflows = [
 for (const workflow of workflows) {
     test(`${workflow} selects Node.js 24 for active jobs`, () => {
         const parsed = YAML.parse(fs.readFileSync(path.join(root, workflow), "utf8"));
-        const jobs = Object.values(parsed.jobs ?? {}) as Array<{ steps?: Array<{ uses?: string; with?: Record<string, unknown> }> }>;
+        const jobs = Object.values(parsed.jobs ?? {}) as Array<
+            { steps?: Array<{ uses?: string; with?: Record<string, unknown>; }>; }
+        >;
         const versions = jobs.flatMap((job) =>
             (job.steps ?? [])
                 .filter((step) => step.uses?.startsWith("actions/setup-node@"))
-                .map((step) => String(step.with?.["node-version"] ?? "")),
+                .map((step) => String(step.with?.["node-version"] ?? ""))
         );
         expect(versions.length).toBeGreaterThan(0);
         expect(versions).toEqual(versions.map(() => "24"));
