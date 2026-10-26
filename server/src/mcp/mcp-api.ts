@@ -276,8 +276,20 @@ export function createMcpRouter(
                         });
                     }
                     return response(validated);
-                } catch (error) {
+                } catch (caught) {
                     await lifecycle?.disclosureFailed();
+                    // A handler can throw only after its own awaited room
+                    // cleanup. Recheck at this final boundary as well so a
+                    // source-specific error cannot disclose existence after
+                    // access was revoked during that cleanup.
+                    let error = caught;
+                    if (options.authorizeDisclosure) {
+                        try {
+                            await options.authorizeDisclosure(args as z.infer<z.ZodObject<T>>);
+                        } catch (authorizationError) {
+                            error = authorizationError;
+                        }
+                    }
                     if (error instanceof McpReadError) {
                         logger.info({
                             event: "mcp_resolution_failed",

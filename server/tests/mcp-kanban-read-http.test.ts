@@ -249,6 +249,36 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             await f.stop();
         }
     });
+
+    it("reauthorizes thrown source errors after their room cleanup", async () => {
+        const f = await startMcpTestServer();
+        try {
+            const allowed = await f.mcp.call("get_kanban", {
+                projectId: PROJECT,
+                kanbanId: "missing-board",
+            });
+            expect(allowed.result.isError).to.equal(true);
+            expect(allowed.payload.code).to.equal("not_found");
+
+            let observedOpenRoom = false;
+            f.seams.gate = async requestId => {
+                if (requestId !== "revoked-thrown-error") return;
+                const open = f.server.hocuspocus.documents.has(`projects/${PROJECT}`);
+                if (open) observedOpenRoom = true;
+                else if (observedOpenRoom) f.acl.revoke("projectUsers", PROJECT, UID);
+            };
+            const denied = await f.mcp.call("get_kanban", {
+                projectId: PROJECT,
+                kanbanId: "missing-board",
+            }, { requestId: "revoked-thrown-error" });
+            expect(observedOpenRoom).to.equal(true);
+            expect(denied.result.isError).to.equal(true);
+            expect(denied.payload.code).to.equal("forbidden");
+            expect(denied.payload.code).not.to.equal("not_found");
+        } finally {
+            await f.stop();
+        }
+    });
 });
 
 async function seedBoard(host: Parameters<typeof withRoom>[0]): Promise<void> {
