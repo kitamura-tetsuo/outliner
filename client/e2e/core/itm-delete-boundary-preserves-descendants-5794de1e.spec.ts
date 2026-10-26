@@ -28,8 +28,9 @@ test.describe("ITM-5794de1e: Delete boundary descendant preservation", () => {
         await page.locator(`.outliner-item[data-item-id="${seeded.b}"] .collapse-btn`).click();
         await expect(page.locator(`.outliner-item[data-item-id="${seeded.child}"]`)).toBeHidden();
 
-        await TestHelpers.setCursor(page, seeded.a, 5);
         await TestHelpers.focusGlobalTextarea(page);
+        await TestHelpers.setCursor(page, seeded.a, 5);
+        await expect.poll(async () => (await CursorValidator.getCursorData(page)).cursors[0]?.offset).toBe(5);
         await page.keyboard.press("Delete");
 
         const state = await page.evaluate((ids) => {
@@ -70,8 +71,9 @@ test.describe("ITM-5794de1e: Delete boundary descendant preservation", () => {
             return { a: a.id, layout: layout.id, z: items.at(2).id, visual1: visual1.id, visual2: visual2.id };
         });
 
-        await TestHelpers.setCursor(page, seeded.a, 5);
         await TestHelpers.focusGlobalTextarea(page);
+        await TestHelpers.setCursor(page, seeded.a, 5);
+        await expect.poll(async () => (await CursorValidator.getCursorData(page)).cursors[0]?.offset).toBe(5);
         await page.keyboard.press("Delete");
 
         const state = await page.evaluate(() => {
@@ -105,8 +107,9 @@ test.describe("ITM-5794de1e: Delete boundary descendant preservation", () => {
             a.yMap.delete("text");
             return { a: a.id, b: b.id, z: items.at(2).id, child: child.id };
         });
-        await TestHelpers.setCursor(page, seeded.b, 0);
         await TestHelpers.focusGlobalTextarea(page);
+        await TestHelpers.setCursor(page, seeded.b, 0);
+        await expect.poll(async () => (await CursorValidator.getCursorData(page)).activeItemId).toBe(seeded.b);
         await page.keyboard.press("Backspace");
 
         const state = await page.evaluate(() => {
