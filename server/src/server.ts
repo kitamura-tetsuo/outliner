@@ -409,6 +409,13 @@ export async function startServer(
                     );
                 }
             },
+            async beforeUnloadDocument(data: import("@hocuspocus/server").beforeUnloadDocumentPayload) {
+                // A delayed unload for an old document must not evict a newer
+                // incarnation that already owns the same room name.
+                if (data.instance.documents.get(data.documentName) !== data.document) {
+                    throw new Error("Refusing stale document unload");
+                }
+            },
             async onDisconnect(data: import("@hocuspocus/server").onDisconnectPayload<ConnectionContext>) {
                 logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
             },
