@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     analyzeReadOnlySelect,
+    embeddableReadOnlySelect,
     parseSqlIdentifiers,
     parseTopLevelInsertTarget,
     validateReadOnlySelect,
@@ -13,6 +14,14 @@ describe("readOnlySql PostgreSQL AST admission", () => {
         expect(validateReadOnlySelect(sql)).toBe(sql.trim());
         expect(() => validateReadOnlySelect("SELECT 'unterminated")).toThrow();
         expect(() => validateReadOnlySelect("SELECT 1; SELECT 2")).toThrow(/exactly one/i);
+    });
+
+    it("removes only the scanner-recognized statement terminator for embedding", () => {
+        expect(embeddableReadOnlySelect("SELECT 'a;b' AS value; -- saved comment", false))
+            .toBe("SELECT 'a;b' AS value -- saved comment");
+        expect(embeddableReadOnlySelect("SELECT 1 AS value; /* saved comment */", false))
+            .toBe("SELECT 1 AS value /* saved comment */");
+        expect(embeddableReadOnlySelect("SELECT ';' AS value", false)).toBe("SELECT ';' AS value");
     });
 
     it("rejects writing CTEs, SELECT INTO, and row locks", () => {

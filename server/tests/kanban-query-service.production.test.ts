@@ -1,13 +1,24 @@
 import { expect } from "chai";
 import * as Y from "yjs";
 import { applyKanbanUpdates, getKanbanDefinitionTarget } from "../../shared/src/services/kanbanDefinition.js";
+import { createSqlCatalogObject } from "../../shared/src/services/sqlCatalog.js";
 import { OutlinerKanbanQueryService } from "../src/mcp/kanban-query-service.js";
 import { releaseWithoutStore } from "../src/mcp/live-room.js";
 import { Project } from "../src/schema/app-schema.js";
 
 const UID = "owner", PROJECT = "kanban-production";
 
-async function seed(host: any, query: string, table = false, settings: Record<string, unknown> = {}) {
+async function seed(
+    host: any,
+    query: string,
+    table = false,
+    settings: Record<string, unknown> = {},
+    tableFixture: {
+        schema?: string;
+        records?: readonly { id: string; values: Record<string, unknown>; }[];
+        project?: (doc: Y.Doc) => void;
+    } = {},
+) {
     installClientRunes();
     const [{ createKanban }, tableDocs] = await Promise.all([
         import("../../client/src/services/yjstable/kanbanDocs.js"),
@@ -18,10 +29,18 @@ async function seed(host: any, query: string, table = false, settings: Record<st
     if (table) {
         const tableId = tableDocs.createTable(canonical.ydoc as never, "Tasks", "tasks", { tableId: "tasks" });
         canonicalTable = tableDocs.getTableHandles(canonical.ydoc as never, tableId)!;
-        tableDocs.setSchemaText(canonicalTable, "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT)");
-        tableDocs.addRecord(canonicalTable, { status: "todo", title: "A" }, "a");
-        tableDocs.addRecord(canonicalTable, { status: "done", title: "B" }, "b");
+        tableDocs.setSchemaText(
+            canonicalTable,
+            tableFixture.schema ?? "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT, title TEXT)",
+        );
+        for (
+            const record of tableFixture.records ?? [
+                { id: "a", values: { status: "todo", title: "A" } },
+                { id: "b", values: { status: "done", title: "B" } },
+            ]
+        ) tableDocs.addRecord(canonicalTable, record.values, record.id);
     }
+    tableFixture.project?.(canonical.ydoc as unknown as Y.Doc);
     createKanban(canonical.ydoc as never, {
         kanbanId: "board",
         query,
@@ -281,6 +300,101 @@ describe("Kanban observation production rooms and client parity", function() {
         expect(unavailable.status).to.equal("unavailable");
         expect(unavailable.reason).to.equal("missing_source");
         expect(unavailable.routes).to.deep.equal([]);
+        await Promise.all(held.map(connection => connection.disconnect()));
+    });
+
+    it("reports rejected stored records as incomplete source materialization", async () => {
+        const held = await seed(
+            server.hocuspocus,
+            "SELECT id, status FROM tasks",
+            true,
+            {},
+            {
+                schema: "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT CHECK(status IN ('todo','done')))",
+                records: [
+                    { id: "valid", values: { status: "todo" } },
+                    { id: "invalid", values: { status: "blocked" } },
+                ],
+            },
+        );
+        const result = await new OutlinerKanbanQueryService(server.hocuspocus, async () => true)
+            .openObservation(UID, PROJECT, "board");
+        expect(result).to.include({ status: "unavailable", reason: "incomplete_source_materialization" });
+        expect(result.lanes).to.deep.equal([]);
+        expect(result.routes).to.deep.equal([]);
+        const source = held[1].document as unknown as Y.Doc;
+        source.transact(() => {
+            const schema = source.getText("schema");
+            schema.delete(0, schema.length);
+            schema.insert(0, "CREATE TABLE tasks(id TEXT PRIMARY KEY, status INTEGER)");
+            const data = source.getMap<Y.Map<unknown>>("data");
+            data.clear();
+            const invalidType = new Y.Map<unknown>();
+            invalidType.set("status", "not-an-integer");
+            data.set("invalid-type", invalidType);
+        });
+        const invalidType = await new OutlinerKanbanQueryService(server.hocuspocus, async () => true)
+            .openObservation(UID, PROJECT, "board");
+        expect(invalidType).to.include({ status: "unavailable", reason: "incomplete_source_materialization" });
+        expect(invalidType.lanes).to.deep.equal([]);
+        expect(invalidType.routes).to.deep.equal([]);
+        await Promise.all(held.map(connection => connection.disconnect()));
+    });
+
+    it("preserves exact CHECK literals when deriving empty physical lanes", async () => {
+        const held = await seed(
+            server.hocuspocus,
+            "SELECT id, status FROM tasks WHERE FALSE",
+            true,
+            {},
+            {
+                schema: "CREATE TABLE tasks(id TEXT PRIMARY KEY, status TEXT CHECK(status IN ('a','b]','it''s','')))",
+                records: [],
+            },
+        );
+        const result = await new OutlinerKanbanQueryService(server.hocuspocus, async () => true)
+            .openObservation(UID, PROJECT, "board");
+        expect(result.status).to.equal("success");
+        expect(result.lanes.map(lane => lane.key)).to.deep.equal(["a", "b]", "it's", ""]);
+        await result.release();
+        await Promise.all(held.map(connection => connection.disconnect()));
+    });
+
+    it("executes admitted SELECTs with trailing comments and literal semicolons", async () => {
+        const held = await seed(server.hocuspocus, "SELECT 'todo;value' AS status; -- saved comment");
+        const service = new OutlinerKanbanQueryService(server.hocuspocus, async () => true);
+        const line = await service.openObservation(UID, PROJECT, "board");
+        expect(line.status).to.equal("success");
+        expect(line.lanes.map(lane => lane.key)).to.deep.equal(["todo;value"]);
+        await line.release();
+        applyKanbanUpdates(getKanbanDefinitionTarget(held[0].document as never, "board")!, {
+            query: "SELECT 'done' AS status; /* saved block comment */",
+        });
+        const block = await service.openObservation(UID, PROJECT, "board");
+        expect(block.status).to.equal("success");
+        expect(block.lanes.map(lane => lane.key)).to.deep.equal(["done"]);
+        await block.release();
+        await Promise.all(held.map(connection => connection.disconnect()));
+    });
+
+    it("counts enriched ENUM column metadata in the complete JSON budget", async () => {
+        // PostgreSQL ENUM labels are limited to 63 bytes. The catalog source
+        // and the labels are both retained in each enriched result column.
+        const labels = Array.from({ length: 1_000 }, (_, index) => `${index}-${"界".repeat(17)}`);
+        const enumSource = `CREATE TYPE huge_state AS ENUM (${labels.map(label => `'${label}'`).join(",")})`;
+        const query = `SELECT status, ${
+            Array.from({ length: 99 }, (_, index) => `NULL::huge_state AS e${index}`).join(",")
+        } FROM tasks WHERE FALSE`;
+        const held = await seed(server.hocuspocus, query, true, {}, {
+            schema: "CREATE TABLE tasks(id TEXT PRIMARY KEY, status huge_state)",
+            records: [],
+            project: doc => void createSqlCatalogObject(doc, "enum", enumSource),
+        });
+        const result = await new OutlinerKanbanQueryService(server.hocuspocus, async () => true)
+            .openObservation(UID, PROJECT, "board");
+        expect(result).to.include({ status: "unavailable", reason: "resource_limit", limit: "jsonBytes" });
+        expect(result.lanes).to.deep.equal([]);
+        expect(result.routes).to.deep.equal([]);
         await Promise.all(held.map(connection => connection.disconnect()));
     });
 

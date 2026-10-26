@@ -1,6 +1,7 @@
 import type { Hocuspocus } from "@hocuspocus/server";
 import crypto from "crypto";
 import * as Y from "yjs";
+import { extractCheckInOptions } from "../../../shared/src/services/checkConstraintOptions.js";
 import {
     getKanbanRegistry,
     type KanbanLaneValue,
@@ -13,7 +14,11 @@ import {
     unambiguousPhysicalColumn,
     unambiguousRowSource,
 } from "../../../shared/src/services/projectQueryProvenance.js";
-import { parseSqlIdentifiers, validateReadOnlySelect } from "../../../shared/src/services/readOnlySql.js";
+import {
+    embeddableReadOnlySelect,
+    parseSqlIdentifiers,
+    validateReadOnlySelect,
+} from "../../../shared/src/services/readOnlySql.js";
 import type {
     SelectProvenanceEvidence,
     SelectRelationEvidence,
@@ -87,6 +92,14 @@ interface TableInput {
     schema: string;
     records: readonly [string, Y.Map<unknown>][];
     revision: string;
+}
+
+class SourceMaterializationError extends Error {
+    readonly cause: unknown;
+    constructor(readonly sourceId: string, cause: unknown) {
+        super("A referenced source could not be completely materialized");
+        this.cause = cause;
+    }
 }
 
 /** Complete, retained server-side observation of one saved Project Kanban. */
@@ -224,7 +237,11 @@ export class OutlinerKanbanQueryService {
                 for (const table of inputs) {
                     if (!table.schema.trim()) continue;
                     await lease.db.exec(table.schema);
-                    await loadRecords(lease.db, table.sqlName, table.records);
+                    try {
+                        await loadRecords(lease.db, table.sqlName, table.records);
+                    } catch (error) {
+                        throw new SourceMaterializationError(table.id, error);
+                    }
                     evidenceSources.push({
                         kind: "table",
                         id: table.id,
@@ -233,7 +250,7 @@ export class OutlinerKanbanQueryService {
                         columns: await columnsFor(lease.db, table.sqlName),
                     });
                 }
-                const normalized = query.replace(/;\s*$/, "");
+                const normalized = embeddableReadOnlySelect(query, false);
                 const result = await lease.db.query<Record<string, unknown>>(
                     `SELECT * FROM (${normalized}\n) AS kanban_observation LIMIT ${LIMITS.rows + 1}`,
                 );
@@ -365,6 +382,24 @@ export class OutlinerKanbanQueryService {
                     );
                 }
                 const metadata = await resultColumnMetadata(lease.db, result.fields ?? [], catalog);
+                const completeJsonBytes = Buffer.byteLength(
+                    JSON.stringify({ rows: result.rows, columns: metadata }),
+                    "utf8",
+                );
+                if (completeJsonBytes > LIMITS.jsonBytes) {
+                    return await this.finish(
+                        uid,
+                        projectId,
+                        project,
+                        sources,
+                        doc,
+                        entry,
+                        settings,
+                        "unavailable",
+                        "resource_limit",
+                        "jsonBytes",
+                    );
+                }
                 const routes = roleRoutes(settings, analysis, evidence.sources);
                 await this.options.beforeFinalCertification?.();
                 await this.authorize(uid, projectId);
@@ -399,7 +434,11 @@ export class OutlinerKanbanQueryService {
             } catch (error) {
                 if (error instanceof McpReadError && error.code === "forbidden") throw error;
                 await this.authorize(uid, projectId);
-                const reason = isMissingRelation(error) ? "missing_source" : "execution_error";
+                const reason = isMissingRelation(error)
+                    ? "missing_source"
+                    : error instanceof SourceMaterializationError
+                    ? "incomplete_source_materialization"
+                    : "execution_error";
                 return await this.finish(
                     uid,
                     projectId,
@@ -408,7 +447,7 @@ export class OutlinerKanbanQueryService {
                     doc,
                     entry,
                     settings,
-                    reason === "missing_source" ? "unavailable" : "error",
+                    reason === "execution_error" ? "error" : "unavailable",
                     reason,
                 );
             } finally {
@@ -610,21 +649,15 @@ async function groupingChoices(
     )).rows[0];
     const enumLabels = enums.find(value => value.name === column?.udt_name)?.labels;
     if (enumLabels) return [...enumLabels];
-    const checks = await db.query<{ definition: string; }>(
-        "SELECT pg_get_constraintdef(c.oid) AS definition FROM pg_constraint c "
+    const checks = await db.query<{ expression: string; }>(
+        "SELECT pg_get_expr(c.conbin, c.conrelid) AS expression FROM pg_constraint c "
             + "JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace "
             + "WHERE n.nspname='public' AND t.relname=$1 AND c.contype='c'",
         [source.sqlName],
     );
-    // Decode PostgreSQL's canonical rendering of the compiler-supported
-    // `field IN ('value', ...)` constraint. Provenance remains AST/native-binding based.
-    for (const { definition } of checks.rows) {
-        const columnMatch = definition.match(/CHECK\s*\(\(?\s*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))/i);
-        if ((columnMatch?.[1] ?? columnMatch?.[2]) !== field || !/=\s*ANY\s*\(/i.test(definition)) continue;
-        const array = definition.match(/ARRAY\s*\[([\s\S]*?)\]/i);
-        if (!array) continue;
-        const values = [...array[1].matchAll(/'((?:[^']|'')*)'/g)].map(match => match[1].replace(/''/g, "'"));
-        if (values.length) return values;
+    for (const { expression } of checks.rows) {
+        const parsed = extractCheckInOptions(expression);
+        if (parsed?.column === field) return parsed.options;
     }
     return [];
 }

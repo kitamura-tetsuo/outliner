@@ -98,6 +98,18 @@ describe("parseCreateTable (PGlite introspection)", () => {
         expect(status?.checkOptions).toEqual(["open", "done"]);
     });
 
+    it("preserves bracket, apostrophe, and empty CHECK options", async () => {
+        const parsed = await parseCreateTable(
+            "CREATE TABLE t (id TEXT PRIMARY KEY, status TEXT CHECK (status IN ('a', 'b]', 'it''s', '')))",
+        );
+        expect(parsed.columns.find((column) => column.name === "status")?.checkOptions).toEqual([
+            "a",
+            "b]",
+            "it's",
+            "",
+        ]);
+    });
+
     it("publishes only whole-expression finite text checks", async () => {
         const supported = await parseCreateTable(
             `CREATE TABLE t (id TEXT, "状態" TEXT CHECK ("状態" IN ('進行中', 'it''s];')))`,

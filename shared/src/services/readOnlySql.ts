@@ -190,3 +190,23 @@ export function analyzeReadOnlySelect(sql: string, requireExplicitAliases = true
 export function validateReadOnlySelect(sql: string, requireExplicitAliases = true): string {
     return analyzeReadOnlySelect(sql, requireExplicitAliases).sql;
 }
+
+/**
+ * Return a validated SELECT with its scanner-recognized statement terminator
+ * removed so it can be embedded as a subquery. Comments and string contents
+ * are otherwise preserved verbatim.
+ */
+export function embeddableReadOnlySelect(sql: string, requireExplicitAliases = true): string {
+    const validated = validateReadOnlySelect(sql, requireExplicitAliases);
+    const terminators = scanSync(validated).tokens.filter(token => token.tokenName === "ASCII_59");
+    if (terminators.length === 0) return validated;
+    if (terminators.length !== 1) throw new Error("Query must contain exactly one statement");
+    const terminator = terminators[0];
+    const bytes = new TextEncoder().encode(validated);
+    return new TextDecoder().decode(
+        new Uint8Array([
+            ...bytes.slice(0, terminator.start),
+            ...bytes.slice(terminator.end),
+        ]),
+    );
+}
