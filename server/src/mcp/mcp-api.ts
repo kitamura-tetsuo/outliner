@@ -8,7 +8,11 @@ import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
 import type { CreateTableTool } from "./create-table-tool.js";
-import type { OutlinerKanbanReadService } from "./kanban-read-service.js";
+import {
+    KANBAN_RESPONSE_LIFECYCLE,
+    type KanbanResponseLifecycle,
+    type OutlinerKanbanReadService,
+} from "./kanban-read-service.js";
 import { McpEffectError } from "./mcp-error.js";
 import { type McpErrorCode, McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 import { OutlinerRelationService } from "./relation-service.js";
@@ -229,9 +233,16 @@ export function createMcpRouter(
             const callback = (async (args: unknown) => {
                 const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
                 const auditBase = buildAuditBase(name, typedArgs);
+                let lifecycle: KanbanResponseLifecycle | undefined;
                 try {
                     const result = await handler(args as z.infer<z.ZodObject<T>>);
+                    lifecycle = result && typeof result === "object"
+                        ? (result as { [KANBAN_RESPONSE_LIFECYCLE]?: KanbanResponseLifecycle; })[
+                            KANBAN_RESPONSE_LIFECYCLE
+                        ]
+                        : undefined;
                     const validated = toolOutputSchemas[name].parse(result) as z.infer<typeof z.json>;
+                    lifecycle?.disclosureSucceeded();
                     if (options.mutating) {
                         const fields = result && typeof result === "object"
                             ? result as Record<string, unknown>
@@ -263,6 +274,7 @@ export function createMcpRouter(
                     }
                     return response(validated);
                 } catch (error) {
+                    await lifecycle?.disclosureFailed();
                     if (error instanceof McpReadError) {
                         logger.info({
                             event: "mcp_resolution_failed",
@@ -358,7 +370,7 @@ export function createMcpRouter(
                 "List current Kanban definitions without executing their queries.",
                 {
                     projectId: z.string(),
-                    limit: z.number().int().optional(),
+                    limit: z.number().int().min(1).max(500).optional(),
                     cursor: z.string().optional(),
                 },
                 args => kanbanService.list(uid, args.projectId, args.limit, args.cursor),
@@ -370,8 +382,8 @@ export function createMcpRouter(
                 {
                     projectId: z.string(),
                     kanbanId: z.string(),
-                    placementOffset: z.number().int().optional(),
-                    placementLimit: z.number().int().optional(),
+                    placementOffset: z.number().int().nonnegative().optional(),
+                    placementLimit: z.number().int().min(1).max(500).optional(),
                 },
                 args =>
                     kanbanService.get(uid, args.projectId, args.kanbanId, args.placementOffset, args.placementLimit),
@@ -383,8 +395,8 @@ export function createMcpRouter(
                 {
                     projectId: z.string(),
                     kanbanId: z.string(),
-                    cardOffset: z.number().int().optional(),
-                    maxCards: z.number().int().optional(),
+                    cardOffset: z.number().int().nonnegative().optional(),
+                    maxCards: z.number().int().min(1).max(500).optional(),
                 },
                 args => kanbanService.query(uid, args.projectId, args.kanbanId, args.cardOffset, args.maxCards),
                 { strict: true },
