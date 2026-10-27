@@ -1,0 +1,12 @@
+id: KAN-7b94d1e2
+title: Remote creation and configuration of Kanban definitions
+title-ja: Kanban 定義のリモート作成と設定
+description: Authenticated MCP clients can create independent Kanban definitions and safely update exact settings without executing their SQL or changing source data.
+category: tables
+status: implemented
+acceptance:
+- create_kanban creates a fresh standalone definition with exact settings or defaults and no source records or placements.
+- update_kanban applies an exact partial patch only while its get_kanban observation remains current for the selected settings.
+- Dry runs are effect-free, successful saves are persistence-acknowledged, and operation IDs provide bounded process-local replay.
+tests:
+- server/tests/mcp-kanban-definition-tools.test.ts

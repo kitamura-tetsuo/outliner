@@ -18,6 +18,7 @@ import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { CreateTableTool } from "./mcp/create-table-tool.js";
 import { OutlinerGridPresentationService } from "./mcp/grid-presentation.js";
+import { KanbanDefinitionTools } from "./mcp/kanban-definition-tools.js";
 import { KanbanObservationService } from "./mcp/kanban-observations.js";
 import { OutlinerKanbanReadService } from "./mcp/kanban-read-service.js";
 import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
@@ -541,6 +542,12 @@ export async function startServer(
         // One long-lived instance: its replay window spans MCP requests.
         new UpdateGridPresentationTool(gridPresentation, checkContainerAccess),
         new OutlinerKanbanReadService(hocuspocus, checkContainerAccess, kanbanObservations),
+        new KanbanDefinitionTools(
+            hocuspocus,
+            checkContainerAccess,
+            kanbanObservations,
+            persistence ? createDocumentStore(persistence) : undefined,
+        ),
     ));
 
     // Log rotation endpoint
