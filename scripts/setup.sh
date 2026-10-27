@@ -30,11 +30,15 @@ handle_error() {
   fi
 }
 
-trap 'handle_error ${LINENO} $?' ERR
-
 # Load common configuration and functions
 source "${SCRIPT_DIR}/common-config.sh"
 source "${SCRIPT_DIR}/common-functions.sh"
+
+# Fail before installation or PM2 startup. In particular, do not let PM2 keep
+# restarting Firebase when the host Java runtime can never launch it.
+"${SCRIPT_DIR}/require-java-21.sh"
+
+trap 'handle_error ${LINENO} $?' ERR
 
 # Fix permissions before proceeding
 fix_permissions() {

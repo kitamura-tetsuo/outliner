@@ -1,4 +1,14 @@
+FROM eclipse-temurin:21-jre-noble AS java-runtime
+
 FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+
+# Firebase CLI requires Java 21+. Copy the maintained, multi-architecture
+# Temurin runtime from its official image instead of relying on Bookworm's
+# older default-jre package.
+COPY --from=java-runtime /opt/java/openjdk /opt/java/openjdk
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+RUN java -version && test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^ *java.specification.version = //p')" -ge 21
 
 # Install system dependencies if needed
 RUN apt-get update && \
@@ -10,7 +20,6 @@ RUN apt-get update && \
     gnupg \
     lsb-release \
     xauth \
-    default-jre \
     python3.11-venv \
     python3-pip \
     pre-commit \
