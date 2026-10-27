@@ -1,0 +1,9 @@
+id: ENV-8d42be71
+title: Reproducible Python YAML validator runtime
+title-ja: Reproducible Python YAML validator runtime
+description: Pin the Python minor and PyYAML release used by CI while preserving malformed-YAML failure propagation.
+category: environment
+status: implemented
+components: []
+tests:
+- scripts/tests/env-ci-yaml-validator-runtime-8d42be71.spec.ts
