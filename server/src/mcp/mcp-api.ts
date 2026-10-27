@@ -8,6 +8,7 @@ import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
 import type { CreateTableTool } from "./create-table-tool.js";
+import type { OutlinerKanbanCardMutationService } from "./kanban-card-mutations.js";
 import {
     KANBAN_RESPONSE_LIFECYCLE,
     type KanbanResponseLifecycle,
@@ -102,6 +103,7 @@ export function createMcpRouter(
     tableCreation?: CreateTableTool,
     gridPresentationTool?: UpdateGridPresentationTool,
     kanbanService?: OutlinerKanbanReadService,
+    kanbanMutations?: OutlinerKanbanCardMutationService,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -209,6 +211,8 @@ export function createMcpRouter(
                 ? `schedule:${typedArgs.ruleId}`
                 : typeof typedArgs.gridId === "string"
                 ? `grid:${typedArgs.gridId}`
+                : typeof typedArgs.kanbanId === "string"
+                ? `kanban:${typedArgs.kanbanId}`
                 : typeof typedArgs.viewId === "string"
                 ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
                 : typeof typedArgs.tableId === "string"
@@ -423,6 +427,46 @@ export function createMcpRouter(
                 {
                     strict: true,
                     authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+        }
+        if (kanbanMutations) {
+            const sourceRef = z.strictObject({
+                kind: z.enum(["table", "system"]),
+                id: z.string(),
+                sqlName: z.string(),
+                rowId: z.string(),
+            });
+            const common = {
+                projectId: z.string(),
+                kanbanId: z.string(),
+                sourceRef,
+                observationToken: z.string(),
+                operationId: z.string().min(1).max(200).refine(value => value.trim().length > 0),
+                dryRun: z.boolean().optional(),
+            };
+            tool(
+                "update_kanban_card",
+                "Update one displayed Kanban card field through its guarded physical source record.",
+                { ...common, outputField: z.string().min(1).refine(value => value.trim().length > 0), value: z.json() },
+                args => kanbanMutations.update(uid, args),
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
+                    authorizeDisclosure: args => kanbanMutations.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+            tool(
+                "move_kanban_card",
+                "Move one Kanban card by updating its guarded grouping source field to an exact eligible lane.",
+                { ...common, destination: z.string().nullable() },
+                args => kanbanMutations.move(uid, args),
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
+                    authorizeDisclosure: args => kanbanMutations.authorizeDisclosure(uid, args.projectId),
                 },
             );
         }

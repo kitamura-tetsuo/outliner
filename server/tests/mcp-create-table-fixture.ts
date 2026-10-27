@@ -5,6 +5,7 @@ import type { WriteStream } from "node:fs";
 import request from "supertest";
 import * as Y from "yjs";
 import { CreateTableTool } from "../src/mcp/create-table-tool.js";
+import { OutlinerKanbanCardMutationService } from "../src/mcp/kanban-card-mutations.js";
 import { OutlinerKanbanReadService } from "../src/mcp/kanban-read-service.js";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
 import { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
@@ -135,6 +136,12 @@ export async function startMcpTestServer() {
         beforeRecordBatchPublication: () => seams.beforeRecordBatchPublication?.() ?? Promise.resolve(),
         beforeGridQueryPublication: () => seams.beforeGridQueryPublication?.() ?? Promise.resolve(),
     });
+    const kanbanMutations = new OutlinerKanbanCardMutationService(
+        server.hocuspocus,
+        gatedAccess,
+        server.kanbanObservations,
+        store,
+    );
     app.use(createMcpRouter(
         reads,
         undefined,
@@ -144,6 +151,7 @@ export async function startMcpTestServer() {
         tool,
         undefined,
         new OutlinerKanbanReadService(server.hocuspocus, gatedAccess, server.kanbanObservations),
+        kanbanMutations,
     ));
     const mcp = rpcClient(app);
     return {
