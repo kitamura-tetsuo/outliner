@@ -113,8 +113,8 @@ test("CI builds the supported devcontainer and probes real required emulator end
     expect(workflow).toContain("bash scripts/smoke-test-devcontainer-firebase.sh");
     expect(smoke).toContain("--only auth,firestore,storage");
     expect(smoke).toContain("127.0.0.1:59099/emulator/v1/projects/");
-    expect(smoke).toContain("127.0.0.1:58080/v1/projects/");
-    expect(smoke).toContain("127.0.0.1:59200/storage/v1/b");
+    expect(smoke).toContain("127.0.0.1:58080/emulator/v1/projects/");
+    expect(smoke).toContain("127.0.0.1:59200/v0/b/${PROJECT_ID}.appspot.com/o");
     expect(smoke).toContain("kill -0");
     expect(smoke).toContain("Timed out waiting");
 });

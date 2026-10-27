@@ -28,7 +28,8 @@ EMULATOR_PID=$!
 
 probe() {
   local name="$1"
-  local url="$2"
+  local method="$2"
+  local url="$3"
   local deadline=$((SECONDS + 120))
 
   while (( SECONDS < deadline )); do
@@ -37,7 +38,10 @@ probe() {
       cat "$LOG_FILE" >&2
       return 1
     fi
-    if curl --fail --silent --show-error --max-time 2 "$url" >/dev/null 2>&1; then
+    if curl --fail --silent --show-error --max-time 2 \
+      --request "$method" \
+      --header "Authorization: Bearer owner" \
+      "$url" >/dev/null 2>&1; then
       echo "${name} emulator is ready at ${url}"
       return 0
     fi
@@ -49,8 +53,8 @@ probe() {
   return 1
 }
 
-probe "Auth" "http://127.0.0.1:59099/emulator/v1/projects/${PROJECT_ID}/config"
-probe "Firestore" "http://127.0.0.1:58080/v1/projects/${PROJECT_ID}/databases/(default)/documents"
-probe "Storage" "http://127.0.0.1:59200/storage/v1/b?project=${PROJECT_ID}"
+probe "Auth" GET "http://127.0.0.1:59099/emulator/v1/projects/${PROJECT_ID}/config"
+probe "Firestore" DELETE "http://127.0.0.1:58080/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents"
+probe "Storage" GET "http://127.0.0.1:59200/v0/b/${PROJECT_ID}.appspot.com/o"
 
 echo "Firebase Auth, Firestore, and Storage emulators are healthy in the devcontainer image."
