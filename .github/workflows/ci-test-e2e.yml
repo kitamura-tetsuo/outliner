@@ -26,10 +26,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -57,7 +57,7 @@ jobs:
 
       - name: Upload collection guard logs
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-selection-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: job_logs/
@@ -100,7 +100,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           clean: true
 
@@ -309,7 +309,7 @@ jobs:
 
       - name: Upload Logs & Artifacts
         if: failure() || startsWith(matrix.project, 'firefox-')
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-artifacts-${{ env.E2E_BROWSER }}-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
