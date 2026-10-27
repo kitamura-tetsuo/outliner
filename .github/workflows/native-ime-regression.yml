@@ -33,12 +33,12 @@ jobs:
     env:
       IME_ARTIFACTS: ${{ github.workspace }}/job_logs/native-ime-setup/${{ matrix.case }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Exercise the production setup package boundary
         run: bash scripts/poc/native-ime/test-setup.sh '${{ matrix.case }}'
       - name: Upload setup evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: native-ime-firefox-setup-${{ matrix.case }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: job_logs/native-ime-setup/
@@ -55,7 +55,7 @@ jobs:
       IME_ARTIFACTS: ${{ github.workspace }}/job_logs/native-ime-regression/ubuntu
       IME_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Record execution identity
         run: |
           mkdir -p "$IME_ARTIFACTS"
@@ -94,7 +94,7 @@ jobs:
         run: python3 scripts/native-ime-regression/report.py ubuntu "$IME_ARTIFACTS"
       - name: Upload evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: native-ime-ubuntu-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -115,14 +115,14 @@ jobs:
       # Forward the evaluated revision into WSL for Compose interpolation during collection.
       WSLENV: NATIVE_IME_APPLICATION_SHA/u
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # The application under test is checked out separately from the harness, at the
       # revision this workflow run evaluates.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           path: work/native-ime-app
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Served identity verifier controls
@@ -154,7 +154,7 @@ jobs:
         run: python scripts/native-ime-regression/report.py windows artifacts/windows-native-ime
       - name: Upload evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: native-ime-windows-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

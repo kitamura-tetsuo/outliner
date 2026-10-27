@@ -36,12 +36,12 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # Full history for accurate file modification dates
 
       - name: Setup Node.js Environment
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: 24
 
@@ -89,7 +89,7 @@ jobs:
           cat detect-output.log | tail -50
 
       - name: Upload detection results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eslint-promotion-candidates
@@ -100,7 +100,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.detect.outputs.candidates_found == 'true'
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: |
