@@ -10,3 +10,7 @@ acceptance:
 - Dry runs are effect-free, successful saves are persistence-acknowledged, and operation IDs provide bounded process-local replay.
 tests:
 - server/tests/mcp-kanban-definition-tools.test.ts
+- server/tests/mcp-kanban-definition-authorization.test.ts
+- server/tests/mcp-kanban-definition-contract.test.ts
+- server/tests/mcp-kanban-definition-currentness.test.ts
+- server/tests/mcp-kanban-definition-replay.test.ts
