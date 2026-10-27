@@ -79,7 +79,7 @@ test("setup and the emulator production entrypoint enforce preflight", () => {
     expect(common).not.toContain("temurin21-binaries/releases/download");
 });
 
-test("the production entrypoint launches every required emulator after Java preflight", () => {
+test("the production entrypoint constructs the required emulator command after Java preflight", () => {
     const binDirectory = fakeJava("21.0.8");
     const invocationFile = path.join(binDirectory, "firebase-invocation");
     fs.writeFileSync(
@@ -100,4 +100,21 @@ test("the production entrypoint launches every required emulator after Java pref
     expect(invocations).toContain("--version");
     expect(invocations).toContain("emulators:start --only auth,firestore,functions,hosting,storage");
     expect(invocations).toContain("--config firebase.emulator.json --project outliner-d57b0");
+});
+
+test("CI builds the supported devcontainer and probes real required emulator endpoints", () => {
+    const workflow = fs.readFileSync(
+        path.join(repoRoot, ".github/workflows/ci-devcontainer-firebase.yml"),
+        "utf8",
+    );
+    const smoke = fs.readFileSync(path.join(repoRoot, "scripts/smoke-test-devcontainer-firebase.sh"), "utf8");
+
+    expect(workflow).toContain("docker build --tag outliner-devcontainer-firebase");
+    expect(workflow).toContain("bash scripts/smoke-test-devcontainer-firebase.sh");
+    expect(smoke).toContain("--only auth,firestore,storage");
+    expect(smoke).toContain("127.0.0.1:59099/emulator/v1/projects/");
+    expect(smoke).toContain("127.0.0.1:58080/v1/projects/");
+    expect(smoke).toContain("127.0.0.1:59200/storage/v1/b");
+    expect(smoke).toContain("kill -0");
+    expect(smoke).toContain("Timed out waiting");
 });

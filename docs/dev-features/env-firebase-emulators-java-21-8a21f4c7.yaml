@@ -10,5 +10,7 @@ components:
 - scripts/require-java-21.sh
 - scripts/setup.sh
 - scripts/start-firebase-emulators.sh
+- scripts/smoke-test-devcontainer-firebase.sh
+- .github/workflows/ci-devcontainer-firebase.yml
 tests:
 - scripts/tests/env-firebase-emulators-java-21-8a21f4c7.spec.ts
