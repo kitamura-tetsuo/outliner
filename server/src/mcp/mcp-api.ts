@@ -8,6 +8,7 @@ import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
 import type { CreateTableTool } from "./create-table-tool.js";
+import type { KanbanDefinitionTools } from "./kanban-definition-tools.js";
 import type { KanbanLifecycleTools } from "./kanban-lifecycle-tools.js";
 import {
     KANBAN_RESPONSE_LIFECYCLE,
@@ -103,6 +104,7 @@ export function createMcpRouter(
     tableCreation?: CreateTableTool,
     gridPresentationTool?: UpdateGridPresentationTool,
     kanbanService?: OutlinerKanbanReadService,
+    kanbanDefinitionTools?: KanbanDefinitionTools,
     kanbanLifecycle?: KanbanLifecycleTools,
 ) {
     const router = express.Router();
@@ -203,7 +205,7 @@ export function createMcpRouter(
             projectId: typeof typedArgs.projectId === "string" ? typedArgs.projectId : undefined,
             // create_table's entity is the Table it created, known only from
             // its result; an unsupported input field must never name one.
-            entity: name === "create_table"
+            entity: name === "create_table" || name === "create_kanban"
                 ? undefined
                 : typeof typedArgs.kanbanId === "string"
                 ? `kanban:${typedArgs.kanbanId}`
@@ -213,6 +215,8 @@ export function createMcpRouter(
                 ? `schedule:${typedArgs.ruleId}`
                 : typeof typedArgs.gridId === "string"
                 ? `grid:${typedArgs.gridId}`
+                : typeof typedArgs.kanbanId === "string"
+                ? `kanban:${typedArgs.kanbanId}`
                 : typeof typedArgs.viewId === "string"
                 ? `${typeof typedArgs.kind === "string" ? typedArgs.kind : "view"}:${typedArgs.viewId}`
                 : typeof typedArgs.tableId === "string"
@@ -240,6 +244,7 @@ export function createMcpRouter(
                 const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
                 const auditBase = buildAuditBase(name, typedArgs);
                 let lifecycle: KanbanResponseLifecycle | undefined;
+                let establishedEffect: McpEffectError["effect"] | undefined;
                 try {
                     const result = await handler(args as z.infer<z.ZodObject<T>>);
                     lifecycle = result && typeof result === "object"
@@ -247,6 +252,20 @@ export function createMcpRouter(
                             KANBAN_RESPONSE_LIFECYCLE
                         ]
                         : undefined;
+                    if (options.mutating && result && typeof result === "object") {
+                        const fields = result as Record<string, unknown>;
+                        // Retain effect truth separately from the result. If the
+                        // final disclosure authorization fails, its sanitized
+                        // forbidden response must not turn an acknowledged
+                        // mutation (or no-op) into a false no-effect audit row.
+                        establishedEffect = {
+                            applied: typeof fields.applied === "boolean" ? fields.applied : null,
+                            replayed: fields.replayed === true,
+                            ...(typeof fields.kanbanId === "string"
+                                ? { entity: `kanban:${fields.kanbanId}` }
+                                : {}),
+                        };
+                    }
                     await options.authorizeDisclosure?.(args as z.infer<z.ZodObject<T>>);
                     const validated = toolOutputSchemas[name].parse(result) as z.infer<typeof z.json>;
                     lifecycle?.disclosureSucceeded();
@@ -260,6 +279,8 @@ export function createMcpRouter(
                                 ? `grid:${fields.gridId}`
                                 : name === "create_table" && typeof fields.tableId === "string"
                                 ? `table:${fields.tableId}`
+                                : name === "create_kanban" && typeof fields.kanbanId === "string"
+                                ? `kanban:${fields.kanbanId}`
                                 : auditBase.entity,
                             ...(name === "create_table" && fields.applied === true
                                 ? { creationOutcome: "created" as const }
@@ -290,8 +311,11 @@ export function createMcpRouter(
                     if (options.authorizeDisclosure) {
                         try {
                             await options.authorizeDisclosure(args as z.infer<z.ZodObject<T>>);
-                        } catch (authorizationError) {
-                            error = authorizationError;
+                        } catch {
+                            const effect = caught instanceof McpEffectError ? caught.effect : establishedEffect;
+                            error = effect
+                                ? new McpEffectError("forbidden", "Project is inaccessible", {}, effect)
+                                : new McpReadError("forbidden", "Project is inaccessible");
                         }
                     }
                     if (error instanceof McpReadError) {
@@ -916,6 +940,52 @@ export function createMcpRouter(
                 },
             );
         }
+        if (kanbanDefinitionTools) {
+            const settingShape = {
+                name: z.string().optional(),
+                query: z.string().optional(),
+                groupField: z.string().optional(),
+                titleField: z.string().optional(),
+                detailFields: z.array(z.string()).optional(),
+                laneOrder: z.array(z.union([z.string(), z.null()])).optional(),
+            };
+            tool(
+                "create_kanban",
+                "Create an independent Kanban definition without records, placement, or SQL execution.",
+                {
+                    projectId: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/),
+                    settings: z.strictObject(settingShape).optional(),
+                    operationId: z.string().min(1).max(200).refine(value => value.trim().length > 0),
+                    dryRun: z.boolean().optional(),
+                },
+                args => kanbanDefinitionTools.create(uid, args),
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
+                    authorizeDisclosure: args => kanbanDefinitionTools.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+            tool(
+                "update_kanban",
+                "Update explicitly supplied Kanban settings using an observationToken from get_kanban.",
+                {
+                    projectId: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/),
+                    kanbanId: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/),
+                    observationToken: z.string().min(1),
+                    changes: z.strictObject(settingShape),
+                    operationId: z.string().min(1).max(200).refine(value => value.trim().length > 0),
+                    dryRun: z.boolean().optional(),
+                },
+                args => kanbanDefinitionTools.update(uid, args),
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
+                    authorizeDisclosure: args => kanbanDefinitionTools.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+        }
 
         // Replace the MCP SDK's own `tools/call` dispatch (installed by
         // `mcp.registerTool()` via `McpServer.setToolRequestHandlers()`)
@@ -968,7 +1038,10 @@ export function createMcpRouter(
                 }
                 const parsed = entry.inputSchema.safeParse(typedArgs);
                 if (!parsed.success) {
-                    if (name === "create_grid" || name === "create_table" || name === "update_grid_presentation") {
+                    if (
+                        name === "create_grid" || name === "create_table" || name === "update_grid_presentation"
+                        || name === "create_kanban" || name === "update_kanban"
+                    ) {
                         recordMcpAudit({
                             ...buildAuditBase(name, typedArgs),
                             outcome: "invalid_argument",

@@ -5,6 +5,7 @@ import type { WriteStream } from "node:fs";
 import request from "supertest";
 import * as Y from "yjs";
 import { CreateTableTool } from "../src/mcp/create-table-tool.js";
+import { KanbanDefinitionTools } from "../src/mcp/kanban-definition-tools.js";
 import { KanbanLifecycleTools } from "../src/mcp/kanban-lifecycle-tools.js";
 import { OutlinerKanbanLifecycleService } from "../src/mcp/kanban-lifecycle.js";
 import { OutlinerKanbanReadService } from "../src/mcp/kanban-read-service.js";
@@ -146,6 +147,13 @@ export async function startMcpTestServer() {
         tool,
         undefined,
         new OutlinerKanbanReadService(server.hocuspocus, gatedAccess, server.kanbanObservations),
+        new KanbanDefinitionTools(
+            server.hocuspocus,
+            gatedAccess,
+            server.kanbanObservations,
+            store,
+            () => (seams.now ?? Date.now)(),
+        ),
         new KanbanLifecycleTools(
             new OutlinerKanbanLifecycleService(server.kanbanObservations, gatedAccess, store),
             () => (seams.now ?? Date.now)(),

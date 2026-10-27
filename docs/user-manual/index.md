@@ -53,7 +53,6 @@ The page view provides toolbars for page-specific actions. At the top right of t
 At the bottom of the page (below the outline tree), the editor toolbar provides:
 
 - **Add Item:** Adds a new item to the bottom of the page.
-- **Add Image:** Opens a file dialog to upload an image and insert it at the bottom of the page. You can also upload images by dragging and dropping them directly onto the editor.
 - **History / Diff:** Opens the history panel to view past edits and differences.
 - **Keyboard Shortcuts:** Opens a list of available keyboard shortcuts.
 
@@ -70,8 +69,7 @@ Click the sidebar toggle button in the top-left corner to access the main sideba
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse and navigate pages within the current project.
 - **Tables:** View and manage database tables.
-- **Object Manager:** Manage Grids, Calendars, Tables, and Schedules centrally.
-- **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **+** (Add scheduled SQL) button in the section header.
+- **Object Manager:** Manage Grids, Calendars, and Tables centrally.
 - **Settings:** Access project configurations. This section also includes quick links to the documentation (**Docs**) and source code (**GitHub**).
 
 ---
@@ -210,16 +208,6 @@ With an active selection you can:
 
 ---
 
-## Attachments
-
-You can easily add attachments to your items.
-
-### Uploading Attachments
-
-You can upload attachments by dragging and dropping an image or file directly onto the editor, or by clicking the **Add Image** button at the top right of the page.
-
----
-
 ## Advanced Features
 
 Outliner includes advanced capabilities like aliases and schedule rules.
@@ -227,13 +215,10 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Mermaid Diagrams:** A Diagram is a project-owned Mermaid source. It keeps its own identity in the project's diagrams registry, and any page can transclude it. Type `/New Mermaid diagram` on an empty item to create one, or `/Insert transclusion` to reuse an existing Diagram.
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
-- **Dependency-aware duplication:** Grid, Table, Schedule, and Calendar copies can include referenced, referencing, or all connected objects recursively—a duplicated Schedule brings along the Tables it reads and writes, and a duplicated Calendar brings along every Table its query reads. The confirmation previews the object count and omitted references; Table copies can include or omit their rows, cross-project Schedule copies start disabled, and cross-project copies clear excluded links.
-- **Object Manager:** open it from the sidebar to browse every Grid, Calendar, Table and Schedule in this project. Each Grid/Calendar row lists the Pages it is directly placed on — click one to jump straight to that block. Click a name to rename it in place; select several objects and use the compact toolbar's literal find/replace, whose before/after preview opens as a popover so the object list never shifts; delete is undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the same dependency graph duplication uses — Dependencies, Dependents, or All connected — so selecting one Table and choosing Dependents adds every Grid, Schedule and Calendar that reads it. "Duplicate selected" then copies exactly that checked set — never a recomputed scope — into this or another project, with the same undo/redo as the rest of the toolbar; an individual Grid/Table/Schedule/Calendar page's own Duplicate button opens Object Manager with it preselected instead of asking for a scope itself. Use "Place on Page…" or drag a Grid/Calendar row onto a sidebar Page to add another placement of that existing object without duplicating its definition.
-- **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Schedules page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled. For recurring tasks, the SQL of a rule runs at every occurrence and appends the task of that day or week to an occurrences table based on a template. Re-running the same occurrence changes nothing and never clears a completed checkbox, as the history is maintained.
+- **Dependency-aware duplication:** Grid, Table, and Calendar copies can include referenced, referencing, or all connected objects recursively—a duplicated Calendar brings along every Table its query reads. The confirmation previews the object count and omitted references; Table copies can include or omit their rows, and cross-project copies clear excluded links.
+- **Object Manager:** open it from the sidebar to browse every Grid, Calendar, and Table in this project. Each Grid/Calendar row lists the Pages it is directly placed on — click one to jump straight to that block. Click a name to rename it in place; select several objects and use the compact toolbar's literal find/replace, whose before/after preview opens as a popover so the object list never shifts; delete is undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the same dependency graph duplication uses — Dependencies, Dependents, or All connected — so selecting one Table and choosing Dependents adds every Grid and Calendar that reads it. "Duplicate selected" then copies exactly that checked set — never a recomputed scope — into this or another project, with the same undo/redo as the rest of the toolbar; an individual Grid/Table/Calendar page's own Duplicate button opens Object Manager with it preselected instead of asking for a scope itself. Use "Place on Page…" or drag a Grid/Calendar row onto a sidebar Page to add another placement of that existing object without duplicating its definition.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
-- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
-- **Remote MCP diagnostics and repairs:** Outliner's on-premises MCP endpoint lets compatible AI clients resolve canonical project/page/Table/Grid/Calendar URLs, inspect bounded semantic data, validate Table schemas and Grid queries without mutation, and trace Grid ordering and rendering. Paste a normal Outliner project or page URL into the client; `resolve_url` converts its human-readable titles to stable IDs. Text, Grid, Calendar, and Layout remain distinct semantic node kinds instead of being flattened into fake text. Every call uses the signed-in user's project access. Connect with `outliner.read` for diagnostics; writes remain unavailable until the user separately approves `outliner.write`. Before a repair, validate it, read the current revision, dry-run with `expectedRevision` and an `operationId`, prove no change, then apply and re-read. Stale revisions fail instead of overwriting concurrent work, and retrying an operation ID cannot duplicate an applied mutation. Tool results explicitly report truncation, ordering provenance, and structured error codes. See the [MCP operator guide](../chatgpt-mcp-integration.md) for the catalog, limits, audit privacy, and production checklist.
 
 ---
 
@@ -297,14 +282,13 @@ On touch, tap a cell to activate it, double-tap to edit, or long-press for range
 
 Choose a destination Page when duplicating, or drag a Grid's outline handle to a Page in the sidebar. Hold Ctrl (Option on macOS) while dragging to copy instead of move.
 
-### Tables, Grids, Calendars and Schedules are separate
+### Tables, Grids, and Calendars are separate
 
-A table, a grid, a calendar and a schedule are four independent things, and each has its own management page.
+A table, a grid, and a calendar are three independent things, and each has its own management page.
 
 - **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
 - **Grid** (`/-/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
 - **Calendar** (`/-/calendars/<project>/<calendar>`) owns a query and role assignments for its result columns (e.g., title, start date), but no data of its own. It dynamically visualizes the underlying table data based on its view settings. A calendar page links back to the tables its query reads.
-- **Schedule** (`/-/schedules/<project>`, one rule at `/-/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
 
 ### Collaboration
 
@@ -348,11 +332,3 @@ Here is a complete list of shortcuts. You can also view this list by clicking th
 | Move item up            | `Alt + ↑`                        | `Option + ↑`                   |
 | Move item down          | `Alt + ↓`                        | `Option + ↓`                   |
 | Open context menu       | `Shift + F10` or `Menu`          | `Shift + F10` or `Menu`        |
-
-## Diagnosing recurring Schedules with an MCP client
-
-An authorized MCP client recognizes the Schedule list `/{project}/-/schedules` and detail `/{project}/-/schedules/{ruleId}` URLs. Starting from a Table URL, use bounded Schedule references or `list_schedules` to find rules that write the Table or read it in SQL. Schedule rules remain project objects, not children of Tables.
-
-The Schedule read response separates **stored** definition and scheduler status from **derived** validation, dependencies, and occurrence instants. DTSTART is a local wall-clock value interpreted in the named IANA timezone; DST gaps, completion, enabled state, catch-up, and RRULE limits affect derived instants. Preview executes against isolated copies of the real Table schemas and records and returns bounded rows without changing live data. Apply a correction only with write access and the matching revision. Updating never runs the Schedule; run-now is separate.
-
-For a recurring-task Table with a numeric `order` column, resolve the Table, discover its write-target Schedule, inspect exact SQL and the last error, and preview SQL using `"order"`. Verify preview rows and unchanged revisions, then update only SQL with the returned revision and operation ID. Reread the rule; a row appears only after a later scheduler or separately approved run-now execution. Audit logs redact SQL, values, tokens, and credentials.
