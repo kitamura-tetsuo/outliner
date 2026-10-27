@@ -195,6 +195,7 @@ onDestroy(async () => {
         onclick={toggleSidebar}
         aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
         title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+        aria-expanded={isSidebarOpen ? "true" : "false"}
     >
         {#if isSidebarOpen}
             <!-- Close Icon (X) -->
