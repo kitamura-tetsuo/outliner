@@ -1,5 +1,9 @@
 import { expect } from "chai";
-import { getKanbanRegistry } from "../../shared/src/services/kanbanDefinition.js";
+import {
+    getKanbanDefinitionTarget,
+    getKanbanRegistry,
+    readKanbanSettings,
+} from "../../shared/src/services/kanbanDefinition.js";
 import { deferred, PROJECT, settleMicrotasks, startMcpTestServer } from "./mcp-create-table-fixture.js";
 import { waitFor, withRoom } from "./server-create-table-fixture.js";
 
@@ -44,6 +48,44 @@ describe("Kanban mutation in-flight replay", function() {
             });
         } finally {
             held.resolve();
+            await fixture.stop();
+        }
+    });
+
+    it("returns the retained update receipt without overwriting an intervening peer edit", async () => {
+        const fixture = await startMcpTestServer();
+        try {
+            const created = await fixture.mcp.call("create_kanban", {
+                projectId: PROJECT,
+                settings: { name: "initial" },
+                operationId: "update-replay-create",
+            });
+            const kanbanId = created.payload.kanbanId as string;
+            const observed = (await fixture.mcp.call("get_kanban", { projectId: PROJECT, kanbanId })).payload;
+            const args = {
+                projectId: PROJECT,
+                kanbanId,
+                observationToken: observed.observationToken,
+                changes: { name: "first update" },
+                operationId: "retained-update",
+            };
+            const original = await fixture.mcp.call("update_kanban", args);
+            expect(original.payload).to.include({ saved: true, applied: true, replayed: false });
+
+            let registryWrites = 0;
+            await withRoom(fixture.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const registry = getKanbanRegistry(doc as never);
+                getKanbanDefinitionTarget(doc as never, kanbanId)!.entry.set("name", "peer edit");
+                registry.observeDeep(() => registryWrites++);
+            });
+
+            const replay = await fixture.mcp.call("update_kanban", args);
+            expect(replay.payload).to.deep.equal({ ...original.payload, replayed: true });
+            expect(registryWrites).to.equal(0);
+            await withRoom(fixture.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                expect(readKanbanSettings(getKanbanRegistry(doc as never).get(kanbanId)!).name).to.equal("peer edit");
+            });
+        } finally {
             await fixture.stop();
         }
     });
