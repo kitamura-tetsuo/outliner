@@ -47,6 +47,9 @@ jobs:
         # successful build does not prove the binding loads, so exercise it.
         run: |
           docker run --rm -w /usr/src/app/server yjs-ws-server:ci node -e "
+            if (process.versions.node.split('.')[0] !== '24') {
+              throw new Error('Expected Node 24, got ' + process.version);
+            }
             const Database = require('better-sqlite3');
             const db = new Database(':memory:');
             db.exec('CREATE TABLE t (a INTEGER)');
@@ -85,6 +88,32 @@ jobs:
             }
           "
 
+      - name: Verify the production server starts on Node 24
+        run: |
+          docker run -d --name yjs-ws-server-smoke \
+            -e OUTLINER_DEPLOYMENT_MODE=onprem \
+            -e OUTLINER_LOCAL_PASSWORD=container-smoke-password \
+            -e OUTLINER_DATA_DIR=/tmp/outliner-data \
+            yjs-ws-server:ci
+          trap 'docker rm -f yjs-ws-server-smoke >/dev/null 2>&1 || true' EXIT
+
+          for attempt in $(seq 1 30); do
+            if docker exec yjs-ws-server-smoke node -e "
+              if (process.versions.node.split('.')[0] !== '24') {
+                throw new Error('Expected Node 24, got ' + process.version);
+              }
+              fetch('http://127.0.0.1:7093/health').then(response => {
+                if (!response.ok) throw new Error('Health status ' + response.status);
+              });
+            "; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs yjs-ws-server-smoke
+          exit 1
+
   server-debug-image:
     name: Build server debug image
     runs-on: ubuntu-latest
@@ -113,6 +142,9 @@ jobs:
       - name: Verify native modules load in the built image
         run: |
           docker run --rm -w /usr/src/app/server yjs-ws-server:ci-debug node -e "
+            if (process.versions.node.split('.')[0] !== '24') {
+              throw new Error('Expected Node 24, got ' + process.version);
+            }
             const Database = require('better-sqlite3');
             const db = new Database(':memory:');
             db.exec('CREATE TABLE t (a INTEGER)');

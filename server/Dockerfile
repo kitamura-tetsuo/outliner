@@ -1,5 +1,5 @@
 # Use an official Node.js runtime as a parent image
-FROM node:22-slim
+FROM node:24-bookworm-slim
 
 # Build context is the repository ROOT (see .github/workflows/build-server.yml and
 # docker-compose.yml). The server compiles the framework-neutral schema from
