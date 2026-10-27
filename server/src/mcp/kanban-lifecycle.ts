@@ -84,7 +84,7 @@ export class OutlinerKanbanLifecycleService {
             const project = Project.fromDoc(guard.projectDoc as never);
             guard.assertCurrent({ kind: "definition", kanbanId: request.kanbanId, keys: [] });
             const page = uniqueById(project, request.destination.pageId);
-            if (!page || page.parent !== null || nodeKindOf(page) !== "text") {
+            if (!page || !isTopLevel(page) || nodeKindOf(page) !== "text") {
                 throw new McpReadError("not_found", "Destination Page was not found");
             }
             const layout = request.destination.layoutId === undefined
@@ -93,7 +93,7 @@ export class OutlinerKanbanLifecycleService {
             if (request.destination.layoutId !== undefined && (!layout || nodeKindOf(layout) !== "layout")) {
                 throw new McpReadError("kind_mismatch", "Destination Layout was not found or is not a Layout");
             }
-            if (layout && containingPage(layout) !== page) {
+            if (layout && !sameItem(containingPage(layout), page)) {
                 throw new McpReadError(
                     "validation_failed",
                     "Destination Layout is not contained by the specified Page",
@@ -104,9 +104,9 @@ export class OutlinerKanbanLifecycleService {
             await this.authorize(uid, request.projectId);
             this.assertDefinition(guard, request.kanbanId, []);
             if (
-                rawOrUndefined(page) !== pageMap || page.parent !== null || nodeKindOf(page) !== "text"
+                rawOrUndefined(page) !== pageMap || !isTopLevel(page) || nodeKindOf(page) !== "text"
                 || (layout && (rawOrUndefined(layout) !== layoutMap || nodeKindOf(layout) !== "layout"
-                    || containingPage(layout) !== page))
+                    || !sameItem(containingPage(layout), page)))
             ) {
                 throw new McpReadError("stale_revision", "Destination changed before placement");
             }
@@ -325,5 +325,15 @@ function containingPage(item: Item): Item | undefined {
     let current: Item | undefined = item;
     let parent: Item | undefined;
     while ((parent = parentItem(current))) current = parent;
-    return current && current.parent === null ? current : undefined;
+    return current && isTopLevel(current) ? current : undefined;
+}
+function isTopLevel(item: Item): boolean {
+    try {
+        return item.tree.getNodeParentFromKey(item.key) === "root";
+    } catch {
+        return false;
+    }
+}
+function sameItem(left: Item | undefined, right: Item): boolean {
+    return !!left && left.key === right.key && rawOrUndefined(left) === rawOrUndefined(right);
 }

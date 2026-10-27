@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { type KanbanLifecycleResult, type OutlinerKanbanLifecycleService } from "./kanban-lifecycle.js";
-import { McpReadError } from "./mcp-error.js";
+import { McpEffectError, McpReadError } from "./mcp-error.js";
 import { IdempotencyCache } from "./mutation-contract.js";
 
 export type LifecycleToolArgs = {
@@ -49,12 +49,19 @@ export class KanbanLifecycleTools {
                 throw error;
             }
         });
-        await this.domain.authorize(uid, args.projectId);
+        try {
+            await this.domain.authorize(uid, args.projectId);
+        } catch {
+            const applied = settled.status === "known" ? settled.result.applied : null;
+            throw new McpEffectError("forbidden", "Project is inaccessible", {}, { applied, replayed });
+        }
         if (settled.status === "unknown") {
-            throw new McpReadError("internal_failure", "Kanban lifecycle outcome is unknown", {
-                applied: null,
-                replayed,
-            });
+            throw new McpEffectError(
+                "internal_failure",
+                "Kanban lifecycle outcome is unknown",
+                { applied: null, replayed },
+                { applied: null, replayed },
+            );
         }
         return { ...settled.result, replayed };
     }

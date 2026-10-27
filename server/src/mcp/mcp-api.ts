@@ -205,6 +205,8 @@ export function createMcpRouter(
             // its result; an unsupported input field must never name one.
             entity: name === "create_table"
                 ? undefined
+                : typeof typedArgs.kanbanId === "string"
+                ? `kanban:${typedArgs.kanbanId}`
                 : typeof typedArgs.relation === "string"
                 ? typedArgs.relation
                 : typeof typedArgs.ruleId === "string"
