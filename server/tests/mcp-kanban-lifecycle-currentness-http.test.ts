@@ -57,6 +57,17 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
         const f = await startMcpTestServer();
         try {
             const first = await seed(f, 102);
+            const preserved = await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => ({
+                tables: [...doc.getMap<import("yjs").Map<unknown>>("yjsTables").entries()].map(([id, table]) => ({
+                    id,
+                    name: table.get("name"),
+                    sqlName: table.get("sqlName"),
+                    docGuid: (table.get("doc") as import("yjs").Doc | undefined)?.guid,
+                })),
+                grids: doc.getMap("yjsGrids").toJSON(),
+                pageId: Project.fromDoc(doc).items.at(0)!.id,
+                unrelatedItemId: Project.fromDoc(doc).items.at(0)!.items.at(0)!.id,
+            }));
             const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 const project = Project.fromDoc(doc);
@@ -82,7 +93,18 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
                 expect(remaining).to.have.length(1);
                 expect(remaining[0]!.kanbanId).to.equal("other");
                 expect(getKanbanRegistry(doc).has("board")).to.equal(false);
-                expect(doc.getMap("yjsTables").has("table-existing")).to.equal(true);
+                expect(
+                    [...doc.getMap<import("yjs").Map<unknown>>("yjsTables").entries()].map(([id, table]) => ({
+                        id,
+                        name: table.get("name"),
+                        sqlName: table.get("sqlName"),
+                        docGuid: (table.get("doc") as import("yjs").Doc | undefined)?.guid,
+                    })),
+                ).to.deep.equal(preserved.tables);
+                expect(doc.getMap("yjsGrids").toJSON()).to.deep.equal(preserved.grids);
+                const page = Project.fromDoc(doc).items.at(0)!;
+                expect(page.id).to.equal(preserved.pageId);
+                expect(page.items.at(0)!.id).to.equal(preserved.unrelatedItemId);
             });
         } finally {
             await f.stop();
