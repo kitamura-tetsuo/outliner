@@ -82,7 +82,7 @@ export class OutlinerKanbanLifecycleService {
         const guard = this.acquire(uid, request);
         try {
             const project = Project.fromDoc(guard.projectDoc as never);
-            guard.assertCurrent({ kind: "definition", kanbanId: request.kanbanId, keys: [] });
+            this.assertDefinition(guard, request.kanbanId, []);
             const page = uniqueById(project, request.destination.pageId);
             if (!page || !isTopLevel(page) || nodeKindOf(page) !== "text") {
                 throw new McpReadError("not_found", "Destination Page was not found");

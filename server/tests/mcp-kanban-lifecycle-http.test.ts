@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import crypto from "node:crypto";
 import { createKanbanEntry, getKanbanRegistry } from "../../shared/src/services/kanbanDefinition.js";
 import { Project } from "../src/schema/app-schema.js";
 import { auditRecords, PROJECT, startMcpTestServer } from "./mcp-create-table-fixture.js";
@@ -31,12 +32,37 @@ describe("Kanban lifecycle through the registered production MCP boundary", func
                 kanbanId: "board",
                 observationToken: observed.payload.observationToken,
             };
+            const preview = await f.mcp.call("place_kanban", {
+                ...common,
+                destination: { pageId: seeded.pageId, layoutId: seeded.layoutId },
+                operationId: "preview-layout",
+                dryRun: true,
+            });
+            expect(preview.payload).to.include({ applied: false, replayed: false, wouldChange: true });
+            expect(preview.payload).not.to.have.property("placementId");
+            const invalidSpan = await f.mcp.call("place_kanban", {
+                ...common,
+                destination: { pageId: seeded.pageId },
+                columnSpan: 5,
+                operationId: "invalid-root-span",
+            });
+            expect(invalidSpan.payload).to.include({ code: "invalid_argument" });
             const root = await f.mcp.call("place_kanban", {
                 ...common,
                 destination: { pageId: seeded.pageId },
                 operationId: "place-root",
             });
             expect(root.payload).to.include({ applied: true, pageId: seeded.pageId, parentId: seeded.pageId });
+            const rootReplay = await f.mcp.call("place_kanban", {
+                ...common,
+                destination: { pageId: seeded.pageId },
+                operationId: "place-root",
+            });
+            expect(rootReplay.payload).to.include({
+                applied: true,
+                replayed: true,
+                placementId: root.payload.placementId,
+            });
             const layout = await f.mcp.call("place_kanban", {
                 ...common,
                 destination: { pageId: seeded.pageId, layoutId: seeded.layoutId },
@@ -101,12 +127,13 @@ describe("Kanban lifecycle through the registered production MCP boundary", func
             f.seams.afterStore = room => {
                 if (room === `projects/${PROJECT}`) throw new Error("confirmation lost");
             };
+            const operationId = `unknown-place-${crypto.randomUUID()}`;
             const args = {
                 projectId: PROJECT,
                 kanbanId: "board",
                 observationToken: observed.payload.observationToken,
                 destination: { pageId },
-                operationId: "unknown-place",
+                operationId,
             };
             const first = await f.mcp.call("place_kanban", args, { requestId: "unknown-first" });
             const replay = await f.mcp.call("place_kanban", args, { requestId: "unknown-replay" });
@@ -116,7 +143,7 @@ describe("Kanban lifecycle through the registered production MCP boundary", func
                 const page = Project.fromDoc(doc).findPage(pageId)!;
                 expect([...page.items].filter(item => item.kanbanId === "board")).to.have.length(1);
             });
-            const records = await auditRecords(["unknown-place"]);
+            const records = await auditRecords([operationId]);
             expect(
                 records.map(record => ({ entity: record.entity, applied: record.applied, replayed: record.replayed })),
             )
