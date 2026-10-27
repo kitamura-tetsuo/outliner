@@ -18,6 +18,7 @@ const supportedMajors: Record<string, number> = {
     "actions/checkout": 7,
     "actions/configure-pages": 6,
     "actions/deploy-pages": 5,
+    "actions/download-artifact": 8,
     "actions/setup-java": 6,
     "actions/setup-node": 7,
     "actions/setup-python": 7,
@@ -47,6 +48,12 @@ function findStep(workflow: Record<string, any>, job: string, name: string): Rec
     const step = workflow.jobs[job].steps.find((candidate: Record<string, any>) => candidate.name === name);
     expect(step, `${job} must retain the ${name} step`).toBeDefined();
     return step;
+}
+
+function expectMultiFileArtifactArchive(step: Record<string, any>): void {
+    expect(step.with.path.trim().split("\n").length, "the regression requires multiple evidence inputs")
+        .toBeGreaterThan(1);
+    expect(step.with.archive, "upload-artifact v7 requires archive mode for a named multi-file artifact").toBe(true);
 }
 
 describe("active external action references", () => {
@@ -89,6 +96,26 @@ test("artifact and Pages deployment producers retain their consumer-facing contr
     expect(artifact.if).toBe("failure() || startsWith(matrix.project, 'firefox-')");
     expect(artifact.with.name).toBe(
         "e2e-artifacts-${{ env.E2E_BROWSER }}-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}",
+    );
+    expectMultiFileArtifactArchive(artifact);
+
+    const incompatibleArtifact = structuredClone(artifact);
+    incompatibleArtifact.with.archive = false;
+    expect(() => expectMultiFileArtifactArchive(incompatibleArtifact)).toThrowError(
+        "upload-artifact v7 requires archive mode for a named multi-file artifact",
+    );
+
+    const roundtripUpload = findStep(e2e, "artifact-roundtrip", "Upload representative E2E evidence");
+    const roundtripDownload = findStep(e2e, "artifact-roundtrip", "Download representative E2E evidence");
+    expectMultiFileArtifactArchive(roundtripUpload);
+    expect(roundtripUpload.with.name).toBe(
+        artifact.with.name
+            .replace("${{ env.E2E_BROWSER }}", "firefox")
+            .replace("${{ matrix.project }}", "artifact-roundtrip"),
+    );
+    expect(roundtripDownload.with.name).toBe(roundtripUpload.with.name);
+    expect(findStep(e2e, "artifact-roundtrip", "Verify downloaded E2E evidence").run).toContain(
+        "cmp artifact-roundtrip/source/runtime.log artifact-roundtrip/downloaded/runtime.log",
     );
 
     const pages = parseWorkflow("docs-deploy.yml");
