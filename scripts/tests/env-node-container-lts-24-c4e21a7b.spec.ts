@@ -29,6 +29,12 @@ test("container smoke checks reject a Node major other than 24", () => {
     expect(serverWorkflow).toMatch(
         /docker run -d --name yjs-ws-server-smoke[\s\S]*fetch\('http:\/\/127\.0\.0\.1:7093\/health'\)/,
     );
+    expect(serverWorkflow).not.toMatch(
+        /docker run -d --name yjs-ws-server-smoke[\s\S]{0,500}OUTLINER_DEPLOYMENT_MODE=onprem/,
+    );
+    expect(serverWorkflow).toMatch(/fetch\('http:\/\/127\.0\.0\.1:7093\/api\/deployment'\)/);
+    expect(serverWorkflow).toMatch(/body\.deploymentMode !== 'cloud'/);
+    expect(serverWorkflow).toMatch(/Cloud server exited before becoming ready/);
 
     const onpremDockerfile = read("Dockerfile.onprem");
     expect(onpremDockerfile).toMatch(/HEALTHCHECK[\s\S]*process\.versions\.node\.split\('\.'\)\[0\]!==\'24\'/);

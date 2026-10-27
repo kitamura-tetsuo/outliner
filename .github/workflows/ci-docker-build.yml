@@ -88,25 +88,45 @@ jobs:
             }
           "
 
-      - name: Verify the production server starts on Node 24
+      - name: Verify the default cloud server starts on Node 24
         run: |
           docker run -d --name yjs-ws-server-smoke \
-            -e OUTLINER_DEPLOYMENT_MODE=onprem \
-            -e OUTLINER_LOCAL_PASSWORD=container-smoke-password \
-            -e OUTLINER_DATA_DIR=/tmp/outliner-data \
+            -e ALLOW_ALL_ORIGINS=true \
+            -e DISABLE_JOB_SCHEDULER=true \
+            -e FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:59099 \
+            -e FIRESTORE_EMULATOR_HOST=127.0.0.1:58080 \
+            -e FIREBASE_PROJECT_ID=outliner-d57b0 \
+            -e VITE_FIREBASE_API_KEY=emulator-key \
+            -e VITE_FIREBASE_AUTH_DOMAIN=outliner-d57b0.firebaseapp.com \
+            -e VITE_FIREBASE_PROJECT_ID=outliner-d57b0 \
+            -e VITE_FIREBASE_APP_ID=1:0:web:emulator \
+            -e OAUTH_ACCESS_TOKEN_SECRET=container-smoke-secret \
+            -e OAUTH_ISSUER=http://127.0.0.1:7093 \
             yjs-ws-server:ci
           trap 'docker rm -f yjs-ws-server-smoke >/dev/null 2>&1 || true' EXIT
 
           for attempt in $(seq 1 30); do
             if docker exec yjs-ws-server-smoke node -e "
-              if (process.versions.node.split('.')[0] !== '24') {
-                throw new Error('Expected Node 24, got ' + process.version);
-              }
-              fetch('http://127.0.0.1:7093/health').then(response => {
-                if (!response.ok) throw new Error('Health status ' + response.status);
-              });
+              (async () => {
+                if (process.versions.node.split('.')[0] !== '24') {
+                  throw new Error('Expected Node 24, got ' + process.version);
+                }
+                const health = await fetch('http://127.0.0.1:7093/health');
+                if (!health.ok) throw new Error('Health status ' + health.status);
+                const deployment = await fetch('http://127.0.0.1:7093/api/deployment');
+                if (!deployment.ok) throw new Error('Deployment status ' + deployment.status);
+                const body = await deployment.json();
+                if (body.deploymentMode !== 'cloud') {
+                  throw new Error('Expected cloud deployment, got ' + JSON.stringify(body));
+                }
+              })();
             "; then
               exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' yjs-ws-server-smoke)" != true ]; then
+              echo 'Cloud server exited before becoming ready' >&2
+              docker logs yjs-ws-server-smoke
+              exit 1
             fi
             sleep 1
           done
