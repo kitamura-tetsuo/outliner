@@ -264,6 +264,40 @@ export const toolOutputSchemas = {
         wouldChange: z.boolean().optional(),
         candidate: z.looseObject({ physicalField: z.string(), value: z.json() }).optional(),
     }),
+    create_kanban: z.strictObject({
+        saved: z.boolean(),
+        applied: z.boolean(),
+        replayed: z.boolean(),
+        projectId: z.string(),
+        kanbanId: z.string().optional(),
+        settings: kanbanSettings.optional(),
+        candidateSettings: kanbanSettings.optional(),
+        wouldChange: z.boolean().optional(),
+        projection: z.strictObject({ evaluated: z.literal(false) }),
+    }).refine(value =>
+        value.saved
+            ? value.applied && value.kanbanId !== undefined && value.settings !== undefined
+                && value.candidateSettings === undefined && value.wouldChange === undefined
+            : !value.applied && !value.replayed && value.kanbanId === undefined && value.settings === undefined
+                && value.candidateSettings !== undefined && value.wouldChange !== undefined
+    ),
+    update_kanban: z.strictObject({
+        saved: z.boolean(),
+        applied: z.boolean(),
+        replayed: z.boolean(),
+        projectId: z.string(),
+        kanbanId: z.string(),
+        acceptedChanges: z.record(z.string(), z.json()).optional(),
+        candidateChanges: z.record(z.string(), z.json()).optional(),
+        wouldChange: z.boolean().optional(),
+        projection: z.strictObject({ evaluated: z.literal(false) }),
+    }).refine(value =>
+        value.saved
+            ? value.acceptedChanges !== undefined && value.candidateChanges === undefined
+                && value.wouldChange === undefined
+            : !value.applied && !value.replayed && value.acceptedChanges === undefined
+                && value.candidateChanges !== undefined && value.wouldChange !== undefined
+    ),
     get_grid: z.looseObject({
         insertTargetTableId: z.string().optional(),
         sourceDiagnostics: sourceDiagnostics,

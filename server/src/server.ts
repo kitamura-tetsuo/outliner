@@ -19,6 +19,7 @@ import { logger as defaultLogger } from "./logger.js";
 import { CreateTableTool } from "./mcp/create-table-tool.js";
 import { OutlinerGridPresentationService } from "./mcp/grid-presentation.js";
 import { OutlinerKanbanCardMutationService } from "./mcp/kanban-card-mutations.js";
+import { KanbanDefinitionTools } from "./mcp/kanban-definition-tools.js";
 import { KanbanObservationService } from "./mcp/kanban-observations.js";
 import { OutlinerKanbanReadService } from "./mcp/kanban-read-service.js";
 import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
@@ -550,6 +551,12 @@ export async function startServer(
         new UpdateGridPresentationTool(gridPresentation, checkContainerAccess),
         new OutlinerKanbanReadService(hocuspocus, checkContainerAccess, kanbanObservations),
         kanbanMutations,
+        new KanbanDefinitionTools(
+            hocuspocus,
+            checkContainerAccess,
+            kanbanObservations,
+            persistence ? createDocumentStore(persistence) : undefined,
+        ),
     ));
 
     // Log rotation endpoint

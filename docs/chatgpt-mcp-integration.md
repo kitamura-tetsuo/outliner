@@ -197,3 +197,21 @@ observation token returned by the exact read it acts on; a token is evidence of
 what was observed, not write authorization. If current guard evidence cannot be
 retained, read data remains available with an explicit unavailable mutation
 observation instead of an unguarded write path.
+
+### Kanban definition creation and updates
+
+Clients with `outliner.write` can create an independent definition with
+`create_kanban`, or apply an exact partial settings patch with `update_kanban`.
+Creation does not create source records, Tables, Pages, or placements. Saving is
+also deliberately separate from query evaluation: incomplete settings and invalid
+or currently unavailable SQL can be stored, and mutation responses therefore carry
+`projection.evaluated: false`. Call `query_kanban` separately to learn whether the
+current definition is usable.
+
+An update needs the opaque `observationToken` issued by `get_kanban`. Only supplied
+settings are guarded and changed, so an unrelated concurrent setting survives;
+same-setting changes, including change-away-and-back, require a fresh read. Dry runs
+do not reserve an identity or operation ID. Applied and accepted no-op outcomes are
+replayable for five minutes in the serving process, but a replay is the original
+receipt rather than a current settings read. Use `get_kanban` for current retained
+settings and a new observation before a later edit.
