@@ -19,3 +19,4 @@ tests:
 - server/tests/mcp-kanban-card-outline.test.ts
 - server/tests/mcp-kanban-card-races.test.ts
 - server/tests/mcp-kanban-card-contract.test.ts
+- client/e2e/new/kan-kanban-mcp-read-roundtrip-6b9e5d43.spec.ts

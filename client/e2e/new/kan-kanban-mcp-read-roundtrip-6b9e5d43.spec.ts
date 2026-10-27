@@ -81,6 +81,22 @@ test(
                     : current.projection.status;
             }, { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }).toEqual(["Beta", "Alpha", "Gamma"]);
 
+            const observed = await mcp("query_kanban", { kanbanId });
+            const observedCard = observed.lanes
+                .flatMap((lane: { cards: { row: { title: string; }; sourceRef: object; }[]; }) => lane.cards)
+                .find((card: { row: { title: string; }; }) => card.row.title === "Alpha");
+            expect(observedCard).toBeDefined();
+            const updated = await mcp("update_kanban_card", {
+                kanbanId,
+                sourceRef: observedCard!.sourceRef,
+                observationToken: observed.observationToken,
+                outputField: "title",
+                value: "Alpha from MCP",
+                operationId: `browser-sync-${Date.now()}`,
+            });
+            expect(updated).toMatchObject({ applied: true, dryRun: false, operation: "update" });
+            await expect(page.locator("article.card h3")).toHaveText(["Beta", "Alpha from MCP", "Gamma"]);
+
             // No browser-held room may be needed by the next remote observation.
             await page.close();
             const listed = await mcp("list_kanbans", {});
@@ -101,7 +117,7 @@ test(
                 read.lanes.flatMap((lane: { cards: { row: { title: string; }; }[]; }) =>
                     lane.cards.map(card => card.row.title)
                 ),
-            ).toEqual(["Beta", "Alpha", "Gamma"]);
+            ).toEqual(["Beta", "Alpha from MCP", "Gamma"]);
             const cards = read.lanes.flatMap((lane: { cards: unknown[]; }) => lane.cards);
             expect(
                 cards.every((card: { sourceRef: { kind: string; id: string; }; }) =>

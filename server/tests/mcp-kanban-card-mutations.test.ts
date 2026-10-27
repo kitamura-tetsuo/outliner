@@ -1,8 +1,10 @@
 import { expect } from "chai";
 import * as Y from "yjs";
 import { createKanbanEntry } from "../../shared/src/services/kanbanDefinition.js";
+import { createDocumentStore } from "../src/persistence.js";
 import { Project } from "../src/schema/app-schema.js";
-import { PROJECT, startMcpTestServer } from "./mcp-create-table-fixture.js";
+import { SqlCatalogMutationService } from "../src/sql-catalog-service.js";
+import { PROJECT, startMcpTestServer, UID } from "./mcp-create-table-fixture.js";
 import { withRoom } from "./server-create-table-fixture.js";
 
 describe("Kanban card mutations through production MCP", function() {
@@ -63,6 +65,52 @@ describe("Kanban card mutations through production MCP", function() {
             await fixture.stop();
         }
     });
+
+    it("moves a card into an empty lane declared by the current ENUM catalog", async () => {
+        const fixture = await startMcpTestServer();
+        try {
+            const catalog = new SqlCatalogMutationService(
+                fixture.server.hocuspocus,
+                fixture.acl.checkAccess,
+                createDocumentStore(fixture.server.persistence!),
+            );
+            const before = await catalog.read(UID, PROJECT);
+            expect(
+                (await catalog.apply(UID, PROJECT, {
+                    expectedRevision: before.revision,
+                    intent: {
+                        operation: "create",
+                        object: {
+                            id: "kanban-lane-enum",
+                            kind: "enum",
+                            source: "CREATE TYPE kanban_lane AS ENUM ('todo', 'empty', 'done')",
+                        },
+                    },
+                })).status,
+            ).to.equal("applied");
+            await seedEnum(fixture.server.hocuspocus);
+
+            const read = await fixture.mcp.call("query_kanban", { projectId: PROJECT, kanbanId: "enum-board" });
+            expect(read.payload.lanes.map((lane: { key: string; }) => lane.key)).to.deep.equal([
+                "todo",
+                "empty",
+                "done",
+            ]);
+            const card = read.payload.lanes.flatMap((lane: { cards: unknown[]; }) => lane.cards)[0];
+            const moved = await fixture.mcp.call("move_kanban_card", {
+                projectId: PROJECT,
+                kanbanId: "enum-board",
+                sourceRef: card.sourceRef,
+                observationToken: read.payload.observationToken,
+                destination: "empty",
+                operationId: "move-to-empty-enum-lane",
+            });
+            expect(moved.payload).to.include({ applied: true, operation: "move" });
+            expect(await status(fixture.server.hocuspocus)).to.equal("empty");
+        } finally {
+            await fixture.stop();
+        }
+    });
 });
 
 async function seed(host: Parameters<typeof withRoom>[0]) {
@@ -91,6 +139,32 @@ async function seed(host: Parameters<typeof withRoom>[0]) {
         done.set("status", "done");
         done.set("title", "Second");
         doc.getMap("data").set("r2", done);
+    });
+}
+
+async function seedEnum(host: Parameters<typeof withRoom>[0]) {
+    await withRoom(host, `projects/${PROJECT}`, doc => {
+        const table = new Y.Map<unknown>();
+        table.set("name", "Tasks");
+        table.set("sqlName", "tasks");
+        doc.getMap("yjsTables").set("tasks", table);
+        createKanbanEntry(doc, "enum-board", {
+            name: "ENUM board",
+            query: "SELECT id, status, title FROM tasks ORDER BY id",
+            groupField: "status",
+            titleField: "title",
+            detailFields: [],
+        });
+    });
+    await withRoom(host, `projects/${PROJECT}/tables/tasks`, doc => {
+        doc.getText("schema").insert(
+            0,
+            "CREATE TABLE tasks(id TEXT PRIMARY KEY, status kanban_lane NOT NULL, title TEXT NOT NULL)",
+        );
+        const row = new Y.Map<unknown>();
+        row.set("status", "todo");
+        row.set("title", "First");
+        doc.getMap("data").set("r1", row);
     });
 }
 
