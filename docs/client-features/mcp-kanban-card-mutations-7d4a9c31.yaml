@@ -16,3 +16,6 @@ acceptance:
 - Stale observations, ambiguous routes, invalid constraints, and unavailable persistence refuse before a known effect
 tests:
 - server/tests/mcp-kanban-card-mutations.test.ts
+- server/tests/mcp-kanban-card-outline.test.ts
+- server/tests/mcp-kanban-card-races.test.ts
+- server/tests/mcp-kanban-card-contract.test.ts

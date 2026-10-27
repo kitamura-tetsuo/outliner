@@ -240,8 +240,16 @@ export function createMcpRouter(
                 const typedArgs = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
                 const auditBase = buildAuditBase(name, typedArgs);
                 let lifecycle: KanbanResponseLifecycle | undefined;
+                let knownEffect: { applied: boolean | null; replayed: boolean; } | undefined;
                 try {
                     const result = await handler(args as z.infer<z.ZodObject<T>>);
+                    if (options.mutating && result && typeof result === "object") {
+                        const fields = result as Record<string, unknown>;
+                        knownEffect = {
+                            applied: fields.applied === null ? null : fields.applied !== false,
+                            replayed: fields.replayed === true,
+                        };
+                    }
                     lifecycle = result && typeof result === "object"
                         ? (result as { [KANBAN_RESPONSE_LIFECYCLE]?: KanbanResponseLifecycle; })[
                             KANBAN_RESPONSE_LIFECYCLE
@@ -291,7 +299,15 @@ export function createMcpRouter(
                         try {
                             await options.authorizeDisclosure(args as z.infer<z.ZodObject<T>>);
                         } catch (authorizationError) {
-                            error = authorizationError;
+                            const retainedEffect = caught instanceof McpEffectError ? caught.effect : knownEffect;
+                            error = retainedEffect && authorizationError instanceof McpReadError
+                                ? new McpEffectError(
+                                    authorizationError.code,
+                                    authorizationError.message,
+                                    authorizationError.debug ?? {},
+                                    retainedEffect,
+                                )
+                                : authorizationError;
                         }
                     }
                     if (error instanceof McpReadError) {

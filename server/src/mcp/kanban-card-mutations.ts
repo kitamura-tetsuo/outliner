@@ -65,8 +65,9 @@ export class OutlinerKanbanCardMutationService {
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
         private readonly observations: KanbanObservationService,
         private readonly storeDocument?: DocumentStore,
+        options: ConstructorParameters<typeof OutlinerKanbanQueryService>[2] = {},
     ) {
-        this.queries = new OutlinerKanbanQueryService(host, canAccess);
+        this.queries = new OutlinerKanbanQueryService(host, canAccess, options);
     }
 
     update(uid: string, args: UpdateKanbanCardArgs) {
@@ -136,6 +137,15 @@ export class OutlinerKanbanCardMutationService {
             for (let attempt = 0; attempt < 3; attempt++) {
                 const projection = await this.queries.openObservation(uid, args.projectId, args.kanbanId);
                 try {
+                    if (projection.status === "unavailable" && projection.reason === "stale_evidence") {
+                        const selectedRole = command.operation === "move"
+                            ? "group" as const
+                            : command.args.outputField === projection.settings?.titleField
+                            ? "title" as const
+                            : "detail" as const;
+                        this.assertDefinitionObserved(guard, args, command, selectedRole);
+                        continue;
+                    }
                     if (projection.status !== "success" || !projection.isCurrent()) {
                         throw new McpReadError(
                             "stale_revision",
@@ -245,12 +255,8 @@ export class OutlinerKanbanCardMutationService {
         role: "title" | "detail" | "group",
         operation: Command["operation"],
     ) {
-        const keys: KanbanDefinitionKey[] = [
-            "query",
-            operation === "move" ? "groupField" : role === "title" ? "titleField" : "detailFields",
-        ];
         try {
-            guard.assertCurrent({ kind: "definition", kanbanId: args.kanbanId, keys });
+            this.assertDefinitionObserved(guard, args, { operation } as Command, role);
             const scopeId = JSON.stringify([args.sourceRef.id, args.sourceRef.rowId, outputField]);
             const selection: KanbanObservationSelection = args.sourceRef.kind === "table"
                 ? {
@@ -267,6 +273,32 @@ export class OutlinerKanbanCardMutationService {
         } catch (error) {
             throw observationError(error);
         }
+    }
+
+    private assertDefinitionObserved(
+        guard: ReturnType<KanbanObservationService["acquire"]>,
+        args: BaseArgs,
+        command: Pick<Command, "operation">,
+        role?: "title" | "detail" | "group",
+    ) {
+        try {
+            this.assertDefinitionObservedUnchecked(guard, args, command, role);
+        } catch (error) {
+            throw observationError(error);
+        }
+    }
+
+    private assertDefinitionObservedUnchecked(
+        guard: ReturnType<KanbanObservationService["acquire"]>,
+        args: BaseArgs,
+        command: Pick<Command, "operation">,
+        role?: "title" | "detail" | "group",
+    ) {
+        const keys: KanbanDefinitionKey[] = [
+            "query",
+            command.operation === "move" ? "groupField" : role === "title" ? "titleField" : "detailFields",
+        ];
+        guard.assertCurrent({ kind: "definition", kanbanId: args.kanbanId, keys });
     }
 
     private async prepare(
@@ -310,22 +342,24 @@ export class OutlinerKanbanCardMutationService {
         }
         if (ref.id !== "outline_items" || ref.sqlName !== "outline_items") throw validation("unsupported_source");
         const doc = projection.handles.project.document as unknown as Y.Doc;
-        const item = findItem(Project.fromDoc(doc as never), ref.rowId);
-        if (!item) {
+        const project = Project.fromDoc(doc as never);
+        const owner = outlineOwner(doc, project, ref.rowId);
+        const item = findItem(project, ref.rowId);
+        if (!owner || !item) {
             throw new McpReadError("stale_revision", "Outline item is unavailable", { reason: "source_changed" });
         }
-        validateOutlineValue(field, value);
+        const normalized = normalizeOutlineValue(field, value);
         const prior = readOutline(item, field);
         return {
             room: `projects/${projectId}`,
             doc,
-            sourceValue: value,
-            changed: !jsonEqual(prior, value),
+            sourceValue: normalized,
+            changed: !jsonEqual(prior, normalized),
             current: () =>
                 isLiveRoom(this.host, `projects/${projectId}`, doc)
-                && findItem(Project.fromDoc(doc as never), ref.rowId) === item
+                && outlineOwner(doc, Project.fromDoc(doc as never), ref.rowId) === owner
                 && jsonEqual(readOutline(item, field), prior),
-            apply: () => doc.transact(() => writeOutline(item, field, value)),
+            apply: () => doc.transact(() => writeOutline(item, field, normalized)),
         };
     }
 
@@ -342,6 +376,15 @@ export class OutlinerKanbanCardMutationService {
             return error;
         }
         return new McpReadError("internal_failure", "Kanban card update failed; nothing was changed");
+    }
+}
+
+function outlineOwner(doc: Y.Doc, project: Project, key: string): Y.Map<unknown> | undefined {
+    try {
+        if (!doc.getMap("orderedTree").has(key)) return undefined;
+        return project.tree.getNodeValueFromKey(key) as Y.Map<unknown> | undefined;
+    } catch {
+        return undefined;
     }
 }
 
@@ -471,16 +514,23 @@ function findItem(project: Project, key: string): Item | undefined {
     };
     return visit(project.items);
 }
-function validateOutlineValue(field: string, value: Json) {
+function normalizeOutlineValue(field: string, value: Json): Json {
     if (field === "tags") {
         if (!Array.isArray(value) || value.some(v => typeof v !== "string")) {
             throw validation("unsupported_value_shape");
         }
-        return;
+        return [...new Set((value as string[]).map(tag => tag.trim()).filter(Boolean))];
     }
     if (Array.isArray(value) || (value !== null && typeof value === "object")) {
         throw validation("unsupported_value_shape");
     }
+    if (field === "text") return value == null ? "" : String(value);
+    if (field === "done" || field === "all_day") {
+        if (value === "true") return true;
+        if (value === "false") return false;
+        return value == null ? null : Boolean(value);
+    }
+    return value == null || value === "" ? null : String(value);
 }
 function readOutline(item: Item, field: string): unknown {
     if (field === "text") return item.text;

@@ -63,6 +63,8 @@ export interface Seams {
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
     beforeRecordBatchPublication?: () => Promise<void>;
     beforeGridQueryPublication?: () => Promise<void>;
+    /** Runs at the real Kanban projection's last awaited certification boundary. */
+    beforeKanbanFinalCertification?: () => Promise<void>;
     /** Pauses the real OutlinerReadService direct-room disconnect. */
     beforeReadRoomDisconnect?: (room: string) => Promise<void> | void;
 }
@@ -87,6 +89,7 @@ export async function startMcpTestServer() {
     const context = new AsyncLocalStorage<string>();
     const checks = new Map<string, number>();
     let domainCalls = 0;
+    let kanbanStoreCalls = 0;
     const seams: Seams = {};
     const gatedAccess = async (uid: string, projectId: string) => {
         const requestId = context.getStore() ?? "";
@@ -98,6 +101,7 @@ export async function startMcpTestServer() {
     const realStore = createDocumentStore(server.persistence!);
     const store: DocumentStore = async (room, doc) => {
         await realStore(room, doc);
+        if (room === `projects/${PROJECT}` || room.startsWith(`projects/${PROJECT}/tables/`)) kanbanStoreCalls++;
         await seams.afterStore?.(room);
     };
     const creation = new OutlinerTableCreationService(server.hocuspocus, gatedAccess, store);
@@ -141,6 +145,7 @@ export async function startMcpTestServer() {
         gatedAccess,
         server.kanbanObservations,
         store,
+        { beforeFinalCertification: () => seams.beforeKanbanFinalCertification?.() ?? Promise.resolve() },
     );
     app.use(createMcpRouter(
         reads,
@@ -166,6 +171,9 @@ export async function startMcpTestServer() {
         production: rpcClient(server.server),
         get domainCalls() {
             return domainCalls;
+        },
+        get kanbanStoreCalls() {
+            return kanbanStoreCalls;
         },
         tables: () => withRoom(server.hocuspocus, `projects/${PROJECT}`, registry),
         async stop() {
