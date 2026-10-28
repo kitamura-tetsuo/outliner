@@ -69,7 +69,8 @@ Click the sidebar toggle button in the top-left corner to access the main sideba
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse and navigate pages within the current project.
 - **Tables:** View and manage database tables.
-- **Object Manager:** Manage Grids, Calendars, and Tables centrally.
+- **Object Manager:** Manage Grids, Tables, Schedules.
+- **Scheduled SQL:** Manage scheduled SQL rules.
 - **Settings:** Access project configurations. This section also includes quick links to the documentation (**Docs**) and source code (**GitHub**).
 
 ---
