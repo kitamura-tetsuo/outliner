@@ -135,8 +135,8 @@ describe("ITM-0001: Add new item with Enter", () => {
         const cursor = new Cursor("c1", { itemId: item.id, offset: 7, isActive: true, userId: "me" });
         cursor.applyToStore();
         editorOverlayStore.setSelection({
-            start: { itemId: item.id, offset: 2 },
-            end: { itemId: item.id, offset: 7 },
+            start: { kind: "text", itemId: item.id, offset: 2 },
+            end: { kind: "text", itemId: item.id, offset: 7 },
             userId: "me",
         });
 
