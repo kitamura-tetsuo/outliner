@@ -218,6 +218,11 @@ describe("Kanban lifecycle contested HTTP requests", function() {
             release.resolve();
             const results = await Promise.all([first, second]);
             expect(results.map(result => result.payload.code)).to.deep.equal(["forbidden", "forbidden"]);
+            for (const result of results) {
+                expect(result.payload).not.to.have.property("placementId");
+                expect(result.payload).not.to.have.property("itemId");
+                expect(result.payload).not.to.have.property("kanbanId");
+            }
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 const page = Project.fromDoc(doc).findPage(destination.pageId)!;
                 expect([...page.items].filter(item => item.kanbanId === "board")).to.have.length(1);
