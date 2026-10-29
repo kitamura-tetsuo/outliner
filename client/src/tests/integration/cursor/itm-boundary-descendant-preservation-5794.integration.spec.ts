@@ -67,7 +67,7 @@ function runAndReplicate(project: Project, action: () => void): Project {
 afterEach(() => {
     generalStore.currentPage = undefined;
     generalStore.project = undefined;
-    generalStore.activeViewModel = undefined;
+    generalStore.activeViewModel = null;
 });
 
 describe("item-boundary descendant preservation", () => {
@@ -259,7 +259,7 @@ describe("item-boundary descendant preservation", () => {
         const b1a = add(b1.items, "B1a");
         const b2 = add(b.items, "B2");
         usePage(project, page);
-        generalStore.activeViewModel = { isCollapsed: itemId => itemId === a.id } as never;
+        generalStore.activeViewModel = { isCollapsed: (itemId: string) => itemId === a.id } as never;
         const context = editingContext(b, 0);
         const editor = new CursorEditor(context);
 
@@ -429,7 +429,7 @@ describe("item-boundary descendant preservation", () => {
         visual2.yMap.set("binding", "second");
         const text = add(page.items, "After");
         usePage(project, page);
-        generalStore.activeViewModel = { isCollapsed: itemId => itemId === layout.id } as never;
+        generalStore.activeViewModel = { isCollapsed: (itemId: string) => itemId === layout.id } as never;
         const context = editingContext(text, 0);
         const editor = new CursorEditor(context);
 
