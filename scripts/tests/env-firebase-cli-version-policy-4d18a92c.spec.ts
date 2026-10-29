@@ -68,10 +68,16 @@ describe("Firebase CLI version policy", () => {
         expect(windowsPreparation).toContain("$harnessRoot/.firebase-tools-version");
         expect(windowsPreparation).toContain("cache contains $installedFirebaseToolsVersion");
 
-        const linuxPreparation = readFileSync(
-            resolve(root, "scripts/poc/windows-linux-backend/start-compose.ps1"),
-            "utf8",
-        );
-        expect(linuxPreparation).toContain("HEAD .firebase-tools-version scripts/poc/windows-native-ime");
+        for (
+            const path of [
+                "scripts/poc/windows-linux-backend/start-compose.ps1",
+                "scripts/native-ime-regression/windows/start-backend.ps1",
+            ]
+        ) {
+            const linuxPreparation = readFileSync(resolve(root, path), "utf8");
+            expect(linuxPreparation, path).toContain(
+                "HEAD .firebase-tools-version scripts/poc/windows-native-ime",
+            );
+        }
     });
 });

@@ -6,11 +6,11 @@ category: item-management
 status: implemented
 acceptance:
 - Deleting forward into a Text item preserves its descendant IDs, nesting, and order
-- Removing an adjacent visual container promotes its placements without changing their IDs or metadata
 - Invalid or incomplete structural targets leave the outline and caret unchanged
+- Removing an adjacent visual container promotes its placements without changing their IDs or metadata
 tests:
-- client/e2e/core/itm-delete-boundary-preserves-descendants-5794de1e.spec.ts
-- client/e2e/core/itm-boundary-branch-keyboard-5794b2c3.spec.ts
 - client/e2e/core/itm-backspace-visual-boundary-5794c4d5.spec.ts
 - client/e2e/core/itm-boundary-append-and-stale-storage-5794e6f7.spec.ts
+- client/e2e/core/itm-boundary-branch-keyboard-5794b2c3.spec.ts
+- client/e2e/core/itm-delete-boundary-preserves-descendants-5794de1e.spec.ts
 - client/src/tests/integration/cursor/itm-boundary-descendant-preservation-5794.integration.spec.ts

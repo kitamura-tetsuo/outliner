@@ -6,7 +6,7 @@ category: tables
 status: implemented
 acceptance:
 - A Kanban created and configured through the regular browser UI is listed by its identity through the authenticated production MCP endpoint.
-- Saved settings, typed lanes, SQL-ordered cards, and proven source identities match the browser result after the browser disconnects.
 - Remote read observation retains its own authorized source lease without creating or modifying Kanban or Table objects.
+- Saved settings, typed lanes, SQL-ordered cards, and proven source identities match the browser result after the browser disconnects.
 tests:
 - client/e2e/new/kan-kanban-mcp-read-roundtrip-6b9e5d43.spec.ts

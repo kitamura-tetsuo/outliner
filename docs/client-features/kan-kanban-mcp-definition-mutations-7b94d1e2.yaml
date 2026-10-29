@@ -5,13 +5,13 @@ description: Authenticated MCP clients can create independent Kanban definitions
 category: tables
 status: implemented
 acceptance:
+- Dry runs are effect-free, successful saves are persistence-acknowledged, and operation IDs provide bounded process-local replay.
 - create_kanban creates a fresh standalone definition with exact settings or defaults and no source records or placements.
 - update_kanban applies an exact partial patch only while its get_kanban observation remains current for the selected settings.
-- Dry runs are effect-free, successful saves are persistence-acknowledged, and operation IDs provide bounded process-local replay.
 tests:
 - client/e2e/new/kan-kanban-mcp-definition-browser-7b94d1e2.spec.ts
-- server/tests/mcp-kanban-definition-tools.test.ts
 - server/tests/mcp-kanban-definition-authorization.test.ts
 - server/tests/mcp-kanban-definition-contract.test.ts
 - server/tests/mcp-kanban-definition-currentness.test.ts
 - server/tests/mcp-kanban-definition-replay.test.ts
+- server/tests/mcp-kanban-definition-tools.test.ts

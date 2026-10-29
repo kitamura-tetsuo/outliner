@@ -5,7 +5,7 @@ description: Keep active workflows on audited stable Action majors while protect
 category: environment
 status: implemented
 components:
-  - .github/workflows
-  - .github/actions
+- .github/actions
+- .github/workflows
 tests:
-  - scripts/tests/env-github-actions-supported-majors-a4c29f1e.spec.ts
+- scripts/tests/env-github-actions-supported-majors-a4c29f1e.spec.ts
