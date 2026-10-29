@@ -20,6 +20,9 @@ runs:
         # node_modules and serves modules through /@fs/<real-path>, which
         # broke module resolution for the integration/unit test suites that
         # boot a Vite dev server -- so this stays a real copy.
+        if [ -d "/cache/node_modules" ]; then
+          cp -r /cache/node_modules ./
+        fi
         for dir in client server functions scripts; do
           if [ -d "/cache/${dir}/node_modules" ]; then
             cp -r "/cache/${dir}/node_modules" "${dir}/"

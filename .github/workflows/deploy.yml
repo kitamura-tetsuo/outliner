@@ -30,7 +30,7 @@ jobs:
           node-version: '22'
 
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools@15.22.1
+        run: npm ci
 
       - name: Install client dependencies and build
         run: |
@@ -104,7 +104,7 @@ jobs:
         run: |
           # Remove existing Firebase Functions environment variables
           echo "Cleaning up old Firebase Functions config..."
-          firebase functions:config:unset azure --project outliner-d57b0 || echo "No azure config to remove"
+          scripts/firebase-cli.sh functions:config:unset azure --project outliner-d57b0 || echo "No azure config to remove"
 
       - name: Lint functions
         run: |
@@ -114,7 +114,7 @@ jobs:
       - name: Verify Firebase CLI version
         run: |
           echo "Firebase CLI version:"
-          firebase --version
+          scripts/firebase-cli.sh --version
 
       - name: Deploy to Firebase
         if: github.actor != 'dependabot[bot]'
@@ -123,7 +123,7 @@ jobs:
           MAX_ATTEMPTS=3
           ATTEMPT=1
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            DEPLOY_OUTPUT=$(firebase deploy --only hosting,functions,firestore:rules,storage --project outliner-d57b0 --non-interactive --force 2>&1)
+            DEPLOY_OUTPUT=$(scripts/firebase-cli.sh deploy --only hosting,functions,firestore:rules,storage --project outliner-d57b0 --non-interactive --force 2>&1)
             DEPLOY_EXIT_CODE=$?
             echo "$DEPLOY_OUTPUT"
             if [ $DEPLOY_EXIT_CODE -eq 0 ]; then

@@ -58,7 +58,7 @@ try {
     Run-Preparation 'server-build' "$app/server" @('node_modules/typescript/bin/tsc')
     if (-not (Test-Path "$app/server/dist/server/src/index.js")) { throw 'Compiled server missing' }
     Run-Preparation 'paraglide-build' "$app/client" @($npmArg,'run','paraglide:compile')
-    if ($CacheHit -ne 'true') { Run-Preparation 'firebase-tools-install' $app @($npmArg,'install','--prefix','work/tools','firebase-tools') }
+    if ($CacheHit -ne 'true') { Run-Preparation 'firebase-tools-install' $app @($npmArg,'install','--prefix','work/tools','firebase-tools@15.22.1') }
     Invoke-WebRequest 'https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-win64.zip' -OutFile "$log/geckodriver.zip" -UseBasicParsing
     Expand-Archive "$log/geckodriver.zip" "$log/geckodriver" -Force
 } finally { Stop-Transcript }

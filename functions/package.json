@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
-    "serve": "firebase emulators:start --only auth,firestore,functions,hosting --project demo-test",
-    "shell": "firebase functions:shell",
+    "serve": "../scripts/firebase-cli.sh emulators:start --only auth,firestore,functions,hosting --project demo-test",
+    "shell": "../scripts/firebase-cli.sh functions:shell",
     "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log",
+    "deploy": "../scripts/firebase-cli.sh deploy --only functions",
+    "logs": "../scripts/firebase-cli.sh functions:log",
     "build": "echo 'No build step required for JavaScript functions'",
-    "debug": "firebase --debug emulators:start --inspect-functions=9229 --only auth,firestore,functions,hosting --project demo-test",
+    "debug": "../scripts/firebase-cli.sh --debug emulators:start --inspect-functions=9229 --only auth,firestore,functions,hosting --project demo-test",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

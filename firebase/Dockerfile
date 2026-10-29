@@ -10,7 +10,7 @@ RUN apt-get update && \
 WORKDIR /firebase
 
 # Install Firebase tools globally
-RUN npm install -g firebase-tools
+RUN npm install -g firebase-tools@15.22.1
 
 # Copy the Firebase configuration
 COPY firebase.json .

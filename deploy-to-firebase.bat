@@ -11,7 +11,7 @@ npm run build
 cd ..
 
 echo 3. Deploying Firebase Functions and Hosting...
-firebase deploy
+scripts\firebase-cli.cmd deploy
 
 echo Deployment completed!
 echo Hosting URL: https://outliner-d57b0.web.app

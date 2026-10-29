@@ -9,7 +9,7 @@ RUN apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire
     rm -rf /var/lib/apt/lists/*
 
 # Install global npm packages
-RUN npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx dprint pm2
+RUN npm install -g tinylicious dotenv-cli cross-env @dotenvx/dotenvx dprint pm2
 
 # Create cache directories
 WORKDIR /cache

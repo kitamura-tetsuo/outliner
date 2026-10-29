@@ -22,7 +22,7 @@ npm install
 cd ..
 
 echo "4. Deploying Firebase Functions and Hosting..."
-firebase deploy
+scripts/firebase-cli.sh deploy
 
 echo "Deployment completed!"
 echo "Hosting URL: https://outliner-d57b0.web.app"

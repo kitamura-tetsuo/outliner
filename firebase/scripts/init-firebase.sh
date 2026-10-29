@@ -7,7 +7,7 @@ npm ci
 cd /firebase
 
 # Start Firebase emulators in the background
-firebase emulators:start --project demo-test \
+../../scripts/firebase-cli.sh emulators:start --project demo-test \
     --only auth,firestore,functions,hosting \
     --import=/firebase-data \
     --export-on-exit=/firebase-data &
