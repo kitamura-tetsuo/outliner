@@ -17,6 +17,7 @@ type Update = {
     "package-ecosystem"?: string;
     directory?: string;
     directories?: string[];
+    "exclude-paths"?: string[];
 };
 
 type DependabotConfig = {
@@ -44,19 +45,30 @@ function dependabotDirectory(file: string): string {
     return directory === "." ? "/" : directory;
 }
 
+function excludesDockerfile(update: Update, file: string): boolean {
+    const repositoryPath = file.replace(/^\//, "");
+    const directoryPath = dependabotDirectory(repositoryPath);
+    const relativePath = path.posix.relative(directoryPath, `/${repositoryPath}`);
+
+    return (update["exclude-paths"] ?? []).some(pattern => {
+        const repositoryPattern = pattern.replace(/^\//, "");
+        return path.matchesGlob(repositoryPath, repositoryPattern) || path.matchesGlob(relativePath, repositoryPattern);
+    });
+}
+
 function uncoveredDockerfiles(config: DependabotConfig): string[] {
-    const dockerDirectories = new Set(
-        (config.updates ?? [])
-            .filter(update => update["package-ecosystem"] === "docker")
-            .flatMap(configuredDirectories),
-    );
+    const dockerUpdates = (config.updates ?? []).filter(update => update["package-ecosystem"] === "docker");
 
     // Dependabot's Docker fetcher scans only configured directories and accepts
     // every case-insensitive filename containing "dockerfile". A root entry is
     // intentionally not treated as recursive coverage for nested files.
     return dockerfiles.filter(file => {
         const name = path.posix.basename(file);
-        return !name.toLowerCase().includes("dockerfile") || !dockerDirectories.has(dependabotDirectory(file));
+        const directory = dependabotDirectory(file);
+        const hasUnexcludedDirectory = dockerUpdates.some(update =>
+            configuredDirectories(update).includes(directory) && !excludesDockerfile(update, file)
+        );
+        return !name.toLowerCase().includes("dockerfile") || !hasUnexcludedDirectory;
     });
 }
 
@@ -94,4 +106,18 @@ test("root-only Docker configuration does not cover nested Dockerfiles", () => {
     };
 
     expect(uncoveredDockerfiles(fixture)).toEqual(dockerfiles.filter(file => dependabotDirectory(file) !== "/"));
+});
+
+test.each([
+    "server/Dockerfile.debug",
+    "server/*.debug",
+    "Dockerfile.debug",
+])("an exclude-paths pattern %s removes the required debug Dockerfile from coverage", pattern => {
+    const fixture = structuredClone(config);
+    const docker = (fixture.updates ?? []).find(update => update["package-ecosystem"] === "docker");
+    expect(docker).toBeDefined();
+
+    docker!["exclude-paths"] = [pattern];
+
+    expect(uncoveredDockerfiles(fixture)).toContain("server/Dockerfile.debug");
 });
