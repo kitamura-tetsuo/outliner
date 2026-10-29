@@ -83,13 +83,24 @@ export class OutlinerKanbanLifecycleService {
         try {
             const project = Project.fromDoc(guard.projectDoc as never);
             this.assertDefinition(guard, request.kanbanId, []);
-            const page = uniqueById(project, request.destination.pageId);
+            const page = uniqueById([...project.items], request.destination.pageId);
             if (!page || !isTopLevel(page) || nodeKindOf(page) !== "text") {
                 throw new McpReadError("not_found", "Destination Page was not found");
             }
             const layout = request.destination.layoutId === undefined
                 ? undefined
-                : uniqueById(project, request.destination.layoutId);
+                : uniqueById(descendants(page), request.destination.layoutId);
+            if (
+                request.destination.layoutId !== undefined && !layout
+                && allItems(project).some(item =>
+                    item.id === request.destination.layoutId && nodeKindOf(item) === "layout"
+                )
+            ) {
+                throw new McpReadError(
+                    "validation_failed",
+                    "Destination Layout is not contained by the specified Page",
+                );
+            }
             if (request.destination.layoutId !== undefined && (!layout || nodeKindOf(layout) !== "layout")) {
                 throw new McpReadError("kind_mismatch", "Destination Layout was not found or is not a Layout");
             }
@@ -285,16 +296,22 @@ function base(
     } as KanbanLifecycleResult;
 }
 function allItems(project: Project): Item[] {
+    return collectItems(project.items);
+}
+function descendants(parent: Item): Item[] {
+    return collectItems(parent.items);
+}
+function collectItems(items: Iterable<Item>): Item[] {
     const result: Item[] = [];
     const visit = (item: Item) => {
         result.push(item);
         for (const child of item.items) visit(child);
     };
-    for (const page of project.items) visit(page);
+    for (const item of items) visit(item);
     return result;
 }
-function uniqueById(project: Project, id: string): Item | undefined {
-    const found = allItems(project).filter(item => item.id === id);
+function uniqueById(items: Item[], id: string): Item | undefined {
+    const found = items.filter(item => item.id === id);
     if (found.length > 1) throw new McpReadError("validation_failed", "Destination ID is ambiguous");
     return found[0];
 }
