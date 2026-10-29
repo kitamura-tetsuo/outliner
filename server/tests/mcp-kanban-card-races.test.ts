@@ -112,8 +112,10 @@ describe("Kanban card mutation races and effect disclosure", function() {
                 const { read, card } = await observed(fixture);
                 const projectDoc = fixture.server.hocuspocus.documents.get(`projects/${PROJECT}`) as Y.Doc;
                 const boardBefore = projectDoc.getMap("yjsKanbans").toJSON();
+                const placementsBefore = projectDoc.getMap("orderedTree").toJSON();
                 const sourceDoc = fixture.server.hocuspocus.documents.get(`projects/${PROJECT}/tables/tasks`) as Y.Doc;
                 const originalRow = sourceDoc.getMap<Y.Map<unknown>>("data").get("r1")!;
+                const rowBefore = originalRow.toJSON();
                 let targetChanges = 0;
                 originalRow.observe(event => {
                     if (event.keysChanged.has("title") || event.keysChanged.has("status")) targetChanges++;
@@ -182,6 +184,11 @@ describe("Kanban card mutation races and effect disclosure", function() {
                     expect(targetChanges).to.equal(0);
                 }
                 expect(projectDoc.getMap("yjsKanbans").toJSON()).to.deep.equal(boardBefore);
+                expect(projectDoc.getMap("orderedTree").toJSON()).to.deep.equal(placementsBefore);
+                expect(sourceDoc.getMap<Y.Map<unknown>>("data").get("r1")!.toJSON()).to.deep.equal({
+                    ...rowBefore,
+                    ...(scenario === "unrelated" ? { title: "Changed" } : {}),
+                });
                 const persisted = await createDocumentLoader(fixture.server.persistence!)(
                     `projects/${PROJECT}/tables/tasks`,
                 );
