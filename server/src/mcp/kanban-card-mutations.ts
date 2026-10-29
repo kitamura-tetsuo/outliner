@@ -349,17 +349,28 @@ export class OutlinerKanbanCardMutationService {
             throw new McpReadError("stale_revision", "Outline item is unavailable", { reason: "source_changed" });
         }
         const normalized = normalizeOutlineValue(field, value);
-        const prior = readOutline(item, field);
+        const slots = outlineSlots(field);
+        const prior = outlineSnapshot(owner, slots);
+        const candidateDoc = new Y.Doc();
+        const candidate = candidateDoc.getMap<unknown>("candidate");
+        for (const slot of slots) {
+            if (!owner.has(slot)) continue;
+            const existing = owner.get(slot);
+            candidate.set(slot, existing instanceof Y.AbstractType ? existing.clone() : existing);
+        }
+        writeOutline(candidate, field, normalized);
+        const proposed = outlineSnapshot(candidate, slots);
+        candidateDoc.destroy();
         return {
             room: `projects/${projectId}`,
             doc,
             sourceValue: normalized,
-            changed: !jsonEqual(prior, normalized),
+            changed: !jsonEqual(prior, proposed),
             current: () =>
                 isLiveRoom(this.host, `projects/${projectId}`, doc)
                 && outlineOwner(doc, Project.fromDoc(doc as never), ref.rowId) === owner
-                && jsonEqual(readOutline(item, field), prior),
-            apply: () => doc.transact(() => writeOutline(item, field, normalized)),
+                && jsonEqual(outlineSnapshot(owner, slots), prior),
+            apply: () => doc.transact(() => writeOutline(owner, field, normalized)),
         };
     }
 
@@ -516,52 +527,105 @@ function findItem(project: Project, key: string): Item | undefined {
 }
 function normalizeOutlineValue(field: string, value: Json): Json {
     if (field === "tags") {
-        if (!Array.isArray(value) || value.some(v => typeof v !== "string")) {
+        let parsed: unknown = value;
+        if (Array.isArray(value)) {
+            if (value.some(v => typeof v !== "string")) throw validation("unsupported_value_shape");
+        } else if (typeof value === "string") {
+            try {
+                parsed = JSON.parse(value);
+            } catch {
+                parsed = [];
+            }
+        } else if (value !== null && typeof value === "object") {
             throw validation("unsupported_value_shape");
         }
-        return [...new Set((value as string[]).map(tag => tag.trim()).filter(Boolean))];
+        if (!Array.isArray(parsed)) return [];
+        return [
+            ...new Set(
+                parsed.filter((tag): tag is string => typeof tag === "string")
+                    .map(tag => tag.trim()).filter(Boolean),
+            ),
+        ];
     }
     if (Array.isArray(value) || (value !== null && typeof value === "object")) {
         throw validation("unsupported_value_shape");
     }
     if (field === "text") return value == null ? "" : String(value);
     if (field === "done" || field === "all_day") {
+        if (value === null || (field === "done" && value === "")) return null;
         if (value === "true") return true;
         if (value === "false") return false;
-        return value == null ? null : Boolean(value);
+        return Boolean(value);
     }
     return value == null || value === "" ? null : String(value);
 }
-function readOutline(item: Item, field: string): unknown {
-    if (field === "text") return item.text;
-    if (field === "tags") return item.tags;
-    const names: Record<string, string> = {
-        all_day: "allDay",
-        start_on: "start",
-        start_at: "start",
-        recurrence_dtstart: "recurrenceDtstart",
-        recurrence_timezone: "recurrenceTimezone",
-    };
-    return item.yMap.get(names[field] ?? field) ?? null;
+const outlineNames: Record<string, string> = {
+    all_day: "allDay",
+    start_on: "start",
+    start_at: "start",
+    recurrence_dtstart: "recurrenceDtstart",
+    recurrence_timezone: "recurrenceTimezone",
+};
+function outlineSlots(field: string): string[] {
+    if (field === "start_on" || field === "start_at") return ["start", "allDay"];
+    if (field === "rrule") return ["rrule", "recurrenceExdate"];
+    return [outlineNames[field] ?? field];
 }
-function writeOutline(item: Item, field: string, value: Json) {
-    if (field === "text") item.text = value == null ? "" : String(value);
-    else if (field === "tags") item.tags = value as string[];
-    else if (field === "start_on" || field === "start_at") {
-        if (value == null || value === "") {
-            item.yMap.delete("start");
-            item.yMap.delete("allDay");
+function outlineSnapshot(owner: Y.Map<unknown>, slots: string[]): unknown {
+    return slots.map(slot => {
+        if (!owner.has(slot)) return [slot, false];
+        const value = owner.get(slot);
+        if (value instanceof Y.Text) return [slot, true, "text", value.toDelta()];
+        if (value instanceof Y.Array) return [slot, true, "array", value.toJSON()];
+        if (value instanceof Y.AbstractType) return [slot, true, "shared", value.toJSON()];
+        return [slot, true, "scalar", value];
+    });
+}
+function writeOutline(owner: Y.Map<unknown>, field: string, value: Json) {
+    if (field === "text") {
+        let text = owner.get("text");
+        if (!(text instanceof Y.Text)) {
+            text = new Y.Text();
+            owner.set("text", text);
+        }
+        const target = text as Y.Text;
+        target.delete(0, target.length);
+        if (value) target.insert(0, value as string);
+    } else if (field === "tags") {
+        const next = value as string[];
+        const existing = owner.get("tags") as Y.Array<string> | undefined;
+        if (next.length === 0) {
+            if (existing) owner.delete("tags");
+        } else if (!existing) {
+            const array = new Y.Array<string>();
+            array.push(next);
+            owner.set("tags", array);
         } else {
-            item.yMap.set("start", String(value));
-            item.yMap.set("allDay", field === "start_on");
+            const current = existing.toArray(), wanted = new Set(next), seen = new Set<string>();
+            for (let i = current.length - 1; i >= 0; i--) {
+                const tag = current[i]!;
+                if (!wanted.has(tag) || seen.has(tag)) existing.delete(i, 1);
+                else seen.add(tag);
+            }
+            const added = next.filter(tag => !seen.has(tag));
+            if (added.length) existing.push(added);
+        }
+    } else if (field === "start_on" || field === "start_at") {
+        if (value === null) {
+            owner.delete("start");
+            owner.delete("allDay");
+        } else {
+            owner.set("start", value);
+            owner.set("allDay", field === "start_on");
+        }
+    } else if (field === "rrule") {
+        if (value === null) owner.delete("rrule");
+        else {
+            owner.set("rrule", value);
+            if (!owner.get("recurrenceExdate")) owner.set("recurrenceExdate", new Y.Array<string>());
         }
     } else {
-        const names: Record<string, string> = {
-            all_day: "allDay",
-            recurrence_dtstart: "recurrenceDtstart",
-            recurrence_timezone: "recurrenceTimezone",
-        };
-        const name = names[field] ?? field;
-        value === null ? item.yMap.delete(name) : item.yMap.set(name, value as string | number | boolean);
+        const name = outlineNames[field] ?? field;
+        value === null ? owner.delete(name) : owner.set(name, value);
     }
 }

@@ -10,6 +10,37 @@ import { restartFromStorage, withRoom } from "./server-create-table-fixture.js";
 describe("Kanban card mutation races and effect disclosure", function() {
     this.timeout(120_000);
 
+    it("expires an otherwise current observation and accepts a fresh one", async () => {
+        const fixture = await startMcpTestServer({ controlledObservationClock: true });
+        try {
+            let now = 0;
+            fixture.seams.observationNow = () => now;
+            await seed(fixture.server.hocuspocus);
+            const { read, card } = await observed(fixture);
+            const args = updateArgs(read, card, "expiry-control");
+            const preview = await fixture.mcp.call("update_kanban_card", { ...args, dryRun: true });
+            expect(preview.payload).to.include({ dryRun: true, wouldChange: true });
+            const stores = fixture.kanbanStoreCalls;
+            now = 300_001;
+            const expired = await fixture.mcp.call("update_kanban_card", args);
+            expect(expired.payload).to.include({ code: "stale_revision", reason: "observation_expired" });
+            expect(fixture.kanbanStoreCalls).to.equal(stores);
+            const persisted = await createDocumentLoader(fixture.server.persistence!)(
+                `projects/${PROJECT}/tables/tasks`,
+            );
+            expect(persisted!.getMap<Y.Map<unknown>>("data").get("r1")!.get("title")).to.equal("First");
+            const fresh = await observed(fixture);
+            const applied = await fixture.mcp.call(
+                "update_kanban_card",
+                updateArgs(fresh.read, fresh.card, "fresh-after-expiry"),
+            );
+            expect(applied.payload).to.include({ applied: true });
+            expect(currentTitle(fixture)).to.equal("Changed");
+        } finally {
+            await fixture.stop();
+        }
+    });
+
     it("expires observations and replay retention on their clocks", async () => {
         const clock = sinon.stub(Date, "now").callThrough();
         const fixture = await startMcpTestServer({ controlledObservationClock: true });

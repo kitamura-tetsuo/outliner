@@ -1,6 +1,10 @@
 import { expect } from "chai";
 import * as Y from "yjs";
-import { createKanbanEntry } from "../../shared/src/services/kanbanDefinition.js";
+import {
+    applyKanbanUpdates,
+    createKanbanEntry,
+    getKanbanDefinitionTarget,
+} from "../../shared/src/services/kanbanDefinition.js";
 import { createDocumentLoader } from "../src/persistence.js";
 import { Project } from "../src/schema/app-schema.js";
 import { PROJECT, startMcpTestServer, UID } from "./mcp-create-table-fixture.js";
@@ -8,6 +12,123 @@ import { withRoom } from "./server-create-table-fixture.js";
 
 describe("Kanban outline card mutations through authenticated HTTP", function() {
     this.timeout(120_000);
+
+    for (
+        const [field, value, allDay] of [
+            ["start_on", "2026-11-01", true],
+            ["start_at", "2026-11-01T10:00:00Z", false],
+        ] as const
+    ) {
+        it(`writes ${field} with its coupled allDay value`, async () => {
+            const fixture = await startMcpTestServer();
+            try {
+                const key = await seedOutlineBoard(fixture.server.hocuspocus);
+                await withRoom(fixture.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                    applyKanbanUpdates(getKanbanDefinitionTarget(doc, "outline-board")!, {
+                        query: `SELECT id, text, ${field} FROM outline_items WHERE due IS NOT NULL`,
+                        detailFields: [field],
+                    });
+                });
+                const read = await query(fixture);
+                const result = await fixture.mcp.call(
+                    "update_kanban_card",
+                    args(read, cardFor(read, key), {
+                        outputField: field,
+                        value,
+                        operationId: `set-${field}`,
+                    }),
+                );
+                expect(result.payload).to.include({ applied: true });
+                const stored = await createDocumentLoader(fixture.server.persistence!)(`projects/${PROJECT}`);
+                const owner = Project.fromDoc(stored! as never).tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                expect(owner.get("start")).to.equal(value);
+                expect(owner.get("allDay")).to.equal(allDay);
+            } finally {
+                await fixture.stop();
+            }
+        });
+    }
+
+    it("normalizes outline fields and detects coupled physical effects", async () => {
+        const fixture = await startMcpTestServer();
+        try {
+            const key = await seedOutlineBoard(fixture.server.hocuspocus);
+            await withRoom(fixture.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                applyKanbanUpdates(getKanbanDefinitionTarget(doc, "outline-board")!, {
+                    query:
+                        "SELECT id, text, tags, done, rrule, start_on, start_at, all_day FROM outline_items WHERE due IS NOT NULL ORDER BY id",
+                    detailFields: ["tags", "done", "rrule", "start_on", "start_at", "all_day"],
+                });
+                const owner = Project.fromDoc(doc).tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                owner.set("done", true);
+                owner.set("rrule", "FREQ=DAILY");
+                owner.set("allDay", true);
+            });
+            let serial = 0;
+            const update = async (field: string, value: unknown) => {
+                const read = await query(fixture);
+                return fixture.mcp.call(
+                    "update_kanban_card",
+                    args(read, cardFor(read, key), {
+                        outputField: field,
+                        value,
+                        operationId: `outline-physical-${serial++}`,
+                    }),
+                );
+            };
+            let stores = fixture.kanbanStoreCalls;
+            expect((await update("rrule", "FREQ=DAILY")).payload).to.include({ applied: true });
+            let owner = await rawOwner(fixture, key);
+            expect(owner.get("recurrenceExdate")).to.be.instanceOf(Y.Array);
+            expect((owner.get("recurrenceExdate") as Y.Array<unknown>).toArray()).to.deep.equal([]);
+            expect(fixture.kanbanStoreCalls - stores).to.equal(1);
+            stores = fixture.kanbanStoreCalls;
+            expect((await update("rrule", "FREQ=DAILY")).payload).to.include({ applied: false });
+            expect(fixture.kanbanStoreCalls).to.equal(stores);
+            owner.set("recurrenceExdate", false);
+            expect((await update("rrule", "FREQ=DAILY")).payload).to.include({ applied: true });
+            expect(owner.get("recurrenceExdate")).to.be.instanceOf(Y.Array);
+            const exdates = owner.get("recurrenceExdate") as Y.Array<string>;
+            exdates.push(["2026-11-01"]);
+            expect((await update("rrule", "FREQ=WEEKLY")).payload).to.include({ applied: true });
+            expect(owner.get("recurrenceExdate")).to.equal(exdates);
+            expect(exdates.toArray()).to.deep.equal(["2026-11-01"]);
+            expect((await update("start_on", "")).payload).to.include({ applied: true });
+            owner = await rawOwner(fixture, key);
+            expect(owner.has("start")).to.equal(false);
+            expect(owner.has("allDay")).to.equal(false);
+            owner.set("allDay", false);
+            expect((await update("start_at", null)).payload).to.include({ applied: true });
+            expect(owner.has("start")).to.equal(false);
+            expect(owner.has("allDay")).to.equal(false);
+            expect((await update("all_day", "")).payload).to.include({ applied: true });
+            expect(owner.get("allDay")).to.equal(false);
+            expect((await update("all_day", null)).payload).to.include({ applied: true });
+            expect(owner.has("allDay")).to.equal(false);
+            expect((await update("done", "")).payload).to.include({ applied: true });
+            expect(owner.has("done")).to.equal(false);
+            expect((await update("done", false)).payload).to.include({ applied: true });
+            expect(owner.get("done")).to.equal(false);
+            expect((await update("tags", '[" beta ","initial", "beta", 9]')).payload).to.include({ applied: true });
+            expect((owner.get("tags") as Y.Array<string>).toArray()).to.deep.equal(["initial", "beta"]);
+            stores = fixture.kanbanStoreCalls;
+            expect((await update("tags", ["beta", "initial"])).payload).to.include({ applied: false });
+            expect(fixture.kanbanStoreCalls).to.equal(stores);
+            expect((await update("tags", true)).payload).to.include({ applied: true });
+            expect(owner.has("tags")).to.equal(false);
+            expect((await update("tags", ["valid", 1])).payload).to.include({ code: "validation_failed" });
+            const stored = await createDocumentLoader(fixture.server.persistence!)(`projects/${PROJECT}`);
+            const saved = Project.fromDoc(stored! as never).tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+            expect(saved.get("done")).to.equal(false);
+            expect(saved.has("tags")).to.equal(false);
+            expect(saved.has("start")).to.equal(false);
+            expect(saved.has("allDay")).to.equal(false);
+            expect(saved.get("recurrenceExdate")).to.be.instanceOf(Y.Array);
+            expect((saved.get("recurrenceExdate") as Y.Array<string>).toArray()).to.deep.equal(["2026-11-01"]);
+        } finally {
+            await fixture.stop();
+        }
+    });
 
     it("previews, edits text/tags, moves, no-ops, and persists the raw outline owner", async () => {
         const fixture = await startMcpTestServer();
