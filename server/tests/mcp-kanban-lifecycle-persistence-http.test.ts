@@ -44,6 +44,8 @@ describe("Kanban lifecycle durable preservation through MCP", function() {
                     pageId: page.id,
                     itemId: page.items.at(0)!.id,
                     itemText: page.items.at(0)!.text,
+                    pageContent: Project.fromDoc(doc).tree.getNodeValueFromKey(page.key).toJSON(),
+                    itemContent: Project.fromDoc(doc).tree.getNodeValueFromKey(page.items.at(0)!.key).toJSON(),
                     grids: doc.getMap("yjsGrids").toJSON(),
                     tables: tableSnapshot(doc),
                 };
@@ -64,6 +66,12 @@ describe("Kanban lifecycle durable preservation through MCP", function() {
                 expect(page.items.length).to.equal(1);
                 expect(page.items.at(0)!.id).to.equal(before.itemId);
                 expect(page.items.at(0)!.text).to.equal(before.itemText);
+                expect(Project.fromDoc(doc).tree.getNodeValueFromKey(page.key).toJSON()).to.deep.equal(
+                    before.pageContent,
+                );
+                expect(Project.fromDoc(doc).tree.getNodeValueFromKey(page.items.at(0)!.key).toJSON()).to.deep.equal(
+                    before.itemContent,
+                );
                 expect(doc.getMap("yjsGrids").toJSON()).to.deep.equal(before.grids);
                 expect(tableSnapshot(doc)).to.deep.equal(before.tables);
             });
