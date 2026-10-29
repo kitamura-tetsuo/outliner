@@ -1,18 +1,69 @@
 import { expect } from "chai";
+import sinon from "sinon";
 import * as Y from "yjs";
 import { createKanbanEntry } from "../../shared/src/services/kanbanDefinition.js";
-import {
-    auditRecords,
-    deferred,
-    PROJECT,
-    settleMicrotasks,
-    startMcpTestServer,
-    UID,
-} from "./mcp-create-table-fixture.js";
-import { withRoom } from "./server-create-table-fixture.js";
+import { IdempotencyCache } from "../src/mcp/mutation-contract.js";
+import { createDocumentLoader } from "../src/persistence.js";
+import { auditRecords, deferred, PROJECT, startMcpTestServer, UID } from "./mcp-create-table-fixture.js";
+import { restartFromStorage, withRoom } from "./server-create-table-fixture.js";
 
 describe("Kanban card mutation races and effect disclosure", function() {
     this.timeout(120_000);
+
+    it("expires observations and replay retention on their clocks", async () => {
+        const clock = sinon.stub(Date, "now").callThrough();
+        const fixture = await startMcpTestServer({ controlledObservationClock: true });
+        try {
+            let observationTime = 0;
+            fixture.seams.observationNow = () => observationTime;
+            await seed(fixture.server.hocuspocus);
+            const { read, card } = await observed(fixture);
+            const args = updateArgs(read, card, "timed-replay");
+            const first = await fixture.mcp.call("update_kanban_card", args);
+            expect(first.payload).to.include({ applied: true });
+            const stores = fixture.kanbanStoreCalls;
+            const settledAt = Date.now();
+            observationTime = 300_001;
+            clock.returns(settledAt + 240_000);
+            const replay = await fixture.mcp.call("update_kanban_card", args);
+            expect(replay.payload).to.include({ applied: true, replayed: true });
+            const expired = await fixture.mcp.call("update_kanban_card", { ...args, operationId: "expired" });
+            expect(expired.payload).to.include({ code: "stale_revision" });
+            clock.returns(settledAt + 300_001);
+            const expiredReplay = await fixture.mcp.call("update_kanban_card", args);
+            expect(expiredReplay.payload).to.include({ code: "stale_revision" });
+            expect(fixture.kanbanStoreCalls).to.equal(stores);
+            const persisted = await createDocumentLoader(fixture.server.persistence!)(
+                `projects/${PROJECT}/tables/tasks`,
+            );
+            expect(persisted!.getMap<Y.Map<unknown>>("data").get("r1")!.get("title")).to.equal("Changed");
+        } finally {
+            clock.restore();
+            await fixture.stop();
+        }
+    });
+
+    it("refuses an observation issued before a storage-backed service restart", async () => {
+        const first = await startMcpTestServer();
+        let second: Awaited<ReturnType<typeof startMcpTestServer>> | undefined;
+        try {
+            await seed(first.server.hocuspocus);
+            const { read, card } = await observed(first);
+            const args = updateArgs(read, card, "old-service");
+            expect((await first.mcp.call("update_kanban_card", args)).payload).to.include({ applied: true });
+            const restarted = await restartFromStorage(first.dir, first.acl);
+            second = await startMcpTestServer({ ...restarted, acl: first.acl });
+            const result = await second.mcp.call("update_kanban_card", args);
+            expect(result.payload).to.include({ code: "stale_revision", reason: "observation_unavailable" });
+            await withRoom(second.server.hocuspocus, `projects/${PROJECT}/tables/tasks`, doc => {
+                expect(doc.getMap<Y.Map<unknown>>("data").get("r1")!.get("title")).to.equal("Changed");
+            });
+            expect(second.kanbanStoreCalls).to.equal(0);
+        } finally {
+            await second?.stop();
+            await first.stop();
+        }
+    });
 
     it("retries one unrelated projection drift and succeeds in the same request", async () => {
         const fixture = await startMcpTestServer();
@@ -50,6 +101,98 @@ describe("Kanban card mutation races and effect disclosure", function() {
         }
     });
 
+    for (const scenario of ["row", "source", "schema", "destination", "unrelated"] as const) {
+        it(`rechecks ${scenario} changes after validation and before the source effect`, async () => {
+            const fixture = await startMcpTestServer();
+            try {
+                await seed(fixture.server.hocuspocus);
+                await withRoom(fixture.server.hocuspocus, `projects/${PROJECT}/tables/tasks`, doc => {
+                    doc.getMap<Y.Map<unknown>>("data").get("r2")!.set("status", "done");
+                });
+                const { read, card } = await observed(fixture);
+                const projectDoc = fixture.server.hocuspocus.documents.get(`projects/${PROJECT}`) as Y.Doc;
+                const boardBefore = projectDoc.getMap("yjsKanbans").toJSON();
+                const sourceDoc = fixture.server.hocuspocus.documents.get(`projects/${PROJECT}/tables/tasks`) as Y.Doc;
+                const originalRow = sourceDoc.getMap<Y.Map<unknown>>("data").get("r1")!;
+                let targetChanges = 0;
+                originalRow.observe(event => {
+                    if (event.keysChanged.has("title") || event.keysChanged.has("status")) targetChanges++;
+                });
+                let certified = false, checks = 0, transitioned = false;
+                fixture.seams.beforeKanbanFinalCertification = async () => {
+                    certified = true;
+                };
+                fixture.seams.gate = async () => {
+                    if (!certified || ++checks !== 2) return;
+                    const tableDoc = fixture.server.hocuspocus.documents.get(
+                        `projects/${PROJECT}/tables/tasks`,
+                    ) as Y.Doc;
+                    const data = tableDoc.getMap<Y.Map<unknown>>("data");
+                    if (scenario === "row") {
+                        const old = data.get("r1")!;
+                        const replacement = new Y.Map<unknown>();
+                        for (const [key, value] of old.entries()) replacement.set(key, value);
+                        data.set("r1", replacement);
+                        expect(data.get("r1")).not.to.equal(old);
+                    } else if (scenario === "source") {
+                        const project = fixture.server.hocuspocus.documents.get(`projects/${PROJECT}`) as Y.Doc;
+                        const registry = project.getMap<Y.Map<unknown>>("yjsTables");
+                        const old = registry.get("tasks")!;
+                        const replacement = new Y.Map<unknown>();
+                        for (const [key, value] of old.entries()) replacement.set(key, value);
+                        registry.set("tasks", replacement);
+                        expect(registry.get("tasks")).not.to.equal(old);
+                    } else if (scenario === "schema") {
+                        const schema = tableDoc.getText("schema");
+                        schema.insert(schema.length - 1, ", CHECK (title <> 'Changed')");
+                        expect(schema.toString()).to.include("CHECK (title <> 'Changed')");
+                    } else if (scenario === "destination") {
+                        data.get("r2")!.set("status", "todo");
+                        expect(data.get("r2")!.get("status")).to.equal("todo");
+                    } else {
+                        data.get("r2")!.set("note", "peer");
+                    }
+                    transitioned = true;
+                };
+                const beforeStores = fixture.kanbanStoreCalls;
+                const args = scenario === "destination"
+                    ? {
+                        projectId: PROJECT,
+                        kanbanId: "board",
+                        sourceRef: card.sourceRef,
+                        observationToken: read.observationToken,
+                        operationId: `boundary-${scenario}`,
+                        destination: "done",
+                    }
+                    : updateArgs(read, card, `boundary-${scenario}`);
+                const result = await fixture.mcp.call(
+                    scenario === "destination" ? "move_kanban_card" : "update_kanban_card",
+                    args,
+                );
+                expect(transitioned).to.equal(true);
+                if (scenario === "unrelated") {
+                    expect(result.payload).to.include({ applied: true });
+                    expect(currentTitle(fixture)).to.equal("Changed");
+                    expect(fixture.kanbanStoreCalls - beforeStores).to.equal(1);
+                    expect(targetChanges).to.equal(1);
+                } else {
+                    expect(result.result.isError).to.equal(true);
+                    expect(currentTitle(fixture)).to.equal("First");
+                    expect(fixture.kanbanStoreCalls).to.equal(beforeStores);
+                    expect(targetChanges).to.equal(0);
+                }
+                expect(projectDoc.getMap("yjsKanbans").toJSON()).to.deep.equal(boardBefore);
+                const persisted = await createDocumentLoader(fixture.server.persistence!)(
+                    `projects/${PROJECT}/tables/tasks`,
+                );
+                expect(persisted!.getMap<Y.Map<unknown>>("data").get("r1")!.get("title"))
+                    .to.equal(scenario === "unrelated" ? "Changed" : "First");
+            } finally {
+                await fixture.stop();
+            }
+        });
+    }
+
     it("joins simultaneous calls with the same operation identity into one physical effect", async () => {
         const fixture = await startMcpTestServer();
         try {
@@ -63,17 +206,36 @@ describe("Kanban card mutation races and effect disclosure", function() {
                 await release.promise;
             };
             const request = updateArgs(read, card, "joined-operation");
+            const doc = fixture.server.hocuspocus.documents.get(`projects/${PROJECT}/tables/tasks`) as Y.Doc;
+            let effects = 0;
+            doc.getMap<Y.Map<unknown>>("data").get("r1")!.observe(event => {
+                if (event.keysChanged.has("title")) effects++;
+            });
             const beforeStores = fixture.kanbanStoreCalls;
             const first = fixture.mcp.call("update_kanban_card", request);
             await reached.promise;
+            const joined = deferred();
+            const original = IdempotencyCache.prototype.runChecked;
+            const observer = sinon.stub(IdempotencyCache.prototype, "runChecked").callsFake(function(
+                this: IdempotencyCache,
+                ...args
+            ) {
+                const pending = original.apply(this, args);
+                joined.resolve();
+                return pending;
+            });
             const second = fixture.mcp.call("update_kanban_card", request);
-            await settleMicrotasks();
+            await joined.promise;
+            observer.restore();
             release.resolve();
             const results = await Promise.all([first, second]);
             expect(results.map(result => result.payload.replayed).sort()).to.deep.equal([false, true]);
             expect(results.every(result => result.payload.applied === true)).to.equal(true);
             expect(certifications).to.equal(1);
             expect(fixture.kanbanStoreCalls - beforeStores).to.equal(1);
+            expect(effects).to.equal(1);
+            const saved = await createDocumentLoader(fixture.server.persistence!)(`projects/${PROJECT}/tables/tasks`);
+            expect(saved!.getMap<Y.Map<unknown>>("data").get("r1")!.get("title")).to.equal("Changed");
         } finally {
             await fixture.stop();
         }
@@ -136,6 +298,8 @@ describe("Kanban card mutation races and effect disclosure", function() {
                 applied: true,
                 replayed: false,
             });
+            const saved = await createDocumentLoader(fixture.server.persistence!)(`projects/${PROJECT}/tables/tasks`);
+            expect(saved!.getMap<Y.Map<unknown>>("data").get("r1")!.get("title")).to.equal("Changed");
             fixture.seams.gate = undefined;
             const stores = fixture.kanbanStoreCalls;
             const replay = await fixture.mcp.call("update_kanban_card", args);
@@ -164,6 +328,11 @@ describe("Kanban card mutation races and effect disclosure", function() {
             await seed(fixture.server.hocuspocus);
             const { read, card } = await observed(fixture);
             const args = updateArgs(read, card, "discarded-response");
+            const doc = fixture.server.hocuspocus.documents.get(`projects/${PROJECT}/tables/tasks`) as Y.Doc;
+            let effects = 0;
+            doc.getMap<Y.Map<unknown>>("data").get("r1")!.observe(event => {
+                if (event.keysChanged.has("title")) effects++;
+            });
             const before = fixture.kanbanStoreCalls;
             await fixture.mcp.call("update_kanban_card", args);
             expect(currentTitle(fixture)).to.equal("Changed");
@@ -171,6 +340,9 @@ describe("Kanban card mutation races and effect disclosure", function() {
             const replay = await fixture.mcp.call("update_kanban_card", args);
             expect(replay.payload).to.include({ applied: true, replayed: true });
             expect(fixture.kanbanStoreCalls - before).to.equal(1);
+            expect(effects).to.equal(1);
+            const saved = await createDocumentLoader(fixture.server.persistence!)(`projects/${PROJECT}/tables/tasks`);
+            expect(saved!.getMap<Y.Map<unknown>>("data").get("r1")!.get("title")).to.equal("Changed");
         } finally {
             await fixture.stop();
         }

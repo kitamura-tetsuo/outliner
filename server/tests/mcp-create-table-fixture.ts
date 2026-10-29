@@ -7,6 +7,7 @@ import * as Y from "yjs";
 import { CreateTableTool } from "../src/mcp/create-table-tool.js";
 import { OutlinerKanbanCardMutationService } from "../src/mcp/kanban-card-mutations.js";
 import { KanbanDefinitionTools } from "../src/mcp/kanban-definition-tools.js";
+import { KanbanObservationService } from "../src/mcp/kanban-observations.js";
 import { OutlinerKanbanReadService } from "../src/mcp/kanban-read-service.js";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
 import { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
@@ -60,6 +61,7 @@ export interface Seams {
     /** Runs after the real durable store; throwing makes that store unconfirmed. */
     afterStore?: (room: string) => Promise<void> | void;
     now?: () => number;
+    observationNow?: () => number;
     /** A delivery seam: rewrites the outcome after the real domain call established it. */
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
     beforeRecordBatchPublication?: () => Promise<void>;
@@ -80,18 +82,28 @@ export interface Seams {
  */
 let mcpLogStream: WriteStream | undefined;
 
-export async function startMcpTestServer() {
-    const acl = new AclStore();
+export async function startMcpTestServer(options: {
+    controlledObservationClock?: boolean;
+    server?: TestServer;
+    dir?: string;
+    acl?: AclStore;
+} = {}) {
+    const acl = options.acl ?? new AclStore();
     acl.grant("projectUsers", PROJECT, UID);
-    const dir = tempDir();
-    const server = await startTestServer(dir, acl);
+    const dir = options.dir ?? tempDir();
+    const server = options.server ?? await startTestServer(dir, acl);
     mcpLogStream = refreshMcpLogStream();
-    await seedProject(server.hocuspocus, PROJECT);
+    if (!options.server) await seedProject(server.hocuspocus, PROJECT);
     const context = new AsyncLocalStorage<string>();
     const checks = new Map<string, number>();
     let domainCalls = 0;
     let kanbanStoreCalls = 0;
     const seams: Seams = {};
+    const observations = options.controlledObservationClock
+        ? new KanbanObservationService(server.hocuspocus, {
+            now: () => (seams.observationNow ?? (() => performance.now()))(),
+        })
+        : server.kanbanObservations;
     const gatedAccess = async (uid: string, projectId: string) => {
         const requestId = context.getStore() ?? "";
         const check = (checks.get(requestId) ?? 0) + 1;
@@ -144,7 +156,7 @@ export async function startMcpTestServer() {
     const kanbanMutations = new OutlinerKanbanCardMutationService(
         server.hocuspocus,
         gatedAccess,
-        server.kanbanObservations,
+        observations,
         store,
         { beforeFinalCertification: () => seams.beforeKanbanFinalCertification?.() ?? Promise.resolve() },
     );
@@ -156,12 +168,12 @@ export async function startMcpTestServer() {
         undefined,
         tool,
         undefined,
-        new OutlinerKanbanReadService(server.hocuspocus, gatedAccess, server.kanbanObservations),
+        new OutlinerKanbanReadService(server.hocuspocus, gatedAccess, observations),
         kanbanMutations,
         new KanbanDefinitionTools(
             server.hocuspocus,
             gatedAccess,
-            server.kanbanObservations,
+            observations,
             store,
             () => (seams.now ?? Date.now)(),
         ),
@@ -175,6 +187,7 @@ export async function startMcpTestServer() {
         checks,
         mcp,
         relations,
+        observations,
         /** The unmodified production endpoint of the same server. */
         production: rpcClient(server.server),
         get domainCalls() {
@@ -185,6 +198,7 @@ export async function startMcpTestServer() {
         },
         tables: () => withRoom(server.hocuspocus, `projects/${PROJECT}`, registry),
         async stop() {
+            if (options.controlledObservationClock) await observations.dispose();
             await stopTestServer(server);
             await fs.remove(dir);
         },
