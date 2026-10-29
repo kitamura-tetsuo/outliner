@@ -49,6 +49,46 @@ describe("Kanban lifecycle contested HTTP requests", function() {
         }
     });
 
+    it("refuses a Page removed and replaced after destination capture", async () => {
+        const f = await startMcpTestServer();
+        const release = deferred();
+        try {
+            const destination = await setup(f);
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            const captured = deferred();
+            f.seams.gate = async (id, check) => {
+                if (id === "replace-page" && check === 3) {
+                    captured.resolve();
+                    await release.promise;
+                }
+            };
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId },
+                operationId: "replace-page",
+            }, { requestId: "replace-page" });
+            await captured.promise;
+            const replacementId = await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const project = Project.fromDoc(doc);
+                project.findPage(destination.pageId)!.delete();
+                return project.addPage("Replacement", "peer").id;
+            });
+            release.resolve();
+            expect((await pending).payload.code).to.equal("stale_revision");
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const project = Project.fromDoc(doc);
+                expect(project.findPage(destination.pageId)).to.equal(undefined);
+                expect([...project.findPage(replacementId)!.items].filter(item => item.kanbanId === "board"))
+                    .to.have.length(0);
+            });
+        } finally {
+            release.resolve();
+            await f.stop();
+        }
+    });
+
     it("refuses a Layout moved out of the admitted Page", async () => {
         const f = await startMcpTestServer();
         const release = deferred();
