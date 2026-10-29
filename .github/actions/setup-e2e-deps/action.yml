@@ -52,6 +52,22 @@ runs:
           echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
         ) 2>&1 | tee -a job_logs/setup-dependencies.log
 
+    - name: Cache Firebase CLI
+      id: cache-firebase-cli
+      uses: actions/cache@v6
+      with:
+        path: ~/.npm-global
+        key: e2e-firebase-cli-${{ runner.os }}-${{ hashFiles('.firebase-tools-version') }}${{ inputs.cache-key-suffix }}
+
+    - name: Install Firebase CLI
+      if: steps.cache-firebase-cli.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm install -g "firebase-tools@$(cat .firebase-tools-version)"
+
+    - name: Verify Firebase CLI
+      shell: bash
+      run: scripts/firebase-cli.sh --version
+
     - name: Cache npm dependency trees
       id: cache-node-modules
       uses: actions/cache@v6
@@ -101,7 +117,6 @@ runs:
       shell: bash
       run: |
         echo "${{ github.workspace }}/node_modules/.bin" >> "$GITHUB_PATH"
-        scripts/firebase-cli.sh --version
 
     # Separate cache identities prevent a Chromium-only shard from winning the
     # Firefox cache write. A legacy shared cache is still a valid restore source;

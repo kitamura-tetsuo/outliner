@@ -13,5 +13,5 @@ RUN npm ci && npm --prefix client ci && npm --prefix server ci && npm --prefix f
     && ln -sfn ../client/node_modules shared/node_modules \
     && (cd server && npm run build) \
     && npm --prefix client run paraglide:compile \
-    && npm install --prefix /opt/tools firebase-tools@15.22.1
+    && npm install --prefix /opt/tools "firebase-tools@$(cat .firebase-tools-version)"
 CMD ["bash", "/harness/scripts/poc/windows-linux-backend/linux-services.sh"]

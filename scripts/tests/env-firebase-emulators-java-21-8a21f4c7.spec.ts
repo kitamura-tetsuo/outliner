@@ -84,7 +84,9 @@ test("the production entrypoint constructs the required emulator command after J
     const invocationFile = path.join(binDirectory, "firebase-invocation");
     fs.writeFileSync(
         path.join(binDirectory, "firebase"),
-        `#!/bin/sh\nprintf '%s\\n' "$*" >> "${invocationFile}"\n`,
+        `#!/bin/sh\nprintf '%s\\n' "$*" >> "${invocationFile}"
+if [ "$1" = "--version" ]; then printf '15.22.1\\n'; fi
+`,
     );
     fs.chmodSync(path.join(binDirectory, "firebase"), 0o755);
 

@@ -10,17 +10,18 @@ RUN apt-get update && \
 WORKDIR /firebase
 
 # Install Firebase tools globally
-RUN npm install -g firebase-tools@15.22.1
+COPY .firebase-tools-version /tmp/firebase-tools-version
+RUN npm install -g "firebase-tools@$(cat /tmp/firebase-tools-version)"
 
 # Copy the Firebase configuration
-COPY firebase.json .
-COPY .firebaserc .
+COPY firebase/firebase.json .
+COPY firebase/.firebaserc .
 
 # Create data directory
 RUN mkdir -p /firebase-data
 
 # Copy initialization scripts
-COPY scripts/ /firebase/scripts/
+COPY firebase/scripts/ /firebase/scripts/
 RUN chmod +x /firebase/scripts/init-firebase.sh
 
 # Expose ports

@@ -1,39 +1,39 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const root = resolve(import.meta.dirname, "../..");
-const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-const expected = manifest.devDependencies["firebase-tools"];
+const expected = readFileSync(resolve(root, ".firebase-tools-version"), "utf8").trim();
 
 describe("Firebase CLI version policy", () => {
-    test("the checked-in CLI wrapper resolves the exact lockfile-managed version", () => {
+    test("the checked-in CLI wrapper resolves the declared version", () => {
         expect(expected).toMatch(/^\d+\.\d+\.\d+$/);
+        const bin = mkdtempSync(resolve(tmpdir(), "firebase-cli-match-"));
+        const fakeFirebase = resolve(bin, "firebase");
+        writeFileSync(fakeFirebase, `#!/bin/sh\necho "${expected}"\n`);
+        chmodSync(fakeFirebase, 0o755);
         const output = execFileSync(resolve(root, "scripts/firebase-cli.sh"), ["--version"], {
             cwd: root,
             encoding: "utf8",
+            env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
         }).trim();
         expect(output).toBe(expected);
     });
 
-    test("the wrapper fails visibly when installed CLI metadata disagrees", () => {
-        const command = readFileSync(resolve(root, "scripts/firebase-cli.sh"), "utf8")
-            .replace(
-                'ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"',
-                `ROOT_DIR="${root}"`,
-            )
-            .replace(
-                "node_modules/firebase-tools/package.json",
-                "scripts/tests/fixtures/firebase-tools-mismatch/package.json",
-            )
-            .replace(
-                "node_modules/firebase-tools/lib/bin/firebase.js",
-                "scripts/tests/fixtures/firebase-tools-mismatch/firebase.js",
-            );
-        const result = spawnSync("bash", ["-c", command], { cwd: root, encoding: "utf8" });
+    test("the wrapper fails visibly when PATH contains a different CLI version", () => {
+        const bin = mkdtempSync(resolve(tmpdir(), "firebase-cli-mismatch-"));
+        const fakeFirebase = resolve(bin, "firebase");
+        writeFileSync(fakeFirebase, '#!/bin/sh\necho "0.0.0"\n');
+        chmodSync(fakeFirebase, 0o755);
+        const result = spawnSync(resolve(root, "scripts/firebase-cli.sh"), ["--version"], {
+            cwd: root,
+            encoding: "utf8",
+            env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        });
         expect(result.status).not.toBe(0);
-        expect(result.stderr).toContain(`requires ${expected}, but node_modules contains 0.0.0`);
+        expect(result.stderr).toContain(`policy requires ${expected}, but PATH resolves 0.0.0`);
     });
 
     test("emulator, E2E, validation, and deploy entry points use the policy", () => {
