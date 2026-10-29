@@ -21,6 +21,10 @@ describe("Kanban lifecycle durable preservation through MCP", function() {
                 doc.getMap("data").set("record-1", record);
             });
             const beforeSource = await withRoom(f.server.hocuspocus, source, sourceSnapshot);
+            expect(beforeSource).to.deep.equal({
+                schema: "CREATE TABLE existing_table (id TEXT)",
+                records: { "record-1": { id: "record-1", title: "Keep this record" } },
+            });
             const before = await withRoom(f.server.hocuspocus, room, doc => {
                 createKanbanEntry(doc, "board", {
                     name: "Board",

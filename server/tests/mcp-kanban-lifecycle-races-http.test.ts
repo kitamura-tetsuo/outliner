@@ -49,6 +49,54 @@ describe("Kanban lifecycle contested HTTP requests", function() {
         }
     });
 
+    it("refuses a Layout moved out of the admitted Page", async () => {
+        const f = await startMcpTestServer();
+        const release = deferred();
+        try {
+            const destination = await setup(f);
+            const otherPage = await withRoom(
+                f.server.hocuspocus,
+                `projects/${PROJECT}`,
+                doc => Project.fromDoc(doc).addPage("Other", "peer").id,
+            );
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            const captured = deferred();
+            f.seams.gate = async (id, check) => {
+                if (id === "move-layout" && check === 3) {
+                    captured.resolve();
+                    await release.promise;
+                }
+            };
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId, layoutId: destination.layoutId },
+                operationId: "move-layout",
+            }, { requestId: "move-layout" });
+            await captured.promise;
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const project = Project.fromDoc(doc);
+                const page = project.findPage(destination.pageId)!;
+                const layout = [...page.items].find(item => item.id === destination.layoutId)!;
+                const original = project.tree.getNodeValueFromKey(layout.key);
+                project.tree.moveChildToParent(layout.key, project.findPage(otherPage)!.key);
+                expect(project.tree.getNodeValueFromKey(layout.key)).to.equal(original);
+                expect([...project.findPage(otherPage)!.items].map(item => item.id)).to.include(destination.layoutId);
+            });
+            release.resolve();
+            expect((await pending).payload.code).to.equal("stale_revision");
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const page = Project.fromDoc(doc).findPage(otherPage)!;
+                const layout = [...page.items].find(item => item.id === destination.layoutId)!;
+                expect(layout.items.length).to.equal(0);
+            });
+        } finally {
+            release.resolve();
+            await f.stop();
+        }
+    });
+
     it("accepts unrelated edits during admission and applies the default Layout span", async () => {
         const f = await startMcpTestServer();
         const release = deferred();
