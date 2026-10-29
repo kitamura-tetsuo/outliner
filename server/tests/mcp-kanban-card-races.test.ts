@@ -110,6 +110,72 @@ describe("Kanban card mutation races and effect disclosure", function() {
         }
     });
 
+    it("retains the effect in audit when disclosure is denied then access returns", async () => {
+        const fixture = await startMcpTestServer();
+        try {
+            await seed(fixture.server.hocuspocus);
+            const { read, card } = await observed(fixture);
+            let stored = false, disclosureChecks = 0;
+            fixture.seams.afterStore = room => {
+                if (room.endsWith("/tables/tasks")) stored = true;
+            };
+            fixture.seams.gate = () => {
+                if (!stored) return;
+                if (++disclosureChecks === 2) fixture.acl.revokeAll(PROJECT);
+                if (disclosureChecks === 3) fixture.acl.grant("projectUsers", PROJECT, UID);
+            };
+            const args = updateArgs(read, card, "transient-disclosure-denial");
+            const result = await fixture.mcp.call("update_kanban_card", args);
+            expect(disclosureChecks).to.equal(3);
+            expect(result.result.isError).to.equal(true);
+            expect(result.payload).to.include({ code: "forbidden" });
+            expect(result.payload).not.to.have.property("sourceRef");
+            expect(currentTitle(fixture)).to.equal("Changed");
+            expect((await auditRecords(["transient-disclosure-denial"]))[0]).to.include({
+                outcome: "forbidden",
+                applied: true,
+                replayed: false,
+            });
+            fixture.seams.gate = undefined;
+            const stores = fixture.kanbanStoreCalls;
+            const replay = await fixture.mcp.call("update_kanban_card", args);
+            expect(replay.payload).to.include({ applied: true, replayed: true });
+            expect(fixture.kanbanStoreCalls).to.equal(stores);
+            let replayChecks = 0;
+            fixture.seams.gate = () => {
+                if (++replayChecks === 3) fixture.acl.revokeAll(PROJECT);
+                if (replayChecks === 4) fixture.acl.grant("projectUsers", PROJECT, UID);
+            };
+            const deniedReplay = await fixture.mcp.call("update_kanban_card", args);
+            expect(replayChecks).to.equal(4);
+            expect(deniedReplay.payload).to.include({ code: "forbidden" });
+            expect(deniedReplay.payload).not.to.have.property("sourceRef");
+            const audit = await auditRecords(["transient-disclosure-denial"]);
+            expect(audit[audit.length - 1]).to.include({ outcome: "forbidden", applied: true, replayed: true });
+            expect(fixture.kanbanStoreCalls).to.equal(stores);
+        } finally {
+            await fixture.stop();
+        }
+    });
+
+    it("replays a completed operation after its response is discarded", async () => {
+        const fixture = await startMcpTestServer();
+        try {
+            await seed(fixture.server.hocuspocus);
+            const { read, card } = await observed(fixture);
+            const args = updateArgs(read, card, "discarded-response");
+            const before = fixture.kanbanStoreCalls;
+            await fixture.mcp.call("update_kanban_card", args);
+            expect(currentTitle(fixture)).to.equal("Changed");
+            expect(fixture.kanbanStoreCalls - before).to.equal(1);
+            const replay = await fixture.mcp.call("update_kanban_card", args);
+            expect(replay.payload).to.include({ applied: true, replayed: true });
+            expect(fixture.kanbanStoreCalls - before).to.equal(1);
+        } finally {
+            await fixture.stop();
+        }
+    });
+
     it("retains applied:null when acknowledgement fails and disclosure is revoked", async () => {
         const fixture = await startMcpTestServer();
         try {

@@ -301,6 +301,7 @@ export function createMcpRouter(
                     return response(validated);
                 } catch (caught) {
                     await lifecycle?.disclosureFailed();
+                    const effect = caught instanceof McpEffectError ? caught.effect : establishedEffect;
                     // A handler can throw only after its own awaited room
                     // cleanup. Recheck at this final boundary as well so a
                     // source-specific error cannot disclose existence after
@@ -310,7 +311,6 @@ export function createMcpRouter(
                         try {
                             await options.authorizeDisclosure(args as z.infer<z.ZodObject<T>>);
                         } catch {
-                            const effect = caught instanceof McpEffectError ? caught.effect : establishedEffect;
                             error = effect
                                 ? new McpEffectError("forbidden", "Project is inaccessible", {}, effect)
                                 : new McpReadError("forbidden", "Project is inaccessible");
@@ -333,7 +333,7 @@ export function createMcpRouter(
                                 outcome: error.code,
                                 applied: false,
                                 replayed: false,
-                                ...(error instanceof McpEffectError ? error.effect : {}),
+                                ...(effect ?? {}),
                             });
                         }
                         const meta = error.requiredScope
@@ -353,6 +353,7 @@ export function createMcpRouter(
                             outcome: "internal_failure",
                             applied: false,
                             replayed: false,
+                            ...(effect ?? {}),
                         });
                     }
                     // Never forward an unexpected internal exception's message to the

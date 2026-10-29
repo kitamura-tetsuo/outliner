@@ -104,6 +104,26 @@ describe("Kanban card mutation HTTP contract variants", function() {
             );
             expect(disappear.payload).to.include({ applied: true });
             expect(cards(await query(fixture)).some((item: any) => item.sourceRef?.rowId === "r1")).to.equal(false);
+
+            await setBoard(fixture, {
+                query: "SELECT id, status, title FROM tasks ORDER BY title LIMIT 1",
+                titleField: "title",
+                detailFields: [],
+            });
+            read = await query(fixture);
+            const first = cards(read)[0];
+            const firstId = first.sourceRef.rowId;
+            const limited = await fixture.mcp.call(
+                "update_kanban_card",
+                update(read, first, {
+                    outputField: "title",
+                    value: "ZZZ last",
+                    operationId: "limit-disappearance",
+                }),
+            );
+            expect(limited.payload).to.include({ applied: true });
+            expect(await field(fixture, firstId, "title")).to.equal("ZZZ last");
+            expect(cards(await query(fixture)).some((item: any) => item.sourceRef?.rowId === firstId)).to.equal(false);
         } finally {
             await fixture.stop();
         }
