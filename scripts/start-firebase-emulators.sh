@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"${SCRIPT_DIR}/require-java-21.sh"
+
 # Redirect all output to a log file for debugging (optional/redundant with PM2 but safe)
 # exec > >(tee -a /workspace/logs/firebase-emulators-wrapper.log) 2>&1
 
