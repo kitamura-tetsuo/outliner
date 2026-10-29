@@ -46,6 +46,8 @@ test(
                 await setCellValue(page, 0, id, "status", ["open", "done", "open"][index]!);
                 await setCellValue(page, 0, id, "detail", `detail-${index + 1}`);
             }
+            const sourceTable = (await readGridProjectState(page)).tables.find(value => value.id === table.id);
+            if (!sourceTable) throw new Error("UI source Table disappeared after record configuration");
             const browserSourceBefore = await readKanbanPurityState(page);
             await expect.poll(
                 async () =>
@@ -54,7 +56,7 @@ test(
                         { projectId, tableId: table.id, persisted: true },
                     )).table?.records,
                 { timeout: 60_000, intervals: [1_000, 2_000, 5_000] },
-            ).toEqual(table.data);
+            ).toEqual(sourceTable.data);
             const persistedBefore = await server.request<CatalogSnapshot>(
                 "snapshot",
                 { projectId, tableId: table.id, persisted: true },
