@@ -58,8 +58,12 @@ try {
     Run-Preparation 'server-build' "$app/server" @('node_modules/typescript/bin/tsc')
     if (-not (Test-Path "$app/server/dist/server/src/index.js")) { throw 'Compiled server missing' }
     Run-Preparation 'paraglide-build' "$app/client" @($npmArg,'run','paraglide:compile')
-    $firebaseToolsVersion = (Get-Content "$app/.firebase-tools-version" -Raw).Trim()
+    $harnessRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+    $firebaseToolsVersion = (Get-Content "$harnessRoot/.firebase-tools-version" -Raw).Trim()
     if ($CacheHit -ne 'true') { Run-Preparation 'firebase-tools-install' $app @($npmArg,'install','--prefix','work/tools',"firebase-tools@$firebaseToolsVersion") }
+    $installedFirebaseToolsVersion = (Get-Content "$app/work/tools/node_modules/firebase-tools/package.json" -Raw | ConvertFrom-Json).version
+    if ($installedFirebaseToolsVersion -ne $firebaseToolsVersion) { throw "Firebase CLI version mismatch: policy requires $firebaseToolsVersion, but cache contains $installedFirebaseToolsVersion" }
+    Write-Host "Firebase CLI version: $installedFirebaseToolsVersion"
     Invoke-WebRequest 'https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-win64.zip' -OutFile "$log/geckodriver.zip" -UseBasicParsing
     Expand-Archive "$log/geckodriver.zip" "$log/geckodriver" -Force
 } finally { Stop-Transcript }

@@ -51,4 +51,27 @@ describe("Firebase CLI version policy", () => {
             );
         }
     });
+
+    test("container and Windows boundaries carry the repository policy explicitly", () => {
+        const ciImage = readFileSync(resolve(root, ".github/container/Dockerfile"), "utf8");
+        expect(ciImage).toContain("WORKDIR /cache\nCOPY .firebase-tools-version ./");
+
+        const windowsWrapper = readFileSync(resolve(root, "scripts/firebase-cli.cmd"), "utf8");
+        expect(windowsWrapper).toContain('"%~dp0.." %*');
+        expect(windowsWrapper).toContain("p.resolve(process.argv[1])");
+        expect(windowsWrapper).toContain("process.argv.slice(2)");
+
+        const windowsPreparation = readFileSync(
+            resolve(root, "scripts/poc/windows-native-ime/prepare-app.ps1"),
+            "utf8",
+        );
+        expect(windowsPreparation).toContain("$harnessRoot/.firebase-tools-version");
+        expect(windowsPreparation).toContain("cache contains $installedFirebaseToolsVersion");
+
+        const linuxPreparation = readFileSync(
+            resolve(root, "scripts/poc/windows-linux-backend/start-compose.ps1"),
+            "utf8",
+        );
+        expect(linuxPreparation).toContain("HEAD .firebase-tools-version scripts/poc/windows-native-ime");
+    });
 });

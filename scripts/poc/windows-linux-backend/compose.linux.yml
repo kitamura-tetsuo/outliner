@@ -7,6 +7,7 @@ services:
       dockerfile: /opt/outliner-harness/scripts/poc/windows-linux-backend/Dockerfile.runtime
       args:
         APPLICATION_SHA: ${APPLICATION_SHA:?exact source revision required}
+        FIREBASE_TOOLS_VERSION: ${FIREBASE_TOOLS_VERSION:?Firebase CLI policy required}
     env_file: !reset []
     environment:
       APPLICATION_SHA: ${APPLICATION_SHA}

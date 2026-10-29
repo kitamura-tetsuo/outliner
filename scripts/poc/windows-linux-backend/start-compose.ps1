@@ -16,7 +16,7 @@ $archive = Join-Path (Get-Location) 'work/linux-application.tar'
 $harness = Join-Path (Get-Location) 'work/linux-harness.tar'
 git -C $app archive --format=tar --output=$archive HEAD
 if ($LASTEXITCODE -ne 0) { throw 'Application source archive failed' }
-git archive --format=tar --output=$harness HEAD scripts/poc/windows-native-ime scripts/poc/windows-linux-backend
+git archive --format=tar --output=$harness HEAD .firebase-tools-version scripts/poc/windows-native-ime scripts/poc/windows-linux-backend
 if ($LASTEXITCODE -ne 0) { throw 'Harness source archive failed' }
 $script = Linux-Path ((Resolve-Path 'scripts/poc/windows-linux-backend/start-compose.sh').Path)
 $composeArguments = @('--distribution','Ubuntu','--user','root','--exec','bash',$script,(Linux-Path $archive),(Linux-Path $harness),$sha)
