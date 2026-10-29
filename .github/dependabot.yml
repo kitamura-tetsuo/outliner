@@ -96,3 +96,33 @@ updates:
         versions:
           - '>=7.0.0 <7.1.0'
 
+  # Workflow action references are discovered recursively from the repository
+  # root. Dependabot opens ordinary pull requests, so the existing CI and
+  # branch-protection rules review these updates before they can land.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+      time: '13:00'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+
+  # Docker discovery is directory-scoped rather than recursive. Keep every
+  # directory containing a maintained Dockerfile explicit, including the
+  # suffix-named Dockerfiles Dependabot discovers within these directories.
+  - package-ecosystem: 'docker'
+    directories:
+      - '/'
+      - '/.devcontainer'
+      - '/.github/container'
+      - '/firebase'
+      - '/server'
+      - '/scripts/poc/windows-linux-backend'
+    schedule:
+      interval: 'daily'
+      time: '13:00'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+
