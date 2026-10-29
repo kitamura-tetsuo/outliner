@@ -49,6 +49,49 @@ describe("Kanban lifecycle contested HTTP requests", function() {
         }
     });
 
+    it("accepts unrelated edits during admission and applies the default Layout span", async () => {
+        const f = await startMcpTestServer();
+        const release = deferred();
+        try {
+            const destination = await setup(f);
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            const captured = deferred();
+            f.seams.gate = async (id, check) => {
+                if (id === "unrelated-edit" && check === 3) {
+                    captured.resolve();
+                    await release.promise;
+                }
+            };
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId, layoutId: destination.layoutId },
+                operationId: "unrelated-edit",
+            }, { requestId: "unrelated-edit" });
+            await captured.promise;
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const page = Project.fromDoc(doc).findPage(destination.pageId)!;
+                page.items.at(0)!.updateText("Peer edit");
+                page.items.addNode("peer").updateText("New sibling");
+            });
+            release.resolve();
+            const placed = await pending;
+            expect(placed.payload).to.include({ applied: true, parentId: destination.layoutId });
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const page = Project.fromDoc(doc).findPage(destination.pageId)!;
+                const layout = [...page.items].find(item => item.id === destination.layoutId)!;
+                const item = [...layout.items].find(item => item.key === placed.payload.placementId)!;
+                expect(item.columnSpan).to.equal(12);
+                expect(page.items.at(0)!.text).to.equal("Peer edit");
+                expect([...page.items].some(child => child.text === "New sibling")).to.equal(true);
+            });
+        } finally {
+            release.resolve();
+            await f.stop();
+        }
+    });
+
     it("joins concurrent identical effects and retains the receipt after disclosure revocation", async () => {
         const f = await startMcpTestServer();
         const release = deferred();
