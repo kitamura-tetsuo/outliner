@@ -41,6 +41,7 @@ describe("Firebase CLI version policy", () => {
             const path of [
                 "scripts/start-firebase-emulators.sh",
                 ".github/actions/setup-e2e-deps/action.yml",
+                ".github/actions/setup-test-env/action.yml",
                 ".github/workflows/ci-checks.yml",
                 ".github/workflows/deploy.yml",
             ]

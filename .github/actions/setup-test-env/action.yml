@@ -48,6 +48,15 @@ runs:
         echo "Clean up existing processes took $(( $(date +%s) - start ))s"
         echo "::endgroup::"
 
+    - name: Enforce Firebase CLI policy
+      shell: bash
+      run: |
+        expected="$(cat .firebase-tools-version)"
+        if ! command -v firebase >/dev/null || [ "$(firebase --version 2>/dev/null || true)" != "$expected" ]; then
+          npm install -g "firebase-tools@$expected"
+        fi
+        scripts/firebase-cli.sh --version
+
     - name: Run setup script
       shell: bash
       env:
