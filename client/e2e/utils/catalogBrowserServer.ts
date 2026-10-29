@@ -5,7 +5,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export interface CatalogSnapshot {
-    project?: { catalog: any; tables: { id: string; sqlName: string; }[]; grids: unknown; calendars: unknown; };
+    project?: {
+        catalog: any;
+        tables: { id: string; sqlName: string; }[];
+        grids: unknown;
+        kanbans: unknown;
+        calendars: unknown;
+    };
     table?: { schema: string; records: Record<string, Record<string, unknown>>; };
 }
 
