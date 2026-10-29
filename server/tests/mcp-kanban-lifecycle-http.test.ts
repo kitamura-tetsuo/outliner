@@ -35,7 +35,7 @@ describe("Kanban lifecycle through the registered production MCP boundary", func
             const preview = await f.mcp.call("place_kanban", {
                 ...common,
                 destination: { pageId: seeded.pageId, layoutId: seeded.layoutId },
-                operationId: "preview-layout",
+                operationId: "place-root",
                 dryRun: true,
             });
             expect(preview.payload).to.include({ applied: false, replayed: false, wouldChange: true });
@@ -100,6 +100,17 @@ describe("Kanban lifecycle through the registered production MCP boundary", func
                 operationId: "delete-board",
             });
             expect(deleted.payload).to.include({ applied: true, removedPlacementCount: 1 });
+            const replayAfterDeletion = await f.mcp.call("place_kanban", {
+                ...common,
+                destination: { pageId: seeded.pageId },
+                operationId: "place-root",
+            });
+            expect(replayAfterDeletion.payload).to.include({
+                applied: true,
+                replayed: true,
+                placementId: root.payload.placementId,
+                itemId: root.payload.itemId,
+            });
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 expect(getKanbanRegistry(doc).has("board")).to.equal(false);
                 expect(findByKey(Project.fromDoc(doc), root.payload.placementId)).to.equal(undefined);

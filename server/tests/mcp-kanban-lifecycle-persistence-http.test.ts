@@ -15,6 +15,9 @@ describe("Kanban lifecycle durable preservation through MCP", function() {
             const room = `projects/${PROJECT}`;
             const source = `${room}/tables/table-existing`;
             await withRoom(f.server.hocuspocus, source, doc => {
+                const schema = doc.getText("schema");
+                schema.delete(0, schema.length);
+                schema.insert(0, "CREATE TABLE existing_table (id TEXT, title TEXT)");
                 const record = new Y.Map<unknown>();
                 record.set("id", "record-1");
                 record.set("title", "Keep this record");
@@ -22,7 +25,7 @@ describe("Kanban lifecycle durable preservation through MCP", function() {
             });
             const beforeSource = await withRoom(f.server.hocuspocus, source, sourceSnapshot);
             expect(beforeSource).to.deep.equal({
-                schema: "CREATE TABLE existing_table (id TEXT)",
+                schema: "CREATE TABLE existing_table (id TEXT, title TEXT)",
                 records: { "record-1": { id: "record-1", title: "Keep this record" } },
             });
             const before = await withRoom(f.server.hocuspocus, room, doc => {
