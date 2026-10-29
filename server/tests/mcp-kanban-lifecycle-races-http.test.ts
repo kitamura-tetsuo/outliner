@@ -62,12 +62,13 @@ describe("Kanban lifecycle contested HTTP requests", function() {
                     await release.promise;
                 }
             };
+            const operationId = `concurrent-${crypto.randomUUID()}`;
             const args = {
                 projectId: PROJECT,
                 kanbanId: "board",
                 observationToken: observed.payload.observationToken,
                 destination: { pageId: destination.pageId },
-                operationId: "concurrent-place",
+                operationId,
             };
             const first = f.mcp.call("place_kanban", args, { requestId: "first" });
             await stored.promise;
@@ -93,12 +94,50 @@ describe("Kanban lifecycle contested HTTP requests", function() {
             f.acl.grant("projectUsers", PROJECT, "mcp-table-user");
             const replay = await f.mcp.call("place_kanban", args);
             expect(replay.payload).to.include({ applied: true, replayed: true });
-            const records = await auditRecords(["concurrent-place"]);
+            const records = await auditRecords([operationId]);
             expect(records.filter(record => record.outcome === "forbidden").map(record => record.applied)).to.deep
                 .equal([
                     true,
                     true,
                 ]);
+        } finally {
+            release.resolve();
+            await f.stop();
+        }
+    });
+
+    it("rechecks Project access after preparation before publishing", async () => {
+        const f = await startMcpTestServer();
+        const release = deferred();
+        try {
+            const destination = await setup(f);
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            const operationId = `revoke-${crypto.randomUUID()}`;
+            const prepared = deferred();
+            f.seams.gate = async (id, check) => {
+                if (id === "revoke-prepared" && check === 3) {
+                    prepared.resolve();
+                    await release.promise;
+                }
+            };
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId },
+                operationId,
+            }, { requestId: "revoke-prepared" });
+            await prepared.promise;
+            f.acl.revokeAll(PROJECT);
+            release.resolve();
+            expect((await pending).payload.code).to.equal("forbidden");
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const page = Project.fromDoc(doc).findPage(destination.pageId)!;
+                expect([...page.items].filter(item => item.kanbanId === "board")).to.have.length(0);
+            });
+            const records = await auditRecords([operationId]);
+            expect(records.map(record => ({ outcome: record.outcome, applied: record.applied })))
+                .to.deep.equal([{ outcome: "forbidden", applied: false }]);
         } finally {
             release.resolve();
             await f.stop();
