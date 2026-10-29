@@ -106,6 +106,51 @@ describe("Kanban lifecycle contested HTTP requests", function() {
         }
     });
 
+    it("removes the same observed occurrence after it moves into a Layout", async () => {
+        const f = await startMcpTestServer();
+        try {
+            const destination = await setup(f);
+            const placement = await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const page = Project.fromDoc(doc).findPage(destination.pageId)!;
+                const item = page.items.addNode("peer");
+                item.componentType = "kanban";
+                item.kanbanId = "board";
+                return { key: item.key, id: item.id };
+            });
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const project = Project.fromDoc(doc);
+                const page = project.findPage(destination.pageId)!;
+                const layout = [...page.items].find(item => item.id === destination.layoutId)!;
+                const original = project.tree.getNodeValueFromKey(placement.key);
+                project.tree.moveChildToParent(placement.key, layout.key);
+                expect(project.tree.getNodeValueFromKey(placement.key)).to.equal(original);
+                expect([...layout.items].map(item => item.key)).to.include(placement.key);
+            });
+            const result = await f.mcp.call("remove_kanban_placement", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                placementId: placement.key,
+                operationId: "remove-moved",
+            });
+            expect(result.payload).to.include({
+                applied: true,
+                placementId: placement.key,
+                itemId: placement.id,
+                pageId: destination.pageId,
+                parentId: destination.layoutId,
+            });
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const page = Project.fromDoc(doc).findPage(destination.pageId)!;
+                const layout = [...page.items].find(item => item.id === destination.layoutId)!;
+                expect([...layout.items].map(item => item.key)).not.to.include(placement.key);
+            });
+        } finally {
+            await f.stop();
+        }
+    });
+
     it("rechecks Project access after preparation before publishing", async () => {
         const f = await startMcpTestServer();
         const release = deferred();
