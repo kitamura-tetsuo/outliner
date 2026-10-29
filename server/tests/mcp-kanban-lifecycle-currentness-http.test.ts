@@ -57,6 +57,15 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
         const f = await startMcpTestServer();
         try {
             const first = await seed(f, 102);
+            const layoutId = await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const layout = Project.fromDoc(doc).items.at(0)!.items.addNode("peer");
+                layout.componentType = "layout";
+                const child = layout.items.addNode("peer");
+                child.componentType = "kanban";
+                child.kanbanId = "other";
+                child.columnSpan = 5;
+                return layout.id;
+            });
             const preserved = await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => ({
                 tables: [...doc.getMap<import("yjs").Map<unknown>>("yjsTables").entries()].map(([id, table]) => ({
                     id,
@@ -73,6 +82,14 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
                     Project.fromDoc(doc).items.at(0)!.items.at(0)!.key,
                 ).toJSON(),
                 calendars: doc.getMap("yjsCalendars").toJSON(),
+                layout: (() => {
+                    const project = Project.fromDoc(doc);
+                    const layout = [...project.items.at(0)!.items].find(item => item.id === layoutId)!;
+                    return {
+                        node: project.tree.getNodeValueFromKey(layout.key).toJSON(),
+                        child: project.tree.getNodeValueFromKey(layout.items.at(0)!.key).toJSON(),
+                    };
+                })(),
             }));
             const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
@@ -117,6 +134,12 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
                 expect(Project.fromDoc(doc).tree.getNodeValueFromKey(page.items.at(0)!.key).toJSON())
                     .to.deep.equal(preserved.unrelatedContent);
                 expect(doc.getMap("yjsCalendars").toJSON()).to.deep.equal(preserved.calendars);
+                const layout = [...page.items].find(item => item.id === layoutId)!;
+                expect(Project.fromDoc(doc).tree.getNodeValueFromKey(layout.key).toJSON()).to.deep.equal(
+                    preserved.layout.node,
+                );
+                expect(Project.fromDoc(doc).tree.getNodeValueFromKey(layout.items.at(0)!.key).toJSON())
+                    .to.deep.equal(preserved.layout.child);
             });
         } finally {
             await f.stop();
