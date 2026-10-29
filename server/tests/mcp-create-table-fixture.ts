@@ -63,6 +63,7 @@ export interface Seams {
     now?: () => number;
     /** A delivery seam: rewrites the outcome after the real domain call established it. */
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
+    lifecycleDeliver?: (outcome: Awaited<ReturnType<KanbanLifecycleTools["place"]>>) => unknown;
     beforeRecordBatchPublication?: () => Promise<void>;
     beforeGridQueryPublication?: () => Promise<void>;
     /** Pauses the real OutlinerReadService direct-room disconnect. */
@@ -138,6 +139,15 @@ export async function startMcpTestServer() {
         beforeRecordBatchPublication: () => seams.beforeRecordBatchPublication?.() ?? Promise.resolve(),
         beforeGridQueryPublication: () => seams.beforeGridQueryPublication?.() ?? Promise.resolve(),
     });
+    const lifecycle = new KanbanLifecycleTools(
+        new OutlinerKanbanLifecycleService(server.kanbanObservations, gatedAccess, store),
+        () => (seams.now ?? Date.now)(),
+    );
+    const place = lifecycle.place.bind(lifecycle);
+    lifecycle.place = async (...args) => {
+        const outcome = await place(...args);
+        return (seams.lifecycleDeliver ? seams.lifecycleDeliver(outcome) : outcome) as typeof outcome;
+    };
     app.use(createMcpRouter(
         reads,
         undefined,
@@ -154,10 +164,7 @@ export async function startMcpTestServer() {
             store,
             () => (seams.now ?? Date.now)(),
         ),
-        new KanbanLifecycleTools(
-            new OutlinerKanbanLifecycleService(server.kanbanObservations, gatedAccess, store),
-            () => (seams.now ?? Date.now)(),
-        ),
+        lifecycle,
     ));
     const mcp = rpcClient(app);
     return {

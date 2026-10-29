@@ -355,6 +355,7 @@ export function createMcpRouter(
                             outcome: "internal_failure",
                             applied: false,
                             replayed: false,
+                            ...establishedEffect,
                         });
                     }
                     // Never forward an unexpected internal exception's message to the

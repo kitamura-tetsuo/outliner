@@ -189,6 +189,49 @@ describe("Kanban lifecycle contested HTTP requests", function() {
         }
     });
 
+    it("retains the real effect and audits it when output validation fails", async () => {
+        const f = await startMcpTestServer();
+        try {
+            const destination = await setup(f);
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            const operationId = `delivery-${crypto.randomUUID()}`;
+            const args = {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId },
+                operationId,
+            };
+            f.seams.lifecycleDeliver = outcome => ({ ...outcome, placementId: 7 });
+            const failed = await f.mcp.call("place_kanban", args);
+            expect(failed.payload.code).to.equal("internal_failure");
+            expect(failed.result).not.to.have.property("structuredContent");
+            f.seams.lifecycleDeliver = undefined;
+            const replay = await f.mcp.call("place_kanban", args);
+            expect(replay.payload).to.include({ applied: true, replayed: true });
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                const page = Project.fromDoc(doc).findPage(destination.pageId)!;
+                const placements = [...page.items].filter(item => item.kanbanId === "board");
+                expect(placements.map(item => item.key)).to.deep.equal([replay.payload.placementId]);
+            });
+            const records = await auditRecords([operationId]);
+            expect(
+                records.map(record => ({
+                    outcome: record.outcome,
+                    applied: record.applied,
+                    replayed: record.replayed,
+                })),
+            )
+                .to.deep.equal([{ outcome: "internal_failure", applied: true, replayed: false }, {
+                    outcome: "success",
+                    applied: true,
+                    replayed: true,
+                }]);
+        } finally {
+            await f.stop();
+        }
+    });
+
     it("refuses deletion of a malformed non-leaf without changing the board or children", async () => {
         const f = await startMcpTestServer();
         try {
