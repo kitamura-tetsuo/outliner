@@ -45,13 +45,18 @@ function dependabotDirectory(file: string): string {
     return directory === "." ? "/" : directory;
 }
 
+function normalizeDependabotPath(value: string): string {
+    const normalized = path.posix.normalize(value.replace(/^\/+/, "")).replace(/\/+$/, "");
+    return normalized === "." ? "" : normalized;
+}
+
 function excludesDockerfile(update: Update, file: string): boolean {
-    const repositoryPath = file.replace(/^\//, "");
+    const repositoryPath = normalizeDependabotPath(file);
     const directoryPath = dependabotDirectory(repositoryPath);
-    const relativePath = path.posix.relative(directoryPath, `/${repositoryPath}`);
+    const relativePath = normalizeDependabotPath(path.posix.relative(directoryPath, `/${repositoryPath}`));
 
     return (update["exclude-paths"] ?? []).some(pattern => {
-        const repositoryPattern = pattern.replace(/^\//, "").replace(/\/$/, "");
+        const repositoryPattern = normalizeDependabotPath(pattern);
         const exactOrDirectoryMatch = repositoryPattern === ""
             || repositoryPath === repositoryPattern
             || repositoryPath.startsWith(`${repositoryPattern}/`);
@@ -130,7 +135,7 @@ test.each([
     expect(uncoveredDockerfiles(fixture)).toContain("server/Dockerfile.debug");
 });
 
-test.each(["server", "server/", "/server/"])(
+test.each(["server", "server/", "/server/", "./server/", "server/../server/"])(
     "a parsed directory exclusion %s removes both required server Dockerfiles from coverage",
     pattern => {
         const fixture = configWithDockerExclusion(pattern);
