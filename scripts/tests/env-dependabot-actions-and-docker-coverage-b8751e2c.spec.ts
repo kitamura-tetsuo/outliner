@@ -51,8 +51,13 @@ function excludesDockerfile(update: Update, file: string): boolean {
     const relativePath = path.posix.relative(directoryPath, `/${repositoryPath}`);
 
     return (update["exclude-paths"] ?? []).some(pattern => {
-        const repositoryPattern = pattern.replace(/^\//, "");
-        return path.matchesGlob(repositoryPath, repositoryPattern) || path.matchesGlob(relativePath, repositoryPattern);
+        const repositoryPattern = pattern.replace(/^\//, "").replace(/\/$/, "");
+        const exactOrDirectoryMatch = repositoryPattern === ""
+            || repositoryPath === repositoryPattern
+            || repositoryPath.startsWith(`${repositoryPattern}/`);
+        return exactOrDirectoryMatch
+            || path.matchesGlob(repositoryPath, repositoryPattern)
+            || path.matchesGlob(relativePath, repositoryPattern);
     });
 }
 
@@ -72,7 +77,15 @@ function uncoveredDockerfiles(config: DependabotConfig): string[] {
     });
 }
 
-const config = parse(fs.readFileSync(configPath, "utf8")) as DependabotConfig;
+const dependabotSource = fs.readFileSync(configPath, "utf8");
+const config = parse(dependabotSource) as DependabotConfig;
+
+function configWithDockerExclusion(pattern: string): DependabotConfig {
+    const dockerEntry = "  - package-ecosystem: 'docker'\n";
+    expect(dependabotSource.match(new RegExp(dockerEntry, "g"))).toHaveLength(1);
+    const exclusion = `    exclude-paths:\n      - ${JSON.stringify(pattern)}\n`;
+    return parse(dependabotSource.replace(dockerEntry, `${dockerEntry}${exclusion}`)) as DependabotConfig;
+}
 
 test("the v2 config covers Actions and every maintained Dockerfile", () => {
     expect(config.version).toBe(2);
@@ -112,12 +125,24 @@ test.each([
     "server/Dockerfile.debug",
     "server/*.debug",
     "Dockerfile.debug",
-])("an exclude-paths pattern %s removes the required debug Dockerfile from coverage", pattern => {
-    const fixture = structuredClone(config);
-    const docker = (fixture.updates ?? []).find(update => update["package-ecosystem"] === "docker");
-    expect(docker).toBeDefined();
-
-    docker!["exclude-paths"] = [pattern];
-
+])("a parsed exclude-paths pattern %s removes the required debug Dockerfile from coverage", pattern => {
+    const fixture = configWithDockerExclusion(pattern);
     expect(uncoveredDockerfiles(fixture)).toContain("server/Dockerfile.debug");
+});
+
+test.each(["server", "server/", "/server/"])(
+    "a parsed directory exclusion %s removes both required server Dockerfiles from coverage",
+    pattern => {
+        const fixture = configWithDockerExclusion(pattern);
+        const docker = (fixture.updates ?? []).find(update => update["package-ecosystem"] === "docker");
+
+        expect(configuredDirectories(docker!)).toContain("/server");
+        expect(uncoveredDockerfiles(fixture)).toEqual(
+            expect.arrayContaining(["server/Dockerfile", "server/Dockerfile.debug"]),
+        );
+    },
+);
+
+test("a parsed exclusion for an unrelated directory preserves the required inventory", () => {
+    expect(uncoveredDockerfiles(configWithDockerExclusion("unmaintained/"))).toEqual([]);
 });
