@@ -65,6 +65,7 @@ function documentState(projectId: string, doc: Y.Doc) {
             sqlName: entry.get("sqlName"),
         })),
         grids: doc.getMap("yjsGrids").toJSON(),
+        kanbans: doc.getMap("yjsKanbans").toJSON(),
         calendars: doc.getMap("calendars").toJSON(),
     };
 }
