@@ -67,6 +67,12 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
                 grids: doc.getMap("yjsGrids").toJSON(),
                 pageId: Project.fromDoc(doc).items.at(0)!.id,
                 unrelatedItemId: Project.fromDoc(doc).items.at(0)!.items.at(0)!.id,
+                pageContent: Project.fromDoc(doc).tree.getNodeValueFromKey(Project.fromDoc(doc).items.at(0)!.key)
+                    .toJSON(),
+                unrelatedContent: Project.fromDoc(doc).tree.getNodeValueFromKey(
+                    Project.fromDoc(doc).items.at(0)!.items.at(0)!.key,
+                ).toJSON(),
+                calendars: doc.getMap("yjsCalendars").toJSON(),
             }));
             const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
@@ -105,6 +111,12 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
                 const page = Project.fromDoc(doc).items.at(0)!;
                 expect(page.id).to.equal(preserved.pageId);
                 expect(page.items.at(0)!.id).to.equal(preserved.unrelatedItemId);
+                expect(Project.fromDoc(doc).tree.getNodeValueFromKey(page.key).toJSON()).to.deep.equal(
+                    preserved.pageContent,
+                );
+                expect(Project.fromDoc(doc).tree.getNodeValueFromKey(page.items.at(0)!.key).toJSON())
+                    .to.deep.equal(preserved.unrelatedContent);
+                expect(doc.getMap("yjsCalendars").toJSON()).to.deep.equal(preserved.calendars);
             });
         } finally {
             await f.stop();
