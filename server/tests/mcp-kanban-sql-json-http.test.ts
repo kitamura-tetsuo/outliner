@@ -49,7 +49,7 @@ describe("Kanban SQL value serialization through MCP", function() {
             expect(sql.result.isError, JSON.stringify(sql.payload)).not.to.equal(true);
             expect(sql.payload.rows[0].ts).to.equal(card.row.start_at);
             const sqlText =
-                "SELECT id, text, start_at, ARRAY['2026-11-02'::date, '2026-11-03'::date] AS dates, jsonb_build_object('nested', jsonb_build_array(1, true, null, 'value')) AS payload, repeat('界', 10000) AS long_text, 9223372036854775807::bigint AS big, 12345678901234567890.123456789::numeric AS precise FROM outline_items WHERE start_at IS NOT NULL";
+                "SELECT id, text, start_at, ARRAY['2026-11-02'::date, '2026-11-03'::date] AS dates, ARRAY[9223372036854775807::bigint] AS bigs, jsonb_build_object('nested', jsonb_build_array(1, true, null, 'value')) AS payload, repeat('界', 10000) AS long_text, 9223372036854775807::bigint AS big, 12345678901234567890.123456789::numeric AS precise FROM outline_items WHERE start_at IS NOT NULL";
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 applyKanbanUpdates(getKanbanDefinitionTarget(doc, "board")!, { query: sqlText });
             });
@@ -60,6 +60,7 @@ describe("Kanban SQL value serialization through MCP", function() {
             expect(row.payload).to.deep.equal({ nested: [1, true, null, "value"] });
             expect(row.long_text).to.equal("界".repeat(10000));
             expect(row.dates).to.deep.equal(["2026-11-02T00:00:00.000Z", "2026-11-03T00:00:00.000Z"]);
+            expect(row.bigs.map(String)).to.deep.equal(["9223372036854775807"]);
             expect(String(row.big)).to.equal("9223372036854775807");
             expect(String(row.precise)).to.equal("12345678901234567890.123456789");
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
