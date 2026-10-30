@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -20,6 +20,45 @@ describe("Firebase CLI version policy", () => {
             env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
         }).trim();
         expect(output).toBe(expected);
+    });
+
+    test("the wrapper preserves a spaced executable path and emulator arguments", () => {
+        const parent = mkdtempSync(resolve(tmpdir(), "firebase cli match-"));
+        const bin = resolve(parent, "bin with spaces");
+        const invocation = resolve(parent, "invocation.txt");
+        const fakeFirebase = resolve(bin, "firebase");
+        mkdirSync(bin);
+        writeFileSync(
+            fakeFirebase,
+            `#!/bin/sh
+if [ "\${1:-}" = "--version" ]; then
+  echo "${expected}"
+else
+  printf '%s\\n' "$@" > "$FIREBASE_INVOCATION"
+fi
+`,
+        );
+        chmodSync(fakeFirebase, 0o755);
+        const result = spawnSync(
+            resolve(root, "scripts/firebase-cli.sh"),
+            ["emulators:start", "--project", "demo-project"],
+            {
+                cwd: root,
+                encoding: "utf8",
+                env: {
+                    ...process.env,
+                    FIREBASE_INVOCATION: invocation,
+                    PATH: `${bin}:${process.env.PATH}`,
+                },
+            },
+        );
+        expect(result.status, result.stderr).toBe(0);
+        expect(result.stderr).toContain(`Firebase CLI version: ${expected}`);
+        expect(readFileSync(invocation, "utf8").trim().split("\n")).toEqual([
+            "emulators:start",
+            "--project",
+            "demo-project",
+        ]);
     });
 
     test("the wrapper fails visibly when PATH contains a different CLI version", () => {
@@ -61,6 +100,11 @@ describe("Firebase CLI version policy", () => {
         const windowsLauncher = readFileSync(resolve(root, "scripts/firebase-cli-windows.cjs"), "utf8");
         expect(windowsLauncher).toContain('spawnSync("where.exe", ["firebase.cmd"]');
         expect(windowsLauncher).toContain("spawnSync(process.execPath, [firebaseEntry");
+
+        const functionsPackage = JSON.parse(readFileSync(resolve(root, "functions/package.json"), "utf8"));
+        for (const script of ["serve", "shell", "deploy", "logs", "debug"]) {
+            expect(functionsPackage.scripts[script], script).toContain("node ../scripts/firebase-cli-npm.cjs");
+        }
 
         const windowsPreparation = readFileSync(
             resolve(root, "scripts/poc/windows-native-ime/prepare-app.ps1"),

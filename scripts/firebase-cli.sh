@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_VERSION="$(cat "${ROOT_DIR}/.firebase-tools-version")"
 FIREBASE_BIN="$(command -v firebase || true)"
-INSTALLED_VERSION="$(${FIREBASE_BIN:-false} --version 2>/dev/null || true)"
+INSTALLED_VERSION="$("${FIREBASE_BIN:-false}" --version 2>/dev/null || true)"
 
 if [[ -z "${INSTALLED_VERSION}" ]]; then
   echo "Firebase CLI ${EXPECTED_VERSION} is not installed." >&2
