@@ -27,7 +27,10 @@ export interface TransportEvent {
         | "ws-open"
         | "ws-upstream-data"
         | "ws-client-close"
-        | "ws-upstream-close";
+        | "ws-upstream-close"
+        | "ws-client-cleanup-destroy"
+        | "ws-upstream-cleanup-destroy"
+        | "ws-cleanup-complete";
     url: string;
 }
 interface Exchange {
@@ -43,6 +46,13 @@ interface Tunnel {
     url: string;
     client: Duplex;
     upstream: net.Socket;
+    clientDestroyedByCleanup: boolean;
+    upstreamDestroyedByCleanup: boolean;
+    observed: Set<"ws-client-close" | "ws-upstream-close">;
+    cleanupScheduled: boolean;
+    controlledFirstTerminal?: "ws-client-close" | "ws-upstream-close";
+    deliveredTerminals: Set<"ws-client-close" | "ws-upstream-close">;
+    heldTerminalCallback?: "ws-client-close" | "ws-upstream-close";
 }
 
 export class OnPremProductionStack {
@@ -70,21 +80,57 @@ export class OnPremProductionStack {
         this.transportEvents.length = 0;
     }
 
-    waitForTransportEvent(kind: TransportEvent["kind"], url: string): Promise<TransportEvent> {
-        const existing = this.transportEvents.find(event => event.kind === kind && event.url.includes(url));
+    waitForTransportEvent(
+        kind: TransportEvent["kind"] | readonly TransportEvent["kind"][],
+        url: string,
+        options: { id?: number; timeoutMs?: number; stage?: string; } = {},
+    ): Promise<TransportEvent> {
+        const kinds = Array.isArray(kind) ? kind : [kind];
+        const matches = (event: TransportEvent) =>
+            kinds.includes(event.kind) && event.url.includes(url)
+            && (options.id === undefined || event.id === options.id);
+        const existing = this.transportEvents.find(matches);
         if (existing) return Promise.resolve(existing);
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
+            const timeoutMs = options.timeoutMs ?? 15_000;
             const waiter = (event: TransportEvent) => {
-                if (event.kind !== kind || !event.url.includes(url)) return;
+                if (!matches(event)) return;
                 this.transportWaiters.delete(waiter);
+                clearTimeout(timeout);
                 resolve(event);
             };
+            const timeout = setTimeout(() => {
+                this.transportWaiters.delete(waiter);
+                const tunnelState = [...this.tunnels].map(tunnel => ({
+                    id: tunnel.id,
+                    url: tunnel.url,
+                    observed: [...tunnel.observed],
+                    clientDestroyedByCleanup: tunnel.clientDestroyedByCleanup,
+                    upstreamDestroyedByCleanup: tunnel.upstreamDestroyedByCleanup,
+                }));
+                reject(
+                    new Error(
+                        `Timed out after ${timeoutMs}ms waiting for ${options.stage ?? kind} `
+                            + `(id=${options.id ?? "any"}, url=${url}); events=${
+                                JSON.stringify(this.transportEvents)
+                            }; `
+                            + `openTunnels=${JSON.stringify(tunnelState)}`,
+                    ),
+                );
+            }, timeoutMs);
             this.transportWaiters.add(waiter);
         });
     }
 
     isTunnelOpen(id: number) {
         return [...this.tunnels].some(tunnel => tunnel.id === id);
+    }
+
+    controlTunnelTerminalOrder(id: number, first: "ws-client-close" | "ws-upstream-close") {
+        const tunnel = [...this.tunnels].find(candidate => candidate.id === id);
+        if (!tunnel) throw new Error(`No active tunnel ${id} to control`);
+        if (tunnel.observed.size) throw new Error(`Tunnel ${id} already has terminal observations`);
+        tunnel.controlledFirstTerminal = first;
     }
 
     interruptUpstreamResponse(id: number) {
@@ -283,10 +329,20 @@ export class OnPremProductionStack {
     }
     private upgrade(request: http.IncomingMessage, socket: Duplex, head: Buffer) {
         const upstream = net.connect(this.backendPort, "127.0.0.1");
-        const tunnel: Tunnel = { id: this.nextTransportId++, url: request.url ?? "/", client: socket, upstream };
+        const tunnel: Tunnel = {
+            id: this.nextTransportId++,
+            url: request.url ?? "/",
+            client: socket,
+            upstream,
+            clientDestroyedByCleanup: false,
+            upstreamDestroyedByCleanup: false,
+            observed: new Set(),
+            cleanupScheduled: false,
+            deliveredTerminals: new Set(),
+        };
         this.tunnels.add(tunnel);
-        const clientClose = () => this.closeTunnel(tunnel, "ws-client-close");
-        const upstreamClose = () => this.closeTunnel(tunnel, "ws-upstream-close");
+        const clientClose = () => this.deliverTunnelClose(tunnel, "ws-client-close");
+        const upstreamClose = () => this.deliverTunnelClose(tunnel, "ws-upstream-close");
         socket.once("error", clientClose);
         socket.once("close", clientClose);
         upstream.once("error", upstreamClose);
@@ -310,12 +366,57 @@ export class OnPremProductionStack {
             this.recordTransport({ id: tunnel.id, kind: "ws-open", url: tunnel.url });
         });
     }
-    private closeTunnel(tunnel: Tunnel, kind?: "ws-client-close" | "ws-upstream-close") {
+    private deliverTunnelClose(tunnel: Tunnel, kind: "ws-client-close" | "ws-upstream-close") {
+        if (tunnel.deliveredTerminals.has(kind)) return;
+        const controlledFirst = tunnel.controlledFirstTerminal;
+        if (controlledFirst && kind !== controlledFirst && !tunnel.deliveredTerminals.has(controlledFirst)) {
+            // Hold callback delivery, not lifecycle observation or cleanup.
+            // This callback came from the real socket and is delivered as soon
+            // as the requested opposite real callback reaches the gateway.
+            tunnel.heldTerminalCallback = kind;
+            return;
+        }
+        tunnel.deliveredTerminals.add(kind);
+        this.observeTunnelClose(tunnel, kind);
+        if (tunnel.heldTerminalCallback) {
+            const held = tunnel.heldTerminalCallback;
+            tunnel.heldTerminalCallback = undefined;
+            tunnel.deliveredTerminals.add(held);
+            this.observeTunnelClose(tunnel, held);
+        }
+    }
+    private observeTunnelClose(tunnel: Tunnel, kind: "ws-client-close" | "ws-upstream-close") {
+        const cleanupInduced = kind === "ws-client-close"
+            ? tunnel.clientDestroyedByCleanup
+            : tunnel.upstreamDestroyedByCleanup;
+        if (cleanupInduced || tunnel.observed.has(kind)) return;
+        if (!tunnel.observed.has(kind)) {
+            tunnel.observed.add(kind);
+            this.recordTransport({ id: tunnel.id, kind, url: tunnel.url });
+        }
+        if (!tunnel.cleanupScheduled && this.tunnels.has(tunnel)) {
+            tunnel.cleanupScheduled = true;
+            // A browser close and the resulting backend close can be queued in
+            // either order in the same event-loop turn. Give both independent
+            // callbacks a chance to be observed before cleanup destroys the
+            // opposite socket and makes its callback synthetic.
+            setImmediate(() => this.closeTunnel(tunnel));
+        }
+    }
+    private closeTunnel(tunnel: Tunnel) {
         if (!this.tunnels.delete(tunnel)) return;
-        if (kind) this.recordTransport({ id: tunnel.id, kind, url: tunnel.url });
         tunnel.client.unpipe(tunnel.upstream);
         tunnel.upstream.unpipe(tunnel.client);
-        tunnel.client.destroy();
-        tunnel.upstream.destroy();
+        if (!tunnel.client.destroyed) {
+            tunnel.clientDestroyedByCleanup = true;
+            this.recordTransport({ id: tunnel.id, kind: "ws-client-cleanup-destroy", url: tunnel.url });
+            tunnel.client.destroy();
+        }
+        if (!tunnel.upstream.destroyed) {
+            tunnel.upstreamDestroyedByCleanup = true;
+            this.recordTransport({ id: tunnel.id, kind: "ws-upstream-cleanup-destroy", url: tunnel.url });
+            tunnel.upstream.destroy();
+        }
+        this.recordTransport({ id: tunnel.id, kind: "ws-cleanup-complete", url: tunnel.url });
     }
 }
