@@ -109,11 +109,21 @@ test.describe("production on-premises transport cancellation", () => {
         expect(stack.isTunnelOpen(targetTunnel.id)).toBe(true);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
 
-        const closedPromise = stack.waitForTransportEvent("ws-client-close", targetTunnel.url);
+        const closedPromise = stack.waitForTransportEvent("ws-client-close", targetTunnel.url, {
+            id: targetTunnel.id,
+            stage: "exact-target independent browser terminal observation",
+        });
+        const cleanupPromise = stack.waitForTransportEvent("ws-cleanup-complete", targetTunnel.url, {
+            id: targetTunnel.id,
+            stage: "exact-target tunnel cleanup",
+        });
         await target.close();
         const closed = await closedPromise;
+        const cleanup = await cleanupPromise;
         await targetContext.close();
         expect(closed.id).toBe(targetTunnel.id);
+        expect(cleanup.id).toBe(targetTunnel.id);
+        expect(stack.isTunnelOpen(targetTunnel.id)).toBe(false);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
         expect(stack.transportSnapshot().some(event => event.id === unrelatedTunnel.id && event.kind.includes("close")))
             .toBe(false);
