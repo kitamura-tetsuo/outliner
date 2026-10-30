@@ -75,9 +75,8 @@ describe("Firebase CLI version policy", () => {
             ]
         ) {
             const linuxPreparation = readFileSync(resolve(root, path), "utf8");
-            expect(linuxPreparation, path).toContain(
-                "HEAD .firebase-tools-version scripts/poc/windows-native-ime",
-            );
+            expect(linuxPreparation, path).toContain("Get-Content '.firebase-tools-version'");
+            expect(linuxPreparation, path).toContain("$sha,$firebaseToolsVersion");
         }
     });
 });

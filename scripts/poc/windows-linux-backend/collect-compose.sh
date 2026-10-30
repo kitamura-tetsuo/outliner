@@ -3,7 +3,7 @@ set -euo pipefail
 windows_output=$1
 # The historical PoC pin unless a current-revision regression run names its application.
 export APPLICATION_SHA=${NATIVE_IME_APPLICATION_SHA:-0b5e6b0b1d3985e6789a6d826c5a76a180642a6d}
-export FIREBASE_TOOLS_VERSION="$(cat /opt/outliner-harness/.firebase-tools-version)"
+export FIREBASE_TOOLS_VERSION="$(cat /opt/outliner-evidence/firebase-tools-version)"
 if [ -f /opt/outliner-app/docker-compose.yml ]; then
   cd /opt/outliner-app
   compose=(docker compose -f docker-compose.yml -f /opt/outliner-harness/scripts/poc/windows-linux-backend/compose.linux.yml)
