@@ -38,21 +38,21 @@ fs.writeFileSync(process.env.FIREBASE_INVOCATION,JSON.stringify(process.argv.sli
 
     const environment = { ...process.env, PATH: `${prefix};${process.env.PATH}`, FIREBASE_INVOCATION: invocation };
     const wrapper = path.join(scripts, "firebase-cli.cmd");
-    const successCommand = `"${wrapper}" emulators:start --project "demo project"`;
-    const success = spawnSync("cmd.exe", ["/d", "/s", "/c", `"${successCommand}"`], {
+    const success = spawnSync(wrapper, ["emulators:start", "--project", "demo-project"], {
         cwd: fixture,
         env: environment,
         encoding: "utf8",
+        shell: true,
     });
     assert.equal(success.status, 0, success.stderr);
-    assert.deepEqual(JSON.parse(fs.readFileSync(invocation, "utf8")), ["emulators:start", "--project", "demo project"]);
+    assert.deepEqual(JSON.parse(fs.readFileSync(invocation, "utf8")), ["emulators:start", "--project", "demo-project"]);
 
     writeEntry("0.0.0");
-    const mismatchCommand = `"${wrapper}" --version`;
-    const mismatch = spawnSync("cmd.exe", ["/d", "/s", "/c", `"${mismatchCommand}"`], {
+    const mismatch = spawnSync(wrapper, ["--version"], {
         cwd: fixture,
         env: environment,
         encoding: "utf8",
+        shell: true,
     });
     assert.notEqual(mismatch.status, 0);
     assert.match(mismatch.stderr, /policy requires 15\.22\.1, but PATH resolves 0\.0\.0/);
