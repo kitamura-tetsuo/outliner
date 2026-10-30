@@ -57,9 +57,10 @@ describe("Firebase CLI version policy", () => {
         expect(ciImage).toContain("WORKDIR /cache\nCOPY .firebase-tools-version ./");
 
         const windowsWrapper = readFileSync(resolve(root, "scripts/firebase-cli.cmd"), "utf8");
-        expect(windowsWrapper).toContain('"%~dp0.." %*');
-        expect(windowsWrapper).toContain("p.resolve(process.argv[1])");
-        expect(windowsWrapper).toContain("process.argv.slice(2)");
+        expect(windowsWrapper).toContain('firebase-cli-windows.cjs" "%~dp0.." %*');
+        const windowsLauncher = readFileSync(resolve(root, "scripts/firebase-cli-windows.cjs"), "utf8");
+        expect(windowsLauncher).toContain('spawnSync("where.exe", ["firebase.cmd"]');
+        expect(windowsLauncher).toContain("spawnSync(process.execPath, [firebaseEntry");
 
         const windowsPreparation = readFileSync(
             resolve(root, "scripts/poc/windows-native-ime/prepare-app.ps1"),

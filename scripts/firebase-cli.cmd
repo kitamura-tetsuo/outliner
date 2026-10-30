@@ -1,2 +1,2 @@
 @echo off
-node -e "const fs=require('fs'),p=require('path'),c=require('child_process'),r=p.resolve(process.argv[1]),e=fs.readFileSync(p.join(r,'.firebase-tools-version'),'utf8').trim(),v=c.spawnSync('firebase.cmd',['--version'],{encoding:'utf8'});if(v.status!==0){console.error('Firebase CLI '+e+' is not installed.');process.exit(1)}const a=v.stdout.trim();if(a!==e){console.error('Firebase CLI version mismatch: policy requires '+e+', but PATH resolves '+a+'.');process.exit(1)}console.error('Firebase CLI version: '+a);const x=c.spawnSync('firebase.cmd',process.argv.slice(2),{stdio:'inherit'});process.exit(x.status??1)" "%~dp0.." %*
+@node "%~dp0firebase-cli-windows.cjs" "%~dp0.." %*

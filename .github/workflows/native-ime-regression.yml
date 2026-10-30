@@ -127,6 +127,8 @@ jobs:
           node-version: '22'
       - name: Served identity verifier controls
         run: node --test scripts/native-ime-regression/verify-served-revision.test.mjs
+      - name: Windows Firebase CLI wrapper controls
+        run: node --test scripts/native-ime-regression/firebase-cli-windows.test.mjs
       - name: Provision WSL2 Ubuntu and native Linux Docker Engine
         shell: powershell
         run: ./scripts/poc/windows-linux-backend/provision-wsl2.ps1
