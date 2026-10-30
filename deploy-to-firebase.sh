@@ -2,7 +2,9 @@
 set -e
 echo "Starting deployment to Firebase Hosting + Functions..."
 
-curl -sL https://firebase.tools | bash
+FIREBASE_TOOLS_VERSION="$(cat .firebase-tools-version)"
+echo "Installing Firebase CLI ${FIREBASE_TOOLS_VERSION}..."
+npm install --global "firebase-tools@${FIREBASE_TOOLS_VERSION}"
 
 echo "1. Cleaning up old build files if they exist..."
 if [ -d "build" ]; then
