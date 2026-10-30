@@ -36,10 +36,6 @@ test("peer Grid deletion during acquired source synchronization refuses ordinary
     const source = await readGridProjectState(page);
     evidence.sourceGridId = source.grids[0].id;
     evidence.sourceTableId = source.tables[0].id;
-    const show = page.getByRole("button", { name: "Show sidebar" });
-    if (await show.isVisible()) await show.click();
-    await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
-    await page.getByTestId(`object-delete-${source.grids[0].id}`).click();
     const destination = await page.context().newPage();
     let held = false;
     let resume = () => {};
@@ -92,6 +88,15 @@ test("peer Grid deletion during acquired source synchronization refuses ordinary
         );
         evidence.clipboardTypes = clipboard.map(item => item.types);
         expect(evidence.clipboardTypes.some(types => types.includes("text/html"))).toBe(true);
+
+        // The source page must remain on its editor route until trusted Copy has
+        // completed: Object Manager does not mount the editor's clipboard textarea.
+        // Opening the pending deletion afterwards does not write the clipboard.
+        evidence.stage = "source-delete-ready";
+        const show = page.getByRole("button", { name: "Show sidebar" });
+        if (await show.isVisible()) await show.click();
+        await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+        await page.getByTestId(`object-delete-${source.grids[0].id}`).click();
 
         evidence.stage = "destination-ready";
         await clickItemAndWaitForCursor(
