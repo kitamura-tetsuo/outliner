@@ -50,6 +50,8 @@ interface Tunnel {
     upstreamDestroyedByCleanup: boolean;
     observed: Set<"ws-client-close" | "ws-upstream-close">;
     cleanupScheduled: boolean;
+    controlledFirstTerminal?: "ws-client-close" | "ws-upstream-close";
+    heldTerminal?: "ws-client-close" | "ws-upstream-close";
 }
 
 export class OnPremProductionStack {
@@ -121,6 +123,13 @@ export class OnPremProductionStack {
 
     isTunnelOpen(id: number) {
         return [...this.tunnels].some(tunnel => tunnel.id === id);
+    }
+
+    controlTunnelTerminalOrder(id: number, first: "ws-client-close" | "ws-upstream-close") {
+        const tunnel = [...this.tunnels].find(candidate => candidate.id === id);
+        if (!tunnel) throw new Error(`No active tunnel ${id} to control`);
+        if (tunnel.observed.size) throw new Error(`Tunnel ${id} already has terminal observations`);
+        tunnel.controlledFirstTerminal = first;
     }
 
     interruptUpstreamResponse(id: number) {
@@ -359,11 +368,27 @@ export class OnPremProductionStack {
         const cleanupInduced = kind === "ws-client-close"
             ? tunnel.clientDestroyedByCleanup
             : tunnel.upstreamDestroyedByCleanup;
-        if (!cleanupInduced && !tunnel.observed.has(kind)) {
+        if (cleanupInduced || tunnel.observed.has(kind)) return;
+        const controlledFirst = tunnel.controlledFirstTerminal;
+        if (controlledFirst && kind !== controlledFirst && !tunnel.observed.has(controlledFirst)) {
+            // The socket really reached its terminal callback; retain it until
+            // the opposite real callback provides the requested observation
+            // order. No transport event is synthesized by this control.
+            tunnel.heldTerminal = kind;
+            return;
+        }
+        if (!tunnel.observed.has(kind)) {
             tunnel.observed.add(kind);
             this.recordTransport({ id: tunnel.id, kind, url: tunnel.url });
         }
-        if (!tunnel.cleanupScheduled && this.tunnels.has(tunnel)) {
+        if (tunnel.heldTerminal && !tunnel.observed.has(tunnel.heldTerminal)) {
+            const held = tunnel.heldTerminal;
+            tunnel.heldTerminal = undefined;
+            tunnel.observed.add(held);
+            this.recordTransport({ id: tunnel.id, kind: held, url: tunnel.url });
+        }
+        const controlledPending = controlledFirst && tunnel.observed.size < 2;
+        if (!controlledPending && !tunnel.cleanupScheduled && this.tunnels.has(tunnel)) {
             tunnel.cleanupScheduled = true;
             // A browser close and the resulting backend close can be queued in
             // either order in the same event-loop turn. Give both independent

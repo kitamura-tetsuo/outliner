@@ -84,20 +84,10 @@ test.describe("production on-premises transport cancellation", () => {
     });
 
     test("closing one websocket owner leaves a separately authenticated tunnel live", async ({ browser }) => {
-        const targetContext = await browser.newContext();
         const unrelatedContext = await browser.newContext();
-        const target = await targetContext.newPage();
         const unrelated = await unrelatedContext.newPage();
-        await login(target, stack);
         await login(unrelated, stack);
 
-        const beforeTarget = stack.transportSnapshot().length;
-        await createProject(target, `Target-socket-${Date.now()}`);
-        await target.getByLabel("New page name").fill("Live target");
-        await target.getByRole("button", { name: "Create new page" }).click();
-        await expect(target).toHaveURL(/\/Live%20target$/);
-        const targetTunnel = stack.transportSnapshot().slice(beforeTarget).filter(event => event.kind === "ws-open")
-            .slice(-1)[0]!;
         const beforeUnrelated = stack.transportSnapshot().length;
         await createProject(unrelated, `Peer-socket-${Date.now()}`);
         await unrelated.getByLabel("New page name").fill("Live peer");
@@ -106,27 +96,50 @@ test.describe("production on-premises transport cancellation", () => {
         const unrelatedTunnel = stack.transportSnapshot().slice(beforeUnrelated).filter(event =>
             event.kind === "ws-open"
         ).slice(-1)[0]!;
-        expect(stack.isTunnelOpen(targetTunnel.id)).toBe(true);
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
 
-        const closedPromise = stack.waitForTransportEvent("ws-client-close", targetTunnel.url, {
-            id: targetTunnel.id,
-            stage: "exact-target independent browser terminal observation",
-        });
-        const cleanupPromise = stack.waitForTransportEvent("ws-cleanup-complete", targetTunnel.url, {
-            id: targetTunnel.id,
-            stage: "exact-target tunnel cleanup",
-        });
-        await target.close();
-        const closed = await closedPromise;
-        const cleanup = await cleanupPromise;
-        await targetContext.close();
-        expect(closed.id).toBe(targetTunnel.id);
-        expect(cleanup.id).toBe(targetTunnel.id);
-        expect(stack.isTunnelOpen(targetTunnel.id)).toBe(false);
-        expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
-        expect(stack.transportSnapshot().some(event => event.id === unrelatedTunnel.id && event.kind.includes("close")))
-            .toBe(false);
+        for (const firstTerminal of ["ws-client-close", "ws-upstream-close"] as const) {
+            const targetContext = await browser.newContext();
+            const target = await targetContext.newPage();
+            await login(target, stack);
+            const beforeTarget = stack.transportSnapshot().length;
+            await createProject(target, `Target-${firstTerminal}-${Date.now()}`);
+            await target.getByLabel("New page name").fill("Live target");
+            await target.getByRole("button", { name: "Create new page" }).click();
+            await expect(target).toHaveURL(/\/Live%20target$/);
+            const targetTunnel = stack.transportSnapshot().slice(beforeTarget).filter(event => event.kind === "ws-open")
+                .slice(-1)[0]!;
+            expect(stack.isTunnelOpen(targetTunnel.id)).toBe(true);
+            stack.controlTunnelTerminalOrder(targetTunnel.id, firstTerminal);
+
+            const clientClosed = stack.waitForTransportEvent("ws-client-close", targetTunnel.url, {
+                id: targetTunnel.id,
+                stage: `${firstTerminal} exact-target browser terminal observation`,
+            });
+            const cleanupPromise = stack.waitForTransportEvent("ws-cleanup-complete", targetTunnel.url, {
+                id: targetTunnel.id,
+                stage: `${firstTerminal} exact-target tunnel cleanup`,
+            });
+            await target.close();
+            expect((await clientClosed).id).toBe(targetTunnel.id);
+            expect((await cleanupPromise).id).toBe(targetTunnel.id);
+            await targetContext.close();
+            const terminals = stack.transportSnapshot().filter(event =>
+                event.id === targetTunnel.id
+                && (event.kind === "ws-client-close" || event.kind === "ws-upstream-close")
+            );
+            expect(terminals.map(event => event.kind)).toEqual([
+                firstTerminal,
+                firstTerminal === "ws-client-close" ? "ws-upstream-close" : "ws-client-close",
+            ]);
+            expect(stack.isTunnelOpen(targetTunnel.id)).toBe(false);
+            expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
+            expect(
+                stack.transportSnapshot().some(event =>
+                    event.id === unrelatedTunnel.id && event.kind.includes("close")
+                ),
+            ).toBe(false);
+        }
 
         stack.clearTransportEvents();
         await unrelated.getByTestId("add-item-button").click();
