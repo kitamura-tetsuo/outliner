@@ -51,7 +51,8 @@ interface Tunnel {
     observed: Set<"ws-client-close" | "ws-upstream-close">;
     cleanupScheduled: boolean;
     controlledFirstTerminal?: "ws-client-close" | "ws-upstream-close";
-    heldTerminal?: "ws-client-close" | "ws-upstream-close";
+    deliveredTerminals: Set<"ws-client-close" | "ws-upstream-close">;
+    heldTerminalCallback?: "ws-client-close" | "ws-upstream-close";
 }
 
 export class OnPremProductionStack {
@@ -337,10 +338,11 @@ export class OnPremProductionStack {
             upstreamDestroyedByCleanup: false,
             observed: new Set(),
             cleanupScheduled: false,
+            deliveredTerminals: new Set(),
         };
         this.tunnels.add(tunnel);
-        const clientClose = () => this.observeTunnelClose(tunnel, "ws-client-close");
-        const upstreamClose = () => this.observeTunnelClose(tunnel, "ws-upstream-close");
+        const clientClose = () => this.deliverTunnelClose(tunnel, "ws-client-close");
+        const upstreamClose = () => this.deliverTunnelClose(tunnel, "ws-upstream-close");
         socket.once("error", clientClose);
         socket.once("close", clientClose);
         upstream.once("error", upstreamClose);
@@ -364,31 +366,35 @@ export class OnPremProductionStack {
             this.recordTransport({ id: tunnel.id, kind: "ws-open", url: tunnel.url });
         });
     }
+    private deliverTunnelClose(tunnel: Tunnel, kind: "ws-client-close" | "ws-upstream-close") {
+        if (tunnel.deliveredTerminals.has(kind)) return;
+        const controlledFirst = tunnel.controlledFirstTerminal;
+        if (controlledFirst && kind !== controlledFirst && !tunnel.deliveredTerminals.has(controlledFirst)) {
+            // Hold callback delivery, not lifecycle observation or cleanup.
+            // This callback came from the real socket and is delivered as soon
+            // as the requested opposite real callback reaches the gateway.
+            tunnel.heldTerminalCallback = kind;
+            return;
+        }
+        tunnel.deliveredTerminals.add(kind);
+        this.observeTunnelClose(tunnel, kind);
+        if (tunnel.heldTerminalCallback) {
+            const held = tunnel.heldTerminalCallback;
+            tunnel.heldTerminalCallback = undefined;
+            tunnel.deliveredTerminals.add(held);
+            this.observeTunnelClose(tunnel, held);
+        }
+    }
     private observeTunnelClose(tunnel: Tunnel, kind: "ws-client-close" | "ws-upstream-close") {
         const cleanupInduced = kind === "ws-client-close"
             ? tunnel.clientDestroyedByCleanup
             : tunnel.upstreamDestroyedByCleanup;
         if (cleanupInduced || tunnel.observed.has(kind)) return;
-        const controlledFirst = tunnel.controlledFirstTerminal;
-        if (controlledFirst && kind !== controlledFirst && !tunnel.observed.has(controlledFirst)) {
-            // The socket really reached its terminal callback; retain it until
-            // the opposite real callback provides the requested observation
-            // order. No transport event is synthesized by this control.
-            tunnel.heldTerminal = kind;
-            return;
-        }
         if (!tunnel.observed.has(kind)) {
             tunnel.observed.add(kind);
             this.recordTransport({ id: tunnel.id, kind, url: tunnel.url });
         }
-        if (tunnel.heldTerminal && !tunnel.observed.has(tunnel.heldTerminal)) {
-            const held = tunnel.heldTerminal;
-            tunnel.heldTerminal = undefined;
-            tunnel.observed.add(held);
-            this.recordTransport({ id: tunnel.id, kind: held, url: tunnel.url });
-        }
-        const controlledPending = controlledFirst && tunnel.observed.size < 2;
-        if (!controlledPending && !tunnel.cleanupScheduled && this.tunnels.has(tunnel)) {
+        if (!tunnel.cleanupScheduled && this.tunnels.has(tunnel)) {
             tunnel.cleanupScheduled = true;
             // A browser close and the resulting backend close can be queued in
             // either order in the same event-loop turn. Give both independent

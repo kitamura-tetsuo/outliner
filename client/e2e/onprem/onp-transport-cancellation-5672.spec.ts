@@ -98,40 +98,44 @@ test.describe("production on-premises transport cancellation", () => {
         ).slice(-1)[0]!;
         expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
 
-        for (const firstTerminal of ["ws-client-close", "ws-upstream-close"] as const) {
+        const orders = [undefined, "ws-client-close", "ws-upstream-close"] as const;
+        for (const firstTerminal of orders) {
             const targetContext = await browser.newContext();
             const target = await targetContext.newPage();
             await login(target, stack);
             const beforeTarget = stack.transportSnapshot().length;
-            await createProject(target, `Target-${firstTerminal}-${Date.now()}`);
+            await createProject(target, `Target-${firstTerminal ?? "uncontrolled"}-${Date.now()}`);
             await target.getByLabel("New page name").fill("Live target");
             await target.getByRole("button", { name: "Create new page" }).click();
             await expect(target).toHaveURL(/\/Live%20target$/);
             const targetTunnel = stack.transportSnapshot().slice(beforeTarget).filter(event => event.kind === "ws-open")
                 .slice(-1)[0]!;
             expect(stack.isTunnelOpen(targetTunnel.id)).toBe(true);
-            stack.controlTunnelTerminalOrder(targetTunnel.id, firstTerminal);
+            if (firstTerminal) stack.controlTunnelTerminalOrder(targetTunnel.id, firstTerminal);
 
             const clientClosed = stack.waitForTransportEvent("ws-client-close", targetTunnel.url, {
                 id: targetTunnel.id,
-                stage: `${firstTerminal} exact-target browser terminal observation`,
+                stage: `${firstTerminal ?? "uncontrolled"} exact-target browser terminal observation`,
             });
             const cleanupPromise = stack.waitForTransportEvent("ws-cleanup-complete", targetTunnel.url, {
                 id: targetTunnel.id,
-                stage: `${firstTerminal} exact-target tunnel cleanup`,
+                stage: `${firstTerminal ?? "uncontrolled"} exact-target tunnel cleanup`,
             });
             await target.close();
             expect((await clientClosed).id).toBe(targetTunnel.id);
             expect((await cleanupPromise).id).toBe(targetTunnel.id);
             await targetContext.close();
-            const terminals = stack.transportSnapshot().filter(event =>
-                event.id === targetTunnel.id
-                && (event.kind === "ws-client-close" || event.kind === "ws-upstream-close")
-            );
-            expect(terminals.map(event => event.kind)).toEqual([
-                firstTerminal,
-                firstTerminal === "ws-client-close" ? "ws-upstream-close" : "ws-client-close",
-            ]);
+            if (firstTerminal) {
+                const lifecycle = stack.transportSnapshot().filter(event =>
+                    event.id === targetTunnel.id
+                    && ["ws-client-close", "ws-upstream-close", "ws-cleanup-complete"].includes(event.kind)
+                );
+                expect(lifecycle.map(event => event.kind)).toEqual([
+                    firstTerminal,
+                    firstTerminal === "ws-client-close" ? "ws-upstream-close" : "ws-client-close",
+                    "ws-cleanup-complete",
+                ]);
+            }
             expect(stack.isTunnelOpen(targetTunnel.id)).toBe(false);
             expect(stack.isTunnelOpen(unrelatedTunnel.id)).toBe(true);
             expect(
