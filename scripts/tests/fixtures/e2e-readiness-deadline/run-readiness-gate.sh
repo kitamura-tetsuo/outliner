@@ -124,6 +124,7 @@ P_HOST_F="$P_HOST"
 EXTRA_PIDS="$TMP_ROOT/extra-stub-pids"
 START_FILE="$TMP_ROOT/gate-start"
 RESTART_PID_FILE="$TMP_ROOT/restart-pid"
+WRONG_HOST_FIXED_FILE="$TMP_ROOT/wrong-host-fixed"
 if [ "\${1:-}" = "start" ] && [[ "\$MODE" = late-hang-* ]]; then
   date +%s > "\$START_FILE"
 fi
@@ -168,7 +169,7 @@ if [ "\${1:-}" = "restart" ]; then
     exit 0
   fi
   _serve() {
-    python3 "\$FIXTURE_PY" instant "\$P_FN_F" 0 "\$1" &
+    python3 "\$FIXTURE_PY" instant "\$P_FN_F" "\$P_HOST_F" 0 "\$1" &
     echo \$! >> "\$EXTRA_PIDS"
   }
   case "\${2:-}:\$MODE" in
@@ -194,6 +195,9 @@ if [ "\${1:-}" = "restart" ]; then
       ;;
     firebase-emulators:stall-hosting-recover)
       _serve "\$P_HOST_F"
+      ;;
+    firebase-emulators:wrong-hosting-route)
+      touch "\$WRONG_HOST_FIXED_FILE"
       ;;
   esac
   if [ "\$MODE" = "crash-yjs-restart-fail" ]; then exit 1; fi
@@ -235,6 +239,7 @@ if [ -n "${GATE_STALL:-}" ]; then
 fi
 
 READY_AT=0
+export WRONG_HOST_FIXED_FILE="$TMP_ROOT/wrong-host-fixed"
 if [ "$GATE_MODE" = "slow-fn" ]; then
   READY_AT=$(($(date +%s) + GATE_SLOW_DELAY))
 fi
@@ -281,7 +286,7 @@ for port in "$P_YJS" "$P_API" "$P_VITE" "$P_AUTH" "$P_FS" "$P_HOST" "$P_STORE"; 
   WAIT_PORTS+=("$port")
 done
 python3 "$FIXTURE_DIR/stub-servers.py" \
-  "$STUB_MODE" "$P_FN" "$READY_AT" \
+  "$STUB_MODE" "$P_FN" "$P_HOST" "$READY_AT" \
   "${STUB_PORTS[@]}" &
 SERVER_PID=$!
 
