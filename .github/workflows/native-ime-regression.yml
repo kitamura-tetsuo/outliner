@@ -128,6 +128,7 @@ jobs:
       - name: Served identity verifier controls
         run: node --test scripts/native-ime-regression/verify-served-revision.test.mjs
       - name: Windows Firebase CLI wrapper controls
+        if: success() || failure()
         run: node --test scripts/native-ime-regression/firebase-cli-windows.test.mjs
       - name: Provision WSL2 Ubuntu and native Linux Docker Engine
         shell: powershell
