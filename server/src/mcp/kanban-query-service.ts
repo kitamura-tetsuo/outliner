@@ -37,6 +37,8 @@ import {
 
 const LIMITS = { queryBytes: 16 * 1024, rows: 10_000, columns: 100, lanes: 1_000, jsonBytes: 8 * 1024 * 1024 } as const;
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+// Size the JSON wire representation without changing rows used for provenance.
+const sqlJsonReplacer = (_key: string, value: unknown) => typeof value === "bigint" ? value.toString() : value;
 type KanbanEntry = NonNullable<ReturnType<ReturnType<typeof getKanbanRegistry>["get"]>>;
 const releasedConnections = new WeakSet<object>();
 
@@ -283,7 +285,7 @@ export class OutlinerKanbanQueryService {
                     );
                 }
                 const jsonBytes = Buffer.byteLength(
-                    JSON.stringify({ rows: result.rows, fields: result.fields }),
+                    JSON.stringify({ rows: result.rows, fields: result.fields }, sqlJsonReplacer),
                     "utf8",
                 );
                 if (jsonBytes > LIMITS.jsonBytes) {
@@ -383,7 +385,7 @@ export class OutlinerKanbanQueryService {
                 }
                 const metadata = await resultColumnMetadata(lease.db, result.fields ?? [], catalog);
                 const completeJsonBytes = Buffer.byteLength(
-                    JSON.stringify({ rows: result.rows, columns: metadata }),
+                    JSON.stringify({ rows: result.rows, columns: metadata }, sqlJsonReplacer),
                     "utf8",
                 );
                 if (completeJsonBytes > LIMITS.jsonBytes) {
