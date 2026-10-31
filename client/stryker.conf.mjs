@@ -14,7 +14,8 @@ export default {
         configFile: "vite.config.ts",
     },
     tsconfigFile: "tsconfig.json",
-    tempDirName: "node_modules/.cache/stryker",
+    // Keep each sandbox next to shared so Vite and TypeScript resolve ../shared correctly.
+    tempDirName: "..",
     incremental: true,
     thresholds: {
         high: 90,
