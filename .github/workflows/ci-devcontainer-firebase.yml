@@ -8,6 +8,7 @@ on:
       - 'firebase.emulator.json'
       - 'scripts/require-java-21.sh'
       - 'scripts/smoke-test-devcontainer-firebase.sh'
+      - '.firebase-tools-version'
       - '.github/workflows/ci-devcontainer-firebase.yml'
   workflow_dispatch:
 
@@ -23,7 +24,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Build the supported devcontainer image
-        run: docker build --tag outliner-devcontainer-firebase --file .devcontainer/Dockerfile .devcontainer
+        run: docker build --tag outliner-devcontainer-firebase --file .devcontainer/Dockerfile .
 
       - name: Start and probe real Firebase emulators
         run: |

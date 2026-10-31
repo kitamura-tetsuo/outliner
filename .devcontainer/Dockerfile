@@ -49,7 +49,8 @@ USER node
 
 # Install Playwright
 RUN npx playwright install --with-deps
-RUN npm install -g dotenv-cli firebase-tools
+COPY .firebase-tools-version /tmp/firebase-tools-version
+RUN npm install -g dotenv-cli "firebase-tools@$(cat /tmp/firebase-tools-version)"
 RUN curl -fsSL https://dprint.dev/install.sh | sh
 
 # Any additional customizations can go here

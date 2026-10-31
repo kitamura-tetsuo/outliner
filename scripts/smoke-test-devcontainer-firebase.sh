@@ -17,10 +17,10 @@ trap cleanup EXIT
 "${ROOT_DIR}/scripts/require-java-21.sh"
 printf 'JAVA_HOME=%s\n' "${JAVA_HOME:-<unset>}"
 java -version
-firebase --version
+scripts/firebase-cli.sh --version
 
 cd "$ROOT_DIR"
-firebase emulators:start \
+scripts/firebase-cli.sh emulators:start \
   --only auth,firestore,storage \
   --config firebase.emulator.json \
   --project "$PROJECT_ID" >"$LOG_FILE" 2>&1 &

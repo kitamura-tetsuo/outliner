@@ -4,10 +4,10 @@ description: Pressing Backspace at the beginning of an item joins it with the pr
 category: item-management
 status: implemented
 acceptance:
+- Descendants of the removed item retain their IDs, nesting, and order under the surviving item
 - Pressing Backspace at the beginning of an item merges it with the previous item
 - The cursor moves to the end of the text before the merge
 - The merged text is displayed correctly
-- Descendants of the removed item retain their IDs, nesting, and order under the surviving item
 tests:
 - client/e2e/core/itm-backspace-merge-previous-item-ea76cd92.spec.ts
 - client/src/tests/integration/cursor/itm-boundary-descendant-preservation-5794.integration.spec.ts

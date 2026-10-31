@@ -1,5 +1,6 @@
 FROM node:25-trixie-slim
 ARG APPLICATION_SHA
+ARG FIREBASE_TOOLS_VERSION
 LABEL org.opencontainers.image.revision=$APPLICATION_SHA
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-21-jre-headless python3 make g++ curl ca-certificates git procps \
@@ -13,5 +14,5 @@ RUN npm ci && npm --prefix client ci && npm --prefix server ci && npm --prefix f
     && ln -sfn ../client/node_modules shared/node_modules \
     && (cd server && npm run build) \
     && npm --prefix client run paraglide:compile \
-    && npm install --prefix /opt/tools firebase-tools
+    && npm install --prefix /opt/tools "firebase-tools@${FIREBASE_TOOLS_VERSION}"
 CMD ["bash", "/harness/scripts/poc/windows-linux-backend/linux-services.sh"]

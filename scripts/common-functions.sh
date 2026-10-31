@@ -350,9 +350,17 @@ ensure_pre_commit_version() {
 
 # Install global packages if needed
 install_global_packages() {
-  if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
-    echo "Installing global packages (firebase-tools, tinylicious, pm2)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
+  local firebase_version
+  firebase_version="$(cat "${ROOT_DIR}/.firebase-tools-version")"
+  if ! command -v firebase >/dev/null || [ "$(firebase --version 2>/dev/null || true)" != "${firebase_version}" ]; then
+    echo "Installing Firebase CLI ${firebase_version}..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g "firebase-tools@${firebase_version}"
+  fi
+  "${ROOT_DIR}/scripts/firebase-cli.sh" --version
+
+  if ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
+    echo "Installing global packages (tinylicious, pm2, dotenv)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
     # Refresh PATH to include newly installed global packages
     NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
     if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then

@@ -5,11 +5,11 @@ description: Production, debug, and on-premises Node.js container images use the
 category: environment
 status: implemented
 components:
+- .github/workflows/ci-docker-build.yml
+- Dockerfile.onprem
+- firebase/Dockerfile
+- scripts/test-onprem-compose.sh
 - server/Dockerfile
 - server/Dockerfile.debug
-- Dockerfile.onprem
-- .github/workflows/ci-docker-build.yml
-- scripts/test-onprem-compose.sh
-- firebase/Dockerfile
 tests:
 - scripts/tests/env-node-container-lts-24-c4e21a7b.spec.ts

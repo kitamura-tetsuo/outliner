@@ -2,7 +2,7 @@ name: 'Setup E2E dependencies (direct runner)'
 description: >-
   Restores everything the E2E runtime needs on a plain ubuntu-latest runner
   (no job-level container): Node.js, JDK 21, npm dependency trees, the
-  firebase-tools CLI, OS packages, and the requested Playwright browser. Uses
+  pinned Firebase CLI, OS packages, and the requested Playwright browser. Uses
   GitHub Actions caching keyed on the lockfiles / pinned versions so a cache
   hit (the common case) restores in seconds instead of paying container pull
   + `cp -r node_modules` costs. Called independently by every E2E matrix
@@ -52,25 +52,21 @@ runs:
           echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
         ) 2>&1 | tee -a job_logs/setup-dependencies.log
 
-    # pm2, tinylicious and dotenvx are already devDependencies of root/client
-    # (see the PATH step below), so the only CLI that actually needs a global
-    # install here is firebase-tools. It has no version pin in a lockfile, so
-    # the cache key is a literal pin rather than a hash of a manifest -- bump
-    # the "v1" suffix whenever the pinned version below changes.
-    - name: Cache global npm tools
-      id: cache-global-tools
+    - name: Cache Firebase CLI
+      id: cache-firebase-cli
       uses: actions/cache@v6
       with:
         path: ~/.npm-global
-        key: e2e-global-tools-${{ runner.os }}-v1-firebase-tools${{ inputs.cache-key-suffix }}
+        key: e2e-firebase-cli-${{ runner.os }}-${{ hashFiles('.firebase-tools-version') }}${{ inputs.cache-key-suffix }}
 
-    - name: Install global npm tools
-      if: steps.cache-global-tools.outputs.cache-hit != 'true'
+    - name: Install Firebase CLI
+      if: steps.cache-firebase-cli.outputs.cache-hit != 'true'
       shell: bash
-      run: |
-        set -euo pipefail
-        mkdir -p job_logs
-        npm install -g firebase-tools 2>&1 | tee -a job_logs/setup-dependencies.log
+      run: npm install -g "firebase-tools@$(cat .firebase-tools-version)"
+
+    - name: Verify Firebase CLI
+      shell: bash
+      run: scripts/firebase-cli.sh --version
 
     - name: Cache npm dependency trees
       id: cache-node-modules
@@ -119,7 +115,8 @@ runs:
     # needs node_modules/.bin on PATH explicitly.
     - name: Add local node_modules/.bin to PATH
       shell: bash
-      run: echo "${{ github.workspace }}/node_modules/.bin" >> "$GITHUB_PATH"
+      run: |
+        echo "${{ github.workspace }}/node_modules/.bin" >> "$GITHUB_PATH"
 
     # Separate cache identities prevent a Chromium-only shard from winning the
     # Firefox cache write. A legacy shared cache is still a valid restore source;
