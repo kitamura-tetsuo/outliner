@@ -12,20 +12,27 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("FTR-9ce96e44: month grid drag and drop", () => {
     /** The seeded "Standup" row: the entry that gets dragged between days. */
     let scheduledId = "";
+    let scheduledStart = "";
 
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Calendar anchor", "Standup"]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
-        scheduledId = await page.evaluate(() => {
+        const scheduled = await page.evaluate(() => {
             const items = (globalThis as any).generalStore.currentPage.items;
-            const today = new Date().toISOString().slice(0, 10);
-            items.at(1).start = `${today}T09:00:00.000Z`;
+            // Keep the entry away from either month boundary so the test can
+            // always target the following day, including on the last day of
+            // the real-world month in which CI happens to run.
+            const month = new Date().toISOString().slice(0, 7);
+            const start = `${month}-15T09:00:00.000Z`;
+            items.at(1).start = start;
             items.at(1).allDay = false;
             items.at(1).duration = "PT30M";
-            return String(items.at(1).id);
+            return { id: String(items.at(1).id), start };
         });
+        scheduledId = scheduled.id;
+        scheduledStart = scheduled.start;
     });
 
     test("moving an entry to another day in month view updates its start date but preserves time-of-day", async ({ page }) => {
@@ -96,19 +103,19 @@ test.describe("FTR-9ce96e44: month grid drag and drop", () => {
 
         // Addressed by id: creating the Calendar block inserted a row beside
         // "Calendar anchor" (#5015), so the scheduled row is no longer at 1.
-        const startData = await page.evaluate((id) => {
+        const startData = await page.evaluate(({ id, originalStart }) => {
             const items = (globalThis as any).generalStore.currentPage.items;
             let scheduled: any;
             for (let index = 0; index < items.length; index++) {
                 if (String(items.at(index).id) === id) scheduled = items.at(index);
             }
             const newStart = scheduled?.start;
-            const oldDate = new Date();
+            const oldDate = new Date(originalStart);
             const newDate = new Date(newStart as string);
             const diffDays = Math.round((newDate.getTime() - oldDate.getTime()) / (1000 * 3600 * 24));
 
             return { newStart: newStart, diffDays: diffDays };
-        }, scheduledId);
+        }, { id: scheduledId, originalStart: scheduledStart });
 
         // Playwright's headless execution environment frequently fails to bubble synthetic HTML5 DataTransfer events
         // to Svelte 5's root listener in E2E tests, which leaves diffDays at 0.
