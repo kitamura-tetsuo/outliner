@@ -146,6 +146,133 @@ describe("Kanban lifecycle currentness through registered MCP", function() {
         }
     });
 
+    it("rejects deletion after a definition change or change-away-and-back", async () => {
+        const f = await startMcpTestServer();
+        try {
+            const placementId = await seed(f, 1);
+            const observe = async () =>
+                (await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" })).payload.observationToken;
+            const update = async (observationToken: string, changes: Record<string, unknown>, operationId: string) => {
+                const result = await f.mcp.call("update_kanban", {
+                    projectId: PROJECT,
+                    kanbanId: "board",
+                    observationToken,
+                    changes,
+                    operationId,
+                });
+                expect(result.payload).to.include({ applied: true });
+            };
+            const rejectDelete = async (observationToken: string, operationId: string) => {
+                const result = await f.mcp.call("delete_kanban", {
+                    projectId: PROJECT,
+                    kanbanId: "board",
+                    observationToken,
+                    operationId,
+                });
+                expect(result.payload.code).to.equal("stale_revision");
+                await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                    expect(getKanbanRegistry(doc).has("board")).to.equal(true);
+                    expect(find(Project.fromDoc(doc), placementId)?.kanbanId).to.equal("board");
+                    expect(placements(Project.fromDoc(doc))).to.have.length(1);
+                });
+            };
+            for (
+                const [field, value] of Object.entries({
+                    name: "Renamed",
+                    query: "SELECT 2",
+                    groupField: "group2",
+                    titleField: "title2",
+                    detailFields: ["detail"],
+                })
+            ) {
+                const beforeChange = await observe();
+                await update(beforeChange, { [field]: value }, `update-${field}`);
+                await rejectDelete(beforeChange, `delete-after-${field}`);
+            }
+            const beforeAba = await observe();
+            await update(beforeAba, { laneOrder: ["todo"] }, "lane-away");
+            await update(await observe(), { laneOrder: [] }, "lane-back");
+            await rejectDelete(beforeAba, "delete-after-lane-aba");
+        } finally {
+            await f.stop();
+        }
+    });
+
+    it("previews removal without changing the placement or consuming its operation", async () => {
+        const f = await startMcpTestServer();
+        try {
+            const placementId = await seed(f, 1);
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            const args = {
+                projectId: PROJECT,
+                kanbanId: "board",
+                placementId,
+                observationToken: observed.payload.observationToken,
+                operationId: "preview-remove",
+            };
+            const preview = await f.mcp.call("remove_kanban_placement", { ...args, dryRun: true });
+            expect(preview.payload).to.include({ applied: false, wouldChange: true });
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                expect(getKanbanRegistry(doc).has("board")).to.equal(true);
+                expect(find(Project.fromDoc(doc), placementId)?.kanbanId).to.equal("board");
+                expect(placements(Project.fromDoc(doc))).to.have.length(1);
+            });
+            const applied = await f.mcp.call("remove_kanban_placement", args);
+            expect(applied.payload).to.include({ applied: true, placementId });
+            const replay = await f.mcp.call("remove_kanban_placement", args);
+            expect(replay.payload).to.include({ applied: true, replayed: true, placementId });
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                expect(getKanbanRegistry(doc).has("board")).to.equal(true);
+                expect(find(Project.fromDoc(doc), placementId)).to.equal(undefined);
+                expect(placements(Project.fromDoc(doc))).to.have.length(0);
+            });
+        } finally {
+            await f.stop();
+        }
+    });
+
+    it("previews deletion without mutating or consuming its operation", async () => {
+        const f = await startMcpTestServer();
+        try {
+            await seed(f, 2);
+            const ids = await withRoom(
+                f.server.hocuspocus,
+                `projects/${PROJECT}`,
+                doc => placements(Project.fromDoc(doc)).map(item => item.key),
+            );
+            const observed = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" });
+            const args = {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                operationId: "preview-delete",
+            };
+            const preview = await f.mcp.call("delete_kanban", { ...args, dryRun: true });
+            expect(preview.payload).to.include({
+                applied: false,
+                wouldChange: true,
+                removedPlacementCount: 2,
+                placementIdsTruncated: false,
+            });
+            expect(preview.payload.removedPlacementIds).to.have.members(ids);
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                expect(getKanbanRegistry(doc).has("board")).to.equal(true);
+                expect(placements(Project.fromDoc(doc)).map(item => item.key)).to.have.members(ids);
+            });
+            const applied = await f.mcp.call("delete_kanban", args);
+            expect(applied.payload).to.include({ applied: true, removedPlacementCount: 2 });
+            expect(applied.payload.removedPlacementIds).to.have.members(ids);
+            const replay = await f.mcp.call("delete_kanban", args);
+            expect(replay.payload).to.include({ applied: true, replayed: true, removedPlacementCount: 2 });
+            await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
+                expect(getKanbanRegistry(doc).has("board")).to.equal(false);
+                expect(placements(Project.fromDoc(doc))).to.have.length(0);
+            });
+        } finally {
+            await f.stop();
+        }
+    });
+
     it("enforces write scope and current Project ACL before lifecycle access", async () => {
         const f = await startMcpTestServer();
         try {
