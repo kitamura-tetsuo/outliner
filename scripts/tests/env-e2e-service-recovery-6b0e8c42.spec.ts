@@ -68,6 +68,14 @@ describe("Bounded startup recovery (issue #5487)", () => {
         expect(result.elapsedSec).toBeLessThan(18 + TOL);
     }, 60000);
 
+    it("replaces a listener that does not serve the Hosting health rewrite", async () => {
+        const result = await runGate("wrong-hosting-route", 20, { stall: 3 });
+        expect(result.status, result.stdout).toBe(0);
+        expect(result.stdout).toContain("Firebase Hosting health rewrite");
+        expect(restarts(result.stdout)).toEqual(["firebase-emulators"]);
+        expect(result.stdout).toContain("All test services are ready!");
+    }, 60000);
+
     it("never reports success after a failed restart even if ports recover", async () => {
         const result = await runGate("crash-yjs-restart-fail", 20);
         expect(result.status, result.stdout).toBe(1);

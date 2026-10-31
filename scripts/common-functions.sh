@@ -1091,6 +1091,39 @@ start_and_wait_for_services() {
       fi
     done
 
+    # A listener on the configured Hosting port is not sufficient evidence
+    # that Firebase Hosting owns it. Firebase CLI can move a site to another
+    # port when the requested port is contested while an unrelated listener
+    # still makes the generic port sweep pass. Probe the real rewrite and its
+    # method handling so startup cannot announce readiness for that state.
+    if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+      local _hosting_url="http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health"
+      local _hosting_get="" _hosting_post_code="000" _hosting_probe
+      _hosting_probe=$(_probe_timeout "$deadline")
+      if _hosting_get=$(_run_bounded "$_hosting_probe" curl -fsS --connect-timeout 2 --max-time "$_hosting_probe" "$_hosting_url" 2>/dev/null) &&
+         printf '%s' "$_hosting_get" | node -e '
+           let body = "";
+           process.stdin.on("data", chunk => body += chunk);
+           process.stdin.on("end", () => {
+             try {
+               const value = JSON.parse(body);
+               if (value.status !== "OK" || typeof value.timestamp !== "string") process.exit(1);
+             } catch { process.exit(1); }
+           });
+         '; then
+        _hosting_probe=$(_probe_timeout "$deadline")
+        _hosting_post_code=$(_run_bounded "$_hosting_probe" curl -sS --connect-timeout 2 --max-time "$_hosting_probe" -o /dev/null -w "%{http_code}" -X POST "$_hosting_url" 2>/dev/null || printf '000')
+      fi
+      if [ "$_hosting_post_code" != "405" ]; then
+        all_ready=false
+        _record_owner_missing "emu" "Firebase Hosting health rewrite (GET payload or POST status invalid)"
+        missing_services+=("Firebase Hosting health rewrite (GET payload or POST status invalid at ${_hosting_url})")
+      fi
+    else
+      all_ready=false
+      missing_services+=("Readiness deadline exceeded before Hosting health rewrite check")
+    fi
+
     # Check Firebase Functions API Health (Directly via Functions Emulator)
     # Checks http://127.0.0.1:57070/outliner-d57b0/us-central1/health
     # We use direct URL because Hosting Emulator rewrite sometimes duplicates paths causing 404
