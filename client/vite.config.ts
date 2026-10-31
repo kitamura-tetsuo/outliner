@@ -192,7 +192,7 @@ export default defineConfig(async ({ mode }) => {
             projects: [
                 {
                     extends: "./vite.config.ts",
-                    plugins: [svelteTesting()],
+                    plugins: [svelteTesting({ autoCleanup: false })],
 
                     test: {
                         name: "unit",
@@ -213,7 +213,7 @@ export default defineConfig(async ({ mode }) => {
                             "src/tests/production/**",
                             "e2e/**",
                         ],
-                        setupFiles: ["./vitest-setup-client.ts"],
+                        setupFiles: ["./vitest-setup-client.ts", "./vitest-svelte-cleanup.ts"],
                         envFile: ".env.test",
                         testTimeout: 30000,
                         coverage: {
@@ -228,7 +228,7 @@ export default defineConfig(async ({ mode }) => {
                 },
                 {
                     extends: "./vite.config.ts",
-                    plugins: [svelteTesting()],
+                    plugins: [svelteTesting({ autoCleanup: false })],
 
                     test: {
                         name: "integration",
@@ -238,7 +238,11 @@ export default defineConfig(async ({ mode }) => {
                         exclude: ["src/lib/server/**"],
                         envFile: ".env.test",
                         testTimeout: 30000, // Integration tests may take time
-                        setupFiles: ["./vitest-setup-client.ts", "./src/tests/integration/setup.ts"],
+                        setupFiles: [
+                            "./vitest-setup-client.ts",
+                            "./src/tests/integration/setup.ts",
+                            "./vitest-svelte-cleanup.ts",
+                        ],
                         coverage: {
                             enabled: true,
                         },
