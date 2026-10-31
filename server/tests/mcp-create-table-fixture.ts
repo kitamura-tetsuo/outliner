@@ -7,6 +7,8 @@ import * as Y from "yjs";
 import { CreateTableTool } from "../src/mcp/create-table-tool.js";
 import { OutlinerKanbanCardMutationService } from "../src/mcp/kanban-card-mutations.js";
 import { KanbanDefinitionTools } from "../src/mcp/kanban-definition-tools.js";
+import { KanbanLifecycleTools } from "../src/mcp/kanban-lifecycle-tools.js";
+import { OutlinerKanbanLifecycleService } from "../src/mcp/kanban-lifecycle.js";
 import { KanbanObservationService } from "../src/mcp/kanban-observations.js";
 import { OutlinerKanbanReadService } from "../src/mcp/kanban-read-service.js";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
@@ -64,6 +66,7 @@ export interface Seams {
     observationNow?: () => number;
     /** A delivery seam: rewrites the outcome after the real domain call established it. */
     deliver?: (outcome: CreateTableOutcome) => CreateTableOutcome;
+    lifecycleDeliver?: (outcome: Awaited<ReturnType<KanbanLifecycleTools["place"]>>) => unknown;
     beforeRecordBatchPublication?: () => Promise<void>;
     beforeGridQueryPublication?: () => Promise<void>;
     /** Runs at the real Kanban projection's last awaited certification boundary. */
@@ -153,6 +156,15 @@ export async function startMcpTestServer(options: {
         beforeRecordBatchPublication: () => seams.beforeRecordBatchPublication?.() ?? Promise.resolve(),
         beforeGridQueryPublication: () => seams.beforeGridQueryPublication?.() ?? Promise.resolve(),
     });
+    const lifecycle = new KanbanLifecycleTools(
+        new OutlinerKanbanLifecycleService(server.kanbanObservations, gatedAccess, store),
+        () => (seams.now ?? Date.now)(),
+    );
+    const place = lifecycle.place.bind(lifecycle);
+    lifecycle.place = async (...args) => {
+        const outcome = await place(...args);
+        return (seams.lifecycleDeliver ? seams.lifecycleDeliver(outcome) : outcome) as typeof outcome;
+    };
     const kanbanMutations = new OutlinerKanbanCardMutationService(
         server.hocuspocus,
         gatedAccess,
@@ -177,6 +189,7 @@ export async function startMcpTestServer(options: {
             store,
             () => (seams.now ?? Date.now)(),
         ),
+        lifecycle,
     ));
     const mcp = rpcClient(app);
     return {

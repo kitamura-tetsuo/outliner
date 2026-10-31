@@ -195,6 +195,8 @@ export class KanbanObservationError extends Error {
 }
 
 export interface KanbanObservationGuard {
+    /** The exact retained Project document whose incarnation the token observes. */
+    readonly projectDoc: Y.Doc;
     assertCurrent(selection: KanbanObservationSelection): void;
     release(): void;
 }
@@ -456,6 +458,7 @@ export class KanbanObservationService {
         this.assertRecordLive(record);
         let borrowed = true;
         return {
+            projectDoc: record.lease.projectDoc,
             assertCurrent: selection => {
                 if (!borrowed) throw new KanbanObservationError("observation_unavailable");
                 this.assertSelection(record, selection);

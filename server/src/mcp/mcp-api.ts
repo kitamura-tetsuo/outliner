@@ -10,6 +10,7 @@ import { recordMcpAudit } from "./audit-log.js";
 import type { CreateTableTool } from "./create-table-tool.js";
 import type { OutlinerKanbanCardMutationService } from "./kanban-card-mutations.js";
 import type { KanbanDefinitionTools } from "./kanban-definition-tools.js";
+import type { KanbanLifecycleTools } from "./kanban-lifecycle-tools.js";
 import {
     KANBAN_RESPONSE_LIFECYCLE,
     type KanbanResponseLifecycle,
@@ -106,6 +107,7 @@ export function createMcpRouter(
     kanbanService?: OutlinerKanbanReadService,
     kanbanMutations?: OutlinerKanbanCardMutationService,
     kanbanDefinitionTools?: KanbanDefinitionTools,
+    kanbanLifecycle?: KanbanLifecycleTools,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -207,6 +209,8 @@ export function createMcpRouter(
             // its result; an unsupported input field must never name one.
             entity: name === "create_table" || name === "create_kanban"
                 ? undefined
+                : typeof typedArgs.kanbanId === "string"
+                ? `kanban:${typedArgs.kanbanId}`
                 : typeof typedArgs.relation === "string"
                 ? typedArgs.relation
                 : typeof typedArgs.ruleId === "string"
@@ -891,6 +895,52 @@ export function createMcpRouter(
                 {
                     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
                     mutating: true,
+                },
+            );
+        }
+        if (kanbanLifecycle) {
+            const common = {
+                projectId: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/),
+                kanbanId: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/),
+                observationToken: z.string().min(1),
+                operationId: z.string().min(1).max(200).refine(value => value.trim().length > 0),
+                dryRun: z.boolean().optional(),
+            };
+            tool("place_kanban", "Append a reference to an existing Kanban to a Page or Layout.", {
+                ...common,
+                destination: z.strictObject({ pageId: z.string(), layoutId: z.string().optional() }),
+                columnSpan: z.number().int().min(1).max(12).optional(),
+            }, args => {
+                requireWrite();
+                return kanbanLifecycle.place(uid, args);
+            }, {
+                annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+                mutating: true,
+                strict: true,
+            });
+            tool("remove_kanban_placement", "Remove one observed Kanban placement without deleting its definition.", {
+                ...common,
+                placementId: z.string().min(1),
+            }, args => {
+                requireWrite();
+                return kanbanLifecycle.remove(uid, args);
+            }, {
+                annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                mutating: true,
+                strict: true,
+            });
+            tool(
+                "delete_kanban",
+                "Delete an observed Kanban definition and all placements currently bound to it.",
+                common,
+                args => {
+                    requireWrite();
+                    return kanbanLifecycle.delete(uid, args);
+                },
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
                 },
             );
         }

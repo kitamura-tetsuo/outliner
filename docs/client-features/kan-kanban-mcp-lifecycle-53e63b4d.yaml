@@ -1,0 +1,11 @@
+id: FTR-53e63b4d
+title: Manage Kanban placements through MCP
+title-ja: MCP から Kanban の配置を管理
+description: An authorized MCP client can place an existing board, remove an occurrence, or delete the board and its current occurrences while preserving source data.
+category: tables
+status: implemented
+acceptance:
+- Remote placement, occurrence removal, and board deletion are visible in the normal browser after reload.
+- Deleting a board preserves its source Table.
+tests:
+- client/e2e/new/kan-kanban-mcp-lifecycle-roundtrip-53e63b4d.spec.ts

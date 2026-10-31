@@ -20,6 +20,8 @@ import { CreateTableTool } from "./mcp/create-table-tool.js";
 import { OutlinerGridPresentationService } from "./mcp/grid-presentation.js";
 import { OutlinerKanbanCardMutationService } from "./mcp/kanban-card-mutations.js";
 import { KanbanDefinitionTools } from "./mcp/kanban-definition-tools.js";
+import { KanbanLifecycleTools } from "./mcp/kanban-lifecycle-tools.js";
+import { OutlinerKanbanLifecycleService } from "./mcp/kanban-lifecycle.js";
 import { KanbanObservationService } from "./mcp/kanban-observations.js";
 import { OutlinerKanbanReadService } from "./mcp/kanban-read-service.js";
 import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
@@ -556,6 +558,13 @@ export async function startServer(
             checkContainerAccess,
             kanbanObservations,
             persistence ? createDocumentStore(persistence) : undefined,
+        ),
+        new KanbanLifecycleTools(
+            new OutlinerKanbanLifecycleService(
+                kanbanObservations,
+                checkContainerAccess,
+                persistence ? createDocumentStore(persistence) : undefined,
+            ),
         ),
     ));
 
