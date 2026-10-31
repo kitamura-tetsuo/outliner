@@ -1,6 +1,6 @@
 FROM eclipse-temurin:21-jre-noble AS java-runtime
 
-FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+FROM mcr.microsoft.com/devcontainers/typescript-node:5-26-bookworm
 
 # Keep the override image on the same supported Firebase runtime as the main
 # devcontainer image.

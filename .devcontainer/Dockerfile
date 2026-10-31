@@ -1,6 +1,6 @@
 FROM eclipse-temurin:21-jre-noble AS java-runtime
 
-FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+FROM mcr.microsoft.com/devcontainers/typescript-node:5-26-bookworm
 
 # Firebase CLI requires Java 21+. Copy the maintained, multi-architecture
 # Temurin runtime from its official image instead of relying on Bookworm's
