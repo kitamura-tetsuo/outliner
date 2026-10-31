@@ -1,6 +1,12 @@
 name: Build Test Container
 
 on:
+  pull_request:
+    paths:
+      - '.github/container/Dockerfile'
+      - '.github/workflows/build-container.yml'
+      - 'scripts/install-test-container-os-packages.sh'
+      - 'scripts/tests/test-container-os-packages.integration.sh'
   push:
     branches:
       - main
@@ -45,11 +51,23 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
 
+      - name: Exercise bounded OS-package acquisition
+        run: bash scripts/tests/test-container-os-packages.integration.sh
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: .github/container/Dockerfile
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          no-cache: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Verify required OS tools in the built image
+        if: github.event_name == 'pull_request'
+        run: |
+          docker tag "${REGISTRY}/${IMAGE_NAME}:sha-${GITHUB_SHA::7}" outliner-test-container:ci
+          docker run --rm outliner-test-container:ci sh -ceu \
+            'java -version && Xvfb -help >/dev/null && lsof -v >/dev/null && nc -h 2>&1 | head -1 && curl --version && sudo -V && python3 -m venv --help >/dev/null && git lfs version'
