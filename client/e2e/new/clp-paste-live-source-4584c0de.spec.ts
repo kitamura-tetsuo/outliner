@@ -13,34 +13,43 @@ registerCoverageHooks();
 
 test("peer Grid deletion during acquired source synchronization refuses ordinary Paste", async ({ page }, info) => {
     test.setTimeout(180000);
+    const evidence = {
+        stage: "fixture",
+        sourceProjectId: "unavailable",
+        destinationProjectId: "unavailable",
+        sourceGridId: "unavailable",
+        sourceTableId: "unavailable",
+        clipboardTypes: [] as readonly (readonly string[])[],
+        interceptedRooms: [] as string[],
+        clientMessages: 0,
+        serverMessages: 0,
+        deletionObserved: false,
+        focus: "unavailable" as string,
+        selection: "unavailable" as string,
+    };
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     const fixture = await seedCrossProjectFixture(page, info);
+    evidence.sourceProjectId = fixture.sourceProjectId;
+    evidence.destinationProjectId = fixture.destinationProjectId;
     await createBlankGrid(page, "Source", "source_rows");
     await addSourceRecord(page);
     const source = await readGridProjectState(page);
-    await page.evaluate(() => navigator.clipboard.writeText(""));
-    await copyGridHosts(page);
-    const clipboard = await page.evaluate(async () =>
-        Promise.all((await navigator.clipboard.read()).map(async item => ({
-            types: item.types,
-            data: await Promise.all(
-                item.types.map(async type =>
-                    Array.from(new Uint8Array(await (await item.getType(type)).arrayBuffer()))
-                ),
-            ),
-        })))
-    );
-    const show = page.getByRole("button", { name: "Show sidebar" });
-    if (await show.isVisible()) await show.click();
-    await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
-    await page.getByTestId(`object-delete-${source.grids[0].id}`).click();
+    evidence.sourceGridId = source.grids[0].id;
+    evidence.sourceTableId = source.tables[0].id;
     const destination = await page.context().newPage();
     let held = false;
     let resume = () => {};
-    await destination.routeWebSocket(url => url.pathname.includes(`/tables/${source.tables[0].id}`), socket => {
+    const sourceTableRoom = `/projects/${fixture.sourceProjectId}/tables/${source.tables[0].id}`;
+    await destination.routeWebSocket(url => url.pathname === sourceTableRoom, socket => {
+        evidence.interceptedRooms.push(sourceTableRoom);
         const server = socket.connectToServer();
         const buffered: (string | Buffer)[] = [];
+        socket.onMessage(message => {
+            evidence.clientMessages++;
+            server.send(message);
+        });
         server.onMessage(message => {
+            evidence.serverMessages++;
             held = true;
             buffered.push(message);
         });
@@ -60,6 +69,36 @@ test("peer Grid deletion during acquired source synchronization refuses ordinary
         );
         await expect(destination.locator(".outliner-item[data-item-id]")).toHaveCount(2);
         await createBlankGrid(destination, "Keep", "keep");
+        // Copy only after both pages and the destination editor exist. This makes
+        // the trusted source Copy the final clipboard-writing interaction instead
+        // of relying on clipboard ownership across page creation and navigation.
+        evidence.stage = "copy";
+        await page.bringToFront();
+        await page.evaluate(() => navigator.clipboard.writeText(""));
+        await copyGridHosts(page);
+        const clipboard = await page.evaluate(async () =>
+            Promise.all((await navigator.clipboard.read()).map(async item => ({
+                types: item.types,
+                data: await Promise.all(
+                    item.types.map(async type =>
+                        Array.from(new Uint8Array(await (await item.getType(type)).arrayBuffer()))
+                    ),
+                ),
+            })))
+        );
+        evidence.clipboardTypes = clipboard.map(item => item.types);
+        expect(evidence.clipboardTypes.some(types => types.includes("text/html"))).toBe(true);
+
+        // The source page must remain on its editor route until trusted Copy has
+        // completed: Object Manager does not mount the editor's clipboard textarea.
+        // Opening the pending deletion afterwards does not write the clipboard.
+        evidence.stage = "source-delete-ready";
+        const show = page.getByRole("button", { name: "Show sidebar" });
+        if (await show.isVisible()) await show.click();
+        await page.locator('aside[aria-label="Main Sidebar"]').getByRole("link", { name: "Object Manager" }).click();
+        await page.getByTestId(`object-delete-${source.grids[0].id}`).click();
+
+        evidence.stage = "destination-ready";
         await clickItemAndWaitForCursor(
             destination,
             destination.locator(".outliner-item[data-item-id]").nth(1).locator(".item-content"),
@@ -80,7 +119,16 @@ test("peer Grid deletion during acquired source synchronization refuses ordinary
         const before = await readGridProjectState(destination);
         const history = await snapshot();
         await destination.bringToFront();
+        const readiness = await destination.evaluate(() => ({
+            focus: document.activeElement instanceof Element
+                ? `${document.activeElement.tagName.toLowerCase()}.${document.activeElement.className}`
+                : "unavailable",
+            selection: JSON.stringify((globalThis as any).editorOverlayStore?.selection ?? "unavailable"),
+        }));
+        evidence.focus = readiness.focus;
+        evidence.selection = readiness.selection;
 
+        evidence.stage = "paste-started";
         await destination.keyboard.press("Control+v");
         await expect.poll(() => held, { timeout: 15000 }).toBe(true);
         // The actual source room is acquired and receives the accepted peer delete.
@@ -93,7 +141,9 @@ test("peer Grid deletion during acquired source synchronization refuses ordinary
                 return doc !== undefined && !doc.getMap("yjsGrids").has(gridId);
             }, { projectId: fixture.sourceProjectId, gridId: source.grids[0].id })
         ).toBe(true);
+        evidence.deletionObserved = true;
         resume();
+        evidence.stage = "refusal";
         await expect(destination.getByTestId("grid-paste-status")).toContainText(/source/i);
         expect(await readGridProjectState(destination)).toEqual(before);
         expect(await snapshot()).toEqual(history);
@@ -108,6 +158,13 @@ test("peer Grid deletion during acquired source synchronization refuses ordinary
             ),
         ).toEqual(clipboard);
         expect((await readGridProjectState(page)).tables).toEqual(source.tables);
+        evidence.stage = "complete";
+    } catch (error) {
+        await info.attach("live-source-paste-evidence.json", {
+            body: Buffer.from(JSON.stringify(evidence, undefined, 2)),
+            contentType: "application/json",
+        });
+        throw error;
     } finally {
         resume();
         await destination.close();
