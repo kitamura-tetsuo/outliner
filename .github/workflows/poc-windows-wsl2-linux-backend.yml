@@ -11,8 +11,8 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           ref: archive/native-ime-2026-10-08-application
           path: work/native-ime-app
@@ -21,7 +21,7 @@ jobs:
         run: |
           $sha = git -C work/native-ime-app rev-parse HEAD
           if ($sha -ne '0b5e6b0b1d3985e6789a6d826c5a76a180642a6d') { throw "Unexpected historical application revision $sha" }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Attempt WSL2 Ubuntu and native Linux Docker Engine
@@ -47,7 +47,7 @@ jobs:
           wsl.exe --distribution Ubuntu --user root --exec bash "$linuxRoot/scripts/poc/windows-linux-backend/collect-compose.sh" "$linuxRoot/artifacts/windows-linux-backend"
       - name: Preserve exact platform and provisioning evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: windows-wsl2-platform-${{ github.run_id }}
           path: |

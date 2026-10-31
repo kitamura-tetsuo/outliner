@@ -8,6 +8,7 @@ import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { recordMcpAudit } from "./audit-log.js";
 import type { CreateTableTool } from "./create-table-tool.js";
+import type { OutlinerKanbanCardMutationService } from "./kanban-card-mutations.js";
 import type { KanbanDefinitionTools } from "./kanban-definition-tools.js";
 import type { KanbanLifecycleTools } from "./kanban-lifecycle-tools.js";
 import {
@@ -104,6 +105,7 @@ export function createMcpRouter(
     tableCreation?: CreateTableTool,
     gridPresentationTool?: UpdateGridPresentationTool,
     kanbanService?: OutlinerKanbanReadService,
+    kanbanMutations?: OutlinerKanbanCardMutationService,
     kanbanDefinitionTools?: KanbanDefinitionTools,
     kanbanLifecycle?: KanbanLifecycleTools,
 ) {
@@ -303,6 +305,7 @@ export function createMcpRouter(
                     return response(validated);
                 } catch (caught) {
                     await lifecycle?.disclosureFailed();
+                    const effect = caught instanceof McpEffectError ? caught.effect : establishedEffect;
                     // A handler can throw only after its own awaited room
                     // cleanup. Recheck at this final boundary as well so a
                     // source-specific error cannot disclose existence after
@@ -312,7 +315,6 @@ export function createMcpRouter(
                         try {
                             await options.authorizeDisclosure(args as z.infer<z.ZodObject<T>>);
                         } catch {
-                            const effect = caught instanceof McpEffectError ? caught.effect : establishedEffect;
                             error = effect
                                 ? new McpEffectError("forbidden", "Project is inaccessible", {}, effect)
                                 : new McpReadError("forbidden", "Project is inaccessible");
@@ -335,7 +337,7 @@ export function createMcpRouter(
                                 outcome: error.code,
                                 applied: false,
                                 replayed: false,
-                                ...(error instanceof McpEffectError ? error.effect : {}),
+                                ...(effect ?? {}),
                             });
                         }
                         const meta = error.requiredScope
@@ -355,7 +357,7 @@ export function createMcpRouter(
                             outcome: "internal_failure",
                             applied: false,
                             replayed: false,
-                            ...establishedEffect,
+                            ...(effect ?? {}),
                         });
                     }
                     // Never forward an unexpected internal exception's message to the
@@ -452,6 +454,46 @@ export function createMcpRouter(
                 {
                     strict: true,
                     authorizeDisclosure: args => kanbanService.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+        }
+        if (kanbanMutations) {
+            const sourceRef = z.strictObject({
+                kind: z.enum(["table", "system"]),
+                id: z.string(),
+                sqlName: z.string(),
+                rowId: z.string(),
+            });
+            const common = {
+                projectId: z.string(),
+                kanbanId: z.string(),
+                sourceRef,
+                observationToken: z.string(),
+                operationId: z.string().min(1).max(200).refine(value => value.trim().length > 0),
+                dryRun: z.boolean().optional(),
+            };
+            tool(
+                "update_kanban_card",
+                "Update one displayed Kanban card field through its guarded physical source record.",
+                { ...common, outputField: z.string().min(1).refine(value => value.trim().length > 0), value: z.json() },
+                args => kanbanMutations.update(uid, args),
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
+                    authorizeDisclosure: args => kanbanMutations.authorizeDisclosure(uid, args.projectId),
+                },
+            );
+            tool(
+                "move_kanban_card",
+                "Move one Kanban card by updating its guarded grouping source field to an exact eligible lane.",
+                { ...common, destination: z.string().nullable() },
+                args => kanbanMutations.move(uid, args),
+                {
+                    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+                    mutating: true,
+                    strict: true,
+                    authorizeDisclosure: args => kanbanMutations.authorizeDisclosure(uid, args.projectId),
                 },
             );
         }

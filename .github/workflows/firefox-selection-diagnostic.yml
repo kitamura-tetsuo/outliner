@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Checkout requested revision
         id: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           clean: true
           persist-credentials: false
@@ -65,7 +65,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -133,7 +133,7 @@ jobs:
 
       - name: Upload collection evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-selection-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: job_logs/
@@ -162,7 +162,7 @@ jobs:
     steps:
       - name: Checkout requested revision
         id: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           clean: true
           persist-credentials: false
@@ -409,7 +409,7 @@ jobs:
 
       - name: Upload diagnostic evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-selection-diagnostic-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

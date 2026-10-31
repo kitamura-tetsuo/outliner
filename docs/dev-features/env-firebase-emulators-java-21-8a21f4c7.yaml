@@ -1,0 +1,16 @@
+id: ENV-8a21f4c7
+title: Firebase emulators use Java 21+
+title-ja: Firebase エミュレーターで Java 21 以上を使用する
+description: Devcontainers provide a maintained Temurin Java 21 runtime with JAVA_HOME and PATH configured. Setup and emulator startup fail promptly with actionable diagnostics when Java 21 or newer is unavailable.
+category: environment
+status: implemented
+components:
+- .devcontainer/Dockerfile
+- .devcontainer/Dockerfile.override
+- .github/workflows/ci-devcontainer-firebase.yml
+- scripts/require-java-21.sh
+- scripts/setup.sh
+- scripts/smoke-test-devcontainer-firebase.sh
+- scripts/start-firebase-emulators.sh
+tests:
+- scripts/tests/env-firebase-emulators-java-21-8a21f4c7.spec.ts

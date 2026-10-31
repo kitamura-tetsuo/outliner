@@ -5,8 +5,8 @@ category: item-management
 status: implemented
 acceptance:
 - After deletion, the cursor moves to the beginning of the next item
-- Pressing Delete on an empty item deletes that item
 - Existing descendant IDs, nesting, and sibling order are preserved
+- Pressing Delete on an empty item deletes that item
 tests:
 - client/e2e/core/itm-delete-empty-item-9f4d79c4.spec.ts
 - client/src/tests/integration/cursor/itm-boundary-descendant-preservation-5794.integration.spec.ts

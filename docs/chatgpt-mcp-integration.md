@@ -18,7 +18,7 @@ Do not commit secrets. Keep the short access-token lifetime and persistent refre
 
 ## Tool catalog
 
-All successful results are JSON in the MCP text result. All tools require `outliner.read`; the ten mutation tools (`create_table`, `create_grid`, `update_schedule_rule`, `update_table_schedule_sql`, `write_relation`, `set_view_query`, `update_grid_query`, `update_grid_presentation`, `update_table_schema`, `update_table_records`) also require `outliner.write`.
+All successful results are JSON in the MCP text result. All tools require `outliner.read`; mutation tools, including `update_kanban_card` and `move_kanban_card`, also require `outliner.write`.
 
 | Tool                        | Purpose and representative input                                                                                           | Result                                                                                                                                                                                        | Annotation                                                                  |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -48,6 +48,8 @@ All successful results are JSON in the MCP text result. All tools require `outli
 | `update_table_schema`       | Table ID, proposed `schemaSql`, expected revision, retry fields, `acknowledgeDestructive`                                  | Migration diff/warnings, before/after revisions; destructive diffs need acknowledgement                                                                                                       | **write; potentially destructive**                                          |
 | `update_table_records`      | Table ID, expected revision, bounded `changes` array of `{recordId, values}`, retry fields                                 | Before/after revisions and per-record confirmation for the whole atomic batch                                                                                                                 | **write; potentially destructive**                                          |
 | `update_table_schedule_sql` | Table ID, new `sql`, expected (Schedule) revision, retry fields                                                            | Table-centric shortcut for `update_schedule_rule`: replaces only that Table's write-target Schedule SQL; fails if the Table has none or more than one                                         | **write; non-destructive, idempotent configuration mutation**               |
+| `update_kanban_card`        | Project/Kanban/source identity and read observation, one displayed output field/value, operation ID, optional dry run      | Guarded physical source-field effect, no-op, or detached preview                                                                                                                              | **write; potentially destructive**                                          |
+| `move_kanban_card`          | Project/Kanban/source identity and read observation, exact string/null destination, operation ID, optional dry run         | Guarded grouping-field effect, no-op, or detached preview                                                                                                                                     | **write; potentially destructive**                                          |
 
 Clients that assumed exactly seven read-only tools must migrate to capability discovery: call `tools/list`, select by tool name, and honor each tool's `readOnlyHint` and `destructiveHint`. Do not reject additional tools or infer permissions from list length. A read-only token can discover the catalog but calls to write tools return `forbidden`.
 
@@ -77,6 +79,14 @@ Japanese-label workflow (edits presentation only, never SQL):
 4. Re-read: `get_grid` shows `presentationRevision: P1`, Japanese headers in the normal Grid, unchanged query text, and unchanged record IDs/values.
 
 ## Limits and result interpretation
+
+### Kanban card edits and moves
+
+Call `query_kanban` immediately before a card mutation and copy the returned opaque `observationToken` and the card's complete `sourceRef`. `update_kanban_card` accepts exactly one currently configured title/detail output and updates its proven physical field. `move_kanban_card` updates only the grouping field and accepts only an exact lane value in the complete current projection; JSON null, an empty string, and the string `NULL` are different destinations. Neither tool accepts a display index, lane label, physical-column override, or arbitrary new move lane.
+
+Every apply has a nonblank operation ID of at most 200 characters. Retry a lost response with the identical ID and semantic input: pending calls join, and settled effects/no-ops remain replayable in the serving process for five minutes. A reused ID with different input is rejected. A dry run performs current observation, membership, route, lane, and source-constraint checks but persists nothing and does not reserve the operation ID. Successful `applied:false` means the validated source value already matched; `applied:true` describes the confirmed source effect even if that effect causes the card to leave the query result. Re-read with `query_kanban` for current membership and a new observation.
+
+The observation itself is process-local and valid for at most five minutes. Selected query/role/source/schema/record changes make it stale, including change-and-restoration; unrelated record fields, the Kanban name, and lane display order do not alone grant or revoke authority. Payloads are limited to 32 KiB. Table values are checked against the current PostgreSQL schema and constraints; supported `outline_items` fields use their native mapping, including string-array tags. If an effect or its persistence cannot be established, the tool reports an error with `applied:null`; do not retry under a new ID until the source has been read again.
 
 - Subtrees: depth at most 10 and at most 500 nodes. Search: at most 100 results.
 - Table record pages: default 25, maximum 100. Continue with the opaque cursor; do not parse or synthesize it.

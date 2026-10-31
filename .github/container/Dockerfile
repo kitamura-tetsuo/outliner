@@ -9,10 +9,12 @@ RUN apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire
     rm -rf /var/lib/apt/lists/*
 
 # Install global npm packages
-RUN npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx dprint pm2
+COPY .firebase-tools-version /tmp/firebase-tools-version
+RUN npm install -g "firebase-tools@$(cat /tmp/firebase-tools-version)" tinylicious dotenv-cli cross-env @dotenvx/dotenvx dprint pm2
 
 # Create cache directories
 WORKDIR /cache
+COPY .firebase-tools-version ./
 
 # Copy package files
 # We use a pattern to avoid errors if directories don't exist, though we know they do.

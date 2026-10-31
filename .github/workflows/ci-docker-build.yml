@@ -23,13 +23,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build server image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           # Build from the repo root, matching build-server.yml: the server
           # compiles the framework-neutral schema from ../shared into its build,
@@ -47,6 +47,9 @@ jobs:
         # successful build does not prove the binding loads, so exercise it.
         run: |
           docker run --rm -w /usr/src/app/server yjs-ws-server:ci node -e "
+            if (process.versions.node.split('.')[0] !== '24') {
+              throw new Error('Expected Node 24, got ' + process.version);
+            }
             const Database = require('better-sqlite3');
             const db = new Database(':memory:');
             db.exec('CREATE TABLE t (a INTEGER)');
@@ -85,6 +88,52 @@ jobs:
             }
           "
 
+      - name: Verify the default cloud server starts on Node 24
+        run: |
+          docker run -d --name yjs-ws-server-smoke \
+            -e ALLOW_ALL_ORIGINS=true \
+            -e DISABLE_JOB_SCHEDULER=true \
+            -e FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:59099 \
+            -e FIRESTORE_EMULATOR_HOST=127.0.0.1:58080 \
+            -e FIREBASE_PROJECT_ID=outliner-d57b0 \
+            -e VITE_FIREBASE_API_KEY=emulator-key \
+            -e VITE_FIREBASE_AUTH_DOMAIN=outliner-d57b0.firebaseapp.com \
+            -e VITE_FIREBASE_PROJECT_ID=outliner-d57b0 \
+            -e VITE_FIREBASE_APP_ID=1:0:web:emulator \
+            -e OAUTH_ACCESS_TOKEN_SECRET=container-smoke-secret \
+            -e OAUTH_ISSUER=http://127.0.0.1:7093 \
+            yjs-ws-server:ci
+          trap 'docker rm -f yjs-ws-server-smoke >/dev/null 2>&1 || true' EXIT
+
+          for attempt in $(seq 1 30); do
+            if docker exec yjs-ws-server-smoke node -e "
+              (async () => {
+                if (process.versions.node.split('.')[0] !== '24') {
+                  throw new Error('Expected Node 24, got ' + process.version);
+                }
+                const health = await fetch('http://127.0.0.1:7093/health');
+                if (!health.ok) throw new Error('Health status ' + health.status);
+                const deployment = await fetch('http://127.0.0.1:7093/api/deployment');
+                if (!deployment.ok) throw new Error('Deployment status ' + deployment.status);
+                const body = await deployment.json();
+                if (body.deploymentMode !== 'cloud') {
+                  throw new Error('Expected cloud deployment, got ' + JSON.stringify(body));
+                }
+              })();
+            "; then
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' yjs-ws-server-smoke)" != true ]; then
+              echo 'Cloud server exited before becoming ready' >&2
+              docker logs yjs-ws-server-smoke
+              exit 1
+            fi
+            sleep 1
+          done
+
+          docker logs yjs-ws-server-smoke
+          exit 1
+
   server-debug-image:
     name: Build server debug image
     runs-on: ubuntu-latest
@@ -94,13 +143,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build server debug image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./server/Dockerfile.debug
@@ -113,6 +162,9 @@ jobs:
       - name: Verify native modules load in the built image
         run: |
           docker run --rm -w /usr/src/app/server yjs-ws-server:ci-debug node -e "
+            if (process.versions.node.split('.')[0] !== '24') {
+              throw new Error('Expected Node 24, got ' + process.version);
+            }
             const Database = require('better-sqlite3');
             const db = new Database(':memory:');
             db.exec('CREATE TABLE t (a INTEGER)');

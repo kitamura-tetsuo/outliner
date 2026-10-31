@@ -1,0 +1,22 @@
+id: MCP-7d4a9c31
+title: Guarded MCP Kanban card mutations
+title-ja: MCP による保護されたカンバンカード更新
+description: MCP clients can update a displayed Kanban card field or move a card to an exact eligible lane through its proven Table or outline source. A current server-owned observation, fresh complete projection, source constraints, authorization, durable acknowledgement, and bounded operation replay protect every write.
+description-ja: MCP クライアントは、証明された Table またはアウトラインのソースを通じて、表示中のカンバンカード項目を更新したり、正確な対象レーンへ移動したりできます。現在のサーバー所有の観測、最新の完全な投影、ソース制約、認可、永続化確認、期限付き操作リプレイによって各書き込みを保護します。
+category: integration
+status: implemented
+tags:
+- mcp
+- kanban
+- security
+acceptance:
+- A current query observation can update one proven displayed source field
+- A move accepts only an exact lane from the complete current projection
+- Dry runs have no effect and identical operation retries do not repeat a write
+- Stale observations, ambiguous routes, invalid constraints, and unavailable persistence refuse before a known effect
+tests:
+- server/tests/mcp-kanban-card-mutations.test.ts
+- server/tests/mcp-kanban-card-outline.test.ts
+- server/tests/mcp-kanban-card-races.test.ts
+- server/tests/mcp-kanban-card-contract.test.ts
+- client/e2e/new/kan-kanban-mcp-read-roundtrip-6b9e5d43.spec.ts

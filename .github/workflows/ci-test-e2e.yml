@@ -18,6 +18,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  artifact-roundtrip:
+    name: Verify E2E artifact round trip
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Create representative E2E evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact-roundtrip/source
+          printf '%s\n' '{"status":"passed","executed":2}' > artifact-roundtrip/source/execution.json
+          printf '%s\n' 'firefox evidence retained' > artifact-roundtrip/source/runtime.log
+
+      - name: Upload representative E2E evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-artifacts-firefox-artifact-roundtrip-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifact-roundtrip/source/execution.json
+            artifact-roundtrip/source/runtime.log
+          archive: true
+          retention-days: 1
+
+      - name: Download representative E2E evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-artifacts-firefox-artifact-roundtrip-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifact-roundtrip/downloaded
+
+      - name: Verify downloaded E2E evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp artifact-roundtrip/source/execution.json artifact-roundtrip/downloaded/execution.json
+          cmp artifact-roundtrip/source/runtime.log artifact-roundtrip/downloaded/runtime.log
+
   selection-coverage:
     name: Guard Chromium and Firefox selection coverage
     runs-on: ubuntu-latest
@@ -26,10 +64,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -57,7 +95,7 @@ jobs:
 
       - name: Upload collection guard logs
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-selection-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: job_logs/
@@ -100,7 +138,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           clean: true
 
@@ -309,7 +347,7 @@ jobs:
 
       - name: Upload Logs & Artifacts
         if: failure() || startsWith(matrix.project, 'firefox-')
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-artifacts-${{ env.E2E_BROWSER }}-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -320,4 +358,5 @@ jobs:
             server/logs/
             logs/
             firebase-debug.log
+          archive: true
           retention-days: 2

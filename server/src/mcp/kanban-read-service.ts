@@ -32,6 +32,33 @@ interface QualifiedFieldCapture {
 }
 interface OutlineCardFieldCapture extends OutlineFieldObservationCapture, QualifiedFieldCapture {}
 
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue; };
+
+/** Convert SQL values only at the response boundary; projection evidence retains the original rows. */
+function serializeSqlRow(row: Record<string, unknown>): Record<string, JsonValue> {
+    const ancestors = new Set<object>();
+    const convert = (value: unknown): JsonValue => {
+        if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+        if (typeof value === "bigint") return value.toString();
+        if (typeof value === "number" && Number.isFinite(value)) return value;
+        if (value instanceof Date) {
+            if (!Number.isFinite(value.getTime())) throw new McpReadError("internal_failure", "Invalid SQL date");
+            return value.toISOString();
+        }
+        if (typeof value !== "object" || value === null || ancestors.has(value)) {
+            throw new McpReadError("internal_failure", "SQL result cannot be serialized");
+        }
+        ancestors.add(value);
+        try {
+            if (Array.isArray(value)) return value.map(convert);
+            return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, convert(entry)]));
+        } finally {
+            ancestors.delete(value);
+        }
+    };
+    return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, convert(value)]));
+}
+
 export const KANBAN_RESPONSE_LIFECYCLE = Symbol("kanbanResponseLifecycle");
 export interface KanbanResponseLifecycle {
     disclosureSucceeded(): void;
@@ -225,7 +252,7 @@ export class OutlinerKanbanReadService {
                 returnedCards: lane.cards.filter(card => indices.has(card.occurrenceId)).length,
                 cards: lane.cards.filter(card => indices.has(card.occurrenceId)).map(card => ({
                     occurrenceId: card.occurrenceId,
-                    row: card.row,
+                    row: serializeSqlRow(card.row),
                     ...(card.source
                         ? {
                             sourceRef: {

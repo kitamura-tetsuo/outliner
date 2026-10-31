@@ -3,7 +3,9 @@ set -euo pipefail
 app_archive=$1
 harness_archive=$2
 export APPLICATION_SHA=$3
+export FIREBASE_TOOLS_VERSION=$4
 mkdir -p /opt/outliner-app /opt/outliner-harness /opt/outliner-evidence
+printf '%s\n' "$FIREBASE_TOOLS_VERSION" > /opt/outliner-evidence/firebase-tools-version
 tar -xf "$app_archive" -C /opt/outliner-app
 tar -xf "$harness_archive" -C /opt/outliner-harness
 cd /opt/outliner-app

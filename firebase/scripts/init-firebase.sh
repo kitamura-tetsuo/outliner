@@ -7,6 +7,7 @@ npm ci
 cd /firebase
 
 # Start Firebase emulators in the background
+echo "Firebase CLI version: $(firebase --version)"
 firebase emulators:start --project demo-test \
     --only auth,firestore,functions,hosting \
     --import=/firebase-data \

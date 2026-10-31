@@ -1,8 +1,8 @@
 services:
   app:
     build:
-      context: .
-      dockerfile: /home/ubuntu/src/outliner/.devcontainer/Dockerfile.override
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.override
 
     networks:
       graphrag-network:

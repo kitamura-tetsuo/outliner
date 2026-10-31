@@ -1,0 +1,10 @@
+id: ENV-b8751e2c
+title: Dependabot covers GitHub Actions and maintained Dockerfiles
+title-ja: Dependabot が GitHub Actions と保守対象 Dockerfile を網羅する
+description: Dependabot checks workflow action references from the repository root and Docker base images in every directory containing a maintained Dockerfile. Docker coverage remains explicitly directory-scoped, including suffix-named on-premises, devcontainer, debug, and runtime Dockerfiles, while the existing npm update policy remains unchanged.
+category: environment
+status: implemented
+components:
+- .github/dependabot.yml
+tests:
+- scripts/tests/env-dependabot-actions-and-docker-coverage-b8751e2c.spec.ts

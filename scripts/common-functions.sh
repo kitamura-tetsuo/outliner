@@ -350,9 +350,17 @@ ensure_pre_commit_version() {
 
 # Install global packages if needed
 install_global_packages() {
-  if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
-    echo "Installing global packages (firebase-tools, tinylicious, pm2)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
+  local firebase_version
+  firebase_version="$(cat "${ROOT_DIR}/.firebase-tools-version")"
+  if ! command -v firebase >/dev/null || [ "$(firebase --version 2>/dev/null || true)" != "${firebase_version}" ]; then
+    echo "Installing Firebase CLI ${firebase_version}..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g "firebase-tools@${firebase_version}"
+  fi
+  "${ROOT_DIR}/scripts/firebase-cli.sh" --version
+
+  if ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
+    echo "Installing global packages (tinylicious, pm2, dotenv)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
     # Refresh PATH to include newly installed global packages
     NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
     if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
@@ -366,74 +374,9 @@ install_global_packages() {
 
 }
 
-# Ensure JDK 21 is available locally
-ensure_jdk_21() {
-  local jdk_dir="${ROOT_DIR}/.jdk"
-  local version_target=21
-
-  if [ -x "${jdk_dir}/bin/java" ]; then
-    local current_v=$("${jdk_dir}/bin/java" -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$current_v" -ge "$version_target" ] 2>/dev/null; then
-      echo "Local JDK ${current_v} found at ${jdk_dir}"
-      export JAVA_HOME="${jdk_dir}"
-      export PATH="${JAVA_HOME}/bin:$PATH"
-      return 0
-    fi
-  fi
-
-  echo "Installing OpenJDK 21 to ${jdk_dir}..."
-  mkdir -p "${jdk_dir}"
-  
-  # Determine architecture
-  local arch=$(uname -m)
-  local download_url=""
-  if [ "$arch" = "x86_64" ]; then
-    download_url="https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.6%2B7/OpenJDK21U-jre_x64_linux_hotspot_21.0.6_7.tar.gz"
-  elif [ "$arch" = "aarch64" ]; then
-    download_url="https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.6%2B7/OpenJDK21U-jre_aarch64_linux_hotspot_21.0.6_7.tar.gz"
-  else
-    echo "Unsupported architecture: $arch"
-    return 1
-  fi
-
-  local tmp_tar="/tmp/openjdk21.tar.gz"
-  curl -L -o "$tmp_tar" "$download_url"
-  
-  # Extract and move contents to .jdk without the nested top-level folder
-  local tmp_extract="/tmp/jdk_extract"
-  mkdir -p "$tmp_extract"
-  tar -xzf "$tmp_tar" -C "$tmp_extract"
-  
-  # Move the contents of the (only) child directory to .jdk
-  local subdir=$(ls "$tmp_extract")
-  rm -rf "${jdk_dir:?}"/*
-  cp -R "${tmp_extract}/${subdir}"/* "${jdk_dir}/"
-  
-  # Cleanup
-  rm -rf "$tmp_extract" "$tmp_tar"
-  
-  export JAVA_HOME="${jdk_dir}"
-  export PATH="${JAVA_HOME}/bin:$PATH"
-  
-  echo "OpenJDK 21 installed successfully to ${jdk_dir}"
-}
-
 # Install OS utilities if needed
 install_os_utilities() {
-  # Check if Java is installed and compatible with Firebase
-  if ! command -v java >/dev/null 2>&1; then
-    echo "Java not found. Ensuring JDK 21..."
-    ensure_jdk_21
-  else
-    # Check Java version (Firebase requires Java 21+)
-    java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$java_version" -lt 21 ] 2>/dev/null; then
-      echo "Java version $java_version is too old for Firebase (needs 21+). Ensuring JDK 21..."
-      ensure_jdk_21
-    else
-      echo "Java version $java_version is compatible with Firebase"
-    fi
-  fi
+  "${ROOT_DIR}/scripts/require-java-21.sh"
 
   # For Playwright's --with-deps chromium
   local playwright_deps=(
@@ -1147,6 +1090,39 @@ start_and_wait_for_services() {
         _record_owner_missing "$(_owner_of_port "${port}")" "Port ${port}"
       fi
     done
+
+    # A listener on the configured Hosting port is not sufficient evidence
+    # that Firebase Hosting owns it. Firebase CLI can move a site to another
+    # port when the requested port is contested while an unrelated listener
+    # still makes the generic port sweep pass. Probe the real rewrite and its
+    # method handling so startup cannot announce readiness for that state.
+    if [ "$deadline" -le 0 ] || ! _deadline_expired "$deadline"; then
+      local _hosting_url="http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health"
+      local _hosting_get="" _hosting_post_code="000" _hosting_probe
+      _hosting_probe=$(_probe_timeout "$deadline")
+      if _hosting_get=$(_run_bounded "$_hosting_probe" curl -fsS --connect-timeout 2 --max-time "$_hosting_probe" "$_hosting_url" 2>/dev/null) &&
+         printf '%s' "$_hosting_get" | node -e '
+           let body = "";
+           process.stdin.on("data", chunk => body += chunk);
+           process.stdin.on("end", () => {
+             try {
+               const value = JSON.parse(body);
+               if (value.status !== "OK" || typeof value.timestamp !== "string") process.exit(1);
+             } catch { process.exit(1); }
+           });
+         '; then
+        _hosting_probe=$(_probe_timeout "$deadline")
+        _hosting_post_code=$(_run_bounded "$_hosting_probe" curl -sS --connect-timeout 2 --max-time "$_hosting_probe" -o /dev/null -w "%{http_code}" -X POST "$_hosting_url" 2>/dev/null || printf '000')
+      fi
+      if [ "$_hosting_post_code" != "405" ]; then
+        all_ready=false
+        _record_owner_missing "emu" "Firebase Hosting health rewrite (GET payload or POST status invalid)"
+        missing_services+=("Firebase Hosting health rewrite (GET payload or POST status invalid at ${_hosting_url})")
+      fi
+    else
+      all_ready=false
+      missing_services+=("Readiness deadline exceeded before Hosting health rewrite check")
+    fi
 
     # Check Firebase Functions API Health (Directly via Functions Emulator)
     # Checks http://127.0.0.1:57070/outliner-d57b0/us-central1/health

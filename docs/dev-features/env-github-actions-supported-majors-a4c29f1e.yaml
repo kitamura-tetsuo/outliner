@@ -1,0 +1,11 @@
+id: ENV-a4c29f1e
+title: Supported GitHub Actions majors
+title-ja: Supported GitHub Actions majors
+description: Keep active workflows on audited stable Action majors while protecting representative CI, artifact, and deployment contracts.
+category: environment
+status: implemented
+components:
+- .github/actions
+- .github/workflows
+tests:
+- scripts/tests/env-github-actions-supported-majors-a4c29f1e.spec.ts
