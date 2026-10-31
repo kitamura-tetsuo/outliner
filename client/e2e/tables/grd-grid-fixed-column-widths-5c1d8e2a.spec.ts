@@ -58,13 +58,11 @@ test.describe("Grid fixed column widths render at exact pixel widths", () => {
             expect(w).toBeLessThanOrEqual(49);
         }
 
-        // The project page centers content in a `max-w-7xl` shell, so viewports
-        // at or above 1280px no longer widen the Grid's container. Resize
-        // within the responsive range instead, where spare container space
-        // genuinely grows.
-        await page.setViewportSize({ width: 1000, height: 800 });
-        const autoBefore = await grid.locator('th[data-col="quantity"]').boundingBox();
+        // The page shell is fluid: surplus above the former 1280px cap reaches
+        // automatic tracks while saved fixed tracks remain exact.
         await page.setViewportSize({ width: 1280, height: 800 });
+        const autoBefore = await grid.locator('th[data-col="quantity"]').boundingBox();
+        await page.setViewportSize({ width: 1920, height: 800 });
         for (const w of await columnWidths(page, "title")) {
             expect(w).toBeGreaterThanOrEqual(179);
             expect(w).toBeLessThanOrEqual(181);
@@ -121,6 +119,11 @@ test.describe("Grid fixed column widths render at exact pixel widths", () => {
         }
         const scrolls = await grid.evaluate((el: HTMLElement) => el.scrollWidth > el.clientWidth + 1);
         expect(scrolls).toBe(true);
+        const reachedOffscreenContent = await grid.evaluate((el: HTMLElement) => {
+            el.scrollLeft = el.scrollWidth;
+            return el.scrollLeft > 0;
+        });
+        expect(reachedOffscreenContent).toBe(true);
         const pageOverflow = await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= 481);
         expect(pageOverflow).toBe(true);
     });

@@ -84,6 +84,9 @@ test.describe("FTR-9d3f57c1: editing a Layout's spans, narrow stacking, and unwr
     test("stacks one block per row when narrow, without rewriting the stored spans", async ({ page }) => {
         await seedLayout(page, [{ type: "yjstable", span: 4 }, { type: "calendar", span: 8 }]);
         await expect(cells(page)).toHaveCount(2, { timeout: 15000 });
+        await expect(page.getByTestId("yjs-table-view")).toBeVisible({ timeout: 15000 });
+        await expect(page.locator(".calendar-view")).toBeVisible({ timeout: 15000 });
+        await page.setViewportSize({ width: 1920, height: 800 });
         const wide = await Promise.all([0, 1].map(index => cells(page).nth(index).boundingBox()));
         expect(wide[1]!.x).toBeGreaterThan(wide[0]!.x);
 
@@ -100,7 +103,7 @@ test.describe("FTR-9d3f57c1: editing a Layout's spans, narrow stacking, and unwr
         await expect(cells(page).nth(0)).toHaveAttribute("data-column-span", "4");
 
         // ...so the side-by-side arrangement returns with the width.
-        await page.setViewportSize({ width: viewport?.width ?? 1280, height: viewport?.height ?? 800 });
+        await page.setViewportSize({ width: 1920, height: viewport?.height ?? 800 });
         await expect.poll(async () => {
             const boxes = await Promise.all([0, 1].map(index => cells(page).nth(index).boundingBox()));
             return Math.abs(boxes[1]!.y - boxes[0]!.y) < 2 && boxes[1]!.x > boxes[0]!.x;
