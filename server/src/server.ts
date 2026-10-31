@@ -18,6 +18,7 @@ import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { CreateTableTool } from "./mcp/create-table-tool.js";
 import { OutlinerGridPresentationService } from "./mcp/grid-presentation.js";
+import { OutlinerKanbanCardMutationService } from "./mcp/kanban-card-mutations.js";
 import { KanbanDefinitionTools } from "./mcp/kanban-definition-tools.js";
 import { KanbanObservationService } from "./mcp/kanban-observations.js";
 import { OutlinerKanbanReadService } from "./mcp/kanban-read-service.js";
@@ -497,6 +498,13 @@ export async function startServer(
         checkContainerAccess,
         persistence ? createDocumentStore(persistence) : undefined,
     );
+    const kanbanStore = persistence ? createDocumentStore(persistence) : undefined;
+    const kanbanMutations = new OutlinerKanbanCardMutationService(
+        hocuspocus,
+        checkContainerAccess,
+        kanbanObservations,
+        kanbanStore,
+    );
     app.use(createMcpRouter(
         new OutlinerReadService(
             hocuspocus,
@@ -542,6 +550,7 @@ export async function startServer(
         // One long-lived instance: its replay window spans MCP requests.
         new UpdateGridPresentationTool(gridPresentation, checkContainerAccess),
         new OutlinerKanbanReadService(hocuspocus, checkContainerAccess, kanbanObservations),
+        kanbanMutations,
         new KanbanDefinitionTools(
             hocuspocus,
             checkContainerAccess,
