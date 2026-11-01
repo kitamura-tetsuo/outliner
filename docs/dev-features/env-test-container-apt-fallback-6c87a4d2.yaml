@@ -1,0 +1,10 @@
+id: ENV-6c87a4d2
+title: Fail-closed test-container APT acquisition
+title-ja: テストコンテナAPT取得のフェイルクローズ化
+description: The test-container package layer enforces a 180-second aggregate acquisition budget across bounded primary and Ubuntu archive fallback attempts, retains apt diagnostics and signature verification, and verifies every required package after installation.
+notes: The recorded failure establishes that azure.archive.ubuntu.com was unreachable from the affected build, but does not distinguish a mirror outage from runner or network reachability. A successful fallback or later retry does not establish the underlying cause.
+category: environment
+status: implemented
+tests:
+  - scripts/tests/env-test-container-apt-fallback-6c87a4d2.spec.ts
+  - scripts/tests/test-container-os-packages.integration.sh
