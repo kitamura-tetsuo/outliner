@@ -7,6 +7,9 @@ on:
       - '.github/actions/setup-e2e-deps/**'
       - 'client/package*.json'
       - 'server/package*.json'
+      - 'server/Dockerfile'
+      - 'server/Dockerfile.debug'
+      - 'Dockerfile.onprem'
       - 'functions/package*.json'
       - 'scripts/ci/node26-data-smoke.mjs'
 
