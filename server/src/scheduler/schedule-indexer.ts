@@ -146,7 +146,7 @@ export function computeNextRunAt(
     error?: string;
 } {
     try {
-        const dtstart = resolveLocalDateTime(dtstartStr, timezoneStr);
+        const dtstart = DateTime.fromISO(dtstartStr, { zone: timezoneStr });
         if (!dtstart.isValid) {
             return { next_run_at: null, state: "invalid", nextSeq: cursorSeq, error: "Invalid dtstart" };
         }
@@ -217,7 +217,7 @@ export function computeNextRunAt(
             return { next_run_at: null, state: "exhausted", nextSeq: cursorSeq };
         }
 
-        const localOccurrence = DateTime.fromObject({
+        const dt = DateTime.fromObject({
             year: (nextDate as Date).getUTCFullYear(),
             month: (nextDate as Date).getUTCMonth() + 1,
             day: (nextDate as Date).getUTCDate(),
@@ -225,7 +225,6 @@ export function computeNextRunAt(
             minute: (nextDate as Date).getUTCMinutes(),
             second: (nextDate as Date).getUTCSeconds(),
         }, { zone: timezoneStr });
-        const dt = earliestPossibleOffset(localOccurrence);
 
         return { next_run_at: dt.toUTC().toISO(), state: "active", nextSeq: cursorSeq };
     } catch (err: unknown) {
@@ -236,19 +235,6 @@ export function computeNextRunAt(
             error: err instanceof Error ? err.message : String(err),
         };
     }
-}
-
-function resolveLocalDateTime(localDateTime: string, timezone: string): DateTime {
-    return earliestPossibleOffset(DateTime.fromISO(localDateTime, { zone: timezone }));
-}
-
-function earliestPossibleOffset(dateTime: DateTime): DateTime {
-    // Keep fall-back recurrences deterministic across Luxon releases: an
-    // ambiguous wall time runs at its first occurrence, before the clocks move.
-    return dateTime.getPossibleOffsets().reduce(
-        (earliest, candidate) => candidate.toMillis() < earliest.toMillis() ? candidate : earliest,
-        dateTime,
-    );
 }
 
 /**
