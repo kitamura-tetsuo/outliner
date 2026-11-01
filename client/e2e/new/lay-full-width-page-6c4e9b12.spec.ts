@@ -36,7 +36,9 @@ async function setSidebars(page: Page, leftOpen: boolean, databaseOpen: boolean)
 
 test("ordinary editor and project home follow viewport and sidebar allocation", async ({ page }, testInfo) => {
     test.setTimeout(180000);
-    const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Visible fluid content"]);
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+        "Visible fluid content",
+    ]);
     await expect(page.locator(".outliner-item", { hasText: "Visible fluid content" })).toBeVisible();
 
     for (const width of [1280, 1920, 2560, 1280]) {
@@ -57,7 +59,7 @@ test("ordinary editor and project home follow viewport and sidebar allocation", 
     await page.getByTestId("toolbar-project-name").click();
     await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(projectName)}$`));
     await expect(main(page).getByRole("heading", { name: "Page List" })).toBeVisible();
-    await expect(main(page).getByRole("link", { name: "Visible fluid content", exact: true })).toBeVisible();
+    await expect(main(page).getByRole("link", { name: pageName, exact: true })).toBeVisible();
     for (const [left, database] of [[false, false], [true, false], [false, true], [true, true]] as const) {
         await setSidebars(page, left, database);
         await expectMainFillsAllocation(page, 32);
