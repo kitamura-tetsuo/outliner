@@ -20,7 +20,8 @@ test("production, debug, and every on-prem stage use the compatible Node 26 imag
 });
 
 test("Firebase emulator container remains on its supported Node 22 image", () => {
-    expect(read("firebase/Dockerfile")).toMatch(/^FROM\s+node:22-slim$/m);
+    const firebaseImages = [...read("firebase/Dockerfile").matchAll(/^FROM\s+(\S+)/gm)].map((match) => match[1]);
+    expect(firebaseImages).toEqual(["node:22-slim"]);
     expect(JSON.parse(read("functions/package.json")).engines.node).toBe("22");
 });
 
