@@ -19,7 +19,7 @@ and control-plane cancellation/audit records for the job IDs below.
 
 | Run / job                                                                                                                        | Commit                                     | Hosted runner                                      | Test-step interval (UTC)     | Terminal evidence                     | Job result |
 | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------- | ---------------------------- | ------------------------------------- | ---------- |
-| [main run 41251173494 / job 124685883615](https://github.com/kitamura-tetsuo/outliner/actions/runs/41251173494/job/124685883615) | `c3d103beb41a17f43d4ae6b73e67cda66c221a89` | `GitHub Actions 1000322167`, label `ubuntu-latest` | 2026-11-01 00:14:22–00:18:15 | runner shutdown signal, then exit 143 | `failure`  |
+| [main run 41251173494 / job 124685883615](https://github.com/kitamura-tetsuo/outliner/actions/runs/41251173494/job/124685883615) | `c3d103beb41a17f43d4ae6b73e67cda66c221a89` | `GitHub Actions 1000322167`, label `ubuntu-latest` | 2026-11-01 00:14:22–00:18:15 | exit 143, then runner shutdown signal | `failure`  |
 | [PR run 41261494734 / job 124716433988](https://github.com/kitamura-tetsuo/outliner/actions/runs/41261494734/job/124716433988)   | `8a4a11be752650bb4150376fe1764bb72066b249` | `GitHub Actions 1000322507`, label `ubuntu-latest` | 2026-11-01 01:49:16–01:53:30 | runner shutdown signal, then exit 143 | `failure`  |
 
 In both jobs, checkout, dependency setup, server build, and service startup
