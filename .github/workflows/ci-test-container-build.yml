@@ -1,0 +1,35 @@
+name: Test container build
+
+on:
+  pull_request:
+    paths:
+      - '.github/container/Dockerfile'
+      - '.github/workflows/ci-test-container-build.yml'
+      - '.firebase-tools-version'
+      - 'client/package*.json'
+      - 'server/package*.json'
+      - 'functions/package*.json'
+      - 'shared/package.json'
+      - 'scripts/**'
+      - 'package*.json'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build test image without publishing
+        run: docker build --file .github/container/Dockerfile --tag outliner-test-validation .
+      - name: Check installed tools and absence of Tinylicious
+        run: |
+          docker run --rm --entrypoint sh outliner-test-validation -ec '
+            test ! -e "$(npm root -g)/tinylicious"
+            test ! -e /cache/client/node_modules/tinylicious
+            ! command -v tinylicious
+            command -v pm2
+            command -v firebase
+          '

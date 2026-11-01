@@ -248,21 +248,6 @@
             "restart": true
         },
         {
-            "name": "Launch Tinylicious",
-            "type": "node",
-            "request": "launch",
-            "cwd": "${workspaceFolder}/client",
-            "runtimeExecutable": "npx",
-            "runtimeArgs": [
-                "tinylicious"
-            ],
-            "env": {
-                "PORT": "7072"
-            },
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen"
-        },
-        {
             "type": "node",
             "request": "launch",
             "name": "For Test SvelteKit Server",
@@ -280,21 +265,6 @@
                 "<node_internals>/**"
             ],
             "restart": true
-        },
-        {
-            "name": "For Test Launch Tinylicious",
-            "type": "node",
-            "request": "launch",
-            "cwd": "${workspaceFolder}/client",
-            "runtimeExecutable": "npx",
-            "runtimeArgs": [
-                "tinylicious"
-            ],
-            "env": {
-                "PORT": "7082"
-            },
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen"
         },
         {
             "name": "For Test Launch test:e2e:ui",
@@ -348,21 +318,6 @@
             ],
             "restart": true,
             "experimentalNetworking": "off"
-        },
-        {
-            "name": "For Localhost Launch Tinylicious",
-            "type": "node",
-            "request": "launch",
-            "cwd": "${workspaceFolder}/client",
-            "runtimeExecutable": "npx",
-            "runtimeArgs": [
-                "tinylicious"
-            ],
-            "env": {
-                "PORT": "7092"
-            },
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen"
         },
         {
             "type": "node",
@@ -457,16 +412,13 @@
             "name": "Servers",
             "configurations": [
                 "Debug Server",
-                "Launch Tinylicious",
                 "Debug SvelteKit Server",
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
-                "For Test Launch Tinylicious"
                 // "For Test Launch test:e2e:ui"
                 // "Launch Chrome against localhost"
             ],
-            "stopAll": true,
-            "preLaunchTask": "Kill Tinylicious Process"
+            "stopAll": true
         },
         {
             "name": "Production Cloud Backend Servers",
@@ -483,32 +435,26 @@
             "configurations": [
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
-                "For Test Launch Tinylicious"
                 // "For Test Launch test:e2e:ui"
             ],
-            "stopAll": true,
-            "preLaunchTask": "Kill Tinylicious Process"
+            "stopAll": true
         },
         {
             "name": "Localhost Test Servers",
             "configurations": [
                 "For Localhost SvelteKit Server",
                 "For Localhost Debug Server",
-                "For Localhost Launch Tinylicious"
             ],
-            "stopAll": true,
-            "preLaunchTask": "Kill Tinylicious Process"
+            "stopAll": true
         },
         {
             "name": "Localhost Test Servers with Firebase Functions",
             "configurations": [
                 "For Localhost SvelteKit Server",
                 "For Localhost Debug Server",
-                "For Localhost Launch Tinylicious",
                 "For Localhost Debug Firebase Functions"
             ],
-            "stopAll": true,
-            "preLaunchTask": "Kill Tinylicious Process"
+            "stopAll": true
         },
         {
             "name": "Debug Firebase Functions Only",

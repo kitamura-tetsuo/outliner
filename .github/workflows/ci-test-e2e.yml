@@ -254,6 +254,40 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
+      - name: Verify retry-free Yjs offline synchronization without Tinylicious
+        if: matrix.project == 'yjs'
+        shell: bash
+        run: |
+          set -euo pipefail
+          assert_no_tinylicious() {
+            ps -eo comm=,args= | awk '$1 == "tinylicious" || ($1 ~ /^node/ && $0 ~ /[/]tinylicious([ /]|$)/) { found=1 } END { exit found }'
+            ss -H -ltn | awk '$4 ~ /:(7072|7082|7092)$/ { found=1 } END { exit found }'
+          }
+          assert_no_tinylicious
+          scripts/test.sh client/e2e/yjs/offline-sync-merge.spec.ts -- \
+            --project=yjs --retries=0 \
+            > >(tee job_logs/yjs-offline-no-tinylicious.log) 2>&1 &
+          test_pid=$!
+          while kill -0 "$test_pid" 2>/dev/null; do
+            if ! assert_no_tinylicious; then
+              echo "Unexpected Tinylicious process or legacy listener during Yjs test" >&2
+              kill "$test_pid" 2>/dev/null || true
+              wait "$test_pid" || true
+              exit 1
+            fi
+            sleep 1
+          done
+          wait "$test_pid"
+          assert_no_tinylicious
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          SKIP_AUTO_SETUP: '1'
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+
       - name: Record retry-free Grid clipboard verification
         if: matrix.project == 'new-2'
         shell: bash
