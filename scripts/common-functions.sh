@@ -307,8 +307,10 @@ npm_ci_if_needed() {
     # A container cache can legitimately become stale when a lockfile-changing
     # commit starts CI before its new image has finished building. Keep npm's
     # evidence visible, then converge the existing tree in place. `npm ci`
-    # deletes the whole (otherwise useful) cache first and made this path take
-    # about 90 seconds, enough to push the unit job over its fixed budget.
+    # deletes the whole (otherwise useful) cache first. The cancelled jobs spent
+    # about 90 seconds on that reinstall, but their logs do not identify the
+    # cancellation initiator, so preserve that timing as evidence rather than
+    # claiming the reinstall was the proven cancellation cause.
     echo "Installed dependencies are stale or invalid in $(pwd); npm ls reported:"
     cat "${npm_ls_log}"
     rm -f "${npm_ls_log}"
