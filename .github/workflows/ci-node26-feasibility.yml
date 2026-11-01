@@ -1,0 +1,123 @@
+name: Node 26 Yjs feasibility
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ci-node26-feasibility.yml'
+      - '.github/actions/setup-e2e-deps/**'
+      - 'client/package*.json'
+      - 'server/package*.json'
+      - 'functions/package*.json'
+      - 'scripts/ci/node26-data-smoke.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  node26-yjs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare isolated E2E dependencies under Node 22
+        uses: ./.github/actions/setup-e2e-deps
+        with:
+          browser: chromium
+          cache-key-suffix: -node26-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Clean install Functions under Node 22
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'if (process.versions.node.split(".")[0] !== "22") process.exit(1)'
+          (cd functions && npm ci)
+          echo "NODE22_BIN=$(dirname "$(command -v node)")" >> "$GITHUB_ENV"
+          echo "FIREBASE_CLI=$(command -v firebase)" >> "$GITHUB_ENV"
+      - name: Use Node 26.13 for client and server
+        uses: actions/setup-node@v7
+        with:
+          node-version: '26.13.0'
+      - name: Clean install and build Node 26 components
+        shell: bash
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: |
+          set -euo pipefail
+          node -e 'if (process.versions.node !== "26.13.0") process.exit(1)'
+          npm ci --engine-strict
+          (cd client && npm ci --engine-strict && npm run build)
+          (cd server && npm ci --engine-strict && npm run build)
+          node scripts/ci/node26-data-smoke.mjs
+      - name: Keep Firebase CLI and Functions on Node 22
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/node22-firebase"
+          cat > "$RUNNER_TEMP/node22-firebase/firebase" <<'WRAPPER'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          export PATH="$NODE22_BIN:$PATH"
+          exec "$FIREBASE_CLI" "$@"
+          WRAPPER
+          chmod +x "$RUNNER_TEMP/node22-firebase/firebase"
+          echo "$RUNNER_TEMP/node22-firebase" >> "$GITHUB_PATH"
+      - name: Start isolated test services
+        shell: bash
+        env:
+          CI: 'true'
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISABLE_POSTHOG: 'true'
+        run: |
+          set -euo pipefail
+          node -e 'if (process.versions.node !== "26.13.0") process.exit(1)'
+          "$NODE22_BIN/node" -e 'if (process.versions.node.split(".")[0] !== "22") process.exit(1)'
+          scripts/ci-e2e-start.sh
+          for port in 7090 7093; do
+            pid=$(lsof -nP -t -iTCP:"$port" -sTCP:LISTEN | head -1)
+            test -n "$pid"
+            version=$("/proc/$pid/exe" -p 'process.versions.node')
+            echo "Port $port Node runtime: $version"
+            test "$version" = '26.13.0'
+          done
+      - name: Verify real offline Yjs sync and Functions runtime
+        shell: bash
+        env:
+          CI: 'true'
+          NODE_ENV: test
+          TEST_ENV: localhost
+          SKIP_AUTO_SETUP: '1'
+          SKIP_DPRINT: '1'
+          DISABLE_POSTHOG: 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          scripts/test.sh client/e2e/yjs/offline-sync-merge.spec.ts -- --project=yjs --retries=0 > >(tee job_logs/node26-yjs.log) 2>&1 &
+          test_pid=$!
+          seen_functions=0
+          while kill -0 "$test_pid" 2>/dev/null; do
+            while read -r pid; do
+              [ -n "$pid" ] || continue
+              [ -e "/proc/$pid/exe" ] || continue
+              version=$("/proc/$pid/exe" -p 'process.versions.node' 2>/dev/null) || {
+                [ ! -e "/proc/$pid/exe" ] && continue
+                echo "Could not inspect Functions runtime $pid" >&2
+                exit 1
+              }
+              case "$version" in 22.*) seen_functions=1 ;; *) echo "Unexpected Functions runtime: $version" >&2; exit 1 ;; esac
+            done < <(pgrep -f '[/]functionsEmulatorRuntime' || true)
+            sleep 1
+          done
+          wait "$test_pid"
+          test "$seen_functions" = 1 || { echo 'No Functions runtime was observed' >&2; exit 1; }
+          echo 'Functions emulator runtime observed on Node 22; Yjs client and server used Node 26.13.0.'
+      - name: Retain feasibility logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: node26-yjs-feasibility-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            job_logs/
+            client/test-results/
+            logs/
+          if-no-files-found: warn
+          retention-days: 2
