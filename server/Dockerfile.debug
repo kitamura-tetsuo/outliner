@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim
+FROM node:25-bookworm-slim
 
 # Build context is the repository ROOT so the shared schema (../shared) is
 # available to the server build. See server/Dockerfile for details.
