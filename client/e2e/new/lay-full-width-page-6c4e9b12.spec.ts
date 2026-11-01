@@ -59,7 +59,11 @@ test("ordinary editor and project home follow viewport and sidebar allocation", 
     await page.getByTestId("toolbar-project-name").click();
     await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(projectName)}$`));
     await expect(main(page).getByRole("heading", { name: "Page List" })).toBeVisible();
-    await expect(main(page).getByRole("link", { name: pageName, exact: true })).toBeVisible();
+    const seededPageLink = main(page).locator(
+        `a[href="/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}"]`,
+    );
+    await expect(seededPageLink).toHaveCount(1);
+    await expect(seededPageLink).toBeVisible();
     for (const [left, database] of [[false, false], [true, false], [false, true], [true, true]] as const) {
         await setSidebars(page, left, database);
         await expectMainFillsAllocation(page, 32);
