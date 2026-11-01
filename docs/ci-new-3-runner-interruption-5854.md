@@ -72,6 +72,14 @@ exact checked-out pull-request merge SHA as
 `6f3c7229e1f72eba95716daf021d4b7d4509275d`; the publication head used to create
 that merge was `4882382dcdeaed5fecf11428ba2bedb20a7789a9`.
 
+A later exact-head validation also completed successfully: [run 41289391998 /
+new-3 job 124800933086](https://github.com/kitamura-tetsuo/outliner/actions/runs/41289391998/job/124800933086)
+ran on `GitHub Actions 1000323477` from 2026-11-01 09:28:47 through
+09:42:58 UTC. Its supported test step succeeded from 09:30:12 through 09:42:55,
+and its execution record identifies merge SHA
+`4dae7ff7495fe017debc68a1df338746012dbd17` for publication head
+`010b7545ac0c3f19ceb79587700fedf7fcab745e`.
+
 This successful run restores `new-3` validation for that exact checked-out SHA.
 It is not a retry of either interrupted execution and does not identify their
 termination source. No repository correction or lifecycle regression was added,
