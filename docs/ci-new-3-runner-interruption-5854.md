@@ -78,7 +78,10 @@ ran on `GitHub Actions 1000323477` from 2026-11-01 09:28:47 through
 09:42:58 UTC. Its supported test step succeeded from 09:30:12 through 09:42:55,
 and its execution record identifies merge SHA
 `4dae7ff7495fe017debc68a1df338746012dbd17` for publication head
-`010b7545ac0c3f19ceb79587700fedf7fcab745e`.
+`010b7545ac0c3f19ceb79587700fedf7fcab745e`. The surrounding workflow's
+server-test failure is the independently tracked DST fall-back mismatch in
+[#5859](https://github.com/kitamura-tetsuo/outliner/issues/5859); it does not
+change the successful `new-3` result or establish a cause for the interruptions.
 
 This successful run restores `new-3` validation for that exact checked-out SHA.
 It is not a retry of either interrupted execution and does not identify their
