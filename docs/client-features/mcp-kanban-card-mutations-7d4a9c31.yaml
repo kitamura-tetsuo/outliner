@@ -15,8 +15,8 @@ acceptance:
 - Dry runs have no effect and identical operation retries do not repeat a write
 - Stale observations, ambiguous routes, invalid constraints, and unavailable persistence refuse before a known effect
 tests:
-- client/e2e/new/kan-kanban-mcp-read-roundtrip-6b9e5d43.spec.ts
-- server/tests/mcp-kanban-card-contract.test.ts
 - server/tests/mcp-kanban-card-mutations.test.ts
 - server/tests/mcp-kanban-card-outline.test.ts
 - server/tests/mcp-kanban-card-races.test.ts
+- server/tests/mcp-kanban-card-contract.test.ts
+- client/e2e/new/kan-kanban-mcp-read-roundtrip-6b9e5d43.spec.ts

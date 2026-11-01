@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/lay-visual-block-layout-container-9d3f57c1.yaml
  */
 import { expect, test } from "@playwright/test";
+import { createPresetCalendar } from "../utils/calendarTableCreationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 async function seedLayout(
@@ -36,9 +37,45 @@ const storedLayout = (page: import("@playwright/test").Page) =>
 
 const cells = (page: import("@playwright/test").Page) => page.getByTestId("layout-cell");
 
+async function createBoundLayoutComponents(page: import("@playwright/test").Page) {
+    const gridCell = cells(page).nth(0);
+    await gridCell.locator(".component-wrapper").click();
+    await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+    const gridPanel = gridCell.getByTestId("yjs-table-create-panel");
+    await expect(gridPanel).toBeVisible({ timeout: 10000 });
+    await gridPanel.getByTestId("yjs-table-name-input").fill("Layout tasks");
+    await gridPanel.getByTestId("yjs-table-preset-select").selectOption("tasks");
+    await gridPanel.getByTestId("yjs-table-sql-name-input").fill("layout_tasks");
+    await gridPanel.getByTestId("yjs-table-create").click();
+    await expect(gridCell.getByTestId("yjs-table-view")).toBeVisible({ timeout: 30000 });
+
+    const calendarCell = cells(page).nth(1);
+    await createPresetCalendar(calendarCell, {
+        preset: "tasks",
+        name: "Layout calendar",
+        sqlName: "layout_calendar",
+    });
+}
+
+const storedComponentConfiguration = (page: import("@playwright/test").Page) =>
+    page.evaluate(() => {
+        const project = (globalThis as any).generalStore.project;
+        const layout = (globalThis as any).generalStore.currentPage.items.at(0);
+        const children = [...layout.items];
+        const values = children.map((child: { key: string; }) => project.tree.getNodeValueFromKey(child.key));
+        const gridId = values[0].get("yjsGridId");
+        const calendarId = values[1].get("calendarId");
+        return {
+            gridId,
+            calendarId,
+            grid: project.ydoc.getMap("yjsGrids").get(gridId)?.toJSON(),
+            calendar: project.calendars.get(calendarId)?.toJSON(),
+        };
+    });
+
 test.describe("FTR-9d3f57c1: editing a Layout's spans, narrow stacking, and unwrap", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        test.setTimeout(120000);
+        test.setTimeout(180000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Dashboard"]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
     });
@@ -84,11 +121,26 @@ test.describe("FTR-9d3f57c1: editing a Layout's spans, narrow stacking, and unwr
     test("stacks one block per row when narrow, without rewriting the stored spans", async ({ page }) => {
         await seedLayout(page, [{ type: "yjstable", span: 4 }, { type: "calendar", span: 8 }]);
         await expect(cells(page)).toHaveCount(2, { timeout: 15000 });
-        await expect(page.getByTestId("yjs-table-view")).toBeVisible({ timeout: 15000 });
-        await expect(page.locator(".calendar-view")).toBeVisible({ timeout: 15000 });
+        await createBoundLayoutComponents(page);
+        await expect(cells(page).nth(0).getByTestId("yjs-table-view")).toBeVisible();
+        await expect(cells(page).nth(1).getByTestId("calendar-view")).toBeVisible();
+        const configurationBefore = await storedComponentConfiguration(page);
+        expect(configurationBefore.gridId).toBeTruthy();
+        expect(configurationBefore.calendarId).toBeTruthy();
         await page.setViewportSize({ width: 1920, height: 800 });
         const wide = await Promise.all([0, 1].map(index => cells(page).nth(index).boundingBox()));
         expect(wide[1]!.x).toBeGreaterThan(wide[0]!.x);
+
+        const gridView = cells(page).nth(0).getByTestId("yjs-table-view");
+        await gridView.getByTestId("yjs-table-toggle-ui").click();
+        await expect(gridView).toHaveAttribute("data-ui-editor-open", "true");
+        const [openCell, layoutBox] = await Promise.all([
+            cells(page).nth(0).boundingBox(),
+            page.getByTestId("layout-block").boundingBox(),
+        ]);
+        expect(Math.abs(openCell!.width - layoutBox!.width)).toBeLessThanOrEqual(2);
+        await gridView.getByTestId("yjs-table-toggle-ui").click();
+        await expect(gridView).toHaveAttribute("data-ui-editor-open", "false");
 
         const viewport = page.viewportSize();
         await page.setViewportSize({ width: 420, height: viewport?.height ?? 800 });
@@ -108,6 +160,7 @@ test.describe("FTR-9d3f57c1: editing a Layout's spans, narrow stacking, and unwr
             const boxes = await Promise.all([0, 1].map(index => cells(page).nth(index).boundingBox()));
             return Math.abs(boxes[1]!.y - boxes[0]!.y) < 2 && boxes[1]!.x > boxes[0]!.x;
         }, { timeout: 10000 }).toBe(true);
+        expect(await storedComponentConfiguration(page)).toEqual(configurationBefore);
     });
 
     test("unwrapping keeps the blocks in order and removes only the container", async ({ page }) => {

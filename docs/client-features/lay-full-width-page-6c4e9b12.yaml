@@ -1,5 +1,5 @@
 id: LAY-6c4e9b12
-title: Fluid page editor and project home width
+title: Full-width page editor and project home
 title-ja: ページエディターとプロジェクトホームの可変幅
 description: Page editors and project home pages, including their public demo variants, use all content width allocated by the application shell while retaining responsive gutters and the existing embedded component sizing behavior.
 category: client
@@ -10,8 +10,8 @@ components:
 - client/src/routes/[project]/+page.svelte
 - client/src/routes/[project]/[page]/+page.svelte
 tests:
-- client/e2e/new/lay-fluid-demo-width-6c4e9b12.spec.ts
-- client/e2e/new/lay-fluid-page-width-6c4e9b12.spec.ts
+- client/e2e/new/lay-full-width-demo-6c4e9b12.spec.ts
+- client/e2e/new/lay-full-width-page-6c4e9b12.spec.ts
 - client/e2e/new/lay-layout-span-and-unwrap-9d3f57c1.spec.ts
 - client/e2e/tables/grd-grid-fixed-column-widths-5c1d8e2a.spec.ts
 acceptance:
