@@ -260,8 +260,7 @@ jobs:
         run: |
           set -euo pipefail
           assert_no_tinylicious() {
-            ps -eo comm=,args= | awk '$1 == "tinylicious" || ($1 ~ /^node/ && $0 ~ /[/]tinylicious([ /]|$)/) { found=1 } END { exit found }'
-            ss -H -ltn | awk '$4 ~ /:(7072|7082|7092)$/ { found=1 } END { exit found }'
+            bash scripts/ci/assert-no-tinylicious.sh
           }
           assert_no_tinylicious
           scripts/test.sh client/e2e/yjs/offline-sync-merge.spec.ts -- \

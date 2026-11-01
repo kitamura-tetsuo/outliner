@@ -418,7 +418,8 @@
                 // "For Test Launch test:e2e:ui"
                 // "Launch Chrome against localhost"
             ],
-            "stopAll": true
+            "stopAll": true,
+            "preLaunchTask": "Clean Development Ports"
         },
         {
             "name": "Production Cloud Backend Servers",
@@ -437,7 +438,8 @@
                 "For Test Debug Server",
                 // "For Test Launch test:e2e:ui"
             ],
-            "stopAll": true
+            "stopAll": true,
+            "preLaunchTask": "Clean Development Ports"
         },
         {
             "name": "Localhost Test Servers",
@@ -445,7 +447,8 @@
                 "For Localhost SvelteKit Server",
                 "For Localhost Debug Server",
             ],
-            "stopAll": true
+            "stopAll": true,
+            "preLaunchTask": "Clean Development Ports"
         },
         {
             "name": "Localhost Test Servers with Firebase Functions",
@@ -454,7 +457,8 @@
                 "For Localhost Debug Server",
                 "For Localhost Debug Firebase Functions"
             ],
-            "stopAll": true
+            "stopAll": true,
+            "preLaunchTask": "Clean Development Ports"
         },
         {
             "name": "Debug Firebase Functions Only",

@@ -87,6 +87,13 @@
             "problemMatcher": []
         },
         {
+            "label": "Clean Development Ports",
+            "type": "shell",
+            "command": "node ${workspaceFolder}/scripts/kill-tinylicious.js",
+            "problemMatcher": [],
+            "group": "none"
+        },
+        {
             "label": "clean-chrome-profile",
             "type": "shell",
             "command": "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"

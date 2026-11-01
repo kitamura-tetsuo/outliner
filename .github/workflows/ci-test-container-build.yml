@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      - name: Test cleanup and Tinylicious absence guards
+        run: node --test scripts/ci/tinylicious-cleanup.test.cjs
       - name: Build test image without publishing
         run: docker build --file .github/container/Dockerfile --tag outliner-test-validation .
       - name: Check installed tools and absence of Tinylicious
