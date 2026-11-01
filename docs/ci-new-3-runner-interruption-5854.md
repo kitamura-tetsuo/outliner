@@ -10,8 +10,8 @@ does not change the workflow, its process cleanup, or any test, timeout, retry,
 concurrency, or reporting policy.
 
 The authoritative termination source is outside the evidence exposed by these
-workflow runs. A maintainer may retry the supported CI path to restore validation,
-but a passing retry would be recovery evidence only, not a causal finding. If the
+workflow runs. The supported CI path subsequently completed on this PR, restoring
+validation but not supplying causal evidence for either interruption. If the
 interruption recurs, GitHub Support must inspect the hosted-runner diagnostics
 and control-plane cancellation/audit records for the job IDs below.
 
@@ -39,9 +39,11 @@ GitHub audit event that attributes the shutdown.
 ## Alternatives evaluated
 
 - **Repository test or process failure:** not established. The runner-level
-  shutdown message precedes exit 143, the test command had not returned, and no
-  final assertion failure is present. Exit 143 records SIGTERM-derived process
-  termination but does not identify the initiator.
+  shutdown message and exit 143 occur together at the terminal boundary, the
+  test command had not returned, and no final assertion failure is present. Exit
+  143 records SIGTERM-derived process termination but does not identify the
+  initiator. Log ordering differs: the main job reports exit 143 immediately
+  before the shutdown diagnostic, while the PR job reports the diagnostic first.
 - **Workflow timeout:** excluded for these jobs. Each job stopped less than six
   minutes after it started, while the workflow's E2E job budget is 30 minutes.
 - **Matrix fail-fast:** excluded by the checked-in workflow, which sets
@@ -60,12 +62,27 @@ The separate main unit-job cancellation and previously retried Diagram failures
 do not establish a cause for these `new-3` shutdowns and are outside this
 investigation.
 
+## Subsequent supported-path validation
+
+[PR #5858 run 41280242983 / new-3 job 124771175919](https://github.com/kitamura-tetsuo/outliner/actions/runs/41280242983/job/124771175919)
+completed successfully on `GitHub Actions 1000322931` at 2026-11-01 07:01:09
+UTC. The job ran the supported `new-3` test step from 06:48:33 through 07:01:03
+and recorded a successful execution outcome. Its execution record identifies the
+exact checked-out pull-request merge SHA as
+`6f3c7229e1f72eba95716daf021d4b7d4509275d`; the publication head used to create
+that merge was `4882382dcdeaed5fecf11428ba2bedb20a7789a9`.
+
+This successful run restores `new-3` validation for that exact checked-out SHA.
+It is not a retry of either interrupted execution and does not identify their
+termination source. No repository correction or lifecycle regression was added,
+because the available evidence still does not establish a repository-controlled
+defect.
+
 ## Recovery and required authority
 
-1. A repository maintainer can rerun the supported CI workflow at the exact
-   affected SHA and retain the new run ID, `new-3` job ID, complete log, and
-   actual conclusion. This restores missing validation if it completes, but
-   must not be described as proof of the original cause.
+1. Retain the successful PR validation above with its run ID, `new-3` job ID,
+   checked-out SHA, complete log, and actual conclusion. It restores supported
+   path validation but must not be described as proof of the original cause.
 2. If another shutdown occurs, open a GitHub Support request with both original
    run/job pairs and the recurrence. Ask GitHub to identify the shutdown reason
    from hosted-runner listener diagnostics, job cancellation/control-plane
