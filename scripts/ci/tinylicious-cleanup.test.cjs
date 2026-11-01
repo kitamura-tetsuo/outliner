@@ -82,10 +82,15 @@ test("VS Code compounds invoke port cleanup before a fresh server binds", async 
         executable(
             dir,
             "lsof",
-            'if [ "$2" = ":7090" ]; then /usr/bin/lsof -nP -t -iTCP:"$OWNED_PORT" -sTCP:LISTEN; else exit 1; fi',
+            'if [ "$2" = ":7090" ]; then /usr/bin/lsof -nP -t -iTCP:"$OWNED_PORT" -sTCP:LISTEN | awk -v pid="$OWNED_PID" \'$0 == pid { print }\'; else exit 1; fi',
         );
         const output = execFileSync(process.execPath, [task[1].replace("node ${workspaceFolder}/", `${root}/`)], {
-            env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, OWNED_PORT: String(port) },
+            env: {
+                ...process.env,
+                PATH: `${dir}:${process.env.PATH}`,
+                OWNED_PORT: String(port),
+                OWNED_PID: String(child.pid),
+            },
             encoding: "utf8",
             timeout: 10000,
         });
