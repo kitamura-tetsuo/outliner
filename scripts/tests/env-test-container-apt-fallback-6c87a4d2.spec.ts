@@ -15,6 +15,7 @@ test("the image uses the bounded installer and CI runs its Docker regression", (
     const dockerfile = read(".github", "container", "Dockerfile");
     const workflow = read(".github", "workflows", "build-container.yml");
     const installer = read("scripts", "install-test-container-os-packages.sh");
+    const integration = read("scripts", "tests", "test-container-os-packages.integration.sh");
 
     expect(dockerfile).toContain("/usr/local/bin/install-test-container-os-packages");
     expect(installer).toContain("Acquire::Retries=2");
@@ -23,4 +24,6 @@ test("the image uses the bounded installer and CI runs its Docker regression", (
     expect(installer).toContain("dpkg-query");
     expect(workflow).toContain("scripts/tests/test-container-os-packages.integration.sh");
     expect(workflow).toContain("docker run --rm outliner-test-container:ci");
+    expect(integration).toContain("status == 124 || status == 137");
+    expect(integration).toContain("timed out before ${negative_case} reported its own failure");
 });

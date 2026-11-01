@@ -34,8 +34,17 @@ docker run --rm outliner-apt-regression:success dpkg-query -W -f='${db:Status-St
 
 for negative_case in unavailable slow missing; do
     log="$fixture/${negative_case}.log"
-    if timeout 180 docker build --no-cache --build-arg "CASE=${negative_case}" "$fixture" >"$log" 2>&1; then
+    set +e
+    timeout 180 docker build --no-cache --build-arg "CASE=${negative_case}" "$fixture" >"$log" 2>&1
+    status=$?
+    set -e
+    if (( status == 0 )); then
         echo "Negative control unexpectedly built successfully: ${negative_case}" >&2
+        exit 1
+    fi
+    if (( status == 124 || status == 137 )); then
+        echo "Regression harness timed out before ${negative_case} reported its own failure." >&2
+        cat "$log" >&2
         exit 1
     fi
 done
