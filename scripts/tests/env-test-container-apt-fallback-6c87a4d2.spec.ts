@@ -18,6 +18,8 @@ test("the image uses the bounded installer and CI runs its Docker regression", (
 
     expect(dockerfile).toContain("/usr/local/bin/install-test-container-os-packages");
     expect(installer).toContain("Acquire::Retries=2");
+    expect(installer).toContain("APT_ACQUISITION_BUDGET_SECONDS:-180");
+    expect(installer).toContain("timeout --signal=TERM --kill-after=5");
     expect(installer).toContain("dpkg-query");
     expect(workflow).toContain("scripts/tests/test-container-os-packages.integration.sh");
     expect(workflow).toContain("docker run --rm outliner-test-container:ci");

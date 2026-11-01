@@ -2,10 +2,13 @@
 
 set -euo pipefail
 
-# Keep this deliberately small and bounded. apt performs at most two retries for
-# each of the two configured Ubuntu archive hosts; every request has a 15-second
-# timeout. The second host changes only the transport endpoint--Ubuntu's signed
-# Release metadata and package signature verification remain enabled.
+# The complete acquisition path has a 180-second wall-clock budget, including
+# both archive hosts and every apt update/install retry. Individual requests
+# retain shorter transport timeouts so their native source/stage errors are
+# normally reported before the aggregate deadline. The second host changes only
+# the transport endpoint--Ubuntu's signed Release metadata and package signature
+# verification remain enabled.
+readonly acquisition_budget_seconds="${APT_ACQUISITION_BUDGET_SECONDS:-180}"
 readonly primary_host="${APT_PRIMARY_HOST:-azure.archive.ubuntu.com}"
 readonly fallback_host="${APT_FALLBACK_HOST:-archive.ubuntu.com}"
 readonly apt_options=(
@@ -19,6 +22,27 @@ if (( $# == 0 )); then
     echo "usage: $0 PACKAGE [PACKAGE ...]" >&2
     exit 64
 fi
+
+if [[ ! "$acquisition_budget_seconds" =~ ^[1-9][0-9]*$ ]]; then
+    echo "APT_ACQUISITION_BUDGET_SECONDS must be a positive integer." >&2
+    exit 64
+fi
+
+# Run the complete production acquisition path under one deadline. The private
+# worker mode avoids applying a fresh budget to each fallback attempt.
+if [[ $1 != "--bounded-acquisition-worker" ]]; then
+    set +e
+    timeout --signal=TERM --kill-after=5 "$acquisition_budget_seconds" \
+        "$0" --bounded-acquisition-worker "$@"
+    status=$?
+    set -e
+    if (( status == 124 || status == 137 )); then
+        echo "APT package acquisition exceeded its ${acquisition_budget_seconds}-second aggregate budget." >&2
+        exit 1
+    fi
+    exit "$status"
+fi
+shift
 
 replace_archive_host() {
     local from=$1
