@@ -13,5 +13,6 @@ acceptance:
 tests:
 - client/e2e/tables/grd-grid-space-pan-7e3a8c91.spec.ts
 - client/e2e/tables/grd-grid-space-pan-boundaries-7e3a8c91.spec.ts
+- client/e2e/tables/grd-grid-space-pan-chord-order-7e3a8c91.spec.ts
 - client/e2e/tables/grd-grid-space-pan-click-guard-7e3a8c91.spec.ts
 - client/e2e/tables/grd-grid-space-pan-lifecycle-7e3a8c91.spec.ts

@@ -336,6 +336,10 @@ function handlePanPointerMove(event: PointerEvent): void {
     event.stopPropagation();
     if ((event.buttons & 1) === 0 || !gridContainer.isConnected) {
         endPan(true, true);
+        // Chorded mouse input reports the primary release as pointermove while
+        // another button remains held. Its compatibility click can arrive
+        // before the final pointerup, so suppression begins at this boundary.
+        suppressPanClick = true;
         return;
     }
     const maximum = Math.max(0, gridContainer.scrollWidth - gridContainer.clientWidth);
@@ -344,32 +348,41 @@ function handlePanPointerMove(event: PointerEvent): void {
 
 function handlePanPointerEnd(event: PointerEvent): void {
     if (event.pointerId !== panGuardPointerId) return;
-    // Pointer Events uses the changed button here. A secondary-button release
-    // while primary remains held belongs to the admitted sequence but is not
-    // its terminal release.
-    if (event.type === "pointerup" && event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const cancelled = event.type === "pointercancel";
     if (panActive) endPan(cancelled, !cancelled);
-    panGuardPointerId = undefined;
-    suppressPanClick = !cancelled;
+    if (cancelled) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    } else suppressPanClick = true;
 }
 
 function handlePanClick(event: MouseEvent): void {
     if (!suppressPanClick) return;
+    if (event instanceof PointerEvent && panGuardPointerId !== undefined && event.pointerId !== panGuardPointerId) return;
     suppressPanClick = false;
     event.preventDefault();
     event.stopPropagation();
+    // With chorded buttons the primary click can precede the last button's
+    // release. Retain ownership until every mouse button is up, then let this
+    // sequence's terminal compatibility event dispose it.
+    if (event.buttons === 0) panGuardPointerId = undefined;
+    else suppressPanClick = true;
 }
 
 function handlePanContextMenu(event: MouseEvent): void {
     // A secondary button pressed while the admitted primary sequence is still
     // owned must not open a competing menu or move focus before the primary
     // release and its compatibility click have been consumed.
-    if (panGuardPointerId === undefined) return;
+    if (panGuardPointerId === undefined && !suppressPanClick) return;
+    if (event instanceof PointerEvent && panGuardPointerId !== undefined && event.pointerId !== panGuardPointerId) return;
     event.preventDefault();
     event.stopPropagation();
+    if (suppressPanClick && event.buttons === 0) {
+        suppressPanClick = false;
+        panGuardPointerId = undefined;
+    }
 }
 
 function handlePanFocusOut(event: FocusEvent): void {
