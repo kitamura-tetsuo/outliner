@@ -87,6 +87,43 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         await expect(next.locator("input")).toBeFocused();
     });
 
+    test("owning Grid unmount makes queued owner input inert", async ({ page }) => {
+        const grid = page.getByTestId("yjs-table-grid");
+        const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
+        await selectAndFocusCell(origin);
+        const box = (await origin.boundingBox())!;
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+
+        await page.evaluate(() => {
+            (globalThis as typeof globalThis & { __panUnmountOwner?: HTMLElement; }).__panUnmountOwner = document
+                .querySelector<HTMLElement>("[data-testid='yjs-table-grid']")!;
+        });
+        await page.keyboard.down("Space");
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x - 50, y, { steps: 2 });
+
+        // Use the production Svelte-managed project link to unmount the owner
+        // without synthesizing a terminal pointer event for its held sequence.
+        await page.getByTestId("toolbar-project-name").evaluate((link: HTMLElement) => link.click());
+        await expect(grid).toHaveCount(0);
+        const stoppedAt = await page.evaluate(() => {
+            const owner = (globalThis as typeof globalThis & { __panUnmountOwner: HTMLElement; }).__panUnmountOwner;
+            if (owner.isConnected) throw new Error("Pan owner remained mounted");
+            return owner.scrollLeft;
+        });
+
+        await page.mouse.move(x - 150, y, { steps: 3 });
+        await page.mouse.up();
+        await page.keyboard.up("Space");
+        expect(
+            await page.evaluate(() =>
+                (globalThis as typeof globalThis & { __panUnmountOwner: HTMLElement; }).__panUnmountOwner.scrollLeft
+            ),
+        ).toBe(stoppedAt);
+    });
+
     test("an off-document release cannot consume the next outside-Grid click", async ({ page, context }) => {
         const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
         await selectAndFocusCell(origin);
