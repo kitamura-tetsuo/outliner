@@ -239,6 +239,8 @@ let panActive = $state(false);
 let panPointerId: number | undefined;
 let panStartX = 0;
 let panStartScrollLeft = 0;
+/** Owner whose eventual release/click still belongs to an admitted pan. */
+let panGuardPointerId: number | undefined;
 let suppressPanClick = false;
 const PAN_EXCLUDED = [
     "input", "textarea", "select", "[contenteditable='true']", ".monaco-editor",
@@ -288,7 +290,12 @@ function handlePanKeyUp(event: KeyboardEvent): void {
 }
 
 function handlePanPointerDown(event: PointerEvent): void {
-    if (suppressPanClick) suppressPanClick = false;
+    // Only a fresh sequence from the same pointer can supersede that
+    // pointer's obsolete terminal guard. Unrelated pointers cannot consume it.
+    if (event.pointerId === panGuardPointerId) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    }
     if (!panArmed || panActive || !gridContainer || !event.isPrimary || event.pointerType !== "mouse"
         || event.button !== 0 || event.buttons !== 1 || !isPanNavigationTarget(event.target)
         || overScrollerScrollbar(event) || resizingColumn !== undefined || touchStart !== undefined) return;
@@ -296,6 +303,7 @@ function handlePanPointerDown(event: PointerEvent): void {
     event.stopPropagation();
     panActive = true;
     panPointerId = event.pointerId;
+    panGuardPointerId = event.pointerId;
     panStartX = event.clientX;
     panStartScrollLeft = gridContainer.scrollLeft;
     suppressPanClick = true;
@@ -315,11 +323,13 @@ function handlePanPointerMove(event: PointerEvent): void {
 }
 
 function handlePanPointerEnd(event: PointerEvent): void {
-    if (event.pointerId !== panPointerId) return;
+    if (event.pointerId !== panGuardPointerId) return;
     event.preventDefault();
     event.stopPropagation();
     const cancelled = event.type === "pointercancel";
-    endPan(cancelled, !cancelled);
+    if (panActive) endPan(cancelled, !cancelled);
+    panGuardPointerId = undefined;
+    suppressPanClick = !cancelled;
 }
 
 function handlePanClick(event: MouseEvent): void {
@@ -331,25 +341,35 @@ function handlePanClick(event: MouseEvent): void {
 
 function handlePanFocusOut(event: FocusEvent): void {
     const next = event.relatedTarget;
-    if (next instanceof Node && gridContainer?.contains(next)) return;
+    if (isPanNavigationTarget(next)) return;
     if (panActive || panArmed) endPan(true, panActive);
 }
 
-function cancelPanAuthority(): void {
+function cancelPanAuthority(disposeGuard = false): void {
     if (panActive || panArmed) endPan(true, false);
-    suppressPanClick = false;
+    if (disposeGuard) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    }
 }
 
 onMount(() => {
+    const onBlur = () => cancelPanAuthority();
     const onVisibility = () => {
         if (document.hidden) cancelPanAuthority();
     };
-    window.addEventListener("blur", cancelPanAuthority);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("pointerup", handlePanPointerEnd, true);
+    window.addEventListener("pointercancel", handlePanPointerEnd, true);
+    window.addEventListener("click", handlePanClick, true);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-        window.removeEventListener("blur", cancelPanAuthority);
+        window.removeEventListener("blur", onBlur);
+        window.removeEventListener("pointerup", handlePanPointerEnd, true);
+        window.removeEventListener("pointercancel", handlePanPointerEnd, true);
+        window.removeEventListener("click", handlePanClick, true);
         document.removeEventListener("visibilitychange", onVisibility);
-        cancelPanAuthority();
+        cancelPanAuthority(true);
     };
 });
 
@@ -1631,12 +1651,9 @@ function handleCancelDelete() {
     onkeyupcapture={handlePanKeyUp}
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
-    onpointerup={handlePanPointerEnd}
-    onpointercancel={handlePanPointerEnd}
     onlostpointercapture={(event) => {
         if (panActive && event.pointerId === panPointerId) endPan(true, true);
     }}
-    onclickcapture={handlePanClick}
     onfocusout={handlePanFocusOut}
 >
     {#if loading}
@@ -2016,9 +2033,33 @@ function handleCancelDelete() {
     cursor: grab;
 }
 
+.yjs-table-grid.pan-armed :global(table),
+.yjs-table-grid.pan-armed :global(thead),
+.yjs-table-grid.pan-armed :global(tbody),
+.yjs-table-grid.pan-armed :global(tr),
+.yjs-table-grid.pan-armed :global(th),
+.yjs-table-grid.pan-armed :global(td),
+.yjs-table-grid.pan-armed :global(.th-content),
+.yjs-table-grid.pan-armed :global(.th-label),
+.yjs-table-grid.pan-armed :global(.cell-value) {
+    cursor: grab;
+}
+
 .yjs-table-grid.pan-active {
     cursor: grabbing;
     user-select: none;
+}
+
+.yjs-table-grid.pan-active :global(table),
+.yjs-table-grid.pan-active :global(thead),
+.yjs-table-grid.pan-active :global(tbody),
+.yjs-table-grid.pan-active :global(tr),
+.yjs-table-grid.pan-active :global(th),
+.yjs-table-grid.pan-active :global(td),
+.yjs-table-grid.pan-active :global(.th-content),
+.yjs-table-grid.pan-active :global(.th-label),
+.yjs-table-grid.pan-active :global(.cell-value) {
+    cursor: grabbing;
 }
 
 .yjs-table-grid.pan-armed :global(input),

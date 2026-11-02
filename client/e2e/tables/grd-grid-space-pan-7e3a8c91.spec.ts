@@ -33,6 +33,7 @@ test.describe("Grid Space + left-drag horizontal pan (#5863)", () => {
 
         await page.keyboard.down("Space");
         await expect(grid).toHaveClass(/pan-armed/);
+        await expect(cell.locator("button")).toHaveCSS("cursor", "grab");
         await expect(cell.locator("input")).toHaveCount(0);
         await expect(grid.locator("td.grid-selected")).toHaveCount(selectedBefore);
 
@@ -42,6 +43,7 @@ test.describe("Grid Space + left-drag horizontal pan (#5863)", () => {
         await page.mouse.move(x, y);
         await page.mouse.down();
         await expect(grid).toHaveClass(/pan-active/);
+        await expect(cell.locator("button")).toHaveCSS("cursor", "grabbing");
         await page.mouse.move(x - 120, y, { steps: 4 });
         await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
         expect(await page.evaluate(() => scrollX)).toBe(pageXBefore);
@@ -53,6 +55,7 @@ test.describe("Grid Space + left-drag horizontal pan (#5863)", () => {
         await expect(grid).toHaveClass(/pan-armed/);
         await page.keyboard.up("Space");
         await expect(grid).not.toHaveClass(/pan-armed/);
+        await expect(cell.locator("button")).toHaveCSS("cursor", "pointer");
     });
 
     test("Space-first release stops movement, eats its click, and not the next click", async ({ page }) => {

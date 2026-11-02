@@ -1,0 +1,86 @@
+/** @feature GRD-7e3a8c91 */
+import { expect, test } from "@playwright/test";
+import { keyboardTaskRow, prepareKeyboardGrid, selectAndFocusCell } from "../utils/gridKeyboardFixture";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
+
+test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
+    let firstRowId: string;
+    let secondRowId: string;
+
+    test.beforeEach(async ({ page }, testInfo) => {
+        [firstRowId, secondRowId] = await prepareKeyboardGrid(page, testInfo);
+        const view = page.getByTestId("yjs-table-view");
+        for (const column of ["id", "title", "status", "priority", "due_date", "repeat_days"]) {
+            await view.getByTestId(`yjs-table-width-${column}`).fill("300");
+            await view.getByTestId(`yjs-table-width-${column}`).press("Enter");
+        }
+    });
+
+    test("focus entering a native cell control terminates movement", async ({ page }) => {
+        const grid = page.getByTestId("yjs-table-grid");
+        const title = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
+        const status = keyboardTaskRow(page, firstRowId).locator("td[data-col='status'] select");
+        await selectAndFocusCell(title);
+        const box = (await title.boundingBox())!;
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+
+        await page.keyboard.down("Space");
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x - 60, y, { steps: 2 });
+        await page.keyboard.press("Tab");
+        await expect(status).toBeFocused();
+        await expect(grid).not.toHaveClass(/pan-active/);
+        const stoppedAt = await grid.evaluate(element => element.scrollLeft);
+        await page.mouse.move(x - 140, y, { steps: 3 });
+        expect(await grid.evaluate(element => element.scrollLeft)).toBe(stoppedAt);
+        await page.mouse.up();
+        await page.keyboard.up("Space");
+
+        await status.selectOption({ index: 1 });
+        await expect(status).toHaveValue("doing");
+    });
+
+    test("an unrelated pen sequence cannot discard the mouse release guard", async ({ page }) => {
+        const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
+        const next = keyboardTaskRow(page, secondRowId).locator("td[data-col='title']");
+        await selectAndFocusCell(origin);
+        const box = (await origin.boundingBox())!;
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+
+        await page.keyboard.down("Space");
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x - 40, y);
+        await page.keyboard.up("Space");
+
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send("Input.dispatchMouseEvent", {
+            type: "mousePressed",
+            x: x - 20,
+            y,
+            button: "left",
+            buttons: 1,
+            clickCount: 1,
+            pointerType: "pen",
+        });
+        await cdp.send("Input.dispatchMouseEvent", {
+            type: "mouseReleased",
+            x: x - 20,
+            y,
+            button: "left",
+            buttons: 0,
+            clickCount: 1,
+            pointerType: "pen",
+        });
+        await cdp.detach();
+
+        await page.mouse.up();
+        await expect(origin.locator("input")).toHaveCount(0);
+        await next.locator("button").click();
+        await expect(next.locator("input")).toBeFocused();
+    });
+});
