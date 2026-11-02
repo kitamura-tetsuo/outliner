@@ -292,15 +292,19 @@ function handlePanKeyUp(event: KeyboardEvent): void {
     else panArmed = false;
 }
 
+function isFreshPrimaryMouseDown(event: PointerEvent): boolean {
+    return event.isPrimary && event.pointerType === "mouse" && event.button === 0 && event.buttons === 1;
+}
+
 function handlePanPointerDown(event: PointerEvent): void {
     // Only a fresh sequence from the same pointer can supersede that
-    // pointer's obsolete terminal guard. Unrelated pointers cannot consume it.
-    if (event.pointerId === panGuardPointerId) {
+    // pointer's obsolete terminal guard. A secondary button transition within
+    // the admitted primary sequence is not a fresh sequence.
+    if (!panActive && event.pointerId === panGuardPointerId && isFreshPrimaryMouseDown(event)) {
         panGuardPointerId = undefined;
         suppressPanClick = false;
     }
-    if (!panArmed || panActive || !gridContainer || !event.isPrimary || event.pointerType !== "mouse"
-        || event.button !== 0 || event.buttons !== 1 || !isPanNavigationTarget(event.target)
+    if (!panArmed || panActive || !gridContainer || !isFreshPrimaryMouseDown(event) || !isPanNavigationTarget(event.target)
         || overScrollerScrollbar(event) || resizingColumn !== undefined || touchStart !== undefined) return;
     event.preventDefault();
     event.stopPropagation();
@@ -320,7 +324,7 @@ function handlePanPointerDown(event: PointerEvent): void {
  * be mistaken for the admitted sequence; other pointers remain independent.
  */
 function handleGlobalPanPointerDown(event: PointerEvent): void {
-    if (!panActive && event.pointerId === panGuardPointerId) {
+    if (!panActive && event.pointerId === panGuardPointerId && isFreshPrimaryMouseDown(event)) {
         panGuardPointerId = undefined;
         suppressPanClick = false;
     }
@@ -340,6 +344,10 @@ function handlePanPointerMove(event: PointerEvent): void {
 
 function handlePanPointerEnd(event: PointerEvent): void {
     if (event.pointerId !== panGuardPointerId) return;
+    // Pointer Events uses the changed button here. A secondary-button release
+    // while primary remains held belongs to the admitted sequence but is not
+    // its terminal release.
+    if (event.type === "pointerup" && event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const cancelled = event.type === "pointercancel";
