@@ -149,8 +149,11 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
 
         // A fresh right-button sequence also authoritatively supersedes the
         // obsolete guard even though pan admission itself remains left-only.
-        const textItem = page.locator(".outliner-item[data-item-id]").first().locator(".item-content");
-        await textItem.click({ button: "right" });
+        const textItem = page.locator(".outliner-item:not(.page-title)[data-item-id]", { hasText: "Keyboard grid" });
+        await expect(textItem).toHaveAttribute("role", "treeitem");
+        await expect(textItem).toHaveCount(1);
+        const textItemContent = textItem.locator(".item-content");
+        await textItemContent.click({ button: "right" });
         await expect(page.locator(".context-menu")).toBeVisible();
         await page.keyboard.press("Escape");
 

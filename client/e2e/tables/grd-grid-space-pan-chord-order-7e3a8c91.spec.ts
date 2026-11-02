@@ -1,6 +1,8 @@
 /** @feature GRD-7e3a8c91 */
 import { expect, test } from "@playwright/test";
+import { readGridProjectState } from "../utils/crossProjectGridHelpers";
 import { keyboardTaskRow, prepareKeyboardGrid, selectAndFocusCell } from "../utils/gridKeyboardFixture";
+import { undoDepth } from "../utils/gridResizeHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
@@ -62,7 +64,11 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
         test(`active pan survives ${secondary} press and release before primary`, async ({ page }) => {
             const grid = page.getByTestId("yjs-table-grid");
             const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
+            const next = keyboardTaskRow(page, secondRowId).locator("td[data-col='title']");
             await selectAndFocusCell(origin);
+            const selectionBefore = await selectedCellIdentity(grid);
+            const stateBefore = await readGridProjectState(page);
+            const undoBefore = await undoDepth(page);
             const box = (await origin.boundingBox())!;
             const x = box.x + box.width / 2;
             const y = box.y + box.height / 2;
@@ -76,12 +82,22 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
             await page.mouse.up({ button: secondary });
             await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
             await expect(grid).toHaveClass(/pan-active/);
+            const afterSecondaryRelease = await grid.evaluate(element => element.scrollLeft);
+            await page.mouse.move(x - 100, y, { steps: 2 });
+            await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(
+                afterSecondaryRelease,
+            );
             const trace = await readTrace(page);
             expect(trace.some(event => event.type === "pointermove" && event.button === button && event.buttons === 1))
                 .toBe(true);
             await page.mouse.up({ button: "left" });
             await page.keyboard.up("Space");
             await expect(origin.locator("input")).toHaveCount(0);
+            expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);
+            expect(await readGridProjectState(page)).toEqual(stateBefore);
+            expect(await undoDepth(page)).toBe(undoBefore);
+            await next.locator("button").click();
+            await expect(next.locator("input")).toBeFocused();
         });
     }
 
@@ -141,5 +157,11 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
 function readTrace(page: import("@playwright/test").Page): Promise<MouseTrace[]> {
     return page.evaluate(() =>
         (globalThis as typeof globalThis & { __gridPanMouseTrace: MouseTrace[]; }).__gridPanMouseTrace
+    );
+}
+
+function selectedCellIdentity(grid: import("@playwright/test").Locator): Promise<(string | null)[][]> {
+    return grid.locator("td.grid-selected").evaluateAll(cells =>
+        cells.map(cell => [cell.getAttribute("data-row-id"), cell.getAttribute("data-col")])
     );
 }
