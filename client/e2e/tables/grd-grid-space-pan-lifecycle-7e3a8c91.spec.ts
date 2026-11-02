@@ -57,11 +57,14 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         await page.mouse.move(x - 40, y);
         await page.keyboard.up("Space");
 
+        const nextBox = (await next.boundingBox())!;
+        const penX = nextBox.x + nextBox.width / 2;
+        const penY = nextBox.y + nextBox.height / 2;
         const cdp = await page.context().newCDPSession(page);
         await cdp.send("Input.dispatchMouseEvent", {
             type: "mousePressed",
-            x: x - 20,
-            y,
+            x: penX,
+            y: penY,
             button: "left",
             buttons: 1,
             clickCount: 1,
@@ -69,18 +72,18 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         });
         await cdp.send("Input.dispatchMouseEvent", {
             type: "mouseReleased",
-            x: x - 20,
-            y,
+            x: penX,
+            y: penY,
             button: "left",
             buttons: 0,
             clickCount: 1,
             pointerType: "pen",
         });
         await cdp.detach();
+        await expect(next.locator("input")).toBeFocused();
 
         await page.mouse.up();
         await expect(origin.locator("input")).toHaveCount(0);
-        await next.locator("button").click();
         await expect(next.locator("input")).toBeFocused();
     });
 });

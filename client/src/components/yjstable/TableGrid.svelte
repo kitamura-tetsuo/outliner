@@ -267,7 +267,10 @@ function endPan(clearArm: boolean, keepClickGuard = false): void {
     panActive = false;
     panPointerId = undefined;
     if (clearArm) panArmed = false;
-    if (keepClickGuard) suppressPanClick = true;
+    // `keepClickGuard` retains `panGuardPointerId`; click suppression itself
+    // begins only after that owner releases. Until then another pointer's
+    // compatibility click must remain ordinary input.
+    void keepClickGuard;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) {
         gridContainer.releasePointerCapture(pointerId);
     }
@@ -306,7 +309,7 @@ function handlePanPointerDown(event: PointerEvent): void {
     panGuardPointerId = event.pointerId;
     panStartX = event.clientX;
     panStartScrollLeft = gridContainer.scrollLeft;
-    suppressPanClick = true;
+    suppressPanClick = false;
     gridContainer.setPointerCapture(event.pointerId);
 }
 
