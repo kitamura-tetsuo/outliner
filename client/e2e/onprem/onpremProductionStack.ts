@@ -28,6 +28,8 @@ export interface TransportEvent {
         | "ws-upstream-data"
         | "ws-client-close"
         | "ws-upstream-close"
+        | "ws-client-close-held"
+        | "ws-upstream-close-held"
         | "ws-client-cleanup-destroy"
         | "ws-upstream-cleanup-destroy"
         | "ws-cleanup-complete";
@@ -143,9 +145,17 @@ export class OnPremProductionStack {
         if (!tunnel || tunnel.observed.size || tunnel.callbackHold) {
             throw new Error(`Tunnel ${id} is unavailable for a terminal callback barrier`);
         }
-        let reached!: () => void;
-        const observed = new Promise<void>(resolve => reached = resolve);
-        const hold: NonNullable<Tunnel["callbackHold"]> = { kind, reached };
+        const heldKind = kind === "ws-client-close" ? "ws-client-close-held" : "ws-upstream-close-held";
+        // Use the same finite observer as all other transport barriers. Only a
+        // real socket callback can emit this identity-bound held observation.
+        const observed = this.waitForTransportEvent(heldKind, tunnel.url, {
+            id,
+            stage: `real ${kind} callback held before delivery`,
+        });
+        const hold: NonNullable<Tunnel["callbackHold"]> = {
+            kind,
+            reached: () => this.recordTransport({ id, kind: heldKind, url: tunnel.url }),
+        };
         tunnel.callbackHold = hold;
         return {
             observed,

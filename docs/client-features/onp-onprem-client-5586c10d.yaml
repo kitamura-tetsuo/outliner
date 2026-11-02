@@ -19,4 +19,5 @@ tests:
 - client/e2e/onprem/onp-table-grid-sync-5586c10d.spec.ts
 - client/e2e/onprem/onp-transport-cancellation-5672.spec.ts
 - client/e2e/onprem/onp-websocket-cancellation-5586c10d.spec.ts
+- client/e2e/onprem/onp-websocket-terminal-stop-5586c10d.spec.ts
 - client/src/lib/deployment.test.ts
