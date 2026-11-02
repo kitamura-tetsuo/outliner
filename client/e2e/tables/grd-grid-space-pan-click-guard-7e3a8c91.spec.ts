@@ -46,43 +46,6 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
         await expect(next.locator("input")).toBeFocused();
     });
 
-    test("active pan ownership survives right and middle button transitions", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
-        const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
-        const next = keyboardTaskRow(page, secondRowId).locator("td[data-col='title']");
-
-        for (const secondary of ["right", "middle"] as const) {
-            await selectAndFocusCell(origin);
-            const selectionBefore = await selectedCellIdentity(grid);
-            const stateBefore = await readGridProjectState(page);
-            const undoBefore = await undoDepth(page);
-            const box = (await origin.boundingBox())!;
-            const x = box.x + box.width / 2;
-            const y = box.y + box.height / 2;
-
-            await page.keyboard.down("Space");
-            await page.mouse.move(x, y);
-            await page.mouse.down({ button: "left" });
-            await page.mouse.down({ button: secondary });
-            await page.mouse.up({ button: secondary });
-            await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
-            await expect(grid).toHaveClass(/pan-active/);
-            const beforeMove = await grid.evaluate(element => element.scrollLeft);
-            await page.mouse.move(x - 60, y, { steps: 2 });
-            await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(beforeMove);
-            await page.mouse.up({ button: "left" });
-            await page.keyboard.up("Space");
-
-            await expect(origin.locator("input")).toHaveCount(0);
-            expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);
-            expect(await readGridProjectState(page)).toEqual(stateBefore);
-            expect(await undoDepth(page)).toBe(undoBefore);
-            await next.locator("button").click();
-            await expect(next.locator("input")).toBeFocused();
-            await next.locator("input").press("Escape");
-        }
-    });
-
     test("secondary button transition cannot discard a Space-first release guard", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
         const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");

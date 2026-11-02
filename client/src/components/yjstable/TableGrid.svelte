@@ -331,7 +331,19 @@ function handleGlobalPanPointerDown(event: PointerEvent): void {
 }
 
 function handlePanPointerMove(event: PointerEvent): void {
-    if (!panActive || event.pointerId !== panPointerId || !gridContainer) return;
+    if (!gridContainer) return;
+    if (!panActive) {
+        // Releasing primary while another mouse button remains held is a
+        // pointermove, including after Space released capture. Arm suppression
+        // before that primary release can synthesize its click.
+        if (event.pointerId === panGuardPointerId && (event.buttons & 1) === 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            suppressPanClick = true;
+        }
+        return;
+    }
+    if (event.pointerId !== panPointerId) return;
     event.preventDefault();
     event.stopPropagation();
     if ((event.buttons & 1) === 0 || !gridContainer.isConnected) {

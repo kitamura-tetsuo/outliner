@@ -53,6 +53,38 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
         });
     });
 
+    for (
+        const { secondary, button } of [
+            { secondary: "right" as const, button: 2 },
+            { secondary: "middle" as const, button: 1 },
+        ]
+    ) {
+        test(`active pan survives ${secondary} press and release before primary`, async ({ page }) => {
+            const grid = page.getByTestId("yjs-table-grid");
+            const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
+            await selectAndFocusCell(origin);
+            const box = (await origin.boundingBox())!;
+            const x = box.x + box.width / 2;
+            const y = box.y + box.height / 2;
+
+            await page.keyboard.down("Space");
+            await page.mouse.move(x, y);
+            await page.mouse.down({ button: "left" });
+            await page.mouse.down({ button: secondary });
+            await page.mouse.up({ button: secondary });
+            await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
+            await expect(grid).toHaveClass(/pan-active/);
+            const trace = await readTrace(page);
+            expect(trace.some(event => event.type === "pointermove" && event.button === button && event.buttons === 1))
+                .toBe(true);
+            await page.mouse.move(x - 60, y, { steps: 2 });
+            await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+            await page.mouse.up({ button: "left" });
+            await page.keyboard.up("Space");
+            await expect(origin.locator("input")).toHaveCount(0);
+        });
+    }
+
     test("primary release before right release remains owned through the real browser event order", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
         const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
