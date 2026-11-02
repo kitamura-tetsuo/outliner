@@ -52,7 +52,26 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             const beforeTop = await grid.evaluate(element => element.scrollTop);
 
             await page.evaluate(() => {
-                const project = (window as any).__YJS_STORE__?.yjsClient?.getProject?.();
+                interface BrowserProbe {
+                    updates: number;
+                    selectionMutations: number;
+                    stop: () => void;
+                }
+                interface BrowserWindow extends Window {
+                    __YJS_STORE__?: {
+                        yjsClient?: {
+                            getProject?: () => {
+                                ydoc?: {
+                                    on: (name: string, callback: () => void) => void;
+                                    off: (name: string, callback: () => void) => void;
+                                };
+                            };
+                        };
+                    };
+                    __panTransitionProbe?: BrowserProbe;
+                }
+                const browser = window as BrowserWindow;
+                const project = browser.__YJS_STORE__?.yjsClient?.getProject?.();
                 if (!project?.ydoc) throw new Error("Project document unavailable for pan transition probe");
                 const probe = { updates: 0, selectionMutations: 0, stop: () => {} };
                 const onUpdate = () => probe.updates++;
@@ -74,7 +93,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
                     project.ydoc.off("update", onUpdate);
                     observer.disconnect();
                 };
-                (window as any).__panTransitionProbe = probe;
+                browser.__panTransitionProbe = probe;
             });
 
             const box = (await cell.boundingBox())!;
@@ -83,10 +102,12 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             await page.mouse.down();
             await page.mouse.move(box.x - 10_000, box.y + box.height / 2, { steps: 4 });
             expect(
-                await page.evaluate(() => ({
-                    updates: (window as any).__panTransitionProbe.updates,
-                    selectionMutations: (window as any).__panTransitionProbe.selectionMutations,
-                })),
+                await page.evaluate(() => {
+                    const probe = (window as Window & {
+                        __panTransitionProbe: { updates: number; selectionMutations: number; };
+                    }).__panTransitionProbe;
+                    return { updates: probe.updates, selectionMutations: probe.selectionMutations };
+                }),
             ).toEqual({ updates: 0, selectionMutations: 0 });
             expect(await undoDepth(page)).toBe(beforeUndo);
             await page.mouse.up();
@@ -106,7 +127,9 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             ).toEqual(beforeSelection);
             expect(await readGridProjectState(page)).toEqual(beforeState);
             expect(await undoDepth(page)).toBe(beforeUndo);
-            await page.evaluate(() => (window as any).__panTransitionProbe.stop());
+            await page.evaluate(() =>
+                (window as Window & { __panTransitionProbe: { stop: () => void; }; }).__panTransitionProbe.stop()
+            );
         },
     );
 
