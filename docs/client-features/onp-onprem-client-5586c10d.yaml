@@ -6,6 +6,7 @@ category: deployment
 status: implemented
 acceptance:
 - Cloud builds continue to use Firebase authentication and cloud project services
+- Controlled WebSocket terminal-order checks observe both real socket callbacks before cleanup, retaining the existing timeout and unrelated live connection checks
 - Local authentication uses the server-issued HTTP-only session cookie and restores the session after reload
 - On-premises builds verify the deployment descriptor before local authentication or directory operations
 - Project and Table rooms use same-origin WebSocket connections without Firebase tokens
@@ -17,4 +18,5 @@ tests:
 - client/e2e/onprem/onp-session-failures-5586c10d.spec.ts
 - client/e2e/onprem/onp-table-grid-sync-5586c10d.spec.ts
 - client/e2e/onprem/onp-transport-cancellation-5672.spec.ts
+- client/e2e/onprem/onp-websocket-cancellation-5586c10d.spec.ts
 - client/src/lib/deployment.test.ts
