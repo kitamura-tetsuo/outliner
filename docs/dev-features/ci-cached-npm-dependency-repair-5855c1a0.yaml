@@ -1,0 +1,10 @@
+id: ENV-5855c1a0
+title: Cached npm dependency repair
+title-ja: キャッシュ済み npm 依存関係の修復
+description: Preserve valid cached dependency trees and update stale or invalid trees in place without hiding integrity diagnostics or failures.
+category: environment
+status: implemented
+components:
+- scripts/common-functions.sh
+tests:
+- scripts/tests/env-cached-npm-dependency-repair-5855c1a0.spec.ts
