@@ -502,6 +502,10 @@ export function demoContentJa(): DemoLocaleContent {
                             "タスク管理: 期限・優先度・繰り返し間隔を付けてタスクを追加できます。ステータスと優先度の選択肢は、スキーマの CHECK 制約から来ています。",
                     },
                     {
+                        text:
+                            "Grid のヒント: セルまたはヘッダーにフォーカスし、Space を押しながらマウスの左ボタンでドラッグすると、幅の広い Grid を横方向にパンできます。開いているセルエディター内では Space を通常どおり入力できます。",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsGridId: demoGridIdFor(DEMO_TASKS_TABLE_ID),
                     },

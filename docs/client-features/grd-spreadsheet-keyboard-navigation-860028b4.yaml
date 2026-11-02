@@ -13,6 +13,7 @@ acceptance:
 - Keyboard-driven focus survives an asynchronous query refresh by logical cell identity, never a stale DOM row index
 - Tab/Shift+Tab wrap to the next/previous row at the row edge; plain arrow keys clamp instead
 - The newly active cell is scrolled into view
+- Unmodified Space on a focused navigation surface is reserved for horizontal panning; Space remains normal input in an open editor
 tests:
 - client/e2e/tables/tbl-grid-keyboard-edit-mode-5188.spec.ts
 - client/e2e/tables/tbl-grid-keyboard-navigation-5188.spec.ts

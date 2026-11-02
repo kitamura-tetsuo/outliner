@@ -1,0 +1,14 @@
+id: GRD-7e3a8c91
+title: Pan a Grid horizontally with Space and left drag
+title-ja: Space と左ドラッグによる Grid の横方向パン
+description: Pan an overflowing Grid viewport without changing its selection, data, presentation, or document history.
+category: tables
+status: implemented
+acceptance:
+- Holding unmodified Space on a focused, non-editing Grid navigation surface arms panning without editing, activating, selecting, or scrolling the page
+- A primary mouse left-drag on an eligible cell, header, or background moves only that Grid viewport horizontally and clamps at both ends
+- Editors, native inputs, action controls, scrollbars, resize and reorder handles, touch, pen, IME, and competing gestures are excluded
+- Either release order and cancellation stop movement, suppress only the admitted sequence's compatibility click, and leave the next independent click working
+- The gesture is transient and available in read-only Grids without changing data, selection, column presentation, outline state, or Undo history
+tests:
+- client/e2e/tables/grd-grid-space-pan-7e3a8c91.spec.ts

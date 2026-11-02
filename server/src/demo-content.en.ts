@@ -466,6 +466,10 @@ export function demoContentEn(): DemoLocaleContent {
                             "Task manager: add tasks with due dates, priorities and repeat intervals. Status and priority options come from the schema's CHECK constraints.",
                     },
                     {
+                        text:
+                            "Grid tip: focus a cell or header, then hold Space and left-drag to pan wide Grids horizontally. Space still types normally inside an open cell editor.",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsGridId: demoGridIdFor(DEMO_TASKS_TABLE_ID),
                     },

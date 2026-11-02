@@ -233,6 +233,126 @@ let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
 let suppressClickUntil = 0;
 
+// --- Space + drag horizontal panning (issue #5863) -----------------------
+let panArmed = $state(false);
+let panActive = $state(false);
+let panPointerId: number | undefined;
+let panStartX = 0;
+let panStartScrollLeft = 0;
+let suppressPanClick = false;
+const PAN_EXCLUDED = [
+    "input", "textarea", "select", "[contenteditable='true']", ".monaco-editor",
+    ".column-resize-handle", ".column-drag-handle", ".touch-selection-handle",
+    ".touch-selection-toolbar", ".add-row",
+].join(",");
+
+function isPanNavigationTarget(target: EventTarget | null): target is HTMLElement {
+    if (!(target instanceof HTMLElement) || !gridContainer?.contains(target)) return false;
+    if (target.closest(PAN_EXCLUDED)) return false;
+    if (target.closest("button") && !target.closest("td[data-row-id]")) return false;
+    return editingCell === undefined;
+}
+
+function overScrollerScrollbar(event: PointerEvent): boolean {
+    if (!gridContainer) return true;
+    const rect = gridContainer.getBoundingClientRect();
+    return event.clientX >= rect.left + gridContainer.clientWidth
+        || event.clientY >= rect.top + gridContainer.clientHeight;
+}
+
+function endPan(clearArm: boolean, keepClickGuard = false): void {
+    const pointerId = panPointerId;
+    panActive = false;
+    panPointerId = undefined;
+    if (clearArm) panArmed = false;
+    if (keepClickGuard) suppressPanClick = true;
+    if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) {
+        gridContainer.releasePointerCapture(pointerId);
+    }
+}
+
+function handlePanKeyDown(event: KeyboardEvent): void {
+    if (event.key !== " " || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
+        || event.isComposing || !isPanNavigationTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) panArmed = true;
+}
+
+function handlePanKeyUp(event: KeyboardEvent): void {
+    if (event.key !== " " || (!panArmed && !panActive)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (panActive) endPan(true, true);
+    else panArmed = false;
+}
+
+function handlePanPointerDown(event: PointerEvent): void {
+    if (suppressPanClick) suppressPanClick = false;
+    if (!panArmed || panActive || !gridContainer || !event.isPrimary || event.pointerType !== "mouse"
+        || event.button !== 0 || event.buttons !== 1 || !isPanNavigationTarget(event.target)
+        || overScrollerScrollbar(event) || resizingColumn !== undefined || touchStart !== undefined) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panActive = true;
+    panPointerId = event.pointerId;
+    panStartX = event.clientX;
+    panStartScrollLeft = gridContainer.scrollLeft;
+    suppressPanClick = true;
+    gridContainer.setPointerCapture(event.pointerId);
+}
+
+function handlePanPointerMove(event: PointerEvent): void {
+    if (!panActive || event.pointerId !== panPointerId || !gridContainer) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if ((event.buttons & 1) === 0 || !gridContainer.isConnected) {
+        endPan(true, true);
+        return;
+    }
+    const maximum = Math.max(0, gridContainer.scrollWidth - gridContainer.clientWidth);
+    gridContainer.scrollLeft = Math.min(maximum, Math.max(0, panStartScrollLeft - (event.clientX - panStartX)));
+}
+
+function handlePanPointerEnd(event: PointerEvent): void {
+    if (event.pointerId !== panPointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const cancelled = event.type === "pointercancel";
+    endPan(cancelled, !cancelled);
+}
+
+function handlePanClick(event: MouseEvent): void {
+    if (!suppressPanClick) return;
+    suppressPanClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function handlePanFocusOut(event: FocusEvent): void {
+    const next = event.relatedTarget;
+    if (next instanceof Node && gridContainer?.contains(next)) return;
+    if (panActive || panArmed) endPan(true, panActive);
+}
+
+function cancelPanAuthority(): void {
+    if (panActive || panArmed) endPan(true, false);
+    suppressPanClick = false;
+}
+
+onMount(() => {
+    const onVisibility = () => {
+        if (document.hidden) cancelPanAuthority();
+    };
+    window.addEventListener("blur", cancelPanAuthority);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+        window.removeEventListener("blur", cancelPanAuthority);
+        document.removeEventListener("visibilitychange", onVisibility);
+        cancelPanAuthority();
+    };
+});
+
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
@@ -1496,12 +1616,28 @@ function handleCancelDelete() {
 -->
 <div
     class="yjs-table-grid"
+    class:pan-armed={panArmed}
+    class:pan-active={panActive}
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
     data-foreign-editor="grid"
     data-column-resizing={resizingColumn !== undefined ? "true" : undefined}
     bind:this={gridContainer}
+    role="region"
+    tabindex="0"
+    aria-label="Grid navigation. Hold Space and drag left or right to pan horizontally."
+    onkeydowncapture={handlePanKeyDown}
+    onkeyupcapture={handlePanKeyUp}
+    onpointerdowncapture={handlePanPointerDown}
+    onpointermove={handlePanPointerMove}
+    onpointerup={handlePanPointerEnd}
+    onpointercancel={handlePanPointerEnd}
+    onlostpointercapture={(event) => {
+        if (panActive && event.pointerId === panPointerId) endPan(true, true);
+    }}
+    onclickcapture={handlePanClick}
+    onfocusout={handlePanFocusOut}
 >
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
@@ -1874,6 +2010,24 @@ function handleCancelDelete() {
     max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-x: contain;
+}
+
+.yjs-table-grid.pan-armed {
+    cursor: grab;
+}
+
+.yjs-table-grid.pan-active {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.yjs-table-grid.pan-armed :global(input),
+.yjs-table-grid.pan-armed :global(textarea),
+.yjs-table-grid.pan-armed :global(select),
+.yjs-table-grid.pan-armed :global([contenteditable="true"]),
+.yjs-table-grid.pan-armed :global(.column-resize-handle),
+.yjs-table-grid.pan-armed :global(.column-drag-handle) {
+    cursor: auto;
 }
 
 table {
