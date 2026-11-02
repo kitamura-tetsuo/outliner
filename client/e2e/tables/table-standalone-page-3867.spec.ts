@@ -69,6 +69,9 @@ test.describe("Standalone Table Page (#3867)", () => {
         // Ensure + Add row is visible despite table being empty (0 records)
         const addRowButton = page.getByTestId("yjs-table-add-row");
         await expect(addRowButton).toBeVisible();
+        // Assert the completed query shape, not the transient no-column fallback.
+        await expect(page.locator('th[data-col="id"]')).toBeVisible();
+        await expect(page.locator("tbody tr")).toHaveCount(0);
         await expect(page.getByText("The table is empty.")).toBeVisible();
 
         // 5. Add a record

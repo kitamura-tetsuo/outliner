@@ -1792,6 +1792,9 @@ function handleCancelDelete() {
                 {/each}
             </tbody>
         </table>
+        {#if rowCreationMode === "table" && schema && result.rows.length === 0}
+            <p class="empty-state">The table is empty.</p>
+        {/if}
         {#if resizeScrollExtent !== undefined}
             <div class="resize-scroll-extent" aria-hidden="true" style:width={`${resizeScrollExtent}px`}></div>
         {/if}

@@ -35,7 +35,7 @@ fi
 # Verify the running application image, not the host toolchain or a build-stage
 # image, uses the required Node.js LTS major.
 "${COMPOSE[@]}" exec -T app node -e \
-  "if (process.versions.node.split('.')[0] !== '24') throw new Error('Expected Node 24, got ' + process.version)"
+  "if (process.versions.node.split('.')[0] !== '26') throw new Error('Expected Node 26, got ' + process.version)"
 
 # Calibrate the observer before the actual scenario: this caught DNS attempt
 # must be recorded and refused. Only post-calibration attempts fail the suite.
