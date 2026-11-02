@@ -7,6 +7,7 @@ status: implemented
 acceptance:
 - A later failure keeps the previous Last successful run untouched
 - A successful execution sets Result to Success and updates Last successful run
+- Ambiguous fall-back schedule occurrences select the earlier UTC instant regardless of the execution date or current zone offset, including the persisted schedule index and occurrence expansion
 - An enabled Schedule that never ran shows Never run with the scheduler's indexed occurrence as Next run
 - An execution interrupted by a scheduler restart is reconciled to a terminal non-success result
 - An overdue or catch-up-adjusted cursor is displayed as the scheduler holds it
@@ -28,5 +29,6 @@ tests:
 - client/e2e/schedule/sch-schedules-manager-status-4b7e2a91.spec.ts
 - client/src/components/schedule/ScheduleRuleList.test.ts
 - client/src/routes/[project]/-/schedules/page.svelte.test.ts
+- server/tests/schedule-indexer-dst-policy.test.ts
 - server/tests/scheduler/schedule-manager-status.test.ts
 - shared/tests/services/scheduleStatus.test.ts
