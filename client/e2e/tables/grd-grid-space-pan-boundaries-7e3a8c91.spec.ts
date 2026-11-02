@@ -195,7 +195,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         expect(await undoDepth(page)).toBe(history);
     });
 
-    test("native input and IME editor starts are excluded from pan admission", async ({ page }, info) => {
+    test("native input and composing key/input remain outside pan admission", async ({ page }, info) => {
         const [firstRowId] = await prepareKeyboardGrid(page, info);
         await setWideColumns(page);
         const grid = page.getByTestId("yjs-table-grid");
@@ -215,19 +215,48 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         await status.selectOption("done");
         await expect(status).toHaveValue("done");
 
-        await title.locator("button").click();
+        const titleButton = title.locator("button");
+        await titleButton.focus();
+        const selectionBeforeComposition = await grid.locator("td.grid-selected").evaluateAll(cells =>
+            cells.map(cell => [cell.getAttribute("data-row-id"), cell.getAttribute("data-col")])
+        );
+        const composingKey = await titleButton.evaluate((button) => {
+            const event = new KeyboardEvent("keydown", {
+                key: " ",
+                code: "Space",
+                bubbles: true,
+                cancelable: true,
+                isComposing: true,
+            });
+            const dispatched = button.dispatchEvent(event);
+            return { dispatched, defaultPrevented: event.defaultPrevented };
+        });
+        expect(composingKey).toEqual({ dispatched: true, defaultPrevented: false });
+        await expect(grid).not.toHaveClass(/pan-armed|pan-active/);
+        await expect(title.locator("input")).toHaveCount(0);
+        expect(
+            await grid.locator("td.grid-selected").evaluateAll(cells =>
+                cells.map(cell => [cell.getAttribute("data-row-id"), cell.getAttribute("data-col")])
+            ),
+        ).toEqual(selectionBeforeComposition);
+
+        await titleButton.click();
         const editor = title.locator("input");
-        await editor.dispatchEvent("compositionstart", { data: " " });
-        await page.keyboard.down("Space");
-        const editorBox = (await editor.boundingBox())!;
-        await page.mouse.move(editorBox.x + editorBox.width / 2, editorBox.y + editorBox.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(editorBox.x - 100, editorBox.y + editorBox.height / 2);
-        await page.mouse.up();
-        await page.keyboard.up("Space");
-        await editor.dispatchEvent("compositionend", { data: " " });
-        expect(await grid.evaluate(element => element.scrollLeft)).toBe(0);
+        await editor.press("End");
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send("Input.imeSetComposition", {
+            text: "中",
+            selectionStart: 1,
+            selectionEnd: 1,
+        });
+        await expect(editor).toHaveValue("Alpha中");
         await expect(editor).toBeFocused();
+        await cdp.send("Input.insertText", { text: "中" });
+        await cdp.detach();
+        await expect(editor).toHaveValue("Alpha中");
+        expect(await grid.evaluate(element => element.scrollLeft)).toBe(0);
+        await editor.press("Enter");
+        await expect(titleButton).toHaveText("Alpha中");
     });
 
     test("an armed Grid leaves its dedicated resize handle in control", async ({ page }, info) => {

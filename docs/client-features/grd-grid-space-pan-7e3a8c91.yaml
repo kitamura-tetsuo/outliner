@@ -12,5 +12,5 @@ acceptance:
 - The gesture is transient and available in read-only Grids without changing data, selection, column presentation, outline state, or Undo history
 tests:
 - client/e2e/tables/grd-grid-space-pan-7e3a8c91.spec.ts
-- client/e2e/tables/grd-grid-space-pan-lifecycle-7e3a8c91.spec.ts
 - client/e2e/tables/grd-grid-space-pan-boundaries-7e3a8c91.spec.ts
+- client/e2e/tables/grd-grid-space-pan-lifecycle-7e3a8c91.spec.ts
