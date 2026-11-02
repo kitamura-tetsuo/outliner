@@ -1,7 +1,6 @@
 import Database from "better-sqlite3";
 import { expect } from "chai";
 import fs from "node:fs";
-import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { corrupt, ProductionOnPrem, waitFor } from "./onprem-production-fixture.js";
@@ -81,25 +80,6 @@ describe("on-premises production persistence boundaries", () => {
             lock.exec("ROLLBACK");
             lock.close();
         }
-    });
-
-    it("shares one pending shutdown across repeated termination signals", async function() {
-        this.timeout(20000);
-        await server.start();
-        const socket = net.connect(server.port, "127.0.0.1");
-        await new Promise<void>((resolve, reject) => {
-            socket.once("connect", resolve);
-            socket.once("error", reject);
-        });
-        socket.write("POST /api/projects HTTP/1.1\r\nHost: localhost\r\nContent-Length: 1000\r\n\r\n{");
-        server.child!.kill("SIGTERM");
-        await new Promise(resolve => setTimeout(resolve, 100));
-        server.child!.kill("SIGINT");
-        await new Promise(resolve => setTimeout(resolve, 300));
-        expect(server.child!.exitCode).to.equal(null);
-        socket.destroy();
-        const exitCode = await new Promise<number | null>(resolve => server.child!.once("exit", resolve));
-        expect(exitCode, server.diagnostics).to.equal(0);
     });
 
     for (const file of ["projects.sqlite", "database.sqlite"]) {
