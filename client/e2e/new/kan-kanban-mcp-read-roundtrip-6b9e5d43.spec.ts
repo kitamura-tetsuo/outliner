@@ -72,16 +72,20 @@ test(
 
             const mcp = (name: string, args: object) =>
                 server.request("mcp", { token, name, arguments: { projectId, ...args } });
+            // Keep the successful production response as the mutation oracle. Re-querying
+            // the same projection here duplicated the expensive SQL boundary and left the
+            // browser-close assertions without enough of the fixed test budget under load.
+            let observed: any;
             await expect.poll(async () => {
                 const current = await mcp("query_kanban", { kanbanId });
-                return current.projection.status === "success"
-                    ? current.lanes.flatMap((lane: { cards: { row: { title: string; }; }[]; }) =>
+                if (current.projection.status === "success") observed = current;
+                return observed
+                    ? observed.lanes.flatMap((lane: { cards: { row: { title: string; }; }[]; }) =>
                         lane.cards.map(card => card.row.title)
                     )
                     : current.projection.status;
             }, { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }).toEqual(["Beta", "Alpha", "Gamma"]);
 
-            const observed = await mcp("query_kanban", { kanbanId });
             const observedCard = observed.lanes
                 .flatMap((lane: { cards: { row: { title: string; }; sourceRef: object; }[]; }) => lane.cards)
                 .find((card: { row: { title: string; }; }) => card.row.title === "Alpha");

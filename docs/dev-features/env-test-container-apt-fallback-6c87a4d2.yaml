@@ -6,5 +6,5 @@ notes: The recorded failure establishes that azure.archive.ubuntu.com was unreac
 category: environment
 status: implemented
 tests:
-  - scripts/tests/env-test-container-apt-fallback-6c87a4d2.spec.ts
-  - scripts/tests/test-container-os-packages.integration.sh
+- scripts/tests/env-test-container-apt-fallback-6c87a4d2.spec.ts
+- scripts/tests/test-container-os-packages.integration.sh

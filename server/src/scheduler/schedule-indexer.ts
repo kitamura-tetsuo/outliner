@@ -24,6 +24,16 @@ export interface ScheduleIndexRow {
 
 const { rrulestr } = rruleImport;
 
+// Ambiguous wall times always select the earlier UTC instant, independent of
+// the current offset Luxon used as its initial guess. Gap validation stays at
+// each caller before any occurrence is accepted.
+function earlierLocalInstant(value: DateTime): DateTime {
+    return value.getPossibleOffsets().reduce(
+        (earlier, candidate) => candidate.toMillis() < earlier.toMillis() ? candidate : earlier,
+        value,
+    );
+}
+
 // The SQLite extension opens its database asynchronously (its onConfigure
 // hook is not awaited), so there is no single point at startup where the
 // database is guaranteed to exist. Every entry point that touches the index
@@ -146,7 +156,7 @@ export function computeNextRunAt(
     error?: string;
 } {
     try {
-        const dtstart = resolveLocalDateTime(dtstartStr, timezoneStr);
+        const dtstart = DateTime.fromISO(dtstartStr, { zone: timezoneStr });
         if (!dtstart.isValid) {
             return { next_run_at: null, state: "invalid", nextSeq: cursorSeq, error: "Invalid dtstart" };
         }
@@ -217,15 +227,14 @@ export function computeNextRunAt(
             return { next_run_at: null, state: "exhausted", nextSeq: cursorSeq };
         }
 
-        const localOccurrence = DateTime.fromObject({
+        const dt = earlierLocalInstant(DateTime.fromObject({
             year: (nextDate as Date).getUTCFullYear(),
             month: (nextDate as Date).getUTCMonth() + 1,
             day: (nextDate as Date).getUTCDate(),
             hour: (nextDate as Date).getUTCHours(),
             minute: (nextDate as Date).getUTCMinutes(),
             second: (nextDate as Date).getUTCSeconds(),
-        }, { zone: timezoneStr });
-        const dt = earliestPossibleOffset(localOccurrence);
+        }, { zone: timezoneStr }));
 
         return { next_run_at: dt.toUTC().toISO(), state: "active", nextSeq: cursorSeq };
     } catch (err: unknown) {
@@ -236,19 +245,6 @@ export function computeNextRunAt(
             error: err instanceof Error ? err.message : String(err),
         };
     }
-}
-
-function resolveLocalDateTime(localDateTime: string, timezone: string): DateTime {
-    return earliestPossibleOffset(DateTime.fromISO(localDateTime, { zone: timezone }));
-}
-
-function earliestPossibleOffset(dateTime: DateTime): DateTime {
-    // Keep fall-back recurrences deterministic across Luxon releases: an
-    // ambiguous wall time runs at its first occurrence, before the clocks move.
-    return dateTime.getPossibleOffsets().reduce(
-        (earliest, candidate) => candidate.toMillis() < earliest.toMillis() ? candidate : earliest,
-        dateTime,
-    );
 }
 
 /**
@@ -277,14 +273,14 @@ export function computeOccurrencesAfter(
     }) as RRule;
     const occurrences: string[] = [];
     rule.all(date => {
-        const local = DateTime.fromObject({
+        const local = earlierLocalInstant(DateTime.fromObject({
             year: date.getUTCFullYear(),
             month: date.getUTCMonth() + 1,
             day: date.getUTCDate(),
             hour: date.getUTCHours(),
             minute: date.getUTCMinutes(),
             second: date.getUTCSeconds(),
-        }, { zone: timezoneStr });
+        }, { zone: timezoneStr }));
         const expected = DateTime.fromJSDate(date, { zone: "utc" }).toFormat("yyyy-MM-dd'T'HH:mm:ss");
         if (!local.isValid || local.toFormat("yyyy-MM-dd'T'HH:mm:ss") !== expected) return true;
         const iso = local.toUTC().toISO()!;
