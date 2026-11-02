@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS client-build
+FROM node:26-bookworm-slim AS client-build
 WORKDIR /build
 COPY client/package*.json ./client/
 COPY client/patches/ ./client/patches/
@@ -9,7 +9,7 @@ COPY shared/ ./shared/
 RUN cd client && VITE_OUTLINER_DEPLOYMENT_MODE=onprem npm run build \
     && cp node_modules/libpg-query/wasm/libpg-query.wasm ../build/libpg-query.wasm
 
-FROM node:24-bookworm-slim AS server-build
+FROM node:26-bookworm-slim AS server-build
 WORKDIR /app
 COPY shared/ ./shared/
 COPY server/package*.json ./server/
@@ -24,7 +24,7 @@ RUN cd server \
     && apt-get purge -y --auto-remove python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     OUTLINER_DEPLOYMENT_MODE=onprem \
@@ -40,5 +40,5 @@ RUN mkdir /data && chown -R node:node /app /data
 USER node
 EXPOSE 7093
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
-    CMD node -e "if(process.versions.node.split('.')[0]!=='24')process.exit(1);fetch('http://127.0.0.1:7093/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+    CMD node -e "if(process.versions.node.split('.')[0]!=='26')process.exit(1);fetch('http://127.0.0.1:7093/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 CMD ["node", "server/dist/server/src/index.js"]

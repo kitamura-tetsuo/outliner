@@ -47,8 +47,8 @@ jobs:
         # successful build does not prove the binding loads, so exercise it.
         run: |
           docker run --rm -w /usr/src/app/server yjs-ws-server:ci node -e "
-            if (process.versions.node.split('.')[0] !== '24') {
-              throw new Error('Expected Node 24, got ' + process.version);
+            if (process.versions.node.split('.')[0] !== '26') {
+              throw new Error('Expected Node 26, got ' + process.version);
             }
             const Database = require('better-sqlite3');
             const db = new Database(':memory:');
@@ -88,7 +88,13 @@ jobs:
             }
           "
 
-      - name: Verify the default cloud server starts on Node 24
+      - name: Verify both SQLite bindings and SQL engines in the built image
+        run: |
+          docker run --rm --network none --workdir /usr/src/app \
+            --mount "type=bind,src=$PWD/scripts/ci/node26-committed-image-smoke.mjs,dst=/tmp/node26-data-smoke.mjs,readonly" \
+            yjs-ws-server:ci node /tmp/node26-data-smoke.mjs
+
+      - name: Verify the default cloud server starts on Node 26
         run: |
           docker run -d --name yjs-ws-server-smoke \
             -e ALLOW_ALL_ORIGINS=true \
@@ -108,8 +114,8 @@ jobs:
           for attempt in $(seq 1 30); do
             if docker exec yjs-ws-server-smoke node -e "
               (async () => {
-                if (process.versions.node.split('.')[0] !== '24') {
-                  throw new Error('Expected Node 24, got ' + process.version);
+                if (process.versions.node.split('.')[0] !== '26') {
+                  throw new Error('Expected Node 26, got ' + process.version);
                 }
                 const health = await fetch('http://127.0.0.1:7093/health');
                 if (!health.ok) throw new Error('Health status ' + health.status);
@@ -162,8 +168,8 @@ jobs:
       - name: Verify native modules load in the built image
         run: |
           docker run --rm -w /usr/src/app/server yjs-ws-server:ci-debug node -e "
-            if (process.versions.node.split('.')[0] !== '24') {
-              throw new Error('Expected Node 24, got ' + process.version);
+            if (process.versions.node.split('.')[0] !== '26') {
+              throw new Error('Expected Node 26, got ' + process.version);
             }
             const Database = require('better-sqlite3');
             const db = new Database(':memory:');
@@ -202,3 +208,9 @@ jobs:
               throw new Error('Firestore version must be >=9.2.0 and <10.0.0');
             }
           "
+
+      - name: Verify both SQLite bindings and SQL engines in the debug image
+        run: |
+          docker run --rm --network none --workdir /usr/src/app \
+            --mount "type=bind,src=$PWD/scripts/ci/node26-committed-image-smoke.mjs,dst=/tmp/node26-data-smoke.mjs,readonly" \
+            yjs-ws-server:ci-debug node /tmp/node26-data-smoke.mjs

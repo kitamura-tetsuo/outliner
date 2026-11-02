@@ -11,24 +11,24 @@ function replaceExactly(file, from, to, count) {
     fs.writeFileSync(target, source.replaceAll(from, to));
 }
 for (const file of ["server/Dockerfile", "server/Dockerfile.debug"]) {
-    replaceExactly(file, "FROM node:24-bookworm-slim", "FROM node:26.13.0-bookworm-slim", 1);
+    replaceExactly(file, "FROM node:26-bookworm-slim", "FROM node:26.13.0-bookworm-slim", 1);
 }
 replaceExactly("server/Dockerfile", "(cd server && npm ci)", "(cd server && npm ci --engine-strict)", 1);
 replaceExactly("server/Dockerfile.debug", "RUN cd server && npm ci", "RUN cd server && npm ci --engine-strict", 1);
-replaceExactly("Dockerfile.onprem", "FROM node:24-bookworm-slim", "FROM node:26.13.0-bookworm-slim", 3);
+replaceExactly("Dockerfile.onprem", "FROM node:26-bookworm-slim", "FROM node:26.13.0-bookworm-slim", 3);
 replaceExactly("Dockerfile.onprem", "RUN cd client && npm ci", "RUN cd client && npm ci --engine-strict", 1);
 replaceExactly("Dockerfile.onprem", "&& cd server && npm ci", "&& cd server && npm ci --engine-strict", 1);
 replaceExactly(
     "Dockerfile.onprem",
-    "process.versions.node.split('.')[0]!=='24'",
+    "process.versions.node.split('.')[0]!=='26'",
     "process.versions.node!=='26.13.0'",
     1,
 );
 replaceExactly(
     "scripts/test-onprem-compose.sh",
-    "process.versions.node.split('.')[0] !== '24'",
+    "process.versions.node.split('.')[0] !== '26'",
     "process.versions.node !== '26.13.0'",
     1,
 );
-replaceExactly("scripts/test-onprem-compose.sh", "Expected Node 24", "Expected Node 26.13.0", 1);
+replaceExactly("scripts/test-onprem-compose.sh", "Expected Node 26", "Expected Node 26.13.0", 1);
 console.log("Prepared exact Node 26.13.0 candidate substitutions in", root);
