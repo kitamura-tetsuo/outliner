@@ -57,7 +57,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
                     selectionMutations: number;
                     stop: () => void;
                 }
-                interface BrowserWindow extends Window {
+                interface BrowserGlobal {
                     __YJS_STORE__?: {
                         yjsClient?: {
                             getProject?: () => {
@@ -70,7 +70,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
                     };
                     __panTransitionProbe?: BrowserProbe;
                 }
-                const browser = window as BrowserWindow;
+                const browser = globalThis as typeof globalThis & BrowserGlobal;
                 const project = browser.__YJS_STORE__?.yjsClient?.getProject?.();
                 if (!project?.ydoc) throw new Error("Project document unavailable for pan transition probe");
                 const probe = { updates: 0, selectionMutations: 0, stop: () => {} };
@@ -103,7 +103,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             await page.mouse.move(box.x - 10_000, box.y + box.height / 2, { steps: 4 });
             expect(
                 await page.evaluate(() => {
-                    const probe = (window as Window & {
+                    const probe = (globalThis as typeof globalThis & {
                         __panTransitionProbe: { updates: number; selectionMutations: number; };
                     }).__panTransitionProbe;
                     return { updates: probe.updates, selectionMutations: probe.selectionMutations };
@@ -128,7 +128,8 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             expect(await readGridProjectState(page)).toEqual(beforeState);
             expect(await undoDepth(page)).toBe(beforeUndo);
             await page.evaluate(() =>
-                (window as Window & { __panTransitionProbe: { stop: () => void; }; }).__panTransitionProbe.stop()
+                (globalThis as typeof globalThis & { __panTransitionProbe: { stop: () => void; }; })
+                    .__panTransitionProbe.stop()
             );
         },
     );
