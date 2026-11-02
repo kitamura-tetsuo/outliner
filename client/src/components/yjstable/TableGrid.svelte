@@ -332,7 +332,11 @@ function handlePanPointerDown(event: PointerEvent): void {
  * supersession must also recognize a fresh right or middle sequence.
  */
 function handleGlobalPanPointerDown(event: PointerEvent): void {
-    if (!panActive && event.pointerId === panGuardPointerId && isFreshMouseDown(event)) {
+    // A mouse pointer id is scoped to its document. After an off-document
+    // release, the next document-local mouse sequence may therefore have a
+    // different id even though it authoritatively supersedes the stale mouse
+    // guard. Pen/touch sequences remain independent and cannot clear it.
+    if (!panActive && panGuardPointerId !== undefined && isFreshMouseDown(event)) {
         panGuardPointerId = undefined;
         suppressPanClick = false;
     }
@@ -426,6 +430,7 @@ onMount(() => {
     };
     window.addEventListener("blur", onBlur);
     window.addEventListener("pointerdown", handleGlobalPanPointerDown, true);
+    window.addEventListener("pointermove", handlePanPointerMove, true);
     window.addEventListener("pointerup", handlePanPointerEnd, true);
     window.addEventListener("pointercancel", handlePanPointerEnd, true);
     window.addEventListener("click", handlePanClick, true);
@@ -435,6 +440,7 @@ onMount(() => {
     return () => {
         window.removeEventListener("blur", onBlur);
         window.removeEventListener("pointerdown", handleGlobalPanPointerDown, true);
+        window.removeEventListener("pointermove", handlePanPointerMove, true);
         window.removeEventListener("pointerup", handlePanPointerEnd, true);
         window.removeEventListener("pointercancel", handlePanPointerEnd, true);
         window.removeEventListener("click", handlePanClick, true);
