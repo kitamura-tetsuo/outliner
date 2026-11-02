@@ -313,6 +313,19 @@ function handlePanPointerDown(event: PointerEvent): void {
     gridContainer.setPointerCapture(event.pointerId);
 }
 
+/**
+ * Pending terminal ownership is window-scoped because the first new mouse
+ * sequence after an off-document release may begin outside this Grid. Such a
+ * same-pointer down supersedes the obsolete guard before its release/click can
+ * be mistaken for the admitted sequence; other pointers remain independent.
+ */
+function handleGlobalPanPointerDown(event: PointerEvent): void {
+    if (!panActive && event.pointerId === panGuardPointerId) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    }
+}
+
 function handlePanPointerMove(event: PointerEvent): void {
     if (!panActive || event.pointerId !== panPointerId || !gridContainer) return;
     event.preventDefault();
@@ -362,12 +375,14 @@ onMount(() => {
         if (document.hidden) cancelPanAuthority();
     };
     window.addEventListener("blur", onBlur);
+    window.addEventListener("pointerdown", handleGlobalPanPointerDown, true);
     window.addEventListener("pointerup", handlePanPointerEnd, true);
     window.addEventListener("pointercancel", handlePanPointerEnd, true);
     window.addEventListener("click", handlePanClick, true);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
         window.removeEventListener("blur", onBlur);
+        window.removeEventListener("pointerdown", handleGlobalPanPointerDown, true);
         window.removeEventListener("pointerup", handlePanPointerEnd, true);
         window.removeEventListener("pointercancel", handlePanPointerEnd, true);
         window.removeEventListener("click", handlePanClick, true);

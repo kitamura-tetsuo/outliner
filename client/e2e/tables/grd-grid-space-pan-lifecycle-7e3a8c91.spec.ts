@@ -39,8 +39,8 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         await page.mouse.up();
         await page.keyboard.up("Space");
 
-        await status.selectOption({ index: 1 });
-        await expect(status).toHaveValue("doing");
+        await status.selectOption("done");
+        await expect(status).toHaveValue("done");
     });
 
     test("an unrelated pen sequence cannot discard the mouse release guard", async ({ page }) => {
@@ -85,5 +85,33 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         await page.mouse.up();
         await expect(origin.locator("input")).toHaveCount(0);
         await expect(next.locator("input")).toBeFocused();
+    });
+
+    test("an off-document release cannot consume the next outside-Grid click", async ({ page, context }) => {
+        const origin = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
+        await selectAndFocusCell(origin);
+        const box = (await origin.boundingBox())!;
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+
+        await page.keyboard.down("Space");
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x - 40, y);
+
+        // Moving to another real document blurs this Grid. The release occurs
+        // there, so the original document cannot observe its pointerup.
+        const other = await context.newPage();
+        await other.setContent("<button>other document</button>");
+        await other.bringToFront();
+        await other.mouse.move(10, 10);
+        await other.mouse.up();
+        await other.close();
+        await page.bringToFront();
+
+        // This same-mouse sequence starts outside the Grid and authoritatively
+        // supersedes its obsolete guard. Its click must remain usable.
+        await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+        await expect(page.getByTestId("yjs-table-create-panel")).toBeVisible();
     });
 });
