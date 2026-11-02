@@ -57,13 +57,20 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
                     selectionMutations: number;
                     stop: () => void;
                 }
+                interface ObservableDoc {
+                    on: (name: string, callback: () => void) => void;
+                    off: (name: string, callback: () => void) => void;
+                }
                 interface BrowserGlobal {
                     __YJS_STORE__?: {
                         yjsClient?: {
                             getProject?: () => {
-                                ydoc?: {
-                                    on: (name: string, callback: () => void) => void;
-                                    off: (name: string, callback: () => void) => void;
+                                ydoc?: ObservableDoc & {
+                                    getMap: (name: string) => {
+                                        values: () => IterableIterator<
+                                            { get: (name: string) => ObservableDoc | undefined; }
+                                        >;
+                                    };
                                 };
                             };
                         };
@@ -75,6 +82,12 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
                 if (!project?.ydoc) throw new Error("Project document unavailable for pan transition probe");
                 const probe = { updates: 0, selectionMutations: 0, stop: () => {} };
                 const onUpdate = () => probe.updates++;
+                const documents: ObservableDoc[] = [project.ydoc];
+                for (const entry of project.ydoc.getMap("yjsTables").values()) {
+                    const tableDoc = entry.get("doc");
+                    if (tableDoc) documents.push(tableDoc);
+                }
+                for (const document of documents) document.on("update", onUpdate);
                 const observer = new MutationObserver(records => {
                     probe.selectionMutations += records.filter(record =>
                         record.type === "attributes"
@@ -83,14 +96,13 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
                         && ["class", "aria-selected"].includes(record.attributeName ?? "")
                     ).length;
                 });
-                project.ydoc.on("update", onUpdate);
                 observer.observe(document.querySelector("[data-testid='yjs-table-grid']")!, {
                     subtree: true,
                     attributes: true,
                     attributeFilter: ["class", "aria-selected"],
                 });
                 probe.stop = () => {
-                    project.ydoc.off("update", onUpdate);
+                    for (const document of documents) document.off("update", onUpdate);
                     observer.disconnect();
                 };
                 browser.__panTransitionProbe = probe;
@@ -127,6 +139,14 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             ).toEqual(beforeSelection);
             expect(await readGridProjectState(page)).toEqual(beforeState);
             expect(await undoDepth(page)).toBe(beforeUndo);
+            expect(
+                await page.evaluate(() => {
+                    const probe = (globalThis as typeof globalThis & {
+                        __panTransitionProbe: { updates: number; selectionMutations: number; };
+                    }).__panTransitionProbe;
+                    return { updates: probe.updates, selectionMutations: probe.selectionMutations };
+                }),
+            ).toEqual({ updates: 0, selectionMutations: 0 });
             await page.evaluate(() =>
                 (globalThis as typeof globalThis & { __panTransitionProbe: { stop: () => void; }; })
                     .__panTransitionProbe.stop()
@@ -173,6 +193,41 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
         expect(await readGridProjectState(page)).toEqual(before);
         expect(await undoDepth(page)).toBe(history);
+    });
+
+    test("native input and IME editor starts are excluded from pan admission", async ({ page }, info) => {
+        const [firstRowId] = await prepareKeyboardGrid(page, info);
+        await setWideColumns(page);
+        const grid = page.getByTestId("yjs-table-grid");
+        const row = keyboardTaskRow(page, firstRowId);
+        const title = row.locator("td[data-col='title']");
+        const status = row.locator("td[data-col='status'] select");
+        await selectAndFocusCell(title);
+
+        await page.keyboard.down("Space");
+        const selectBox = (await status.boundingBox())!;
+        await page.mouse.move(selectBox.x + selectBox.width / 2, selectBox.y + selectBox.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(selectBox.x - 100, selectBox.y + selectBox.height / 2);
+        await page.mouse.up();
+        await page.keyboard.up("Space");
+        expect(await grid.evaluate(element => element.scrollLeft)).toBe(0);
+        await status.selectOption("done");
+        await expect(status).toHaveValue("done");
+
+        await title.locator("button").click();
+        const editor = title.locator("input");
+        await editor.dispatchEvent("compositionstart", { data: " " });
+        await page.keyboard.down("Space");
+        const editorBox = (await editor.boundingBox())!;
+        await page.mouse.move(editorBox.x + editorBox.width / 2, editorBox.y + editorBox.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(editorBox.x - 100, editorBox.y + editorBox.height / 2);
+        await page.mouse.up();
+        await page.keyboard.up("Space");
+        await editor.dispatchEvent("compositionend", { data: " " });
+        expect(await grid.evaluate(element => element.scrollLeft)).toBe(0);
+        await expect(editor).toBeFocused();
     });
 
     test("an armed Grid leaves its dedicated resize handle in control", async ({ page }, info) => {
