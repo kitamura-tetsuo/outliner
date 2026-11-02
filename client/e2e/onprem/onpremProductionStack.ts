@@ -404,6 +404,7 @@ export class OnPremProductionStack {
         });
     }
     private deliverTunnelClose(tunnel: Tunnel, kind: "ws-client-close" | "ws-upstream-close") {
+        if (this.stopping || !this.tunnels.has(tunnel)) return;
         const hold = tunnel.callbackHold;
         if (hold?.kind === kind) {
             if (!hold.deliver) {
