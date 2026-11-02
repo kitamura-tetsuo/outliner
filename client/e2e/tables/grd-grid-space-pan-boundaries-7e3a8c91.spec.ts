@@ -3,8 +3,10 @@ import { expect, test } from "@playwright/test";
 import { readGridProjectState } from "../utils/crossProjectGridHelpers";
 import { keyboardTaskRow, prepareKeyboardGrid, selectAndFocusCell } from "../utils/gridKeyboardFixture";
 import { undoDepth } from "../utils/gridResizeHelpers";
+import { pressResizeHandle } from "../utils/gridResizeHelpers";
 import { readWidthGridRegistry } from "../utils/gridWidthHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 registerCoverageHooks();
 
 async function setWideColumns(page: import("@playwright/test").Page): Promise<void> {
@@ -43,12 +45,52 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             await selectAndFocusCell(cell);
             const beforeState = await readGridProjectState(page);
             const beforeUndo = await undoDepth(page);
+            expect(beforeUndo).toBeGreaterThanOrEqual(0);
             const beforeSelection = await grid.locator("td.grid-selected").evaluateAll(cells =>
                 cells.map(cell => [cell.getAttribute("data-row-id"), cell.getAttribute("data-col")])
             );
             const beforeTop = await grid.evaluate(element => element.scrollTop);
 
-            await dragWhileHoldingSpace(page, cell, -10_000);
+            await page.evaluate(() => {
+                const project = (window as any).__YJS_STORE__?.yjsClient?.getProject?.();
+                if (!project?.ydoc) throw new Error("Project document unavailable for pan transition probe");
+                const probe = { updates: 0, selectionMutations: 0, stop: () => {} };
+                const onUpdate = () => probe.updates++;
+                const observer = new MutationObserver(records => {
+                    probe.selectionMutations += records.filter(record =>
+                        record.type === "attributes"
+                        && record.target instanceof HTMLElement
+                        && record.target.matches("td, th")
+                        && ["class", "aria-selected"].includes(record.attributeName ?? "")
+                    ).length;
+                });
+                project.ydoc.on("update", onUpdate);
+                observer.observe(document.querySelector("[data-testid='yjs-table-grid']")!, {
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ["class", "aria-selected"],
+                });
+                probe.stop = () => {
+                    project.ydoc.off("update", onUpdate);
+                    observer.disconnect();
+                };
+                (window as any).__panTransitionProbe = probe;
+            });
+
+            const box = (await cell.boundingBox())!;
+            await page.keyboard.down("Space");
+            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(box.x - 10_000, box.y + box.height / 2, { steps: 4 });
+            expect(
+                await page.evaluate(() => ({
+                    updates: (window as any).__panTransitionProbe.updates,
+                    selectionMutations: (window as any).__panTransitionProbe.selectionMutations,
+                })),
+            ).toEqual({ updates: 0, selectionMutations: 0 });
+            expect(await undoDepth(page)).toBe(beforeUndo);
+            await page.mouse.up();
+            await page.keyboard.up("Space");
             await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBe(
                 await grid.evaluate(element => element.scrollWidth - element.clientWidth),
             );
@@ -64,12 +106,14 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             ).toEqual(beforeSelection);
             expect(await readGridProjectState(page)).toEqual(beforeState);
             expect(await undoDepth(page)).toBe(beforeUndo);
+            await page.evaluate(() => (window as any).__panTransitionProbe.stop());
         },
     );
 
     test("no-overflow and open-editor Space remain native no-op/input paths", async ({ page }, info) => {
         const [firstRowId] = await prepareKeyboardGrid(page, info);
         const grid = page.getByTestId("yjs-table-grid");
+        expect(await grid.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
         const cell = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
         await selectAndFocusCell(cell);
         await dragWhileHoldingSpace(page, cell, -120);
@@ -81,6 +125,47 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         await editor.press("Space");
         await expect(editor).toHaveValue("Alpha ");
         await editor.press("Escape");
+    });
+
+    test("read-only query results pan without writes or history", async ({ page }, info) => {
+        await prepareKeyboardGrid(page, info);
+        const view = page.getByTestId("yjs-table-view");
+        await new SqlEditorHelper(view.getByTestId("yjs-table-query-input")).fillAndCommit(
+            page,
+            "SELECT status, count(*) AS count FROM keyboard_tasks GROUP BY status ORDER BY status",
+        );
+        for (const column of ["status", "count"]) {
+            const width = view.getByTestId(`yjs-table-width-${column}`);
+            await width.fill("700");
+            await width.press("Enter");
+        }
+        const grid = page.getByTestId("yjs-table-grid");
+        await expect(view.getByTestId("grid-readonly-reason")).toBeVisible();
+        const before = await readGridProjectState(page);
+        const history = await undoDepth(page);
+        const cell = grid.locator("td[data-col='count']").first();
+        await cell.locator("button").focus();
+        await dragWhileHoldingSpace(page, cell, -100);
+        await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+        expect(await readGridProjectState(page)).toEqual(before);
+        expect(await undoDepth(page)).toBe(history);
+    });
+
+    test("an armed Grid leaves its dedicated resize handle in control", async ({ page }, info) => {
+        const [firstRowId] = await prepareKeyboardGrid(page, info);
+        await setWideColumns(page);
+        const grid = page.getByTestId("yjs-table-grid");
+        const cell = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
+        await selectAndFocusCell(cell);
+        const beforeScroll = await grid.evaluate(element => element.scrollLeft);
+        const beforeWidth = await viewWidth(page, "title");
+        await page.keyboard.down("Space");
+        const press = await pressResizeHandle(page, 0, "title");
+        await page.mouse.move(press.x + 30, press.y, { steps: 3 });
+        await page.mouse.up();
+        await page.keyboard.up("Space");
+        expect(await grid.evaluate(element => element.scrollLeft)).toBe(beforeScroll);
+        await expect.poll(() => viewWidth(page, "title")).toBe(beforeWidth + 30);
     });
 
     test("two placements keep browser scroll offsets isolated", async ({ page }, info) => {
@@ -103,3 +188,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         expect(await grids.nth(1).evaluate(element => element.scrollLeft)).toBe(0);
     });
 });
+
+async function viewWidth(page: import("@playwright/test").Page, column: string): Promise<number> {
+    return Number(await page.getByTestId("yjs-table-width-" + column).inputValue());
+}

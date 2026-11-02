@@ -108,6 +108,7 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         await other.mouse.up();
         await other.close();
         await page.bringToFront();
+        await page.keyboard.up("Space");
 
         // This same-mouse sequence starts outside the Grid and authoritatively
         // supersedes its obsolete guard. Its click must remain usable.
