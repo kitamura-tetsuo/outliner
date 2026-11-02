@@ -1,0 +1,22 @@
+id: LAY-6c4e9b12
+title: Full-width page editor and project home
+title-ja: ページエディターとプロジェクトホームの可変幅
+description: Page editors and project home pages, including their public demo variants, use all content width allocated by the application shell while retaining responsive gutters and the existing embedded component sizing behavior.
+category: client
+status: implemented
+components:
+- client/src/routes/[demoProject=demoProject]/+page.svelte
+- client/src/routes/[demoProject=demoProject]/[page]/+page.svelte
+- client/src/routes/[project]/+page.svelte
+- client/src/routes/[project]/[page]/+page.svelte
+tests:
+- client/e2e/new/lay-full-width-demo-6c4e9b12.spec.ts
+- client/e2e/new/lay-full-width-page-6c4e9b12.spec.ts
+- client/e2e/new/lay-layout-span-and-unwrap-9d3f57c1.spec.ts
+- client/e2e/tables/grd-grid-fixed-column-widths-5c1d8e2a.spec.ts
+acceptance:
+- Grid fixed columns, local horizontal overflow, Calendar sizing, and Layout spans retain their existing behavior
+- Management screens, the toolbar, dialogs, and other route width policies remain unchanged
+- Opening either 250px sidebar reduces route width without overlap, and closing it restores the width without reload
+- Ordinary and public-demo page editors and project homes fill the width allocated by the application shell
+- Route gutters remain 1rem below 48rem and 2rem at or above 48rem

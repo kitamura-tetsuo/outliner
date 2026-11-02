@@ -3,10 +3,10 @@
 # every E2E test fail at browserType.launch with "Executable doesn't exist".
 FROM mcr.microsoft.com/playwright:v1.64.1-jammy
 
-# Install Java and OS utilities
-RUN apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true && \
-    apt-get install -y -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true openjdk-21-jre-headless xvfb lsof netcat-openbsd curl sudo python3-venv python3-pip git-lfs && \
-    rm -rf /var/lib/apt/lists/*
+# Install Java and OS utilities through a bounded, fail-closed acquisition path.
+COPY scripts/install-test-container-os-packages.sh /usr/local/bin/install-test-container-os-packages
+RUN /usr/local/bin/install-test-container-os-packages \
+    openjdk-21-jre-headless xvfb lsof netcat-openbsd curl sudo python3-venv python3-pip git-lfs
 
 # Install global npm packages
 COPY .firebase-tools-version /tmp/firebase-tools-version

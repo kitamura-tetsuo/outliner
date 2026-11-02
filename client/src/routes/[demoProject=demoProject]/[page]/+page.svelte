@@ -245,7 +245,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     <title>{pageName ? pageName : "Page"} - Demo | Outliner</title>
 </svelte:head>
 
-<main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
+<main class="w-full min-w-0 px-4 py-8 md:px-8" data-testid="fluid-page-main">
     <div class="mb-4">
         <!-- Identity is the global toolbar's job (project) and the editor's
              (page title); this row only carries actions. The demo notice below
