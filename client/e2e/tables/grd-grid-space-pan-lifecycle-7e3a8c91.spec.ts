@@ -147,8 +147,14 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         await page.bringToFront();
         await page.keyboard.up("Space");
 
-        // This same-mouse sequence starts outside the Grid and authoritatively
-        // supersedes its obsolete guard. Its click must remain usable.
+        // A fresh right-button sequence also authoritatively supersedes the
+        // obsolete guard even though pan admission itself remains left-only.
+        const textItem = page.locator(".outliner-item[data-item-id]").first().locator(".item-content");
+        await textItem.click({ button: "right" });
+        await expect(page.locator(".context-menu")).toBeVisible();
+        await page.keyboard.press("Escape");
+
+        // The following independent left-button action remains usable too.
         await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
         await expect(page.getByTestId("yjs-table-create-panel")).toBeVisible();
     });

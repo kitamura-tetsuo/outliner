@@ -71,14 +71,14 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
             await page.mouse.move(x, y);
             await page.mouse.down({ button: "left" });
             await page.mouse.down({ button: secondary });
+            await page.mouse.move(x - 60, y, { steps: 2 });
+            await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
             await page.mouse.up({ button: secondary });
             await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
             await expect(grid).toHaveClass(/pan-active/);
             const trace = await readTrace(page);
             expect(trace.some(event => event.type === "pointermove" && event.button === button && event.buttons === 1))
                 .toBe(true);
-            await page.mouse.move(x - 60, y, { steps: 2 });
-            await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
             await page.mouse.up({ button: "left" });
             await page.keyboard.up("Space");
             await expect(origin.locator("input")).toHaveCount(0);

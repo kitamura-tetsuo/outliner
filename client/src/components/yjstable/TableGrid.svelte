@@ -296,11 +296,17 @@ function isFreshPrimaryMouseDown(event: PointerEvent): boolean {
     return event.isPrimary && event.pointerType === "mouse" && event.button === 0 && event.buttons === 1;
 }
 
+function isFreshMouseDown(event: PointerEvent): boolean {
+    if (!event.isPrimary || event.pointerType !== "mouse") return false;
+    const buttonMask = event.button === 0 ? 1 : event.button === 1 ? 4 : event.button === 2 ? 2 : 0;
+    return buttonMask !== 0 && event.buttons === buttonMask;
+}
+
 function handlePanPointerDown(event: PointerEvent): void {
     // Only a fresh sequence from the same pointer can supersede that
     // pointer's obsolete terminal guard. A secondary button transition within
     // the admitted primary sequence is not a fresh sequence.
-    if (!panActive && event.pointerId === panGuardPointerId && isFreshPrimaryMouseDown(event)) {
+    if (!panActive && event.pointerId === panGuardPointerId && isFreshMouseDown(event)) {
         panGuardPointerId = undefined;
         suppressPanClick = false;
     }
@@ -320,11 +326,13 @@ function handlePanPointerDown(event: PointerEvent): void {
 /**
  * Pending terminal ownership is window-scoped because the first new mouse
  * sequence after an off-document release may begin outside this Grid. Such a
- * same-pointer down supersedes the obsolete guard before its release/click can
- * be mistaken for the admitted sequence; other pointers remain independent.
+ * same-pointer mouse sequence supersedes the obsolete guard before its
+ * release/click can be mistaken for the admitted sequence; other pointers
+ * remain independent. Admission is still primary-button only, but stale-guard
+ * supersession must also recognize a fresh right or middle sequence.
  */
 function handleGlobalPanPointerDown(event: PointerEvent): void {
-    if (!panActive && event.pointerId === panGuardPointerId && isFreshPrimaryMouseDown(event)) {
+    if (!panActive && event.pointerId === panGuardPointerId && isFreshMouseDown(event)) {
         panGuardPointerId = undefined;
         suppressPanClick = false;
     }
