@@ -363,6 +363,15 @@ function handlePanClick(event: MouseEvent): void {
     event.stopPropagation();
 }
 
+function handlePanContextMenu(event: MouseEvent): void {
+    // A secondary button pressed while the admitted primary sequence is still
+    // owned must not open a competing menu or move focus before the primary
+    // release and its compatibility click have been consumed.
+    if (panGuardPointerId === undefined) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
 function handlePanFocusOut(event: FocusEvent): void {
     const next = event.relatedTarget;
     if (isPanNavigationTarget(next)) return;
@@ -387,6 +396,8 @@ onMount(() => {
     window.addEventListener("pointerup", handlePanPointerEnd, true);
     window.addEventListener("pointercancel", handlePanPointerEnd, true);
     window.addEventListener("click", handlePanClick, true);
+    window.addEventListener("contextmenu", handlePanContextMenu, true);
+    window.addEventListener("auxclick", handlePanContextMenu, true);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
         window.removeEventListener("blur", onBlur);
@@ -394,6 +405,8 @@ onMount(() => {
         window.removeEventListener("pointerup", handlePanPointerEnd, true);
         window.removeEventListener("pointercancel", handlePanPointerEnd, true);
         window.removeEventListener("click", handlePanClick, true);
+        window.removeEventListener("contextmenu", handlePanContextMenu, true);
+        window.removeEventListener("auxclick", handlePanContextMenu, true);
         document.removeEventListener("visibilitychange", onVisibility);
         cancelPanAuthority(true);
     };

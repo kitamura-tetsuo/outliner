@@ -65,6 +65,7 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
             await page.mouse.down({ button: "left" });
             await page.mouse.down({ button: secondary });
             await page.mouse.up({ button: secondary });
+            await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
             await expect(grid).toHaveClass(/pan-active/);
             const beforeMove = await grid.evaluate(element => element.scrollLeft);
             await page.mouse.move(x - 60, y, { steps: 2 });
@@ -100,6 +101,7 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
         await page.keyboard.up("Space");
         await page.mouse.down({ button: "right" });
         await page.mouse.up({ button: "right" });
+        await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
         await page.mouse.up({ button: "left" });
 
         await expect(origin.locator("input")).toHaveCount(0);
