@@ -28,6 +28,7 @@ acceptance:
 - A Table with zero Grid entities is still viewable and editable
 - A persisted Table opened directly on a cold standalone route restores its schema and rows from its Table subdoc room
 - A public-demo visitor may read the project schedule list but cannot run or delete a rule
+- A schema-backed Table with zero rows keeps its empty message and Add row after query columns resolve; the message disappears when its first row arrives
 - Both Table deletion policies preserve independent Grid/Kanban definitions and placement IDs; broken SQL and retained invalid INSERT preferences remain diagnosable, and unknown analysis is reported as uncertainty.
 - Edits made in the raw data browser write directly to the Table through the Table write paths
 - Every Table a Schedule references reports it in its dependency/reference list
