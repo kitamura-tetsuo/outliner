@@ -1,0 +1,71 @@
+name: Node 26 container feasibility
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ci-node26-container-feasibility.yml'
+      - 'scripts/ci/prepare-node26-container-candidate.mjs'
+      - 'scripts/ci/test-node26-server-images.sh'
+      - 'scripts/ci/node26-data-smoke.mjs'
+      - 'Dockerfile.onprem'
+      - 'server/**'
+      - 'client/**'
+      - 'shared/**'
+      - 'compose.onprem*.yml'
+      - 'scripts/test-onprem-compose.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  server-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare exact candidate in an isolated checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/node26-candidate"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/node26-candidate"
+          node scripts/ci/prepare-node26-container-candidate.mjs "$RUNNER_TEMP/node26-candidate"
+      - name: Build and verify production and debug server candidates without publishing
+        shell: bash
+        run: bash scripts/ci/test-node26-server-images.sh "$RUNNER_TEMP/node26-candidate"
+  onprem-compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm ci
+        working-directory: client
+      - run: npx playwright install --with-deps chromium
+        working-directory: client
+      - name: Prepare exact candidate in an isolated checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/node26-candidate"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/node26-candidate"
+          node scripts/ci/prepare-node26-container-candidate.mjs "$RUNNER_TEMP/node26-candidate"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/node26-candidate/node_modules"
+          ln -s "$GITHUB_WORKSPACE/client/node_modules" "$RUNNER_TEMP/node26-candidate/client/node_modules"
+      - name: Build candidate and run real Compose health, browser and recovery tests
+        shell: bash
+        run: bash "$RUNNER_TEMP/node26-candidate/scripts/test-onprem-compose.sh"
+      - name: Retain candidate test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: node26-onprem-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/node26-candidate/client/test-results/
+            ${{ runner.temp }}/node26-candidate/client/playwright-report/
+          if-no-files-found: warn
+          retention-days: 2

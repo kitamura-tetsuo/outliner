@@ -87,7 +87,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Kill Tinylicious Process",
+            "label": "Clean Development Ports",
             "type": "shell",
             "command": "node ${workspaceFolder}/scripts/kill-tinylicious.js",
             "problemMatcher": [],

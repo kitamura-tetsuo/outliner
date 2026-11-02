@@ -358,9 +358,9 @@ install_global_packages() {
   fi
   "${ROOT_DIR}/scripts/firebase-cli.sh" --version
 
-  if ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
-    echo "Installing global packages (tinylicious, pm2, dotenv)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install -g tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
+  if ! command -v pm2 >/dev/null; then
+    echo "Installing global packages (pm2, dotenv)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g pm2 dotenv-cli @dotenvx/dotenvx || true
     # Refresh PATH to include newly installed global packages
     NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
     if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
