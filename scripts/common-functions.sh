@@ -296,17 +296,32 @@ npm_ci_if_needed() {
     fi
   fi
   
-  if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
-    if [ -f package-lock.json ]; then
-      echo "Running npm ci for dependencies in $(pwd)..."
-      if ! npm_config_proxy="" npm_config_https_proxy="" npm ci; then
-        echo "Warning: npm ci failed. Retrying with npm install in $(pwd)..."
-        npm_config_proxy="" npm_config_https_proxy="" npm install
-      fi
-    else
-      echo "Running npm install for dependencies in $(pwd)..."
-      npm_config_proxy="" npm_config_https_proxy="" npm install
+  if [ -d node_modules ]; then
+    local npm_ls_log
+    npm_ls_log="$(mktemp)"
+    if npm ls >"${npm_ls_log}" 2>&1; then
+      rm -f "${npm_ls_log}"
+      return
     fi
+
+    # A container cache can legitimately become stale when a lockfile-changing
+    # commit starts CI before its new image has finished building. Keep npm's
+    # evidence visible, then converge the existing tree in place. `npm ci`
+    # deletes the whole (otherwise useful) cache first. The cancelled jobs spent
+    # about 90 seconds on that reinstall, but their logs do not identify the
+    # cancellation initiator, so preserve that timing as evidence rather than
+    # claiming the reinstall was the proven cancellation cause.
+    echo "Installed dependencies are stale or invalid in $(pwd); npm ls reported:"
+    cat "${npm_ls_log}"
+    rm -f "${npm_ls_log}"
+    echo "Updating cached dependencies with npm install in $(pwd)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install
+  elif [ -f package-lock.json ]; then
+    echo "Running npm ci for dependencies in $(pwd)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm ci
+  else
+    echo "Running npm install for dependencies in $(pwd)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install
   fi
 }
 
@@ -358,9 +373,9 @@ install_global_packages() {
   fi
   "${ROOT_DIR}/scripts/firebase-cli.sh" --version
 
-  if ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
-    echo "Installing global packages (tinylicious, pm2, dotenv)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install -g tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
+  if ! command -v pm2 >/dev/null; then
+    echo "Installing global packages (pm2, dotenv)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g pm2 dotenv-cli @dotenvx/dotenvx || true
     # Refresh PATH to include newly installed global packages
     NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
     if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
