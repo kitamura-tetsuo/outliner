@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-11-02T23:57:39.386Z",
+  "rules": [
+    "no-console",
+    "no-unused-vars"
+  ],
+  "candidates": [
+    {
+      "file": "client/src/lib/yjsService.svelte.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.864Z",
+      "score": 35
+    },
+    {
+      "file": "client/src/lib/yjsService.svelte.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.864Z",
+      "score": 35
+    },
+    {
+      "file": "client/src/lib/CustomKeyMap.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.857Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/CustomKeyMap.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.857Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/debug.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.859Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/debug.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.859Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/demoInit.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.859Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/demoInit.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.859Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/demoSeed.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.859Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/demoSeed.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-02T23:53:38.859Z",
+      "score": 33
+    }
+  ],
+  "proposedChanges": {
+    "no-console": {
+      "files": [
+        "client/src/lib/yjsService.svelte.ts",
+        "client/src/lib/CustomKeyMap.ts",
+        "client/src/lib/debug.ts",
+        "client/src/lib/demoInit.ts",
+        "client/src/lib/demoSeed.ts"
+      ],
+      "severity": "error"
+    },
+    "no-unused-vars": {
+      "files": [
+        "client/src/lib/yjsService.svelte.ts",
+        "client/src/lib/CustomKeyMap.ts",
+        "client/src/lib/debug.ts",
+        "client/src/lib/demoInit.ts",
+        "client/src/lib/demoSeed.ts"
+      ],
+      "severity": "error"
+    }
+  }
+}
