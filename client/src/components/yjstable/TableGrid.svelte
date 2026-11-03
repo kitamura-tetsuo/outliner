@@ -233,6 +233,229 @@ let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
 let suppressClickUntil = 0;
 
+// --- Space + drag horizontal panning (issue #5863) -----------------------
+let panArmed = $state(false);
+let panActive = $state(false);
+let panPointerId: number | undefined;
+let panStartX = 0;
+let panStartScrollLeft = 0;
+/** A secondary mouse transition can make Chromium drop implicit capture. */
+let panChordTransition = false;
+/** Owner whose eventual release/click still belongs to an admitted pan. */
+let panGuardPointerId: number | undefined;
+let suppressPanClick = false;
+const PAN_EXCLUDED = [
+    "input", "textarea", "select", "[contenteditable='true']", ".monaco-editor",
+    ".column-resize-handle", ".column-drag-handle", ".touch-selection-handle",
+    ".touch-selection-toolbar", ".add-row",
+].join(",");
+
+function isPanNavigationTarget(target: EventTarget | null): target is HTMLElement {
+    if (!(target instanceof HTMLElement) || !gridContainer?.contains(target)) return false;
+    if (target.closest(PAN_EXCLUDED)) return false;
+    if (target.closest("button") && !target.closest("td[data-row-id]")) return false;
+    return editingCell === undefined;
+}
+
+function overScrollerScrollbar(event: PointerEvent): boolean {
+    if (!gridContainer) return true;
+    const rect = gridContainer.getBoundingClientRect();
+    return event.clientX >= rect.left + gridContainer.clientWidth
+        || event.clientY >= rect.top + gridContainer.clientHeight;
+}
+
+function endPan(clearArm: boolean, keepClickGuard = false): void {
+    const pointerId = panPointerId;
+    panActive = false;
+    panPointerId = undefined;
+    if (clearArm) panArmed = false;
+    // `keepClickGuard` retains `panGuardPointerId`; click suppression itself
+    // begins only after that owner releases. Until then another pointer's
+    // compatibility click must remain ordinary input.
+    void keepClickGuard;
+    if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) {
+        gridContainer.releasePointerCapture(pointerId);
+    }
+}
+
+function handlePanKeyDown(event: KeyboardEvent): void {
+    if (event.key !== " " || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
+        || event.isComposing || !isPanNavigationTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) panArmed = true;
+}
+
+function handlePanKeyUp(event: KeyboardEvent): void {
+    if (event.key !== " " || (!panArmed && !panActive)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (panActive) endPan(true, true);
+    else panArmed = false;
+}
+
+function isFreshPrimaryMouseDown(event: PointerEvent): boolean {
+    return event.isPrimary && event.pointerType === "mouse" && event.button === 0 && event.buttons === 1;
+}
+
+function isFreshMouseDown(event: PointerEvent): boolean {
+    if (!event.isPrimary || event.pointerType !== "mouse") return false;
+    const buttonMask = event.button === 0 ? 1 : event.button === 1 ? 4 : event.button === 2 ? 2 : 0;
+    return buttonMask !== 0 && event.buttons === buttonMask;
+}
+
+function handlePanPointerDown(event: PointerEvent): void {
+    // Only a fresh sequence from the same pointer can supersede that
+    // pointer's obsolete terminal guard. A secondary button transition within
+    // the admitted primary sequence is not a fresh sequence.
+    if (!panActive && event.pointerId === panGuardPointerId && isFreshMouseDown(event)) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    }
+    if (!panArmed || panActive || !gridContainer || !isFreshPrimaryMouseDown(event) || !isPanNavigationTarget(event.target)
+        || overScrollerScrollbar(event) || resizingColumn !== undefined || touchStart !== undefined) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panActive = true;
+    panPointerId = event.pointerId;
+    panGuardPointerId = event.pointerId;
+    panStartX = event.clientX;
+    panStartScrollLeft = gridContainer.scrollLeft;
+    panChordTransition = false;
+    suppressPanClick = false;
+    gridContainer.setPointerCapture(event.pointerId);
+}
+
+/**
+ * Pending terminal ownership is window-scoped because the first new mouse
+ * sequence after an off-document release may begin outside this Grid. Such a
+ * same-pointer mouse sequence supersedes the obsolete guard before its
+ * release/click can be mistaken for the admitted sequence; other pointers
+ * remain independent. Admission is still primary-button only, but stale-guard
+ * supersession must also recognize a fresh right or middle sequence.
+ */
+function handleGlobalPanPointerDown(event: PointerEvent): void {
+    // A mouse pointer id is scoped to its document. After an off-document
+    // release, the next document-local mouse sequence may therefore have a
+    // different id even though it authoritatively supersedes the stale mouse
+    // guard. Pen/touch sequences remain independent and cannot clear it.
+    if (!panActive && panGuardPointerId !== undefined && isFreshMouseDown(event)) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    }
+}
+
+function handlePanPointerMove(event: PointerEvent): void {
+    if (!gridContainer) return;
+    if (!panActive) {
+        // Releasing primary while another mouse button remains held is a
+        // pointermove, including after Space released capture. Arm suppression
+        // before that primary release can synthesize its click.
+        if (event.pointerId === panGuardPointerId && (event.buttons & 1) === 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            suppressPanClick = true;
+        }
+        return;
+    }
+    if (event.pointerId !== panPointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panChordTransition = event.pointerType === "mouse" && (event.button === 1 || event.button === 2)
+        && (event.buttons & 1) !== 0;
+    if ((event.buttons & 1) === 0 || !gridContainer.isConnected) {
+        endPan(true, true);
+        // Chorded mouse input reports the primary release as pointermove while
+        // another button remains held. Its compatibility click can arrive
+        // before the final pointerup, so suppression begins at this boundary.
+        suppressPanClick = true;
+        return;
+    }
+    const maximum = Math.max(0, gridContainer.scrollWidth - gridContainer.clientWidth);
+    gridContainer.scrollLeft = Math.min(maximum, Math.max(0, panStartScrollLeft - (event.clientX - panStartX)));
+}
+
+function handlePanPointerEnd(event: PointerEvent): void {
+    if (event.pointerId !== panGuardPointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const cancelled = event.type === "pointercancel";
+    if (panActive) endPan(cancelled, !cancelled);
+    if (cancelled) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    } else suppressPanClick = true;
+}
+
+function handlePanClick(event: MouseEvent): void {
+    if (!suppressPanClick) return;
+    if (event instanceof PointerEvent && panGuardPointerId !== undefined && event.pointerId !== panGuardPointerId) return;
+    suppressPanClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+    // With chorded buttons the primary click can precede the last button's
+    // release. Retain ownership until every mouse button is up, then let this
+    // sequence's terminal compatibility event dispose it.
+    if (event.buttons === 0) panGuardPointerId = undefined;
+    else suppressPanClick = true;
+}
+
+function handlePanContextMenu(event: MouseEvent): void {
+    // A secondary button pressed while the admitted primary sequence is still
+    // owned must not open a competing menu or move focus before the primary
+    // release and its compatibility click have been consumed.
+    if (panGuardPointerId === undefined && !suppressPanClick) return;
+    if (event instanceof PointerEvent && panGuardPointerId !== undefined && event.pointerId !== panGuardPointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (suppressPanClick && event.buttons === 0) {
+        suppressPanClick = false;
+        panGuardPointerId = undefined;
+    }
+}
+
+function handlePanFocusOut(event: FocusEvent): void {
+    const next = event.relatedTarget;
+    if (isPanNavigationTarget(next)) return;
+    if (panActive || panArmed) endPan(true, panActive);
+}
+
+function cancelPanAuthority(disposeGuard = false): void {
+    if (panActive || panArmed) endPan(true, false);
+    if (disposeGuard) {
+        panGuardPointerId = undefined;
+        suppressPanClick = false;
+    }
+}
+
+onMount(() => {
+    const onBlur = () => cancelPanAuthority();
+    const onVisibility = () => {
+        if (document.hidden) cancelPanAuthority();
+    };
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("pointerdown", handleGlobalPanPointerDown, true);
+    window.addEventListener("pointermove", handlePanPointerMove, true);
+    window.addEventListener("pointerup", handlePanPointerEnd, true);
+    window.addEventListener("pointercancel", handlePanPointerEnd, true);
+    window.addEventListener("click", handlePanClick, true);
+    window.addEventListener("contextmenu", handlePanContextMenu, true);
+    window.addEventListener("auxclick", handlePanContextMenu, true);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+        window.removeEventListener("blur", onBlur);
+        window.removeEventListener("pointerdown", handleGlobalPanPointerDown, true);
+        window.removeEventListener("pointermove", handlePanPointerMove, true);
+        window.removeEventListener("pointerup", handlePanPointerEnd, true);
+        window.removeEventListener("pointercancel", handlePanPointerEnd, true);
+        window.removeEventListener("click", handlePanClick, true);
+        window.removeEventListener("contextmenu", handlePanContextMenu, true);
+        window.removeEventListener("auxclick", handlePanContextMenu, true);
+        document.removeEventListener("visibilitychange", onVisibility);
+        cancelPanAuthority(true);
+    };
+});
+
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
@@ -1496,12 +1719,31 @@ function handleCancelDelete() {
 -->
 <div
     class="yjs-table-grid"
+    class:pan-armed={panArmed}
+    class:pan-active={panActive}
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
     data-foreign-editor="grid"
     data-column-resizing={resizingColumn !== undefined ? "true" : undefined}
     bind:this={gridContainer}
+    role="region"
+    tabindex="0"
+    aria-label="Grid navigation. Hold Space and drag left or right to pan horizontally."
+    onkeydowncapture={handlePanKeyDown}
+    onkeyupcapture={handlePanKeyUp}
+    onpointerdowncapture={handlePanPointerDown}
+    onpointermove={handlePanPointerMove}
+    onlostpointercapture={(event) => {
+        if (panActive && event.pointerId === panPointerId) {
+            // Chromium may drop implicit capture as a secondary button changes
+            // while primary remains held. Window capture continues to own that
+            // admitted sequence; every other capture loss is terminal.
+            if (panChordTransition) panChordTransition = false;
+            else endPan(true, true);
+        }
+    }}
+    onfocusout={handlePanFocusOut}
 >
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
@@ -1877,6 +2119,48 @@ function handleCancelDelete() {
     max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-x: contain;
+}
+
+.yjs-table-grid.pan-armed {
+    cursor: grab;
+}
+
+.yjs-table-grid.pan-armed :global(table),
+.yjs-table-grid.pan-armed :global(thead),
+.yjs-table-grid.pan-armed :global(tbody),
+.yjs-table-grid.pan-armed :global(tr),
+.yjs-table-grid.pan-armed :global(th),
+.yjs-table-grid.pan-armed :global(td),
+.yjs-table-grid.pan-armed :global(.th-content),
+.yjs-table-grid.pan-armed :global(.th-label),
+.yjs-table-grid.pan-armed :global(.cell-value) {
+    cursor: grab;
+}
+
+.yjs-table-grid.pan-active {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.yjs-table-grid.pan-active :global(table),
+.yjs-table-grid.pan-active :global(thead),
+.yjs-table-grid.pan-active :global(tbody),
+.yjs-table-grid.pan-active :global(tr),
+.yjs-table-grid.pan-active :global(th),
+.yjs-table-grid.pan-active :global(td),
+.yjs-table-grid.pan-active :global(.th-content),
+.yjs-table-grid.pan-active :global(.th-label),
+.yjs-table-grid.pan-active :global(.cell-value) {
+    cursor: grabbing;
+}
+
+.yjs-table-grid.pan-armed :global(input),
+.yjs-table-grid.pan-armed :global(textarea),
+.yjs-table-grid.pan-armed :global(select),
+.yjs-table-grid.pan-armed :global([contenteditable="true"]),
+.yjs-table-grid.pan-armed :global(.column-resize-handle),
+.yjs-table-grid.pan-armed :global(.column-drag-handle) {
+    cursor: auto;
 }
 
 table {
