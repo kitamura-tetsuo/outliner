@@ -1183,7 +1183,13 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
-    gridContainer.setPointerCapture?.(event.pointerId);
+    // Touch pointerdown assigns implicit capture after dispatch. Defer the
+    // transfer so that implicit handle capture cannot immediately replace the
+    // scroller's explicit capture and terminate the newly admitted owner.
+    const pointerId = event.pointerId;
+    queueMicrotask(() => {
+        if (handlePointerId === pointerId) gridContainer?.setPointerCapture?.(pointerId);
+    });
     const generation = ++handleGeneration;
     handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
