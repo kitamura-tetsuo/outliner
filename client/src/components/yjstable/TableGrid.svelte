@@ -1183,13 +1183,6 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
-    // Touch pointerdown assigns implicit capture after dispatch. Defer the
-    // transfer so that implicit handle capture cannot immediately replace the
-    // scroller's explicit capture and terminate the newly admitted owner.
-    const pointerId = event.pointerId;
-    queueMicrotask(() => {
-        if (handlePointerId === pointerId) gridContainer?.setPointerCapture?.(pointerId);
-    });
     const generation = ++handleGeneration;
     handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
@@ -1200,6 +1193,10 @@ function moveHandle(event: PointerEvent): void {
     event.stopPropagation();
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
+    // Touch implicit capture is assigned after pointerdown dispatch. Transfer
+    // it on the first real drag move, when that assignment is complete and
+    // before selection updates can replace the rendered handle element.
+    if (!gridContainer?.hasPointerCapture(event.pointerId)) gridContainer?.setPointerCapture?.(event.pointerId);
     if (!updateHandleSelection()) stopHandleDrag();
 }
 
