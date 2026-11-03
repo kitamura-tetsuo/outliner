@@ -1839,10 +1839,13 @@ function handleCancelDelete() {
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
     onlostpointercapture={(event) => {
-        // The old handle's implicit-capture loss bubbles through this node
-        // during transfer and when selection moves the rendered handle. Only
-        // loss dispatched for the stable scroller's own capture is terminal.
-        if (event.pointerId === handlePointerId && event.target === gridContainer) stopHandleDrag(event);
+        // Capture overrides settle after the transfer event dispatch. Check
+        // on the next frame so the old handle's implicit loss cannot terminate
+        // a drag that the stable scroller has successfully captured.
+        const pointerId = event.pointerId;
+        requestAnimationFrame(() => {
+            if (pointerId === handlePointerId && !gridContainer?.hasPointerCapture(pointerId)) stopHandleDrag();
+        });
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
             // while primary remains held. Window capture continues to own that
