@@ -1150,7 +1150,7 @@ function runHandleFrame(generation: number): void {
     if (direction !== 0) {
         const before = gridContainer.scrollLeft;
         const maximum = Math.max(0, gridContainer.scrollWidth - gridContainer.clientWidth);
-        gridContainer.scrollLeft = Math.max(0, Math.min(maximum, before + direction * 12));
+        gridContainer.scrollLeft = Math.max(0, Math.min(maximum, before + direction * 4));
         if (gridContainer.scrollLeft !== before && !updateHandleSelection()) {
             stopHandleDrag();
             return;
