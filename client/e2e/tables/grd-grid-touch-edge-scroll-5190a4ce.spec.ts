@@ -1,6 +1,6 @@
 /** @feature GRD-5190a4ce */
 import { devices, expect, test } from "@playwright/test";
-import { createOverflowingTouchGrid } from "../utils/gridTouchEdgeHelpers";
+import { createOverflowingTouchGrid, enterTouchRangeMode } from "../utils/gridTouchEdgeHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 import { TouchGestures } from "../utils/touchGestures";
@@ -17,9 +17,7 @@ test.describe("Grid touch handle edge scrolling", () => {
     test("a stationary real handle drag advances twice and reaches a hidden column", async ({ page }) => {
         const grid = await createOverflowingTouchGrid(page);
         const titleCell = grid.locator('tbody tr:first-child td[data-col="title"]');
-        const titleBox = await titleCell.boundingBox();
-        expect(titleBox).not.toBeNull();
-        await TouchGestures.longPress(page, TouchGestures.pointInBox(titleBox!, 0.5));
+        await enterTouchRangeMode(page, titleCell);
 
         const handle = grid.getByRole("button", { name: "Resize selection from end" });
         await expect(handle).toBeVisible();
@@ -28,7 +26,9 @@ test.describe("Grid touch handle edge scrolling", () => {
         expect(handleBox).not.toBeNull();
         expect(gridBox).not.toBeNull();
         const start = TouchGestures.pointInBox(handleBox!, 0.5);
-        const edge = { x: gridBox!.x + gridBox!.width - 2, y: start.y };
+        const titleBox = await titleCell.boundingBox();
+        expect(titleBox).not.toBeNull();
+        const edge = { x: gridBox!.x + gridBox!.width - 2, y: titleBox!.y + titleBox!.height / 2 };
         const offsets: number[] = [];
 
         await TouchGestures.longPressDragAndHold(page, start, edge, async () => {
@@ -62,14 +62,14 @@ test.describe("Grid touch handle edge scrolling", () => {
 
         const done = grid.locator('tbody tr:first-child td[data-col="done"]');
         await expect(done).toBeVisible();
+        await enterTouchRangeMode(page, done);
         const doneBox = await done.boundingBox();
         expect(doneBox).not.toBeNull();
-        await TouchGestures.longPress(page, TouchGestures.pointInBox(doneBox!, 0.5));
         const handle = grid.getByRole("button", { name: "Resize selection from start" });
         const handleBox = await handle.boundingBox();
         expect(handleBox).not.toBeNull();
         const before = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
-        const left = { x: box!.x + 2, y: handleBox!.y + handleBox!.height / 2 };
+        const left = { x: box!.x + 2, y: doneBox!.y + doneBox!.height / 2 };
         const middle = { x: box!.x + box!.width / 2, y: left.y };
         const right = { x: box!.x + box!.width - 2, y: left.y };
 

@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { commitWidthsProduction, singleGridId } from "./gridWidthHelpers";
+import { TouchGestures } from "./touchGestures";
 
 export async function createOverflowingTouchGrid(page: Page): Promise<Locator> {
     await page.locator(".outliner-item").first().click();
@@ -30,4 +31,16 @@ export async function placeSameGridAgain(page: Page): Promise<Locator> {
     await panel.getByTestId("yjs-grid-select-existing").click();
     await expect(page.getByTestId("yjs-table-grid")).toHaveCount(2);
     return page.getByTestId("yjs-table-grid").nth(1);
+}
+
+/** Activates an existing logical cell, then enters production long-press range mode. */
+export async function enterTouchRangeMode(page: Page, cell: Locator): Promise<void> {
+    await cell.scrollIntoViewIfNeeded();
+    const box = await cell.boundingBox();
+    expect(box).not.toBeNull();
+    const point = TouchGestures.pointInBox(box!, 0.5);
+    await page.touchscreen.tap(point.x, point.y);
+    await page.waitForTimeout(400);
+    await TouchGestures.longPress(page, point);
+    await expect(page.getByRole("toolbar", { name: "Grid selection actions" })).toBeVisible();
 }
