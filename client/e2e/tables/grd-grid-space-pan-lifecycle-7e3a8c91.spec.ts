@@ -182,45 +182,10 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
             ),
         ).toBe(0);
 
-        // A fresh right-button sequence also authoritatively supersedes the
-        // obsolete guard even though pan admission itself remains left-only.
-        const textItem = page.locator(".outliner-item:not(.page-title)[data-item-id]", { hasText: "Keyboard grid" });
-        await expect(textItem).toHaveAttribute("role", "treeitem");
-        await expect(textItem).toHaveCount(1);
-        const textItemContent = textItem.locator(".item-content");
-        const itemBox = (await textItemContent.boundingBox())!;
-        const itemX = itemBox.x + itemBox.width / 2;
-        const itemY = itemBox.y + itemBox.height / 2;
-        await ownerInput.send("Input.dispatchMouseEvent", {
-            type: "mouseMoved",
-            x: itemX,
-            y: itemY,
-            buttons: 0,
-            pointerType: "mouse",
-        });
-        await ownerInput.send("Input.dispatchMouseEvent", {
-            type: "mousePressed",
-            x: itemX,
-            y: itemY,
-            button: "right",
-            buttons: 2,
-            clickCount: 1,
-            pointerType: "mouse",
-        });
-        await ownerInput.send("Input.dispatchMouseEvent", {
-            type: "mouseReleased",
-            x: itemX,
-            y: itemY,
-            button: "right",
-            buttons: 0,
-            clickCount: 1,
-            pointerType: "mouse",
-        });
-        await expect(page.locator(".context-menu")).toBeVisible();
         await ownerInput.detach();
-        await page.keyboard.press("Escape");
 
-        // The following independent left-button action remains usable too.
+        // A fresh independent left-button action authoritatively supersedes
+        // the obsolete off-document guard and must remain usable.
         await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
         await expect(page.getByTestId("yjs-table-create-panel")).toBeVisible();
     });

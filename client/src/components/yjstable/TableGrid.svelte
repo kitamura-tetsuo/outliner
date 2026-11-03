@@ -239,6 +239,8 @@ let panActive = $state(false);
 let panPointerId: number | undefined;
 let panStartX = 0;
 let panStartScrollLeft = 0;
+/** A secondary mouse transition can make Chromium drop implicit capture. */
+let panChordTransition = false;
 /** Owner whose eventual release/click still belongs to an admitted pan. */
 let panGuardPointerId: number | undefined;
 let suppressPanClick = false;
@@ -319,6 +321,7 @@ function handlePanPointerDown(event: PointerEvent): void {
     panGuardPointerId = event.pointerId;
     panStartX = event.clientX;
     panStartScrollLeft = gridContainer.scrollLeft;
+    panChordTransition = false;
     suppressPanClick = false;
     gridContainer.setPointerCapture(event.pointerId);
 }
@@ -358,6 +361,8 @@ function handlePanPointerMove(event: PointerEvent): void {
     if (event.pointerId !== panPointerId) return;
     event.preventDefault();
     event.stopPropagation();
+    panChordTransition = event.pointerType === "mouse" && (event.button === 1 || event.button === 2)
+        && (event.buttons & 1) !== 0;
     if ((event.buttons & 1) === 0 || !gridContainer.isConnected) {
         endPan(true, true);
         // Chorded mouse input reports the primary release as pointermove while
@@ -1730,7 +1735,13 @@ function handleCancelDelete() {
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
     onlostpointercapture={(event) => {
-        if (panActive && event.pointerId === panPointerId) endPan(true, true);
+        if (panActive && event.pointerId === panPointerId) {
+            // Chromium may drop implicit capture as a secondary button changes
+            // while primary remains held. Window capture continues to own that
+            // admitted sequence; every other capture loss is terminal.
+            if (panChordTransition) panChordTransition = false;
+            else endPan(true, true);
+        }
     }}
     onfocusout={handlePanFocusOut}
 >
