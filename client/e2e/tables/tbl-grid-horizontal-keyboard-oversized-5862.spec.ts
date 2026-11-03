@@ -49,16 +49,42 @@ test.describe("Grid oversized keyboard reveal (#5862)", () => {
             before.scrollTop,
         ]);
 
-        // Put the oversized target at the outer edge, then prove a clamped
-        // key does not realign the offset established by ordinary selection.
+        // Put the oversized target at the outer edge, then use a real
+        // horizontal wheel gesture to move it away from its reveal alignment.
+        // A clamped key must preserve this user-chosen offset rather than
+        // silently aligning the same logical cell again.
         for (let i = 0; i < 3; i++) {
             await titleHeader.focus();
             await titleHeader.press("Alt+ArrowRight");
         }
         await selectAndFocusCell(target);
-        const edge = await gridRevealGeometry(grid, target);
+        const aligned = await gridRevealGeometry(grid, target);
+        expect(Math.abs(aligned.targetLeft - aligned.gridLeft)).toBeLessThanOrEqual(1);
+
+        await grid.hover();
+        await page.mouse.wheel(240, 0);
+        await expect.poll(async () => (await gridRevealGeometry(grid, target)).scrollLeft).toBeGreaterThan(
+            aligned.scrollLeft,
+        );
+
+        const userOffset = await gridRevealGeometry(grid, target);
+        expect(userOffset.scrollLeft).toBeGreaterThan(0);
+        expect(userOffset.scrollLeft).toBeLessThan(userOffset.scrollWidth - userOffset.clientWidth);
+        expect(Math.abs(userOffset.targetLeft - userOffset.gridLeft)).toBeGreaterThan(1);
+        await expect(target).toHaveClass(/grid-active/);
+        await expect(target.locator("button")).toBeFocused();
+
         await page.keyboard.press("ArrowRight");
-        expect((await gridRevealGeometry(grid, target)).scrollLeft).toBe(edge.scrollLeft);
+        await page.keyboard.press("ArrowRight");
+        const clamped = await gridRevealGeometry(grid, target);
+        expect(clamped.scrollLeft).toBe(userOffset.scrollLeft);
+        expect([clamped.pageX, clamped.pageY, clamped.scrollTop]).toEqual([
+            userOffset.pageX,
+            userOffset.pageY,
+            userOffset.scrollTop,
+        ]);
+        await expect(target).toHaveClass(/grid-active/);
+        await expect(target.locator("button")).toBeFocused();
     });
 
     test("leftward entry aligns the right edge and an unchanged boundary key is stable", async ({ page }) => {
