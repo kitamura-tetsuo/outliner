@@ -23,17 +23,32 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
         expect(cellBox).not.toBeNull();
         const handleBox = await owner.getByRole("button", { name: "Resize selection from end" }).boundingBox();
         const ownerBox = await owner.boundingBox();
+        const foreignCell = foreign.locator('tbody tr:first-child td[data-col="title"]');
+        const foreignCellBox = await foreignCell.boundingBox();
         expect(handleBox).not.toBeNull();
         expect(ownerBox).not.toBeNull();
+        expect(foreignCellBox).not.toBeNull();
 
         await TouchGestures.longPressDragAndHold(
             page,
             TouchGestures.pointInBox(handleBox!, 0.5),
             { x: ownerBox!.x + ownerBox!.width - 2, y: cellBox!.y + cellBox!.height / 2 },
-            async () => {
+            async contact => {
                 await expect.poll(() => owner.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 expect(await foreign.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(0);
                 await expect(foreign.locator("td.grid-selected")).toHaveCount(0);
+                const ownerSelection = await owner.locator("td.grid-selected").evaluateAll(cells =>
+                    cells.map(cell => (cell as HTMLElement).dataset.col)
+                );
+                await contact.move(TouchGestures.pointInBox(foreignCellBox!, 0.5));
+                await page.waitForTimeout(150);
+                expect(await foreign.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(0);
+                await expect(foreign.locator("td.grid-selected")).toHaveCount(0);
+                expect(
+                    await owner.locator("td.grid-selected").evaluateAll(cells =>
+                        cells.map(cell => (cell as HTMLElement).dataset.col)
+                    ),
+                ).toEqual(ownerSelection);
             },
             50,
         );
