@@ -297,7 +297,11 @@ function isFreshPrimaryMouseDown(event: PointerEvent): boolean {
 }
 
 function isFreshMouseDown(event: PointerEvent): boolean {
-    if (!event.isPrimary || event.pointerType !== "mouse") return false;
+    // Mouse input has one compatibility-event stream. Do not require
+    // `isPrimary` here: after the owning document loses focus, Chromium may
+    // expose the first button transition in the restored document without
+    // preserving that document-local primary designation.
+    if (event.pointerType !== "mouse") return false;
     const buttonMask = event.button === 0 ? 1 : event.button === 1 ? 4 : event.button === 2 ? 2 : 0;
     return buttonMask !== 0 && event.buttons === buttonMask;
 }

@@ -77,13 +77,15 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
             await page.mouse.move(x, y);
             await page.mouse.down({ button: "left" });
             await page.mouse.down({ button: secondary });
-            await page.mouse.move(x - 60, y, { steps: 2 });
+            const maximum = await grid.evaluate(element => element.scrollWidth - element.clientWidth);
+            expect(maximum).toBeGreaterThan(40);
+            await page.mouse.move(x - 20, y, { steps: 2 });
             await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
             await page.mouse.up({ button: secondary });
             await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
             await expect(grid).toHaveClass(/pan-active/);
             const afterSecondaryRelease = await grid.evaluate(element => element.scrollLeft);
-            await page.mouse.move(x - 100, y, { steps: 2 });
+            await page.mouse.move(x - 40, y, { steps: 2 });
             await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(
                 afterSecondaryRelease,
             );
