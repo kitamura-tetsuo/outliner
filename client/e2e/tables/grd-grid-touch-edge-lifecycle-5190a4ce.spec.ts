@@ -145,11 +145,14 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
             async () => {
                 const handle = grid.getByRole("button", { name: "Resize selection from end" });
                 const ownerPoint = await TouchGestures.hittablePoint(handle);
+                await page.mouse.move(ownerPoint.x, ownerPoint.y);
+                await page.mouse.down();
+                // Let the owner's first geometry update settle while still
+                // observing before the pre-existing 500ms touch timer.
+                await page.waitForTimeout(100);
                 const selectedBefore = await grid.locator("td.grid-selected").evaluateAll(cells =>
                     cells.map(cell => (cell as HTMLElement).dataset.col)
                 );
-                await page.mouse.move(ownerPoint.x, ownerPoint.y);
-                await page.mouse.down();
                 await page.waitForTimeout(TouchGestures.LONG_PRESS_HOLD_MS);
                 expect(
                     await grid.locator("td.grid-selected").evaluateAll(cells =>

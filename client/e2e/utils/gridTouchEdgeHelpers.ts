@@ -30,6 +30,9 @@ export async function createOverflowingTouchGrid(
         ? { id: 1_000, title: 180, done: 180 }
         : { id: 180, title: 180, done: 1_000 };
     await commitWidthsProduction(page, await singleGridId(page), widths);
+    const wideColumn = overflowSide === "before" ? "id" : "done";
+    await expect.poll(async () => (await grid.locator(`th[data-col="${wideColumn}"]`).boundingBox())?.width)
+        .toBeGreaterThanOrEqual(999);
     await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollWidth > node.clientWidth)).toBe(true);
     return grid;
 }
