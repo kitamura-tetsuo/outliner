@@ -235,6 +235,7 @@ let handlePointerY = 0;
 let handleFrame: number | undefined;
 let handleGeneration = 0;
 let handleScrollerCaptured = false;
+let handleCaptureLossArmed = false;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -1182,6 +1183,7 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     touchStart = undefined;
     handlePointerId = event.pointerId;
     handleScrollerCaptured = false;
+    handleCaptureLossArmed = false;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
@@ -1214,6 +1216,7 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleMovingCell = undefined;
     handlePointerId = undefined;
     handleScrollerCaptured = false;
+    handleCaptureLossArmed = false;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
@@ -1873,7 +1876,16 @@ function handleCancelDelete() {
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
     ongotpointercapture={(event) => {
-        if (event.pointerId === handlePointerId && event.target === gridContainer) handleScrollerCaptured = true;
+        if (event.pointerId === handlePointerId && event.target === gridContainer) {
+            const pointerId = event.pointerId;
+            handleScrollerCaptured = true;
+            handleCaptureLossArmed = false;
+            requestAnimationFrame(() => {
+                if (handlePointerId === pointerId && gridContainer?.hasPointerCapture(pointerId)) {
+                    handleCaptureLossArmed = true;
+                }
+            });
+        }
     }}
     onlostpointercapture={(event) => {
         // The handle's implicit-capture loss bubbles here when ownership is
@@ -1881,7 +1893,7 @@ function handleCancelDelete() {
         // has actually acquired capture is terminal for the owned drag.
         if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
             handleScrollerCaptured = false;
-            stopHandleDrag();
+            if (handleCaptureLossArmed) stopHandleDrag();
         }
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
