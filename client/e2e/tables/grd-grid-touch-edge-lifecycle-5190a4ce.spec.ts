@@ -100,6 +100,11 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
             { x: gridBox!.x + gridBox!.width - 2, y: titleBox!.y + titleBox!.height / 2 },
             async contact => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
+                await contact.move({
+                    x: gridBox!.x + gridBox!.width / 2,
+                    y: titleBox!.y + titleBox!.height / 2,
+                });
+                await page.waitForTimeout(100);
                 const otherHandle = grid.getByRole("button", { name: "Resize selection from start" });
                 const before = await grid.locator("td.grid-selected").evaluateAll(cells =>
                     cells.map(cell => (cell as HTMLElement).dataset.col)
@@ -112,8 +117,11 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                     ),
                 ).toEqual(before);
                 const offset = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
-                await contact.move({ x: gridBox!.x + 2, y: titleBox!.y + titleBox!.height / 2 });
-                await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeLessThan(offset);
+                await contact.move({
+                    x: gridBox!.x + gridBox!.width - 2,
+                    y: titleBox!.y + titleBox!.height / 2,
+                });
+                await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(offset);
             },
             50,
         );

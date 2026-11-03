@@ -69,7 +69,7 @@ test.describe("Grid touch handle edge scrolling", () => {
     });
 
     test("the start handle scrolls left, stops in the interior, reverses, and cancels cleanly", async ({ page }) => {
-        const grid = await createOverflowingTouchGrid(page);
+        const grid = await createOverflowingTouchGrid(page, "before");
         const box = await grid.boundingBox();
         expect(box).not.toBeNull();
         await grid.hover();

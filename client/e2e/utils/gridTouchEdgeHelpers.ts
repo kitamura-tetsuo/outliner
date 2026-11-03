@@ -2,7 +2,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { commitWidthsProduction, singleGridId } from "./gridWidthHelpers";
 import { TouchGestures } from "./touchGestures";
 
-export async function createOverflowingTouchGrid(page: Page): Promise<Locator> {
+export async function createOverflowingTouchGrid(
+    page: Page,
+    overflowSide: "before" | "after" = "after",
+): Promise<Locator> {
     await page.locator(".outliner-item").first().click();
     const addDatabase = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
     await expect(addDatabase).toBeVisible({ timeout: 10_000 });
@@ -20,9 +23,13 @@ export async function createOverflowingTouchGrid(page: Page): Promise<Locator> {
     // few hundred overflow pixels, the 12px animation loop can reach the
     // physical bound before Playwright's first polling interval and obscure
     // whether stationary scrolling advanced more than once.
-    // Keep both endpoint cells narrower than the mobile viewport so their
-    // rendered corner handles remain hit-testable after scrollIntoView.
-    await commitWidthsProduction(page, await singleGridId(page), { id: 1_000, title: 180, done: 180 });
+    // Put the wide column on the side the test is scrolling away from. The two
+    // endpoint cells then remain adjacent and fully hit-testable while there is
+    // still substantial physical travel in the tested direction.
+    const widths = overflowSide === "before"
+        ? { id: 1_000, title: 180, done: 180 }
+        : { id: 180, title: 180, done: 1_000 };
+    await commitWidthsProduction(page, await singleGridId(page), widths);
     await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollWidth > node.clientWidth)).toBe(true);
     return grid;
 }
