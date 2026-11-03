@@ -16,7 +16,11 @@ export async function createOverflowingTouchGrid(page: Page): Promise<Locator> {
     await expect(grid.locator('th[data-col="title"]')).toBeVisible({ timeout: 15_000 });
     await page.getByTestId("yjs-table-add-row").first().click();
     await expect(grid.locator("tbody tr")).toHaveCount(1, { timeout: 10_000 });
-    await commitWidthsProduction(page, await singleGridId(page), { id: 180, title: 300, done: 180 });
+    // Leave enough real overflow for separate frame observations. With only a
+    // few hundred overflow pixels, the 12px animation loop can reach the
+    // physical bound before Playwright's first polling interval and obscure
+    // whether stationary scrolling advanced more than once.
+    await commitWidthsProduction(page, await singleGridId(page), { id: 360, title: 600, done: 360 });
     await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollWidth > node.clientWidth)).toBe(true);
     return grid;
 }
