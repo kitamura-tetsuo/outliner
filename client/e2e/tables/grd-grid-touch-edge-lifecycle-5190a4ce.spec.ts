@@ -127,6 +127,43 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
         );
     });
 
+    test("handle ownership invalidates an earlier ordinary touch timer", async ({ page }) => {
+        const grid = await createOverflowingTouchGrid(page);
+        const title = grid.locator('tbody tr:first-child td[data-col="title"]');
+        await enterTouchRangeMode(page, title);
+        const ordinaryCell = grid.locator('tbody tr:first-child td[data-col="id"]');
+        const ordinaryBox = await ordinaryCell.boundingBox();
+        const gridBox = await grid.boundingBox();
+        expect(ordinaryBox).not.toBeNull();
+        expect(gridBox).not.toBeNull();
+
+        const ordinaryPoint = TouchGestures.pointInBox(ordinaryBox!, 0.5);
+        await TouchGestures.longPressDragAndHold(
+            page,
+            ordinaryPoint,
+            ordinaryPoint,
+            async () => {
+                const handle = grid.getByRole("button", { name: "Resize selection from end" });
+                const ownerPoint = await TouchGestures.hittablePoint(handle);
+                const selectedBefore = await grid.locator("td.grid-selected").evaluateAll(cells =>
+                    cells.map(cell => (cell as HTMLElement).dataset.col)
+                );
+                await page.mouse.move(ownerPoint.x, ownerPoint.y);
+                await page.mouse.down();
+                await page.waitForTimeout(TouchGestures.LONG_PRESS_HOLD_MS);
+                expect(
+                    await grid.locator("td.grid-selected").evaluateAll(cells =>
+                        cells.map(cell => (cell as HTMLElement).dataset.col)
+                    ),
+                ).toEqual(selectedBefore);
+                await page.mouse.move(gridBox!.x + gridBox!.width - 2, ordinaryBox!.y + ordinaryBox!.height / 2);
+                await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
+                await page.mouse.up();
+            },
+            50,
+        );
+    });
+
     test("removing the owning placement makes queued handle work inert", async ({ page }) => {
         const grid = await createOverflowingTouchGrid(page);
         const cell = grid.locator('tbody tr:first-child td[data-col="title"]');

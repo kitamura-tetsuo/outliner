@@ -1174,6 +1174,11 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
         stopHandleDrag();
         return;
     }
+    // Ownership supersedes any undecided ordinary touch that began before the
+    // handle press. Otherwise its already-armed long-press timer can mutate
+    // this range after a different pointer has become the handle owner.
+    cancelLongPress();
+    touchStart = undefined;
     handlePointerId = event.pointerId;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
