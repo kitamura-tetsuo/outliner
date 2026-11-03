@@ -1196,16 +1196,12 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     suppressClickUntil = Date.now() + 1_000;
     const generation = ++handleGeneration;
     // Admission is complete on pointerdown, so start the edge loop without
-    // waiting for capture processing or another pointer event. Touch implicit
-    // capture is assigned after pointerdown dispatch; transfer it to the stable
-    // scroller in a later task so that assignment cannot overwrite our target.
-    // Owner/generation checks make the deferred transfer inert after teardown.
+    // waiting for another pointer event. The mounted handle remains the stable
+    // capture owner while its logical endpoint moves across cells.
+    handleOriginElement.setPointerCapture(event.pointerId);
+    handleScrollerCaptured = true;
+    handleCaptureLossArmed = true;
     handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
-    setTimeout(() => {
-        if (handlePointerId === event.pointerId && generation === handleGeneration) {
-            gridContainer?.setPointerCapture?.(event.pointerId);
-        }
-    });
 }
 
 function moveHandle(event: PointerEvent): void {
@@ -1221,6 +1217,7 @@ function moveHandle(event: PointerEvent): void {
 function stopHandleDrag(event?: PointerEvent): void {
     if (event && event.pointerId !== handlePointerId) return;
     const pointerId = handlePointerId;
+    const originElement = handleOriginElement;
     if (pointerId !== undefined) suppressClickUntil = Date.now() + 500;
     handleGeneration++;
     if (handleFrame !== undefined) cancelAnimationFrame(handleFrame);
@@ -1233,7 +1230,9 @@ function stopHandleDrag(event?: PointerEvent): void {
     handlePointerId = undefined;
     handleScrollerCaptured = false;
     handleCaptureLossArmed = false;
-    if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
+    if (pointerId !== undefined && originElement?.hasPointerCapture(pointerId)) {
+        originElement.releasePointerCapture(pointerId);
+    }
 }
 
 function isSelectionEnd(cell: GridCellAddress, end: "anchor" | "focus"): boolean {
@@ -1892,7 +1891,8 @@ function handleCancelDelete() {
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
     ongotpointercapture={(event) => {
-        if (event.pointerId === handlePointerId && event.target === gridContainer) {
+        if (event.pointerId === handlePointerId
+            && (event.target === handleOriginElement || event.target === gridContainer)) {
             const generation = handleGeneration;
             handleScrollerCaptured = true;
             handleCaptureLossArmed = true;
@@ -1900,13 +1900,11 @@ function handleCancelDelete() {
         }
     }}
     onlostpointercapture={(event) => {
-        // The admission handle stays mounted while its logical endpoint moves,
-        // so its transfer loss retains that button as event.target and bubbles
-        // through this element without matching. A loss targeted at the stable
-        // scroller after acquisition is terminal for this owned generation.
-        const transferFromHandle = handleOriginElement !== undefined && event.composedPath().includes(handleOriginElement);
-        if (!transferFromHandle && event.pointerId === handlePointerId
-            && event.target === gridContainer && handleScrollerCaptured) {
+        // The admission handle stays mounted and owns capture while its logical
+        // endpoint moves. Loss from that handle (or the container fallback) is
+        // terminal for this owned generation.
+        if (event.pointerId === handlePointerId && handleScrollerCaptured
+            && (event.target === handleOriginElement || event.target === gridContainer)) {
             const pointerId = event.pointerId;
             const generation = handleGeneration;
             const establishedLoss = handleCaptureLossArmed;
@@ -1915,7 +1913,9 @@ function handleCancelDelete() {
             queueMicrotask(() => {
                 if (pointerId !== handlePointerId || generation !== handleGeneration) return;
                 if (establishedLoss) {
-                    if (!gridContainer?.hasPointerCapture(pointerId)) stopHandleDrag();
+                    const ownerHasCapture = handleOriginElement?.hasPointerCapture(pointerId)
+                        || gridContainer?.hasPointerCapture(pointerId);
+                    if (!ownerHasCapture) stopHandleDrag();
                 }
             });
         }
