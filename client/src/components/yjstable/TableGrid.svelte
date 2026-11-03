@@ -234,6 +234,7 @@ let handlePointerX = 0;
 let handlePointerY = 0;
 let handleFrame: number | undefined;
 let handleGeneration = 0;
+let handleScrollerCaptured = false;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -1180,6 +1181,7 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     cancelLongPress();
     touchStart = undefined;
     handlePointerId = event.pointerId;
+    handleScrollerCaptured = false;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
@@ -1211,6 +1213,7 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleOppositeCell = undefined;
     handleMovingCell = undefined;
     handlePointerId = undefined;
+    handleScrollerCaptured = false;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
@@ -1869,11 +1872,17 @@ function handleCancelDelete() {
     onkeyupcapture={handlePanKeyUp}
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
+    ongotpointercapture={(event) => {
+        if (event.pointerId === handlePointerId && event.target === gridContainer) handleScrollerCaptured = true;
+    }}
     onlostpointercapture={(event) => {
         // The handle's implicit-capture loss bubbles here when ownership is
-        // transferred to the stable scroller. Only capture loss dispatched by
-        // that scroller is terminal for the owned drag.
-        if (event.pointerId === handlePointerId && event.target === gridContainer) stopHandleDrag();
+        // transferred to the stable scroller. Only loss after that scroller
+        // has actually acquired capture is terminal for the owned drag.
+        if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
+            handleScrollerCaptured = false;
+            stopHandleDrag();
+        }
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
             // while primary remains held. Window capture continues to own that
