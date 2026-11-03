@@ -237,6 +237,7 @@ let handleGeneration = 0;
 let handleScrollerCaptured = false;
 let handleCaptureLossArmed = false;
 let handleCaptureTransferPending = false;
+let handleScrollAdvances = 0;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -1157,6 +1158,13 @@ function runHandleFrame(generation: number): void {
             stopHandleDrag();
             return;
         }
+        if (gridContainer.scrollLeft !== before) {
+            handleScrollAdvances++;
+            if (handleScrollAdvances >= 2 && handleScrollerCaptured
+                && handlePointerId !== undefined && gridContainer.hasPointerCapture(handlePointerId)) {
+                handleCaptureLossArmed = true;
+            }
+        }
     }
     handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
@@ -1186,6 +1194,7 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handleScrollerCaptured = false;
     handleCaptureLossArmed = false;
     handleCaptureTransferPending = true;
+    handleScrollAdvances = 0;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
@@ -1227,6 +1236,7 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleScrollerCaptured = false;
     handleCaptureLossArmed = false;
     handleCaptureTransferPending = false;
+    handleScrollAdvances = 0;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
@@ -1889,7 +1899,7 @@ function handleCancelDelete() {
         if (event.pointerId === handlePointerId && event.target === gridContainer) {
             const generation = handleGeneration;
             handleScrollerCaptured = true;
-            handleCaptureLossArmed = !handleCaptureTransferPending;
+            handleCaptureLossArmed = handleScrollAdvances >= 2;
             if (handleFrame === undefined) handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
         }
     }}
@@ -1906,7 +1916,6 @@ function handleCancelDelete() {
             const pointerId = event.pointerId;
             const generation = handleGeneration;
             const establishedLoss = handleCaptureLossArmed;
-            const transferLoss = handleCaptureTransferPending;
             handleScrollerCaptured = false;
             handleCaptureLossArmed = false;
             handleCaptureTransferPending = false;
@@ -1914,10 +1923,11 @@ function handleCancelDelete() {
                 if (pointerId !== handlePointerId || generation !== handleGeneration) return;
                 if (establishedLoss) {
                     if (!gridContainer?.hasPointerCapture(pointerId)) stopHandleDrag();
-                } else if (transferLoss && !gridContainer?.hasPointerCapture(pointerId)) {
+                } else if (!gridContainer?.hasPointerCapture(pointerId)) {
                     // The handle's implicit capture can be reported as a Grid
-                    // loss during transfer. Retry only until Grid capture has
-                    // survived a frame; every later loss remains terminal.
+                    // loss during transfer. Retry while the first two real
+                    // advances establish both stationary progress and stable
+                    // Grid capture; loss after that boundary is terminal.
                     setTimeout(() => {
                         if (pointerId === handlePointerId && generation === handleGeneration) {
                             gridContainer?.setPointerCapture?.(pointerId);
