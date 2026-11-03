@@ -153,12 +153,31 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                 const selectedBefore = await grid.locator("td.grid-selected").evaluateAll(cells =>
                     cells.map(cell => (cell as HTMLElement).dataset.col)
                 );
+                await grid.evaluate(node => {
+                    const selectedColumns = () =>
+                        Array.from(node.querySelectorAll<HTMLElement>("td.grid-selected"), cell => cell.dataset.col);
+                    const observed: Array<Array<string | undefined>> = [];
+                    const observer = new MutationObserver(() => observed.push(selectedColumns()));
+                    observer.observe(node, { attributes: true, attributeFilter: ["class"], subtree: true });
+                    Object.assign(window, { __gridSelectionTransitions: observed, __gridSelectionObserver: observer });
+                });
                 await page.waitForTimeout(TouchGestures.LONG_PRESS_HOLD_MS);
                 expect(
                     await grid.locator("td.grid-selected").evaluateAll(cells =>
                         cells.map(cell => (cell as HTMLElement).dataset.col)
                     ),
                 ).toEqual(selectedBefore);
+                const transitions = await page.evaluate(() => {
+                    const testWindow = window as typeof window & {
+                        __gridSelectionObserver?: MutationObserver;
+                        __gridSelectionTransitions?: Array<Array<string | undefined>>;
+                    };
+                    testWindow.__gridSelectionObserver?.disconnect();
+                    return testWindow.__gridSelectionTransitions ?? [];
+                });
+                expect(transitions.every(selected => JSON.stringify(selected) === JSON.stringify(selectedBefore))).toBe(
+                    true,
+                );
                 await page.mouse.move(gridBox!.x + gridBox!.width - 2, ordinaryBox!.y + ordinaryBox!.height / 2);
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 await page.mouse.up();
