@@ -22,7 +22,7 @@ export async function createOverflowingTouchGrid(page: Page): Promise<Locator> {
     // whether stationary scrolling advanced more than once.
     // Keep both endpoint cells narrower than the mobile viewport so their
     // rendered corner handles remain hit-testable after scrollIntoView.
-    await commitWidthsProduction(page, await singleGridId(page), { id: 1_000, title: 300, done: 300 });
+    await commitWidthsProduction(page, await singleGridId(page), { id: 1_000, title: 180, done: 180 });
     await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollWidth > node.clientWidth)).toBe(true);
     return grid;
 }
