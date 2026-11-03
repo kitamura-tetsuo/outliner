@@ -124,9 +124,11 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
             before.pageY,
         ]);
 
-        // The ID control is intentionally disabled, so focus remains on the
-        // previous eligible control rather than enabling ID for this test.
-        await expect(firstRow.locator("td[data-col='repeat_days'] button")).toBeFocused();
+        // The ID control is intentionally disabled. The logical target is
+        // revealed without inventing focus eligibility for that control.
+        const idControl = secondRow.locator("td[data-col='id'] button");
+        await expect(idControl).toBeDisabled();
+        await expect(idControl).not.toBeFocused();
     });
 
     test("an already-contained target does not move the Grid or page", async ({ page }) => {
