@@ -1054,7 +1054,10 @@ function touchCellPointerUp(event: PointerEvent): void {
 }
 
 function suppressSyntheticTouchClick(event: MouseEvent): void {
-    if (Date.now() >= suppressClickUntil) return;
+    // No click (including one synthesized by a different pointer type) may
+    // retarget the selection while a handle pointer owns this placement. The
+    // timestamp only covers the owner's delayed release click after teardown.
+    if (handlePointerId === undefined && Date.now() >= suppressClickUntil) return;
     event.preventDefault();
     event.stopPropagation();
 }

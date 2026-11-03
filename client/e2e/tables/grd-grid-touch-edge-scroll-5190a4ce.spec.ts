@@ -32,12 +32,6 @@ test.describe("Grid touch handle edge scrolling", () => {
         const offsets: number[] = [];
 
         await TouchGestures.longPressDragAndHold(page, start, edge, async () => {
-            // A mouse is independently "primary" while this touch owns the
-            // placement. Its down/up at the other coincident handle must not
-            // replace the touch owner or terminate the queued edge loop.
-            await page.mouse.move(start.x, start.y);
-            await page.mouse.down();
-            await page.mouse.up();
             await expect.poll(async () => {
                 offsets.push(await grid.evaluate((node: HTMLElement) => node.scrollLeft));
                 return offsets.at(-1);
@@ -45,9 +39,29 @@ test.describe("Grid touch handle edge scrolling", () => {
             const first = offsets.at(-1)!;
             await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(first);
             await expect(grid.locator('td[data-col="done"].grid-selected')).toBeVisible();
+
+            // Keep A live beyond the post-down click timer, then deliver a
+            // real mouse B click to the handle's current rendered position.
+            // B must neither replace A nor collapse its range through the td.
+            await page.waitForTimeout(1_100);
+            const currentHandleBox = await handle.boundingBox();
+            expect(currentHandleBox).not.toBeNull();
+            const selectedBefore = await grid.locator("td.grid-selected").evaluateAll(cells =>
+                cells.map(cell => (cell as HTMLElement).dataset.col)
+            );
+            const currentHandlePoint = TouchGestures.pointInBox(currentHandleBox!, 0.5);
+            await page.mouse.click(currentHandlePoint.x, currentHandlePoint.y);
+            expect(
+                await grid.locator("td.grid-selected").evaluateAll(cells =>
+                    cells.map(cell => (cell as HTMLElement).dataset.col)
+                ),
+            ).toEqual(selectedBefore);
         }, 50);
 
-        expect(await grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
+        const released = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
+        expect(released).toBeGreaterThan(0);
+        await page.waitForTimeout(150);
+        expect(await grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(released);
         await expect(titleCell).toHaveClass(/grid-selected/);
         await expect(grid.locator('td[data-col="id"].grid-selected')).toHaveCount(0);
     });
@@ -86,6 +100,14 @@ test.describe("Grid touch handle edge scrolling", () => {
                 expect(await grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(stopped);
                 await contact.move(right);
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(stopped);
+                await expect.poll(() =>
+                    grid.evaluate((node: HTMLElement) => node.scrollWidth - node.clientWidth - node.scrollLeft)
+                ).toBeLessThanOrEqual(0);
+                const boundary = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
+                await page.waitForTimeout(150);
+                expect(await grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(boundary);
+                await expect(done).toHaveClass(/grid-selected/);
+                await expect(grid.locator('td[data-col="title"]')).toHaveClass(/grid-selected/);
                 await contact.cancel();
                 const cancelled = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
                 await page.waitForTimeout(100);
