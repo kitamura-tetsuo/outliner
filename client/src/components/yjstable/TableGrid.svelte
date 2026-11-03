@@ -764,6 +764,10 @@ function sameCell(left: GridCellAddress | undefined, right: GridCellAddress): bo
 }
 
 function finishSelectionChange(): void {
+    // Selection-only gestures (including touch, whose synthetic click is
+    // suppressed) are newer user actions too. They must revoke any edit-exit
+    // focus request that is still waiting for a replacement row to render.
+    focusRequestRevision++;
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
@@ -819,6 +823,7 @@ function touchCellPointerUp(event: PointerEvent): void {
     const isDoubleTap = lastTap !== undefined && sameCell(lastTap.cell, cell)
         && Date.now() - lastTap.at <= DOUBLE_TAP_MS;
     if (isDoubleTap) {
+        focusRequestRevision++;
         selection.select(cell);
         selectionRevision++;
         // Let this tap's native click reach the cell control. Text/number
@@ -860,6 +865,7 @@ function moveHandle(event: PointerEvent): void {
     event.preventDefault();
     const cell = cellAtPoint(event.clientX, event.clientY);
     if (!cell) return;
+    focusRequestRevision++;
     selection.select(handleOppositeCell ?? cell);
     selection.extend(cell, rowIdsOf(result.rows), displayColumns);
     selectionRevision++;
@@ -1340,6 +1346,7 @@ function handleGridKeyDown(event: KeyboardEvent) {
             if (!isActiveControl || !isReducibleRange) return;
         }
         event.preventDefault();
+        focusRequestRevision++;
         selection.cancelOrReduce();
         selectionRevision++;
         return;

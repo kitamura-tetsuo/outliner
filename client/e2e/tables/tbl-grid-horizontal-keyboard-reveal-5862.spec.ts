@@ -82,9 +82,19 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         const endpoint = await geometry(page, "repeat_days");
         expect(endpoint.targetLeft).toBeGreaterThanOrEqual(endpoint.gridLeft - 1);
         await expect(grid.locator("td.grid-selected")).toHaveCount(2);
+        await expect(row.locator("td[data-col='repeat_days']")).toHaveClass(/grid-active/);
+        await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-selected/);
 
         await page.keyboard.press("Shift+ArrowRight");
         await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-active/);
+
+        // Exercise the reverse Tab direction from a genuinely focusable
+        // control; the hidden ID control is never enabled for navigation.
+        await selectAndFocusCell(row.locator("td[data-col='title']"));
+        await page.keyboard.press("Shift+Tab");
+        await expect(row.locator("td[data-col='repeat_days']")).toHaveClass(/grid-active/);
+        const reverseTab = await geometry(page, "repeat_days");
+        expect(reverseTab.targetLeft).toBeGreaterThanOrEqual(reverseTab.gridLeft - 1);
     });
 
     test("Tab wraps while keeping the target visible and leaves page offsets unchanged", async ({ page }) => {
@@ -114,13 +124,32 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
             before.pageY,
         ]);
 
-        await page.keyboard.press("Shift+Tab");
-        await expect(firstRow.locator("td[data-col='repeat_days']")).toHaveClass(/grid-active/);
-        const wrappedBack = await geometry(page, "repeat_days");
-        expect(wrappedBack.targetLeft).toBeGreaterThanOrEqual(wrappedBack.gridLeft - 1);
-        expect(await page.evaluate(() => [globalThis.scrollX, globalThis.scrollY])).toEqual([
-            before.pageX,
-            before.pageY,
-        ]);
+        // The ID control is intentionally disabled, so focus remains on the
+        // previous eligible control rather than enabling ID for this test.
+        await expect(firstRow.locator("td[data-col='repeat_days'] button")).toBeFocused();
+    });
+
+    test("an already-contained target does not move the Grid or page", async ({ page }) => {
+        const gridId = await singleGridId(page);
+        await commitWidthsProduction(page, gridId, {
+            id: 100,
+            title: 100,
+            status: 100,
+            priority: 100,
+            due_date: 100,
+            repeat_days: 100,
+        });
+        const row = taskRow(page, firstRowId);
+        await selectAndFocusCell(row.locator("td[data-col='repeat_days']"));
+        const before = await geometry(page, "repeat_days");
+        const targetBefore = await geometry(page, "title");
+        expect(targetBefore.targetLeft).toBeGreaterThanOrEqual(targetBefore.gridLeft - 1);
+        expect(targetBefore.targetRight).toBeLessThanOrEqual(targetBefore.gridRight + 1);
+
+        await page.keyboard.press("ArrowRight");
+        await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-active/);
+        const after = await geometry(page, "title");
+        expect(after.scrollLeft).toBe(before.scrollLeft);
+        expect([after.pageX, after.pageY]).toEqual([before.pageX, before.pageY]);
     });
 });
