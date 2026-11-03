@@ -81,6 +81,20 @@ test.describe("Grid touch handle edge scrolling", () => {
         await enterTouchRangeMode(page, done);
         const doneBox = await done.boundingBox();
         expect(doneBox).not.toBeNull();
+        // Separate the coincident single-cell endpoints through the real end
+        // handle before exercising the start handle independently.
+        const initialEnd = grid.getByRole("button", { name: "Resize selection from end" });
+        const title = grid.locator('tbody tr:first-child td[data-col="title"]');
+        const titleBox = await title.boundingBox();
+        expect(titleBox).not.toBeNull();
+        await TouchGestures.longPressDragAndHold(
+            page,
+            await TouchGestures.hittablePoint(initialEnd),
+            TouchGestures.pointInBox(titleBox!, 0.5),
+            async () => {},
+            50,
+        );
+        await expect(title).toHaveClass(/grid-selected/);
         const handle = grid.getByRole("button", { name: "Resize selection from start" });
         const handleBox = await handle.boundingBox();
         expect(handleBox).not.toBeNull();

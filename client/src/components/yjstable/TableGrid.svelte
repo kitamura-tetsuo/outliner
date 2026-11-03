@@ -2374,6 +2374,7 @@ td > :global(.cell-value) {
 td.grid-selected {
     position: relative;
     background-color: rgb(37 99 235 / 12%);
+    z-index: 2;
 }
 
 td.grid-selected:not(.grid-active) {
@@ -2408,7 +2409,7 @@ td.grid-active {
     background-color: rgb(37 99 235 / 18%);
     outline: 2px solid #2563eb;
     outline-offset: -2px;
-    z-index: 1;
+    z-index: 2;
 }
 
 .touch-selection-handle {
