@@ -2,6 +2,14 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { commitWidthsProduction, singleGridId } from "./gridWidthHelpers";
 import { TouchGestures } from "./touchGestures";
 
+/** The owning scroll client's viewport, excluding overflowing layout width. */
+export async function gridClientBox(grid: Locator): Promise<{ x: number; y: number; width: number; height: number; }> {
+    return await grid.evaluate((node: HTMLElement) => {
+        const rect = node.getBoundingClientRect();
+        return { x: rect.left, y: rect.top, width: node.clientWidth, height: node.clientHeight };
+    });
+}
+
 export async function createOverflowingTouchGrid(
     page: Page,
     overflowSide: "before" | "after" = "after",

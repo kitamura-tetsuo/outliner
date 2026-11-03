@@ -1,6 +1,6 @@
 /** @feature GRD-5190a4ce */
 import { devices, expect, test } from "@playwright/test";
-import { createOverflowingTouchGrid, enterTouchRangeMode } from "../utils/gridTouchEdgeHelpers";
+import { createOverflowingTouchGrid, enterTouchRangeMode, gridClientBox } from "../utils/gridTouchEdgeHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 import { TouchGestures } from "../utils/touchGestures";
@@ -22,15 +22,14 @@ test.describe("Grid touch handle edge scrolling", () => {
         const handle = grid.getByRole("button", { name: "Resize selection from end" });
         await expect(handle).toBeVisible();
         const handleBox = await handle.boundingBox();
-        const gridBox = await grid.boundingBox();
+        const gridBox = await gridClientBox(grid);
         expect(handleBox).not.toBeNull();
-        expect(gridBox).not.toBeNull();
         // The handle is centred on the cell corner. Aim into its cell-facing
         // quadrant instead of the exact grid-line intersection.
         const start = await TouchGestures.hittablePoint(handle);
         const titleBox = await titleCell.boundingBox();
         expect(titleBox).not.toBeNull();
-        const edge = { x: gridBox!.x + gridBox!.width - 2, y: titleBox!.y + titleBox!.height / 2 };
+        const edge = { x: gridBox.x + gridBox.width - 2, y: titleBox!.y + titleBox!.height / 2 };
         const offsets: number[] = [];
 
         await TouchGestures.longPressDragAndHold(page, start, edge, async () => {
@@ -70,8 +69,7 @@ test.describe("Grid touch handle edge scrolling", () => {
 
     test("the start handle scrolls left, stops in the interior, reverses, and cancels cleanly", async ({ page }) => {
         const grid = await createOverflowingTouchGrid(page, "before");
-        const box = await grid.boundingBox();
-        expect(box).not.toBeNull();
+        const box = await gridClientBox(grid);
         await grid.hover();
         await page.mouse.wheel(500, 0);
         await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
@@ -88,7 +86,7 @@ test.describe("Grid touch handle edge scrolling", () => {
         await TouchGestures.longPressDragAndHold(
             page,
             await TouchGestures.hittablePoint(initialEnd),
-            { x: box!.x + 2, y: doneBox!.y + doneBox!.height / 2 },
+            { x: box.x + 2, y: doneBox!.y + doneBox!.height / 2 },
             async () => {
                 await expect(title).toHaveClass(/grid-selected/);
             },
@@ -99,9 +97,9 @@ test.describe("Grid touch handle edge scrolling", () => {
         const handleBox = await handle.boundingBox();
         expect(handleBox).not.toBeNull();
         const before = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
-        const left = { x: box!.x + 2, y: doneBox!.y + doneBox!.height / 2 };
-        const middle = { x: box!.x + box!.width / 2, y: left.y };
-        const right = { x: box!.x + box!.width - 2, y: left.y };
+        const left = { x: box.x + 2, y: doneBox!.y + doneBox!.height / 2 };
+        const middle = { x: box.x + box.width / 2, y: left.y };
+        const right = { x: box.x + box.width - 2, y: left.y };
 
         await TouchGestures.longPressDragAndHold(
             page,
@@ -138,10 +136,9 @@ test.describe("Grid touch handle edge scrolling", () => {
 
     test("ordinary touch panning remains native when no handle owns the gesture", async ({ page }) => {
         const grid = await createOverflowingTouchGrid(page);
-        const box = await grid.boundingBox();
-        expect(box).not.toBeNull();
-        const y = box!.y + box!.height / 2;
-        await TouchGestures.pan(page, { x: box!.x + box!.width - 30, y }, { x: box!.x + 30, y });
+        const box = await gridClientBox(grid);
+        const y = box.y + box.height / 2;
+        await TouchGestures.pan(page, { x: box.x + box.width - 30, y }, { x: box.x + 30, y });
         await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
         await expect(page.getByRole("toolbar", { name: "Grid selection actions" })).toHaveCount(0);
     });

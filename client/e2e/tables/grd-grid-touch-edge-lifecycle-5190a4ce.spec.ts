@@ -1,6 +1,11 @@
 /** @feature GRD-5190a4ce */
 import { devices, expect, test } from "@playwright/test";
-import { createOverflowingTouchGrid, enterTouchRangeMode, placeSameGridAgain } from "../utils/gridTouchEdgeHelpers";
+import {
+    createOverflowingTouchGrid,
+    enterTouchRangeMode,
+    gridClientBox,
+    placeSameGridAgain,
+} from "../utils/gridTouchEdgeHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 import { TouchGestures } from "../utils/touchGestures";
@@ -22,17 +27,16 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
         const cellBox = await cell.boundingBox();
         expect(cellBox).not.toBeNull();
         const handleBox = await owner.getByRole("button", { name: "Resize selection from end" }).boundingBox();
-        const ownerBox = await owner.boundingBox();
+        const ownerBox = await gridClientBox(owner);
         const foreignCell = foreign.locator('tbody tr:first-child td[data-col="title"]');
         const foreignCellBox = await foreignCell.boundingBox();
         expect(handleBox).not.toBeNull();
-        expect(ownerBox).not.toBeNull();
         expect(foreignCellBox).not.toBeNull();
 
         await TouchGestures.longPressDragAndHold(
             page,
             await TouchGestures.hittablePoint(owner.getByRole("button", { name: "Resize selection from end" })),
-            { x: ownerBox!.x + ownerBox!.width - 2, y: cellBox!.y + cellBox!.height / 2 },
+            { x: ownerBox.x + ownerBox.width - 2, y: cellBox!.y + cellBox!.height / 2 },
             async contact => {
                 await expect.poll(() => owner.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 expect(await foreign.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(0);
@@ -62,14 +66,13 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
         const cellBox = await cell.boundingBox();
         expect(cellBox).not.toBeNull();
         const handleBox = await grid.getByRole("button", { name: "Resize selection from end" }).boundingBox();
-        const gridBox = await grid.boundingBox();
+        const gridBox = await gridClientBox(grid);
         expect(handleBox).not.toBeNull();
-        expect(gridBox).not.toBeNull();
 
         await TouchGestures.longPressDragAndHold(
             page,
             await TouchGestures.hittablePoint(grid.getByRole("button", { name: "Resize selection from end" })),
-            { x: gridBox!.x + gridBox!.width - 2, y: cellBox!.y + cellBox!.height / 2 },
+            { x: gridBox.x + gridBox.width - 2, y: cellBox!.y + cellBox!.height / 2 },
             async () => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 await grid.locator("button.delete-row").click();
@@ -89,19 +92,18 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
         const title = grid.locator('tbody tr:first-child td[data-col="title"]');
         await enterTouchRangeMode(page, title);
         const ownerHandle = grid.getByRole("button", { name: "Resize selection from end" });
-        const gridBox = await grid.boundingBox();
+        const gridBox = await gridClientBox(grid);
         const titleBox = await title.boundingBox();
-        expect(gridBox).not.toBeNull();
         expect(titleBox).not.toBeNull();
 
         await TouchGestures.longPressDragAndHold(
             page,
             await TouchGestures.hittablePoint(ownerHandle),
-            { x: gridBox!.x + gridBox!.width - 2, y: titleBox!.y + titleBox!.height / 2 },
+            { x: gridBox.x + gridBox.width - 2, y: titleBox!.y + titleBox!.height / 2 },
             async contact => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 await contact.move({
-                    x: gridBox!.x + gridBox!.width / 2,
+                    x: gridBox.x + gridBox.width / 2,
                     y: titleBox!.y + titleBox!.height / 2,
                 });
                 await page.waitForTimeout(100);
@@ -118,7 +120,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                 ).toEqual(before);
                 const offset = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
                 await contact.move({
-                    x: gridBox!.x + gridBox!.width - 2,
+                    x: gridBox.x + gridBox.width - 2,
                     y: titleBox!.y + titleBox!.height / 2,
                 });
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(offset);
@@ -133,9 +135,8 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
         await enterTouchRangeMode(page, title);
         const ordinaryCell = grid.locator('tbody tr:first-child td[data-col="id"]');
         const ordinaryBox = await ordinaryCell.boundingBox();
-        const gridBox = await grid.boundingBox();
+        const gridBox = await gridClientBox(grid);
         expect(ordinaryBox).not.toBeNull();
-        expect(gridBox).not.toBeNull();
 
         const ordinaryPoint = TouchGestures.pointInBox(ordinaryBox!, 0.5);
         await TouchGestures.longPressDragAndHold(
@@ -171,7 +172,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                 expect(transitions.every(selected => JSON.stringify(selected) === JSON.stringify(selectedBefore))).toBe(
                     true,
                 );
-                await page.mouse.move(gridBox!.x + gridBox!.width - 2, ordinaryBox!.y + ordinaryBox!.height / 2);
+                await page.mouse.move(gridBox.x + gridBox.width - 2, ordinaryBox!.y + ordinaryBox!.height / 2);
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 await page.mouse.up();
             },
@@ -183,15 +184,14 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
         const grid = await createOverflowingTouchGrid(page);
         const cell = grid.locator('tbody tr:first-child td[data-col="title"]');
         await enterTouchRangeMode(page, cell);
-        const gridBox = await grid.boundingBox();
+        const gridBox = await gridClientBox(grid);
         const cellBox = await cell.boundingBox();
-        expect(gridBox).not.toBeNull();
         expect(cellBox).not.toBeNull();
 
         await TouchGestures.longPressDragAndHold(
             page,
             await TouchGestures.hittablePoint(grid.getByRole("button", { name: "Resize selection from end" })),
-            { x: gridBox!.x + gridBox!.width - 2, y: cellBox!.y + cellBox!.height / 2 },
+            { x: gridBox.x + gridBox.width - 2, y: cellBox!.y + cellBox!.height / 2 },
             async () => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 const item = grid.locator("xpath=ancestor::*[contains(@class, 'outliner-item')]").first();
