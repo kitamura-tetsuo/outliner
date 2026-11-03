@@ -235,6 +235,7 @@ let handlePointerY = 0;
 let handleFrame: number | undefined;
 let handleGeneration = 0;
 let handleScrollerCaptured = false;
+let handleCaptureLossArmed = false;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -1182,6 +1183,7 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     touchStart = undefined;
     handlePointerId = event.pointerId;
     handleScrollerCaptured = false;
+    handleCaptureLossArmed = false;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
@@ -1221,6 +1223,7 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleMovingCell = undefined;
     handlePointerId = undefined;
     handleScrollerCaptured = false;
+    handleCaptureLossArmed = false;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
@@ -1881,9 +1884,17 @@ function handleCancelDelete() {
     onpointermove={handlePanPointerMove}
     ongotpointercapture={(event) => {
         if (event.pointerId === handlePointerId && event.target === gridContainer) {
-            handleScrollerCaptured = true;
+            const pointerId = event.pointerId;
             const generation = handleGeneration;
+            handleScrollerCaptured = true;
+            handleCaptureLossArmed = false;
             if (handleFrame === undefined) handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
+            requestAnimationFrame(() => {
+                if (pointerId === handlePointerId && generation === handleGeneration
+                    && gridContainer?.hasPointerCapture(pointerId)) {
+                    handleCaptureLossArmed = true;
+                }
+            });
         }
     }}
     onlostpointercapture={(event) => {
@@ -1897,11 +1908,22 @@ function handleCancelDelete() {
         if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
             const pointerId = event.pointerId;
             const generation = handleGeneration;
+            const establishedLoss = handleCaptureLossArmed;
+            handleScrollerCaptured = false;
+            handleCaptureLossArmed = false;
             queueMicrotask(() => {
-                if (pointerId === handlePointerId && generation === handleGeneration
-                    && !gridContainer?.hasPointerCapture(pointerId)) {
-                    handleScrollerCaptured = false;
-                    stopHandleDrag();
+                if (pointerId !== handlePointerId || generation !== handleGeneration) return;
+                if (establishedLoss) {
+                    if (!gridContainer?.hasPointerCapture(pointerId)) stopHandleDrag();
+                } else if (!gridContainer?.hasPointerCapture(pointerId)) {
+                    // The handle's implicit capture can be reported as a Grid
+                    // loss during transfer. Retry only until Grid capture has
+                    // survived a frame; every later loss remains terminal.
+                    setTimeout(() => {
+                        if (pointerId === handlePointerId && generation === handleGeneration) {
+                            gridContainer?.setPointerCapture?.(pointerId);
+                        }
+                    });
                 }
             });
         }
