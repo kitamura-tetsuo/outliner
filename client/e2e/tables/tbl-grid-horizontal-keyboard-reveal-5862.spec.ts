@@ -1,18 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { keyboardTaskRow as taskRow, prepareKeyboardGrid, selectAndFocusCell } from "../utils/gridKeyboardFixture";
+import { gridRevealGeometry } from "../utils/gridRevealGeometry";
 import { commitWidthsProduction, singleGridId } from "../utils/gridWidthHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-
-interface Geometry {
-    gridLeft: number;
-    gridRight: number;
-    scrollLeft: number;
-    pageX: number;
-    pageY: number;
-    targetLeft: number;
-    targetRight: number;
-}
 
 test.describe("Grid horizontal keyboard reveal (#5862)", () => {
     let firstRowId: string;
@@ -39,22 +30,10 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         }
     });
 
-    async function geometry(page: import("@playwright/test").Page, column: string): Promise<Geometry> {
+    async function geometry(page: import("@playwright/test").Page, column: string) {
         const grid = page.getByTestId("yjs-table-grid");
         const target = taskRow(page, firstRowId).locator(`td[data-col='${column}']`);
-        return grid.evaluate((element, targetElement) => {
-            const viewport = element.getBoundingClientRect();
-            const cell = (targetElement as HTMLElement).getBoundingClientRect();
-            return {
-                gridLeft: viewport.left + element.clientLeft,
-                gridRight: viewport.left + element.clientLeft + element.clientWidth,
-                scrollLeft: element.scrollLeft,
-                pageX: globalThis.scrollX,
-                pageY: globalThis.scrollY,
-                targetLeft: cell.left,
-                targetRight: cell.right,
-            };
-        }, await target.elementHandle());
+        return gridRevealGeometry(grid, target);
     }
 
     test("Arrow and Shift+Arrow reveal the active endpoint with minimum local scrolling", async ({ page }) => {
@@ -84,6 +63,7 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         await expect(grid.locator("td.grid-selected")).toHaveCount(2);
         await expect(row.locator("td[data-col='repeat_days']")).toHaveClass(/grid-active/);
         await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-selected/);
+        await expect(row.locator("td[data-col='title'] button")).toBeFocused();
 
         await page.keyboard.press("Shift+ArrowRight");
         await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-active/);
@@ -135,16 +115,17 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
     test("an already-contained target does not move the Grid or page", async ({ page }) => {
         const gridId = await singleGridId(page);
         await commitWidthsProduction(page, gridId, {
-            id: 100,
-            title: 100,
-            status: 100,
-            priority: 100,
-            due_date: 100,
-            repeat_days: 100,
+            id: 40,
+            title: 40,
+            status: 40,
+            priority: 40,
+            due_date: 40,
+            repeat_days: 40,
         });
         const row = taskRow(page, firstRowId);
         await selectAndFocusCell(row.locator("td[data-col='repeat_days']"));
         const before = await geometry(page, "repeat_days");
+        expect(before.scrollWidth).toBeLessThanOrEqual(before.clientWidth);
         const targetBefore = await geometry(page, "title");
         expect(targetBefore.targetLeft).toBeGreaterThanOrEqual(targetBefore.gridLeft - 1);
         expect(targetBefore.targetRight).toBeLessThanOrEqual(targetBefore.gridRight + 1);
@@ -154,5 +135,13 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         const after = await geometry(page, "title");
         expect(after.scrollLeft).toBe(before.scrollLeft);
         expect([after.pageX, after.pageY]).toEqual([before.pageX, before.pageY]);
+
+        // Repeating an unchanged outer-edge key is also a genuine no-op.
+        await selectAndFocusCell(row.locator("td[data-col='id']"));
+        const edgeBefore = await geometry(page, "id");
+        await page.keyboard.press("ArrowLeft");
+        const edgeAfter = await geometry(page, "id");
+        expect(edgeAfter.scrollLeft).toBe(edgeBefore.scrollLeft);
+        await expect(row.locator("td[data-col='id'] button")).toBeFocused();
     });
 });
