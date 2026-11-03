@@ -267,6 +267,7 @@ Once the table is created, you will see a grid view where you can add, edit, or 
 - The table name in the toolbar links to the source table's own page.
 - **Column widths:** drag the boundary at a column header's right edge to resize it — the Grid previews the width while you drag and saves it once on release as a single Undo step (`Escape` cancels). The UI panel's Width (px) field sets the same saved width from the keyboard; clear it to return the column to automatic sizing.
 - **Keyboard visibility:** `←`/`→`, `Shift`+`←`/`→`, and `Tab`/`Shift`+`Tab` scroll only the active Grid as needed to keep the newly active cell or moving range endpoint visible. Native editors such as selects, dates, and checkboxes continue to own their editing keys.
+- **Horizontal panning:** while a non-editing Grid cell, header, or the Grid itself has focus, hold `Space` and drag with the left mouse button. Space is reserved for panning in navigation mode; inside an open cell editor it inserts a space normally. Inputs, action buttons, resize/reorder handles, touch, and pen gestures keep their ordinary behavior.
 
 ### ENUM Ordering
 
