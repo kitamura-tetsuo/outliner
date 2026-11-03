@@ -43,7 +43,6 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
     }
 
     test("Arrow and Shift+Arrow reveal the active endpoint with minimum local scrolling", async ({ page }) => {
-        const grid = page.getByTestId("yjs-table-grid");
         const row = taskRow(page, firstRowId);
         await selectAndFocusCell(row.locator("td[data-col='repeat_days']"));
         const initial = await geometry(page, "repeat_days");
