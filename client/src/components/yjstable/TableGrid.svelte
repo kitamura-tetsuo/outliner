@@ -1901,7 +1901,8 @@ function handleCancelDelete() {
         // a real loss. Validate the scroller's current capture in a microtask:
         // the transfer keeps capture, while blur/removal/explicit capture loss
         // leaves it absent and terminates the same owned generation.
-        if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
+        if (event.pointerId === handlePointerId && event.target === gridContainer
+            && (handleScrollerCaptured || handleCaptureTransferPending)) {
             const pointerId = event.pointerId;
             const generation = handleGeneration;
             const establishedLoss = handleCaptureLossArmed;
