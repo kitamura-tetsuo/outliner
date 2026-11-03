@@ -229,8 +229,7 @@ let additiveTouchSelection = $state(false);
 let handleDrag = $state<"anchor" | "focus" | undefined>();
 let handleOppositeCell: GridCellAddress | undefined;
 let handleMovingCell: GridCellAddress | undefined;
-let handleOriginCell: GridCellAddress | undefined;
-let handleOriginElement: HTMLElement | undefined;
+let handleOriginCell = $state<GridCellAddress | undefined>();
 let handlePointerId: number | undefined;
 let handlePointerX = 0;
 let handlePointerY = 0;
@@ -1179,10 +1178,9 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
         return;
     }
     // Keep the pressed handle mounted at its admission cell for the lifetime
-    // of the pointer sequence. Moving the logical endpoint must not remove the
-    // implicit-capture target and make Chromium cancel an otherwise live touch.
+    // of the pointer sequence so its visual origin remains stable while the
+    // logical endpoint advances through newly revealed cells.
     handleOriginCell = handleMovingCell;
-    handleOriginElement = event.currentTarget as HTMLElement;
     // Ownership supersedes any undecided ordinary touch that began before the
     // handle press. Otherwise its already-armed long-press timer can mutate
     // this range after a different pointer has become the handle owner.
@@ -1196,9 +1194,10 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     suppressClickUntil = Date.now() + 1_000;
     const generation = ++handleGeneration;
     // Admission is complete on pointerdown, so start the edge loop without
-    // waiting for another pointer event. The mounted handle remains the stable
-    // capture owner while its logical endpoint moves across cells.
-    handleOriginElement.setPointerCapture(event.pointerId);
+    // waiting for another pointer event. Capture on the placement scroller,
+    // not the rendered handle: selection updates may move or replace a handle,
+    // while the initiating Grid remains mounted for the whole owned gesture.
+    gridContainer.setPointerCapture(event.pointerId);
     handleScrollerCaptured = true;
     handleCaptureLossArmed = true;
     handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
@@ -1217,7 +1216,6 @@ function moveHandle(event: PointerEvent): void {
 function stopHandleDrag(event?: PointerEvent): void {
     if (event && event.pointerId !== handlePointerId) return;
     const pointerId = handlePointerId;
-    const originElement = handleOriginElement;
     if (pointerId !== undefined) suppressClickUntil = Date.now() + 500;
     handleGeneration++;
     if (handleFrame !== undefined) cancelAnimationFrame(handleFrame);
@@ -1226,12 +1224,11 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleOppositeCell = undefined;
     handleMovingCell = undefined;
     handleOriginCell = undefined;
-    handleOriginElement = undefined;
     handlePointerId = undefined;
     handleScrollerCaptured = false;
     handleCaptureLossArmed = false;
-    if (pointerId !== undefined && originElement?.hasPointerCapture(pointerId)) {
-        originElement.releasePointerCapture(pointerId);
+    if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) {
+        gridContainer.releasePointerCapture(pointerId);
     }
 }
 
@@ -1891,8 +1888,7 @@ function handleCancelDelete() {
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
     ongotpointercapture={(event) => {
-        if (event.pointerId === handlePointerId
-            && (event.target === handleOriginElement || event.target === gridContainer)) {
+        if (event.pointerId === handlePointerId && event.target === gridContainer) {
             const generation = handleGeneration;
             handleScrollerCaptured = true;
             handleCaptureLossArmed = true;
@@ -1900,11 +1896,11 @@ function handleCancelDelete() {
         }
     }}
     onlostpointercapture={(event) => {
-        // The admission handle stays mounted and owns capture while its logical
-        // endpoint moves. Loss from that handle (or the container fallback) is
-        // terminal for this owned generation.
+        // Only the initiating placement owns this gesture. A capture transition
+        // from the rendered handle is not terminal; loss from the stable Grid
+        // scroller is.
         if (event.pointerId === handlePointerId && handleScrollerCaptured
-            && (event.target === handleOriginElement || event.target === gridContainer)) {
+            && event.target === gridContainer) {
             const pointerId = event.pointerId;
             const generation = handleGeneration;
             const establishedLoss = handleCaptureLossArmed;
@@ -1913,8 +1909,7 @@ function handleCancelDelete() {
             queueMicrotask(() => {
                 if (pointerId !== handlePointerId || generation !== handleGeneration) return;
                 if (establishedLoss) {
-                    const ownerHasCapture = handleOriginElement?.hasPointerCapture(pointerId)
-                        || gridContainer?.hasPointerCapture(pointerId);
+                    const ownerHasCapture = gridContainer?.hasPointerCapture(pointerId);
                     if (!ownerHasCapture) stopHandleDrag();
                 }
             });
