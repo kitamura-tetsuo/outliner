@@ -31,7 +31,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
 
         await TouchGestures.longPressDragAndHold(
             page,
-            TouchGestures.pointInBox(handleBox!, 0.5),
+            TouchGestures.pointInBox(handleBox!, 0.25, 0.25),
             { x: ownerBox!.x + ownerBox!.width - 2, y: cellBox!.y + cellBox!.height / 2 },
             async contact => {
                 await expect.poll(() => owner.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
@@ -68,7 +68,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
 
         await TouchGestures.longPressDragAndHold(
             page,
-            TouchGestures.pointInBox(handleBox!, 0.5),
+            TouchGestures.pointInBox(handleBox!, 0.25, 0.25),
             { x: gridBox!.x + gridBox!.width - 2, y: cellBox!.y + cellBox!.height / 2 },
             async () => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);

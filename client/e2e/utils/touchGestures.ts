@@ -143,8 +143,9 @@ export class TouchGestures {
     static pointInBox(
         box: { x: number; y: number; width: number; height: number; },
         widthRatio: number,
+        heightRatio = 0.5,
     ): TouchPointXY {
-        return { x: box.x + box.width * widthRatio, y: box.y + box.height / 2 };
+        return { x: box.x + box.width * widthRatio, y: box.y + box.height * heightRatio };
     }
 
     /**
