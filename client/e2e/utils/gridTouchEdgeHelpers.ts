@@ -27,12 +27,12 @@ export async function createOverflowingTouchGrid(
     // endpoint cells then remain adjacent and fully hit-testable while there is
     // still substantial physical travel in the tested direction.
     const widths = overflowSide === "before"
-        ? { id: 1_000, title: 180, done: 180 }
-        : { id: 180, title: 180, done: 1_000 };
+        ? { id: 3_000, title: 180, done: 180 }
+        : { id: 180, title: 180, done: 3_000 };
     await commitWidthsProduction(page, await singleGridId(page), widths);
     const wideColumn = overflowSide === "before" ? "id" : "done";
     await expect.poll(async () => (await grid.locator(`th[data-col="${wideColumn}"]`).boundingBox())?.width)
-        .toBeGreaterThanOrEqual(999);
+        .toBeGreaterThanOrEqual(2_999);
     await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollWidth > node.clientWidth)).toBe(true);
     return grid;
 }
