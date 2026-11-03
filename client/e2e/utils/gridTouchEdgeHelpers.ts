@@ -20,7 +20,9 @@ export async function createOverflowingTouchGrid(page: Page): Promise<Locator> {
     // few hundred overflow pixels, the 12px animation loop can reach the
     // physical bound before Playwright's first polling interval and obscure
     // whether stationary scrolling advanced more than once.
-    await commitWidthsProduction(page, await singleGridId(page), { id: 360, title: 600, done: 360 });
+    // Keep both endpoint cells narrower than the mobile viewport so their
+    // rendered corner handles remain hit-testable after scrollIntoView.
+    await commitWidthsProduction(page, await singleGridId(page), { id: 1_000, title: 300, done: 300 });
     await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollWidth > node.clientWidth)).toBe(true);
     return grid;
 }
