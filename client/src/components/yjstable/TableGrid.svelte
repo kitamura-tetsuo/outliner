@@ -229,6 +229,7 @@ let additiveTouchSelection = $state(false);
 let handleDrag = $state<"anchor" | "focus" | undefined>();
 let handleOppositeCell: GridCellAddress | undefined;
 let handleMovingCell: GridCellAddress | undefined;
+let handleOriginCell: GridCellAddress | undefined;
 let handlePointerId: number | undefined;
 let handlePointerX = 0;
 let handlePointerY = 0;
@@ -236,8 +237,6 @@ let handleFrame: number | undefined;
 let handleGeneration = 0;
 let handleScrollerCaptured = false;
 let handleCaptureLossArmed = false;
-let handleCaptureTransferPending = false;
-let handleScrollAdvances = 0;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -1158,13 +1157,6 @@ function runHandleFrame(generation: number): void {
             stopHandleDrag();
             return;
         }
-        if (gridContainer.scrollLeft !== before) {
-            handleScrollAdvances++;
-            if (handleScrollAdvances >= 2 && handleScrollerCaptured
-                && handlePointerId !== undefined && gridContainer.hasPointerCapture(handlePointerId)) {
-                handleCaptureLossArmed = true;
-            }
-        }
     }
     handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
@@ -1185,6 +1177,10 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
         stopHandleDrag();
         return;
     }
+    // Keep the pressed handle mounted at its admission cell for the lifetime
+    // of the pointer sequence. Moving the logical endpoint must not remove the
+    // implicit-capture target and make Chromium cancel an otherwise live touch.
+    handleOriginCell = handleMovingCell;
     // Ownership supersedes any undecided ordinary touch that began before the
     // handle press. Otherwise its already-armed long-press timer can mutate
     // this range after a different pointer has become the handle owner.
@@ -1193,8 +1189,6 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handlePointerId = event.pointerId;
     handleScrollerCaptured = false;
     handleCaptureLossArmed = false;
-    handleCaptureTransferPending = true;
-    handleScrollAdvances = 0;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
@@ -1232,11 +1226,10 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleDrag = undefined;
     handleOppositeCell = undefined;
     handleMovingCell = undefined;
+    handleOriginCell = undefined;
     handlePointerId = undefined;
     handleScrollerCaptured = false;
     handleCaptureLossArmed = false;
-    handleCaptureTransferPending = false;
-    handleScrollAdvances = 0;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
@@ -1899,40 +1892,25 @@ function handleCancelDelete() {
         if (event.pointerId === handlePointerId && event.target === gridContainer) {
             const generation = handleGeneration;
             handleScrollerCaptured = true;
-            handleCaptureLossArmed = handleScrollAdvances >= 2;
+            handleCaptureLossArmed = true;
             if (handleFrame === undefined) handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
         }
     }}
     onlostpointercapture={(event) => {
-        // The handle's implicit-capture loss bubbles here when ownership is
-        // transferred to the stable scroller. Chromium can retarget that
-        // transition event to the scroller after its own gotpointercapture,
-        // so event.target and event ordering alone cannot distinguish it from
-        // a real loss. Validate the scroller's current capture in a microtask:
-        // the transfer keeps capture, while blur/removal/explicit capture loss
-        // leaves it absent and terminates the same owned generation.
-        if (event.pointerId === handlePointerId && event.target === gridContainer
-            && (handleScrollerCaptured || handleCaptureTransferPending)) {
+        // The admission handle stays mounted while its logical endpoint moves,
+        // so its transfer loss retains that button as event.target and bubbles
+        // through this element without matching. A loss targeted at the stable
+        // scroller after acquisition is terminal for this owned generation.
+        if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
             const pointerId = event.pointerId;
             const generation = handleGeneration;
             const establishedLoss = handleCaptureLossArmed;
             handleScrollerCaptured = false;
             handleCaptureLossArmed = false;
-            handleCaptureTransferPending = false;
             queueMicrotask(() => {
                 if (pointerId !== handlePointerId || generation !== handleGeneration) return;
                 if (establishedLoss) {
                     if (!gridContainer?.hasPointerCapture(pointerId)) stopHandleDrag();
-                } else if (!gridContainer?.hasPointerCapture(pointerId)) {
-                    // The handle's implicit capture can be reported as a Grid
-                    // loss during transfer. Retry while the first two real
-                    // advances establish both stationary progress and stable
-                    // Grid capture; loss after that boundary is terminal.
-                    setTimeout(() => {
-                        if (pointerId === handlePointerId && generation === handleGeneration) {
-                            gridContainer?.setPointerCapture?.(pointerId);
-                        }
-                    });
                 }
             });
         }
@@ -2200,7 +2178,10 @@ function handleCancelDelete() {
                                         if (logicalCell) exitCellEdit(logicalCell, direction);
                                     }}
                                 />
-                                {#if touchSelectionMode && logicalCell && isSelectionEnd(logicalCell, "anchor")}
+                                {#if touchSelectionMode && logicalCell
+                                    && (handleDrag === "anchor"
+                                        ? sameCell(logicalCell, handleOriginCell)
+                                        : isSelectionEnd(logicalCell, "anchor"))}
                                     <button
                                         type="button"
                                         class="touch-selection-handle touch-selection-handle-start"
@@ -2208,7 +2189,10 @@ function handleCancelDelete() {
                                         onpointerdown={(event) => startHandleDrag(event, "anchor")}
                                     ></button>
                                 {/if}
-                                {#if touchSelectionMode && logicalCell && isSelectionEnd(logicalCell, "focus")}
+                                {#if touchSelectionMode && logicalCell
+                                    && (handleDrag === "focus"
+                                        ? sameCell(logicalCell, handleOriginCell)
+                                        : isSelectionEnd(logicalCell, "focus"))}
                                     <button
                                         type="button"
                                         class="touch-selection-handle touch-selection-handle-end"
