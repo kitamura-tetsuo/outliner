@@ -63,7 +63,7 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         await expect(grid.locator("td.grid-selected")).toHaveCount(2);
         await expect(row.locator("td[data-col='repeat_days']")).toHaveClass(/grid-active/);
         await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-selected/);
-        await expect(row.locator("td[data-col='title'] button")).toBeFocused();
+        await expect(row.locator("td[data-col='repeat_days'] button")).toBeFocused();
 
         await page.keyboard.press("Shift+ArrowRight");
         await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-active/);
