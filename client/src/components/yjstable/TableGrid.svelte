@@ -234,6 +234,7 @@ let handlePointerX = 0;
 let handlePointerY = 0;
 let handleFrame: number | undefined;
 let handleGeneration = 0;
+let handleScrollerCaptureEstablished = false;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -1154,6 +1155,7 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handlePointerId = event.pointerId;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
+    handleScrollerCaptureEstablished = false;
     suppressClickUntil = Date.now() + 1_000;
     gridContainer.setPointerCapture?.(event.pointerId);
     const generation = ++handleGeneration;
@@ -1180,6 +1182,7 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleOppositeCell = undefined;
     handleMovingCell = undefined;
     handlePointerId = undefined;
+    handleScrollerCaptureEstablished = false;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
@@ -1838,12 +1841,17 @@ function handleCancelDelete() {
     onkeyupcapture={handlePanKeyUp}
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
+    ongotpointercapture={(event) => {
+        if (event.pointerId === handlePointerId && event.target === gridContainer) {
+            handleScrollerCaptureEstablished = true;
+        }
+    }}
     onlostpointercapture={(event) => {
         // Moving touch's implicit capture from the rendered handle to this
         // stable scroller emits lostpointercapture for the handle. That event
-        // bubbles through the scroller before the pending capture override is
-        // observable. Only loss targeted at the stable scroller is terminal.
-        if (event.pointerId === handlePointerId && event.target === gridContainer) {
+        // bubbles through the scroller before the stable scroller's own
+        // gotpointercapture. Only a loss after that acquisition is terminal.
+        if (event.pointerId === handlePointerId && handleScrollerCaptureEstablished) {
             stopHandleDrag(event);
         }
         if (panActive && event.pointerId === panPointerId) {
