@@ -1110,8 +1110,11 @@ function updateHandleSelection(): boolean {
 }
 
 function runHandleFrame(generation: number): void {
+    // A callback from a superseded generation has no authority over the
+    // current owner. In particular, it must not clear a newer pointer's drag.
+    if (generation !== handleGeneration) return;
     handleFrame = undefined;
-    if (generation !== handleGeneration || handlePointerId === undefined || !touchSelectionMode
+    if (handlePointerId === undefined || !touchSelectionMode
         || !gridContainer?.isConnected || !updateHandleSelection()) {
         stopHandleDrag();
         return;
@@ -1130,7 +1133,11 @@ function runHandleFrame(generation: number): void {
 }
 
 function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
-    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0) || !gridContainer) return;
+    // `isPrimary` is scoped to a pointer type. A primary mouse can therefore
+    // arrive while a primary touch already owns this placement; it must not
+    // replace that owner, its endpoints, capture, or queued frame.
+    if (handlePointerId !== undefined || !event.isPrimary
+        || (event.pointerType === "mouse" && event.button !== 0) || !gridContainer) return;
     event.preventDefault();
     event.stopPropagation();
     handleDrag = end;

@@ -15,3 +15,4 @@ acceptance:
 tests:
 - client/src/components/yjstable/TableGrid.touch.test.ts
 - client/e2e/tables/grd-grid-touch-edge-scroll-5190a4ce.spec.ts
+- client/e2e/tables/grd-grid-touch-edge-lifecycle-5190a4ce.spec.ts

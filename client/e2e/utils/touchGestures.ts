@@ -6,6 +6,11 @@ export interface TouchPointXY {
     y: number;
 }
 
+export interface HeldTouchContact {
+    move(point: TouchPointXY): Promise<void>;
+    cancel(): Promise<void>;
+}
+
 /**
  * Real touch input for E2E tests.
  *
@@ -74,7 +79,7 @@ export class TouchGestures {
         page: Page,
         from: TouchPointXY,
         to: TouchPointXY,
-        whileHeld: () => Promise<void>,
+        whileHeld: (contact: HeldTouchContact) => Promise<void>,
         holdMs = TouchGestures.LONG_PRESS_HOLD_MS,
     ): Promise<void> {
         const client = await page.context().newCDPSession(page);
@@ -88,8 +93,20 @@ export class TouchGestures {
                 type: "touchMove",
                 touchPoints: [{ x: to.x, y: to.y }],
             });
-            await whileHeld();
-            await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+            let cancelled = false;
+            await whileHeld({
+                move: async point => {
+                    await client.send("Input.dispatchTouchEvent", {
+                        type: "touchMove",
+                        touchPoints: [{ x: point.x, y: point.y }],
+                    });
+                },
+                cancel: async () => {
+                    cancelled = true;
+                    await client.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+                },
+            });
+            if (!cancelled) await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
         } finally {
             await client.detach();
         }
