@@ -355,6 +355,27 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         expect(grid.scrollLeft).toBe(37);
     });
 
+    it("restores focus without realigning an oversized cell after a clamped edit exit", async () => {
+        const { view } = setup();
+        const grid = view.container.querySelector<HTMLElement>(".yjs-table-grid")!;
+        const target = cellTd(view.container, "c", "score");
+        Object.defineProperties(grid, {
+            clientWidth: { configurable: true, value: 100 },
+            clientLeft: { configurable: true, value: 0 },
+        });
+        grid.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100);
+        target.getBoundingClientRect = () => new DOMRect(10, 10, 180, 20);
+
+        await selectCell(view.container, "c", "score");
+        await fireEvent.keyDown(cellButton(view.container, "c", "score"), { key: "F2" });
+        const input = target.querySelector<HTMLInputElement>("input")!;
+        grid.scrollLeft = 37;
+        await fireEvent.keyDown(input, { key: "Enter" });
+
+        await waitFor(() => expect(cellButton(view.container, "c", "score")).toBe(document.activeElement));
+        expect(grid.scrollLeft).toBe(37);
+    });
+
     it("vertically reveals a same-row horizontal target only when it is clipped", async () => {
         const { view } = setup();
         const target = cellTd(view.container, "a", "score");

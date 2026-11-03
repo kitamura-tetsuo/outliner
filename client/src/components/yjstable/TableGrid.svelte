@@ -1111,6 +1111,7 @@ function tryFocusLogicalCell(
     cell: GridCellAddress,
     direction: GridNavDirection,
     requestRevision: number,
+    reveal: boolean,
 ): boolean {
     if (requestRevision !== focusRequestRevision) return true;
     if (!gridContainer) return false;
@@ -1119,7 +1120,7 @@ function tryFocusLogicalCell(
     );
     if (!td) return false;
 
-    revealLogicalCell(td, direction);
+    if (reveal) revealLogicalCell(td, direction);
     const focusable = td.querySelector<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>(
         "button, input, select",
     );
@@ -1156,15 +1157,16 @@ function focusLogicalCell(
     attempts = 0,
     deferred = false,
     requestRevision = ++focusRequestRevision,
+    reveal = true,
 ) {
     if (deferred) {
-        requestAnimationFrame(() => focusLogicalCell(cell, direction, attempts, false, requestRevision));
+        requestAnimationFrame(() => focusLogicalCell(cell, direction, attempts, false, requestRevision, reveal));
         return;
     }
-    if (tryFocusLogicalCell(cell, direction, requestRevision)) return;
+    if (tryFocusLogicalCell(cell, direction, requestRevision, reveal)) return;
     if (attempts > 10 || !gridContainer) return;
 
-    requestAnimationFrame(() => focusLogicalCell(cell, direction, attempts + 1, false, requestRevision));
+    requestAnimationFrame(() => focusLogicalCell(cell, direction, attempts + 1, false, requestRevision, reveal));
 }
 
 /** Move the logical active cell and focus it; `extend` grows the selection from the anchor instead of replacing it. */
@@ -1187,6 +1189,11 @@ function moveActive(
     // a user's chosen offset inside an oversized boundary cell stable.
     if (target.rowId !== origin.rowId || target.columnId !== origin.columnId) {
         focusLogicalCell(target, direction, 0, deferred);
+    } else if (deferred) {
+        // A clamped edit-exit still needs to restore navigation focus after
+        // its editor unmounts. Skip reveal so an oversized boundary cell
+        // retains the user's chosen horizontal offset.
+        focusLogicalCell(target, direction, 0, true, undefined, false);
     }
 }
 
