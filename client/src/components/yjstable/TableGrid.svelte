@@ -235,7 +235,6 @@ let handlePointerY = 0;
 let handleFrame: number | undefined;
 let handleGeneration = 0;
 let handleScrollerCaptured = false;
-let handleCaptureLossArmed = false;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -1183,12 +1182,18 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     touchStart = undefined;
     handlePointerId = event.pointerId;
     handleScrollerCaptured = false;
-    handleCaptureLossArmed = false;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
     const generation = ++handleGeneration;
-    handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
+    // Touch implicit capture is assigned after pointerdown dispatch. Request
+    // the stable scroller capture from a later task, and do not update the
+    // selection until gotpointercapture proves that transfer completed.
+    setTimeout(() => {
+        if (handlePointerId === event.pointerId && generation === handleGeneration) {
+            gridContainer?.setPointerCapture?.(event.pointerId);
+        }
+    });
 }
 
 function moveHandle(event: PointerEvent): void {
@@ -1197,10 +1202,7 @@ function moveHandle(event: PointerEvent): void {
     event.stopPropagation();
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
-    // Touch implicit capture is assigned after pointerdown dispatch. Transfer
-    // it on the first real drag move, when that assignment is complete and
-    // before selection updates can replace the rendered handle element.
-    if (!gridContainer?.hasPointerCapture(event.pointerId)) gridContainer?.setPointerCapture?.(event.pointerId);
+    if (!handleScrollerCaptured) return;
     if (!updateHandleSelection()) stopHandleDrag();
 }
 
@@ -1216,7 +1218,6 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleMovingCell = undefined;
     handlePointerId = undefined;
     handleScrollerCaptured = false;
-    handleCaptureLossArmed = false;
     if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
@@ -1877,14 +1878,9 @@ function handleCancelDelete() {
     onpointermove={handlePanPointerMove}
     ongotpointercapture={(event) => {
         if (event.pointerId === handlePointerId && event.target === gridContainer) {
-            const pointerId = event.pointerId;
             handleScrollerCaptured = true;
-            handleCaptureLossArmed = false;
-            requestAnimationFrame(() => {
-                if (handlePointerId === pointerId && gridContainer?.hasPointerCapture(pointerId)) {
-                    handleCaptureLossArmed = true;
-                }
-            });
+            const generation = handleGeneration;
+            if (handleFrame === undefined) handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
         }
     }}
     onlostpointercapture={(event) => {
@@ -1893,7 +1889,7 @@ function handleCancelDelete() {
         // has actually acquired capture is terminal for the owned drag.
         if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
             handleScrollerCaptured = false;
-            if (handleCaptureLossArmed) stopHandleDrag();
+            stopHandleDrag();
         }
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
