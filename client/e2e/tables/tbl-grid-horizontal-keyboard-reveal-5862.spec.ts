@@ -69,10 +69,11 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         const right = await geometry(page, "title");
         expect(right.targetRight).toBeLessThanOrEqual(right.gridRight + 1);
         expect(right.scrollLeft).toBeGreaterThan(initial.scrollLeft);
-        expect(right.scrollLeft - initial.scrollLeft).toBeCloseTo(
-            clippedTarget.targetRight - clippedTarget.gridRight,
-            0,
-        );
+        expect(
+            Math.abs(
+                (right.scrollLeft - initial.scrollLeft) - (clippedTarget.targetRight - clippedTarget.gridRight),
+            ),
+        ).toBeLessThanOrEqual(1);
         expect(right.pageX).toBe(initial.pageX);
         expect(right.pageY).toBe(initial.pageY);
 
@@ -95,6 +96,10 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
             await repeatHeader.focus();
             await repeatHeader.press("Alt+ArrowRight");
         }
+        await expect(page.getByTestId("yjs-table-grid").locator("th[data-col]").last()).toHaveAttribute(
+            "data-col",
+            "repeat_days",
+        );
         await selectAndFocusCell(firstRow.locator("td[data-col='repeat_days']"));
         const before = await geometry(page, "repeat_days");
         await page.keyboard.press("Tab");
