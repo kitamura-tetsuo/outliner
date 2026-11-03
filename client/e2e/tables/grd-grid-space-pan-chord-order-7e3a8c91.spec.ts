@@ -56,9 +56,9 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
     });
 
     for (
-        const { secondary, button } of [
-            { secondary: "right" as const, button: 2 },
-            { secondary: "middle" as const, button: 1 },
+        const { secondary, button, buttonsMask } of [
+            { secondary: "right" as const, button: 2, buttonsMask: 3 },
+            { secondary: "middle" as const, button: 1, buttonsMask: 5 },
         ]
     ) {
         test(`active pan survives ${secondary} press and release before primary`, async ({ page }) => {
@@ -72,27 +72,73 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
             const box = (await origin.boundingBox())!;
             const x = box.x + box.width / 2;
             const y = box.y + box.height / 2;
+            const input = await page.context().newCDPSession(page);
 
             await page.keyboard.down("Space");
-            await page.mouse.move(x, y);
-            await page.mouse.down({ button: "left" });
-            await page.mouse.down({ button: secondary });
+            await input.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+            await input.send("Input.dispatchMouseEvent", {
+                type: "mousePressed",
+                x,
+                y,
+                button: "left",
+                buttons: 1,
+                clickCount: 1,
+                pointerType: "mouse",
+            });
+            await input.send("Input.dispatchMouseEvent", {
+                type: "mousePressed",
+                x,
+                y,
+                button: secondary,
+                buttons: buttonsMask,
+                clickCount: 1,
+                pointerType: "mouse",
+            });
             const maximum = await grid.evaluate(element => element.scrollWidth - element.clientWidth);
             expect(maximum).toBeGreaterThan(40);
-            await page.mouse.move(x - 20, y, { steps: 2 });
+            await input.send("Input.dispatchMouseEvent", {
+                type: "mouseMoved",
+                x: x - 20,
+                y,
+                buttons: buttonsMask,
+                pointerType: "mouse",
+            });
             await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
-            await page.mouse.up({ button: secondary });
+            await input.send("Input.dispatchMouseEvent", {
+                type: "mouseReleased",
+                x: x - 20,
+                y,
+                button: secondary,
+                buttons: 1,
+                clickCount: 1,
+                pointerType: "mouse",
+            });
             await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
             await expect(grid).toHaveClass(/pan-active/);
             const afterSecondaryRelease = await grid.evaluate(element => element.scrollLeft);
-            await page.mouse.move(x - 40, y, { steps: 2 });
+            await input.send("Input.dispatchMouseEvent", {
+                type: "mouseMoved",
+                x: x - 40,
+                y,
+                buttons: 1,
+                pointerType: "mouse",
+            });
             await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(
                 afterSecondaryRelease,
             );
             const trace = await readTrace(page);
             expect(trace.some(event => event.type === "pointermove" && event.button === button && event.buttons === 1))
                 .toBe(true);
-            await page.mouse.up({ button: "left" });
+            await input.send("Input.dispatchMouseEvent", {
+                type: "mouseReleased",
+                x: x - 40,
+                y,
+                button: "left",
+                buttons: 0,
+                clickCount: 1,
+                pointerType: "mouse",
+            });
+            await input.detach();
             await page.keyboard.up("Space");
             await expect(origin.locator("input")).toHaveCount(0);
             expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);

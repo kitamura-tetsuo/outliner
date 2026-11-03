@@ -192,6 +192,13 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         const itemX = itemBox.x + itemBox.width / 2;
         const itemY = itemBox.y + itemBox.height / 2;
         await ownerInput.send("Input.dispatchMouseEvent", {
+            type: "mouseMoved",
+            x: itemX,
+            y: itemY,
+            buttons: 0,
+            pointerType: "mouse",
+        });
+        await ownerInput.send("Input.dispatchMouseEvent", {
             type: "mousePressed",
             x: itemX,
             y: itemY,
