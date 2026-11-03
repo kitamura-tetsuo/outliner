@@ -1186,14 +1186,17 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
     const generation = ++handleGeneration;
-    // Override the handle's implicit touch capture during pointerdown, before
-    // the first frame can retarget the selection and remove that handle. A
-    // deferred request is not processed until another pointer event in
-    // Chromium, which would leave a stationary in-band press idle. The stable
-    // Grid owns capture before its frame loop can move any selection endpoint.
-    gridContainer.setPointerCapture(event.pointerId);
-    handleScrollerCaptured = true;
+    // Admission is complete on pointerdown, so start the edge loop without
+    // waiting for capture processing or another pointer event. Touch implicit
+    // capture is assigned after pointerdown dispatch; transfer it to the stable
+    // scroller in a later task so that assignment cannot overwrite our target.
+    // Owner/generation checks make the deferred transfer inert after teardown.
     handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
+    setTimeout(() => {
+        if (handlePointerId === event.pointerId && generation === handleGeneration) {
+            gridContainer?.setPointerCapture?.(event.pointerId);
+        }
+    });
 }
 
 function moveHandle(event: PointerEvent): void {
