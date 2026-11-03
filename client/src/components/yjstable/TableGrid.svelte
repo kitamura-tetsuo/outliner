@@ -2426,13 +2426,13 @@ td.grid-active {
 }
 
 .touch-selection-handle-start {
-    top: -14px;
-    left: -14px;
+    top: 2px;
+    left: 2px;
 }
 
 .touch-selection-handle-end {
-    right: -14px;
-    bottom: -14px;
+    right: 2px;
+    bottom: 2px;
 }
 
 .touch-selection-toolbar {
