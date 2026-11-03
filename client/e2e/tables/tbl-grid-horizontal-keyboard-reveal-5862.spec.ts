@@ -137,7 +137,9 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         expect([after.pageX, after.pageY]).toEqual([before.pageX, before.pageY]);
 
         // Repeating an unchanged outer-edge key is also a genuine no-op.
-        await selectAndFocusCell(row.locator("td[data-col='id']"));
+        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.press("ArrowLeft");
+        await expect(row.locator("td[data-col='id']")).toHaveClass(/grid-active/);
         const edgeBefore = await geometry(page, "id");
         await page.keyboard.press("ArrowLeft");
         const edgeAfter = await geometry(page, "id");
