@@ -36,6 +36,12 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         return gridRevealGeometry(grid, target);
     }
 
+    async function selectedColumns(page: import("@playwright/test").Page): Promise<string[]> {
+        return page.getByTestId("yjs-table-grid").locator("td.grid-selected").evaluateAll(cells =>
+            cells.map(cell => cell.getAttribute("data-col")!).sort()
+        );
+    }
+
     test("Arrow and Shift+Arrow reveal the active endpoint with minimum local scrolling", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
         const row = taskRow(page, firstRowId);
@@ -60,13 +66,23 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         await page.keyboard.press("Shift+ArrowLeft");
         const endpoint = await geometry(page, "repeat_days");
         expect(endpoint.targetLeft).toBeGreaterThanOrEqual(endpoint.gridLeft - 1);
-        await expect(grid.locator("td.grid-selected")).toHaveCount(2);
+        expect(await selectedColumns(page)).toEqual(["repeat_days", "title"]);
         await expect(row.locator("td[data-col='repeat_days']")).toHaveClass(/grid-active/);
         await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-selected/);
         await expect(row.locator("td[data-col='repeat_days'] button")).toBeFocused();
 
         await page.keyboard.press("Shift+ArrowRight");
         await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-active/);
+        expect(await selectedColumns(page)).toEqual(["title"]);
+        await expect(row.locator("td[data-col='title'] button")).toBeFocused();
+
+        await page.keyboard.press("Shift+ArrowRight");
+        const rightEndpoint = await geometry(page, "status");
+        expect(rightEndpoint.targetRight).toBeLessThanOrEqual(rightEndpoint.gridRight + 1);
+        expect(await selectedColumns(page)).toEqual(["status", "title"]);
+        await expect(row.locator("td[data-col='status']")).toHaveClass(/grid-active/);
+        await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-selected/);
+        await expect(row.locator("td[data-col='status'] select")).toBeFocused();
 
         // Exercise the reverse Tab direction from a genuinely focusable
         // control; the hidden ID control is never enabled for navigation.
