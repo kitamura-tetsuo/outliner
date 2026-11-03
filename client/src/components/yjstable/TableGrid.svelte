@@ -1186,9 +1186,13 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handlePointerY = event.clientY;
     suppressClickUntil = Date.now() + 1_000;
     const generation = ++handleGeneration;
+    // Admission is complete on pointerdown. Start the edge loop immediately
+    // so an already-in-band handle press does not need a later pointer event
+    // to make progress while capture is transferred to the stable scroller.
+    handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
     // Touch implicit capture is assigned after pointerdown dispatch. Request
-    // the stable scroller capture from a later task, and do not update the
-    // selection until gotpointercapture proves that transfer completed.
+    // the stable scroller capture from a later task. The generation and owner
+    // checks keep both this task and the frame inert after termination.
     setTimeout(() => {
         if (handlePointerId === event.pointerId && generation === handleGeneration) {
             gridContainer?.setPointerCapture?.(event.pointerId);

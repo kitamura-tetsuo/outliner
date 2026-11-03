@@ -126,6 +126,28 @@ export class TouchGestures {
         }
     }
 
+    /**
+     * Presses a real contact and holds it without ever dispatching touchMove.
+     * This is the browser oracle for behavior admitted directly on pointerdown.
+     */
+    static async pressAndHold(
+        page: Page,
+        point: TouchPointXY,
+        whileHeld: () => Promise<void>,
+    ): Promise<void> {
+        const client = await page.context().newCDPSession(page);
+        try {
+            await client.send("Input.dispatchTouchEvent", {
+                type: "touchStart",
+                touchPoints: [{ x: point.x, y: point.y, id: 0 }],
+            });
+            await whileHeld();
+        } finally {
+            await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+            await client.detach();
+        }
+    }
+
     /** Pans a finger without pausing, the gesture the browser must keep as a scroll. */
     static async pan(page: Page, from: TouchPointXY, to: TouchPointXY, steps = 8): Promise<void> {
         const client = await page.context().newCDPSession(page);
