@@ -26,9 +26,17 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
             status: 260,
             priority: 260,
             due_date: 260,
-            repeat_days: 260,
+            repeat_days: 500,
         });
         await expect(page.getByTestId("yjs-table-grid").locator("th[data-col='title']")).toHaveCSS("width", "500px");
+        // Put the two focusable display cells next to each other through the
+        // production keyboard column-reorder command. Native controls between
+        // them intentionally retain their own Arrow keys.
+        const repeatHeader = page.getByTestId("yjs-table-grid").locator("th[data-col='repeat_days']");
+        for (let i = 0; i < 4; i++) {
+            await repeatHeader.focus();
+            await repeatHeader.press("Alt+ArrowLeft");
+        }
     });
 
     async function geometry(page: import("@playwright/test").Page, column: string): Promise<Geometry> {
@@ -52,8 +60,8 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
     test("Arrow and Shift+Arrow reveal the active endpoint with minimum local scrolling", async ({ page }) => {
         const grid = page.getByTestId("yjs-table-grid");
         const row = taskRow(page, firstRowId);
-        await selectAndFocusCell(row.locator("td[data-col='id']"));
-        const initial = await geometry(page, "id");
+        await selectAndFocusCell(row.locator("td[data-col='repeat_days']"));
+        const initial = await geometry(page, "repeat_days");
 
         const clippedTarget = await geometry(page, "title");
         await page.keyboard.press("ArrowRight");
@@ -68,15 +76,16 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         expect(right.pageX).toBe(initial.pageX);
         expect(right.pageY).toBe(initial.pageY);
 
-        await selectAndFocusCell(row.locator("td[data-col='id']"));
-        await page.keyboard.press("Shift+ArrowRight");
-        const endpoint = await geometry(page, "title");
-        expect(endpoint.targetRight).toBeLessThanOrEqual(endpoint.gridRight + 1);
+        await selectAndFocusCell(row.locator("td[data-col='title']"));
+        await page.keyboard.press("Shift+ArrowLeft");
+        const endpoint = await geometry(page, "repeat_days");
+        expect(endpoint.targetLeft).toBeGreaterThanOrEqual(endpoint.gridLeft - 1);
         await expect(grid.locator("td.grid-selected")).toHaveCount(2);
 
-        await page.keyboard.press("Shift+ArrowLeft");
-        await expect(row.locator("td[data-col='id']")).toHaveClass(/grid-active/);
-        expect((await geometry(page, "id")).targetLeft).toBeGreaterThanOrEqual(endpoint.gridLeft - 1);
+        const beforeContainedMove = endpoint.scrollLeft;
+        await page.keyboard.press("Shift+ArrowRight");
+        await expect(row.locator("td[data-col='title']")).toHaveClass(/grid-active/);
+        expect((await geometry(page, "title")).scrollLeft).toBe(beforeContainedMove);
     });
 
     test("Tab wraps while keeping the target visible and leaves page offsets unchanged", async ({ page }) => {
@@ -90,6 +99,15 @@ test.describe("Grid horizontal keyboard reveal (#5862)", () => {
         const gridBox = await page.getByTestId("yjs-table-grid").boundingBox();
         const cellBox = await secondRow.locator("td[data-col='id']").boundingBox();
         expect(cellBox!.x).toBeGreaterThanOrEqual(gridBox!.x - 1);
+        expect(await page.evaluate(() => [globalThis.scrollX, globalThis.scrollY])).toEqual([
+            before.pageX,
+            before.pageY,
+        ]);
+
+        await page.keyboard.press("Shift+Tab");
+        await expect(firstRow.locator("td[data-col='repeat_days']")).toHaveClass(/grid-active/);
+        const wrappedBack = await geometry(page, "repeat_days");
+        expect(wrappedBack.targetLeft).toBeGreaterThanOrEqual(wrappedBack.gridLeft - 1);
         expect(await page.evaluate(() => [globalThis.scrollX, globalThis.scrollY])).toEqual([
             before.pageX,
             before.pageY,

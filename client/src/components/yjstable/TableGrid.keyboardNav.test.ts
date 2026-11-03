@@ -354,4 +354,44 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         expect(document.activeElement).toBe(select);
         expect(grid.scrollLeft).toBe(37);
     });
+
+    it("vertically reveals a same-row horizontal target only when it is clipped", async () => {
+        const { view } = setup();
+        const target = cellTd(view.container, "a", "score");
+        Object.defineProperties(view.container, {
+            clientHeight: { configurable: true, value: 100 },
+            scrollHeight: { configurable: true, value: 300 },
+        });
+        view.container.scrollTop = 50;
+        view.container.getBoundingClientRect = () => new DOMRect(0, 0, 500, 100);
+        target.getBoundingClientRect = () => new DOMRect(100, 30 - view.container.scrollTop, 50, 20);
+        const pageScroll = vi.spyOn(window, "scrollBy").mockImplementation(() => undefined);
+
+        await selectCell(view.container, "a", "name");
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowRight" });
+
+        expect(view.container.scrollTop).toBe(30);
+        expect(pageScroll).not.toHaveBeenCalled();
+        pageScroll.mockRestore();
+    });
+
+    it("does not let deferred edit-exit focus supersede a newer header focus", async () => {
+        const frames: FrameRequestCallback[] = [];
+        const requestFrame = vi.spyOn(window, "requestAnimationFrame").mockImplementation(callback => {
+            frames.push(callback);
+            return frames.length;
+        });
+        const { view } = setup();
+        await selectCell(view.container, "a", "name");
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "F2" });
+        const input = cellTd(view.container, "a", "name").querySelector<HTMLInputElement>("input")!;
+        await fireEvent.keyDown(input, { key: "Tab" });
+
+        const header = view.container.querySelector<HTMLElement>('th[data-col="name"]')!;
+        header.focus();
+        for (const callback of frames.splice(0)) callback(performance.now());
+
+        expect(document.activeElement).toBe(header);
+        requestFrame.mockRestore();
+    });
 });
