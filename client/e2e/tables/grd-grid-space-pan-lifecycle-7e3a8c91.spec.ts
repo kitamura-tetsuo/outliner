@@ -51,31 +51,10 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         const x = box.x + box.width / 2;
         const y = box.y + box.height / 2;
 
-        const ownerInput = await page.context().newCDPSession(page);
-        await page.evaluate(() => {
-            (globalThis as typeof globalThis & { __panOwnerPointerUps: number; }).__panOwnerPointerUps = 0;
-            addEventListener("pointerup", () => {
-                (globalThis as typeof globalThis & { __panOwnerPointerUps: number; }).__panOwnerPointerUps++;
-            }, true);
-        });
         await page.keyboard.down("Space");
-        await ownerInput.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
-        await ownerInput.send("Input.dispatchMouseEvent", {
-            type: "mousePressed",
-            x,
-            y,
-            button: "left",
-            buttons: 1,
-            clickCount: 1,
-            pointerType: "mouse",
-        });
-        await ownerInput.send("Input.dispatchMouseEvent", {
-            type: "mouseMoved",
-            x: x - 40,
-            y,
-            buttons: 1,
-            pointerType: "mouse",
-        });
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x - 40, y);
         await page.keyboard.up("Space");
 
         const nextBox = (await next.boundingBox())!;
@@ -152,10 +131,31 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
         const x = box.x + box.width / 2;
         const y = box.y + box.height / 2;
 
+        const ownerInput = await page.context().newCDPSession(page);
+        await page.evaluate(() => {
+            (globalThis as typeof globalThis & { __panOwnerPointerUps: number; }).__panOwnerPointerUps = 0;
+            addEventListener("pointerup", () => {
+                (globalThis as typeof globalThis & { __panOwnerPointerUps: number; }).__panOwnerPointerUps++;
+            }, true);
+        });
         await page.keyboard.down("Space");
-        await page.mouse.move(x, y);
-        await page.mouse.down();
-        await page.mouse.move(x - 40, y);
+        await ownerInput.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+        await ownerInput.send("Input.dispatchMouseEvent", {
+            type: "mousePressed",
+            x,
+            y,
+            button: "left",
+            buttons: 1,
+            clickCount: 1,
+            pointerType: "mouse",
+        });
+        await ownerInput.send("Input.dispatchMouseEvent", {
+            type: "mouseMoved",
+            x: x - 40,
+            y,
+            buttons: 1,
+            pointerType: "mouse",
+        });
 
         // Moving to another real document blurs this Grid. The release occurs
         // there, so the original document cannot observe its pointerup.
