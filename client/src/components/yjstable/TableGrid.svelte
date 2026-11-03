@@ -1836,7 +1836,13 @@ function handleCancelDelete() {
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
     onlostpointercapture={(event) => {
-        if (event.pointerId === handlePointerId) stopHandleDrag(event);
+        // Moving touch's implicit capture from the rendered handle to this
+        // stable scroller emits lostpointercapture for the handle. That event
+        // bubbles through the scroller even though the scroller now owns the
+        // pointer, so only terminate once this placement truly lost capture.
+        if (event.pointerId === handlePointerId && !gridContainer?.hasPointerCapture(event.pointerId)) {
+            stopHandleDrag(event);
+        }
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
             // while primary remains held. Window capture continues to own that
