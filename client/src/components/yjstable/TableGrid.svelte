@@ -228,6 +228,12 @@ let touchSelectionMode = $state(false);
 let additiveTouchSelection = $state(false);
 let handleDrag = $state<"anchor" | "focus" | undefined>();
 let handleOppositeCell: GridCellAddress | undefined;
+let handleMovingCell: GridCellAddress | undefined;
+let handlePointerId: number | undefined;
+let handlePointerX = 0;
+let handlePointerY = 0;
+let handleFrame: number | undefined;
+let handleGeneration = 0;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -931,7 +937,10 @@ onMount(() => {
     });
 });
 
-onDestroy(() => unregisterSearch?.());
+onDestroy(() => {
+    stopHandleDrag();
+    unregisterSearch?.();
+});
 
 function rowIdsOf(rows: TableQueryResult["rows"]): string[] {
     return rows.flatMap((row, rowIndex) => {
@@ -1052,34 +1061,116 @@ function suppressSyntheticTouchClick(event: MouseEvent): void {
 
 function cellAtPoint(x: number, y: number): GridCellAddress | undefined {
     const td = document.elementFromPoint(x, y)?.closest<HTMLElement>("td[data-row-id][data-col]");
+    if (!td || !gridContainer?.contains(td)) return undefined;
     const rowId = td?.dataset.rowId;
     const columnId = td?.dataset.col;
-    return rowId && columnId ? { rowId, columnId } : undefined;
+    return rowId && columnId && rowIdsOf(result.rows).includes(rowId) && displayColumns.includes(columnId)
+        ? { rowId, columnId }
+        : undefined;
+}
+
+function visibleDataArea(): DOMRect | undefined {
+    const body = gridContainer?.querySelector("tbody");
+    if (!body || !gridContainer) return undefined;
+    const bodyRect = body.getBoundingClientRect();
+    const gridRect = gridContainer.getBoundingClientRect();
+    const top = Math.max(bodyRect.top, gridRect.top);
+    const bottom = Math.min(bodyRect.bottom, gridRect.top + gridContainer.clientHeight);
+    if (bottom <= top) return undefined;
+    return new DOMRect(gridRect.left, top, gridContainer.clientWidth, bottom - top);
+}
+
+function handleScrollDirection(): -1 | 0 | 1 {
+    if (!gridContainer) return 0;
+    const area = visibleDataArea();
+    if (!area || handlePointerY < area.top || handlePointerY > area.bottom) return 0;
+    const band = Math.min(32, gridContainer.clientWidth / 2);
+    const midpoint = area.left + gridContainer.clientWidth / 2;
+    if (handlePointerX < area.left + band && handlePointerX < midpoint) return -1;
+    if (handlePointerX > area.right - band && handlePointerX > midpoint) return 1;
+    return 0;
+}
+
+function updateHandleSelection(): boolean {
+    if (!gridContainer || !handleOppositeCell || !handleMovingCell) return false;
+    const rows = rowIdsOf(result.rows);
+    if (!rows.includes(handleOppositeCell.rowId) || !displayColumns.includes(handleOppositeCell.columnId)
+        || !rows.includes(handleMovingCell.rowId) || !displayColumns.includes(handleMovingCell.columnId)) return false;
+    const area = visibleDataArea();
+    if (!area) return false;
+    const x = Math.max(area.left + 1, Math.min(area.right - 1, handlePointerX));
+    const y = Math.max(area.top + 1, Math.min(area.bottom - 1, handlePointerY));
+    const cell = cellAtPoint(x, y);
+    if (!cell) return true;
+    handleMovingCell = cell;
+    selection.select(handleOppositeCell);
+    selection.extend(cell, rows, displayColumns);
+    selectionRevision++;
+    return true;
+}
+
+function runHandleFrame(generation: number): void {
+    handleFrame = undefined;
+    if (generation !== handleGeneration || handlePointerId === undefined || !touchSelectionMode
+        || !gridContainer?.isConnected || !updateHandleSelection()) {
+        stopHandleDrag();
+        return;
+    }
+    const direction = handleScrollDirection();
+    if (direction !== 0) {
+        const before = gridContainer.scrollLeft;
+        const maximum = Math.max(0, gridContainer.scrollWidth - gridContainer.clientWidth);
+        gridContainer.scrollLeft = Math.max(0, Math.min(maximum, before + direction * 12));
+        if (gridContainer.scrollLeft !== before && !updateHandleSelection()) {
+            stopHandleDrag();
+            return;
+        }
+    }
+    handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
 
 function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0) || !gridContainer) return;
     event.preventDefault();
     event.stopPropagation();
     handleDrag = end;
     const snapshot = selection.snapshot();
     handleOppositeCell = end === "anchor" ? snapshot.activeCell : snapshot.anchorCell;
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    handleMovingCell = end === "anchor" ? snapshot.anchorCell : snapshot.activeCell;
+    if (!handleOppositeCell || !handleMovingCell) {
+        stopHandleDrag();
+        return;
+    }
+    handlePointerId = event.pointerId;
+    handlePointerX = event.clientX;
+    handlePointerY = event.clientY;
+    suppressClickUntil = Date.now() + 1_000;
+    gridContainer.setPointerCapture?.(event.pointerId);
+    const generation = ++handleGeneration;
+    handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
 
 function moveHandle(event: PointerEvent): void {
-    if (!handleDrag) return;
+    if (!handleDrag || event.pointerId !== handlePointerId) return;
     event.preventDefault();
-    const cell = cellAtPoint(event.clientX, event.clientY);
-    if (!cell) return;
-    selection.select(handleOppositeCell ?? cell);
-    selection.extend(cell, rowIdsOf(result.rows), displayColumns);
-    selectionRevision++;
+    event.stopPropagation();
+    handlePointerX = event.clientX;
+    handlePointerY = event.clientY;
+    if (!updateHandleSelection()) stopHandleDrag();
 }
 
-function stopHandleDrag(): void {
+function stopHandleDrag(event?: PointerEvent): void {
+    if (event && event.pointerId !== handlePointerId) return;
+    const pointerId = handlePointerId;
+    if (pointerId !== undefined) suppressClickUntil = Date.now() + 500;
+    handleGeneration++;
+    if (handleFrame !== undefined) cancelAnimationFrame(handleFrame);
+    handleFrame = undefined;
     handleDrag = undefined;
     handleOppositeCell = undefined;
+    handleMovingCell = undefined;
+    handlePointerId = undefined;
+    if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) gridContainer.releasePointerCapture(pointerId);
 }
 
 function isSelectionEnd(cell: GridCellAddress, end: "anchor" | "focus"): boolean {
@@ -1089,9 +1180,9 @@ function isSelectionEnd(cell: GridCellAddress, end: "anchor" | "focus"): boolean
 }
 
 function leaveTouchSelectionMode(): void {
+    stopHandleDrag();
     touchSelectionMode = false;
     additiveTouchSelection = false;
-    handleDrag = undefined;
 }
 
 function activeSelectionCell(): GridCellAddress | undefined {
@@ -1692,13 +1783,16 @@ function handleCancelDelete() {
 
 <svelte:window
     onpointermove={moveHandle}
-    onpointerup={stopHandleDrag}
-    onpointercancel={() => {
-        stopHandleDrag();
+    onpointerup={(event) => stopHandleDrag(event)}
+    onpointercancel={(event) => {
+        stopHandleDrag(event);
         cancelLongPress();
         touchStart = undefined;
     }}
+    onblur={() => stopHandleDrag()}
 />
+
+<svelte:document onvisibilitychange={() => document.hidden && stopHandleDrag()} />
 
 <!--
     `data-block-dnd-owner` marks this subtree as owning its own drag & drop.
@@ -1735,6 +1829,7 @@ function handleCancelDelete() {
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
     onlostpointercapture={(event) => {
+        if (event.pointerId === handlePointerId) stopHandleDrag(event);
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
             // while primary remains held. Window capture continues to own that

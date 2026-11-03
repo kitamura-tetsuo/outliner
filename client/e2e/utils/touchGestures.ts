@@ -65,6 +65,36 @@ export class TouchGestures {
         }
     }
 
+    /**
+     * Long-presses, moves a real contact, and keeps it down while `whileHeld`
+     * observes frame-driven behavior. No additional touchMove is sent during
+     * the callback, so it can prove progress from a stationary finger.
+     */
+    static async longPressDragAndHold(
+        page: Page,
+        from: TouchPointXY,
+        to: TouchPointXY,
+        whileHeld: () => Promise<void>,
+        holdMs = TouchGestures.LONG_PRESS_HOLD_MS,
+    ): Promise<void> {
+        const client = await page.context().newCDPSession(page);
+        try {
+            await client.send("Input.dispatchTouchEvent", {
+                type: "touchStart",
+                touchPoints: [{ x: from.x, y: from.y }],
+            });
+            await page.waitForTimeout(holdMs);
+            await client.send("Input.dispatchTouchEvent", {
+                type: "touchMove",
+                touchPoints: [{ x: to.x, y: to.y }],
+            });
+            await whileHeld();
+            await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        } finally {
+            await client.detach();
+        }
+    }
+
     /** Pans a finger without pausing, the gesture the browser must keep as a scroll. */
     static async pan(page: Page, from: TouchPointXY, to: TouchPointXY, steps = 8): Promise<void> {
         const client = await page.context().newCDPSession(page);
