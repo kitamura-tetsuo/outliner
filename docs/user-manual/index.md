@@ -266,6 +266,7 @@ Once the table is created, you will see a grid view where you can add, edit, or 
 - The top navigation bar provides **Undo** and **Redo** buttons for convenience; these seamlessly integrate with the project's single global history.
 - The table name in the toolbar links to the source table's own page.
 - **Column widths:** drag the boundary at a column header's right edge to resize it — the Grid previews the width while you drag and saves it once on release as a single Undo step (`Escape` cancels). The UI panel's Width (px) field sets the same saved width from the keyboard; clear it to return the column to automatic sizing.
+- **Keyboard visibility:** `←`/`→`, `Shift`+`←`/`→`, and `Tab`/`Shift`+`Tab` scroll only the active Grid as needed to keep the newly active cell or moving range endpoint visible. Native editors such as selects, dates, and checkboxes continue to own their editing keys.
 
 ### ENUM Ordering
 

@@ -312,12 +312,46 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         });
     });
 
-    it("keeps the newly active cell scrolled into view", async () => {
-        const scrollIntoView = vi.fn();
-        HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    it("reveals a horizontally clipped target with the minimum placement-local scroll", async () => {
         const { view } = setup();
+        const grid = view.container.querySelector<HTMLElement>(".yjs-table-grid")!;
+        const target = cellTd(view.container, "a", "score");
+        Object.defineProperties(grid, {
+            clientWidth: { configurable: true, value: 100 },
+            clientLeft: { configurable: true, value: 0 },
+        });
+        grid.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100);
+        target.getBoundingClientRect = () => new DOMRect(120 - grid.scrollLeft, 10, 50, 20);
+        const pageScroll = vi.spyOn(window, "scrollBy").mockImplementation(() => undefined);
+
         await selectCell(view.container, "a", "name");
-        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowDown" });
-        await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+        await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "ArrowRight" });
+
+        expect(grid.scrollLeft).toBe(70);
+        expect(pageScroll).not.toHaveBeenCalled();
+        pageScroll.mockRestore();
+    });
+
+    it("does not realign an oversized cell when a boundary key leaves it active", async () => {
+        const { view } = setup();
+        const grid = view.container.querySelector<HTMLElement>(".yjs-table-grid")!;
+        const target = cellTd(view.container, "a", "status");
+        Object.defineProperties(grid, {
+            clientWidth: { configurable: true, value: 100 },
+            clientLeft: { configurable: true, value: 0 },
+        });
+        grid.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100);
+        target.getBoundingClientRect = () => new DOMRect(180 - grid.scrollLeft, 10, 180, 20);
+
+        await selectCell(view.container, "a", "score");
+        await fireEvent.keyDown(cellButton(view.container, "a", "score"), { key: "ArrowRight" });
+        expect(grid.scrollLeft).toBe(180);
+        grid.scrollLeft = 37;
+        const select = target.querySelector<HTMLSelectElement>("select")!;
+        // A synthetic event on the cell exercises Grid's clamped navigation path;
+        // native selects intentionally retain ownership of their own arrows.
+        await fireEvent.keyDown(target, { key: "ArrowRight" });
+        expect(document.activeElement).toBe(select);
+        expect(grid.scrollLeft).toBe(37);
     });
 });
