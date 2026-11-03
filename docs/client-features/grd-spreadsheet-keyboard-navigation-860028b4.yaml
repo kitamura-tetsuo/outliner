@@ -18,6 +18,7 @@ acceptance:
 - Unmodified Space on a focused navigation surface is reserved for horizontal panning; Space remains normal input in an open editor
 tests:
 - client/e2e/tables/tbl-grid-horizontal-keyboard-boundaries-5862.spec.ts
+- client/e2e/tables/tbl-grid-horizontal-keyboard-leftward-5862.spec.ts
 - client/e2e/tables/tbl-grid-horizontal-keyboard-oversized-5862.spec.ts
 - client/e2e/tables/tbl-grid-horizontal-keyboard-reveal-5862.spec.ts
 - client/e2e/tables/tbl-grid-keyboard-edit-mode-5188.spec.ts
