@@ -29,14 +29,20 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
         const undoBefore = await undoDepth(page);
         expect(undoBefore).toBeGreaterThanOrEqual(0);
         const box = (await origin.boundingBox())!;
+        await installTransitionProbe(page);
 
         await page.keyboard.down("Space");
         await expect(origin.locator("input")).toHaveCount(0);
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         await page.mouse.down();
+        expect(await readTransitionProbe(page)).toEqual({ updates: 0, selectionMutations: 0 });
+        expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);
+        expect(await readGridProjectState(page)).toEqual(stateBefore);
+        expect(await undoDepth(page)).toBe(undoBefore);
         await page.mouse.up();
         await page.keyboard.up("Space");
 
+        expect(await readTransitionProbe(page)).toEqual({ updates: 0, selectionMutations: 0 });
         await expect(origin.locator("input")).toHaveCount(0);
         expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);
         expect(await readGridProjectState(page)).toEqual(stateBefore);
@@ -44,6 +50,9 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
 
         await next.locator("button").click();
         await expect(next.locator("input")).toBeFocused();
+        await page.evaluate(() => {
+            (globalThis as typeof globalThis & { __zeroPanProbe: { stop: () => void; }; }).__zeroPanProbe.stop();
+        });
     });
 
     test("secondary button transition cannot discard a Space-first release guard", async ({ page }) => {
@@ -81,4 +90,65 @@ function selectedCellIdentity(grid: import("@playwright/test").Locator): Promise
     return grid.locator("td.grid-selected").evaluateAll(cells =>
         cells.map(cell => [cell.getAttribute("data-row-id"), cell.getAttribute("data-col")])
     );
+}
+
+async function installTransitionProbe(page: import("@playwright/test").Page): Promise<void> {
+    await page.evaluate(() => {
+        type Doc = {
+            on: (name: string, callback: () => void) => void;
+            off: (name: string, callback: () => void) => void;
+        };
+        type Probe = { updates: number; selectionMutations: number; stop: () => void; };
+        const browser = globalThis as typeof globalThis & {
+            __YJS_STORE__?: {
+                yjsClient?: {
+                    getProject?: () => {
+                        ydoc?: Doc & {
+                            getMap: (
+                                name: string,
+                            ) => { values: () => IterableIterator<{ get: (name: string) => Doc | undefined; }>; };
+                        };
+                    };
+                };
+            };
+            __zeroPanProbe?: Probe;
+        };
+        const project = browser.__YJS_STORE__?.yjsClient?.getProject?.();
+        if (!project?.ydoc) throw new Error("Project document unavailable for zero-distance pan probe");
+        const probe: Probe = { updates: 0, selectionMutations: 0, stop: () => {} };
+        const onUpdate = () => probe.updates++;
+        const documents: Doc[] = [project.ydoc];
+        for (const entry of project.ydoc.getMap("yjsTables").values()) {
+            const tableDoc = entry.get("doc");
+            if (tableDoc) documents.push(tableDoc);
+        }
+        for (const document of documents) document.on("update", onUpdate);
+        const observer = new MutationObserver(records => {
+            probe.selectionMutations += records.filter(record =>
+                record.type === "attributes" && record.target instanceof HTMLElement
+                && record.target.matches("td, th") && ["class", "aria-selected"].includes(record.attributeName ?? "")
+            ).length;
+        });
+        observer.observe(document.querySelector("[data-testid='yjs-table-grid']")!, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class", "aria-selected"],
+        });
+        probe.stop = () => {
+            for (const document of documents) document.off("update", onUpdate);
+            observer.disconnect();
+        };
+        browser.__zeroPanProbe = probe;
+    });
+}
+
+function readTransitionProbe(
+    page: import("@playwright/test").Page,
+): Promise<{ updates: number; selectionMutations: number; }> {
+    return page.evaluate(() => {
+        const probe = (globalThis as typeof globalThis & {
+            __zeroPanProbe: { updates: number; selectionMutations: number; };
+        }).__zeroPanProbe;
+        return { updates: probe.updates, selectionMutations: probe.selectionMutations };
+    });
 }
