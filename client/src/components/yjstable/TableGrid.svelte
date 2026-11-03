@@ -1841,9 +1841,9 @@ function handleCancelDelete() {
     onlostpointercapture={(event) => {
         // Moving touch's implicit capture from the rendered handle to this
         // stable scroller emits lostpointercapture for the handle. That event
-        // bubbles through the scroller even though the scroller now owns the
-        // pointer, so only terminate once this placement truly lost capture.
-        if (event.pointerId === handlePointerId && !gridContainer?.hasPointerCapture(event.pointerId)) {
+        // bubbles through the scroller before the pending capture override is
+        // observable. Only loss targeted at the stable scroller is terminal.
+        if (event.pointerId === handlePointerId && event.target === gridContainer) {
             stopHandleDrag(event);
         }
         if (panActive && event.pointerId === panPointerId) {
