@@ -148,6 +148,20 @@ export class TouchGestures {
         return { x: box.x + box.width * widthRatio, y: box.y + box.height * heightRatio };
     }
 
+    /** A viewport pixel whose hit-test resolves to the rendered locator. */
+    static async hittablePoint(locator: Locator): Promise<TouchPointXY> {
+        return await locator.evaluate((element: HTMLElement) => {
+            const rect = element.getBoundingClientRect();
+            for (const yRatio of [0.25, 0.75, 0.5]) {
+                for (const xRatio of [0.25, 0.75, 0.5]) {
+                    const point = { x: rect.left + rect.width * xRatio, y: rect.top + rect.height * yRatio };
+                    if (document.elementFromPoint(point.x, point.y)?.closest("button") === element) return point;
+                }
+            }
+            throw new Error("No visible hit-test point exists inside the touch handle");
+        });
+    }
+
     /**
      * A point inside a single rendered character of an item's text.
      *

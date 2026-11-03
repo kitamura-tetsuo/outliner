@@ -27,7 +27,7 @@ test.describe("Grid touch handle edge scrolling", () => {
         expect(gridBox).not.toBeNull();
         // The handle is centred on the cell corner. Aim into its cell-facing
         // quadrant instead of the exact grid-line intersection.
-        const start = TouchGestures.pointInBox(handleBox!, 0.25, 0.25);
+        const start = await TouchGestures.hittablePoint(handle);
         const titleBox = await titleCell.boundingBox();
         expect(titleBox).not.toBeNull();
         const edge = { x: gridBox!.x + gridBox!.width - 2, y: titleBox!.y + titleBox!.height / 2 };
@@ -51,7 +51,7 @@ test.describe("Grid touch handle edge scrolling", () => {
             const selectedBefore = await grid.locator("td.grid-selected").evaluateAll(cells =>
                 cells.map(cell => (cell as HTMLElement).dataset.col)
             );
-            const currentHandlePoint = TouchGestures.pointInBox(currentHandleBox!, 0.25, 0.25);
+            const currentHandlePoint = await TouchGestures.hittablePoint(handle);
             await page.mouse.click(currentHandlePoint.x, currentHandlePoint.y);
             expect(
                 await grid.locator("td.grid-selected").evaluateAll(cells =>
@@ -91,7 +91,7 @@ test.describe("Grid touch handle edge scrolling", () => {
 
         await TouchGestures.longPressDragAndHold(
             page,
-            TouchGestures.pointInBox(handleBox!, 0.75, 0.75),
+            await TouchGestures.hittablePoint(handle),
             left,
             async contact => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeLessThan(before);
