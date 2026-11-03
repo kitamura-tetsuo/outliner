@@ -1889,11 +1889,22 @@ function handleCancelDelete() {
     }}
     onlostpointercapture={(event) => {
         // The handle's implicit-capture loss bubbles here when ownership is
-        // transferred to the stable scroller. Only loss after that scroller
-        // has actually acquired capture is terminal for the owned drag.
+        // transferred to the stable scroller. Chromium can retarget that
+        // transition event to the scroller after its own gotpointercapture,
+        // so event.target and event ordering alone cannot distinguish it from
+        // a real loss. Validate the scroller's current capture in a microtask:
+        // the transfer keeps capture, while blur/removal/explicit capture loss
+        // leaves it absent and terminates the same owned generation.
         if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
-            handleScrollerCaptured = false;
-            stopHandleDrag();
+            const pointerId = event.pointerId;
+            const generation = handleGeneration;
+            queueMicrotask(() => {
+                if (pointerId === handlePointerId && generation === handleGeneration
+                    && !gridContainer?.hasPointerCapture(pointerId)) {
+                    handleScrollerCaptured = false;
+                    stopHandleDrag();
+                }
+            });
         }
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
