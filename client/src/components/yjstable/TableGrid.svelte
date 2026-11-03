@@ -230,6 +230,7 @@ let handleDrag = $state<"anchor" | "focus" | undefined>();
 let handleOppositeCell: GridCellAddress | undefined;
 let handleMovingCell: GridCellAddress | undefined;
 let handleOriginCell: GridCellAddress | undefined;
+let handleOriginElement: HTMLElement | undefined;
 let handlePointerId: number | undefined;
 let handlePointerX = 0;
 let handlePointerY = 0;
@@ -1181,6 +1182,7 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     // of the pointer sequence. Moving the logical endpoint must not remove the
     // implicit-capture target and make Chromium cancel an otherwise live touch.
     handleOriginCell = handleMovingCell;
+    handleOriginElement = event.currentTarget as HTMLElement;
     // Ownership supersedes any undecided ordinary touch that began before the
     // handle press. Otherwise its already-armed long-press timer can mutate
     // this range after a different pointer has become the handle owner.
@@ -1227,6 +1229,7 @@ function stopHandleDrag(event?: PointerEvent): void {
     handleOppositeCell = undefined;
     handleMovingCell = undefined;
     handleOriginCell = undefined;
+    handleOriginElement = undefined;
     handlePointerId = undefined;
     handleScrollerCaptured = false;
     handleCaptureLossArmed = false;
@@ -1901,7 +1904,9 @@ function handleCancelDelete() {
         // so its transfer loss retains that button as event.target and bubbles
         // through this element without matching. A loss targeted at the stable
         // scroller after acquisition is terminal for this owned generation.
-        if (event.pointerId === handlePointerId && event.target === gridContainer && handleScrollerCaptured) {
+        const transferFromHandle = handleOriginElement !== undefined && event.composedPath().includes(handleOriginElement);
+        if (!transferFromHandle && event.pointerId === handlePointerId
+            && event.target === gridContainer && handleScrollerCaptured) {
             const pointerId = event.pointerId;
             const generation = handleGeneration;
             const establishedLoss = handleCaptureLossArmed;
