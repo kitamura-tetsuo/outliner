@@ -109,6 +109,9 @@ test.describe("Grid touch handle edge scrolling", () => {
             left,
             async contact => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeLessThan(before);
+                await expect(title).toHaveClass(/grid-selected/);
+                await expect(grid.locator('td[data-col="id"]')).toHaveClass(/grid-selected/);
+                await expect(done).not.toHaveClass(/grid-selected/);
                 await contact.move(middle);
                 await page.waitForTimeout(150);
                 const stopped = await grid.evaluate((node: HTMLElement) => node.scrollLeft);

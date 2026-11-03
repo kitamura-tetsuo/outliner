@@ -7,12 +7,12 @@ status: implemented
 acceptance:
 - A floating, keyboard-accessible toolbar exposes additive selection, editing, and an extensible home for shared selection commands
 - A tap activates a cell, a double tap enters its native editor, and a long press enters range-selection mode
-- Large touch handles resize the same logical range used by mouse and keyboard selection
 - Holding either range handle at a horizontal edge scrolls only that Grid and extends the range into previously hidden columns while the opposite endpoint stays fixed
+- Large touch handles resize the same logical range used by mouse and keyboard selection
 - Moving beyond touch slop leaves gesture ownership with native horizontal or vertical scrolling
 - Opening a native cell editor preserves the logical active cell while the virtual keyboard changes the visual viewport
 - Row and column headers remain directly tappable and additive mode provides understandable multi-selection without modifier keys
 tests:
-- client/src/components/yjstable/TableGrid.touch.test.ts
-- client/e2e/tables/grd-grid-touch-edge-scroll-5190a4ce.spec.ts
 - client/e2e/tables/grd-grid-touch-edge-lifecycle-5190a4ce.spec.ts
+- client/e2e/tables/grd-grid-touch-edge-scroll-5190a4ce.spec.ts
+- client/src/components/yjstable/TableGrid.touch.test.ts

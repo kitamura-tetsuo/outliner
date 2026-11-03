@@ -8,6 +8,7 @@ export interface TouchPointXY {
 
 export interface HeldTouchContact {
     move(point: TouchPointXY): Promise<void>;
+    pressAdditional(point: TouchPointXY): Promise<void>;
     cancel(): Promise<void>;
 }
 
@@ -49,7 +50,7 @@ export class TouchGestures {
         try {
             await client.send("Input.dispatchTouchEvent", {
                 type: "touchStart",
-                touchPoints: [{ x: from.x, y: from.y }],
+                touchPoints: [{ x: from.x, y: from.y, id: 0 }],
             });
 
             // Rest in place long enough for the long-press timer to fire.
@@ -91,14 +92,27 @@ export class TouchGestures {
             await page.waitForTimeout(holdMs);
             await client.send("Input.dispatchTouchEvent", {
                 type: "touchMove",
-                touchPoints: [{ x: to.x, y: to.y }],
+                touchPoints: [{ x: to.x, y: to.y, id: 0 }],
             });
             let cancelled = false;
+            let current = to;
+            let additional: TouchPointXY | undefined;
             await whileHeld({
                 move: async point => {
+                    current = point;
                     await client.send("Input.dispatchTouchEvent", {
                         type: "touchMove",
-                        touchPoints: [{ x: point.x, y: point.y }],
+                        touchPoints: [
+                            { x: point.x, y: point.y, id: 0 },
+                            ...(additional ? [{ ...additional, id: 1 }] : []),
+                        ],
+                    });
+                },
+                pressAdditional: async point => {
+                    additional = point;
+                    await client.send("Input.dispatchTouchEvent", {
+                        type: "touchStart",
+                        touchPoints: [{ ...current, id: 0 }, { ...point, id: 1 }],
                     });
                 },
                 cancel: async () => {

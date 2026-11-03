@@ -1008,6 +1008,15 @@ function cancelLongPress(): void {
  */
 function touchCellPointerDown(event: PointerEvent, cell: GridCellAddress): void {
     if (event.pointerType !== "touch") return;
+    // A rejected contact on the other rendered handle still bubbles through
+    // its containing cell. While a handle owns this placement, consume every
+    // unrelated touch before it can arm the ordinary tap/long-press gesture
+    // and mutate the owner's range.
+    if (handlePointerId !== undefined && event.pointerId !== handlePointerId) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
     cancelLongPress();
     touchStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, cell };
     longPressTimer = setTimeout(() => {
@@ -1021,6 +1030,11 @@ function touchCellPointerDown(event: PointerEvent, cell: GridCellAddress): void 
 }
 
 function touchCellPointerMove(event: PointerEvent): void {
+    if (handlePointerId !== undefined && event.pointerId !== handlePointerId) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
     if (!touchStart || event.pointerId !== touchStart.pointerId) return;
     if (Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) > TOUCH_SLOP_PX) {
         cancelLongPress();
@@ -1029,6 +1043,15 @@ function touchCellPointerMove(event: PointerEvent): void {
 }
 
 function touchCellPointerUp(event: PointerEvent): void {
+    if (handlePointerId !== undefined && event.pointerId !== handlePointerId) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (touchStart?.pointerId === event.pointerId) {
+            cancelLongPress();
+            touchStart = undefined;
+        }
+        return;
+    }
     if (event.pointerType !== "touch" || !touchStart || event.pointerId !== touchStart.pointerId) return;
     const cell = touchStart.cell;
     const longPressed = longPressTimer === undefined;

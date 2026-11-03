@@ -83,4 +83,70 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
             50,
         );
     });
+
+    test("a second real touch cannot retarget an owned handle drag", async ({ page }) => {
+        const grid = await createOverflowingTouchGrid(page);
+        const title = grid.locator('tbody tr:first-child td[data-col="title"]');
+        await enterTouchRangeMode(page, title);
+        const ownerHandle = grid.getByRole("button", { name: "Resize selection from end" });
+        const gridBox = await grid.boundingBox();
+        const titleBox = await title.boundingBox();
+        expect(gridBox).not.toBeNull();
+        expect(titleBox).not.toBeNull();
+
+        await TouchGestures.longPressDragAndHold(
+            page,
+            await TouchGestures.hittablePoint(ownerHandle),
+            { x: gridBox!.x + gridBox!.width - 2, y: titleBox!.y + titleBox!.height / 2 },
+            async contact => {
+                await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
+                const otherHandle = grid.getByRole("button", { name: "Resize selection from start" });
+                const before = await grid.locator("td.grid-selected").evaluateAll(cells =>
+                    cells.map(cell => (cell as HTMLElement).dataset.col)
+                );
+                await contact.pressAdditional(await TouchGestures.hittablePoint(otherHandle));
+                await page.waitForTimeout(TouchGestures.LONG_PRESS_HOLD_MS);
+                expect(
+                    await grid.locator("td.grid-selected").evaluateAll(cells =>
+                        cells.map(cell => (cell as HTMLElement).dataset.col)
+                    ),
+                ).toEqual(before);
+                const offset = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
+                await contact.move({ x: gridBox!.x + 2, y: titleBox!.y + titleBox!.height / 2 });
+                await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeLessThan(offset);
+            },
+            50,
+        );
+    });
+
+    test("removing the owning placement makes queued handle work inert", async ({ page }) => {
+        const grid = await createOverflowingTouchGrid(page);
+        const cell = grid.locator('tbody tr:first-child td[data-col="title"]');
+        await enterTouchRangeMode(page, cell);
+        const gridBox = await grid.boundingBox();
+        const cellBox = await cell.boundingBox();
+        expect(gridBox).not.toBeNull();
+        expect(cellBox).not.toBeNull();
+
+        await TouchGestures.longPressDragAndHold(
+            page,
+            await TouchGestures.hittablePoint(grid.getByRole("button", { name: "Resize selection from end" })),
+            { x: gridBox!.x + gridBox!.width - 2, y: cellBox!.y + cellBox!.height / 2 },
+            async () => {
+                await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
+                const item = grid.locator("xpath=ancestor::*[contains(@class, 'outliner-item')]").first();
+                await item.locator(".item-content").click({ button: "right" });
+                const menu = page.locator(".context-menu");
+                await expect(menu).toBeVisible();
+                await menu.getByRole("menuitem", { name: "Delete item" }).click();
+                const dialog = page.getByRole("alertdialog", { name: "Delete Item" });
+                await expect(dialog).toBeVisible();
+                await dialog.getByRole("button", { name: /delete/i }).click();
+                await expect(grid).toHaveCount(0);
+                await page.waitForTimeout(150);
+                await expect(page.getByTestId("yjs-table-grid")).toHaveCount(0);
+            },
+            50,
+        );
+    });
 });
