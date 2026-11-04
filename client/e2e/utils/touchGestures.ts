@@ -94,10 +94,22 @@ export class TouchGestures {
                 touchPoints: [{ x: from.x, y: from.y, id: 0 }],
             });
             await page.waitForTimeout(holdMs);
-            await client.send("Input.dispatchTouchEvent", {
-                type: "touchMove",
-                touchPoints: [{ x: to.x, y: to.y, id: 0 }],
-            });
+            // Travel as a real finger would instead of teleporting one contact
+            // across the Grid in a single packet. Chromium can cancel an
+            // implausibly large one-frame touch jump before the captured
+            // pointer reaches the requested edge.
+            for (let step = 1; step <= 8; step++) {
+                const ratio = step / 8;
+                await client.send("Input.dispatchTouchEvent", {
+                    type: "touchMove",
+                    touchPoints: [{
+                        x: from.x + (to.x - from.x) * ratio,
+                        y: from.y + (to.y - from.y) * ratio,
+                        id: 0,
+                    }],
+                });
+                await page.waitForTimeout(16);
+            }
             let cancelled = false;
             let current = to;
             let additional: TouchPointXY | undefined;
