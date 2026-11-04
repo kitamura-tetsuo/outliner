@@ -93,7 +93,7 @@ export class TouchGestures {
                 // pointer and start a different contact.
                 touchPoints: [{ x: from.x, y: from.y, id: 0 }],
             });
-            await page.waitForTimeout(holdMs);
+            if (holdMs > 0) await page.waitForTimeout(holdMs);
             // Travel as a real finger would instead of teleporting one contact
             // across the Grid in a single packet. Chromium can cancel an
             // implausibly large one-frame touch jump before the captured

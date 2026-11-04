@@ -57,7 +57,7 @@ test.describe("Grid touch handle edge scrolling", () => {
                     cells.map(cell => (cell as HTMLElement).dataset.col)
                 ),
             ).toEqual(selectedBefore);
-        }, 50);
+        }, 0);
 
         const released = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
         expect(released).toBeGreaterThan(0);
@@ -90,7 +90,7 @@ test.describe("Grid touch handle edge scrolling", () => {
             async () => {
                 await expect(title).toHaveClass(/grid-selected/);
             },
-            50,
+            0,
         );
         await expect(title).toHaveClass(/grid-selected/);
         const handle = grid.getByRole("button", { name: "Resize selection from start" });
@@ -130,7 +130,7 @@ test.describe("Grid touch handle edge scrolling", () => {
                 await page.waitForTimeout(100);
                 expect(await grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(cancelled);
             },
-            50,
+            0,
         );
     });
 

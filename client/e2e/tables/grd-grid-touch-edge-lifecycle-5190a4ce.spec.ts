@@ -54,7 +54,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                     ),
                 ).toEqual(ownerSelection);
             },
-            50,
+            0,
         );
         expect(await foreign.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(0);
     });
@@ -83,7 +83,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                 await page.waitForTimeout(150);
                 expect(await grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBe(stopped);
             },
-            50,
+            0,
         );
     });
 
@@ -125,7 +125,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                 });
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(offset);
             },
-            50,
+            0,
         );
     });
 
@@ -176,7 +176,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeGreaterThan(0);
                 await page.mouse.up();
             },
-            50,
+            0,
         );
     });
 
@@ -206,7 +206,7 @@ test.describe("Grid touch edge-scroll ownership and invalidation", () => {
                 await page.waitForTimeout(150);
                 await expect(page.getByTestId("yjs-table-grid")).toHaveCount(0);
             },
-            50,
+            0,
         );
     });
 });
