@@ -105,7 +105,8 @@ export class ProductionOnPrem {
                 clearTimeout(timeout);
                 child.removeListener("exit", abortOnExit);
             }
-            await new Promise(resolve => setTimeout(resolve, 50));
+            const retryDelay = Math.min(50, Math.max(0, deadline - Date.now()));
+            if (retryDelay > 0) await new Promise(resolve => setTimeout(resolve, retryDelay));
         }
         const outcome = child.exitCode === null && child.signalCode === null
             ? "readiness timed out"
