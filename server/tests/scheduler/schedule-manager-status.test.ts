@@ -290,6 +290,49 @@ describe("Schedules Manager status (production path)", function() {
         expect(new Date(snapshot.next.nextRunAt!).getTime()).to.not.equal(naive!.getTime());
     });
 
+    it("publishes automatic and store-refresh SQL refusals without changing history, cursor, or records", async function() {
+        const projectDoc = docs.get(projectRoom)!;
+        const rule = ruleMapOf(projectDoc);
+        rule.set("lastRunStatus", "ok");
+        rule.set("lastRunStartedAt", "2026-10-01T00:00:00.000Z");
+        rule.set("lastRunAt", "2026-10-01T00:00:01.000Z");
+        rule.set("lastSuccessfulRunAt", "2026-10-01T00:00:01.000Z");
+        rule.set("validationError", "independent recurrence diagnostic");
+        const beforeIndex = { ...indexRow() };
+        const targetData = docs.get(tableRoom)!.getMap("data");
+        const beforeRecords = targetData.toJSON();
+        const invalidSql = "WITH inserted AS (INSERT INTO tasks (id) VALUES ('x') RETURNING *) SELECT * FROM inserted";
+        rule.set("sql", invalidSql);
+
+        await scheduler.tick();
+
+        const diagnostic = JSON.parse(rule.get("sqlValidationDiagnostic") as string);
+        expect(diagnostic).to.deep.equal({
+            version: 1,
+            sql: invalidSql,
+            strictAliases: false,
+            error: "Query must be an INSERT statement",
+        });
+        expect(indexRow()).to.deep.equal(beforeIndex);
+        expect(targetData.toJSON()).to.deep.equal(beforeRecords);
+        expect(rule.get("lastRunStatus")).to.equal("ok");
+        expect(rule.get("lastSuccessfulRunAt")).to.equal("2026-10-01T00:00:01.000Z");
+        expect(rule.get("validationError")).to.equal("independent recurrence diagnostic");
+
+        let diagnosticUpdates = 0;
+        rule.observe(event => {
+            if (event.keysChanged.has("sqlValidationDiagnostic")) diagnosticUpdates++;
+        });
+        storeProjectDocument();
+        expect(diagnosticUpdates).to.equal(0);
+
+        rule.set("enabled", false);
+        rule.set("sql", dailyRule.sql);
+        storeProjectDocument();
+        expect(rule.get("sqlValidationDiagnostic")).to.be.undefined;
+        expect(rule.get("lastRunStatus")).to.equal("ok");
+    });
+
     // AS-002 — the start of an execution is observable as one transition, and
     // its success updates both the result and the successful-completion time.
     it("records the execution start before completion and the success after it", async function() {
