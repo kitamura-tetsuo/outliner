@@ -21,6 +21,7 @@
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { projectObjectsSelectedRoute } from "../../lib/managementPaths";
+    import { currentScheduleSqlDiagnostic } from "$shared/services/scheduleSqlDiagnostics";
 
     const logger = getLogger("ProjectScheduleEditPage");
 
@@ -45,6 +46,8 @@
     let currentRule = $state<Partial<ScheduleRule> | undefined>(undefined);
     let runSummary = $derived(currentRule ? summarizeScheduleRun(currentRule) : undefined);
     let ruleLoaded = $state(false);
+    let savedSqlState = $state<{ sql?: string; sqlAliasPolicyVersion?: number; sqlValidationDiagnostic?: string; }>({});
+    let sqlDiagnostic = $derived(currentScheduleSqlDiagnostic(savedSqlState));
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
 
@@ -100,6 +103,11 @@
         };
 
         currentRule = rule;
+        savedSqlState = {
+            sql: ruleMap.get("sql") as string | undefined,
+            sqlAliasPolicyVersion: ruleMap.get("sqlAliasPolicyVersion") as number | undefined,
+            sqlValidationDiagnostic: ruleMap.get("sqlValidationDiagnostic") as string | undefined,
+        };
         selectedTableId = rule.targetTableId || tables[0]?.tableId || "";
         ruleLoaded = true;
     }
@@ -116,6 +124,11 @@
         currentRule.lastSuccessfulRunAt = ruleMap.get("lastSuccessfulRunAt") as string | undefined;
         currentRule.completedAt = ruleMap.get("completedAt") as string | undefined;
         currentRule.validationError = ruleMap.get("validationError") as string | undefined;
+        savedSqlState = {
+            sql: ruleMap.get("sql") as string | undefined,
+            sqlAliasPolicyVersion: ruleMap.get("sqlAliasPolicyVersion") as number | undefined,
+            sqlValidationDiagnostic: ruleMap.get("sqlValidationDiagnostic") as string | undefined,
+        };
     }
 
     async function handleAuthSuccess() {
@@ -311,6 +324,12 @@
             {#if runError}
                 <div class="mb-4 text-sm text-red-700 bg-red-50 p-3 rounded border border-red-100 font-mono">
                     {runError}
+                </div>
+            {/if}
+
+            {#if sqlDiagnostic}
+                <div class="mb-4 text-sm text-red-700 bg-red-50 p-3 rounded border border-red-100" data-testid="schedule-detail-sql-validation-error">
+                    <strong>Saved SQL validation problem:</strong> {sqlDiagnostic.error}
                 </div>
             {/if}
 

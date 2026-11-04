@@ -1,7 +1,7 @@
 id: FTR-4b7e2a91
 title: Schedules Manager with authoritative execution status
 title-ja: 実行状態を表示するスケジュールマネージャー
-description: The project Schedule list at /:project/-/schedules is a compact management table exposing Enabled, Name, Target, Cadence, Last run, Result, Last successful run, Next run and row actions. Last run is the instant an execution attempt began, Last successful run the completion of the most recent success, and Next run the production scheduler's own recurrence cursor rather than a client-side rrule calculation.
+description: The project Schedule list at /:project/-/schedules is a compact management table exposing Enabled, Name, Target, Cadence, Last run, Result, Last successful run, Next run and row actions. Last run is the instant an execution attempt began, Last successful run the completion of the most recent success, and Next run the production scheduler's own recurrence cursor rather than a client-side rrule calculation. A saved-SQL validation problem is the deployed server's current rejection of the persisted definition and is displayed separately from historical execution results and recurrence validation.
 category: schedule
 status: implemented
 acceptance:
@@ -17,6 +17,7 @@ acceptance:
 - Read-only viewers can read every status column but cannot enable, run or delete
 - Run now updates the execution telemetry without moving the recurrence cursor
 - Starting an execution publishes its start time and a Running result before completion
+- A current saved-SQL rejection appears in both management views without replacing an earlier run outcome
 components:
 - client/src/components/management/ScheduleDetailView.svelte
 - client/src/components/management/ScheduleListView.svelte
@@ -24,6 +25,8 @@ components:
 - server/src/scheduler/Scheduler.ts
 - server/src/scheduler/schedule-indexer.ts
 - server/src/scheduler/schedule-status-publisher.ts
+- server/src/scheduler/schedule-sql-diagnostics.ts
+- shared/src/services/scheduleSqlDiagnostics.ts
 - shared/src/services/scheduleStatus.ts
 tests:
 - client/e2e/schedule/sch-schedules-manager-status-4b7e2a91.spec.ts
@@ -32,3 +35,4 @@ tests:
 - server/tests/schedule-indexer-dst-policy.test.ts
 - server/tests/scheduler/schedule-manager-status.test.ts
 - shared/tests/services/scheduleStatus.test.ts
+- shared/tests/services/scheduleSqlDiagnostics.test.ts

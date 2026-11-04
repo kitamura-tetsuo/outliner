@@ -120,6 +120,8 @@
                     schedulerNextRunAt: ruleMap.get("schedulerNextRunAt") as string | undefined,
                     completedAt: ruleMap.get("completedAt") as string | undefined,
                     validationError: ruleMap.get("validationError") as string | undefined,
+                    sqlValidationDiagnostic: ruleMap.get("sqlValidationDiagnostic") as string | undefined,
+                    sqlAliasPolicyVersion: ruleMap.get("sqlAliasPolicyVersion") as number | undefined,
                     skippedOccurrences: ruleMap.get("skippedOccurrences") as number | undefined,
                 },
             });
