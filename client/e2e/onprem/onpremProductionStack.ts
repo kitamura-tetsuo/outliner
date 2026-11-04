@@ -28,6 +28,8 @@ export interface TransportEvent {
         | "ws-upstream-data"
         | "ws-client-close"
         | "ws-upstream-close"
+        | "ws-client-close-held"
+        | "ws-upstream-close-held"
         | "ws-client-cleanup-destroy"
         | "ws-upstream-cleanup-destroy"
         | "ws-cleanup-complete";
@@ -53,6 +55,11 @@ interface Tunnel {
     controlledFirstTerminal?: "ws-client-close" | "ws-upstream-close";
     deliveredTerminals: Set<"ws-client-close" | "ws-upstream-close">;
     heldTerminalCallback?: "ws-client-close" | "ws-upstream-close";
+    callbackHold?: {
+        kind: "ws-client-close" | "ws-upstream-close";
+        reached: () => void;
+        deliver?: () => void;
+    };
 }
 
 export class OnPremProductionStack {
@@ -131,6 +138,36 @@ export class OnPremProductionStack {
         if (!tunnel) throw new Error(`No active tunnel ${id} to control`);
         if (tunnel.observed.size) throw new Error(`Tunnel ${id} already has terminal observations`);
         tunnel.controlledFirstTerminal = first;
+    }
+
+    holdTunnelTerminalCallback(id: number, kind: "ws-client-close" | "ws-upstream-close") {
+        const tunnel = [...this.tunnels].find(candidate => candidate.id === id);
+        if (!tunnel || tunnel.observed.size || tunnel.callbackHold) {
+            throw new Error(`Tunnel ${id} is unavailable for a terminal callback barrier`);
+        }
+        const heldKind = kind === "ws-client-close" ? "ws-client-close-held" : "ws-upstream-close-held";
+        // Use the same finite observer as all other transport barriers. Only a
+        // real socket callback can emit this identity-bound held observation.
+        const observed = this.waitForTransportEvent(heldKind, tunnel.url, {
+            id,
+            stage: `real ${kind} callback held before delivery`,
+        });
+        const hold: NonNullable<Tunnel["callbackHold"]> = {
+            kind,
+            reached: () => this.recordTransport({ id, kind: heldKind, url: tunnel.url }),
+        };
+        tunnel.callbackHold = hold;
+        return {
+            observed,
+            release: () => {
+                if (this.stopping || !this.tunnels.has(tunnel) || tunnel.callbackHold !== hold) {
+                    throw new Error(`Tunnel ${id} ended before its terminal callback was released`);
+                }
+                if (!hold.deliver) throw new Error(`Tunnel ${id} has no real terminal callback to release`);
+                tunnel.callbackHold = undefined;
+                hold.deliver();
+            },
+        };
     }
 
     interruptUpstreamResponse(id: number) {
@@ -367,6 +404,15 @@ export class OnPremProductionStack {
         });
     }
     private deliverTunnelClose(tunnel: Tunnel, kind: "ws-client-close" | "ws-upstream-close") {
+        if (this.stopping || !this.tunnels.has(tunnel)) return;
+        const hold = tunnel.callbackHold;
+        if (hold?.kind === kind) {
+            if (!hold.deliver) {
+                hold.deliver = () => this.deliverTunnelClose(tunnel, kind);
+                hold.reached();
+            }
+            return;
+        }
         if (tunnel.deliveredTerminals.has(kind)) return;
         const controlledFirst = tunnel.controlledFirstTerminal;
         if (controlledFirst && kind !== controlledFirst && !tunnel.deliveredTerminals.has(controlledFirst)) {
@@ -394,6 +440,10 @@ export class OnPremProductionStack {
             tunnel.observed.add(kind);
             this.recordTransport({ id: tunnel.id, kind, url: tunnel.url });
         }
+        // The controlled-order oracle requires both independent real callbacks.
+        // A single event-loop turn is not a barrier: cleanup can otherwise
+        // destroy the peer before its delayed callback becomes observable.
+        if (tunnel.controlledFirstTerminal && tunnel.observed.size < 2) return;
         if (!tunnel.cleanupScheduled && this.tunnels.has(tunnel)) {
             tunnel.cleanupScheduled = true;
             // A browser close and the resulting backend close can be queued in
@@ -405,6 +455,10 @@ export class OnPremProductionStack {
     }
     private closeTunnel(tunnel: Tunnel) {
         if (!this.tunnels.delete(tunnel)) return;
+        if (tunnel.callbackHold) {
+            tunnel.callbackHold.deliver = undefined;
+            tunnel.callbackHold = undefined;
+        }
         tunnel.client.unpipe(tunnel.upstream);
         tunnel.upstream.unpipe(tunnel.client);
         if (!tunnel.client.destroyed) {
