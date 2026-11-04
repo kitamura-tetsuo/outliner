@@ -48,6 +48,7 @@ vi.mock("../../services/schedule/scheduleRunService", () => ({
 import { serializeScheduleSqlDiagnostic } from "$shared/services/scheduleSqlDiagnostics";
 import { store } from "../../stores/store.svelte";
 import { setPage } from "../../tests/mocks/appState.svelte";
+import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import ScheduleDetailView from "./ScheduleDetailView.svelte";
 
 const RULE_ID = "rule-1";
@@ -84,6 +85,7 @@ describe("Schedule detail page and scheduler-owned telemetry", () => {
     beforeEach(() => {
         projectDoc = new Y.Doc();
         store.project = undefined;
+        fakeMonacoRegistry.reset();
     });
 
     afterEach(() => {
@@ -163,16 +165,14 @@ describe("Schedule detail page and scheduler-owned telemetry", () => {
         );
 
         render(ScheduleDetailView, { projectName: "demo", ruleId: RULE_ID });
-        const sqlInput = await waitFor(() =>
-            screen.getByRole("textbox", { name: "SQL Statement" }) as HTMLTextAreaElement
-        );
+        await waitFor(() => expect(fakeMonacoRegistry.editors.length).toBe(1));
         await waitFor(() => expect(screen.getByTestId("schedule-detail-sql-validation-error")).toBeTruthy());
 
-        sqlInput.value = "INSERT INTO audit (id) VALUES ('unsaved-draft') RETURNING *;";
-        sqlInput.dispatchEvent(new Event("input", { bubbles: true }));
+        const draft = "INSERT INTO audit (id) VALUES ('unsaved-draft') RETURNING *;";
+        fakeMonacoRegistry.lastModel().type(draft);
         projectDoc.getMap("schedules").delete(RULE_ID);
 
         await waitFor(() => expect(screen.queryByTestId("schedule-detail-sql-validation-error")).toBeNull());
-        expect(sqlInput.value).toBe("INSERT INTO audit (id) VALUES ('unsaved-draft') RETURNING *;");
+        expect(fakeMonacoRegistry.lastModel().getValue()).toBe(draft);
     });
 });
