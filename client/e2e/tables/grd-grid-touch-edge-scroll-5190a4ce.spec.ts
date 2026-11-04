@@ -42,16 +42,16 @@ test.describe("Grid touch handle edge scrolling", () => {
             await expect(grid.locator('td[data-col="done"].grid-selected')).toBeVisible();
 
             // Keep A live beyond the post-down click timer, then deliver a
-            // real mouse B click to the handle's current rendered position.
-            // B must neither replace A nor collapse its range through the td.
+            // real mouse B click to a currently visible selected cell. Handle
+            // ownership must suppress the cell's click path as well as reject
+            // competing handle admission, so B cannot collapse A's range.
             await page.waitForTimeout(1_100);
-            const currentHandleBox = await handle.boundingBox();
-            expect(currentHandleBox).not.toBeNull();
             const selectedBefore = await grid.locator("td.grid-selected").evaluateAll(cells =>
                 cells.map(cell => (cell as HTMLElement).dataset.col)
             );
-            const currentHandlePoint = await TouchGestures.hittablePoint(handle);
-            await page.mouse.click(currentHandlePoint.x, currentHandlePoint.y);
+            const visibleSelectedCell = grid.locator('td[data-col="done"].grid-selected');
+            const competingPoint = await TouchGestures.hittablePoint(visibleSelectedCell);
+            await page.mouse.click(competingPoint.x, competingPoint.y);
             expect(
                 await grid.locator("td.grid-selected").evaluateAll(cells =>
                     cells.map(cell => (cell as HTMLElement).dataset.col)
