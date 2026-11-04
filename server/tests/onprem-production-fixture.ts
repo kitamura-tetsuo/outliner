@@ -24,17 +24,30 @@ export class ProductionOnPrem {
     readonly providers: HocuspocusProvider[] = [];
     port = 0;
 
-    constructor(readonly dataDir: string) {}
+    constructor(
+        readonly dataDir: string,
+        private readonly options: {
+            port?: number;
+            startupTimeout?: number;
+            entrypointArgs?: string[];
+        } = {},
+    ) {}
 
     async start(): Promise<void> {
-        this.port = await unusedPort();
+        if (this.child && this.child.exitCode === null && this.child.signalCode === null) {
+            throw new Error("Production server is already running");
+        }
+        this.diagnostics = "";
+        this.port = this.options.port ?? 0;
         this.child = spawn(process.execPath, [
-            "--loader",
-            "ts-node/esm",
-            "--loader",
-            "./tests/loaders/pin-server-deps.mjs",
-            "--no-warnings",
-            "src/index.ts",
+            ...(this.options.entrypointArgs ?? [
+                "--loader",
+                "ts-node/esm",
+                "--loader",
+                "./tests/loaders/pin-server-deps.mjs",
+                "--no-warnings",
+                "src/index.ts",
+            ]),
         ], {
             cwd: path.resolve(import.meta.dirname, ".."),
             env: {
@@ -45,20 +58,45 @@ export class ProductionOnPrem {
                 OUTLINER_DATA_DIR: this.dataDir,
                 OUTLINER_LOCAL_PASSWORD: "production-password",
             },
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio: ["ignore", "pipe", "pipe", "ipc"],
         });
-        this.child.stdout?.on("data", chunk => this.diagnostics += chunk.toString());
-        this.child.stderr?.on("data", chunk => this.diagnostics += chunk.toString());
-        const deadline = Date.now() + 15000;
-        while (Date.now() < deadline && this.child.exitCode === null) {
+        const child = this.child;
+        child.stdout?.on("data", chunk => this.diagnostics += chunk.toString());
+        child.stderr?.on("data", chunk => this.diagnostics += chunk.toString());
+        let announcedPort: number | undefined;
+        child.on("message", message => {
+            if (
+                typeof message === "object" && message !== null
+                && (message as { type?: unknown; }).type === "outliner-listening"
+                && Number.isInteger((message as { port?: unknown; }).port)
+                && Number((message as { port: number; }).port) >= 1
+                && Number((message as { port: number; }).port) <= 65535
+            ) announcedPort = Number((message as { port: number; }).port);
+        });
+        const deadline = Date.now() + (this.options.startupTimeout ?? 15000);
+        while (Date.now() < deadline && child.exitCode === null && child.signalCode === null) {
+            if (!announcedPort) {
+                await new Promise(resolve => setTimeout(resolve, 25));
+                continue;
+            }
+            this.port = announcedPort;
             try {
-                if ((await fetch(this.url("/health"))).ok) return;
+                const response = await fetch(this.url("/health"));
+                if (response.ok && child.exitCode === null && child.signalCode === null) return;
             } catch {
                 // The production listener is not ready yet.
             }
             await new Promise(resolve => setTimeout(resolve, 50));
         }
-        throw new Error(`Production server did not become ready: ${this.diagnostics}`);
+        const outcome = child.exitCode === null && child.signalCode === null
+            ? "readiness timed out"
+            : `child exited with code ${child.exitCode}, signal ${child.signalCode ?? "none"}`;
+        await this.stop();
+        throw new Error(
+            `Production server did not become ready (${outcome}; pid ${child.pid ?? "unknown"}; `
+                + `requested port ${this.options.port ?? "ephemeral"}; announced port ${announcedPort ?? "none"}): `
+                + this.diagnostics,
+        );
     }
 
     url(route: string): string {
@@ -110,9 +148,13 @@ export class ProductionOnPrem {
 
     async stop(signal: NodeJS.Signals = "SIGTERM", destroyProviders = true): Promise<number | null> {
         if (destroyProviders) this.destroyProviders();
-        if (!this.child || this.child.exitCode !== null) return this.child?.exitCode ?? null;
-        this.child.kill(signal);
-        return await new Promise(resolve => this.child!.once("exit", resolve));
+        if (!this.child || this.child.exitCode !== null || this.child.signalCode !== null) {
+            return this.child?.exitCode ?? null;
+        }
+        const child = this.child;
+        const exited = new Promise<number | null>(resolve => child.once("exit", resolve));
+        child.kill(signal);
+        return await exited;
     }
 
     destroyProviders(): void {

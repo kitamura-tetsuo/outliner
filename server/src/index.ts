@@ -8,7 +8,7 @@ const config = loadConfig();
         // Dynamic composition is a security boundary: importing the cloud
         // server initializes several Firebase-backed modules at module scope.
         // The on-premises process must never evaluate those inactive modules.
-        const { shutdown } = config.OUTLINER_DEPLOYMENT_MODE === "onprem"
+        const { server, shutdown } = config.OUTLINER_DEPLOYMENT_MODE === "onprem"
             ? await (await import("./onprem-server.js")).startOnPremServer(config)
             : await (async () => {
                 if (config.SENTRY_DSN) {
@@ -50,6 +50,17 @@ const config = loadConfig();
             });
         process.on("SIGINT", stop);
         process.on("SIGTERM", stop);
+
+        // Test and process supervisors need evidence from this process rather
+        // than an unauthenticated response from whichever service owns PORT.
+        // Ordinary production launches do not have an IPC channel.
+        if (process.send) {
+            const address = server.address();
+            if (!address || typeof address === "string") {
+                throw new Error("Server did not expose a TCP listening address");
+            }
+            process.send({ type: "outliner-listening", port: address.port });
+        }
     } catch (err) {
         logger.error(
             { err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err },
