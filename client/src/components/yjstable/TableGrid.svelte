@@ -230,7 +230,7 @@ let handleDrag = $state<"anchor" | "focus" | undefined>();
 let handleOppositeCell: GridCellAddress | undefined;
 let handleMovingCell: GridCellAddress | undefined;
 let handleOriginCell = $state<GridCellAddress | undefined>();
-let handlePointerId: number | undefined;
+let handlePointerId = $state<number | undefined>();
 let handlePointerX = 0;
 let handlePointerY = 0;
 let handleFrame: number | undefined;
@@ -1207,7 +1207,6 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handleCaptureLossArmed = false;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
-    console.warn("Grid handle moved", event.pointerId, event.clientX, event.clientY, handleScrollDirection(), visibleDataArea());
     suppressClickUntil = Date.now() + 1_000;
     const generation = ++handleGeneration;
     // Admission is complete on pointerdown, so start the edge loop without
@@ -1226,7 +1225,6 @@ function moveHandle(event: PointerEvent): void {
     event.stopPropagation();
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
-    console.warn("Grid handle moved", event.pointerId, event.clientX, event.clientY, handleScrollDirection(), visibleDataArea());
     if (!handleScrollerCaptured) return;
     focusRequestRevision++;
     if (!updateHandleSelection()) stopHandleDrag();
@@ -1234,9 +1232,6 @@ function moveHandle(event: PointerEvent): void {
 
 function stopHandleDrag(event?: PointerEvent): void {
     if (event && event.pointerId !== handlePointerId) return;
-    if (handlePointerId !== undefined) {
-        console.warn("Grid handle drag stopped", event?.type ?? "internal", new Error().stack);
-    }
     const pointerId = handlePointerId;
     if (pointerId !== undefined) suppressClickUntil = Date.now() + 500;
     handleGeneration++;
@@ -2021,7 +2016,10 @@ function handleCancelDelete() {
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
     {:else if result.columns.length > 0}
-        {#if selectionSummary.kind === "cells" && selectionSummary.totalCells > 1}
+        <!-- Do not insert status content above the table while a stationary
+             owner is using current row geometry; it would move the data area
+             out from under the pointer after the first range extension. -->
+        {#if selectionSummary.kind === "cells" && selectionSummary.totalCells > 1 && handlePointerId === undefined}
             <p class="grid-selection-status" data-testid="grid-selection-status">
                 {selectionSummary.totalCells} cells selected · {selectionSummary.writableTargets.length} editable
             </p>
