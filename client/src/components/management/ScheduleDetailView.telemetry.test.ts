@@ -12,6 +12,12 @@ setPage({ params: { project: "demo", ruleId: "rule-1" } });
 
 vi.mock("$app/navigation", () => ({ goto: vi.fn() }));
 
+// Monaco itself cannot run in jsdom. Keep this mock scoped to the lazy loader
+// and drive the editor wrapper through its production-shaped model callbacks.
+vi.mock("../../lib/monaco/monacoLoader", () => ({
+    loadMonaco: () => import("../../tests/mocks/fakeMonaco").then(module => module.fakeMonaco),
+}));
+
 vi.mock("../../auth/UserManager", () => ({
     userManager: {
         getCurrentUser: () => null,
