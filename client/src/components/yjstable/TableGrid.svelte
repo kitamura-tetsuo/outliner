@@ -931,6 +931,16 @@ onMount(() => {
     });
 });
 
+// Any later focus action, including a header, toolbar, or another Grid
+// placement, supersedes a deferred edit-exit restoration. Programmatic focus
+// performed by the winning request increments only after its reveal/focus
+// effects have completed, so it cannot cancel itself prematurely.
+onMount(() => {
+    const supersedeDeferredFocus = () => focusRequestRevision++;
+    document.addEventListener("focusin", supersedeDeferredFocus, true);
+    return () => document.removeEventListener("focusin", supersedeDeferredFocus, true);
+});
+
 onDestroy(() => unregisterSearch?.());
 
 function rowIdsOf(rows: TableQueryResult["rows"]): string[] {
@@ -946,6 +956,7 @@ function reconcileSelection(rows: TableQueryResult["rows"], columns: string[]): 
 }
 
 function selectCell(event: MouseEvent, cell: GridCellAddress): void {
+    focusRequestRevision++;
     if (event.shiftKey) selection.extend(cell, rowIdsOf(result.rows), displayColumns);
     else if (event.ctrlKey || event.metaKey) {
         // Modifier-click belongs to selection, not the cell editor. Without
@@ -976,6 +987,10 @@ function sameCell(left: GridCellAddress | undefined, right: GridCellAddress): bo
 }
 
 function finishSelectionChange(): void {
+    // Selection-only gestures (including touch, whose synthetic click is
+    // suppressed) are newer user actions too. They must revoke any edit-exit
+    // focus request that is still waiting for a replacement row to render.
+    focusRequestRevision++;
     selectionRevision++;
     editingCell = undefined;
     pendingEditSeed = undefined;
@@ -1031,6 +1046,7 @@ function touchCellPointerUp(event: PointerEvent): void {
     const isDoubleTap = lastTap !== undefined && sameCell(lastTap.cell, cell)
         && Date.now() - lastTap.at <= DOUBLE_TAP_MS;
     if (isDoubleTap) {
+        focusRequestRevision++;
         selection.select(cell);
         selectionRevision++;
         // Let this tap's native click reach the cell control. Text/number
@@ -1072,6 +1088,7 @@ function moveHandle(event: PointerEvent): void {
     event.preventDefault();
     const cell = cellAtPoint(event.clientX, event.clientY);
     if (!cell) return;
+    focusRequestRevision++;
     selection.select(handleOppositeCell ?? cell);
     selection.extend(cell, rowIdsOf(result.rows), displayColumns);
     selectionRevision++;
@@ -1116,6 +1133,7 @@ function headerOptions(event: MouseEvent | KeyboardEvent) {
 }
 
 function selectRowHeader(event: MouseEvent | KeyboardEvent, rowId: string): void {
+    focusRequestRevision++;
     selection.selectRow(rowId, rowIdsOf(result.rows), headerOptions(event));
     selectionRevision++;
     editingCell = undefined;
@@ -1124,6 +1142,7 @@ function selectRowHeader(event: MouseEvent | KeyboardEvent, rowId: string): void
 }
 
 function selectColumnHeader(event: MouseEvent | KeyboardEvent, columnId: string): void {
+    focusRequestRevision++;
     selection.selectColumn(columnId, displayColumns, headerOptions(event));
     selectionRevision++;
     editingCell = undefined;
@@ -1132,6 +1151,7 @@ function selectColumnHeader(event: MouseEvent | KeyboardEvent, columnId: string)
 }
 
 function selectAllResult(): void {
+    focusRequestRevision++;
     selection.selectAll();
     selectionRevision++;
     editingCell = undefined;
@@ -1262,23 +1282,74 @@ async function commitCell(row: Record<string, unknown>, column: string, value: T
 }
 
 /** Focuses `cell`'s control right now if its DOM already exists. Returns whether it did. */
-function tryFocusLogicalCell(cell: GridCellAddress): boolean {
+let focusRequestRevision = 0;
+
+/**
+ * Reveal a keyboard target without delegating horizontal scrolling to the
+ * browser. `scrollIntoView` may scroll every ancestor (and another placement
+ * of the same Grid), whereas keyboard navigation owns only this placement's
+ * horizontal viewport.
+ */
+function revealLogicalCell(td: HTMLElement, direction: GridNavDirection) {
+    if (!gridContainer) return;
+    const viewport = gridContainer.getBoundingClientRect();
+    let target = td.getBoundingClientRect();
+    const viewportLeft = viewport.left + gridContainer.clientLeft;
+    const viewportRight = viewportLeft + gridContainer.clientWidth;
+    const targetWidth = target.width || target.right - target.left;
+    const fits = targetWidth <= gridContainer.clientWidth + 1;
+    let delta = 0;
+
+    if ((direction === "left" || direction === "right") && !fits) {
+        // A newly entered oversized cell exposes the edge entered first.
+        delta = direction === "left" ? target.right - viewportRight : target.left - viewportLeft;
+    } else if ((direction === "left" || direction === "right") && target.left < viewportLeft - 1) {
+        delta = target.left - viewportLeft;
+    } else if ((direction === "left" || direction === "right") && target.right > viewportRight + 1) {
+        delta = target.right - viewportRight;
+    }
+    if (Math.abs(delta) > 1) gridContainer.scrollLeft += delta;
+
+    // Apply vertical deltas only when current geometry is clipped. Thus a
+    // visible same-row target leaves every vertical offset unchanged, while a
+    // row clipped after wheel/page scrolling is still revealed.
+    let node: HTMLElement | null = gridContainer;
+    while (node) {
+        if (node.scrollHeight > node.clientHeight) {
+            target = td.getBoundingClientRect();
+            const bounds = node.getBoundingClientRect();
+            const top = bounds.top + node.clientTop;
+            const bottom = top + node.clientHeight;
+            if (target.top < top) node.scrollTop += target.top - top;
+            else if (target.bottom > bottom) node.scrollTop += target.bottom - bottom;
+        }
+        node = node.parentElement;
+    }
+    target = td.getBoundingClientRect();
+    if (target.top < 0) window.scrollBy({ top: target.top });
+    else if (target.bottom > window.innerHeight) window.scrollBy({ top: target.bottom - window.innerHeight });
+}
+
+function tryFocusLogicalCell(
+    cell: GridCellAddress,
+    direction: GridNavDirection,
+    requestRevision: number,
+    reveal: boolean,
+): boolean {
+    if (requestRevision !== focusRequestRevision) return true;
     if (!gridContainer) return false;
     const td = gridContainer.querySelector<HTMLElement>(
         `td[data-row-id="${CSS.escape(cell.rowId)}"][data-col="${CSS.escape(cell.columnId)}"]`,
     );
     if (!td) return false;
 
-    // Scrolling is the cosmetic half; focus is the point. Guarded so an
-    // environment without `scrollIntoView` (jsdom) loses the scroll rather
-    // than the whole navigation.
-    td.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    if (reveal) revealLogicalCell(td, direction);
     const focusable = td.querySelector<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>(
         "button, input, select",
     );
     // A disabled control (read-only select/date/checkbox) cannot take focus;
     // the logical active cell is still updated, DOM focus just stays put.
-    if (focusable && !focusable.disabled) focusable.focus();
+    if (focusable && !focusable.disabled) focusable.focus({ preventScroll: true });
     return true;
 }
 
@@ -1303,15 +1374,22 @@ function tryFocusLogicalCell(cell: GridCellAddress): boolean {
  * on a slower, real async timeline regardless, so this also retries across a
  * few animation frames when the cell still isn't there.
  */
-function focusLogicalCell(cell: GridCellAddress, attempts = 0, deferred = false) {
+function focusLogicalCell(
+    cell: GridCellAddress,
+    direction: GridNavDirection = "right",
+    attempts = 0,
+    deferred = false,
+    requestRevision = ++focusRequestRevision,
+    reveal = true,
+) {
     if (deferred) {
-        requestAnimationFrame(() => focusLogicalCell(cell, attempts));
+        requestAnimationFrame(() => focusLogicalCell(cell, direction, attempts, false, requestRevision, reveal));
         return;
     }
-    if (tryFocusLogicalCell(cell)) return;
+    if (tryFocusLogicalCell(cell, direction, requestRevision, reveal)) return;
     if (attempts > 10 || !gridContainer) return;
 
-    requestAnimationFrame(() => focusLogicalCell(cell, attempts + 1));
+    requestAnimationFrame(() => focusLogicalCell(cell, direction, attempts + 1, false, requestRevision, reveal));
 }
 
 /** Move the logical active cell and focus it; `extend` grows the selection from the anchor instead of replacing it. */
@@ -1330,7 +1408,16 @@ function moveActive(
     editingCell = undefined;
     pendingEditSeed = undefined;
     pasteStatus = undefined;
-    focusLogicalCell(target, 0, deferred);
+    // A clamped boundary key does not reveal again: in particular this keeps
+    // a user's chosen offset inside an oversized boundary cell stable.
+    if (target.rowId !== origin.rowId || target.columnId !== origin.columnId) {
+        focusLogicalCell(target, direction, 0, deferred);
+    } else if (deferred) {
+        // A clamped edit-exit still needs to restore navigation focus after
+        // its editor unmounts. Skip reveal so an oversized boundary cell
+        // retains the user's chosen horizontal offset.
+        focusLogicalCell(target, direction, 0, true, undefined, false);
+    }
 }
 
 /** Called by a cell editor's keyboard commit (Enter/Tab) or cancel (Escape). */
@@ -1340,7 +1427,7 @@ function exitCellEdit(cell: GridCellAddress, direction?: GridNavDirection) {
     if (!direction) {
         selection.select(cell);
         selectionRevision++;
-        focusLogicalCell(cell, 0, true);
+        focusLogicalCell(cell, "right", 0, true);
         return;
     }
     // Tab/Shift+Tab wrap to the adjacent row at the edge; Enter/Shift+Enter clamp.
@@ -1489,6 +1576,7 @@ function handleGridKeyDown(event: KeyboardEvent) {
             if (!isActiveControl || !isReducibleRange) return;
         }
         event.preventDefault();
+        focusRequestRevision++;
         selection.cancelOrReduce();
         selectionRevision++;
         return;
@@ -1979,6 +2067,7 @@ function handleCancelDelete() {
                                         (editing) => {
                                             if (!logicalCell) return;
                                             if (editing) {
+                                                focusRequestRevision++;
                                                 selection.select(logicalCell);
                                                 selectionRevision++;
                                                 editingCell = logicalCell;
