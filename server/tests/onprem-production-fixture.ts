@@ -204,7 +204,10 @@ export class ProductionOnPrem {
                 `Owned child ${child.pid ?? "unknown"} did not exit after SIGKILL within ${cleanupTimeout}ms`,
             );
         }
-        return forcedCode;
+        // A signal termination has a null OS exit code. Normalize the
+        // fixture's public outcome to nonzero while retaining the exact
+        // SIGKILL evidence on child.signalCode and in diagnostics.
+        return forcedCode ?? 1;
     }
 
     destroyProviders(): void {

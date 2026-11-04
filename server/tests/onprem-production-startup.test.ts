@@ -92,7 +92,7 @@ describe("on-premises production startup ownership", () => {
         if (!ownedPid) throw new Error("Production child has no pid");
         process.kill(ownedPid, "SIGSTOP");
         const stoppedAt = Date.now();
-        expect(await production.stop()).to.equal(null);
+        expect(await production.stop()).to.equal(1);
         expect(Date.now() - stoppedAt).to.be.lessThan(1500);
         expect(production.diagnostics).to.include("sending SIGKILL");
         expect(production.child?.signalCode).to.equal("SIGKILL");
