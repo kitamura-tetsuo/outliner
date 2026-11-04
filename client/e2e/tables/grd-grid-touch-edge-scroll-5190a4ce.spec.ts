@@ -96,6 +96,12 @@ test.describe("Grid touch handle edge scrolling", () => {
         const handle = grid.getByRole("button", { name: "Resize selection from start" });
         const handleBox = await handle.boundingBox();
         expect(handleBox).not.toBeNull();
+        const id = grid.locator('tbody tr:first-child td[data-col="id"]');
+        const idBox = await id.boundingBox();
+        expect(idBox).not.toBeNull();
+        // The moving endpoint must make genuine logical progress into content
+        // that was outside the client viewport before this drag began.
+        expect(idBox!.x + idBox!.width).toBeLessThanOrEqual(box.x);
         const before = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
         const left = { x: box.x + 2, y: doneBox!.y + doneBox!.height / 2 };
         const middle = { x: box.x + box.width / 2, y: left.y };
@@ -107,8 +113,10 @@ test.describe("Grid touch handle edge scrolling", () => {
             left,
             async contact => {
                 await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeLessThan(before);
+                const first = await grid.evaluate((node: HTMLElement) => node.scrollLeft);
+                await expect.poll(() => grid.evaluate((node: HTMLElement) => node.scrollLeft)).toBeLessThan(first);
                 await expect(title).toHaveClass(/grid-selected/);
-                await expect(grid.locator('td[data-col="id"]')).toHaveClass(/grid-selected/);
+                await expect(id).toHaveClass(/grid-selected/);
                 await expect(done).not.toHaveClass(/grid-selected/);
                 await contact.move(middle);
                 await page.waitForTimeout(150);
