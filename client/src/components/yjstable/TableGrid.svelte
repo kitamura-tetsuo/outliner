@@ -1215,6 +1215,9 @@ function moveHandle(event: PointerEvent): void {
 
 function stopHandleDrag(event?: PointerEvent): void {
     if (event && event.pointerId !== handlePointerId) return;
+    if (handlePointerId !== undefined) {
+        console.warn("Grid handle drag stopped", event?.type ?? "internal", new Error().stack);
+    }
     const pointerId = handlePointerId;
     if (pointerId !== undefined) suppressClickUntil = Date.now() + 500;
     handleGeneration++;
