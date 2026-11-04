@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-noble AS java-runtime
+FROM eclipse-temurin:24-jre-noble AS java-runtime
 
 FROM mcr.microsoft.com/devcontainers/typescript-node:5-26-bookworm
 
