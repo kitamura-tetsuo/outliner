@@ -3,6 +3,7 @@ import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import { default as rruleImport, RRule } from "rrule";
 import * as Y from "yjs";
+import { validateAndPublishScheduleSql } from "./schedule-sql-diagnostics.js";
 import { applyLegacyTelemetryMigration, applySchedulerCursor, SCHEDULER_ORIGIN } from "./schedule-status-publisher.js";
 
 export interface ScheduleIndexRow {
@@ -334,6 +335,10 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
             const targetTableId = ruleObj.get("targetTableId") as string;
             const enabled = ruleObj.get("enabled") as boolean ?? true;
             const sqlStr = ruleObj.get("sql") as string;
+
+            // Refresh server-owned SQL admission evidence even for disabled or
+            // otherwise incomplete rules. Change guards make store feedback a no-op.
+            validateAndPublishScheduleSql(document, ruleId);
 
             if (!rruleStr || !dtstartStr || !timezoneStr || !sqlStr) {
                 // The rule is missing something the scheduler needs, so its

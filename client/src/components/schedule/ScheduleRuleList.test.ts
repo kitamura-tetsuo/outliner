@@ -1,3 +1,4 @@
+import { serializeScheduleSqlDiagnostic } from "$shared/services/scheduleSqlDiagnostics";
 import { render } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
 import type { ScheduleRule } from "../../services/schedule/scheduleRuleService";
@@ -43,6 +44,38 @@ function cell(container: HTMLElement, testId: string): string {
 }
 
 describe("Schedules Manager rows", () => {
+    it("shows only a matching server rejection alongside history and recurrence diagnostics", async () => {
+        const sql = "INSERT INTO {{table}} (title, id) VALUES ('x', gen_random_uuid());";
+        const diagnostic = serializeScheduleSqlDiagnostic(sql, false, "Rejected by newer server policy");
+        const { container, rerender } = renderList(
+            makeRule({
+                sql,
+                sqlValidationDiagnostic: diagnostic,
+                validationError: "Invalid recurrence",
+                lastRunStatus: "ok",
+                lastRunStartedAt: "2026-09-01T10:00:00.000Z",
+                lastSuccessfulRunAt: "2026-09-01T10:00:05.000Z",
+            }),
+            { canWrite: false },
+        );
+
+        expect(cell(container, "schedule-rule-sql-validation-error")).toContain("Rejected by newer server policy");
+        expect(cell(container, "schedule-rule-result")).toBe("Success");
+        expect(container.textContent).toContain("Invalid recurrence");
+        expect((container.querySelector("[data-testid='schedule-rule-run-now']") as HTMLButtonElement).disabled).toBe(
+            true,
+        );
+
+        await rerender({
+            rules: [makeRule({ sql: `${sql} `, sqlValidationDiagnostic: diagnostic })],
+            onRunNow: () => {},
+            onEdit: () => {},
+            onDelete: () => {},
+            canWrite: false,
+        });
+        expect(cell(container, "schedule-rule-sql-validation-error")).toBe("");
+    });
+
     it("shows an explicit never-run row for an active Schedule with an indexed occurrence", () => {
         const { container } = renderList(
             makeRule({ schedulerState: "active", schedulerNextRunAt: "2026-09-06T00:00:00.000Z" }),
