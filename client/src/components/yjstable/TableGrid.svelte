@@ -1874,6 +1874,7 @@ function handleCancelDelete() {
     class="yjs-table-grid"
     class:pan-armed={panArmed}
     class:pan-active={panActive}
+    class:handle-dragging={handlePointerId !== undefined}
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
@@ -2488,6 +2489,13 @@ td.grid-active {
     background: #2563eb;
     box-shadow: 0 0 0 3px white, 0 1px 4px rgb(0 0 0 / 35%);
     z-index: 4;
+    touch-action: none;
+}
+
+/* Pointer capture is transferred from the handle to this stable scroller.
+ * Keep native panning disabled only for that owned sequence; otherwise the
+ * browser may cancel the captured pointer on its first movement. */
+.yjs-table-grid.handle-dragging {
     touch-action: none;
 }
 
