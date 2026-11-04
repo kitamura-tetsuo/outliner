@@ -45,6 +45,7 @@ vi.mock("../../services/schedule/scheduleRunService", () => ({
     runScheduleRuleNow: vi.fn(async () => ({ ok: true })),
 }));
 
+import { serializeScheduleSqlDiagnostic } from "$shared/services/scheduleSqlDiagnostics";
 import { store } from "../../stores/store.svelte";
 import { setPage } from "../../tests/mocks/appState.svelte";
 import ScheduleDetailView from "./ScheduleDetailView.svelte";
@@ -151,5 +152,27 @@ describe("Schedule detail page and scheduler-owned telemetry", () => {
             expect(screen.getByTestId("schedule-detail-result").textContent?.trim()).toBe("Running");
         });
         expect(screen.getByTestId("schedule-detail-run-summary").textContent).toContain("2026-09-02");
+    });
+
+    it("withdraws a saved-SQL diagnostic when a peer deletes the saved rule without changing the draft", async () => {
+        const ruleMap = seedRule();
+        const savedSql = ruleMap.get("sql") as string;
+        ruleMap.set(
+            "sqlValidationDiagnostic",
+            serializeScheduleSqlDiagnostic(savedSql, false, "Rejected by the deployed server"),
+        );
+
+        render(ScheduleDetailView, { projectName: "demo", ruleId: RULE_ID });
+        const sqlInput = await waitFor(() =>
+            screen.getByRole("textbox", { name: "SQL Statement" }) as HTMLTextAreaElement
+        );
+        await waitFor(() => expect(screen.getByTestId("schedule-detail-sql-validation-error")).toBeTruthy());
+
+        sqlInput.value = "INSERT INTO audit (id) VALUES ('unsaved-draft') RETURNING *;";
+        sqlInput.dispatchEvent(new Event("input", { bubbles: true }));
+        projectDoc.getMap("schedules").delete(RULE_ID);
+
+        await waitFor(() => expect(screen.queryByTestId("schedule-detail-sql-validation-error")).toBeNull());
+        expect(sqlInput.value).toBe("INSERT INTO audit (id) VALUES ('unsaved-draft') RETURNING *;");
     });
 });

@@ -115,7 +115,14 @@
     function loadRuleMetadata() {
         if (!store.project?.schedules) return;
         const ruleMap = store.project.schedules.get(ruleId);
-        if (!ruleMap || !currentRule) return;
+        if (!ruleMap) {
+            // The editor draft is intentionally left alone, but there is no
+            // longer a persisted input pair against which a server diagnostic
+            // can be current.
+            savedSqlState = {};
+            return;
+        }
+        if (!currentRule) return;
 
         currentRule.lastRunAt = ruleMap.get("lastRunAt") as string | undefined;
         currentRule.lastRunStatus = ruleMap.get("lastRunStatus") as ScheduleRule["lastRunStatus"];
