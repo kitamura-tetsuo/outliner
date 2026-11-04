@@ -1191,6 +1191,7 @@ function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
     handleCaptureLossArmed = false;
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
+    console.warn("Grid handle moved", event.pointerId, event.clientX, event.clientY, handleScrollDirection(), visibleDataArea());
     suppressClickUntil = Date.now() + 1_000;
     const generation = ++handleGeneration;
     // Admission is complete on pointerdown, so start the edge loop without
@@ -1209,6 +1210,7 @@ function moveHandle(event: PointerEvent): void {
     event.stopPropagation();
     handlePointerX = event.clientX;
     handlePointerY = event.clientY;
+    console.warn("Grid handle moved", event.pointerId, event.clientX, event.clientY, handleScrollDirection(), visibleDataArea());
     if (!handleScrollerCaptured) return;
     if (!updateHandleSelection()) stopHandleDrag();
 }
