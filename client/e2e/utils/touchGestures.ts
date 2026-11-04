@@ -87,7 +87,11 @@ export class TouchGestures {
         try {
             await client.send("Input.dispatchTouchEvent", {
                 type: "touchStart",
-                touchPoints: [{ x: from.x, y: from.y }],
+                // Keep the contact identifier stable across the subsequent
+                // move and multi-touch packets. Omitting it here and adding
+                // `id: 0` on touchMove makes Chromium terminate the admitted
+                // pointer and start a different contact.
+                touchPoints: [{ x: from.x, y: from.y, id: 0 }],
             });
             await page.waitForTimeout(holdMs);
             await client.send("Input.dispatchTouchEvent", {
