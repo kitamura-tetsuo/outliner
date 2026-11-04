@@ -29,7 +29,9 @@ export class ProductionOnPrem {
         private readonly options: {
             port?: number;
             startupTimeout?: number;
+            cleanupTimeout?: number;
             entrypointArgs?: string[];
+            onListening?: (child: ChildProcess) => void | Promise<void>;
         } = {},
     ) {}
 
@@ -74,28 +76,50 @@ export class ProductionOnPrem {
             ) announcedPort = Number((message as { port: number; }).port);
         });
         const deadline = Date.now() + (this.options.startupTimeout ?? 15000);
+        let listeningObserved = false;
         while (Date.now() < deadline && child.exitCode === null && child.signalCode === null) {
             if (!announcedPort) {
                 await new Promise(resolve => setTimeout(resolve, 25));
                 continue;
             }
             this.port = announcedPort;
+            if (!listeningObserved) {
+                listeningObserved = true;
+                await this.options.onListening?.(child);
+            }
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) break;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), remaining);
+            const abortOnExit = () => controller.abort();
+            child.once("exit", abortOnExit);
             try {
-                const response = await fetch(this.url("/health"));
-                if (response.ok && child.exitCode === null && child.signalCode === null) return;
+                const response = await fetch(this.url("/health"), { signal: controller.signal });
+                if (
+                    response.ok && Date.now() < deadline
+                    && child.exitCode === null && child.signalCode === null
+                ) return;
             } catch {
                 // The production listener is not ready yet.
+            } finally {
+                clearTimeout(timeout);
+                child.removeListener("exit", abortOnExit);
             }
             await new Promise(resolve => setTimeout(resolve, 50));
         }
         const outcome = child.exitCode === null && child.signalCode === null
             ? "readiness timed out"
             : `child exited with code ${child.exitCode}, signal ${child.signalCode ?? "none"}`;
-        await this.stop();
+        let cleanupFailure = "";
+        try {
+            await this.stop();
+        } catch (error) {
+            cleanupFailure = ` Cleanup failed: ${error instanceof Error ? error.message : String(error)}.`;
+        }
         throw new Error(
             `Production server did not become ready (${outcome}; pid ${child.pid ?? "unknown"}; `
                 + `requested port ${this.options.port ?? "ephemeral"}; announced port ${announcedPort ?? "none"}): `
-                + this.diagnostics,
+                + this.diagnostics + cleanupFailure,
         );
     }
 
@@ -152,9 +176,35 @@ export class ProductionOnPrem {
             return this.child?.exitCode ?? null;
         }
         const child = this.child;
-        const exited = new Promise<number | null>(resolve => child.once("exit", resolve));
+        const cleanupTimeout = this.options.cleanupTimeout ?? 5000;
+        const waitForExit = () =>
+            new Promise<number | null | undefined>(resolve => {
+                const onExit = (code: number | null) => {
+                    clearTimeout(timer);
+                    resolve(code);
+                };
+                const timer = setTimeout(() => {
+                    child.removeListener("exit", onExit);
+                    resolve(undefined);
+                }, cleanupTimeout);
+                child.once("exit", onExit);
+            });
+        const gracefulExit = waitForExit();
         child.kill(signal);
-        return await exited;
+        const gracefulCode = await gracefulExit;
+        if (gracefulCode !== undefined) return gracefulCode;
+        this.diagnostics += `\nChild ${
+            child.pid ?? "unknown"
+        } did not exit after ${signal} within ${cleanupTimeout}ms; sending SIGKILL`;
+        const forcedExit = waitForExit();
+        child.kill("SIGKILL");
+        const forcedCode = await forcedExit;
+        if (forcedCode === undefined) {
+            throw new Error(
+                `Owned child ${child.pid ?? "unknown"} did not exit after SIGKILL within ${cleanupTimeout}ms`,
+            );
+        }
+        return forcedCode;
     }
 
     destroyProviders(): void {
