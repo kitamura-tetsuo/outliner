@@ -49,9 +49,9 @@ test.describe("Grid touch handle edge scrolling", () => {
             const selectedBefore = await grid.locator("td.grid-selected").evaluateAll(cells =>
                 cells.map(cell => (cell as HTMLElement).dataset.col)
             );
-            const visibleSelectedCell = grid.locator('td[data-col="done"].grid-selected');
-            const competingPoint = await TouchGestures.hittablePoint(visibleSelectedCell);
-            await page.mouse.click(competingPoint.x, competingPoint.y);
+            // The owner's edge point remains inside the Grid client viewport
+            // even after its admission handle has scrolled out of view.
+            await page.mouse.click(edge.x, edge.y);
             expect(
                 await grid.locator("td.grid-selected").evaluateAll(cells =>
                     cells.map(cell => (cell as HTMLElement).dataset.col)
