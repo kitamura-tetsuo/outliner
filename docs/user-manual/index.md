@@ -53,6 +53,7 @@ The page view provides toolbars for page-specific actions. At the top right of t
 At the bottom of the page (below the outline tree), the editor toolbar provides:
 
 - **Add Item:** Adds a new item to the bottom of the page.
+- **Add Image:** Uploads and inserts an image from your computer.
 - **History / Diff:** Opens the history panel to view past edits and differences.
 - **Keyboard Shortcuts:** Opens a list of available keyboard shortcuts.
 
