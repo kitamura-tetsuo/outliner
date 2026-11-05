@@ -137,7 +137,7 @@
                 onclick={() => showResetConfirm = true}
                 disabled={isResetting || isLoading}
                 data-testid="demo-reset-button"
-                aria-busy={isResetting || isLoading}
+                aria-busy={isResetting || isLoading ? "true" : "false"}
                 class="inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {isResetting || isLoading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}"
             >
                 {#if isResetting}
