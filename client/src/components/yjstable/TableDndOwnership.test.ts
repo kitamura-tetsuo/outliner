@@ -11,8 +11,7 @@
 // same guard OutlinerItem uses (`isBlockOwnedDragEvent`), so the marker and the
 // guard are verified together rather than in isolation.
 
-import { fireEvent, render } from "@testing-library/svelte";
-import { tick } from "svelte";
+import { render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { isBlockOwnedDragEvent } from "../../services/dnd/blockDndOwnership";
@@ -23,6 +22,8 @@ import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospect
 import { createTable, getTableHandles, type TableHandles } from "../../services/yjstable/tableDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import type { CellComponentType } from "./cellComponents";
+import NumberCell from "./cells/NumberCell.svelte";
+import TextCell from "./cells/TextCell.svelte";
 import TableGrid from "./TableGrid.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 
@@ -239,15 +240,17 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
         expect(storedColumnOrder()).toEqual([]);
     });
 
-    it("claims plain text only when it lands on the active text editor", async () => {
-        const { container, itemDropHandled } = renderGrid();
-        const button = container.querySelector("td[data-col='col_a'] button")!;
-        await fireEvent.click(button);
-        await fireEvent.click(button);
-        await tick();
-
-        const editor = container.querySelector("td[data-col='col_a'] textarea")!;
-        const otherCell = container.querySelector("td[data-col='col_c']")!;
+    it("claims plain text only when it lands on the active text editor", () => {
+        const { container, itemDropHandled } = renderInsideOutlinerItem(TextCell, {
+            value: "draft",
+            editable: true,
+            editing: true,
+            lineBreakPolicy: { kind: "allowed" },
+            onCommit: vi.fn(),
+        });
+        const editor = container.querySelector("textarea.cell-input")!;
+        const otherCell = document.createElement("div");
+        container.appendChild(otherCell);
         const dataTransfer = fakeDataTransfer({ "text/plain": "one\ntwo" });
         dispatchDragEvent(editor, "drop", dataTransfer);
         expect(itemDropHandled).not.toHaveBeenCalled();
@@ -256,17 +259,20 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
         expect(itemDropHandled).toHaveBeenCalledTimes(1);
     });
 
-    it("does not broaden plain-text ownership while a numeric editor is active", async () => {
-        const { container, itemDropHandled } = renderGrid({ col_b: "number" });
-        const button = container.querySelector("td[data-col='col_b'] button")!;
-        await fireEvent.click(button);
-        await fireEvent.click(button);
-        await tick();
-        expect(container.querySelector("td[data-col='col_b'] input.cell-input")).not.toBeNull();
-
-        const otherCell = container.querySelector("td[data-col='col_c']")!;
-        dispatchDragEvent(otherCell, "drop", fakeDataTransfer({ "text/plain": "plain text" }));
-        expect(itemDropHandled).toHaveBeenCalledTimes(1);
+    it("does not broaden plain-text ownership while a numeric editor is active", () => {
+        const { container, itemDropHandled } = renderInsideOutlinerItem(NumberCell, {
+            value: 1,
+            editable: true,
+            editing: true,
+            onCommit: vi.fn(),
+        });
+        const editor = container.querySelector("input.cell-input")!;
+        const otherCell = document.createElement("div");
+        container.appendChild(otherCell);
+        const dataTransfer = fakeDataTransfer({ "text/plain": "plain text" });
+        dispatchDragEvent(editor, "drop", dataTransfer);
+        dispatchDragEvent(otherCell, "drop", dataTransfer);
+        expect(itemDropHandled).toHaveBeenCalledTimes(2);
     });
 });
 
