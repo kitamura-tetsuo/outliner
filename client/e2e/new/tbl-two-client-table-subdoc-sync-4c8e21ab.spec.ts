@@ -19,7 +19,7 @@ async function editTitleCell(row: Locator, grid: Locator, value: string): Promis
     const committedCell = grid.locator('td[data-col="title"] .cell-value', { hasText: value });
     for (let attempt = 0; attempt < 3; attempt++) {
         await row.locator('td[data-col="title"] .cell-value').click();
-        const input = row.locator('td[data-col="title"] input');
+        const input = row.locator('td[data-col="title"] textarea');
         await expect(input).toBeVisible({ timeout: 5000 });
         await input.fill(value);
         await input.press("Enter", { timeout: 3000 }).catch(e => console.warn("Promise rejected:", e));
