@@ -84,7 +84,7 @@ export function demoContentEn(): DemoLocaleContent {
                     "update_table_schema migrates a Table's schema through that same validator and requires acknowledgeDestructive for a column removal or retype; update_table_records writes bounded batches of records by stable record ID, atomically and never by displayed row position, so populating a new ordering column never doubles as a promise about Grid display order.",
                     "Every tool declares the OAuth scope(s) it needs (outliner.read for reads, outliner.read plus outliner.write for a mutation); a connector holding only outliner.read gets a standards-shaped insufficient_scope challenge from a mutation attempt instead of an opaque failure, so ChatGPT can trigger step-up authorization for the missing write scope on its own.",
                     "Structured relation writes mutate Yjs—not disposable PGlite—and Grid or Calendar SELECT state can be updated safely. In a Grid, click a cell or Shift-click another cell to highlight a logical range that follows its records when results reorder.",
-                    "A Grid is also fully keyboard-operable: Arrow keys move the active cell (Shift+Arrow extends the range), Enter/F2 or typing a character starts editing, and Enter/Tab commit and move on to the next cell.",
+                    "A Grid is also fully keyboard-operable: Arrow keys move the active cell (Shift+Arrow extends the range), Enter/F2 or typing a character starts a wrapping, automatically sized editor, and Enter/Tab commit and move on. In Table text fields, Alt+Enter and multiline paste store line breaks; outline-item cells remain single-line.",
                 ],
             },
             {

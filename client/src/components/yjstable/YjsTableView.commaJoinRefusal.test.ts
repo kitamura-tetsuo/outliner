@@ -160,7 +160,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             // An ordinary cell commit opens no editor and writes nothing.
             await fireEvent.click(titleButtons()[0]!);
             await fireEvent.keyDown(titleButtons()[0]!, { key: "Enter" });
-            expect(surface().querySelector("input.cell-input")).toBeNull();
+            expect(surface().querySelector("textarea.cell-input")).toBeNull();
             expect(handlesA.data.get("r1")?.get("title")).toBe("Value in A");
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(handlesB.data.get("r2")?.get("title")).toBe("Second in B");
@@ -199,7 +199,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
 
             // Begin an ordinary edit while the single-Table result is current.
             await fireEvent.click(titleButton()!);
-            const pendingInput = surface().querySelector("input.cell-input") as HTMLInputElement | null;
+            const pendingInput = surface().querySelector("textarea.cell-input") as HTMLTextAreaElement | null;
             expect(pendingInput).not.toBeNull();
             await fireEvent.input(pendingInput!, { target: { value: "Stale attempt" } });
 
@@ -208,7 +208,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             setGridQuery(grid, COMMA_QUERY);
             await tick();
             expect(getGridQuery(grid)).toBe(COMMA_QUERY);
-            expect(surface().querySelector("input.cell-input")).toBeNull();
+            expect(surface().querySelector("textarea.cell-input")).toBeNull();
 
             // The stale edit cannot commit while the new query is observed.
             const anyTitleButton = () =>
@@ -217,7 +217,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
                     | null;
             await fireEvent.click(anyTitleButton()!);
             await tick();
-            expect(surface().querySelector("input.cell-input")).toBeNull();
+            expect(surface().querySelector("textarea.cell-input")).toBeNull();
 
             // And it stays refused after the combined result completes.
             await awaitCompletedQuery(gridId, COMMA_QUERY);
@@ -230,7 +230,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
             );
             await fireEvent.click(anyTitleButton()!);
             await tick();
-            expect(surface().querySelector("input.cell-input")).toBeNull();
+            expect(surface().querySelector("textarea.cell-input")).toBeNull();
             expect(handlesA.data.get("r1")?.get("title")).toBe("Value in A");
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
@@ -291,7 +291,7 @@ describe("comma-joined Grid refusal on the production surface (issue #5547)", { 
 
             // But an ordinary title commit writes nothing.
             await fireEvent.click(cell.querySelector("button")!);
-            expect(surface().querySelector("input.cell-input")).toBeNull();
+            expect(surface().querySelector("textarea.cell-input")).toBeNull();
             expect(handlesA.data.get("r1")?.get("title")).toBe("Value in A");
             expect(handlesB.data.get("r1")?.get("title")).toBe("Value from B");
             expect(undoDepths(handlesA, handlesB)).toEqual(undoBefore);
