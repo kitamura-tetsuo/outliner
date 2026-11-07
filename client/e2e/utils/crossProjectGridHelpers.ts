@@ -317,7 +317,7 @@ export async function setCellValue(
         .getByTestId("yjs-table-grid")
         .locator(`td[data-record-id="${recordId}"][data-col="${column}"]`);
     await cell.locator("button.cell-value").click();
-    const input = cell.locator("input.cell-input");
+    const input = cell.locator("textarea.cell-input");
     await expect(input).toBeVisible({ timeout: 15000 });
     await input.fill(value);
     await input.press("Enter");

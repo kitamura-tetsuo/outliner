@@ -164,7 +164,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         expect(await grid.evaluate(element => element.scrollLeft)).toBe(0);
 
         await cell.locator("button").click();
-        const editor = cell.locator("input");
+        const editor = cell.locator("textarea");
         await editor.press("End");
         await editor.press("Space");
         await expect(editor).toHaveValue("Alpha ");
@@ -233,7 +233,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         });
         expect(composingKey).toEqual({ dispatched: true, defaultPrevented: false });
         await expect(grid).not.toHaveClass(/pan-armed|pan-active/);
-        await expect(title.locator("input")).toHaveCount(0);
+        await expect(title.locator("textarea")).toHaveCount(0);
         expect(
             await grid.locator("td.grid-selected").evaluateAll(cells =>
                 cells.map(cell => [cell.getAttribute("data-row-id"), cell.getAttribute("data-col")])
@@ -241,7 +241,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         ).toEqual(selectionBeforeComposition);
 
         await titleButton.click();
-        const editor = title.locator("input");
+        const editor = title.locator("textarea");
         await editor.press("End");
         const cdp = await page.context().newCDPSession(page);
         await cdp.send("Input.imeSetComposition", {

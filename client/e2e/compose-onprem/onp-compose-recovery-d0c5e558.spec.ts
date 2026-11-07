@@ -67,7 +67,7 @@ test("the Compose artifact refuses unauthorized access and preserves canonical s
     await page.getByTestId("yjs-table-add-row").first().click();
     const row = page.getByTestId("yjs-table-grid").first().locator("tbody tr").last();
     await row.locator("td[data-col='title'] button").click();
-    await row.locator("td[data-col='title'] input").fill("Persisted row");
+    await row.locator("td[data-col='title'] textarea").fill("Persisted row");
     await page.keyboard.press("Enter");
     await row.locator("td[data-col='done'] input[type=checkbox]").check();
     await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();

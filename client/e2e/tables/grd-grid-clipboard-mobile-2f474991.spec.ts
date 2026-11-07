@@ -31,7 +31,7 @@ async function addRowWithTitle(page: Page, grid: Locator, title: string): Promis
     await expect(grid.locator("tbody tr")).toHaveCount(countBefore + 1, { timeout: 10000 });
     const row = grid.locator("tbody tr").last();
     await row.locator("td[data-col='title']").locator("button").click();
-    await row.locator("td[data-col='title']").locator("input").fill(title);
+    await row.locator("td[data-col='title']").locator("textarea").fill(title);
     await page.keyboard.press("Enter");
     await expect(row.locator("td[data-col='title']").locator("button")).toHaveText(title, { timeout: 10000 });
 }

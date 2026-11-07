@@ -53,6 +53,8 @@ import {
 } from "../../services/yjstable/gridCommandExecution";
 import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
+import { draftHasLineBreak, textLineBreakPolicy, type TextLineBreakPolicy } from "./textCellLineBreakPolicy";
+import { unambiguousRowSource, type ProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { onDestroy, onMount, untrack } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
@@ -85,6 +87,8 @@ interface Props {
     result: TableQueryResult;
     /** Result-bound proof for bare-id writes. Undefined fails closed on saved Grids. */
     bareIdAuthority?: BareIdMutationAuthority;
+    /** Completed-query provenance used only to restrict TextCell hard breaks. */
+    mutationProvenance?: ProjectQueryProvenance;
     /** Component type per column from the Grid Definition mirror. */
     componentTypes: Record<string, string | undefined>;
     /** The column order stored in the Grid Definition. */
@@ -154,6 +158,7 @@ let {
     query,
     result,
     bareIdAuthority,
+    mutationProvenance,
     componentTypes,
     columnOrder,
     columnLabels,
@@ -1226,7 +1231,14 @@ function reportGuardedOutcome(action: string, outcome: GridExecutionOutcome): vo
     } (${applied || "none"}); provider write failed for ${failed}.`;
 }
 
-async function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
+function lineBreakPolicyFor(column: string, rowTarget?: GridCommandRowTarget): TextLineBreakPolicy {
+    const resolvedSource = mutationProvenance && rowTarget
+        ? unambiguousRowSource(mutationProvenance, rowTarget.row)?.source
+        : undefined;
+    return textLineBreakPolicy({ grid: grid !== undefined, column, resolvedSource, physicalColumns: mutationPhysicalColumns, rawTableColumn: columnByName.get(column) });
+}
+
+async function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue, textOrigin = false) {
     if (!editability.editable || !editability.editableColumns.has(column)) return;
     const rowIndex = result.rows.indexOf(row);
     const rowId = rowIndex < 0 ? selectableRowId(row) : selectionRowId(row, rowIndex);
@@ -1234,6 +1246,10 @@ async function commitCell(row: Record<string, unknown>, column: string, value: T
     const authority = cell ? cellWriteAuthorities.get(JSON.stringify([cell.rowId, cell.columnId])) : undefined;
     try {
         if (cell) checkCellWriteAuthority(cell, authority);
+        if (textOrigin && draftHasLineBreak(value) && lineBreakPolicyFor(column, cell ? commandContext.rowTargets.get(cell.rowId) : undefined).kind !== "allowed") {
+            cellEditStatus = "Edit refused: This destination does not accept line breaks.";
+            return;
+        }
         if (cell && selection.contains(cell) && BULK_COMMIT_KINDS.has(commandContext.valueKindOf(column, cell ? commandContext.rowTargets.get(cell.rowId) : undefined))) {
             const summary = summarizeSelection(selection, commandContext);
             if (summary.writableTargets.length > 1) {
@@ -1533,7 +1549,7 @@ async function pasteClipboardIntoSelection(): Promise<void> {
 function handleGridKeyDown(event: KeyboardEvent) {
     if (event.isComposing) return;
     const target = event.target as HTMLElement;
-    if (target instanceof HTMLInputElement && target.classList.contains("cell-input")) return;
+    if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.classList.contains("cell-input")) return;
     const isForeignEditor = target instanceof HTMLInputElement || target instanceof HTMLSelectElement;
 
     if ((event.ctrlKey || event.metaKey) && !event.altKey) {
@@ -1796,7 +1812,9 @@ function handleCancelDelete() {
 
     `data-block-dnd-type` narrows that to the grid's own column drags, which carry
     COLUMN_DRAG_TYPE. Files, outliner items and text dropped on a body cell are
-    not the grid's business and keep reaching the host item's handlers.
+    not the grid's business and keep reaching the host item's handlers. An
+    active TextCell textarea carries its own narrower plain-text marker so only
+    drops targeting that native editor bypass the host capture handler.
 
     `data-foreign-editor` claims Grid's own keyboard/clipboard events as an
     ownership boundary (see lib/foreignEditor.ts): the outliner's document-level
@@ -2029,6 +2047,7 @@ function handleCancelDelete() {
                         {#each displayColumns as column (column)}
                             {@const logicalCell = logicalRowId ? { rowId: logicalRowId, columnId: column } : undefined}
                             {@const schemaColumn = fieldFor(column, logicalRowId ? commandContext.rowTargets.get(logicalRowId) : undefined)}
+                            {@const componentType = cellComponentTypeFor(componentTypes[column], schemaColumn)}
                             {@const CellComponent = cellComponentFor(componentTypes[column], schemaColumn)}
                             <td
                                 role="gridcell"
@@ -2044,9 +2063,13 @@ function handleCancelDelete() {
                                 onclickcapture={(event) => {
                                     suppressSyntheticTouchClick(event);
                                     if (event.defaultPrevented) return;
+                                    if (event.target instanceof HTMLTextAreaElement && event.target.classList.contains("cell-input")) return;
                                     if (logicalCell) selectCell(event, logicalCell);
                                 }}
-                                onpointerdown={(event) => logicalCell && touchCellPointerDown(event, logicalCell)}
+                                onpointerdown={(event) => {
+                                    if (event.target instanceof HTMLTextAreaElement && event.target.classList.contains("cell-input")) return;
+                                    if (logicalCell) touchCellPointerDown(event, logicalCell);
+                                }}
                                 onpointermove={touchCellPointerMove}
                                 onpointerup={touchCellPointerUp}
                                 onpointercancel={() => {
@@ -2062,6 +2085,9 @@ function handleCancelDelete() {
                                     options={schemaColumn?.enumLabels ?? schemaColumn?.checkOptions}
                                     ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
                                     editSeed={logicalCell !== undefined && cellEditing(logicalCell) ? pendingEditSeed : undefined}
+                                    lineBreakPolicy={componentType === "text"
+                                        ? lineBreakPolicyFor(column, logicalCell ? commandContext.rowTargets.get(logicalCell.rowId) : undefined)
+                                        : undefined}
                                     bind:editing={
                                         () => logicalCell !== undefined && cellEditing(logicalCell),
                                         (editing) => {
@@ -2082,7 +2108,7 @@ function handleCancelDelete() {
                                     onEditStart={() => logicalCell && captureCellWriteAuthority(logicalCell)}
                                     onEditEnd={() => logicalCell && releaseCellWriteAuthority(logicalCell)}
                                     onCommit={(value) => {
-                                        if (recordId !== undefined || source !== undefined) commitCell(row, column, value);
+                                        if (recordId !== undefined || source !== undefined) commitCell(row, column, value, componentType === "text");
                                     }}
                                     onRequestFocus={(direction) => {
                                         if (logicalCell) exitCellEdit(logicalCell, direction);
@@ -2308,8 +2334,13 @@ th.col-fixed .th-label {
 /* Fixed-column body text wraps within its pinned width instead of clipping
  * with an ellipsis; rows grow to fit it (issue #5502). Headers keep their
  * separate ellipsis policy above. */
-td.col-fixed > :global(.cell-value) {
+td.col-fixed > :global(.cell-value:not(.text-cell-value)) {
     white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+td.col-fixed > :global(.text-cell-value) {
+    white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 

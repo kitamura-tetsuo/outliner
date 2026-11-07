@@ -47,7 +47,7 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - reuse existing 
         const titleCell1 = row1.locator('td[data-col="title"] .cell-value');
         await expect(titleCell1).toBeVisible({ timeout: 15000 });
         await titleCell1.click();
-        const titleInput1 = row1.locator('td[data-col="title"] input.cell-input');
+        const titleInput1 = row1.locator('td[data-col="title"] textarea.cell-input');
         await expect(titleInput1).toBeVisible({ timeout: 15000 });
         await titleInput1.fill("Important Task", { force: true });
         await page.keyboard.press("Enter");

@@ -32,7 +32,7 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
         await installTransitionProbe(page);
 
         await page.keyboard.down("Space");
-        await expect(origin.locator("input")).toHaveCount(0);
+        await expect(origin.locator("textarea")).toHaveCount(0);
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         await page.mouse.down();
         expect(await readTransitionProbe(page)).toEqual({ updates: 0, selectionMutations: 0 });
@@ -43,13 +43,13 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
         await page.keyboard.up("Space");
 
         expect(await readTransitionProbe(page)).toEqual({ updates: 0, selectionMutations: 0 });
-        await expect(origin.locator("input")).toHaveCount(0);
+        await expect(origin.locator("textarea")).toHaveCount(0);
         expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);
         expect(await readGridProjectState(page)).toEqual(stateBefore);
         expect(await undoDepth(page)).toBe(undoBefore);
 
         await next.locator("button").click();
-        await expect(next.locator("input")).toBeFocused();
+        await expect(next.locator("textarea")).toBeFocused();
         await page.evaluate(() => {
             (globalThis as typeof globalThis & { __zeroPanProbe: { stop: () => void; }; }).__zeroPanProbe.stop();
         });
@@ -76,13 +76,13 @@ test.describe("Grid Space pan terminal click ownership (#5863)", () => {
         await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
         await page.mouse.up({ button: "left" });
 
-        await expect(origin.locator("input")).toHaveCount(0);
+        await expect(origin.locator("textarea")).toHaveCount(0);
         expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);
         expect(await readGridProjectState(page)).toEqual(stateBefore);
         expect(await undoDepth(page)).toBe(undoBefore);
 
         await next.locator("button").click();
-        await expect(next.locator("input")).toBeFocused();
+        await expect(next.locator("textarea")).toBeFocused();
     });
 });
 

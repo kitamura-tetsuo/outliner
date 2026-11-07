@@ -90,6 +90,6 @@ test.describe("Grid keyboard navigation mode (#5188)", () => {
         await expect(firstRow.locator("td[data-col='title']")).toHaveClass(/grid-active/);
         await expect(firstRow.locator("td[data-col='title'] button")).toBeFocused();
         await expect(secondRow.locator("td[data-col='title']")).not.toHaveClass(/grid-active/);
-        await expect(page.getByTestId("yjs-table-grid").locator("input.cell-input")).toHaveCount(0);
+        await expect(page.getByTestId("yjs-table-grid").locator("textarea.cell-input")).toHaveCount(0);
     });
 });

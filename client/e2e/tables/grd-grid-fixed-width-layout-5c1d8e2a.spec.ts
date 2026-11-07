@@ -119,7 +119,7 @@ test.describe("Grid fixed widths hold inside a partial-span Layout", () => {
         const titleButton = grid.locator('td[data-col="title"] button.cell-value').first();
         await titleButton.evaluate(element => element.scrollIntoView({ block: "center", inline: "center" }));
         await titleButton.click();
-        await expect(grid.locator('td[data-col="title"] input.cell-input').first()).toBeVisible({
+        await expect(grid.locator('td[data-col="title"] textarea.cell-input').first()).toBeVisible({
             timeout: 15000,
         });
         for (const [column, px] of ALL_FIXED) await expectFixedWidth(page, 0, column, px);

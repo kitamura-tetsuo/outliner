@@ -92,9 +92,19 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
 
         // Edit the table branch's row: the write must land on the table.
         await tableRow.locator('td[data-col="text"] .cell-value').click();
-        await tableRow.locator('td[data-col="text"] input.cell-input').fill("Water the plants", { force: true });
+        const tableEditor = tableRow.locator('td[data-col="text"] textarea.cell-input');
+        await tableEditor.fill("Water", { force: true });
+        await tableEditor.press("Alt+Enter");
+        await tableEditor.type("the plants");
+        await expect(tableEditor).toHaveValue("Water\nthe plants");
         await page.keyboard.press("Enter");
-        await expect(tableRow.locator('td[data-col="text"] .cell-value', { hasText: "Water the plants" }))
+        await expect(tableRow.locator('td[data-col="text"] .cell-value')).toHaveText("Water\nthe plants", {
+            timeout: 15000,
+        });
+        await tableRow.locator('td[data-col="text"] .cell-value').click();
+        await expect(tableRow.locator('td[data-col="text"] textarea.cell-input')).toHaveValue("Water\nthe plants");
+        await page.keyboard.press("Escape");
+        await expect(tableRow.locator('td[data-col="text"] .cell-value'))
             .toBeVisible({ timeout: 15000 });
 
         // Drive the same verified UNION provenance through the unified
@@ -122,7 +132,15 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         // live outline item — a direct Yjs binding — is the reliable signal
         // that the write landed on the right row.
         await itemRow.locator('td[data-col="text"] .cell-value').click();
-        await itemRow.locator('td[data-col="text"] input.cell-input').fill(
+        const itemEditor = itemRow.locator('td[data-col="text"] textarea.cell-input');
+        await itemEditor.fill("Ship the feature", { force: true });
+        await itemEditor.evaluate(node => node.setSelectionRange(5, 8));
+        await itemEditor.press("Alt+Enter");
+        await expect(itemEditor).toHaveValue("Ship the feature");
+        await expect(itemEditor).toBeFocused();
+        await expect.poll(() => itemEditor.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([5, 8]);
+        await expect(itemRow.getByRole("alert")).toContainText("does not accept line breaks");
+        await itemEditor.fill(
             "Ship the redesigned feature",
             { force: true },
         );

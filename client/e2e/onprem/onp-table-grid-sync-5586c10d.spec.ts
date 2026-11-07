@@ -28,7 +28,7 @@ test.describe("production on-premises Table and Grid rooms", () => {
         await page.getByTestId("yjs-table-add-row").first().click();
         const row = grid.locator("tbody tr").last();
         await row.locator("td[data-col='title'] button").click();
-        await row.locator("td[data-col='title'] input").fill("Ship local mode");
+        await row.locator("td[data-col='title'] textarea").fill("Ship local mode");
         await page.keyboard.press("Enter");
         await row.locator("td[data-col='done'] input[type=checkbox]").check();
 

@@ -91,7 +91,7 @@ test.describe("Grid fixed column widths render at exact pixel widths", () => {
 
         // Focusing the native inline editor must not widen the fixed column.
         await grid.locator('td[data-col="title"] button.cell-value').first().click();
-        await expect(grid.locator('td[data-col="title"] input.cell-input').first()).toBeVisible({
+        await expect(grid.locator('td[data-col="title"] textarea.cell-input').first()).toBeVisible({
             timeout: 15000,
         });
         for (const w of await columnWidths(page, "title")) {

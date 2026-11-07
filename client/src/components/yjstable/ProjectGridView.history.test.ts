@@ -36,8 +36,8 @@ it("retains Grid query and A cell history through a live supplier switch", { tim
     grid.undo.clear();
     globalUndoRouter.clear();
     await fireEvent.click(cell().querySelector("button")!);
-    await fireEvent.input(cell().querySelector("input")!, { target: { value: "edited-a" } });
-    await fireEvent.keyDown(cell().querySelector("input")!, { key: "Enter" });
+    await fireEvent.input(cell().querySelector("textarea")!, { target: { value: "edited-a" } });
+    await fireEvent.keyDown(cell().querySelector("textarea")!, { key: "Enter" });
     await waitFor(() => expect(sources[0].data.get("same")?.get("value")).toBe("edited-a"));
     expect(sources[0].undo.undoStack).toHaveLength(1);
     setGridQuery(grid, "SELECT id AS id, value AS value FROM b");

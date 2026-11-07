@@ -77,7 +77,7 @@ describe("catalog authority through actual cell callbacks", { timeout: 90_000 },
     it("keeps the old editor's authority when the next control receives pointer-down before blur", async () => {
         const f = await setup("text", true);
         await fireEvent.click(f.cell().querySelector("button")!);
-        const input = f.cell().querySelector<HTMLInputElement>("input")!;
+        const input = f.cell().querySelector<HTMLTextAreaElement>("textarea")!;
         await fireEvent.input(input, { target: { value: "Closed" } });
         const next = f.view.container.querySelector<HTMLSelectElement>("td[data-col='next'] select")!;
         await fireEvent.pointerDown(next);
@@ -93,7 +93,7 @@ describe("catalog authority through actual cell callbacks", { timeout: 90_000 },
             const button = f.cell().querySelector("button")!;
             if (start === "click") await fireEvent.click(button);
             else await fireEvent.keyDown(button, { key: start === "F2" ? "F2" : "C" });
-            const input = f.cell().querySelector<HTMLInputElement>("input")!;
+            const input = f.cell().querySelector<HTMLTextAreaElement>("textarea")!;
             expect(input).not.toBeNull();
             await fireEvent.input(input, { target: { value: "Closed" } });
             await f.reorder();
@@ -101,7 +101,7 @@ describe("catalog authority through actual cell callbacks", { timeout: 90_000 },
             expect(f.handles.data.get("r1")?.get("state")).toBe("Open");
             expect(f.view.getByTestId("grid-edit-status").textContent).toContain("changed while you were editing");
             await fireEvent.click(f.cell().querySelector("button")!);
-            const fresh = f.cell().querySelector<HTMLInputElement>("input")!;
+            const fresh = f.cell().querySelector<HTMLTextAreaElement>("textarea")!;
             await fireEvent.input(fresh, { target: { value: "Closed" } });
             await fireEvent.keyDown(fresh, { key: "Enter" });
             expect(f.handles.data.get("r1")?.get("state")).toBe("Closed");
@@ -111,7 +111,7 @@ describe("catalog authority through actual cell callbacks", { timeout: 90_000 },
     it("keeps the original ENUM authority after the current column becomes TEXT", async () => {
         const f = await setup("text");
         await fireEvent.click(f.cell().querySelector("button")!);
-        const input = f.cell().querySelector<HTMLInputElement>("input")!;
+        const input = f.cell().querySelector<HTMLTextAreaElement>("textarea")!;
         await fireEvent.input(input, { target: { value: "Closed" } });
         const token = f.adapter.writeAuthorityToken;
         setSchemaText(f.handles, "CREATE TABLE tasks (id TEXT PRIMARY KEY, state TEXT)");

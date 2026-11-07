@@ -44,30 +44,30 @@ test(
                 );
             const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
             await cell.locator("button").click();
-            await cell.locator("input").fill("old same-supplier intent");
+            await cell.locator("textarea").fill("old same-supplier intent");
             const before = await grid.getAttribute("data-mutation-incarnation");
             await query.setValue(peer, queryA);
-            await expect(cell.locator("input")).toHaveValue("old same-supplier intent");
+            await expect(cell.locator("textarea")).toHaveValue("old same-supplier intent");
             await query.commit(peer);
             await expect.poll(savedQuery).toBe(queryA);
             await expect.poll(() => grid.getAttribute("data-mutation-incarnation")).not.toBe(before);
             await expect(grid).not.toHaveAttribute("data-mutation-incarnation", /unavailable/);
             // Invalidating the displayed execution cancels this editor. A later
             // current execution must not reopen it with fresh authority.
-            await expect(cell.locator("input")).toHaveCount(0);
+            await expect(cell.locator("textarea")).toHaveCount(0);
             await expect(cell.locator("button")).toHaveText("Value from A");
             expect(
                 (await snapshotProject(page)).tables.find(table => table.id === fixture.tableA.id)
                     ?.data[fixture.recordId]?.title,
             ).toBe("Value from A");
             await cell.locator("button").click();
-            await cell.locator("input").fill("old ABA intent");
+            await cell.locator("textarea").fill("old ABA intent");
             await query.fillAndCommit(peer, queryB);
             await expect(grid).toHaveAttribute("data-source-table-ids", JSON.stringify([fixture.tableB.id]));
             await query.fillAndCommit(peer, queryA);
             await expect.poll(savedQuery).toBe(queryA);
             await expect(grid).toHaveAttribute("data-source-table-ids", JSON.stringify([fixture.tableA.id]));
-            await expect(cell.locator("input")).toHaveCount(0);
+            await expect(cell.locator("textarea")).toHaveCount(0);
             await expect(cell.locator("button")).toHaveText("Value from A");
             expect(
                 (await snapshotProject(page)).tables.find(table => table.id === fixture.tableA.id)
@@ -84,8 +84,8 @@ test(
             ).toBe(true);
             await expect(grid).not.toHaveAttribute("data-mutation-incarnation", /unavailable/);
             await cell.locator("button").click();
-            await cell.locator("input").fill("Fresh A edit");
-            await cell.locator("input").press("Enter");
+            await cell.locator("textarea").fill("Fresh A edit");
+            await cell.locator("textarea").press("Enter");
             await expect.poll(async () =>
                 (await snapshotProject(page)).tables.find(table => table.id === fixture.tableA.id)
                     ?.data[fixture.recordId]?.title

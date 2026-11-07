@@ -160,8 +160,8 @@ test(
         await page.getByTestId("search-panel").getByRole("button", { name: "Close Search Panel" }).click();
         const titleCell = sourceGrid.locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await titleCell.locator("button.cell-value").click();
-        await titleCell.locator("input.cell-input").fill("true title");
-        await titleCell.locator("input.cell-input").press("Enter");
+        await titleCell.locator("textarea.cell-input").fill("true title");
+        await titleCell.locator("textarea.cell-input").press("Enter");
         await openSearch(page, "true", "settled");
         await confirmReplaceAll(page);
         await expect(page.getByTestId("replace-status")).toHaveText(

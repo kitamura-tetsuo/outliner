@@ -132,7 +132,7 @@ test.describe("Grid fixed widths preserve cell components and write targets", ()
         // Send the attempted click despite aria-disabled; ordinary click()
         // waits for an enabled control instead of exercising its read-only guard.
         await subjectCell.locator("button.cell-value").click({ force: true });
-        expect(await subjectCell.locator("input.cell-input").count()).toBe(0);
+        expect(await subjectCell.locator("textarea.cell-input").count()).toBe(0);
         await flagBox.click({ force: true });
         await expectFixedWidth(page, 0, "subject", 180);
         await expectFixedWidth(page, 0, "flag", 64);

@@ -69,14 +69,14 @@ describe("TableGrid touch selection", () => {
         await touch(cell, "pointerup");
         await fireEvent.click(cell.querySelector("button")!);
         expect(cell.classList.contains("grid-active")).toBe(true);
-        expect(cell.querySelector("input")).toBeNull();
+        expect(cell.querySelector("textarea")).toBeNull();
 
         vi.advanceTimersByTime(100);
         await touch(cell, "pointerdown");
         await touch(cell, "pointerup");
         await fireEvent.click(cell.querySelector("button")!);
         await vi.runAllTimersAsync();
-        expect(cell.querySelector("input.cell-input")).not.toBeNull();
+        expect(cell.querySelector("textarea.cell-input")).not.toBeNull();
         expect(cell.getAttribute("aria-selected")).toBe("true");
     });
 

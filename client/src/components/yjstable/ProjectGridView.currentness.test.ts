@@ -38,7 +38,7 @@ it(
         await waitFor(() => expect(handles.data.get("same")?.get("value")).toBe("current updated"));
         await waitFor(() => expect(cell()?.textContent).toContain("current updated"));
         await fireEvent.click(cell().querySelector("button")!);
-        const editor = cell().querySelector("input")!;
+        const editor = cell().querySelector("textarea")!;
         await fireEvent.input(editor, { target: { value: "pending" } });
         setGridQuery(grid, `${query} WHERE id = 'same'`);
         await waitFor(() =>
