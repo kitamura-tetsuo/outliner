@@ -1812,7 +1812,9 @@ function handleCancelDelete() {
 
     `data-block-dnd-type` narrows that to the grid's own column drags, which carry
     COLUMN_DRAG_TYPE. Files, outliner items and text dropped on a body cell are
-    not the grid's business and keep reaching the host item's handlers.
+    not the grid's business and keep reaching the host item's handlers. An
+    active TextCell textarea carries its own narrower plain-text marker so only
+    drops targeting that native editor bypass the host capture handler.
 
     `data-foreign-editor` claims Grid's own keyboard/clipboard events as an
     ownership boundary (see lib/foreignEditor.ts): the outliner's document-level
@@ -1827,7 +1829,7 @@ function handleCancelDelete() {
     class:pan-active={panActive}
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
-    data-block-dnd-type={`${COLUMN_DRAG_TYPE}${editingCell ? ",text/plain" : ""}`}
+    data-block-dnd-type={COLUMN_DRAG_TYPE}
     data-foreign-editor="grid"
     data-column-resizing={resizingColumn !== undefined ? "true" : undefined}
     bind:this={gridContainer}

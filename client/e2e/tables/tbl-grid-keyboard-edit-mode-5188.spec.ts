@@ -87,6 +87,18 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         );
         expect(grown.scroll).toBeGreaterThanOrEqual(grown.height);
 
+        await editor.press("Control+End");
+        await expect.poll(() => editor.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+        await editor.fill("short again");
+        const shrunk = await editor.evaluate(node => ({ height: node.clientHeight, scroll: node.scrollHeight }));
+        expect(shrunk.height).toBe(initial.height);
+        expect(shrunk.scroll).toBeLessThanOrEqual(shrunk.height + 1);
+
+        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+        await page.evaluate(() => navigator.clipboard.writeText("first\nsecond"));
+        await editor.fill("");
+        await editor.press("Control+V");
+        await expect(editor).toHaveValue("first\nsecond");
         await editor.fill("first");
         await editor.press("Alt+Enter");
         await editor.type("second");

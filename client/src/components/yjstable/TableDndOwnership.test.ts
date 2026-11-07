@@ -12,6 +12,7 @@
 // guard are verified together rather than in isolation.
 
 import { render } from "@testing-library/svelte";
+import { tick } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { isBlockOwnedDragEvent } from "../../services/dnd/blockDndOwnership";
@@ -21,6 +22,7 @@ import type { RelationResolver } from "../../services/yjstable/relationRowWrite"
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTable, getTableHandles, type TableHandles } from "../../services/yjstable/tableDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import type { CellComponentType } from "./cellComponents";
 import TableGrid from "./TableGrid.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 
@@ -164,14 +166,14 @@ beforeEach(() => {
 });
 
 describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
-    function renderGrid() {
+    function renderGrid(componentTypes: Record<string, CellComponentType> = {}) {
         return renderInsideOutlinerItem(TableGrid, {
             grid,
             handles,
             schema,
             query: QUERY,
             result,
-            componentTypes: {},
+            componentTypes,
             columnLabels: {},
             hiddenColumns: {},
             columnOrder: [],
@@ -235,6 +237,32 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
         expect(itemDropHandled).toHaveBeenCalledTimes(1);
         expect(itemDragEnterHandled).toHaveBeenCalledTimes(1);
         expect(storedColumnOrder()).toEqual([]);
+    });
+
+    it("claims plain text only when it lands on the active text editor", async () => {
+        const { container, itemDropHandled } = renderGrid();
+        (container.querySelector("td[data-col='col_a'] button") as HTMLButtonElement).click();
+        await tick();
+
+        const editor = container.querySelector("td[data-col='col_a'] textarea")!;
+        const otherCell = container.querySelector("td[data-col='col_c']")!;
+        const dataTransfer = fakeDataTransfer({ "text/plain": "one\ntwo" });
+        dispatchDragEvent(editor, "drop", dataTransfer);
+        expect(itemDropHandled).not.toHaveBeenCalled();
+
+        dispatchDragEvent(otherCell, "drop", dataTransfer);
+        expect(itemDropHandled).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not broaden plain-text ownership while a numeric editor is active", async () => {
+        const { container, itemDropHandled } = renderGrid({ col_b: "number" });
+        (container.querySelector("td[data-col='col_b'] button") as HTMLButtonElement).click();
+        await tick();
+        expect(container.querySelector("td[data-col='col_b'] input.cell-input")).not.toBeNull();
+
+        const otherCell = container.querySelector("td[data-col='col_c']")!;
+        dispatchDragEvent(otherCell, "drop", fakeDataTransfer({ "text/plain": "plain text" }));
+        expect(itemDropHandled).toHaveBeenCalledTimes(1);
     });
 });
 

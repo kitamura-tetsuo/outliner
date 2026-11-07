@@ -92,6 +92,8 @@ onMount(() => () => { finished = true; });
     <textarea
         bind:this={textarea}
         use:focusAndSize
+        data-block-dnd-owner="grid-text-editor"
+        data-block-dnd-type="text/plain"
         class="cell-input text-cell-input"
         aria-label={ariaLabel || "Edit cell value"}
         aria-describedby={denial ? "text-cell-line-break-status" : undefined}
