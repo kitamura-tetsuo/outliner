@@ -26,7 +26,7 @@ An overview of the basic interface and navigation.
 
 ### Creating and Browsing Pages
 
-You can create and browse pages from the project homepage or use the Search pages input in the main top toolbar, alongside quick actions like Add Database, Undo, Redo, and Databases (which opens a right sidebar to browse and manage database tables).
+You can create and browse pages from the project homepage or use the Search pages input in the main top header, alongside quick actions like Add Database, Undo, Redo, and Databases (which opens a right sidebar to browse and manage database tables).
 
 To browse your pages, go to the project homepage which lists all pages in the current project. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
@@ -45,7 +45,7 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ### Page Toolbars
 
-The page view provides toolbars for page-specific actions. At the top right of the page, you will find:
+The page view provides toolbars for page-specific actions. At the top right of the page header, you will find:
 
 - **Search:** Opens the "Search and Replace" (Unified Find) panel to search and replace text and grid cells within the current page.
 - **Graph View:** Opens a visual graph representation of page links.
@@ -53,7 +53,7 @@ The page view provides toolbars for page-specific actions. At the top right of t
 At the bottom of the page (below the outline tree), the editor toolbar provides:
 
 - **Add Item:** Adds a new item to the bottom of the page.
-- **Add Image:** Uploads and inserts an image from your computer.
+- **Add Image:** Uploads and inserts an image from your computer (available in on-premises deployments).
 - **History / Diff:** Opens the history panel to view past edits and differences.
 - **Keyboard Shortcuts:** Opens a list of available keyboard shortcuts.
 
@@ -61,7 +61,7 @@ When you focus on an outline item on a mobile device or a narrow screen, a float
 
 ### User Authentication
 
-The login status indicator located in the top right area of the main top toolbar shows your current login state. For guest users or when accessing a public space, it will display "Not signed in". You can also find a "Sign in to see your projects" prompt in the Projects section of the main sidebar.
+The login status indicator located in the top right area of the main top header shows your current login state. For guest users or when accessing a public space, it will display "Not signed in". You can also find a "Sign in to see your projects" prompt in the Projects section of the main sidebar.
 
 ### Sidebar Navigation
 
@@ -154,7 +154,7 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search pages:** Use the **Search pages** input in the main top toolbar to quickly search across the whole project. Recent searches are remembered for quick access.
+- **Search pages:** Use the **Search pages** input in the main top header to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find (Search and Replace):** Click the **Search** button at the top right of the page to open Find on this page. It searches outline text and every visible Grid result cell in one session. The search panel includes advanced options such as **Regex**, **Case Sensitive**, and **Whole Word**, as well as an option to **Include page titles**. Use the **Scope** dropdown to search across the entire **Project text**, the current **Page**, or choose **Selection** to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
