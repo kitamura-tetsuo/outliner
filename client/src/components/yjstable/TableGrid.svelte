@@ -1872,22 +1872,24 @@ function handleCancelDelete() {
             {/if}
             <thead>
                 <tr>
-                    <th
-                        class="selection-header corner-header"
-                        class:header-selected={allSelected()}
-                        scope="col"
-                        role="columnheader"
-                        tabindex="0"
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<th
+    class="selection-header corner-header"
+    class:header-selected={allSelected()}
+    scope="col"
+    role="columnheader"
+    tabindex="0"
                         aria-label="Select current query result"
                         aria-selected={allSelected() ? "true" : "false"}
                         onclick={selectAllResult}
                         onkeydown={(event) => activateHeader(event, selectAllResult)}
                     >▦</th>
                     {#each displayColumns as column, index (column)}
-                        <th
-                            scope="col"
-                            role="columnheader"
-                            tabindex="0"
+                        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<th
+    scope="col"
+    role="columnheader"
+    tabindex="0"
                             data-col={column}
                             aria-selected={columnSelected(column) ? "true" : "false"}
                             class:header-selected={columnSelected(column)}
@@ -1957,10 +1959,11 @@ function handleCancelDelete() {
                                         <span class="readonly-mark" title="Read-only column">RO</span>
                                     {/if}
                                 </span>
-                                <div
-                                    class="column-drag-handle"
-                                    role="button"
-                                    tabindex="-1"
+                                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div
+    class="column-drag-handle"
+    role="button"
+    tabindex="-1"
                                     aria-label={`Drag to reorder ${column}`}
                                     draggable="true"
                                     data-testid="yjs-table-column-drag-handle"
@@ -2014,12 +2017,14 @@ function handleCancelDelete() {
                     {@const logicalRowId = selectionRowId(row, rowIndex)}
                     {@const navigationRowId = searchRowId(row, rowIndex)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
-                        <th
-                            class="row-header"
-                            class:header-selected={logicalRowId !== undefined && rowSelected(logicalRowId)}
-                            scope="row"
-                            role="rowheader"
-                            tabindex={logicalRowId === undefined ? undefined : 0}
+                        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<th
+    class="row-header"
+    class:header-selected={logicalRowId !== undefined && rowSelected(logicalRowId)}
+    scope="row"
+    role="rowheader"
+    tabindex={logicalRowId === undefined ? undefined : 0}
                             aria-label={`Select row ${rowIndex + 1}`}
                             aria-selected={logicalRowId !== undefined ? (rowSelected(logicalRowId) ? "true" : "false") : undefined}
                             onclick={(event) => logicalRowId && selectRowHeader(event, logicalRowId)}
