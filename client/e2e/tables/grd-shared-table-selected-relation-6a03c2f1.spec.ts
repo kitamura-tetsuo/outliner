@@ -61,8 +61,8 @@ async function addNamedRow(page: Page, gridId: string, value: string) {
     await view.getByTestId("yjs-table-add-row").click();
     const title = view.getByTestId("yjs-table-grid").locator('td[data-col="title"]').first();
     await title.locator("button.cell-value").click();
-    await title.locator("input.cell-input").fill(value);
-    await title.locator("input.cell-input").press("Enter");
+    await title.locator("textarea.cell-input").fill(value);
+    await title.locator("textarea.cell-input").press("Enter");
     await expect(title.locator("button.cell-value")).toHaveText(value, { timeout: 30000 });
 }
 

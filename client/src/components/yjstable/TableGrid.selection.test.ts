@@ -116,7 +116,7 @@ describe("TableGrid logical selection", () => {
         const alpha = view.container.querySelector<HTMLElement>('td[data-row-id="a"][data-col="name"]')!;
         await fireEvent.click(alpha.querySelector("button")!, { ctrlKey: true });
         expect(alpha.classList.contains("grid-selected")).toBe(false);
-        expect(alpha.querySelector("input")).toBeNull();
+        expect(alpha.querySelector("textarea")).toBeNull();
         expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(5);
 
         const idHeader = view.getByRole("columnheader", { name: "id" });

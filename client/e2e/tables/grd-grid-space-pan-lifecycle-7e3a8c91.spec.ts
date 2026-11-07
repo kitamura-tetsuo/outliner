@@ -80,11 +80,11 @@ test.describe("Grid Space pan ownership lifecycle (#5863)", () => {
             pointerType: "pen",
         });
         await cdp.detach();
-        await expect(next.locator("input")).toBeFocused();
+        await expect(next.locator("textarea")).toBeFocused();
 
         await page.mouse.up();
-        await expect(origin.locator("input")).toHaveCount(0);
-        await expect(next.locator("input")).toBeFocused();
+        await expect(origin.locator("textarea")).toHaveCount(0);
+        await expect(next.locator("textarea")).toBeFocused();
     });
 
     test("owning Grid unmount makes queued owner input inert", async ({ page }) => {

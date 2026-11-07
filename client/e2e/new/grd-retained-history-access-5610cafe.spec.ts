@@ -45,8 +45,8 @@ for (const target of ["Grid", "Table"] as const) {
                 };
                 const tableEdit = async () => {
                     await cell.locator("button").click();
-                    await cell.locator("input").fill("History B");
-                    await cell.locator("input").press("Enter");
+                    await cell.locator("textarea").fill("History B");
+                    await cell.locator("textarea").press("Enter");
                     await expect.poll(async () =>
                         (await snapshotProject(page)).tables.find(table => table.id === fixture.tableB.id)
                             ?.data[fixture.recordId]?.title

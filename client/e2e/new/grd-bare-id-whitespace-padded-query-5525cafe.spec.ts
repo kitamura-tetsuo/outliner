@@ -43,7 +43,7 @@ test(
         // A real Grid cell edit lands only on the proven source record.
         const cell = grid.locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await cell.locator("button.cell-value").click();
-        await cell.locator("input.cell-input").fill("Padded query edit");
+        await cell.locator("textarea.cell-input").fill("Padded query edit");
         await page.keyboard.press("Enter");
 
         const state = await snapshotProject(page);
@@ -65,7 +65,7 @@ test(
 
         // Valid editing is still possible after the reload.
         await reloadedCell.locator("button.cell-value").click();
-        await reloadedCell.locator("input.cell-input").fill("Still editable");
+        await reloadedCell.locator("textarea.cell-input").fill("Still editable");
         await page.keyboard.press("Enter");
         await expect(reloadedCell.locator("button.cell-value")).toHaveText("Still editable", { timeout: 30000 });
         const final = await snapshotProject(page);

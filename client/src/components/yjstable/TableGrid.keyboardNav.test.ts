@@ -168,12 +168,12 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         const td = cellTd(view.container, "a", "name");
 
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "F2" });
-        expect(td.querySelector("input")).not.toBeNull();
-        await fireEvent.keyDown(td.querySelector("input")!, { key: "Escape" });
-        expect(td.querySelector("input")).toBeNull();
+        expect(td.querySelector("textarea")).not.toBeNull();
+        await fireEvent.keyDown(td.querySelector("textarea")!, { key: "Escape" });
+        expect(td.querySelector("textarea")).toBeNull();
 
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "Enter" });
-        expect(td.querySelector("input")).not.toBeNull();
+        expect(td.querySelector("textarea")).not.toBeNull();
     });
 
     it("typing a printable character on the active cell replaces its content and starts editing", async () => {
@@ -181,7 +181,7 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         await selectCell(view.container, "a", "name");
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "Z" });
 
-        const input = cellTd(view.container, "a", "name").querySelector<HTMLInputElement>("input")!;
+        const input = cellTd(view.container, "a", "name").querySelector<HTMLTextAreaElement>("textarea")!;
         expect(input).not.toBeNull();
         expect(input.value).toBe("Z");
     });
@@ -192,11 +192,11 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "F2" });
 
         const td = cellTd(view.container, "a", "name");
-        const input = td.querySelector<HTMLInputElement>("input")!;
+        const input = td.querySelector<HTMLTextAreaElement>("textarea")!;
         await fireEvent.input(input, { target: { value: "Alpha Prime" } });
         await fireEvent.keyDown(input, { key: "Enter" });
 
-        expect(td.querySelector("input")).toBeNull();
+        expect(td.querySelector("textarea")).toBeNull();
         expect(handles.data.get("a")?.get("name")).toBe("Alpha Prime");
         expect(isActive(view.container, "b", "name")).toBe(true);
     });
@@ -206,11 +206,11 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         await selectCell(view.container, "a", "name");
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "F2" });
 
-        const input = cellTd(view.container, "a", "name").querySelector<HTMLInputElement>("input")!;
+        const input = cellTd(view.container, "a", "name").querySelector<HTMLTextAreaElement>("textarea")!;
         await fireEvent.input(input, { target: { value: "Alpha 2" } });
         await fireEvent.keyDown(input, { key: "Tab" });
 
-        expect(cellTd(view.container, "a", "name").querySelector("input")).toBeNull();
+        expect(cellTd(view.container, "a", "name").querySelector("textarea")).toBeNull();
         expect(handles.data.get("a")?.get("name")).toBe("Alpha 2");
         expect(isActive(view.container, "a", "score")).toBe(true);
     });
@@ -221,11 +221,11 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "F2" });
 
         const td = cellTd(view.container, "a", "name");
-        const input = td.querySelector<HTMLInputElement>("input")!;
+        const input = td.querySelector<HTMLTextAreaElement>("textarea")!;
         await fireEvent.input(input, { target: { value: "Discarded" } });
         await fireEvent.keyDown(input, { key: "Escape" });
 
-        expect(td.querySelector("input")).toBeNull();
+        expect(td.querySelector("textarea")).toBeNull();
         expect(handles.data.get("a")?.get("name")).toBe("Alpha");
         expect(td.querySelector("button")?.textContent).toBe("Alpha");
     });
@@ -237,7 +237,7 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "Enter", isComposing: true });
 
         const td = cellTd(view.container, "a", "name");
-        expect(td.querySelector("input")).toBeNull();
+        expect(td.querySelector("textarea")).toBeNull();
         expect(isActive(view.container, "a", "name")).toBe(true);
     });
 
@@ -405,7 +405,7 @@ describe("TableGrid keyboard navigation (#5188)", () => {
         const { view } = setup();
         await selectCell(view.container, "a", "name");
         await fireEvent.keyDown(cellButton(view.container, "a", "name"), { key: "F2" });
-        const input = cellTd(view.container, "a", "name").querySelector<HTMLInputElement>("input")!;
+        const input = cellTd(view.container, "a", "name").querySelector<HTMLTextAreaElement>("textarea")!;
         await fireEvent.keyDown(input, { key: "Tab" });
 
         const header = view.container.querySelector<HTMLElement>('th[data-col="name"]')!;

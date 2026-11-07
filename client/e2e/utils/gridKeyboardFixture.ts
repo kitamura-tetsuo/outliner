@@ -44,9 +44,9 @@ export function keyboardTaskRow(page: Page, recordId: string): Locator {
 /** Cancel a real edit, then wait for navigation mode and its focus restoration. */
 export async function selectAndFocusCell(cell: Locator): Promise<void> {
     await cell.locator("button").click();
-    await expect(cell.locator("input")).toBeFocused();
-    await cell.locator("input").press("Escape");
-    await expect(cell.locator("input")).toHaveCount(0);
+    await expect(cell.locator("textarea")).toBeFocused();
+    await cell.locator("textarea").press("Escape");
+    await expect(cell.locator("textarea")).toHaveCount(0);
     await expect(cell.locator("button")).toBeFocused();
     await expect(cell).toHaveClass(/grid-active/);
 }

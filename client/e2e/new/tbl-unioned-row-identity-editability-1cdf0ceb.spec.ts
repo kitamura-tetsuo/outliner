@@ -92,7 +92,7 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
 
         // Edit the table branch's row: the write must land on the table.
         await tableRow.locator('td[data-col="text"] .cell-value').click();
-        await tableRow.locator('td[data-col="text"] input.cell-input').fill("Water the plants", { force: true });
+        await tableRow.locator('td[data-col="text"] textarea.cell-input').fill("Water the plants", { force: true });
         await page.keyboard.press("Enter");
         await expect(tableRow.locator('td[data-col="text"] .cell-value', { hasText: "Water the plants" }))
             .toBeVisible({ timeout: 15000 });
@@ -122,7 +122,7 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         // live outline item — a direct Yjs binding — is the reliable signal
         // that the write landed on the right row.
         await itemRow.locator('td[data-col="text"] .cell-value').click();
-        await itemRow.locator('td[data-col="text"] input.cell-input').fill(
+        await itemRow.locator('td[data-col="text"] textarea.cell-input').fill(
             "Ship the redesigned feature",
             { force: true },
         );

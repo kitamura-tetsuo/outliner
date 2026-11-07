@@ -14,7 +14,7 @@ test("a matched saved Grid commits only to its source Table and survives reload"
     const cell = fixture.gridA.getByTestId("yjs-table-grid")
         .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
     await cell.locator("button.cell-value").click();
-    await cell.locator("input.cell-input").fill("Committed only to A");
+    await cell.locator("textarea.cell-input").fill("Committed only to A");
     await page.keyboard.press("Enter");
 
     const state = await snapshotProject(page);

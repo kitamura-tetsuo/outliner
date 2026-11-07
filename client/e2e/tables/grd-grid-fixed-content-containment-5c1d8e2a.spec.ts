@@ -131,7 +131,7 @@ test.describe("Grid fixed columns contain long content, controls and editors", (
         // A focused inline editor stays inside its fixed track.
         const cell = grid.locator('td[data-col="title"]').first();
         await cell.locator("button.cell-value").click();
-        const editor = cell.locator("input.cell-input");
+        const editor = cell.locator("textarea.cell-input");
         await expect(editor).toBeVisible({ timeout: 15000 });
         await expectWithin(editor, cell);
         for (const w of await placementColumnWidths(page, 0, "title")) {

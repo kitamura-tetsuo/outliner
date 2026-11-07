@@ -53,7 +53,7 @@ test(
         await expect(cell.locator("button.cell-value")).toHaveText("Value from A");
         await cell.click();
         await page.keyboard.press("Enter");
-        await expect(cell.locator("input.cell-input")).toHaveCount(0);
+        await expect(cell.locator("textarea.cell-input")).toHaveCount(0);
         expect(await snapshotProject(page)).toEqual(before);
 
         // Row deletion through the ordinary keyboard command removes nothing.
@@ -83,7 +83,7 @@ test(
             .locator("tbody tr").filter({ hasText: "Value from A" }).locator('td[data-col="title"]');
         await standaloneCell.click();
         await page.keyboard.press("Enter");
-        await expect(standaloneCell.locator("input.cell-input")).toHaveCount(0);
+        await expect(standaloneCell.locator("textarea.cell-input")).toHaveCount(0);
         const standaloneRowHeader = standalone.getByTestId("yjs-table-grid").locator("th.row-header").first();
         await standaloneRowHeader.click();
         await page.keyboard.press("Delete");

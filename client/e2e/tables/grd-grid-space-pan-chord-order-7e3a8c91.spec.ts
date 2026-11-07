@@ -94,12 +94,12 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
                 .toBe(true);
             await page.mouse.up({ button: "left" });
             await page.keyboard.up("Space");
-            await expect(origin.locator("input")).toHaveCount(0);
+            await expect(origin.locator("textarea")).toHaveCount(0);
             expect(await selectedCellIdentity(grid)).toEqual(selectionBefore);
             expect(await readGridProjectState(page)).toEqual(stateBefore);
             expect(await undoDepth(page)).toBe(undoBefore);
             await next.locator("button").click();
-            await expect(next.locator("input")).toBeFocused();
+            await expect(next.locator("textarea")).toBeFocused();
         });
     }
 
@@ -118,7 +118,7 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
         await page.mouse.up({ button: "right" });
         await page.keyboard.up("Space");
 
-        await expect(origin.locator("input")).toHaveCount(0);
+        await expect(origin.locator("textarea")).toHaveCount(0);
         await expect(page.locator(".context-menu-overlay")).toHaveCount(0);
         const trace = await readTrace(page);
         expect(trace.some(event => event.type === "pointermove" && event.button === 0 && event.buttons === 2)).toBe(
@@ -127,7 +127,7 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
         expect(trace.some(event => event.type === "pointerup" && event.button === 2 && event.buttons === 0)).toBe(true);
 
         await next.locator("button").click();
-        await expect(next.locator("input")).toBeFocused();
+        await expect(next.locator("textarea")).toBeFocused();
         await expect(grid).not.toHaveClass(/pan-active|pan-armed/);
     });
 
@@ -145,14 +145,14 @@ test.describe("Grid pan chorded-button ordering (#5863)", () => {
         await page.mouse.up({ button: "left" });
         await page.mouse.up({ button: "middle" });
 
-        await expect(origin.locator("input")).toHaveCount(0);
+        await expect(origin.locator("textarea")).toHaveCount(0);
         const trace = await readTrace(page);
         expect(trace.some(event => event.type === "pointermove" && event.button === 0 && event.buttons === 4)).toBe(
             true,
         );
         expect(trace.some(event => event.type === "pointerup" && event.button === 1 && event.buttons === 0)).toBe(true);
         await next.locator("button").click();
-        await expect(next.locator("input")).toBeFocused();
+        await expect(next.locator("textarea")).toBeFocused();
     });
 });
 

@@ -20,7 +20,7 @@ test(
         await expect(row).toBeVisible({ timeout: 30000 });
         await page.waitForTimeout(3000);
         await row.locator('td[data-col="title"] .cell-value').click();
-        await row.locator('td[data-col="title"] input.cell-input').fill("needle in Grid");
+        await row.locator('td[data-col="title"] textarea.cell-input').fill("needle in Grid");
         await page.keyboard.press("Enter");
         await expect(row).toContainText("needle", { timeout: 30000 });
         const beforeReplace = await readGridProjectState(page);

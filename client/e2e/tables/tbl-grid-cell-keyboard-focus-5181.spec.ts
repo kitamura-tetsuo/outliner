@@ -24,43 +24,43 @@ test.describe("Grid cell keyboard focus preservation (#5181)", () => {
 
         // Focus the button and press Enter to edit
         await nameButton.click();
-        await expect(nameCell.locator("input")).toBeVisible();
-        await expect(nameCell.locator("input")).toBeFocused();
+        await expect(nameCell.locator("textarea")).toBeVisible();
+        await expect(nameCell.locator("textarea")).toBeFocused();
 
         // Change value and press Enter
         // First, get the current value to append to it
-        const currentVal = await nameCell.locator("input").inputValue();
-        await nameCell.locator("input").fill(currentVal + " Updated");
-        await nameCell.locator("input").press("Enter");
+        const currentVal = await nameCell.locator("textarea").inputValue();
+        await nameCell.locator("textarea").fill(currentVal + " Updated");
+        await nameCell.locator("textarea").press("Enter");
 
         // Input should disappear. Enter commits and moves the active cell down
         // (#5188, spreadsheet convention), so focus lands on the same column
         // in the row below -- never lost to the document.
-        await expect(nameCell.locator("input")).not.toBeVisible();
+        await expect(nameCell.locator("textarea")).not.toBeVisible();
         const belowNameButton = tbody.locator("tr").nth(1).locator("td[data-col='title']").locator("button");
         await expect(belowNameButton).toBeVisible({ timeout: 30000 }); // Wait for sync
         await expect(belowNameButton).toBeFocused();
 
         // Re-open the original cell with click
         await nameButton.click();
-        await expect(nameCell.locator("input")).toBeVisible();
-        await expect(nameCell.locator("input")).toBeFocused();
+        await expect(nameCell.locator("textarea")).toBeVisible();
+        await expect(nameCell.locator("textarea")).toBeFocused();
 
         // Press Escape to cancel
-        await nameCell.locator("input").press("Escape");
-        await expect(nameCell.locator("input")).not.toBeVisible();
+        await nameCell.locator("textarea").press("Escape");
+        await expect(nameCell.locator("textarea")).not.toBeVisible();
         await expect(nameButton).toBeVisible({ timeout: 30000 });
         await expect(nameButton).toBeFocused();
 
         // Blur explicitly by clicking another row or the same row's other cell
         await nameButton.click(); // Edit mode again
-        await expect(nameCell.locator("input")).toBeVisible();
+        await expect(nameCell.locator("textarea")).toBeVisible();
 
         const otherCell = firstRow.locator("td[data-col='cadence']").locator("select, button, input").first();
         await otherCell.click();
 
         // Input should disappear because it blurred
-        await expect(nameCell.locator("input")).not.toBeVisible();
+        await expect(nameCell.locator("textarea")).not.toBeVisible();
         // Focus should be on the other cell, not stolen back
         await expect(otherCell).toBeFocused();
     });

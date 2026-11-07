@@ -1,5 +1,5 @@
+import type { ProvenanceRelation } from "../../../../shared/src/services/projectQueryProvenance";
 import type { GridPhysicalColumnMetadata } from "../../services/yjstable/gridMetadataResolver";
-import type { GridCommandRowTarget } from "../../services/yjstable/gridSelectionCommands";
 import type { TableColumnSchema } from "../../services/yjstable/schemaIntrospection";
 
 export type TextLineBreakPolicy = { kind: "allowed"; } | { kind: "forbidden" | "unavailable"; reason: string; };
@@ -10,7 +10,7 @@ const REASON = "This destination does not accept line breaks.";
 export function textLineBreakPolicy(options: {
     grid: boolean;
     column: string;
-    rowTarget?: GridCommandRowTarget;
+    resolvedSource?: ProvenanceRelation;
     physicalColumns: readonly GridPhysicalColumnMetadata[];
     rawTableColumn?: TableColumnSchema;
 }): TextLineBreakPolicy {
@@ -19,10 +19,13 @@ export function textLineBreakPolicy(options: {
             ? { kind: "allowed" }
             : { kind: "forbidden", reason: REASON };
     }
-    if (!options.rowTarget?.source) return { kind: "unavailable", reason: REASON };
+    if (!options.resolvedSource) return { kind: "unavailable", reason: REASON };
     const candidates = options.physicalColumns.filter(candidate =>
         candidate.outputColumn === options.column
-        && candidate.source.sqlName === options.rowTarget?.source?.sourceKind
+        && candidate.source.kind === options.resolvedSource?.kind
+        && candidate.source.id === options.resolvedSource?.id
+        && candidate.source.sqlName === options.resolvedSource?.sqlName
+        && candidate.source.schemaRevision === options.resolvedSource?.schemaRevision
     );
     const first = candidates[0];
     if (

@@ -493,6 +493,7 @@ onDestroy(() => {
                     query={gridQuery}
                     {result}
                     {bareIdAuthority}
+                mutationProvenance={guardedAuthority?.provenance}
                     {componentTypes}
                     {columnOrder}
                     {columnLabels}

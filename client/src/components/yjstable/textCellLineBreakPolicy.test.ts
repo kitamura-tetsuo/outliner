@@ -13,33 +13,45 @@ function physical(dataType: string, overrides: Partial<GridPhysicalColumnMetadat
         ...overrides,
     };
 }
-const rowTarget = { row: {}, source: { sourceKind: "tasks", sourceId: "r1" } };
 
 describe("textLineBreakPolicy", () => {
     it.each(["text", "character varying", "character"])("allows physical Table %s fields", dataType => {
-        expect(textLineBreakPolicy({ grid: true, column: "value", rowTarget, physicalColumns: [physical(dataType)] }))
+        expect(
+            textLineBreakPolicy({
+                grid: true,
+                column: "value",
+                resolvedSource: source,
+                physicalColumns: [physical(dataType)],
+            }),
+        )
             .toEqual({ kind: "allowed" });
     });
     it("denies UUID, system, unavailable, and ambiguous destinations", () => {
         expect(
-            textLineBreakPolicy({ grid: true, column: "value", rowTarget, physicalColumns: [physical("uuid")] }).kind,
+            textLineBreakPolicy({
+                grid: true,
+                column: "value",
+                resolvedSource: source,
+                physicalColumns: [physical("uuid")],
+            }).kind,
         ).toBe("forbidden");
         expect(
             textLineBreakPolicy({
                 grid: true,
                 column: "value",
-                rowTarget,
+                resolvedSource: source,
                 physicalColumns: [physical("text", { source: { ...source, kind: "system" } })],
             }).kind,
         ).toBe("unavailable");
-        expect(textLineBreakPolicy({ grid: true, column: "value", rowTarget, physicalColumns: [] }).kind).toBe(
-            "unavailable",
-        );
+        expect(textLineBreakPolicy({ grid: true, column: "value", resolvedSource: source, physicalColumns: [] }).kind)
+            .toBe(
+                "unavailable",
+            );
         expect(
             textLineBreakPolicy({
                 grid: true,
                 column: "value",
-                rowTarget,
+                resolvedSource: source,
                 physicalColumns: [physical("text"), physical("text", { physicalColumn: "other" })],
             }).kind,
         ).toBe("unavailable");

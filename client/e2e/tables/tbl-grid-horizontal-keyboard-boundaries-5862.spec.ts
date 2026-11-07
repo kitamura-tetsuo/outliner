@@ -79,8 +79,8 @@ test.describe("Grid keyboard reveal boundaries (#5862)", () => {
         const grid = page.getByTestId("yjs-table-grid");
         const cell = keyboardTaskRow(page, firstRowId).locator("td[data-col='title']");
         await cell.locator("button").click();
-        await expect(cell.locator("input")).toBeFocused();
-        await cell.locator("input").press("Tab");
+        await expect(cell.locator("textarea")).toBeFocused();
+        await cell.locator("textarea").press("Tab");
         const header = grid.locator("th[data-col='title']");
         await header.focus();
         await page.waitForTimeout(100);

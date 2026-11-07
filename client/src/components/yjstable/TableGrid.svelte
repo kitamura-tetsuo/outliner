@@ -54,6 +54,7 @@ import {
 import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import { draftHasLineBreak, textLineBreakPolicy, type TextLineBreakPolicy } from "./textCellLineBreakPolicy";
+import { unambiguousRowSource, type ProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { onDestroy, onMount, untrack } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
@@ -86,6 +87,8 @@ interface Props {
     result: TableQueryResult;
     /** Result-bound proof for bare-id writes. Undefined fails closed on saved Grids. */
     bareIdAuthority?: BareIdMutationAuthority;
+    /** Completed-query provenance used only to restrict TextCell hard breaks. */
+    mutationProvenance?: ProjectQueryProvenance;
     /** Component type per column from the Grid Definition mirror. */
     componentTypes: Record<string, string | undefined>;
     /** The column order stored in the Grid Definition. */
@@ -155,6 +158,7 @@ let {
     query,
     result,
     bareIdAuthority,
+    mutationProvenance,
     componentTypes,
     columnOrder,
     columnLabels,
@@ -1228,7 +1232,10 @@ function reportGuardedOutcome(action: string, outcome: GridExecutionOutcome): vo
 }
 
 function lineBreakPolicyFor(column: string, rowTarget?: GridCommandRowTarget): TextLineBreakPolicy {
-    return textLineBreakPolicy({ grid: grid !== undefined, column, rowTarget, physicalColumns: mutationPhysicalColumns, rawTableColumn: columnByName.get(column) });
+    const resolvedSource = mutationProvenance && rowTarget
+        ? unambiguousRowSource(mutationProvenance, rowTarget.row)?.source
+        : undefined;
+    return textLineBreakPolicy({ grid: grid !== undefined, column, resolvedSource, physicalColumns: mutationPhysicalColumns, rawTableColumn: columnByName.get(column) });
 }
 
 async function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue, textOrigin = false) {
@@ -1820,7 +1827,7 @@ function handleCancelDelete() {
     class:pan-active={panActive}
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
-    data-block-dnd-type={COLUMN_DRAG_TYPE}
+    data-block-dnd-type={`${COLUMN_DRAG_TYPE}${editingCell ? ",text/plain" : ""}`}
     data-foreign-editor="grid"
     data-column-resizing={resizingColumn !== undefined ? "true" : undefined}
     bind:this={gridContainer}
@@ -2325,8 +2332,13 @@ th.col-fixed .th-label {
 /* Fixed-column body text wraps within its pinned width instead of clipping
  * with an ellipsis; rows grow to fit it (issue #5502). Headers keep their
  * separate ellipsis policy above. */
-td.col-fixed > :global(.cell-value) {
+td.col-fixed > :global(.cell-value:not(.text-cell-value)) {
     white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+td.col-fixed > :global(.text-cell-value) {
+    white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 

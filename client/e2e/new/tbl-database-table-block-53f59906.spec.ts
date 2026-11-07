@@ -51,7 +51,7 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         const titleCell = row.locator('td[data-col="title"] .cell-value');
         await expect(titleCell).toBeVisible({ timeout: 15000 });
         await titleCell.click();
-        const titleInput = row.locator('td[data-col="title"] input.cell-input');
+        const titleInput = row.locator('td[data-col="title"] textarea.cell-input');
         await expect(titleInput).toBeVisible({ timeout: 15000 });
         await titleInput.fill("Write the report", { force: true });
         await page.keyboard.press("Enter");

@@ -46,7 +46,7 @@ describe("TableGrid parsed projection write boundary", () => {
         handles.undo.stopCapturing();
         const cell = view.container.querySelector<HTMLElement>('td[data-row-id="row-1"][data-col="題名"]')!;
         await fireEvent.keyDown(cell.querySelector("button")!, { key: "F2" });
-        const input = cell.querySelector<HTMLInputElement>("input")!;
+        const input = cell.querySelector<HTMLTextAreaElement>("textarea")!;
         await fireEvent.input(input, { target: { value: "after" } });
         await fireEvent.keyDown(input, { key: "Enter" });
 

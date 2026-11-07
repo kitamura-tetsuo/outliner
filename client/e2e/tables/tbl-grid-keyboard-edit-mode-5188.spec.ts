@@ -17,8 +17,8 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         );
         await selectAndFocusCell(titleCell);
         await page.keyboard.press("F2");
-        await expect(titleCell.locator("input")).toBeVisible();
-        await expect(titleCell.locator("input")).toBeFocused();
+        await expect(titleCell.locator("textarea")).toBeVisible();
+        await expect(titleCell.locator("textarea")).toBeFocused();
     });
 
     test("typing a printable character replaces the cell content and starts editing", async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         );
         await selectAndFocusCell(titleCell);
         await page.keyboard.press("X");
-        await expect(titleCell.locator("input")).toHaveValue("X");
+        await expect(titleCell.locator("textarea")).toHaveValue("X");
     });
 
     test("Enter commits the edit and moves the active cell down", async ({ page }) => {
@@ -35,11 +35,11 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         const titleCell = firstRow.locator("td[data-col='title']");
         // A click on the display button already opens the editor (see TextCell).
         await titleCell.locator("button").click();
-        await expect(titleCell.locator("input")).toBeFocused();
-        await titleCell.locator("input").fill("Renamed via keyboard");
+        await expect(titleCell.locator("textarea")).toBeFocused();
+        await titleCell.locator("textarea").fill("Renamed via keyboard");
         await page.keyboard.press("Enter");
 
-        await expect(titleCell.locator("input")).not.toBeVisible();
+        await expect(titleCell.locator("textarea")).not.toBeVisible();
         await expect(titleCell.locator("button")).toHaveText("Renamed via keyboard", { timeout: 30000 });
         const secondRow = taskRow(page, secondRowId);
         await expect(secondRow.locator("td[data-col='title']")).toHaveClass(/grid-active/);
@@ -51,19 +51,19 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         const originalTitle = (await titleCell.locator("button").textContent())?.trim() ?? "";
 
         await titleCell.locator("button").click();
-        await expect(titleCell.locator("input")).toBeFocused();
-        await titleCell.locator("input").fill("Discarded edit");
+        await expect(titleCell.locator("textarea")).toBeFocused();
+        await titleCell.locator("textarea").fill("Discarded edit");
         await page.keyboard.press("Escape");
-        await expect(titleCell.locator("input")).not.toBeVisible();
+        await expect(titleCell.locator("textarea")).not.toBeVisible();
         await expect(titleCell.locator("button")).toHaveText(originalTitle, { timeout: 30000 });
 
         await expect(titleCell.locator("button")).toBeFocused();
         await titleCell.locator("button").click();
 
-        await expect(titleCell.locator("input")).toBeFocused();
-        await titleCell.locator("input").fill("Committed via Tab");
+        await expect(titleCell.locator("textarea")).toBeFocused();
+        await titleCell.locator("textarea").fill("Committed via Tab");
         await page.keyboard.press("Tab");
-        await expect(titleCell.locator("input")).not.toBeVisible({ timeout: 10000 });
+        await expect(titleCell.locator("textarea")).not.toBeVisible({ timeout: 10000 });
         await expect(titleCell.locator("button")).toHaveText("Committed via Tab", { timeout: 30000 });
         await expect(firstRow.locator("td[data-col='status']")).toHaveClass(/grid-active/);
     });
