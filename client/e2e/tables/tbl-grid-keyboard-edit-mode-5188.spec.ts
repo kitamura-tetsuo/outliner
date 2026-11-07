@@ -68,6 +68,36 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         await expect(firstRow.locator("td[data-col='status']")).toHaveClass(/grid-active/);
     });
 
+    test("Table text accepts hard breaks and the editor follows content within the viewport cap", async ({ page }) => {
+        const titleCell = taskRow(page, firstRowId).locator("td[data-col='title']");
+        await titleCell.locator("button").click();
+        const editor = titleCell.locator("textarea.cell-input");
+        await expect(editor).toBeFocused();
+
+        const initial = await editor.evaluate(node => ({
+            height: node.clientHeight,
+            line: Number.parseFloat(getComputedStyle(node).lineHeight),
+        }));
+        expect(initial.height).toBeGreaterThanOrEqual(initial.line * 3 - 2);
+        await editor.fill(Array.from({ length: 12 }, (_, index) => `line ${index}`).join("\n"));
+        const grown = await editor.evaluate(node => ({ height: node.clientHeight, scroll: node.scrollHeight }));
+        expect(grown.height).toBeGreaterThan(initial.height);
+        expect(grown.height).toBeLessThanOrEqual(
+            (await page.evaluate(() => visualViewport?.height ?? innerHeight)) * 0.4 + 1,
+        );
+        expect(grown.scroll).toBeGreaterThanOrEqual(grown.height);
+
+        await editor.fill("first");
+        await editor.press("Alt+Enter");
+        await editor.type("second");
+        await expect(editor).toHaveValue("first\nsecond");
+        await editor.press("Enter");
+        await expect(titleCell.locator("button.cell-value")).toHaveText("first\nsecond", { timeout: 30000 });
+
+        await titleCell.locator("button.cell-value").click();
+        await expect(titleCell.locator("textarea.cell-input")).toHaveValue("first\nsecond");
+    });
+
     test("a focused select cell keeps native arrow-key behavior instead of navigating the grid", async ({ page }) => {
         const statusCell = taskRow(page, firstRowId).locator("td[data-col='status']");
         const select = statusCell.locator("select");

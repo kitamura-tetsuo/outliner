@@ -5,6 +5,7 @@ description: The project Schedule list at /:project/-/schedules is a compact man
 category: schedule
 status: implemented
 acceptance:
+- A current saved-SQL rejection appears in both management views without replacing an earlier run outcome
 - A later failure keeps the previous Last successful run untouched
 - A successful execution sets Result to Success and updates Last successful run
 - Ambiguous fall-back schedule occurrences select the earlier UTC instant regardless of the execution date or current zone offset, including the persisted schedule index and occurrence expansion
@@ -17,26 +18,25 @@ acceptance:
 - Read-only viewers can read every status column but cannot enable, run or delete
 - Run now updates the execution telemetry without moving the recurrence cursor
 - Starting an execution publishes its start time and a Running result before completion
-- A current saved-SQL rejection appears in both management views without replacing an earlier run outcome
 components:
 - client/src/components/management/ScheduleDetailView.svelte
 - client/src/components/management/ScheduleListView.svelte
 - client/src/components/schedule/ScheduleRuleList.svelte
 - server/src/scheduler/Scheduler.ts
 - server/src/scheduler/schedule-indexer.ts
-- server/src/scheduler/schedule-status-publisher.ts
 - server/src/scheduler/schedule-sql-diagnostics.ts
+- server/src/scheduler/schedule-status-publisher.ts
 - shared/src/services/scheduleSqlDiagnostics.ts
 - shared/src/services/scheduleStatus.ts
 tests:
-- client/e2e/schedule/sch-schedules-manager-status-4b7e2a91.spec.ts
 - client/e2e/schedule/sch-saved-sql-validation-diagnostics-4b7e2a91.spec.ts
-- client/src/components/schedule/ScheduleRuleList.test.ts
+- client/e2e/schedule/sch-schedules-manager-status-4b7e2a91.spec.ts
 - client/src/components/management/ScheduleDetailView.telemetry.test.ts
+- client/src/components/schedule/ScheduleRuleList.test.ts
 - client/src/routes/[project]/-/schedules/page.svelte.test.ts
 - server/tests/schedule-indexer-dst-policy.test.ts
 - server/tests/scheduler/schedule-manager-status.test.ts
 - server/tests/scheduler/schedule-sql-diagnostics.test.ts
 - server/tests/scheduler/scheduler-run-now.test.ts
-- shared/tests/services/scheduleStatus.test.ts
 - shared/tests/services/scheduleSqlDiagnostics.test.ts
+- shared/tests/services/scheduleStatus.test.ts

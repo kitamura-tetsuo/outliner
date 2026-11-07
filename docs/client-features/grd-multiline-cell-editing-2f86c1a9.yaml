@@ -2,6 +2,8 @@ id: GRD-2f86c1a9
 title: Source-aware multiline Grid cell editing
 title-ja: ソースを認識する Grid セルの複数行編集
 description: Edit Grid text values in a wrapping textarea that follows the content and viewport while allowing stored line breaks only in character fields owned by Tables.
+category: tables
+status: implemented
 behaviors:
 - Text cells edit in a wrapping textarea that grows and shrinks from three lines up to 40% of the viewport height
 - Alt+Enter and multiline paste insert literal line breaks only for physical Table TEXT, VARCHAR, and CHAR fields
@@ -11,4 +13,5 @@ files:
 - client/src/components/yjstable/cells/TextCell.svelte
 - client/src/components/yjstable/textCellLineBreakPolicy.ts
 tests:
+- client/e2e/tables/tbl-grid-keyboard-edit-mode-5188.spec.ts
 - client/src/components/yjstable/textCellLineBreakPolicy.test.ts
