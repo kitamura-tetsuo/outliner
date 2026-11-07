@@ -228,6 +228,15 @@ let touchSelectionMode = $state(false);
 let additiveTouchSelection = $state(false);
 let handleDrag = $state<"anchor" | "focus" | undefined>();
 let handleOppositeCell: GridCellAddress | undefined;
+let handleMovingCell: GridCellAddress | undefined;
+let handleOriginCell = $state<GridCellAddress | undefined>();
+let handlePointerId = $state<number | undefined>();
+let handlePointerX = 0;
+let handlePointerY = 0;
+let handleFrame: number | undefined;
+let handleGeneration = 0;
+let handleScrollerCaptured = false;
+let handleCaptureLossArmed = false;
 let touchStart: { pointerId: number; x: number; y: number; cell: GridCellAddress; } | undefined;
 let longPressTimer: ReturnType<typeof setTimeout> | undefined;
 let lastTap: { at: number; cell: GridCellAddress; } | undefined;
@@ -941,7 +950,10 @@ onMount(() => {
     return () => document.removeEventListener("focusin", supersedeDeferredFocus, true);
 });
 
-onDestroy(() => unregisterSearch?.());
+onDestroy(() => {
+    stopHandleDrag();
+    unregisterSearch?.();
+});
 
 function rowIdsOf(rows: TableQueryResult["rows"]): string[] {
     return rows.flatMap((row, rowIndex) => {
@@ -1014,6 +1026,15 @@ function cancelLongPress(): void {
  */
 function touchCellPointerDown(event: PointerEvent, cell: GridCellAddress): void {
     if (event.pointerType !== "touch") return;
+    // A rejected contact on the other rendered handle still bubbles through
+    // its containing cell. While a handle owns this placement, consume every
+    // unrelated touch before it can arm the ordinary tap/long-press gesture
+    // and mutate the owner's range.
+    if (handlePointerId !== undefined && event.pointerId !== handlePointerId) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
     cancelLongPress();
     touchStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, cell };
     longPressTimer = setTimeout(() => {
@@ -1027,6 +1048,11 @@ function touchCellPointerDown(event: PointerEvent, cell: GridCellAddress): void 
 }
 
 function touchCellPointerMove(event: PointerEvent): void {
+    if (handlePointerId !== undefined && event.pointerId !== handlePointerId) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
     if (!touchStart || event.pointerId !== touchStart.pointerId) return;
     if (Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) > TOUCH_SLOP_PX) {
         cancelLongPress();
@@ -1035,6 +1061,15 @@ function touchCellPointerMove(event: PointerEvent): void {
 }
 
 function touchCellPointerUp(event: PointerEvent): void {
+    if (handlePointerId !== undefined && event.pointerId !== handlePointerId) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (touchStart?.pointerId === event.pointerId) {
+            cancelLongPress();
+            touchStart = undefined;
+        }
+        return;
+    }
     if (event.pointerType !== "touch" || !touchStart || event.pointerId !== touchStart.pointerId) return;
     const cell = touchStart.cell;
     const longPressed = longPressTimer === undefined;
@@ -1061,42 +1096,157 @@ function touchCellPointerUp(event: PointerEvent): void {
 }
 
 function suppressSyntheticTouchClick(event: MouseEvent): void {
-    if (Date.now() >= suppressClickUntil) return;
+    // No click (including one synthesized by a different pointer type) may
+    // retarget the selection while a handle pointer owns this placement. The
+    // timestamp only covers the owner's delayed release click after teardown.
+    if (handlePointerId === undefined && Date.now() >= suppressClickUntil) return;
     event.preventDefault();
     event.stopPropagation();
 }
 
 function cellAtPoint(x: number, y: number): GridCellAddress | undefined {
     const td = document.elementFromPoint(x, y)?.closest<HTMLElement>("td[data-row-id][data-col]");
+    if (!td || !gridContainer?.contains(td)) return undefined;
     const rowId = td?.dataset.rowId;
     const columnId = td?.dataset.col;
-    return rowId && columnId ? { rowId, columnId } : undefined;
+    return rowId && columnId && rowIdsOf(result.rows).includes(rowId) && displayColumns.includes(columnId)
+        ? { rowId, columnId }
+        : undefined;
+}
+
+function visibleDataArea(): DOMRect | undefined {
+    const body = gridContainer?.querySelector("tbody");
+    if (!body || !gridContainer) return undefined;
+    const bodyRect = body.getBoundingClientRect();
+    const gridRect = gridContainer.getBoundingClientRect();
+    const top = Math.max(bodyRect.top, gridRect.top);
+    const bottom = Math.min(bodyRect.bottom, gridRect.top + gridContainer.clientHeight);
+    if (bottom <= top) return undefined;
+    return new DOMRect(gridRect.left, top, gridContainer.clientWidth, bottom - top);
+}
+
+function handleScrollDirection(): -1 | 0 | 1 {
+    if (!gridContainer) return 0;
+    const area = visibleDataArea();
+    if (!area || handlePointerY < area.top || handlePointerY > area.bottom) return 0;
+    const band = Math.min(32, gridContainer.clientWidth / 2);
+    const midpoint = area.left + gridContainer.clientWidth / 2;
+    if (handlePointerX < area.left + band && handlePointerX < midpoint) return -1;
+    if (handlePointerX > area.right - band && handlePointerX > midpoint) return 1;
+    return 0;
+}
+
+function updateHandleSelection(): boolean {
+    if (!gridContainer || !handleOppositeCell || !handleMovingCell) return false;
+    const rows = rowIdsOf(result.rows);
+    if (!rows.includes(handleOppositeCell.rowId) || !displayColumns.includes(handleOppositeCell.columnId)
+        || !rows.includes(handleMovingCell.rowId) || !displayColumns.includes(handleMovingCell.columnId)) return false;
+    const area = visibleDataArea();
+    if (!area) return false;
+    const x = Math.max(area.left + 1, Math.min(area.right - 1, handlePointerX));
+    const y = Math.max(area.top + 1, Math.min(area.bottom - 1, handlePointerY));
+    const cell = cellAtPoint(x, y);
+    if (!cell) return true;
+    handleMovingCell = cell;
+    selection.select(handleOppositeCell);
+    selection.extend(cell, rows, displayColumns);
+    selectionRevision++;
+    return true;
+}
+
+function runHandleFrame(generation: number): void {
+    // A callback from a superseded generation has no authority over the
+    // current owner. In particular, it must not clear a newer pointer's drag.
+    if (generation !== handleGeneration) return;
+    handleFrame = undefined;
+    if (handlePointerId === undefined || !touchSelectionMode
+        || !gridContainer?.isConnected || !updateHandleSelection()) {
+        stopHandleDrag();
+        return;
+    }
+    const direction = handleScrollDirection();
+    if (direction !== 0) {
+        const before = gridContainer.scrollLeft;
+        const maximum = Math.max(0, gridContainer.scrollWidth - gridContainer.clientWidth);
+        gridContainer.scrollLeft = Math.max(0, Math.min(maximum, before + direction * 4));
+        if (gridContainer.scrollLeft !== before && !updateHandleSelection()) {
+            stopHandleDrag();
+            return;
+        }
+    }
+    handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
 
 function startHandleDrag(event: PointerEvent, end: "anchor" | "focus"): void {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+    // `isPrimary` is scoped to a pointer type. A primary mouse can therefore
+    // arrive while a primary touch already owns this placement; it must not
+    // replace that owner, its endpoints, capture, or queued frame.
+    if (handlePointerId !== undefined || !event.isPrimary
+        || (event.pointerType === "mouse" && event.button !== 0) || !gridContainer) return;
     event.preventDefault();
     event.stopPropagation();
     handleDrag = end;
     const snapshot = selection.snapshot();
     handleOppositeCell = end === "anchor" ? snapshot.activeCell : snapshot.anchorCell;
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    handleMovingCell = end === "anchor" ? snapshot.anchorCell : snapshot.activeCell;
+    if (!handleOppositeCell || !handleMovingCell) {
+        stopHandleDrag();
+        return;
+    }
+    // Keep the pressed handle mounted at its admission cell for the lifetime
+    // of the pointer sequence so its visual origin remains stable while the
+    // logical endpoint advances through newly revealed cells.
+    handleOriginCell = handleMovingCell;
+    // Ownership supersedes any undecided ordinary touch that began before the
+    // handle press. Otherwise its already-armed long-press timer can mutate
+    // this range after a different pointer has become the handle owner.
+    cancelLongPress();
+    touchStart = undefined;
+    handlePointerId = event.pointerId;
+    handleScrollerCaptured = false;
+    handleCaptureLossArmed = false;
+    handlePointerX = event.clientX;
+    handlePointerY = event.clientY;
+    suppressClickUntil = Date.now() + 1_000;
+    const generation = ++handleGeneration;
+    // Admission is complete on pointerdown, so start the edge loop without
+    // waiting for another pointer event. Capture on the placement scroller,
+    // not the rendered handle: selection updates may move or replace a handle,
+    // while the initiating Grid remains mounted for the whole owned gesture.
+    gridContainer.setPointerCapture(event.pointerId);
+    handleScrollerCaptured = true;
+    handleCaptureLossArmed = true;
+    handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
 }
 
 function moveHandle(event: PointerEvent): void {
-    if (!handleDrag) return;
+    if (!handleDrag || event.pointerId !== handlePointerId) return;
     event.preventDefault();
-    const cell = cellAtPoint(event.clientX, event.clientY);
-    if (!cell) return;
+    event.stopPropagation();
+    handlePointerX = event.clientX;
+    handlePointerY = event.clientY;
+    if (!handleScrollerCaptured) return;
     focusRequestRevision++;
-    selection.select(handleOppositeCell ?? cell);
-    selection.extend(cell, rowIdsOf(result.rows), displayColumns);
-    selectionRevision++;
+    if (!updateHandleSelection()) stopHandleDrag();
 }
 
-function stopHandleDrag(): void {
+function stopHandleDrag(event?: PointerEvent): void {
+    if (event && event.pointerId !== handlePointerId) return;
+    const pointerId = handlePointerId;
+    if (pointerId !== undefined) suppressClickUntil = Date.now() + 500;
+    handleGeneration++;
+    if (handleFrame !== undefined) cancelAnimationFrame(handleFrame);
+    handleFrame = undefined;
     handleDrag = undefined;
     handleOppositeCell = undefined;
+    handleMovingCell = undefined;
+    handleOriginCell = undefined;
+    handlePointerId = undefined;
+    handleScrollerCaptured = false;
+    handleCaptureLossArmed = false;
+    if (pointerId !== undefined && gridContainer?.hasPointerCapture(pointerId)) {
+        gridContainer.releasePointerCapture(pointerId);
+    }
 }
 
 function isSelectionEnd(cell: GridCellAddress, end: "anchor" | "focus"): boolean {
@@ -1106,9 +1256,9 @@ function isSelectionEnd(cell: GridCellAddress, end: "anchor" | "focus"): boolean
 }
 
 function leaveTouchSelectionMode(): void {
+    stopHandleDrag();
     touchSelectionMode = false;
     additiveTouchSelection = false;
-    handleDrag = undefined;
 }
 
 function activeSelectionCell(): GridCellAddress | undefined {
@@ -1780,13 +1930,16 @@ function handleCancelDelete() {
 
 <svelte:window
     onpointermove={moveHandle}
-    onpointerup={stopHandleDrag}
-    onpointercancel={() => {
-        stopHandleDrag();
+    onpointerup={(event) => stopHandleDrag(event)}
+    onpointercancel={(event) => {
+        stopHandleDrag(event);
         cancelLongPress();
         touchStart = undefined;
     }}
+    onblur={() => stopHandleDrag()}
 />
+
+<svelte:document onvisibilitychange={() => document.hidden && stopHandleDrag()} />
 
 <!--
     `data-block-dnd-owner` marks this subtree as owning its own drag & drop.
@@ -1810,6 +1963,7 @@ function handleCancelDelete() {
     class="yjs-table-grid"
     class:pan-armed={panArmed}
     class:pan-active={panActive}
+    class:handle-dragging={handlePointerId !== undefined}
     data-testid="yjs-table-grid"
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
@@ -1823,7 +1977,33 @@ function handleCancelDelete() {
     onkeyupcapture={handlePanKeyUp}
     onpointerdowncapture={handlePanPointerDown}
     onpointermove={handlePanPointerMove}
+    ongotpointercapture={(event) => {
+        if (event.pointerId === handlePointerId && event.target === gridContainer) {
+            const generation = handleGeneration;
+            handleScrollerCaptured = true;
+            handleCaptureLossArmed = true;
+            if (handleFrame === undefined) handleFrame = requestAnimationFrame(() => runHandleFrame(generation));
+        }
+    }}
     onlostpointercapture={(event) => {
+        // Only the initiating placement owns this gesture. A capture transition
+        // from the rendered handle is not terminal; loss from the stable Grid
+        // scroller is.
+        if (event.pointerId === handlePointerId && handleScrollerCaptured
+            && event.target === gridContainer) {
+            const pointerId = event.pointerId;
+            const generation = handleGeneration;
+            const establishedLoss = handleCaptureLossArmed;
+            handleScrollerCaptured = false;
+            handleCaptureLossArmed = false;
+            queueMicrotask(() => {
+                if (pointerId !== handlePointerId || generation !== handleGeneration) return;
+                if (establishedLoss) {
+                    const ownerHasCapture = gridContainer?.hasPointerCapture(pointerId);
+                    if (!ownerHasCapture) stopHandleDrag();
+                }
+            });
+        }
         if (panActive && event.pointerId === panPointerId) {
             // Chromium may drop implicit capture as a secondary button changes
             // while primary remains held. Window capture continues to own that
@@ -1837,7 +2017,10 @@ function handleCancelDelete() {
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
     {:else if result.columns.length > 0}
-        {#if selectionSummary.kind === "cells" && selectionSummary.totalCells > 1}
+        <!-- Do not insert status content above the table while a stationary
+             owner is using current row geometry; it would move the data area
+             out from under the pointer after the first range extension. -->
+        {#if selectionSummary.kind === "cells" && selectionSummary.totalCells > 1 && handlePointerId === undefined}
             <p class="grid-selection-status" data-testid="grid-selection-status">
                 {selectionSummary.totalCells} cells selected · {selectionSummary.writableTargets.length} editable
             </p>
@@ -2089,7 +2272,10 @@ function handleCancelDelete() {
                                         if (logicalCell) exitCellEdit(logicalCell, direction);
                                     }}
                                 />
-                                {#if touchSelectionMode && logicalCell && isSelectionEnd(logicalCell, "anchor")}
+                                {#if touchSelectionMode && logicalCell
+                                    && (handleDrag === "anchor"
+                                        ? sameCell(logicalCell, handleOriginCell)
+                                        : isSelectionEnd(logicalCell, "anchor"))}
                                     <button
                                         type="button"
                                         class="touch-selection-handle touch-selection-handle-start"
@@ -2097,7 +2283,10 @@ function handleCancelDelete() {
                                         onpointerdown={(event) => startHandleDrag(event, "anchor")}
                                     ></button>
                                 {/if}
-                                {#if touchSelectionMode && logicalCell && isSelectionEnd(logicalCell, "focus")}
+                                {#if touchSelectionMode && logicalCell
+                                    && (handleDrag === "focus"
+                                        ? sameCell(logicalCell, handleOriginCell)
+                                        : isSelectionEnd(logicalCell, "focus"))}
                                     <button
                                         type="button"
                                         class="touch-selection-handle touch-selection-handle-end"
@@ -2345,6 +2534,7 @@ td > :global(.cell-value) {
 td.grid-selected {
     position: relative;
     background-color: rgb(37 99 235 / 12%);
+    z-index: 2;
 }
 
 td.grid-selected:not(.grid-active) {
@@ -2379,7 +2569,7 @@ td.grid-active {
     background-color: rgb(37 99 235 / 18%);
     outline: 2px solid #2563eb;
     outline-offset: -2px;
-    z-index: 1;
+    z-index: 2;
 }
 
 .touch-selection-handle {
@@ -2395,14 +2585,21 @@ td.grid-active {
     touch-action: none;
 }
 
+/* Pointer capture is transferred from the handle to this stable scroller.
+ * Keep native panning disabled only for that owned sequence; otherwise the
+ * browser may cancel the captured pointer on its first movement. */
+.yjs-table-grid.handle-dragging {
+    touch-action: none;
+}
+
 .touch-selection-handle-start {
-    top: -14px;
-    left: -14px;
+    top: 2px;
+    left: 2px;
 }
 
 .touch-selection-handle-end {
-    right: -14px;
-    bottom: -14px;
+    right: 2px;
+    bottom: 2px;
 }
 
 .touch-selection-toolbar {

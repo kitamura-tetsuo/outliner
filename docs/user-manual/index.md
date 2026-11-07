@@ -280,7 +280,7 @@ Click a numbered row header or a column header; Shift-click extends a contiguous
 
 ### Touch Interactions
 
-On touch, tap a cell to activate it, double-tap to edit, or long-press for range mode. Drag the blue handles to resize the range; the floating toolbar provides additive selection without modifier keys. Ordinary swipes still scroll.
+On touch, tap a cell to activate it, double-tap to edit, or long-press for range mode. Drag the blue handles to resize the range. Holding a handle at the left or right edge automatically scrolls that Grid and extends the range into hidden columns; moving away from the edge stops it. The floating toolbar provides additive selection without modifier keys. Ordinary swipes still scroll.
 
 ### Grid placement
 

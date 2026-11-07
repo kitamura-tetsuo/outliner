@@ -118,4 +118,35 @@ describe("TableGrid touch selection", () => {
         expect(view.container.querySelectorAll("th.row-header.header-selected")).toHaveLength(2);
         expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(6);
     });
+
+    it("restores native touch action after a mixed-input handle drag ends", async () => {
+        vi.useFakeTimers();
+        const view = setup();
+        const cell = view.container.querySelector<HTMLElement>('td[data-row-id="a"][data-col="name"]')!;
+        await touch(cell, "pointerdown");
+        await vi.advanceTimersByTimeAsync(500);
+
+        const grid = view.container.querySelector<HTMLElement>(".yjs-table-grid")!;
+        grid.setPointerCapture = vi.fn();
+        grid.hasPointerCapture = vi.fn(() => true);
+        grid.releasePointerCapture = vi.fn();
+        await fireEvent.keyDown(grid, { key: " ", code: "Space" });
+
+        const handle = view.getByRole("button", { name: "Resize selection from end" });
+        const down = new PointerEvent("pointerdown", {
+            bubbles: true,
+            button: 0,
+            pointerId: 11,
+            pointerType: "mouse",
+        });
+        Object.defineProperty(down, "isPrimary", { value: true });
+        await fireEvent(handle, down);
+        expect(grid).toHaveClass("handle-dragging");
+
+        await fireEvent.keyUp(grid, { key: " ", code: "Space" });
+        await fireEvent.pointerUp(window, { pointerId: 11, pointerType: "mouse" });
+
+        expect(grid).not.toHaveClass("handle-dragging");
+        expect(grid.releasePointerCapture).toHaveBeenCalledWith(11);
+    });
 });

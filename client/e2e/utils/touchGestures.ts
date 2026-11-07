@@ -6,6 +6,12 @@ export interface TouchPointXY {
     y: number;
 }
 
+export interface HeldTouchContact {
+    move(point: TouchPointXY): Promise<void>;
+    pressAdditional(point: TouchPointXY): Promise<void>;
+    cancel(): Promise<void>;
+}
+
 /**
  * Real touch input for E2E tests.
  *
@@ -44,7 +50,7 @@ export class TouchGestures {
         try {
             await client.send("Input.dispatchTouchEvent", {
                 type: "touchStart",
-                touchPoints: [{ x: from.x, y: from.y }],
+                touchPoints: [{ x: from.x, y: from.y, id: 0 }],
             });
 
             // Rest in place long enough for the long-press timer to fire.
@@ -61,6 +67,99 @@ export class TouchGestures {
 
             await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
         } finally {
+            await client.detach();
+        }
+    }
+
+    /**
+     * Long-presses, moves a real contact, and keeps it down while `whileHeld`
+     * observes frame-driven behavior. No additional touchMove is sent during
+     * the callback, so it can prove progress from a stationary finger.
+     */
+    static async longPressDragAndHold(
+        page: Page,
+        from: TouchPointXY,
+        to: TouchPointXY,
+        whileHeld: (contact: HeldTouchContact) => Promise<void>,
+        holdMs = TouchGestures.LONG_PRESS_HOLD_MS,
+    ): Promise<void> {
+        const client = await page.context().newCDPSession(page);
+        try {
+            await client.send("Input.dispatchTouchEvent", {
+                type: "touchStart",
+                // Keep the contact identifier stable across the subsequent
+                // move and multi-touch packets. Omitting it here and adding
+                // `id: 0` on touchMove makes Chromium terminate the admitted
+                // pointer and start a different contact.
+                touchPoints: [{ x: from.x, y: from.y, id: 0 }],
+            });
+            if (holdMs > 0) await page.waitForTimeout(holdMs);
+            // Travel as a real finger would instead of teleporting one contact
+            // across the Grid in a single packet. Chromium can cancel an
+            // implausibly large one-frame touch jump before the captured
+            // pointer reaches the requested edge.
+            for (let step = 1; step <= 8; step++) {
+                const ratio = step / 8;
+                await client.send("Input.dispatchTouchEvent", {
+                    type: "touchMove",
+                    touchPoints: [{
+                        x: from.x + (to.x - from.x) * ratio,
+                        y: from.y + (to.y - from.y) * ratio,
+                        id: 0,
+                    }],
+                });
+                await page.waitForTimeout(16);
+            }
+            let cancelled = false;
+            let current = to;
+            let additional: TouchPointXY | undefined;
+            await whileHeld({
+                move: async point => {
+                    current = point;
+                    await client.send("Input.dispatchTouchEvent", {
+                        type: "touchMove",
+                        touchPoints: [
+                            { x: point.x, y: point.y, id: 0 },
+                            ...(additional ? [{ ...additional, id: 1 }] : []),
+                        ],
+                    });
+                },
+                pressAdditional: async point => {
+                    additional = point;
+                    await client.send("Input.dispatchTouchEvent", {
+                        type: "touchStart",
+                        touchPoints: [{ ...current, id: 0 }, { ...point, id: 1 }],
+                    });
+                },
+                cancel: async () => {
+                    cancelled = true;
+                    await client.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+                },
+            });
+            if (!cancelled) await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        } finally {
+            await client.detach();
+        }
+    }
+
+    /**
+     * Presses a real contact and holds it without ever dispatching touchMove.
+     * This is the browser oracle for behavior admitted directly on pointerdown.
+     */
+    static async pressAndHold(
+        page: Page,
+        point: TouchPointXY,
+        whileHeld: () => Promise<void>,
+    ): Promise<void> {
+        const client = await page.context().newCDPSession(page);
+        try {
+            await client.send("Input.dispatchTouchEvent", {
+                type: "touchStart",
+                touchPoints: [{ x: point.x, y: point.y, id: 0 }],
+            });
+            await whileHeld();
+        } finally {
+            await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
             await client.detach();
         }
     }
@@ -96,8 +195,23 @@ export class TouchGestures {
     static pointInBox(
         box: { x: number; y: number; width: number; height: number; },
         widthRatio: number,
+        heightRatio = 0.5,
     ): TouchPointXY {
-        return { x: box.x + box.width * widthRatio, y: box.y + box.height / 2 };
+        return { x: box.x + box.width * widthRatio, y: box.y + box.height * heightRatio };
+    }
+
+    /** A viewport pixel whose hit-test resolves to the rendered locator. */
+    static async hittablePoint(locator: Locator): Promise<TouchPointXY> {
+        return await locator.evaluate((element: HTMLElement) => {
+            const rect = element.getBoundingClientRect();
+            for (const yRatio of [0.25, 0.75, 0.5]) {
+                for (const xRatio of [0.25, 0.75, 0.5]) {
+                    const point = { x: rect.left + rect.width * xRatio, y: rect.top + rect.height * yRatio };
+                    if (document.elementFromPoint(point.x, point.y)?.closest("button") === element) return point;
+                }
+            }
+            throw new Error("No visible hit-test point exists inside the touch handle");
+        });
     }
 
     /**
