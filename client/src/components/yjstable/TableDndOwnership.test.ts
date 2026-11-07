@@ -11,7 +11,7 @@
 // same guard OutlinerItem uses (`isBlockOwnedDragEvent`), so the marker and the
 // guard are verified together rather than in isolation.
 
-import { render } from "@testing-library/svelte";
+import { fireEvent, render } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
@@ -241,7 +241,9 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
 
     it("claims plain text only when it lands on the active text editor", async () => {
         const { container, itemDropHandled } = renderGrid();
-        (container.querySelector("td[data-col='col_a'] button") as HTMLButtonElement).click();
+        const button = container.querySelector("td[data-col='col_a'] button")!;
+        await fireEvent.click(button);
+        await fireEvent.click(button);
         await tick();
 
         const editor = container.querySelector("td[data-col='col_a'] textarea")!;
@@ -256,7 +258,9 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
 
     it("does not broaden plain-text ownership while a numeric editor is active", async () => {
         const { container, itemDropHandled } = renderGrid({ col_b: "number" });
-        (container.querySelector("td[data-col='col_b'] button") as HTMLButtonElement).click();
+        const button = container.querySelector("td[data-col='col_b'] button")!;
+        await fireEvent.click(button);
+        await fireEvent.click(button);
         await tick();
         expect(container.querySelector("td[data-col='col_b'] input.cell-input")).not.toBeNull();
 
