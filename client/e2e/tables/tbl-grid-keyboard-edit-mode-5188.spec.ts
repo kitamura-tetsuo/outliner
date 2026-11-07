@@ -88,7 +88,8 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         expect(grown.scroll).toBeGreaterThanOrEqual(grown.height);
 
         await editor.press("Control+End");
-        await expect.poll(() => editor.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+        await editor.type(" tail");
+        await expect(editor).toHaveValue(/line 11 tail$/);
         await editor.fill("short again");
         const shrunk = await editor.evaluate(node => ({ height: node.clientHeight, scroll: node.scrollHeight }));
         expect(shrunk.height).toBe(initial.height);
