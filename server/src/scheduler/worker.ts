@@ -145,11 +145,14 @@ async function executeJob(data: JobData) {
     const db = await getDb();
 
     if (data.catalog && data.tableSnapshots) {
-        const compiled = await compileSqlEnvironment({
-            catalog: data.catalog,
-            tables: data.tableSnapshots,
-            inspections: [{ id: data.ruleId, kind: "schedule", sql: data.ruleSql }],
-        }, { acquire: async () => ({ db, release: () => {} }) });
+        const compiled = await compileSqlEnvironment(
+            {
+                catalog: data.catalog,
+                tables: data.tableSnapshots,
+                inspections: [{ id: data.ruleId, kind: "schedule", sql: data.ruleSql }],
+            },
+            { acquire: async () => ({ db, release: () => {} }) },
+        );
         if (compiled.status === "failed") {
             return {
                 success: false,

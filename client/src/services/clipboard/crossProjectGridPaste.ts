@@ -1022,9 +1022,8 @@ export async function moveGridPlacementsAcrossProjects(
                 }
                 if (direction === "undo") {
                     if (
-                        ownedState() !== expectedDestination || keys.some(key =>
-                            namespaceOccupied(source, key, nodeSnapshots.get(key)!.get("id"))
-                        )
+                        ownedState() !== expectedDestination
+                        || keys.some(key => namespaceOccupied(source, key, nodeSnapshots.get(key)!.get("id")))
                         || sourceLocations.some(place =>
                             !nodeExists(source, place.parentKey)
                             || source.tree.getNodeValueFromKey(place.parentKey) !== place.parent

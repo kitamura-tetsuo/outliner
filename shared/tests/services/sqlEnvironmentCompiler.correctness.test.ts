@@ -83,10 +83,13 @@ describe("compileSqlEnvironment correctness invariants", () => {
         expect(residue.rows).toEqual([{ count: 0 }]);
 
         const temporaryInput = builtInInput();
-        const rejected = await compileSqlEnvironment({
-            ...temporaryInput,
-            tables: [{ ...temporaryInput.tables[0], schema: "CREATE TEMP TABLE plain_values (id text)" }],
-        }, { acquire });
+        const rejected = await compileSqlEnvironment(
+            {
+                ...temporaryInput,
+                tables: [{ ...temporaryInput.tables[0], schema: "CREATE TEMP TABLE plain_values (id text)" }],
+            },
+            { acquire },
+        );
         expect(rejected.status).toBe("failed");
         if (rejected.status === "failed") {
             expect(rejected.diagnostics).toEqual(expect.arrayContaining([

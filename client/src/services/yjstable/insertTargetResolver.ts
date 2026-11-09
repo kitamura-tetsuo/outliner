@@ -1,9 +1,9 @@
 import type * as Y from "yjs";
+import type { SharedInsertResolverOptions } from "../../../../shared/src/services/insertTargetPolicy";
 import {
     resolveInsertTarget as resolvePolicy,
     validateInsertTargetPreference as validatePolicy,
 } from "../../../../shared/src/services/insertTargetPolicy";
-import type { SharedInsertResolverOptions } from "../../../../shared/src/services/insertTargetPolicy";
 import type { ProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
 export type {
     EffectiveInsertTarget,

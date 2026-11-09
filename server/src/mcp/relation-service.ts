@@ -1633,12 +1633,17 @@ export class OutlinerRelationService {
             () =>
                 this.idempotency.run(key, async () => {
                     try {
-                        const created = await this.createGridOnPage(uid, projectId, {
-                            insertTargetTableId: request.insertTargetTableId,
-                            pageId: request.pageId,
-                            query: request.query,
-                            name: request.name,
-                        }, { dryRun: request.dryRun, beforePublication: authorize });
+                        const created = await this.createGridOnPage(
+                            uid,
+                            projectId,
+                            {
+                                insertTargetTableId: request.insertTargetTableId,
+                                pageId: request.pageId,
+                                query: request.query,
+                                name: request.name,
+                            },
+                            { dryRun: request.dryRun, beforePublication: authorize },
+                        );
                         const { validation: _validation, ...configuration } = created;
                         return {
                             ...configuration,

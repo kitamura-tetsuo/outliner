@@ -385,11 +385,17 @@ describe("Kanban observation production rooms and client parity", function() {
         const query = `SELECT status, ${
             Array.from({ length: 99 }, (_, index) => `NULL::huge_state AS e${index}`).join(",")
         } FROM tasks WHERE FALSE`;
-        const held = await seed(server.hocuspocus, query, true, {}, {
-            schema: "CREATE TABLE tasks(id TEXT PRIMARY KEY, status huge_state)",
-            records: [],
-            project: doc => void createSqlCatalogObject(doc, "enum", enumSource),
-        });
+        const held = await seed(
+            server.hocuspocus,
+            query,
+            true,
+            {},
+            {
+                schema: "CREATE TABLE tasks(id TEXT PRIMARY KEY, status huge_state)",
+                records: [],
+                project: doc => void createSqlCatalogObject(doc, "enum", enumSource),
+            },
+        );
         const result = await new OutlinerKanbanQueryService(server.hocuspocus, async () => true)
             .openObservation(UID, PROJECT, "board");
         expect(result).to.include({ status: "unavailable", reason: "resource_limit", limit: "jsonBytes" });

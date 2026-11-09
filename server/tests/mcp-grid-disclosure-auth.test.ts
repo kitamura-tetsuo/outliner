@@ -35,9 +35,11 @@ describe("Grid final diagnostic disclosure authorization", function() {
                 const pending = f.call("create_grid", args);
                 await gate.started.promise;
                 if (failure === "deny") f.access.allowed = false;
-                else {f.access.checked = () => {
+                else {
+                    f.access.checked = () => {
                         throw new Error("private ACL lookup");
-                    };}
+                    };
+                }
                 gate.release.resolve();
                 const result = await pending;
                 expect(result.payload.code).to.equal("forbidden");
@@ -101,10 +103,10 @@ describe("Grid final diagnostic disclosure authorization", function() {
                 const f = httpGridFixture(), before = snapshot(f);
                 const args = { projectId: "project-1", gridId: "grid-existing", query: f.args.query };
                 const control = await f.call("validate_grid_query", args);
-                expect(control.payload.sampleRows).to.deep.equal([{ id: "t1", title: "Write spec" }, {
-                    id: "t2",
-                    title: "Ship",
-                }]);
+                expect(control.payload.sampleRows).to.deep.equal([
+                    { id: "t1", title: "Write spec" },
+                    { id: "t2", title: "Ship" },
+                ]);
                 expect(control.payload.resultColumns.map((column: { name: string; }) => column.name)).to.deep.equal([
                     "id",
                     "title",

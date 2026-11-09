@@ -86,14 +86,18 @@ describe("standalone Table creation namespace claims (#5411 AS-003)", function()
             await both.promise;
         };
         const results = await Promise.allSettled([
-            server.tableCreation.createTable(UID, "proj-a", {
-                name: "First",
-                schemaSql: "CREATE TABLE contested (id TEXT)",
-            }, { beforePublication: hold }),
-            server.tableCreation.createTable(UID, "proj-a", {
-                name: "Second",
-                schemaSql: "CREATE TABLE contested (key INTEGER PRIMARY KEY)",
-            }, { beforePublication: hold }),
+            server.tableCreation.createTable(
+                UID,
+                "proj-a",
+                { name: "First", schemaSql: "CREATE TABLE contested (id TEXT)" },
+                { beforePublication: hold },
+            ),
+            server.tableCreation.createTable(
+                UID,
+                "proj-a",
+                { name: "Second", schemaSql: "CREATE TABLE contested (key INTEGER PRIMARY KEY)" },
+                { beforePublication: hold },
+            ),
         ]);
         // Both requests reached the contested boundary before either published.
         expect(arrived).to.equal(2);

@@ -77,11 +77,11 @@ describe("Kanban mutation authorization and audit boundaries", function() {
     it("rejects read-only scope before malformed private arguments", async () => {
         const fixture = await startMcpTestServer();
         try {
-            const denied = await fixture.mcp.call("update_kanban", {
-                projectId: PROJECT,
-                kanbanId: "private-board",
-                changes: { secret: true },
-            }, { bearer: token(UID, "outliner.read") });
+            const denied = await fixture.mcp.call(
+                "update_kanban",
+                { projectId: PROJECT, kanbanId: "private-board", changes: { secret: true } },
+                { bearer: token(UID, "outliner.read") },
+            );
             expectBareForbidden(denied);
             expect(denied.result._meta["mcp/www_authenticate"]).to.contain("outliner.write");
         } finally {

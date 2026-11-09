@@ -124,10 +124,12 @@ async function installTransitionProbe(page: import("@playwright/test").Page): Pr
         }
         for (const document of documents) document.on("update", onUpdate);
         const observer = new MutationObserver(records => {
-            probe.selectionMutations += records.filter(record =>
-                record.type === "attributes" && record.target instanceof HTMLElement
-                && record.target.matches("td, th") && ["class", "aria-selected"].includes(record.attributeName ?? "")
-            ).length;
+            probe.selectionMutations +=
+                records.filter(record =>
+                    record.type === "attributes" && record.target instanceof HTMLElement
+                    && record.target.matches("td, th")
+                    && ["class", "aria-selected"].includes(record.attributeName ?? "")
+                ).length;
         });
         observer.observe(document.querySelector("[data-testid='yjs-table-grid']")!, {
             subtree: true,

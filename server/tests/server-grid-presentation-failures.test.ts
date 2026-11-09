@@ -72,11 +72,15 @@ describe("Grid presentation update: persistence and failure outcomes (#5435 AS-0
 
     it("reports no effect for a failure before the mutation", async () => {
         const error = await rejection(
-            serviceWith(realStore).updatePresentation(UID, { ...request }, {
-                beforeMutation: async () => {
-                    throw new Error("preparation crashed");
+            serviceWith(realStore).updatePresentation(
+                UID,
+                { ...request },
+                {
+                    beforeMutation: async () => {
+                        throw new Error("preparation crashed");
+                    },
                 },
-            }),
+            ),
         );
         expect(error.code).to.equal("internal_failure");
         expect(error.debug).to.include({ effect: "none" });

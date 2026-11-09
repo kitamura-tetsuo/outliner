@@ -111,17 +111,20 @@ export class OutlinerKanbanCardMutationService {
             throw await this.sanitize(uid, args.projectId, error);
         }
         await this.authorize(uid, args.projectId).catch(() => {
-            throw new McpEffectError("forbidden", "Project is inaccessible", {}, {
-                applied: "unknown" in remembered ? null : remembered.applied,
-                replayed,
-            });
+            throw new McpEffectError(
+                "forbidden",
+                "Project is inaccessible",
+                {},
+                { applied: "unknown" in remembered ? null : remembered.applied, replayed },
+            );
         });
         if ("unknown" in remembered) {
-            throw new McpEffectError("internal_failure", "The Kanban card update outcome is unknown", {
-                applied: null,
-                replayed,
-                reason: "persistence_unconfirmed",
-            }, { applied: null, replayed });
+            throw new McpEffectError(
+                "internal_failure",
+                "The Kanban card update outcome is unknown",
+                { applied: null, replayed, reason: "persistence_unconfirmed" },
+                { applied: null, replayed },
+            );
         }
         return { ...remembered, replayed };
     }

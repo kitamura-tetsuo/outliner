@@ -2,8 +2,8 @@ import type { Project } from "$shared/app-schema";
 import type * as Y from "yjs";
 import { listCalendars, removeCalendarWithPlacements, renameCalendar } from "../calendar/calendarService";
 import { deleteScheduleRuleWithUndo, listSchedules, renameSchedule } from "../schedule/scheduleRuleService";
-import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import type { AsyncUndoEntry } from "../undo/undoRouter.svelte";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
 import { listKanbans, removeKanbanWithPlacements, updateKanban } from "../yjstable/kanbanDocs";
 import {

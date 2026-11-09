@@ -280,10 +280,12 @@ export class KanbanDefinitionTools {
                 await this.storeDocument!(room, doc);
                 return { changed: published };
             } catch (error) {
-                throw new McpEffectError("internal_failure", "The Kanban update outcome is unknown", {
-                    applied: null,
-                    reason: String(error),
-                }, { applied: null, replayed: false });
+                throw new McpEffectError(
+                    "internal_failure",
+                    "The Kanban update outcome is unknown",
+                    { applied: null, reason: String(error) },
+                    { applied: null, replayed: false },
+                );
             }
         } catch (error) {
             if (published && !(error instanceof McpEffectError)) {
@@ -335,18 +337,20 @@ export class KanbanDefinitionTools {
         } catch {
             const applied = receipt.status === "unknown" ? null : receipt.value.applied === true;
             const kanbanId = receipt.status === "unknown" ? receipt.kanbanId : receipt.value.kanbanId;
-            throw new McpEffectError("forbidden", "Project is inaccessible", {}, {
-                applied,
-                replayed,
-                ...(typeof kanbanId === "string" ? { entity: `kanban:${kanbanId}` } : {}),
-            });
+            throw new McpEffectError(
+                "forbidden",
+                "Project is inaccessible",
+                {},
+                { applied, replayed, ...(typeof kanbanId === "string" ? { entity: `kanban:${kanbanId}` } : {}) },
+            );
         }
         if (receipt.status === "unknown") {
-            throw new McpEffectError("internal_failure", "The Kanban mutation outcome is unknown", {
-                applied: null,
-                replayed,
-                reason: receipt.reason,
-            }, { applied: null, replayed, entity: `kanban:${receipt.kanbanId}` });
+            throw new McpEffectError(
+                "internal_failure",
+                "The Kanban mutation outcome is unknown",
+                { applied: null, replayed, reason: receipt.reason },
+                { applied: null, replayed, entity: `kanban:${receipt.kanbanId}` },
+            );
         }
         return { ...receipt.value, replayed };
     }

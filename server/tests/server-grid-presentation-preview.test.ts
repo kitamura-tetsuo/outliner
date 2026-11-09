@@ -139,9 +139,11 @@ describe("Grid presentation update: preview, revalidation and leaf merging (#543
         const patches: Record<string, { label?: string | null; type?: "number" | null; shown?: boolean; }>[] = [];
         for (const key of ["constructor", "toString", "__proto__"]) {
             // Computed keys define literal own properties, "__proto__" included.
-            patches.push({ [key]: { label: "Header" } }, { [key]: { type: "number" } }, {
-                [key]: { label: null, type: null, shown: true },
-            });
+            patches.push(
+                { [key]: { label: "Header" } },
+                { [key]: { type: "number" } },
+                { [key]: { label: null, type: null, shown: true } },
+            );
         }
         for (const components of patches) {
             const [key] = Object.keys(components);

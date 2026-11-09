@@ -166,18 +166,23 @@ describe("resolveSelectionFragments", () => {
 
     it("selects exactly one Grid between its own boundaries", () => {
         expect(
-            fragmentsFor(nodeBoundaryEndpoint("grid", "before"), nodeBoundaryEndpoint("grid", "after"), [
-                visual("grid"),
-            ], ["grid"]),
+            fragmentsFor(
+                nodeBoundaryEndpoint("grid", "before"),
+                nodeBoundaryEndpoint("grid", "after"),
+                [visual("grid")],
+                ["grid"],
+            ),
         ).toEqual([{ kind: "node", itemId: "grid" }]);
     });
 
     it("selects a run of visual nodes with no text endpoint at all", () => {
         expect(
-            fragmentsFor(nodeBoundaryEndpoint("grid", "before"), nodeBoundaryEndpoint("calendar", "after"), [
-                visual("grid"),
-                visual("calendar"),
-            ], ["grid", "calendar"]),
+            fragmentsFor(
+                nodeBoundaryEndpoint("grid", "before"),
+                nodeBoundaryEndpoint("calendar", "after"),
+                [visual("grid"), visual("calendar")],
+                ["grid", "calendar"],
+            ),
         ).toEqual([
             { kind: "node", itemId: "grid" },
             { kind: "node", itemId: "calendar" },

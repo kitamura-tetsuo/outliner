@@ -149,10 +149,12 @@ export class OutlinerTableCreationService {
             if (syntaxError) throw this.schemaRejection(syntaxError);
             let candidateValidation: Awaited<ReturnType<typeof validateProjectTableCandidate>>;
             try {
-                candidateValidation = await validateProjectTableCandidate(projectId, project, {
-                    id: "create-table-candidate",
-                    schema: schemaSql,
-                }, { acquireSharedDb: true });
+                candidateValidation = await validateProjectTableCandidate(
+                    projectId,
+                    project,
+                    { id: "create-table-candidate", schema: schemaSql },
+                    { acquireSharedDb: true },
+                );
             } catch (error) {
                 if (error instanceof McpReadError && error.code === "validation_failed") {
                     // The shared compiler deliberately rejects IF NOT EXISTS,
