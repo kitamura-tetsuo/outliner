@@ -1,7 +1,7 @@
 # Must match the Playwright version resolved in client/package-lock.json: the
 # image ships the browser bundle for exactly this release, and a mismatch makes
 # every E2E test fail at browserType.launch with "Executable doesn't exist".
-FROM mcr.microsoft.com/playwright:v1.64.1-jammy
+FROM mcr.microsoft.com/playwright:v1.65.0-jammy
 
 # Install Java and OS utilities through a bounded, fail-closed acquisition path.
 COPY scripts/install-test-container-os-packages.sh /usr/local/bin/install-test-container-os-packages
