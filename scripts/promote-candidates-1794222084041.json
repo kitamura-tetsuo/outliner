@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-11-09T11:01:24.041Z",
+  "rules": [
+    "no-console",
+    "no-unused-vars"
+  ],
+  "candidates": [
+    {
+      "file": "client/src/lib/yjsService.svelte.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.150Z",
+      "score": 35
+    },
+    {
+      "file": "client/src/lib/yjsService.svelte.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.150Z",
+      "score": 35
+    },
+    {
+      "file": "client/src/lib/debug.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.146Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/debug.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.146Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/demoSeed.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.146Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/demoSeed.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.146Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/multiLinePaste.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.147Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/multiLinePaste.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.147Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/pollingMonitor.ts",
+      "rule": "no-console",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.148Z",
+      "score": 33
+    },
+    {
+      "file": "client/src/lib/pollingMonitor.ts",
+      "rule": "no-unused-vars",
+      "currentStatus": "clean",
+      "lastModified": "2026-11-09T10:58:17.148Z",
+      "score": 33
+    }
+  ],
+  "proposedChanges": {
+    "no-console": {
+      "files": [
+        "client/src/lib/yjsService.svelte.ts",
+        "client/src/lib/debug.ts",
+        "client/src/lib/demoSeed.ts",
+        "client/src/lib/multiLinePaste.ts",
+        "client/src/lib/pollingMonitor.ts"
+      ],
+      "severity": "error"
+    },
+    "no-unused-vars": {
+      "files": [
+        "client/src/lib/yjsService.svelte.ts",
+        "client/src/lib/debug.ts",
+        "client/src/lib/demoSeed.ts",
+        "client/src/lib/multiLinePaste.ts",
+        "client/src/lib/pollingMonitor.ts"
+      ],
+      "severity": "error"
+    }
+  }
+}
