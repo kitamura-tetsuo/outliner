@@ -233,11 +233,9 @@ describe("Kanban reads through the production MCP HTTP router", function() {
             f.seams.gate = async (_requestId, check) => {
                 if (check === 3) f.acl.revokeAll(PROJECT);
             };
-            const denied = await f.mcp.call(
-                "get_kanban",
-                { projectId: PROJECT, kanbanId: "board" },
-                { requestId: "revoked-metadata" },
-            );
+            const denied = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" }, {
+                requestId: "revoked-metadata",
+            });
             expect(denied.result.isError).to.equal(true);
             expect(denied.payload.code).to.equal("forbidden");
             // A leaked token would keep the otherwise unheld room alive.
@@ -256,11 +254,9 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 const source = f.server.hocuspocus.documents.get(`projects/${PROJECT}/tables/tasks`) as Y.Doc;
                 source.getMap<Y.Map<unknown>>("data").get("r1")!.set("title", "Changed concurrently");
             };
-            const stale = await f.mcp.call(
-                "query_kanban",
-                { projectId: PROJECT, kanbanId: "board" },
-                { requestId: "stale-query" },
-            );
+            const stale = await f.mcp.call("query_kanban", { projectId: PROJECT, kanbanId: "board" }, {
+                requestId: "stale-query",
+            });
             expect(stale.result.isError, JSON.stringify(stale)).not.to.equal(true);
             expect(stale.payload.projection).to.deep.include({
                 status: "unavailable",
@@ -283,11 +279,9 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 const doc = f.server.hocuspocus.documents.get(`projects/${PROJECT}`) as Y.Doc;
                 applyKanbanUpdates(getKanbanDefinitionTarget(doc, "board")!, { name: "Changed concurrently" });
             };
-            const metadata = await f.mcp.call(
-                "get_kanban",
-                { projectId: PROJECT, kanbanId: "board" },
-                { requestId: "coherent-settings" },
-            );
+            const metadata = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "board" }, {
+                requestId: "coherent-settings",
+            });
             expect(metadata.result.isError, JSON.stringify(metadata)).not.to.equal(true);
             expect(metadata.payload.settings.name).to.equal("Board");
             const metadataGuard = f.server.kanbanObservations.acquire(
@@ -310,11 +304,9 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 if (open) observedOpenRoom = true;
                 else if (observedOpenRoom) f.acl.revokeAll(PROJECT);
             };
-            const denied = await f.mcp.call(
-                "query_kanban",
-                { projectId: PROJECT, kanbanId: "board" },
-                { requestId: "revoked-after-cleanup" },
-            );
+            const denied = await f.mcp.call("query_kanban", { projectId: PROJECT, kanbanId: "board" }, {
+                requestId: "revoked-after-cleanup",
+            });
             expect(denied.result.isError).to.equal(true);
             expect(denied.payload.code).to.equal("forbidden");
         } finally {
@@ -339,11 +331,9 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 if (open) observedOpenRoom = true;
                 else if (observedOpenRoom) f.acl.revokeAll(PROJECT);
             };
-            const denied = await f.mcp.call(
-                "get_kanban",
-                { projectId: PROJECT, kanbanId: "missing-board" },
-                { requestId: "revoked-thrown-error" },
-            );
+            const denied = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "missing-board" }, {
+                requestId: "revoked-thrown-error",
+            });
             expect(observedOpenRoom).to.equal(true);
             expect(denied.result.isError).to.equal(true);
             expect(denied.payload.code).to.equal("forbidden");

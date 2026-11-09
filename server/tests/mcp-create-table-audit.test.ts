@@ -35,15 +35,11 @@ describe("MCP create_table audit records (#5412 AS-010)", function() {
         const preview = await call(createArgs({ schemaSql: SCHEMA, operationId: id("dry"), dryRun: true }));
         const applied = (await call(createArgs({ schemaSql: SCHEMA, operationId: id("apply") }))).payload;
         await call(createArgs({ schemaSql: SCHEMA, operationId: id("apply") }));
-        await t.mcp.call(
-            "write_relation",
-            {
-                projectId: PROJECT,
-                relation: "audit_rows",
-                write: { op: "INSERT", values: { id: "r1", note: ROW_SECRET } },
-            },
-            { bearer },
-        );
+        await t.mcp.call("write_relation", {
+            projectId: PROJECT,
+            relation: "audit_rows",
+            write: { op: "INSERT", values: { id: "r1", note: ROW_SECRET } },
+        }, { bearer });
         await call({ ...createArgs({ operationId: id("malformed") }), schemaSql: 42 });
         t.acl.revokeAll(PROJECT);
         await call(createArgs({ schemaSql: SCHEMA, operationId: id("denied") }));

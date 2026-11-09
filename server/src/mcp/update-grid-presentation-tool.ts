@@ -109,21 +109,18 @@ export class UpdateGridPresentationTool {
             }
             if (preview.dryRun !== true) throw new Error("Preview returned an apply");
             await this.authorize(uid, projectId);
-            return this.deliver(
-                {
-                    dryRun: true,
-                    applied: false,
-                    replayed: false,
-                    projectId,
-                    gridId,
-                    priorPresentationRevision: preview.priorPresentationRevision,
-                    presentationRevision: preview.presentationRevision,
-                    presentation: preview.presentation,
-                    candidatePresentation: preview.candidatePresentation,
-                    wouldChange: preview.wouldChange,
-                },
-                { applied: false, replayed: false },
-            );
+            return this.deliver({
+                dryRun: true,
+                applied: false,
+                replayed: false,
+                projectId,
+                gridId,
+                priorPresentationRevision: preview.priorPresentationRevision,
+                presentationRevision: preview.presentationRevision,
+                presentation: preview.presentation,
+                candidatePresentation: preview.candidatePresentation,
+                wouldChange: preview.wouldChange,
+            }, { applied: false, replayed: false });
         }
 
         const key = JSON.stringify(["update_grid_presentation", uid, projectId, gridId, operationId]);

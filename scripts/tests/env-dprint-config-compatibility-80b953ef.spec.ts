@@ -9,25 +9,45 @@ import { describe, expect, test } from "vitest";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dprint = path.join(repoRoot, "node_modules/dprint/bin.cjs");
 
-const cases = [
-    ["dprint.json", "const answer = 42;\n"],
-    ["functions/dprint.json", "const answer = 42;\n"],
+function format(config: string, input: string): string {
+    return execFileSync(process.execPath, [
+        dprint,
+        "fmt",
+        "--config",
+        path.join(repoRoot, config),
+        "--stdin",
+        "sample.ts",
+    ], { cwd: repoRoot, encoding: "utf8", input });
+}
+
+const hangingCases = [
+    [
+        "arguments",
+        `consume({
+    firstPropertyWithADescriptiveName: "first property value",
+    secondPropertyWithADescriptiveName: "second property value",
+}, { other: true });
+`,
+    ],
+    [
+        "arrays",
+        `const items = [{ other: true }, {
+    firstPropertyWithADescriptiveName: "first property value",
+    secondPropertyWithADescriptiveName: "second property value",
+}];
+`,
+    ],
 ] as const;
 
 describe("pinned dprint configuration compatibility", () => {
-    test.each(cases)("%s initializes and preserves required semicolons", (config, expected) => {
-        const output = execFileSync(process.execPath, [
-            dprint,
-            "fmt",
-            "--config",
-            path.join(repoRoot, config),
-            "--stdin",
-            "sample.ts",
-        ], {
-            cwd: repoRoot,
-            encoding: "utf8",
-            input: "const answer=42\n",
-        });
-        expect(output).toBe(expected);
+    test.each(["dprint.json", "functions/dprint.json"])(
+        "%s initializes and preserves required semicolons",
+        config => {
+            expect(format(config, "const answer=42\n")).toBe("const answer = 42;\n");
+        },
+    );
+
+    test.each(hangingCases)("preserves the existing hanging %s layout", (_name, input) => {
+        expect(format("dprint.json", input)).toBe(input);
     });
 });

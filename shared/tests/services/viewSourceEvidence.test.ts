@@ -61,15 +61,11 @@ describe("independent dependency completeness and public projection", () => {
             columns: [{ name: "source_kind" }, { name: "source_id" }],
         };
         const proof = analyzeProjectQueryProvenance(full);
-        const result = describeViewSources(
-            full,
-            { ...proof, reason: "reason".repeat(1000) },
-            {
-                mode: "unavailable",
-                reason: "reason".repeat(1000),
-                preferenceDiagnostic: { code: "unavailable", tableId: "a-id", message: "reason".repeat(1000) },
-            },
-        );
+        const result = describeViewSources(full, { ...proof, reason: "reason".repeat(1000) }, {
+            mode: "unavailable",
+            reason: "reason".repeat(1000),
+            preferenceDiagnostic: { code: "unavailable", tableId: "a-id", message: "reason".repeat(1000) },
+        });
         for (
             const text of [
                 result.provenance.reason,

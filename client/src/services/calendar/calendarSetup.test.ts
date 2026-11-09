@@ -112,11 +112,11 @@ describe("Calendar Table-backed setup", () => {
                 return {
                     state,
                     action: () =>
-                        createCalendarWithNewTable(
-                            state.item,
-                            { preset: TASKS_PRESET, name: "Tasks", sqlName: "tasks" },
-                            { projectAccess: true, surfaceWritable: false },
-                        ),
+                        createCalendarWithNewTable(state.item, {
+                            preset: TASKS_PRESET,
+                            name: "Tasks",
+                            sqlName: "tasks",
+                        }, { projectAccess: true, surfaceWritable: false }),
                 };
             },
         ];

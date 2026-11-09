@@ -56,16 +56,12 @@ describe("Grid presentation update: stale revisions (#5435 AS-004)", function() 
     const liveGrid = (gridId = "grid-tasks") =>
         withRoom(server.hocuspocus, ROOM, doc => readGridAsClient(Y.encodeStateAsUpdate(doc), gridId)!);
     const update = (expectedPresentationRevision: string, beforeMutation?: () => Promise<void>) =>
-        service.updatePresentation(
-            UID,
-            {
-                projectId: PROJECT,
-                gridId: "grid-tasks",
-                expectedPresentationRevision,
-                changes: { components: { due_date: { label: "期限" } }, columnOrder: ["due_date", "title"] },
-            },
-            { beforeMutation },
-        );
+        service.updatePresentation(UID, {
+            projectId: PROJECT,
+            gridId: "grid-tasks",
+            expectedPresentationRevision,
+            changes: { components: { due_date: { label: "期限" } }, columnOrder: ["due_date", "title"] },
+        }, { beforeMutation });
 
     it("rejects an old revision after a peer label edit and never accepts the query-only token", async () => {
         const readService = new OutlinerReadService(server.hocuspocus, acl.checkAccess, async () => []);

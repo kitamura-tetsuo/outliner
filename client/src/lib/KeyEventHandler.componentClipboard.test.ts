@@ -1237,10 +1237,10 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             const encoded = JSON.stringify({
                 version: 3,
                 sourceProjectId: "foreign-project",
-                items: [
-                    { text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" },
-                    { text: "sibling", depth: 0 },
-                ],
+                items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: "grid:source-table" }, {
+                    text: "sibling",
+                    depth: 0,
+                }],
                 tables: { "source-table": snapshot("source-table") },
                 grids: { "grid:source-table": gridSnapshot("source-table") },
             });
@@ -1557,11 +1557,12 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
                     one: settings,
                     ...(failure ? { two: { ...settings, timezone: "invalid/timezone" } } : {}),
                 },
-                items: [
-                    { text: "", depth: 0, componentType: "yjstable", yjsGridId: grid },
-                    { text: "", depth: 0, componentType: "calendar", calendarId: "one" },
-                    ...(failure ? [{ text: "", depth: 0, componentType: "calendar", calendarId: "two" }] : []),
-                ],
+                items: [{ text: "", depth: 0, componentType: "yjstable", yjsGridId: grid }, {
+                    text: "",
+                    depth: 0,
+                    componentType: "calendar",
+                    calendarId: "one",
+                }, ...(failure ? [{ text: "", depth: 0, componentType: "calendar", calendarId: "two" }] : [])],
             });
             const insert = (event: Event) =>
                 state.doc.transact(() => {

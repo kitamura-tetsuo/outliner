@@ -78,16 +78,13 @@ export class CreateTableTool {
                 throw await this.refuse(uid, projectId, error, true);
             }
             await this.authorize(uid, projectId);
-            return this.deliver(
-                {
-                    applied: false,
-                    replayed: false,
-                    displayName: preview.displayName,
-                    sqlName: preview.sqlName,
-                    schemaSql: preview.schemaSql,
-                },
-                { applied: false, replayed: false },
-            );
+            return this.deliver({
+                applied: false,
+                replayed: false,
+                displayName: preview.displayName,
+                sqlName: preview.sqlName,
+                schemaSql: preview.schemaSql,
+            }, { applied: false, replayed: false });
         }
 
         const key = JSON.stringify(["create_table", uid, projectId, operationId]);

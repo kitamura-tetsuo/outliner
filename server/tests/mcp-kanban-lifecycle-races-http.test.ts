@@ -20,17 +20,13 @@ describe("Kanban lifecycle contested HTTP requests", function() {
                     await release.promise;
                 }
             };
-            const pending = f.mcp.call(
-                "place_kanban",
-                {
-                    projectId: PROJECT,
-                    kanbanId: "board",
-                    observationToken: observed.payload.observationToken,
-                    destination: { pageId: destination.pageId, layoutId: destination.layoutId },
-                    operationId: "replace-destination",
-                },
-                { requestId: "replace-destination" },
-            );
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId, layoutId: destination.layoutId },
+                operationId: "replace-destination",
+            }, { requestId: "replace-destination" });
             await captured.promise;
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 const page = Project.fromDoc(doc).findPage(destination.pageId)!;
@@ -66,17 +62,13 @@ describe("Kanban lifecycle contested HTTP requests", function() {
                     await release.promise;
                 }
             };
-            const pending = f.mcp.call(
-                "place_kanban",
-                {
-                    projectId: PROJECT,
-                    kanbanId: "board",
-                    observationToken: observed.payload.observationToken,
-                    destination: { pageId: destination.pageId },
-                    operationId: "replace-page",
-                },
-                { requestId: "replace-page" },
-            );
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId },
+                operationId: "replace-page",
+            }, { requestId: "replace-page" });
             await captured.promise;
             const replacementId = await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 const project = Project.fromDoc(doc);
@@ -115,17 +107,13 @@ describe("Kanban lifecycle contested HTTP requests", function() {
                     await release.promise;
                 }
             };
-            const pending = f.mcp.call(
-                "place_kanban",
-                {
-                    projectId: PROJECT,
-                    kanbanId: "board",
-                    observationToken: observed.payload.observationToken,
-                    destination: { pageId: destination.pageId, layoutId: destination.layoutId },
-                    operationId: "move-layout",
-                },
-                { requestId: "move-layout" },
-            );
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId, layoutId: destination.layoutId },
+                operationId: "move-layout",
+            }, { requestId: "move-layout" });
             await captured.promise;
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 const project = Project.fromDoc(doc);
@@ -162,17 +150,13 @@ describe("Kanban lifecycle contested HTTP requests", function() {
                     await release.promise;
                 }
             };
-            const pending = f.mcp.call(
-                "place_kanban",
-                {
-                    projectId: PROJECT,
-                    kanbanId: "board",
-                    observationToken: observed.payload.observationToken,
-                    destination: { pageId: destination.pageId, layoutId: destination.layoutId },
-                    operationId: "unrelated-edit",
-                },
-                { requestId: "unrelated-edit" },
-            );
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId, layoutId: destination.layoutId },
+                operationId: "unrelated-edit",
+            }, { requestId: "unrelated-edit" });
             await captured.promise;
             await withRoom(f.server.hocuspocus, `projects/${PROJECT}`, doc => {
                 const page = Project.fromDoc(doc).findPage(destination.pageId)!;
@@ -317,17 +301,13 @@ describe("Kanban lifecycle contested HTTP requests", function() {
                     await release.promise;
                 }
             };
-            const pending = f.mcp.call(
-                "place_kanban",
-                {
-                    projectId: PROJECT,
-                    kanbanId: "board",
-                    observationToken: observed.payload.observationToken,
-                    destination: { pageId: destination.pageId },
-                    operationId,
-                },
-                { requestId: "revoke-prepared" },
-            );
+            const pending = f.mcp.call("place_kanban", {
+                projectId: PROJECT,
+                kanbanId: "board",
+                observationToken: observed.payload.observationToken,
+                destination: { pageId: destination.pageId },
+                operationId,
+            }, { requestId: "revoke-prepared" });
             await prepared.promise;
             f.acl.revokeAll(PROJECT);
             release.resolve();
@@ -378,10 +358,11 @@ describe("Kanban lifecycle contested HTTP requests", function() {
                     replayed: record.replayed,
                 })),
             )
-                .to.deep.equal([
-                    { outcome: "internal_failure", applied: true, replayed: false },
-                    { outcome: "success", applied: true, replayed: true },
-                ]);
+                .to.deep.equal([{ outcome: "internal_failure", applied: true, replayed: false }, {
+                    outcome: "success",
+                    applied: true,
+                    replayed: true,
+                }]);
         } finally {
             await f.stop();
         }

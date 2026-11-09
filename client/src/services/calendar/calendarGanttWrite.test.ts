@@ -39,11 +39,8 @@ describe("analyzeGanttSubtreeShift", () => {
             dueMs: T0 + 5 * DAY,
             raw: {},
         };
-        const entryByKey = new Map([
-            [parentEntry.key, parentEntry],
-            [childEntry.key, childEntry],
-            [dueOnlyEntry.key, dueOnlyEntry],
-        ]);
+        const entryByKey = new Map([[parentEntry.key, parentEntry], [childEntry.key, childEntry], [dueOnlyEntry.key,
+            dueOnlyEntry]]);
         const { rows } = layoutGantt([parentEntry, childEntry, dueOnlyEntry], []);
         const parentRow = rows!.find((r) => r.key === "p")!;
 

@@ -87,11 +87,9 @@ describe("MCP update_grid_presentation errors (#5436)", function() {
         expect(JSON.stringify(denied.payload)).not.to.contain("grid-presentation-v1");
         expect(denied.payload).not.to.have.property("currentPresentationRevision");
         // The authorized effect stays; re-granting replays the original outcome.
-        const labels = await t.mcp.call(
-            "get_grid",
-            { projectId: PROJECT, gridId: "grid-tasks" },
-            { bearer: token(UID, "outliner.read outliner.write") },
-        );
+        const labels = await t.mcp.call("get_grid", { projectId: PROJECT, gridId: "grid-tasks" }, {
+            bearer: token(UID, "outliner.read outliner.write"),
+        });
         expect(labels.result.isError).to.equal(true);
         t.acl.grant("projectUsers", PROJECT, UID);
         const replay = (await t.mcp.call("update_grid_presentation", args)).payload;

@@ -6,15 +6,18 @@ const before = {
     action: "dual-confirm",
     documentGuid: "doc-a",
     compositionId: 0,
-    items: [
-        { id: "a", canonical: "prefixsuffix", rendered: "prefixsuffix" },
-        { id: "b", canonical: "lefttail", rendered: "lefttail" },
-        { id: "c", canonical: "untouched", rendered: "untouched" },
-    ],
-    cursors: [
-        { cursorId: "one", itemId: "a", offset: 6, userId: "local", isActive: true },
-        { cursorId: "two", itemId: "b", offset: 4, userId: "local", isActive: true },
-    ],
+    items: [{ id: "a", canonical: "prefixsuffix", rendered: "prefixsuffix" }, {
+        id: "b",
+        canonical: "lefttail",
+        rendered: "lefttail",
+    }, { id: "c", canonical: "untouched", rendered: "untouched" }],
+    cursors: [{ cursorId: "one", itemId: "a", offset: 6, userId: "local", isActive: true }, {
+        cursorId: "two",
+        itemId: "b",
+        offset: 4,
+        userId: "local",
+        isActive: true,
+    }],
     selections: [],
 };
 function after(candidate, cancel = false) {

@@ -155,22 +155,19 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     }
 
                     // Update graph (reflect position settings)
-                    chart.setOption(
-                        {
-                            series: [{
-                                ...currentOption.series[0],
-                                data: nodes,
-                                force: {
-                                    initLayout: "none", // Use manual layout
-                                    repulsion: 100,
-                                    gravity: 0.1,
-                                    edgeLength: 200,
-                                    layoutAnimation: false, // Disable animation
-                                },
-                            }],
-                        },
-                        { notMerge: false },
-                    );
+                    chart.setOption({
+                        series: [{
+                            ...currentOption.series[0],
+                            data: nodes,
+                            force: {
+                                initLayout: "none", // Use manual layout
+                                repulsion: 100,
+                                gravity: 0.1,
+                                edgeLength: 200,
+                                layoutAnimation: false, // Disable animation
+                            },
+                        }],
+                    }, { notMerge: false });
 
                     // Wait briefly after setting position
                     return new Promise(resolve => {

@@ -73,17 +73,12 @@ describe("standalone Table creation failure outcomes (#5411 AS-006, AS-007)", fu
 
     it("does not publish a Table prepared before a crash, even after restart", async () => {
         const prepared = deferred();
-        void serviceWith(realStore).createTable(
-            UID,
-            "proj-a",
-            { name: "F", schemaSql: SCHEMA },
-            {
-                beforePublication: () => {
-                    prepared.resolve();
-                    return new Promise(() => {}); // execution stops before publication
-                },
+        void serviceWith(realStore).createTable(UID, "proj-a", { name: "F", schemaSql: SCHEMA }, {
+            beforePublication: () => {
+                prepared.resolve();
+                return new Promise(() => {}); // execution stops before publication
             },
-        );
+        });
         await prepared.promise;
         const restarted = await restartFromStorage(dir, acl);
         dirs.push(restarted.dir);

@@ -33,11 +33,11 @@ function resolverFor(provider: RelationProvider | undefined) {
 describe("createCalendarEntry (values shape)", () => {
     it("writes just the title when no dates are given", async () => {
         const provider = new RecordingProvider();
-        await createCalendarEntry(
-            resolverFor(provider),
-            { parentKey: "page-1" },
-            { title: "Untitled task", allDay: false, timeZone: "UTC" },
-        );
+        await createCalendarEntry(resolverFor(provider), { parentKey: "page-1" }, {
+            title: "Untitled task",
+            allDay: false,
+            timeZone: "UTC",
+        });
         expect(provider.writes).toEqual([
             { op: "INSERT", values: { text: "Untitled task" }, destination: { parentKey: "page-1" } },
         ]);
@@ -45,11 +45,12 @@ describe("createCalendarEntry (values shape)", () => {
 
     it("writes start_on for an all-day start", async () => {
         const provider = new RecordingProvider();
-        await createCalendarEntry(
-            resolverFor(provider),
-            { parentKey: "page-1" },
-            { title: "Conference", allDay: true, startMs: Date.parse("2026-08-01T00:00:00Z"), timeZone: "UTC" },
-        );
+        await createCalendarEntry(resolverFor(provider), { parentKey: "page-1" }, {
+            title: "Conference",
+            allDay: true,
+            startMs: Date.parse("2026-08-01T00:00:00Z"),
+            timeZone: "UTC",
+        });
         expect(provider.writes).toEqual([
             {
                 op: "INSERT",
@@ -61,11 +62,12 @@ describe("createCalendarEntry (values shape)", () => {
 
     it("writes start_at for a timed start", async () => {
         const provider = new RecordingProvider();
-        await createCalendarEntry(
-            resolverFor(provider),
-            { parentKey: "page-1" },
-            { title: "Standup", allDay: false, startMs: Date.parse("2026-08-01T09:00:00Z"), timeZone: "UTC" },
-        );
+        await createCalendarEntry(resolverFor(provider), { parentKey: "page-1" }, {
+            title: "Standup",
+            allDay: false,
+            startMs: Date.parse("2026-08-01T09:00:00Z"),
+            timeZone: "UTC",
+        });
         expect(provider.writes).toEqual([
             {
                 op: "INSERT",
@@ -77,11 +79,12 @@ describe("createCalendarEntry (values shape)", () => {
 
     it("writes due independently of start", async () => {
         const provider = new RecordingProvider();
-        await createCalendarEntry(
-            resolverFor(provider),
-            { parentKey: "page-1" },
-            { title: "File taxes", allDay: true, dueMs: Date.parse("2026-04-15T00:00:00Z"), timeZone: "UTC" },
-        );
+        await createCalendarEntry(resolverFor(provider), { parentKey: "page-1" }, {
+            title: "File taxes",
+            allDay: true,
+            dueMs: Date.parse("2026-04-15T00:00:00Z"),
+            timeZone: "UTC",
+        });
         expect(provider.writes).toEqual([
             {
                 op: "INSERT",
@@ -95,17 +98,13 @@ describe("createCalendarEntry (values shape)", () => {
     // calendar's zone, not the day UTC was on at that instant.
     it("derives an all-day start_on in the calendar's zone", async () => {
         const provider = new RecordingProvider();
-        await createCalendarEntry(
-            resolverFor(provider),
-            { parentKey: "page-1" },
-            {
-                title: "Conference",
-                allDay: true,
-                // Midnight of 2026-08-01 in Asia/Tokyo.
-                startMs: Date.parse("2026-07-31T15:00:00Z"),
-                timeZone: "Asia/Tokyo",
-            },
-        );
+        await createCalendarEntry(resolverFor(provider), { parentKey: "page-1" }, {
+            title: "Conference",
+            allDay: true,
+            // Midnight of 2026-08-01 in Asia/Tokyo.
+            startMs: Date.parse("2026-07-31T15:00:00Z"),
+            timeZone: "Asia/Tokyo",
+        });
         expect(provider.writes).toEqual([
             {
                 op: "INSERT",
@@ -117,11 +116,11 @@ describe("createCalendarEntry (values shape)", () => {
 
     it("throws when the items relation is not available", async () => {
         await expect(
-            createCalendarEntry(
-                resolverFor(undefined),
-                { parentKey: "page-1" },
-                { title: "X", allDay: false, timeZone: "UTC" },
-            ),
+            createCalendarEntry(resolverFor(undefined), { parentKey: "page-1" }, {
+                title: "X",
+                allDay: false,
+                timeZone: "UTC",
+            }),
         ).rejects.toThrow(RelationWriteError);
     });
 });
@@ -140,11 +139,12 @@ describe("createCalendarEntry (real ItemsRelationProvider)", { timeout: 30000 },
         const provider = new ItemsRelationProvider({ projectDoc, pgSchema: "test_schema_create" });
         expect(await provider.materialize()).toBe(true);
         try {
-            await createCalendarEntry(
-                resolverFor(provider),
-                { parentKey: page.key },
-                { title: "Plan launch", allDay: true, startMs: Date.parse("2026-08-01T00:00:00Z"), timeZone: "UTC" },
-            );
+            await createCalendarEntry(resolverFor(provider), { parentKey: page.key }, {
+                title: "Plan launch",
+                allDay: true,
+                startMs: Date.parse("2026-08-01T00:00:00Z"),
+                timeZone: "UTC",
+            });
 
             const created = [...new Items(projectDoc, project.tree, page.key)]
                 .find((child) => child.text === "Plan launch");
@@ -162,11 +162,11 @@ describe("createCalendarEntry (real ItemsRelationProvider)", { timeout: 30000 },
         expect(await provider.materialize()).toBe(true);
         try {
             await expect(
-                createCalendarEntry(
-                    resolverFor(provider),
-                    { parentKey: "no-such-item" },
-                    { title: "X", allDay: false, timeZone: "UTC" },
-                ),
+                createCalendarEntry(resolverFor(provider), { parentKey: "no-such-item" }, {
+                    title: "X",
+                    allDay: false,
+                    timeZone: "UTC",
+                }),
             ).rejects.toThrow(RelationWriteError);
         } finally {
             provider.dispose();
