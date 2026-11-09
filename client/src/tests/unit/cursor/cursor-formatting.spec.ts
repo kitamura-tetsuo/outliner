@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
 import type { Item } from "../../../schema/app-schema";
-import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import type { EditorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import type { SelectionRange } from "../../../stores/EditorOverlayStore.svelte";
-import { store as generalStore } from "../../../stores/store.svelte";
+import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import type { GeneralStore } from "../../../stores/store.svelte";
+import { store as generalStore } from "../../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../../utils/ScrapboxFormatter";
 
 // Mock the stores

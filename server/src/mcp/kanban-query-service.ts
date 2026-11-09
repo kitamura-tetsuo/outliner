@@ -512,8 +512,8 @@ export class OutlinerKanbanQueryService {
         projectRevision: string,
     ) {
         return getKanbanRegistry(doc as never).get(
-                    [...getKanbanRegistry(doc as never).entries()].find(([, value]) => value === entry)?.[0] ?? "",
-                ) === entry
+            [...getKanbanRegistry(doc as never).entries()].find(([, value]) => value === entry)?.[0] ?? "",
+        ) === entry
             && isLiveRoom(host, `projects/${projectId}`, doc)
             && inputs.every(input => isLiveRoom(host, `projects/${projectId}/tables/${input.id}`, input.doc))
             && projectSnapshot(doc, entry) === projectRevision

@@ -256,9 +256,8 @@ export function unambiguousRowSource(
             branch.claimedSourceKind === undefined || branch.claimedSourceKind === row.source_kind
         );
         if (
-            possible.length && possible.every(branch =>
-                branch.routedIdentity && branch.source.sqlName === row.source_kind
-            )
+            possible.length
+            && possible.every(branch => branch.routedIdentity && branch.source.sqlName === row.source_kind)
             && unambiguousPhysicalColumn(proof, row.source_kind, "source_id") === "id"
         ) {
             const identities = new Set(possible.map(branch => `${branch.source.kind}:${branch.source.id}`));
