@@ -144,9 +144,8 @@ async function prepare({ action }) {
     await waitFor(() =>
         execute(() =>
             !!window.__USER_MANAGER__?.auth?.currentUser
-            && window.__YJS_STORE__?.isConnected && [...document.querySelectorAll(".item-text")].some(e =>
-                e.textContent === "prefixsuffix"
-            )
+            && window.__YJS_STORE__?.isConnected
+            && [...document.querySelectorAll(".item-text")].some(e => e.textContent === "prefixsuffix")
         ), "Authenticated ordinary editor not ready");
     const user = await execute(() => ({
         uid: window.__USER_MANAGER__.auth.currentUser.uid,

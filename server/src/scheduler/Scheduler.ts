@@ -4,16 +4,14 @@ import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
 import { parseSqlIdentifiers } from "../../../shared/src/services/readOnlySql.js";
-import {
-    resolveScheduleTargetPlaceholder,
-    validateScheduleRuleSql,
-} from "../../../shared/src/services/scheduleRuleValidation.js";
+import { resolveScheduleTargetPlaceholder } from "../../../shared/src/services/scheduleRuleValidation.js";
 import { readSqlCatalog, type SqlCatalogSnapshot } from "../../../shared/src/services/sqlCatalog.js";
 import { serializeSqlEnumValue } from "../../../shared/src/services/sqlEnumValue.js";
 import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
 import { validateScheduleRowIdentities } from "./row-validation.js";
 import { computeNextRunAt, ensureScheduleIndex, ScheduleIndexRow } from "./schedule-indexer.js";
+import { validateAndPublishScheduleSql } from "./schedule-sql-diagnostics.js";
 import {
     applyRunOutcome,
     publishSchedulerCursor,
@@ -142,7 +140,7 @@ export class JobScheduler {
             let ruleSql = "";
             let targetTableId = "";
             let timezone = "UTC";
-            let strictAliases = false;
+            let validation: { valid: boolean; error?: string; } | undefined;
             try {
                 if (!conn.document) {
                     return { success: false, error: "Document not found" };
@@ -155,7 +153,10 @@ export class JobScheduler {
                 ruleSql = (ruleItem.get("sql") as string) || "";
                 targetTableId = (ruleItem.get("targetTableId") as string) || "";
                 timezone = (ruleItem.get("timezone") as string) || "UTC";
-                strictAliases = ruleItem.get("sqlAliasPolicyVersion") === 1;
+                const evaluated = validateAndPublishScheduleSql(conn.document, ruleId);
+                if (!evaluated) return { success: false, error: "Rule not found" };
+                ruleSql = evaluated.sql;
+                validation = evaluated.validation;
             } finally {
                 conn.disconnect();
             }
@@ -163,8 +164,7 @@ export class JobScheduler {
             if (!ruleSql || !targetTableId) {
                 return { success: false, error: "Missing required rule data (sql or targetTableId)" };
             }
-            const validation = validateScheduleRuleSql(ruleSql, strictAliases);
-            if (!validation.valid) return { success: false, error: validation.error };
+            if (!validation?.valid) return { success: false, error: validation?.error };
 
             // The recurrence fields come from the index when the rule is
             // scheduled, and are left empty when it is not (a manual run reads
@@ -591,7 +591,7 @@ export class JobScheduler {
         const mainRoomConn = await this.hocuspocus.openDirectConnection(rule.room);
         let catchUp = false;
         let ruleSql = "";
-        let strictAliases = false;
+        let validation: { valid: boolean; error?: string; } | undefined;
 
         try {
             if (mainRoomConn.document) {
@@ -600,7 +600,11 @@ export class JobScheduler {
                 if (ruleItem) {
                     ruleSql = (ruleItem.get("sql") as string) || "";
                     catchUp = (ruleItem.get("catchUp") as boolean) || false;
-                    strictAliases = ruleItem.get("sqlAliasPolicyVersion") === 1;
+                    const evaluated = validateAndPublishScheduleSql(mainRoomConn.document, rule.rule_id);
+                    if (evaluated) {
+                        ruleSql = evaluated.sql;
+                        validation = evaluated.validation;
+                    }
                 }
             }
         } finally {
@@ -620,9 +624,8 @@ export class JobScheduler {
             await this.publishCursor(rule.room, rule.rule_id, { state: "orphaned", nextRunAt: null });
             return;
         }
-        const validation = validateScheduleRuleSql(ruleSql, strictAliases);
-        if (!validation.valid) {
-            logger.warn({ ruleId: rule.rule_id, error: validation.error }, "Schedule SQL is invalid");
+        if (!validation?.valid) {
+            logger.warn({ ruleId: rule.rule_id, error: validation?.error }, "Schedule SQL is invalid");
             return;
         }
 

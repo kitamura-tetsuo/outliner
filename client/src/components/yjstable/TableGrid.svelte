@@ -1958,6 +1958,7 @@ function handleCancelDelete() {
     own, so Grid's own Ctrl/Cmd+C/V handling (FTR-5192) is never raced or
     double-handled by the item-level clipboard.
 -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="yjs-table-grid"
     class:pan-armed={panArmed}

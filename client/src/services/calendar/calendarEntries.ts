@@ -11,8 +11,8 @@
 // calendarEntryWrite.ts for why those two must not be conflated.
 
 import { floatingDateToUtcMs } from "$shared/utils/zonedTime";
-import { Item, Items } from "../../schema/app-schema";
 import type { Project } from "../../schema/app-schema";
+import { Item, Items } from "../../schema/app-schema";
 import { expandItemOccurrencesWithOverrides } from "../yjstable/recurrenceExpansion";
 import type { CalendarSettings } from "./calendarService";
 import { isOutlineItemSourceKind } from "./calendarSourceIdentity";

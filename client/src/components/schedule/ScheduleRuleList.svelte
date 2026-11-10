@@ -25,6 +25,7 @@ import {
 } from "$shared/services/scheduleStatus";
 import { formatDateTime } from "../../utils/dateUtils";
 import type { ResolvedPathname } from "$app/types";
+import { currentScheduleSqlDiagnostic } from "$shared/services/scheduleSqlDiagnostics";
 
 interface Props {
     rules: { id: string, rule: ScheduleRule }[];
@@ -83,6 +84,7 @@ function summarize(rule: ScheduleRule) {
     const run = summarizeScheduleRun(rule);
     const next = summarizeScheduleNextRun(rule);
     return {
+        sqlDiagnostic: currentScheduleSqlDiagnostic(rule),
         enabled: rule.enabled !== false,
         cadence: getHumanReadable(rule.rrule),
         timezone: rule.timezone,
@@ -214,12 +216,17 @@ const RESULT_CLASSES: Record<ScheduleRunResult, string> = {
                     <!-- Operational failure information stays on the manager: a
                          compact table must not be the reason an error message
                          becomes unreachable (issue #5290 REQ-010). -->
-                    {#if row.lastRunError || rule.validationError || rule.skippedOccurrences}
+                    {#if row.lastRunError || row.sqlDiagnostic || rule.validationError || rule.skippedOccurrences}
                         <tr class="border-t border-gray-100" data-testid="schedule-row-diagnostics" data-rule-id={id}>
                             <td colspan="9" class="px-2 pb-2">
                                 {#if row.lastRunError}
                                     <div class="text-xs text-red-700 bg-red-50 p-2 rounded border border-red-100 font-mono" data-testid="schedule-rule-last-run-error">
                                         {row.lastRunError}
+                                    </div>
+                                {/if}
+                                {#if row.sqlDiagnostic}
+                                    <div class="mt-1 text-xs bg-red-50 text-red-700 p-2 rounded border border-red-100" data-testid="schedule-rule-sql-validation-error">
+                                        <strong>Saved SQL validation problem:</strong> {row.sqlDiagnostic.error}
                                     </div>
                                 {/if}
                                 {#if rule.validationError}

@@ -331,10 +331,9 @@ describe("Kanban reads through the production MCP HTTP router", function() {
                 if (open) observedOpenRoom = true;
                 else if (observedOpenRoom) f.acl.revokeAll(PROJECT);
             };
-            const denied = await f.mcp.call("get_kanban", {
-                projectId: PROJECT,
-                kanbanId: "missing-board",
-            }, { requestId: "revoked-thrown-error" });
+            const denied = await f.mcp.call("get_kanban", { projectId: PROJECT, kanbanId: "missing-board" }, {
+                requestId: "revoked-thrown-error",
+            });
             expect(observedOpenRoom).to.equal(true);
             expect(denied.result.isError).to.equal(true);
             expect(denied.payload.code).to.equal("forbidden");

@@ -12,6 +12,12 @@ setPage({ params: { project: "demo", ruleId: "rule-1" } });
 
 vi.mock("$app/navigation", () => ({ goto: vi.fn() }));
 
+// Monaco itself cannot run in jsdom. Keep this mock scoped to the lazy loader
+// and drive the editor wrapper through its production-shaped model callbacks.
+vi.mock("../../lib/monaco/monacoLoader", () => ({
+    loadMonaco: () => import("../../tests/mocks/fakeMonaco").then(module => module.fakeMonaco),
+}));
+
 vi.mock("../../auth/UserManager", () => ({
     userManager: {
         getCurrentUser: () => null,
@@ -45,8 +51,10 @@ vi.mock("../../services/schedule/scheduleRunService", () => ({
     runScheduleRuleNow: vi.fn(async () => ({ ok: true })),
 }));
 
+import { serializeScheduleSqlDiagnostic } from "$shared/services/scheduleSqlDiagnostics";
 import { store } from "../../stores/store.svelte";
 import { setPage } from "../../tests/mocks/appState.svelte";
+import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import ScheduleDetailView from "./ScheduleDetailView.svelte";
 
 const RULE_ID = "rule-1";
@@ -83,6 +91,7 @@ describe("Schedule detail page and scheduler-owned telemetry", () => {
     beforeEach(() => {
         projectDoc = new Y.Doc();
         store.project = undefined;
+        fakeMonacoRegistry.reset();
     });
 
     afterEach(() => {
@@ -151,5 +160,25 @@ describe("Schedule detail page and scheduler-owned telemetry", () => {
             expect(screen.getByTestId("schedule-detail-result").textContent?.trim()).toBe("Running");
         });
         expect(screen.getByTestId("schedule-detail-run-summary").textContent).toContain("2026-09-02");
+    });
+
+    it("withdraws a saved-SQL diagnostic when a peer deletes the saved rule without changing the draft", async () => {
+        const ruleMap = seedRule();
+        const savedSql = ruleMap.get("sql") as string;
+        ruleMap.set(
+            "sqlValidationDiagnostic",
+            serializeScheduleSqlDiagnostic(savedSql, false, "Rejected by the deployed server"),
+        );
+
+        render(ScheduleDetailView, { projectName: "demo", ruleId: RULE_ID });
+        await waitFor(() => expect(fakeMonacoRegistry.editors.length).toBe(1));
+        await waitFor(() => expect(screen.getByTestId("schedule-detail-sql-validation-error")).toBeTruthy());
+
+        const draft = "INSERT INTO audit (id) VALUES ('unsaved-draft') RETURNING *;";
+        fakeMonacoRegistry.lastModel().type(draft);
+        projectDoc.getMap("schedules").delete(RULE_ID);
+
+        await waitFor(() => expect(screen.queryByTestId("schedule-detail-sql-validation-error")).toBeNull());
+        expect(fakeMonacoRegistry.lastModel().getValue()).toBe(draft);
     });
 });

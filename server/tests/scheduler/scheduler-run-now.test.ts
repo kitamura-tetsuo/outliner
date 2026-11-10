@@ -96,7 +96,7 @@ describe("Job Scheduler - runRuleNow", () => {
         const existing = new Y.Map<unknown>();
         existing.set("title", "Existing");
         targetData.set("existing", existing);
-        const before = Y.encodeStateAsUpdate(doc);
+        const beforeRule = ruleMap.toJSON();
         const dispatch = sinon.stub(scheduler as any, "dispatchJob").resolves({ success: true });
 
         const res = await scheduler.runRuleNow("projects/proj1", "rule1");
@@ -104,7 +104,19 @@ describe("Job Scheduler - runRuleNow", () => {
         expect(res.success).to.be.false;
         expect(res.error).to.equal("Query must be an INSERT statement");
         expect(dispatch.called).to.be.false;
-        expect(Y.encodeStateAsUpdate(doc)).to.deep.equal(before);
+        const diagnostic = JSON.parse(ruleMap.get("sqlValidationDiagnostic") as string);
+        expect(diagnostic).to.deep.equal({
+            version: 1,
+            sql: beforeRule.sql,
+            strictAliases: false,
+            error: "Query must be an INSERT statement",
+        });
+        const afterRule = ruleMap.toJSON();
+        delete afterRule.sqlValidationDiagnostic;
+        expect(afterRule).to.deep.equal(beforeRule);
+        expect(ruleMap.get("lastRunStatus")).to.be.undefined;
+        expect(ruleMap.get("lastRunStartedAt")).to.be.undefined;
+        expect(ruleMap.get("lastRunAt")).to.be.undefined;
         expect([...targetData.keys()]).to.deep.equal(["existing"]);
     });
 

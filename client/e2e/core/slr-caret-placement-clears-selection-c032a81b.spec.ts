@@ -35,9 +35,10 @@ test.describe("SLR-0004: ordinary caret placement", () => {
                         };
                     }).editorOverlayStore;
                     return {
-                        localSelections: Object.values(store?.selections ?? {}).filter(selection =>
-                            (selection.userId ?? "local") === "local"
-                        ).length,
+                        localSelections:
+                            Object.values(store?.selections ?? {}).filter(selection =>
+                                (selection.userId ?? "local") === "local"
+                            ).length,
                         localCursorItem: Object.values(store?.cursors ?? {}).find(cursor =>
                             (cursor.userId ?? "local") === "local"
                         )?.itemId,
