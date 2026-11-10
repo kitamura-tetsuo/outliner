@@ -66,7 +66,7 @@ test("a saved same-Table UNION refuses multiline drafts when one branch computes
         // can be attributed to the physical or computed value branch.
         for (const displayedValue of ["Value from A", "Value from A!"]) {
             const row = grid.locator("tbody tr").filter({
-                has: grid.locator('td[data-col="value"] button.cell-value').filter({
+                has: page.locator('td[data-col="value"] button.cell-value').filter({
                     hasText: displayedValue.endsWith("!") ? /^Value from A!$/ : /^Value from A$/,
                 }),
             });
