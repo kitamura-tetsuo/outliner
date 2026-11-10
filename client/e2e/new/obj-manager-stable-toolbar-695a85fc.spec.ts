@@ -56,7 +56,7 @@ test.describe("FTR-8ac92ce2: the compact bulk toolbar never shifts the object ta
 
             // ... and closing it must not leave any lasting shift either.
             await page.keyboard.press("Escape").catch(() => {});
-            await page.locator(".preview-overlay").click({ position: { x: 4, y: 4 } });
+            await page.keyboard.press("Escape");
             await expect(page.getByTestId("object-manager-bulk-preview")).toBeHidden();
             const positionAfterClose = await table.boundingBox();
             expect(positionAfterClose?.y).toBe(positionBeforeSelection?.y);
