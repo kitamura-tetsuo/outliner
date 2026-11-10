@@ -76,6 +76,18 @@ test("live multiline drafts survive real column and viewport reflow without sour
         await editor.press("Control+End");
         await editor.type(" tail");
         await expect(editor).toHaveValue(`${draft} tail`);
+        for (
+            const softWrapped of [
+                "A long English paragraph with spaces. ".repeat(25),
+                "unbrokenlongword".repeat(80),
+            ]
+        ) {
+            await editor.fill(softWrapped);
+            await expect(editor).toHaveValue(softWrapped);
+            expect(await editor.evaluate(node => node.scrollWidth)).toBeLessThanOrEqual(
+                await editor.evaluate(node => node.clientWidth + 1),
+            );
+        }
         await editor.press("Escape");
         await expect(firstCell.locator("textarea.cell-input")).toHaveCount(0);
         await expect(firstCell.locator("button.cell-value")).toHaveText("Alpha");

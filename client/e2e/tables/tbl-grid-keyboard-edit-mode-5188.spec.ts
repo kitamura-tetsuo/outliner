@@ -100,6 +100,10 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         await editor.fill("");
         await editor.press("Control+V");
         await expect(editor).toHaveValue("first\nsecond");
+        await page.evaluate(() => navigator.clipboard.writeText("CRLF\r\nclipboard"));
+        await editor.fill("");
+        await editor.press("Control+V");
+        await expect(editor).toHaveValue("CRLF\nclipboard");
         await editor.fill("first");
         await editor.press("Alt+Enter");
         await editor.type("second");

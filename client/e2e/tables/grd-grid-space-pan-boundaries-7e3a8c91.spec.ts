@@ -251,6 +251,21 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         });
         await expect(editor).toHaveValue("Alpha中");
         await expect(editor).toBeFocused();
+        // A composing confirmation Enter must not trigger the ordinary Grid
+        // commit/exit handler before the browser finishes the native IME input.
+        const composingEnter = await editor.evaluate(node => {
+            const event = new KeyboardEvent("keydown", {
+                key: "Enter",
+                code: "Enter",
+                bubbles: true,
+                cancelable: true,
+                isComposing: true,
+            });
+            return { dispatched: node.dispatchEvent(event), prevented: event.defaultPrevented };
+        });
+        expect(composingEnter).toEqual({ dispatched: true, prevented: false });
+        await expect(editor).toHaveValue("Alpha中");
+        await expect(editor).toBeFocused();
         await cdp.send("Input.insertText", { text: "中" });
         await cdp.detach();
         await expect(editor).toHaveValue("Alpha中");
