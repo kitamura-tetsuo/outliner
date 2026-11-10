@@ -11,6 +11,8 @@ export function textLineBreakPolicy(options: {
     grid: boolean;
     column: string;
     resolvedSource?: ProvenanceRelation;
+    /** Only a physical destination proven across every possible query branch qualifies. */
+    resolvedPhysicalColumn?: string;
     physicalColumns: readonly GridPhysicalColumnMetadata[];
     rawTableColumn?: TableColumnSchema;
 }): TextLineBreakPolicy {
@@ -29,7 +31,9 @@ export function textLineBreakPolicy(options: {
     );
     const first = candidates[0];
     if (
-        !first?.field || first.source.kind !== "table" || candidates.some(candidate =>
+        !first?.field || first.source.kind !== "table"
+        || first.physicalColumn !== options.resolvedPhysicalColumn
+        || candidates.some(candidate =>
             !candidate.field
             || candidate.source.kind !== first.source.kind || candidate.source.id !== first.source.id
             || candidate.source.sqlName !== first.source.sqlName

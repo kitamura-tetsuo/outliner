@@ -54,7 +54,7 @@ import {
 import { buildGridCopyPayload, commitGridPaste, planGridPaste, type GridPastePlan } from "../../services/yjstable/gridClipboard";
 import { cellComponentFor, cellComponentTypeFor } from "./cellComponents";
 import { draftHasLineBreak, textLineBreakPolicy, type TextLineBreakPolicy } from "./textCellLineBreakPolicy";
-import { unambiguousRowSource, type ProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
+import { unambiguousPhysicalColumn, unambiguousRowSource, type ProjectQueryProvenance } from "../../../../shared/src/services/projectQueryProvenance";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { onDestroy, onMount, untrack } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
@@ -1235,7 +1235,17 @@ function lineBreakPolicyFor(column: string, rowTarget?: GridCommandRowTarget): T
     const resolvedSource = mutationProvenance && rowTarget
         ? unambiguousRowSource(mutationProvenance, rowTarget.row)?.source
         : undefined;
-    return textLineBreakPolicy({ grid: grid !== undefined, column, resolvedSource, physicalColumns: mutationPhysicalColumns, rawTableColumn: columnByName.get(column) });
+    const resolvedPhysicalColumn = mutationProvenance && resolvedSource
+        ? unambiguousPhysicalColumn(mutationProvenance, resolvedSource.sqlName, column)
+        : undefined;
+    return textLineBreakPolicy({
+        grid: grid !== undefined,
+        column,
+        resolvedSource,
+        resolvedPhysicalColumn,
+        physicalColumns: mutationPhysicalColumns,
+        rawTableColumn: columnByName.get(column),
+    });
 }
 
 async function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue, textOrigin = false) {
@@ -1823,6 +1833,7 @@ function handleCancelDelete() {
     own, so Grid's own Ctrl/Cmd+C/V handling (FTR-5192) is never raced or
     double-handled by the item-level clipboard.
 -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="yjs-table-grid"
     class:pan-armed={panArmed}

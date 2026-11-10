@@ -60,9 +60,11 @@ for (const mutation of ["delete", "query", "unchanged", "unavailable"] as const)
                     ],
                     clipboard: await Promise.all((await navigator.clipboard.read()).map(async item => ({
                         types: item.types,
-                        data: await Promise.all(item.types.map(async type =>
-                            Array.from(new Uint8Array(await (await item.getType(type)).arrayBuffer()))
-                        )),
+                        data: await Promise.all(
+                            item.types.map(async type =>
+                                Array.from(new Uint8Array(await (await item.getType(type)).arrayBuffer()))
+                            ),
+                        ),
                     }))),
                 };
             });

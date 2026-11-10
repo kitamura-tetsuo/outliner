@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
 import type { Item } from "../../../schema/app-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
-import { store as generalStore } from "../../../stores/store.svelte";
 import type { GeneralStore } from "../../../stores/store.svelte";
+import { store as generalStore } from "../../../stores/store.svelte";
 
 // Mock the stores
 vi.mock("../../../stores/EditorOverlayStore.svelte", () => {

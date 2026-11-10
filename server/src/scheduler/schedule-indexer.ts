@@ -228,14 +228,16 @@ export function computeNextRunAt(
             return { next_run_at: null, state: "exhausted", nextSeq: cursorSeq };
         }
 
-        const dt = earlierLocalInstant(DateTime.fromObject({
-            year: (nextDate as Date).getUTCFullYear(),
-            month: (nextDate as Date).getUTCMonth() + 1,
-            day: (nextDate as Date).getUTCDate(),
-            hour: (nextDate as Date).getUTCHours(),
-            minute: (nextDate as Date).getUTCMinutes(),
-            second: (nextDate as Date).getUTCSeconds(),
-        }, { zone: timezoneStr }));
+        const dt = earlierLocalInstant(
+            DateTime.fromObject({
+                year: (nextDate as Date).getUTCFullYear(),
+                month: (nextDate as Date).getUTCMonth() + 1,
+                day: (nextDate as Date).getUTCDate(),
+                hour: (nextDate as Date).getUTCHours(),
+                minute: (nextDate as Date).getUTCMinutes(),
+                second: (nextDate as Date).getUTCSeconds(),
+            }, { zone: timezoneStr }),
+        );
 
         return { next_run_at: dt.toUTC().toISO(), state: "active", nextSeq: cursorSeq };
     } catch (err: unknown) {
@@ -274,14 +276,16 @@ export function computeOccurrencesAfter(
     }) as RRule;
     const occurrences: string[] = [];
     rule.all(date => {
-        const local = earlierLocalInstant(DateTime.fromObject({
-            year: date.getUTCFullYear(),
-            month: date.getUTCMonth() + 1,
-            day: date.getUTCDate(),
-            hour: date.getUTCHours(),
-            minute: date.getUTCMinutes(),
-            second: date.getUTCSeconds(),
-        }, { zone: timezoneStr }));
+        const local = earlierLocalInstant(
+            DateTime.fromObject({
+                year: date.getUTCFullYear(),
+                month: date.getUTCMonth() + 1,
+                day: date.getUTCDate(),
+                hour: date.getUTCHours(),
+                minute: date.getUTCMinutes(),
+                second: date.getUTCSeconds(),
+            }, { zone: timezoneStr }),
+        );
         const expected = DateTime.fromJSDate(date, { zone: "utc" }).toFormat("yyyy-MM-dd'T'HH:mm:ss");
         if (!local.isValid || local.toFormat("yyyy-MM-dd'T'HH:mm:ss") !== expected) return true;
         const iso = local.toUTC().toISO()!;

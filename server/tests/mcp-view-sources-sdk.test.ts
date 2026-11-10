@@ -58,10 +58,8 @@ describe("source-independent Grid through the production SDK endpoint", function
                     expect(placements.map(item => item.id)).to.deep.equal([created.placementId]);
                 });
                 const audit = (await auditRecords([operationId])).filter(record => record.tool === "create_grid");
-                expect(audit.map(record => [record.applied, record.replayed])).to.deep.equal([[false, false], [
-                    true,
-                    false,
-                ], [true, true]]);
+                expect(audit.map(record => [record.applied, record.replayed])).to.deep.equal([[false, false], [true,
+                    false], [true, true]]);
                 expect(audit[2].entity).to.equal(`grid:${created.gridId}`);
             }
         } finally {

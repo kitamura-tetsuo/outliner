@@ -6,7 +6,9 @@
     "typescript": {
         "semiColons": "always",
         "quoteStyle": "preferDouble",
-        "trailingCommas": "onlyMultiLine"
+        "trailingCommas": "onlyMultiLine",
+        "arguments.preferHanging": "always",
+        "arrayExpression.preferHanging": "always"
     },
     "json": {},
     "excludes": [

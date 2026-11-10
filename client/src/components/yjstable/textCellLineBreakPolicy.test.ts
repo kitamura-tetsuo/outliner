@@ -21,6 +21,7 @@ describe("textLineBreakPolicy", () => {
                 grid: true,
                 column: "value",
                 resolvedSource: source,
+                resolvedPhysicalColumn: "body",
                 physicalColumns: [physical(dataType)],
             }),
         )
@@ -32,6 +33,7 @@ describe("textLineBreakPolicy", () => {
                 grid: true,
                 column: "value",
                 resolvedSource: source,
+                resolvedPhysicalColumn: "body",
                 physicalColumns: [physical("uuid")],
             }).kind,
         ).toBe("forbidden");
@@ -40,10 +42,19 @@ describe("textLineBreakPolicy", () => {
                 grid: true,
                 column: "value",
                 resolvedSource: source,
+                resolvedPhysicalColumn: "body",
                 physicalColumns: [physical("text", { source: { ...source, kind: "system" } })],
             }).kind,
         ).toBe("unavailable");
-        expect(textLineBreakPolicy({ grid: true, column: "value", resolvedSource: source, physicalColumns: [] }).kind)
+        expect(
+            textLineBreakPolicy({
+                grid: true,
+                column: "value",
+                resolvedSource: source,
+                resolvedPhysicalColumn: "body",
+                physicalColumns: [],
+            }).kind,
+        )
             .toBe(
                 "unavailable",
             );
@@ -52,9 +63,28 @@ describe("textLineBreakPolicy", () => {
                 grid: true,
                 column: "value",
                 resolvedSource: source,
+                resolvedPhysicalColumn: "body",
                 physicalColumns: [physical("text"), physical("text", { physicalColumn: "other" })],
             }).kind,
         ).toBe("unavailable");
+    });
+    it("denies line breaks when another proven branch omits or computes the output mapping", () => {
+        expect(textLineBreakPolicy({
+            grid: true,
+            column: "value",
+            resolvedSource: source,
+            // The metadata resolver flattened the direct branch's mapping, but
+            // the authoritative branch resolver saw the computed sibling.
+            resolvedPhysicalColumn: undefined,
+            physicalColumns: [physical("text")],
+        }).kind).toBe("unavailable");
+        expect(textLineBreakPolicy({
+            grid: true,
+            column: "value",
+            resolvedSource: source,
+            resolvedPhysicalColumn: "different_field",
+            physicalColumns: [physical("text")],
+        }).kind).toBe("unavailable");
     });
     it("uses the applied schema only for an explicit raw Table browser", () => {
         expect(

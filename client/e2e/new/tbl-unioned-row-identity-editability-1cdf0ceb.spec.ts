@@ -134,11 +134,16 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         await itemRow.locator('td[data-col="text"] .cell-value').click();
         const itemEditor = itemRow.locator('td[data-col="text"] textarea.cell-input');
         await itemEditor.fill("Ship the feature", { force: true });
-        await itemEditor.evaluate(node => node.setSelectionRange(5, 8));
+        await itemEditor.evaluate(node => (node as HTMLTextAreaElement).setSelectionRange(5, 8));
         await itemEditor.press("Alt+Enter");
         await expect(itemEditor).toHaveValue("Ship the feature");
         await expect(itemEditor).toBeFocused();
-        await expect.poll(() => itemEditor.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([5, 8]);
+        await expect.poll(() =>
+            itemEditor.evaluate(node => [
+                (node as HTMLTextAreaElement).selectionStart,
+                (node as HTMLTextAreaElement).selectionEnd,
+            ])
+        ).toEqual([5, 8]);
         await expect(itemRow.getByRole("alert")).toContainText("does not accept line breaks");
         await itemEditor.fill(
             "Ship the redesigned feature",

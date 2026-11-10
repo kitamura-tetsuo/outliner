@@ -19,8 +19,8 @@ import {
     removeRowTargets,
     summarizeSelection,
 } from "./gridSelectionCommands";
-import { TABLE_RELATION_CAPABILITIES } from "./relationProvider";
 import type { RelationProvider, RelationWrite } from "./relationProvider";
+import { TABLE_RELATION_CAPABILITIES } from "./relationProvider";
 import { addRecord, createTable, getTableHandles, type TableHandles } from "./tableDocs";
 
 const COLUMNS = ["name", "done", "status", "score"];

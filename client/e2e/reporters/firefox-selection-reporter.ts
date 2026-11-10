@@ -136,11 +136,12 @@ export default class FirefoxSelectionReporter implements Reporter {
                         counts: {
                             expected: expectedCollectionCount(),
                             collected: cases.length,
-                            executed: cases.filter(test =>
-                                test.attempts.some(attempt =>
-                                    attempt.workerIndex >= 0 && attempt.status !== "skipped"
-                                )
-                            ).length,
+                            executed:
+                                cases.filter(test =>
+                                    test.attempts.some(attempt =>
+                                        attempt.workerIndex >= 0 && attempt.status !== "skipped"
+                                    )
+                                ).length,
                             passed: cases.filter(test =>
                                 test.expectedStatus === "passed"
                                 && test.attempts[test.attempts.length - 1]?.status === "passed"

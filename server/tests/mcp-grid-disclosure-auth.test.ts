@@ -35,9 +35,11 @@ describe("Grid final diagnostic disclosure authorization", function() {
                 const pending = f.call("create_grid", args);
                 await gate.started.promise;
                 if (failure === "deny") f.access.allowed = false;
-                else {f.access.checked = () => {
+                else {
+                    f.access.checked = () => {
                         throw new Error("private ACL lookup");
-                    };}
+                    };
+                }
                 gate.release.resolve();
                 const result = await pending;
                 expect(result.payload.code).to.equal("forbidden");

@@ -17,8 +17,8 @@
 // resolves to `undefined`, which is what makes "this row is not addressable
 // as an outline item" answerable without throwing.
 
-import { Item } from "../../schema/app-schema";
 import type { Project } from "../../schema/app-schema";
+import { Item } from "../../schema/app-schema";
 import { safeGetNodeParent } from "../../utils/treeUtils";
 
 /** Depth bound; only ever reached if a malformed parent history introduced a cycle. */

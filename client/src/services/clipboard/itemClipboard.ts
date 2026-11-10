@@ -472,9 +472,8 @@ export function isGridSnapshotMap(value: unknown): value is Record<string, GridS
     return Object.entries(value).every(([id, snapshot]) => {
         if (
             !isRecord(snapshot) || snapshot.gridId !== id || !id || typeof snapshot.name !== "string"
-            || !Array.isArray(snapshot.tableIds) || !snapshot.tableIds.every(id =>
-                typeof id === "string" && id.length > 0
-            )
+            || !Array.isArray(snapshot.tableIds)
+            || !snapshot.tableIds.every(id => typeof id === "string" && id.length > 0)
         ) return false;
         const { gridId: _gridId, name: _name, tableIds: _tableIds, ...settings } = snapshot;
         return isGridUiDefinitionDto(settings);

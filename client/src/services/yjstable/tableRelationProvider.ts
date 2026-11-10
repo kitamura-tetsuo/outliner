@@ -6,6 +6,7 @@
 // sync adapter already did: the adapter builds the relation from the applied
 // schema, and this provider only reports whether that succeeded.
 
+import type { RelationEvidence } from "./relationProvider";
 import {
     assertWriteAllowed,
     type RelationCapabilities,
@@ -14,7 +15,6 @@ import {
     RelationWriteError,
     TABLE_RELATION_CAPABILITIES,
 } from "./relationProvider";
-import type { RelationEvidence } from "./relationProvider";
 import { addRecord, deleteRecord, setRecordValue, type TableHandles, type TableRecordValue } from "./tableDocs";
 import type { TableSyncAdapter } from "./tableSyncAdapter";
 

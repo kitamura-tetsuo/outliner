@@ -1,9 +1,9 @@
 import type * as Y from "yjs";
-import { unambiguousRowSource } from "../../../../shared/src/services/projectQueryProvenance";
 import type {
     ProjectQueryProvenance,
     ProvenanceRelation,
 } from "../../../../shared/src/services/projectQueryProvenance";
+import { unambiguousRowSource } from "../../../../shared/src/services/projectQueryProvenance";
 import { isProjectQueryProvenanceCurrent } from "../../../../shared/src/services/projectQueryProvenance";
 import type { GridMetadataResolution, GridPhysicalColumnMetadata } from "./gridMetadataResolver";
 import type { ProjectSelectEvidence, ProjectSelectSession } from "./projectSelectSession";
