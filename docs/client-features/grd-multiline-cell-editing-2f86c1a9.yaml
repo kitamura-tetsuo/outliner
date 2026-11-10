@@ -13,6 +13,7 @@ files:
 - client/src/components/yjstable/cells/TextCell.svelte
 - client/src/components/yjstable/textCellLineBreakPolicy.ts
 tests:
+- client/e2e/tables/grd-multiline-editor-reflow-2f86c1a9.spec.ts
 - client/e2e/new/grd-bare-id-matched-source-persistence-5515cafe.spec.ts
 - client/e2e/new/tbl-unioned-row-identity-editability-1cdf0ceb.spec.ts
 - client/e2e/tables/tbl-grid-keyboard-edit-mode-5188.spec.ts
