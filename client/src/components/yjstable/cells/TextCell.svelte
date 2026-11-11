@@ -124,7 +124,11 @@ onMount(() => () => { finished = true; });
         oncompositionend={() => requestAnimationFrame(resize)}
         onblur={(event) => finish(event.currentTarget)}
         onkeydown={(event) => {
-            if (event.isComposing) return;
+            if (event.isComposing || event.keyCode === 229) {
+                // An IME confirmation Enter must not insert a textarea newline or commit.
+                if (event.key === "Enter") event.preventDefault();
+                return;
+            }
             if (event.key === "Enter" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
                 event.preventDefault();
                 if (lineBreakPolicy?.kind !== "allowed") return reject(event.currentTarget, false);

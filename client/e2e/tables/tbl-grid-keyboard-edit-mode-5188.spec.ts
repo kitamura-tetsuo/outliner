@@ -120,6 +120,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
         async ({ page, browserName }) => {
             const titleCell = taskRow(page, firstRowId).locator("td[data-col='title']");
             const before = await readGridProjectState(page);
+            const beforeItems = await page.locator(".outliner-item[data-item-id]").count();
             await titleCell.locator("button.cell-value").click();
             const editor = titleCell.locator("textarea.cell-input");
             await editor.fill("");
@@ -138,6 +139,10 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
                     await page.keyboard.press("Enter");
                     await expect(editor).toHaveValue("日本語");
                     await expect(editor).toBeFocused();
+                    // The browser's IME commit completes composition without
+                    // inserting a second copy or an extra hard break.
+                    await cdp.send("Input.insertText", { text: "日本語" });
+                    await expect(editor).toHaveValue("日本語");
                 } finally {
                     await cdp.detach();
                 }
@@ -147,6 +152,7 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
                 await expect(editor).toHaveValue("日本語");
             }
             expect(await readGridProjectState(page)).toEqual(before);
+            expect(await page.locator(".outliner-item[data-item-id]").count()).toBe(beforeItems);
             await editor.press("Enter");
             await expect(titleCell.locator("textarea.cell-input")).toHaveCount(0);
             await expect(titleCell.locator("button.cell-value")).toHaveText("日本語", { timeout: 30000 });
