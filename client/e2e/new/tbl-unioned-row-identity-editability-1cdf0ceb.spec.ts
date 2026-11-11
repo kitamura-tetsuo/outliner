@@ -24,7 +24,7 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         });
     });
 
-    test("a UNION carrying source_kind/source_id is editable, and edits reach the right relation and row", async ({ page }) => {
+    test("a UNION carrying source_kind/source_id is editable, and edits reach the right relation and row", async ({ page, browserName }) => {
         // A table whose own columns match the calendar projection's shape, so
         // the same result columns can be written back on either side.
         await page.locator(".outliner-item").first().click();
@@ -152,6 +152,27 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         });
         await itemEditor.dispatchEvent("drop", { dataTransfer: transfer });
         await transfer.dispose();
+        // Exercise the Chromium browser's drag input pipeline, not only a
+        // manually dispatched DOM DropEvent. It must not mutate the outline item.
+        if (browserName === "chromium") {
+            const rect = await itemEditor.boundingBox();
+            expect(rect).not.toBeNull();
+            const cdp = await page.context().newCDPSession(page);
+            try {
+                const drag = {
+                    items: [{ mimeType: "text/plain", data: "Native\r\ndrop refusal" }],
+                    files: [],
+                    dragOperationsMask: 1,
+                };
+                const x = rect!.x + rect!.width / 2;
+                const y = rect!.y + rect!.height / 2;
+                for (const type of ["dragEnter", "dragOver", "drop"] as const) {
+                    await cdp.send("Input.dispatchDragEvent", { type, x, y, data: drag });
+                }
+            } finally {
+                await cdp.detach();
+            }
+        }
         await expect(itemEditor).toHaveValue("Ship the feature");
         await expect(itemEditor).toBeFocused();
         await expect.poll(() =>

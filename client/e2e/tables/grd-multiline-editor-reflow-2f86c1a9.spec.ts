@@ -41,6 +41,16 @@ test("live multiline drafts survive real column and viewport reflow without sour
         await expect(editor).toHaveValue(draft);
         await expect(editor).toBeFocused();
         expect(await editor.evaluate(node => (node as HTMLTextAreaElement).selectionStart)).toBe(draft.length);
+        // The capped textarea must make the physical final line visible,
+        // not merely report that the selection is at the end.
+        await editor.press("Control+End");
+        const cappedTail = await editor.evaluate(node => ({
+            maxScroll: Math.max(0, node.scrollHeight - node.clientHeight),
+            scrollTop: node.scrollTop,
+        }));
+        expect(cappedTail.maxScroll).toBeGreaterThan(3);
+        expect(cappedTail.scrollTop).toBeGreaterThan(0);
+        expect(cappedTail.maxScroll - cappedTail.scrollTop).toBeLessThanOrEqual(4);
 
         await page.setViewportSize({ width: 1280, height: 900 });
         await commitWidthsProduction(page, gridId, { title: 260 });

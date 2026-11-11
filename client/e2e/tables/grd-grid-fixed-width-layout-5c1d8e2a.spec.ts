@@ -142,6 +142,7 @@ test.describe("Grid fixed widths hold inside a partial-span Layout", () => {
                 height: textarea.height,
                 scrollHeight: node.scrollHeight,
                 clientHeight: node.clientHeight,
+                scrollTop: node.scrollTop,
                 lineHeight,
                 selectionStart: (node as HTMLTextAreaElement).selectionStart,
                 cellRight: cell.right,
@@ -153,6 +154,8 @@ test.describe("Grid fixed widths hold inside a partial-span Layout", () => {
         expect(expanded.height).toBeGreaterThan(expanded.lineHeight * 3);
         expect(expanded.height).toBeLessThanOrEqual(800 * 0.4 + 1);
         expect(expanded.scrollHeight).toBeGreaterThan(expanded.clientHeight);
+        expect(expanded.scrollTop).toBeGreaterThan(0);
+        expect(expanded.scrollHeight - expanded.clientHeight - expanded.scrollTop).toBeLessThanOrEqual(4);
         expect(expanded.selectionStart).toBe(wrappedDraft.length);
         expect(expanded.textareaRight).toBeLessThanOrEqual(expanded.cellRight + 1);
         expect(expanded.textareaBottom).toBeLessThanOrEqual(expanded.rowBottom + 1);

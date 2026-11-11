@@ -44,10 +44,10 @@ test(
                 );
             const undoDepth = await page.evaluate(() => (globalThis as any).globalUndoRouter.undoDepth);
             await cell.locator("button").click();
-            await cell.locator("textarea").fill("old same-supplier intent");
+            await cell.locator("textarea").fill("old same-supplier\nintent");
             const before = await grid.getAttribute("data-mutation-incarnation");
             await query.setValue(peer, queryA);
-            await expect(cell.locator("textarea")).toHaveValue("old same-supplier intent");
+            await expect(cell.locator("textarea")).toHaveValue("old same-supplier\nintent");
             await query.commit(peer);
             await expect.poll(savedQuery).toBe(queryA);
             await expect.poll(() => grid.getAttribute("data-mutation-incarnation")).not.toBe(before);
@@ -61,7 +61,8 @@ test(
                     ?.data[fixture.recordId]?.title,
             ).toBe("Value from A");
             await cell.locator("button").click();
-            await cell.locator("textarea").fill("old ABA intent");
+            await cell.locator("textarea").fill("old ABA\nintent");
+            await expect(cell.locator("textarea")).toHaveValue("old ABA\nintent");
             await query.fillAndCommit(peer, queryB);
             await expect(grid).toHaveAttribute("data-source-table-ids", JSON.stringify([fixture.tableB.id]));
             await query.fillAndCommit(peer, queryA);
