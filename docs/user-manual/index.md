@@ -49,6 +49,7 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 The page view provides toolbars for page-specific actions. At the top right of the page header, you will find:
 
 - **Search:** Opens the "Search and Replace" (Unified Find) panel to search and replace text and grid cells within the current page.
+- **Schedule:** Opens the page schedule settings.
 - **Graph View:** Opens a visual graph representation of page links.
 
 At the bottom of the page (below the outline tree), the editor toolbar provides:
