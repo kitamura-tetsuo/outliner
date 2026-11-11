@@ -56,6 +56,23 @@ let bulkFindText = $state("");
 let bulkReplaceText = $state("");
 let relatedMenuOpen = $state(false);
 let previewOpen = $state(false);
+let dialogElement = $state<HTMLDialogElement | undefined>();
+
+$effect(() => {
+    if (previewOpen && bulkPreview.length > 0) {
+        if (dialogElement && !dialogElement.open) {
+            if (typeof HTMLDialogElement.prototype.showModal === "function") {
+                dialogElement.showModal();
+            } else {
+                dialogElement.open = true;
+            }
+        }
+    } else {
+        if (dialogElement && dialogElement.open) {
+            dialogElement.close();
+        }
+    }
+});
 let editingObjectId = $state<string | null>(null);
 let editNameInput = $state("");
 let editError = $state<string | null>(null);
@@ -631,18 +648,15 @@ function focusNode(node: HTMLElement) {
     </div>
 
     {#if previewOpen && bulkPreview.length > 0}
-        <div class="preview-overlay" role="button" tabindex="0" onclick={() => { previewOpen = false; }} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { previewOpen = false; e.preventDefault(); } }}>
-
-            <div
-                class="bulk-preview"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Bulk rename preview"
-                tabindex="-1"
-                data-testid="object-manager-bulk-preview"
-                onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === "Escape") { previewOpen = false; e.stopPropagation(); } }}
-            >
-                <h4>Preview Changes ({bulkPreview.length})</h4>
+        <dialog
+            class="bulk-preview"
+            aria-label="Bulk rename preview"
+            data-testid="object-manager-bulk-preview"
+            bind:this={dialogElement}
+            onclose={() => { previewOpen = false; }}
+            onmousedown={(e) => { if (e.target === e.currentTarget) previewOpen = false; }}
+        >
+            <h4>Preview Changes ({bulkPreview.length})</h4>
                 <ul>
                     {#each bulkPreview as preview (preview.id)}
                         <li>
@@ -666,8 +680,7 @@ function focusNode(node: HTMLElement) {
                         Apply Rename
                     </button>
                 </div>
-            </div>
-        </div>
+        </dialog>
     {/if}
 
     <table class="objects-table">
@@ -1028,18 +1041,6 @@ function focusNode(node: HTMLElement) {
     /* Fixed-position popover (issue #5135 §1): the preview never expands
        inline below the toolbar, so opening/closing it can never reflow the
        object table underneath. */
-    .preview-overlay {
-        position: fixed;
-        inset: 0;
-        /* Above the app's own fixed toolbar (z-index: 10000, Toolbar.svelte). */
-        z-index: 10060;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(17, 24, 39, 0.4);
-        padding: 1rem;
-    }
-
     .bulk-preview {
         width: 100%;
         max-width: 32rem;
@@ -1049,6 +1050,11 @@ function focusNode(node: HTMLElement) {
         border-radius: 8px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         padding: 1.25rem;
+        border: none;
+    }
+
+    .bulk-preview::backdrop {
+        background: rgba(17, 24, 39, 0.4);
     }
 
     .bulk-preview h4 {
