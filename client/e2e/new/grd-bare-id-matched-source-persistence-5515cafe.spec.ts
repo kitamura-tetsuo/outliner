@@ -95,6 +95,7 @@ test("unchanged native textarea editing preserves a pre-existing canonical CRLF 
 test("a saved same-Table UNION refuses multiline drafts when one branch computes the aliased value",
     async ({ page }, testInfo) => {
         test.setTimeout(240000);
+        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
         const fixture = await seedOverlappingTableFixture(page, testInfo);
         const queryEditor = new SqlEditorHelper(fixture.gridA.getByTestId("yjs-table-query-input"));
         await queryEditor.fillAndCommit(
@@ -116,9 +117,13 @@ test("a saved same-Table UNION refuses multiline drafts when one branch computes
                     hasText: displayedValue.endsWith("!") ? /^Value from A!$/ : /^Value from A$/,
                 }),
             });
-            const cell = row.locator('td[data-col="value"]');
+            // Keep the occurrence locator stable after editing replaces its button.
+            const rowId = await row.locator('td[data-col="value"]').getAttribute("data-row-id");
+            expect(rowId).toBeTruthy();
+            const cell = grid.locator(`td[data-row-id="${rowId}"][data-col="value"]`);
             await cell.locator("button.cell-value").click();
             const editor = cell.locator("textarea.cell-input");
+            await expect(editor).toBeVisible({ timeout: 30000 });
             await editor.fill("selection remains");
             await editor.evaluate(node => (node as HTMLTextAreaElement).setSelectionRange(1, 5));
             await editor.press("Alt+Enter");
@@ -130,7 +135,7 @@ test("a saved same-Table UNION refuses multiline drafts when one branch computes
                     (node as HTMLTextAreaElement).selectionEnd,
                 ])
             ).toEqual([1, 5]);
-            await expect(row.getByRole("alert")).toContainText("does not accept line breaks");
+            await expect(cell.getByRole("alert")).toContainText("does not accept line breaks");
 
             await page.evaluate(() => navigator.clipboard.writeText("one\r\ntwo"));
             await editor.press("Control+V");

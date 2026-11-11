@@ -263,7 +263,8 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             });
             return { dispatched: node.dispatchEvent(event), prevented: event.defaultPrevented };
         });
-        expect(composingEnter).toEqual({ dispatched: true, prevented: false });
+        // The textarea consumes the native newline; Grid panning must remain inactive.
+        expect(composingEnter).toEqual({ dispatched: false, prevented: true });
         await expect(editor).toHaveValue("Alpha中");
         await expect(editor).toBeFocused();
         await cdp.send("Input.insertText", { text: "中" });

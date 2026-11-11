@@ -32,9 +32,12 @@ function resize() {
     const chrome = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom)
         + Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
     const cap = Math.max(0, viewportHeight * 0.4);
+    const wasAtBottom = textarea.scrollHeight - textarea.clientHeight - textarea.scrollTop <= 4;
     textarea.style.height = "0px";
     textarea.style.height = `${Math.min(cap, Math.max(3 * lineHeight + chrome, textarea.scrollHeight))}px`;
     textarea.style.overflowY = textarea.scrollHeight > textarea.clientHeight + 1 ? "auto" : "hidden";
+    // Keep the end visible after reflow only if the user was already reading the end.
+    if (wasAtBottom && textarea.scrollHeight > textarea.clientHeight + 1) textarea.scrollTop = textarea.scrollHeight;
 }
 function focusAndSize(node: HTMLTextAreaElement) {
     const generation = ++sessionGeneration;
