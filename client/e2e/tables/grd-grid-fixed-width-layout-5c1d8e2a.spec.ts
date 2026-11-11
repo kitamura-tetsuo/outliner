@@ -111,8 +111,15 @@ test.describe("Grid fixed widths hold inside a partial-span Layout", () => {
         expect(await grid.evaluate((el: HTMLElement) => el.scrollLeft)).toBeGreaterThan(0);
         expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= 481)).toBe(true);
         const narrowNeighbor = await neighborCell.boundingBox();
+        const narrowGridCell = await gridCell.boundingBox();
         expect(narrowNeighbor).not.toBeNull();
+        expect(narrowGridCell).not.toBeNull();
         expect(narrowNeighbor!.x + narrowNeighbor!.width).toBeLessThanOrEqual(481);
+        // A partial-span Layout may stack its cells at narrow viewport widths.
+        // Record the production layout orientation before opening the editor.
+        const baselineSideBySide = narrowNeighbor!.x >= narrowGridCell!.x + narrowGridCell!.width - 2;
+        const baselineStacked = narrowNeighbor!.y >= narrowGridCell!.y + narrowGridCell!.height - 2;
+        expect(baselineSideBySide || baselineStacked).toBe(true);
         expect((await storedSpans(page)).map((entry) => entry.span)).toEqual([6, 6]);
 
         // Focusing an inline editor inside the Layout keeps every fixed track.
@@ -153,7 +160,11 @@ test.describe("Grid fixed widths hold inside a partial-span Layout", () => {
         const activeGridCell = await gridCell.boundingBox();
         expect(activeNeighbor).not.toBeNull();
         expect(activeGridCell).not.toBeNull();
-        expect(activeNeighbor!.x).toBeGreaterThanOrEqual(activeGridCell!.x + activeGridCell!.width - 2);
+        if (baselineSideBySide) {
+            expect(activeNeighbor!.x).toBeGreaterThanOrEqual(activeGridCell!.x + activeGridCell!.width - 2);
+        } else {
+            expect(activeNeighbor!.y).toBeGreaterThanOrEqual(activeGridCell!.y + activeGridCell!.height - 2);
+        }
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
         await textEditor.fill("short again");
