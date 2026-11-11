@@ -118,36 +118,40 @@ test.describe("Grid keyboard edit mode (#5188)", () => {
 
     test("Chromium IME confirmation keeps the native multiline editor open until the next ordinary Enter",
         async ({ page, browserName }) => {
-            test.skip(browserName !== "chromium", "A real CDP IME candidate pipeline requires Chromium.");
             const titleCell = taskRow(page, firstRowId).locator("td[data-col='title']");
             const before = await readGridProjectState(page);
             await titleCell.locator("button.cell-value").click();
             const editor = titleCell.locator("textarea.cell-input");
             await editor.fill("");
             await expect(editor).toBeFocused();
-            const cdp = await page.context().newCDPSession(page);
-            try {
-                // Browser-generated composition events and an actual IME
-                // confirmation key, rather than manually dispatched DOM events.
-                await cdp.send("Input.imeSetComposition", {
-                    text: "日本語",
-                    selectionStart: 3,
-                    selectionEnd: 3,
-                });
+            if (browserName === "chromium") {
+                const cdp = await page.context().newCDPSession(page);
+                try {
+                    // Browser-generated composition events and an actual IME
+                    // confirmation key, rather than manually dispatched DOM events.
+                    await cdp.send("Input.imeSetComposition", {
+                        text: "日本語",
+                        selectionStart: 3,
+                        selectionEnd: 3,
+                    });
+                    await expect(editor).toHaveValue("日本語");
+                    await page.keyboard.press("Enter");
+                    await expect(editor).toHaveValue("日本語");
+                    await expect(editor).toBeFocused();
+                } finally {
+                    await cdp.detach();
+                }
+            } else {
+                // Keep the ordinary native text-input assertion on other engines.
+                await page.keyboard.insertText("日本語");
                 await expect(editor).toHaveValue("日本語");
-                await page.keyboard.press("Enter");
-                await expect(editor).toHaveValue("日本語");
-                await expect(editor).toBeFocused();
-                expect(await readGridProjectState(page)).toEqual(before);
-
-                await editor.press("Enter");
-                await expect(titleCell.locator("textarea.cell-input")).toHaveCount(0);
-                await expect(titleCell.locator("button.cell-value")).toHaveText("日本語", { timeout: 30000 });
-                await expect.poll(async () => (await readGridProjectState(page)).tables[0].data[firstRowId]?.title)
-                    .toBe("日本語");
-            } finally {
-                await cdp.detach();
             }
+            expect(await readGridProjectState(page)).toEqual(before);
+            await editor.press("Enter");
+            await expect(titleCell.locator("textarea.cell-input")).toHaveCount(0);
+            await expect(titleCell.locator("button.cell-value")).toHaveText("日本語", { timeout: 30000 });
+            await expect.poll(async () => (await readGridProjectState(page)).tables[0].data[firstRowId]?.title)
+                .toBe("日本語");
         });
 
     test("a focused select cell keeps native arrow-key behavior instead of navigating the grid", async ({ page }) => {
