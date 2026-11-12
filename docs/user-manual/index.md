@@ -16,8 +16,7 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 10. [Layouts](#layouts)
 11. [Database Tables](#database-tables)
 12. [Calendars](#calendars)
-13. [Kanban](#kanban)
-14. [Keyboard Shortcuts](#keyboard-shortcuts)
+13. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -158,7 +157,7 @@ Easily find content and execute actions within Outliner.
 
 - **Search pages:** Use the **Search pages** input in the main top header to quickly search across the whole project. Recent searches are remembered for quick access.
 - **Unified Find (Search and Replace):** Click the **Search** button at the top right of the page to open Find on this page. It searches outline text and every visible Grid result cell in one session. The search panel includes advanced options such as **Regex**, **Case Sensitive**, and **Whole Word**, as well as an option to **Include page titles**. Use the **Scope** dropdown to search across the entire **Project text**, the current **Page**, or choose **Selection** to constrain Grid hits to the selected logical cells. Replace and Replace All work the same way across both: a writable Grid cell is replaced through the table's own write path, while a computed or read-only cell stays searchable but is never overwritten. Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query result, including rows outside the viewport. Sorting keeps selected records attached to their ids.
-- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Kanban, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
+- **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Grid, a Calendar, a Layout, a Mermaid diagram, a transclusion, or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
@@ -219,8 +218,8 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Mermaid Diagrams:** A Diagram is a project-owned Mermaid source. It keeps its own identity in the project's diagrams registry, and any page can transclude it. Type `/New Mermaid diagram` on an empty item to create one, or `/Insert transclusion` to reuse an existing Diagram.
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
-- **Dependency-aware duplication:** Grid, Kanban, Table, and Calendar copies can include referenced, referencing, or all connected objects recursively—a duplicated Calendar brings along every Table its query reads. The confirmation previews the object count and omitted references; Table copies can include or omit their rows, and cross-project copies clear excluded links.
-- **Object Manager:** open it from the sidebar to browse every Grid, Kanban, Calendar, and Table in this project. Each Grid/Kanban/Calendar row lists the Pages it is directly placed on — click one to jump straight to that block. Click a name to rename it in place; select several objects and use the compact toolbar's literal find/replace, whose before/after preview opens as a popover so the object list never shifts; delete is undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the same dependency graph duplication uses — Dependencies, Dependents, or All connected — so selecting one Table and choosing Dependents adds every Grid, Kanban, and Calendar that reads it. "Duplicate selected" then copies exactly that checked set — never a recomputed scope — into this or another project, with the same undo/redo as the rest of the toolbar; an individual Grid/Kanban/Table/Calendar page's own Duplicate button opens Object Manager with it preselected instead of asking for a scope itself. Use "Place on Page…" or drag a Grid/Calendar row onto a sidebar Page to add another placement of that existing object without duplicating its definition.
+- **Dependency-aware duplication:** Grid, Table, and Calendar copies can include referenced, referencing, or all connected objects recursively—a duplicated Calendar brings along every Table its query reads. The confirmation previews the object count and omitted references; Table copies can include or omit their rows, and cross-project copies clear excluded links.
+- **Object Manager:** open it from the sidebar to browse every Grid, Calendar, and Table in this project. Each Grid/Calendar row lists the Pages it is directly placed on — click one to jump straight to that block. Click a name to rename it in place; select several objects and use the compact toolbar's literal find/replace, whose before/after preview opens as a popover so the object list never shifts; delete is undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the same dependency graph duplication uses — Dependencies, Dependents, or All connected — so selecting one Table and choosing Dependents adds every Grid and Calendar that reads it. "Duplicate selected" then copies exactly that checked set — never a recomputed scope — into this or another project, with the same undo/redo as the rest of the toolbar; an individual Grid/Table/Calendar page's own Duplicate button opens Object Manager with it preselected instead of asking for a scope itself. Use "Place on Page…" or drag a Grid/Calendar row onto a sidebar Page to add another placement of that existing object without duplicating its definition.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 
@@ -232,11 +231,11 @@ A Layout arranges visual blocks side by side. It is a normal outline item that o
 
 - **Grid System:** The Layout is a fixed 12-column grid. Each block inside it stores only how many columns it spans (1 to 12); rows and columns follow from that span plus the block's position in the outline.
 - **Tree Ordering:** Nothing else about placement is saved — no coordinates, row numbers or pixel widths — so reordering the blocks is an ordinary tree reorder and the arrangement follows.
-- **Allowed Content:** Only visual blocks (Database, Kanban, and Calendar) may sit directly inside a Layout. Ordinary text and a Layout inside a Layout are refused, so text editing stays one-dimensional.
+- **Allowed Content:** Only visual blocks (Database and Calendar) may sit directly inside a Layout. Ordinary text and a Layout inside a Layout are refused, so text editing stays one-dimensional.
 - **Resizing:** Drag the handle at a block's right edge to change its span a whole column at a time, or use the − / + buttons; the same control takes the arrow keys from the keyboard.
 - **Stacking:** When the Layout gets too narrow for side-by-side reading, the blocks stack one per row in outline order — the stored spans stay as they are and come back with the width.
 - **Removing Layout:** Right-click the Layout for "Remove layout (keep blocks)": the blocks move up to the Layout's position and the container alone is removed, unlike "Delete item", which takes the whole subtree.
-- **Creation:** Type `/Layout` on an empty item to create one, then drag a Database, Kanban, or Calendar block onto it. An empty Layout stays where it is, ready for the next block.
+- **Creation:** Type `/Layout` on an empty item to create one, then drag a Database or Calendar block onto it. An empty Layout stays where it is, ready for the next block.
 
 ## Database Tables
 
@@ -290,7 +289,7 @@ Choose a destination Page when duplicating, or drag a Grid's outline handle to a
 
 ### Tables, Grids, and Calendars are separate
 
-A table, a grid, a kanban, and a calendar are four independent things, and each has its own management page.
+A table, a grid, and a calendar are three independent things, and each has its own management page.
 
 - **Table** (`/-/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
 - **Grid** (`/-/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
@@ -315,15 +314,6 @@ A calendar is a query plus a role assignment over its result columns — which c
 - **Safe Operations:** "New entry" always asks which page to create it under — there is no implicit inbox — and offers previously used destinations first. Deleting an entry always prompts between removing it and just clearing its date, so a keystroke never silently discards writing.
 
 ---
-
-## Kanban
-
-A Kanban board visualizes your table data as cards grouped into lanes based on a specific column. Like a calendar or a grid, it is an independent view that does not own data itself, but rather presents data from an underlying table.
-
-- **Creation:** Type `/Kanban` on an empty item to create one, then select the table to use.
-- **Lanes:** The lanes are defined by the unique values in the grouping column you select.
-- **Drag and Drop:** You can drag and drop cards between lanes to update their status (which updates the grouping field).
-- **Independent Identity:** Kanban definitions keep their own identity and settings, and can be placed on multiple pages.
 
 ## Keyboard Shortcuts
 
