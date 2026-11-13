@@ -12,7 +12,7 @@
         "@dprint/json": "0.26.0",
         "@dprint/markdown": "0.29.0",
         "@dprint/toml": "0.10.0",
-        "@dprint/typescript": "0.99.1",
+        "@dprint/typescript": "0.99.2",
         "dprint": "0.64.3",
         "dprint-plugin-malva": "0.16.0",
         "dprint-plugin-markup": "0.27.6",
