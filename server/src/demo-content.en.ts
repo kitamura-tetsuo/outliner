@@ -467,7 +467,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "Grid tip: focus a cell or header, then hold Space and left-drag to pan wide Grids horizontally. Space still types normally inside an open cell editor.",
+                            "Grid tip: focus a cell or header, then hold Space and left-drag to pan wide Grids horizontally. On touch, long-press a cell for range mode and hold either blue handle at an edge to extend the selection into hidden columns. Space still types normally inside an open cell editor.",
                     },
                     {
                         componentType: "yjstable",
