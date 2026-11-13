@@ -1,5 +1,5 @@
 import { createSqlCatalogObject, replaceSqlCatalogSource } from "$shared/services/sqlCatalog";
-import { fireEvent, render } from "@testing-library/svelte";
+import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
@@ -22,7 +22,12 @@ afterEach(async () => {
 });
 afterAll(resetPgliteForTests);
 
-async function setup(component: "text" | "select", withNext = false) {
+async function setup(
+    component: "text" | "select",
+    withNext = false,
+    stateDefinition = "task_state",
+    stateValue = "Open",
+) {
     const doc = new Y.Doc({ guid: "catalog-cell-edit-authority" });
     const catalogDoc = doc as unknown as Parameters<typeof createSqlCatalogObject>[0];
     const catalogId = createSqlCatalogObject(catalogDoc, "enum", "CREATE TYPE task_state AS ENUM ('Open', 'Closed')");
@@ -30,9 +35,9 @@ async function setup(component: "text" | "select", withNext = false) {
     const handles = getTableHandles(doc, tableId)!;
     setSchemaText(
         handles,
-        `CREATE TABLE tasks (id TEXT PRIMARY KEY, state task_state${withNext ? ", next task_state" : ""})`,
+        `CREATE TABLE tasks (id TEXT PRIMARY KEY, state ${stateDefinition}${withNext ? ", next task_state" : ""})`,
     );
-    addRecord(handles, withNext ? { state: "Open", next: "Open" } : { state: "Open" }, "r1");
+    addRecord(handles, withNext ? { state: stateValue, next: "Open" } : { state: stateValue }, "r1");
     const session = createTableEngineSession({ projectDoc: doc, projectId: doc.guid, connect: localConnector });
     const acquired = await session.acquire(tableId);
     const adapter = acquired!.adapter;
@@ -74,6 +79,28 @@ async function setup(component: "text" | "select", withNext = false) {
 }
 
 describe("catalog authority through actual cell callbacks", { timeout: 90_000 }, () => {
+    it("refuses a bypassed multiline UUID draft at the final TextCell commit boundary", async () => {
+        const original = "123e4567-e89b-12d3-a456-426614174000";
+        const f = await setup("text", false, "UUID", original);
+        const before = Y.encodeStateAsUpdate(f.handles.doc);
+
+        await fireEvent.click(f.cell().querySelector("button")!);
+        const editor = f.cell().querySelector<HTMLTextAreaElement>("textarea")!;
+        // Bypass beforeinput/input admission just as a missed browser insertion path
+        // would, so this test reaches TableGrid's independent final safeguard.
+        editor.value = `${original}\nnot-a-second-line`;
+        await fireEvent.keyDown(editor, { key: "Enter" });
+
+        expect(f.handles.data.get("r1")?.get("state")).toBe(original);
+        expect(Y.encodeStateAsUpdate(f.handles.doc)).toEqual(before);
+        expect((await f.adapter.runQueryNow("SELECT state FROM tasks"))?.rows).toEqual([{ state: original }]);
+        expect(f.view.getByTestId("grid-edit-status").textContent).toContain(
+            "Edit refused: This destination does not accept line breaks.",
+        );
+        expect(f.cell().querySelector("textarea")).toBeNull();
+        await waitFor(() => expect(document.activeElement).toBe(f.cell().querySelector("button")));
+    });
+
     it("keeps the old editor's authority when the next control receives pointer-down before blur", async () => {
         const f = await setup("text", true);
         await fireEvent.click(f.cell().querySelector("button")!);
