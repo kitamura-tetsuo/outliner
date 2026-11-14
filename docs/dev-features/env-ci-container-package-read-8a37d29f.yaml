@@ -1,0 +1,18 @@
+id: ENV-8a37d29f
+title: CI test container consumers retain package read access
+title-ja: CIテストコンテナの利用ジョブがパッケージ読取権限を保持する
+description: >-
+  Job-level permission maps replace inherited permissions. The five affected
+  container jobs explicitly grant packages read to the existing GITHUB_TOKEN,
+  without expanding other permissions or changing the test-image namespace.
+  The focused configuration regression is not a substitute for exact-SHA Actions
+  evidence of image digest, initialization and actual test execution.
+category: environment
+status: implemented
+components:
+  - .github/workflows/ci-checks.yml
+  - .github/workflows/ci-test-unit.yml
+  - .github/workflows/ci-test-server.yml
+  - .github/workflows/ci-test-integration.yml
+tests:
+  - scripts/tests/env-ci-container-package-read-8a37d29f.spec.ts
