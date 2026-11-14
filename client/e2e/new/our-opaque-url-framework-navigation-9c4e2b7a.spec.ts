@@ -130,7 +130,12 @@ test.describe("debug bridge framework navigation", () => {
         // The bridge must be installed by the root layout, rather than imported
         // or initialized by this test.
         await page.goto(`${debugOrigin}/app/demo/Home`);
-        await expect.poll(() => page.evaluate(() => typeof globalThis.__SVELTE_GOTO__)).toBe("function");
+        // Vite may reload the initial document while optimizing dependencies.
+        // Keep waiting in the replacement document rather than letting a destroyed
+        // execution context abort the readiness assertion before its timeout.
+        await page.waitForFunction(() => typeof globalThis.__SVELTE_GOTO__ === "function", undefined, {
+            timeout: 90_000,
+        });
 
         await page.evaluate(() => {
             void globalThis.__SVELTE_GOTO__!("/Project%20A/Page%20B?isTest=true#frag");

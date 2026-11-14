@@ -40,6 +40,8 @@ export default defineConfig(async ({ mode }) => {
                 },
             },
             sentrySvelteKit({
+                // Build-tool diagnostics must not be sent to an external service.
+                telemetry: false,
                 sourcemaps: {
                     disable: true,
                 },

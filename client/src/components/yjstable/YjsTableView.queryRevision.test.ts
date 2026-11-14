@@ -109,7 +109,7 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             // Begin a pending mutation, then move the saved query A -> B -> A in
             // separate transactions while the replacement execution is pending.
             await fireEvent.click(titleButton()!);
-            const pendingInput = view().querySelector("input.cell-input") as HTMLInputElement | null;
+            const pendingInput = view().querySelector("textarea.cell-input") as HTMLTextAreaElement | null;
             expect(pendingInput).not.toBeNull();
             await fireEvent.input(pendingInput!, { target: { value: "Stale attempt" } });
             setGridQuery(grid, QUERY_B);
@@ -120,7 +120,7 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             // text alone does not revive the outstanding mutation.
             expect(getGridQuery(grid)).toBe(paddedA);
             expect(getGridRegistry(projectDoc).get(gridId)?.has("sourceTableId")).toBe(false);
-            expect(view().querySelector("input.cell-input")).toBeNull();
+            expect(view().querySelector("textarea.cell-input")).toBeNull();
             expect(queryByTestId("grid-readonly-reason")?.textContent).toBe(
                 "Current query source evidence is unavailable",
             );
@@ -128,7 +128,7 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
             // The outstanding edit cannot commit while authority is revoked.
             await fireEvent.click(anyTitleButton()!);
             await tick();
-            expect(view().querySelector("input.cell-input")).toBeNull();
+            expect(view().querySelector("textarea.cell-input")).toBeNull();
             expect(titleOf(handlesA)).toBe("Value in A");
             expect(titleOf(handlesB)).toBe("Value from B");
             expect(handlesA.undo.undoStack.length).toBe(undoA);
@@ -146,7 +146,7 @@ describe("query-revision revocation (issue #5525 REQ-003)", { timeout: 60000 }, 
                 expect(queryByTestId("grid-readonly-reason")).toBeNull();
             }, { timeout: 30000 });
             await fireEvent.click(titleButton()!);
-            const freshInput = view().querySelector("input.cell-input") as HTMLInputElement | null;
+            const freshInput = view().querySelector("textarea.cell-input") as HTMLTextAreaElement | null;
             expect(freshInput).not.toBeNull();
             await fireEvent.input(freshInput!, { target: { value: "Fresh edit" } });
             await fireEvent.keyDown(freshInput!, { key: "Enter" });

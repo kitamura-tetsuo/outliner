@@ -1,6 +1,9 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { unambiguousRowSource } from "../../../../shared/src/services/projectQueryProvenance";
+import {
+    unambiguousPhysicalColumn,
+    unambiguousRowSource,
+} from "../../../../shared/src/services/projectQueryProvenance";
 import {
     analyzeProjectQueryProvenance,
     isProjectQueryProvenanceCurrent,
@@ -116,6 +119,22 @@ describe("Project query provenance", { timeout: 30_000 }, () => {
             ["shown", "label"],
             ["calculated", "score"],
         ]);
+    });
+
+    it("rejects a same-source UNION output if any branch computes it", async () => {
+        const doc = new Y.Doc({ guid: "provenance-computed-union" });
+        table(doc, "A", "a", "CREATE TABLE a (id TEXT PRIMARY KEY, body TEXT)", "a1", {
+            body: "original",
+        });
+        const query = "SELECT 'a' AS source_kind, id AS source_id, body AS value FROM a "
+            + "UNION ALL SELECT 'a', id, body || '!' FROM a";
+        const { result } = await analyze(doc, query);
+        expect(result.status).toBe("proven");
+        expect(unambiguousRowSource(result, { source_kind: "a", source_id: "a1" })?.source.sqlName).toBe("a");
+        expect(result.branches[0]?.columns.some(column => column.outputColumn === "value")).toBe(true);
+        expect(result.branches[1]?.columns.some(column => column.outputColumn === "value")).toBe(false);
+        expect(unambiguousPhysicalColumn(result, "a", "value")).toBeUndefined();
+        expect(unambiguousPhysicalColumn(result, "a", "source_id")).toBe("id");
     });
 
     it("reports unsupported forms and invalidates replaced-source evidence", async () => {

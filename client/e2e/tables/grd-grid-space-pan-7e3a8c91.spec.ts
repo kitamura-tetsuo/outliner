@@ -34,7 +34,7 @@ test.describe("Grid Space + left-drag horizontal pan (#5863)", () => {
         await page.keyboard.down("Space");
         await expect(grid).toHaveClass(/pan-armed/);
         await expect(cell.locator("button")).toHaveCSS("cursor", "grab");
-        await expect(cell.locator("input")).toHaveCount(0);
+        await expect(cell.locator("textarea")).toHaveCount(0);
         await expect(grid.locator("td.grid-selected")).toHaveCount(selectedBefore);
 
         const box = (await cell.boundingBox())!;
@@ -48,7 +48,7 @@ test.describe("Grid Space + left-drag horizontal pan (#5863)", () => {
         await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
         expect(await page.evaluate(() => scrollX)).toBe(pageXBefore);
         await expect(grid.locator("td.grid-selected")).toHaveCount(selectedBefore);
-        await expect(cell.locator("input")).toHaveCount(0);
+        await expect(cell.locator("textarea")).toHaveCount(0);
 
         await page.mouse.up();
         await expect(grid).not.toHaveClass(/pan-active/);
@@ -76,9 +76,9 @@ test.describe("Grid Space + left-drag horizontal pan (#5863)", () => {
         await page.mouse.move(x - 150, y, { steps: 3 });
         expect(await grid.evaluate(element => element.scrollLeft)).toBe(stoppedAt);
         await page.mouse.up();
-        await expect(origin.locator("input")).toHaveCount(0);
+        await expect(origin.locator("textarea")).toHaveCount(0);
 
         await next.locator("button").click();
-        await expect(next.locator("input")).toBeFocused();
+        await expect(next.locator("textarea")).toBeFocused();
     });
 });

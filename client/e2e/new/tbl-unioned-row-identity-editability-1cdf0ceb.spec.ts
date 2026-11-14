@@ -24,7 +24,7 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         });
     });
 
-    test("a UNION carrying source_kind/source_id is editable, and edits reach the right relation and row", async ({ page }) => {
+    test("a UNION carrying source_kind/source_id is editable, and edits reach the right relation and row", async ({ page, browserName }) => {
         // A table whose own columns match the calendar projection's shape, so
         // the same result columns can be written back on either side.
         await page.locator(".outliner-item").first().click();
@@ -92,9 +92,19 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
 
         // Edit the table branch's row: the write must land on the table.
         await tableRow.locator('td[data-col="text"] .cell-value').click();
-        await tableRow.locator('td[data-col="text"] input.cell-input').fill("Water the plants", { force: true });
+        const tableEditor = tableRow.locator('td[data-col="text"] textarea.cell-input');
+        await tableEditor.fill("Water", { force: true });
+        await tableEditor.press("Alt+Enter");
+        await tableEditor.type("the plants");
+        await expect(tableEditor).toHaveValue("Water\nthe plants");
         await page.keyboard.press("Enter");
-        await expect(tableRow.locator('td[data-col="text"] .cell-value', { hasText: "Water the plants" }))
+        await expect(tableRow.locator('td[data-col="text"] .cell-value')).toHaveText("Water\nthe plants", {
+            timeout: 15000,
+        });
+        await tableRow.locator('td[data-col="text"] .cell-value').click();
+        await expect(tableRow.locator('td[data-col="text"] textarea.cell-input')).toHaveValue("Water\nthe plants");
+        await page.keyboard.press("Escape");
+        await expect(tableRow.locator('td[data-col="text"] .cell-value'))
             .toBeVisible({ timeout: 15000 });
 
         // Drive the same verified UNION provenance through the unified
@@ -122,7 +132,56 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         // live outline item — a direct Yjs binding — is the reliable signal
         // that the write landed on the right row.
         await itemRow.locator('td[data-col="text"] .cell-value').click();
-        await itemRow.locator('td[data-col="text"] input.cell-input').fill(
+        const itemEditor = itemRow.locator('td[data-col="text"] textarea.cell-input');
+        await itemEditor.fill("Ship the feature", { force: true });
+        await itemEditor.evaluate(node => (node as HTMLTextAreaElement).setSelectionRange(5, 8));
+        await itemEditor.press("Alt+Enter");
+        await expect(itemEditor).toHaveValue("Ship the feature");
+        await expect(itemEditor).toBeFocused();
+        await expect.poll(() =>
+            itemEditor.evaluate(node => [
+                (node as HTMLTextAreaElement).selectionStart,
+                (node as HTMLTextAreaElement).selectionEnd,
+            ])
+        ).toEqual([5, 8]);
+        await expect(itemRow.getByRole("alert")).toContainText("does not accept line breaks");
+        const transfer = await page.evaluateHandle(() => {
+            const data = new DataTransfer();
+            data.setData("text/plain", "Drop\r\nshould be rejected");
+            return data;
+        });
+        await itemEditor.dispatchEvent("drop", { dataTransfer: transfer });
+        await transfer.dispose();
+        // Exercise the Chromium browser's drag input pipeline, not only a
+        // manually dispatched DOM DropEvent. It must not mutate the outline item.
+        if (browserName === "chromium") {
+            const rect = await itemEditor.boundingBox();
+            expect(rect).not.toBeNull();
+            const cdp = await page.context().newCDPSession(page);
+            try {
+                const drag = {
+                    items: [{ mimeType: "text/plain", data: "Native\r\ndrop refusal" }],
+                    files: [],
+                    dragOperationsMask: 1,
+                };
+                const x = rect!.x + rect!.width / 2;
+                const y = rect!.y + rect!.height / 2;
+                for (const type of ["dragEnter", "dragOver", "drop"] as const) {
+                    await cdp.send("Input.dispatchDragEvent", { type, x, y, data: drag });
+                }
+            } finally {
+                await cdp.detach();
+            }
+        }
+        await expect(itemEditor).toHaveValue("Ship the feature");
+        await expect(itemEditor).toBeFocused();
+        await expect.poll(() =>
+            itemEditor.evaluate(node => [
+                (node as HTMLTextAreaElement).selectionStart,
+                (node as HTMLTextAreaElement).selectionEnd,
+            ])
+        ).toEqual([5, 8]);
+        await itemEditor.fill(
             "Ship the redesigned feature",
             { force: true },
         );

@@ -9,6 +9,7 @@ import DateCell from "./cells/DateCell.svelte";
 import NumberCell from "./cells/NumberCell.svelte";
 import SelectCell from "./cells/SelectCell.svelte";
 import TextCell from "./cells/TextCell.svelte";
+import type { TextLineBreakPolicy } from "./textCellLineBreakPolicy";
 
 export interface CellProps {
     value: unknown;
@@ -25,6 +26,7 @@ export interface CellProps {
     editing?: boolean;
     /** Initial text for an edit started by typing a printable character in Grid navigation mode. */
     editSeed?: string;
+    lineBreakPolicy?: TextLineBreakPolicy;
     onCommit: (value: string | number | boolean | null) => void;
     /** Native select interactions retain their write authority until commit or blur. */
     onEditStart?: () => void;

@@ -111,17 +111,68 @@ test.describe("Grid fixed widths hold inside a partial-span Layout", () => {
         expect(await grid.evaluate((el: HTMLElement) => el.scrollLeft)).toBeGreaterThan(0);
         expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= 481)).toBe(true);
         const narrowNeighbor = await neighborCell.boundingBox();
+        const narrowGridCell = await gridCell.boundingBox();
         expect(narrowNeighbor).not.toBeNull();
+        expect(narrowGridCell).not.toBeNull();
         expect(narrowNeighbor!.x + narrowNeighbor!.width).toBeLessThanOrEqual(481);
+        // A partial-span Layout may stack its cells at narrow viewport widths.
+        // Record the production layout orientation before opening the editor.
+        const baselineSideBySide = narrowNeighbor!.x >= narrowGridCell!.x + narrowGridCell!.width - 2;
+        const baselineStacked = narrowNeighbor!.y >= narrowGridCell!.y + narrowGridCell!.height - 2;
+        expect(baselineSideBySide || baselineStacked).toBe(true);
         expect((await storedSpans(page)).map((entry) => entry.span)).toEqual([6, 6]);
 
         // Focusing an inline editor inside the Layout keeps every fixed track.
         const titleButton = grid.locator('td[data-col="title"] button.cell-value').first();
         await titleButton.evaluate(element => element.scrollIntoView({ block: "center", inline: "center" }));
         await titleButton.click();
-        await expect(grid.locator('td[data-col="title"] input.cell-input').first()).toBeVisible({
+        await expect(grid.locator('td[data-col="title"] textarea.cell-input').first()).toBeVisible({
             timeout: 15000,
         });
+        const textEditor = grid.locator('td[data-col="title"] textarea.cell-input').first();
+        const wrappedDraft = "日本語の長い文字列でセル幅を超える内容".repeat(30);
+        await textEditor.fill(wrappedDraft);
+        await textEditor.press("Control+End");
+        const expanded = await textEditor.evaluate(node => {
+            const textarea = node.getBoundingClientRect();
+            const cell = node.closest("td")!.getBoundingClientRect();
+            const row = node.closest("tr")!.getBoundingClientRect();
+            const lineHeight = Number.parseFloat(getComputedStyle(node).lineHeight);
+            return {
+                height: textarea.height,
+                scrollHeight: node.scrollHeight,
+                clientHeight: node.clientHeight,
+                scrollTop: node.scrollTop,
+                lineHeight,
+                selectionStart: (node as HTMLTextAreaElement).selectionStart,
+                cellRight: cell.right,
+                rowBottom: row.bottom,
+                textareaRight: textarea.right,
+                textareaBottom: textarea.bottom,
+            };
+        });
+        expect(expanded.height).toBeGreaterThan(expanded.lineHeight * 3);
+        expect(expanded.height).toBeLessThanOrEqual(800 * 0.4 + 1);
+        expect(expanded.scrollHeight).toBeGreaterThan(expanded.clientHeight);
+        expect(expanded.scrollTop).toBeGreaterThan(0);
+        expect(expanded.scrollHeight - expanded.clientHeight - expanded.scrollTop).toBeLessThanOrEqual(4);
+        expect(expanded.selectionStart).toBe(wrappedDraft.length);
+        expect(expanded.textareaRight).toBeLessThanOrEqual(expanded.cellRight + 1);
+        expect(expanded.textareaBottom).toBeLessThanOrEqual(expanded.rowBottom + 1);
+        const activeNeighbor = await neighborCell.boundingBox();
+        const activeGridCell = await gridCell.boundingBox();
+        expect(activeNeighbor).not.toBeNull();
+        expect(activeGridCell).not.toBeNull();
+        if (baselineSideBySide) {
+            expect(activeNeighbor!.x).toBeGreaterThanOrEqual(activeGridCell!.x + activeGridCell!.width - 2);
+        } else {
+            expect(activeNeighbor!.y).toBeGreaterThanOrEqual(activeGridCell!.y + activeGridCell!.height - 2);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+
+        await textEditor.fill("short again");
+        expect(await textEditor.evaluate(node => node.clientHeight)).toBeLessThan(expanded.clientHeight);
+        await expect(textEditor).toHaveValue("short again");
         for (const [column, px] of ALL_FIXED) await expectFixedWidth(page, 0, column, px);
         await page.keyboard.press("Escape");
 

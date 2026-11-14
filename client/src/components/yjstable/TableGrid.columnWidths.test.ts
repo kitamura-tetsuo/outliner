@@ -365,7 +365,7 @@ describe("TableGrid fixed column widths", () => {
         const shoutButton = container.querySelector("td[data-col='shout'] button.cell-value")!;
         expect(shoutButton.getAttribute("aria-disabled")).toBe("true");
         await fireEvent.click(shoutButton);
-        expect(container.querySelector("td[data-col='shout'] input.cell-input")).toBeNull();
+        expect(container.querySelector("td[data-col='shout'] textarea.cell-input")).toBeNull();
 
         // The sibling source column keeps its component and stays writable.
         const titleButton = container.querySelector("td[data-col='title'] button.cell-value")!;

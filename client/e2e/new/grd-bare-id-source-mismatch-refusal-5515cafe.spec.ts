@@ -28,7 +28,7 @@ test(
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await expect(cell.locator("button.cell-value")).toHaveText("Value from B");
         await cell.locator("button.cell-value").click();
-        const embeddedEditor = cell.locator("input.cell-input");
+        const embeddedEditor = cell.locator("textarea.cell-input");
         await expect(embeddedEditor).toBeVisible({ timeout: 30000 });
         await embeddedEditor.fill("Embedded B edit");
         await embeddedEditor.press("Enter");
@@ -54,7 +54,7 @@ test(
         const standaloneCell = standalone.getByTestId("yjs-table-grid")
             .locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await standaloneCell.locator("button.cell-value").click();
-        const standaloneEditor = standaloneCell.locator("input.cell-input");
+        const standaloneEditor = standaloneCell.locator("textarea.cell-input");
         await expect(standaloneEditor).toBeVisible({ timeout: 30000 });
         await standaloneEditor.fill("Standalone B edit");
         await standaloneEditor.press("Enter");

@@ -164,7 +164,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         expect(await grid.evaluate(element => element.scrollLeft)).toBe(0);
 
         await cell.locator("button").click();
-        const editor = cell.locator("input");
+        const editor = cell.locator("textarea");
         await editor.press("End");
         await editor.press("Space");
         await expect(editor).toHaveValue("Alpha ");
@@ -233,7 +233,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         });
         expect(composingKey).toEqual({ dispatched: true, defaultPrevented: false });
         await expect(grid).not.toHaveClass(/pan-armed|pan-active/);
-        await expect(title.locator("input")).toHaveCount(0);
+        await expect(title.locator("textarea")).toHaveCount(0);
         expect(
             await grid.locator("td.grid-selected").evaluateAll(cells =>
                 cells.map(cell => [cell.getAttribute("data-row-id"), cell.getAttribute("data-col")])
@@ -241,7 +241,7 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
         ).toEqual(selectionBeforeComposition);
 
         await titleButton.click();
-        const editor = title.locator("input");
+        const editor = title.locator("textarea");
         await editor.press("End");
         const cdp = await page.context().newCDPSession(page);
         await cdp.send("Input.imeSetComposition", {
@@ -249,6 +249,22 @@ test.describe("Grid Space pan authoritative boundaries (#5863)", () => {
             selectionStart: 1,
             selectionEnd: 1,
         });
+        await expect(editor).toHaveValue("Alpha中");
+        await expect(editor).toBeFocused();
+        // A composing confirmation Enter must not trigger the ordinary Grid
+        // commit/exit handler before the browser finishes the native IME input.
+        const composingEnter = await editor.evaluate(node => {
+            const event = new KeyboardEvent("keydown", {
+                key: "Enter",
+                code: "Enter",
+                bubbles: true,
+                cancelable: true,
+                isComposing: true,
+            });
+            return { dispatched: node.dispatchEvent(event), prevented: event.defaultPrevented };
+        });
+        // The textarea consumes the native newline; Grid panning must remain inactive.
+        expect(composingEnter).toEqual({ dispatched: false, prevented: true });
         await expect(editor).toHaveValue("Alpha中");
         await expect(editor).toBeFocused();
         await cdp.send("Input.insertText", { text: "中" });

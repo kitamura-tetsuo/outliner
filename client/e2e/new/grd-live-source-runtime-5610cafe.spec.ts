@@ -16,8 +16,8 @@ test(
         const grid = page.locator(`[data-testid="yjs-table-view"][data-grid-id="${gridId}"]`);
         const cell = grid.locator(`td[data-record-id="${fixture.recordId}"][data-col="title"]`);
         await cell.locator("button").click();
-        await cell.locator("input").fill("A local edit");
-        await cell.locator("input").press("Enter");
+        await cell.locator("textarea").fill("A local edit");
+        await cell.locator("textarea").press("Enter");
         await expect.poll(async () =>
             (await snapshotProject(page)).tables.find(table => table.id === fixture.tableA.id)?.data[fixture.recordId]
                 ?.title

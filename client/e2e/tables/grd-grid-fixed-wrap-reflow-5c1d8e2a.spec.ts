@@ -92,7 +92,7 @@ test.describe("Grid fixed-column wrapping shows every line and rows reflow", () 
         await expect(subjectCell.locator("button.cell-value")).toHaveAttribute("aria-disabled", "true");
         await expectTextWrappedWithin(subjectCell.locator("button.cell-value"));
         await subjectCell.locator("button.cell-value").click({ force: true });
-        expect(await subjectCell.locator("input.cell-input").count()).toBe(0);
+        expect(await subjectCell.locator("textarea.cell-input").count()).toBe(0);
         expect((await readGridProjectState(page)).tables[0].data).toEqual(beforeComputed);
     });
 
