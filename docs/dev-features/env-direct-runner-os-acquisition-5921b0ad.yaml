@@ -1,0 +1,9 @@
+id: ENV-5921b0ad
+title: Bounded strict direct-runner OS acquisition
+title-ja: 直接実行CIのOSパッケージ取得を厳格な制限時間内に実行
+description: Direct-runner E2E setup fails closed on package-source or required-package failure, retaining stage, source, exit and elapsed-time evidence within a 600-second aggregate OS/browser preparation budget. Local setup retains its degraded behavior.
+category: environment
+status: implemented
+tests:
+- scripts/tests/env-direct-runner-os-acquisition-5921b0ad.spec.ts
+notes: Real isolated Ubuntu APT/dpkg and browser regressions require Docker control. Passing these regressions does not replace normal CI evidence at the final repair SHA. See docs/direct-runner-os-acquisition.md for the budget and evidence contract.

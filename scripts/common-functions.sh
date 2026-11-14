@@ -32,6 +32,20 @@ load_nvm() {
 # Set SKIP_APT_INSTALL=1 to force the degraded path without probing.
 APT_AVAILABLE_CACHE=""
 apt_is_available() {
+  if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then
+    if [ "${SKIP_APT_INSTALL:-0}" = "1" ]; then
+      echo "Error: direct-runner setup cannot skip required OS acquisition." >&2
+      return 1
+    fi
+    if [ "$APT_AVAILABLE_CACHE" = "yes" ]; then return 0; fi
+    direct_runner_stage "apt-update"
+    # Unlike the local probe, partial source failure must fail and retain diagnostics.
+    sudo apt-get -o APT::Update::Error-Mode=any -o Acquire::Retries=1 \
+      -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 \
+      -o Acquire::ForceIPv4=true update || return $?
+    APT_AVAILABLE_CACHE="yes"
+    return 0
+  fi
   if [ "${SKIP_APT_INSTALL:-0}" = "1" ]; then
     return 1
   fi
@@ -60,13 +74,19 @@ retry_apt_get() {
   while true; do
     if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true "$@"; then
       break
+    else
+      local apt_status=$?
+      echo "apt-get $* exited ${apt_status} (attempt $((attempts+1))/${max_attempts})." >&2
     fi
     attempts=$((attempts+1))
     if [ "$attempts" -ge "$max_attempts" ]; then
+      if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then return "$apt_status"; fi
       return 1
     fi
     echo "apt-get $* failed (attempt ${attempts}/${max_attempts}); repairing and retrying..."
+    if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then direct_runner_stage "dpkg-repair ($*)"; fi
     sudo dpkg --configure -a || true
+    if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then direct_runner_stage "apt-install ($*)"; fi
     sleep 2
   done
 }
@@ -389,9 +409,40 @@ install_global_packages() {
 
 }
 
+# Strict CI diagnostics are also read by the supervising aggregate deadline.
+direct_runner_stage() {
+  echo "Direct-runner stage: $*"
+  printf '%s\n' "$*" > "$E2E_OS_STAGE_FILE"
+}
+
+# dpkg -s alone also succeeds for config-files-only entries. Accept only fully
+# installed packages, including installed providers of renamed/virtual packages
+# (Ubuntu's t64 transition keeps several required names as Provides aliases).
+verify_required_os_packages() {
+  local inventory dep missing=0
+  inventory=$(dpkg-query -W -f='${Package}\t${Status}\t${Provides}\n') || return $?
+  for dep in "$@"; do
+    if ! awk -F '\t' -v required="$dep" '
+      $2 == "install ok installed" {
+        if ($1 == required) found=1;
+        count=split($3, aliases, ",");
+        for (i=1; i<=count; i++) {
+          sub(/^[ ]+/, "", aliases[i]); sub(/[ (:].*$/, "", aliases[i]);
+          if (aliases[i] == required) found=1;
+        }
+      }
+      END { exit !found }
+    ' <<< "$inventory"; then
+      echo "Required OS package is not installed: $dep" >&2
+      missing=1
+    fi
+  done
+  return "$missing"
+}
+
 # Install OS utilities if needed
 install_os_utilities() {
-  "${ROOT_DIR}/scripts/require-java-21.sh"
+  "${ROOT_DIR}/scripts/require-java-21.sh" || return $?
 
   # For Playwright's --with-deps chromium
   local playwright_deps=(
@@ -422,6 +473,20 @@ install_os_utilities() {
   local original_deps=(
     lsof
   )
+
+  if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then
+    local required=("${original_deps[@]}" "${playwright_deps[@]}" "${CANVAS_NATIVE_DEPS[@]}")
+    direct_runner_stage "verify-required-packages (${required[*]})"
+    if ! verify_required_os_packages "${required[@]}"; then
+      apt_is_available || return $?
+      direct_runner_stage "apt-install (${required[*]})"
+      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends "${required[@]}" || return $?
+    fi
+    direct_runner_stage "verify-required-packages (${required[*]})"
+    verify_required_os_packages "${required[@]}" || return $?
+    if [ "${1:-}" != "--os-only" ]; then ensure_playwright_browsers; fi
+    return
+  fi
 
   # Check if any dependency is missing
   local needs_install=false
@@ -505,11 +570,15 @@ ensure_playwright_browsers() {
     echo "Warning: could not read the pinned Playwright version; falling back to the latest CLI." >&2
   fi
 
+  local cli_command=(npx --yes "$cli")
+  if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then
+    cli_command=(node "${ROOT_DIR}/client/node_modules/playwright/cli.js")
+  fi
   echo "Installing Playwright chromium (${cli})..."
-  if PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 npx --yes "$cli" install chromium; then
+  if PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 "${cli_command[@]}" install chromium; then
     rm -f "$marker"
     PLAYWRIGHT_BROWSERS_RESOLVED="download"
-    if apt_is_available; then
+    if [ "${DIRECT_RUNNER_OS_STRICT:-0}" != "1" ] && apt_is_available; then
       echo "Installing Playwright dependencies..."
       npx --yes "$cli" install-deps chromium || echo "Playwright deps install failed, continuing..."
     fi
@@ -517,6 +586,10 @@ ensure_playwright_browsers() {
     return 0
   fi
 
+  if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then
+    echo "Error: locked Chromium installation failed in direct-runner setup." >&2
+    return 1
+  fi
   echo "Playwright browser download failed; looking for a pre-installed Chromium..."
   local candidate=""
   for path in \
@@ -576,7 +649,9 @@ ensure_playwright_firefox() {
     echo "Error: failed to install Playwright Firefox ${pinned}; Firefox execution cannot continue." >&2
     return 1
   fi
-  if apt_is_available; then
+  if [ "${DIRECT_RUNNER_OS_STRICT:-0}" = "1" ]; then
+    : # The strict entrypoint already installed dependencies inside its deadline.
+  elif apt_is_available; then
     echo "Installing Firefox system dependencies..."
     if ! node "$cli" install-deps firefox; then
       echo "Error: failed to install Firefox system dependencies." >&2
