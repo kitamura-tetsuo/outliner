@@ -18,6 +18,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     timeout-minutes: 20
     permissions:
+      packages: read
       contents: read
       pull-requests: write
 
@@ -70,6 +71,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     timeout-minutes: 10
     permissions:
+      packages: read
       contents: read
 
     steps:
