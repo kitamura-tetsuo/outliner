@@ -18,6 +18,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  direct-runner-os-regression:
+    name: Verify bounded direct-runner OS acquisition
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Install ENV test dependencies
+        run: npm ci --prefix scripts/tests --include=dev --no-audit --no-fund
+      - name: Exercise real isolated package acquisition
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p job_logs
+          bash scripts/run-env-tests.sh --isolated env-direct-runner-os-acquisition-5921b0ad.spec.ts 2>&1 | tee job_logs/direct-runner-os-regression.log
+      - name: Retain isolated acquisition evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: direct-runner-os-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: job_logs/direct-runner-os-regression.log
+          retention-days: 2
+
   artifact-roundtrip:
     name: Verify E2E artifact round trip
     runs-on: ubuntu-latest

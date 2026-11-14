@@ -141,5 +141,5 @@ runs:
         (
           source scripts/common-config.sh
           source scripts/common-functions.sh
-          install_os_utilities
+          bash scripts/setup-direct-runner-os.sh
         ) 2>&1 | tee -a job_logs/setup-browser-${{ inputs.browser }}.log
