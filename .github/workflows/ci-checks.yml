@@ -18,6 +18,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     timeout-minutes: 20
     permissions:
+      packages: read
       contents: write
       pull-requests: write
 
@@ -28,6 +29,12 @@ jobs:
           clean: true
           # When called from another workflow, we inherit the ref context
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify test-container access contract
+        run: |
+          npm ci --prefix scripts/tests --ignore-scripts --no-audit --no-fund
+          cd scripts/tests
+          npx vitest run env-ci-container-package-read-8a37d29f.spec.ts
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-test-env
